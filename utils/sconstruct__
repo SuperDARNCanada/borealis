@@ -1,0 +1,23 @@
+import os
+
+Import('env')
+
+# copy parent environment so our alterations don't affect it
+env = env.Clone()
+
+# add source directories (at all levels) to the include path
+# and add their contents are build targets
+matches = []
+for root, dirnames, filenames in os.walk(os.getcwd()):
+    for dirname in dirnames:
+        print('adding dir to path: %s' % dirname)
+        env.Append(CPPPATH=[dirname])
+        globStr = "%s/*.c*" % dirPath
+        matches.append(Glob(globStr))
+
+# debug output
+print('utils env CPPPATH:')
+print(env['CPPPATH'])
+
+# build a shared library
+env.SharedLibrary('../../lib/utils', matches,LIBS=['utils'],LIBPATH='../../lib')
