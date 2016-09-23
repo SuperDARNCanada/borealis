@@ -1,0 +1,39 @@
+import os
+
+Import('env')
+
+# copy parent environment so our alterations don't affect it
+env = env.Clone()
+
+# add src dirs to include path
+# for root, dirnames, filenames in os.walk('../src'):
+#     for dirname in dirnames:
+#         dirPath = os.path.join('../src',dirname)
+#         print('adding src dir to path: %s' % dirPath)
+#         env.Append(CPPPATH=[dirPath])
+
+# initilize the set of targets to build
+matches = []
+
+# add any files in the current directory
+currentDir = os.path.split(os.getcwd())[1]
+print('adding test dir to path: %s' % currentDir)
+env.Append(CPPPATH=['.'])
+matches.append(Glob("./*.c*"))
+
+# add files in subdirectories
+for root, dirnames, filenames in os.walk(os.getcwd()):
+    for dirname in dirnames:
+        print('adding test dir to path: %s' % dirname)
+        env.Append(CPPPATH=[dirname])
+        globStr = "%s/*.c*" % dirname
+        matches.append(Glob(globStr))
+
+# debug output
+print('test env CPPPATH:')
+print(env['CPPPATH'])
+print("test files to build: ")
+print([ match[0].rstr() for match in matches])
+
+# build a program that uses the source files as a shared library
+env.Program('../../bin/n200_driver', matches)

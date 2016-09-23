@@ -1,0 +1,23 @@
+import os
+
+# Set our required libraries
+libraries       = ['-luhd','-lboost_system']
+library_paths   = ''
+cppDefines      = {}
+cppFlags        = ['-Wall']#, '-Werror']
+cxxFlags        = ['-std=c++11']
+
+env = Environment()
+env.Append(LIBS          = libraries)
+env.Append(LIBPATH       = library_paths)
+env.Append(CPPDEFINES    = cppDefines)
+env.Append(CPPFLAGS      = cppFlags)
+env.Append(CXXFLAGS      = cxxFlags)
+
+#env.VariantDir('build/bin','usrp_drivers/n200',duplicate=0)
+
+for root, dirnames, filenames in os.walk(os.getcwd()):
+    if 'sconstruct' in filenames and root != os.getcwd():
+        print(root+'/sconstruct')
+        env.SConscript(root+'/sconstruct',{'env': env})
+
