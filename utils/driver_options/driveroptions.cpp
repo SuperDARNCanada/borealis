@@ -3,8 +3,8 @@
 #include <boost/range/algorithm_ext/erase.hpp>
 #include <boost/algorithm/string.hpp>
 #include <string>
-#include "options.hpp"
-#include "driveroptions.hpp"
+#include "utils/options/options.hpp"
+#include "utils/driver_options/driveroptions.hpp"
 
 
 DriverOptions::DriverOptions() {

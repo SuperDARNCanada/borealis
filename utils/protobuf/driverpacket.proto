@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package driverpacket;
+
+message DriverPacket {
+  repeated uint32 channels = 1;
+  repeated Samples samples = 2;
+  repeated double centerfreq = 3;
+  repeated double waveformfreq = 4;
+  repeated double txrate = 5;
+  repeated double rxrate = 6;
+  double timetosendsamples = 7;
+  bool SOB = 8;
+  bool EOB = 9;
+  double timetoio = 10;
+
+  message Samples {
+    repeated double real = 1;
+    repeated double imag = 2;
+  }
+}

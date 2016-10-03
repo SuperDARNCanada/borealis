@@ -3,7 +3,7 @@
 #define USRP_H
 
 #include <uhd/usrp/multi_usrp.hpp>
-#include "driveroptions.hpp"
+#include "utils/driver_options/driveroptions.hpp"
 
 class USRP{
  public:

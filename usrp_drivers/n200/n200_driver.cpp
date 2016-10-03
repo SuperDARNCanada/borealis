@@ -4,31 +4,59 @@
 #include <uhd/utils/static.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
 #include <uhd/exception.hpp>
-#include <boost/program_options.hpp>
-#include <boost/math/special_functions/round.hpp>
-#include <boost/foreach.hpp>
-#include <boost/format.hpp>
-#include <boost/thread.hpp>
-#include <boost/lexical_cast.hpp>
+/*#include <boost/program_options.hpp>*/
+/*#include <boost/math/special_functions/round.hpp>*/
+/*#include <boost/foreach.hpp>*/
+/*#include <boost/format.hpp>*/
+/*#include <boost/thread.hpp>*/
+/*#include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/range/algorithm_ext/erase.hpp>
+#include <boost/thread.hpp>*/
+/*#include <boost/chrono.hpp>*/
 #include <stdint.h>
 #include <iostream>
 #include <memory>
 #include <vector>
 #include <string>
+#include <thread>
+#include <mutex>
+#include <zmq.h>
 
-#include "driveroptions.hpp"
+#include "utils/driver_options/driveroptions.hpp"
 #include "usrp.hpp"
 
+/*enum TRType {TRANSMIT,RECEIVE};
+enum IntegrationPeriod {START,STOP,CONTINUE};
+
+std::mutex TR_mutex;
+std::mutex control_parameters;
 
 
-void tx_thread() {
+TRType TR = transmit;
+
+int current_integrations = 0;*/
+
+
+void transmit() {
+    while (1) {
+
+    }
 
 }
 
-void rx_thread() {
-    
+void receive() {
+    while (1) {
+
+    }
+
+}
+
+void control() {
+    while (1) {
+
+    }
+
 }
 
 
@@ -57,7 +85,20 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
     std::cout << usrp_d->to_string(channels);
 
+/*    std::vector<std::thread> threads;
 
+    std::thread transmit_t(transmit);
+    std::thread receive_t(receive);
+    std::thread control_t(control);
+
+    threads.push_back(transmit_t);
+    threads.push_back(receive_t);
+    threads.push_back(control_t);
+
+    for (auto& th : threads) {
+        th.join();
+    }
+*/
 
     return EXIT_SUCCESS;
 }

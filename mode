@@ -1,0 +1,118 @@
+#!/bin/bash
+# -*- coding: utf-8 -*-
+# Copyright 2014 The Ostrich / by Itamar O
+# Copyright 2016 SuperDARN
+
+# The MIT License (MIT)
+
+# Copyright (c) 2014 The Ostrich
+# Modified 2016 SuperDARN
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# A script to be sourced in order to set or clear the active build flavor (e.g. debug / release)
+# Usage: source mode [flavor|clear]
+
+# Helper functions to manipulate PATH
+path_append ()  { path_remove $1; export PATH="$PATH:$1"; }
+path_prepend () { path_remove $1; export PATH="$1:$PATH"; }
+path_remove ()  { export PATH=`echo -n $PATH | awk -v RS=: -v ORS=: '$0 != "'$1'"' | sed 's/:$//'`; }
+
+# Exit if not sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    echo "This script must be sourced (e.g. \"source mode [flavor|clear]\")" >&2
+    exit 37
+fi
+
+PYTHON="$( type -P python )"
+# Check that Python is available
+if [ "x$PYTHON" == "x" ]; then
+    echo "Could not find Python" >&2
+    return 17
+fi
+REQ_FLAVOR="$1"
+# Get base directory of this script
+BASE_DIR="$( cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SITE_CONFIG_SCRIPT="$BASE_DIR/site_scons/site_config.py"
+# Check that site config script exists
+if [ ! -f "$SITE_CONFIG_SCRIPT" ]; then
+    echo "Missing site_config.py script in site_scons dir." >&2
+    return 5
+fi
+# Remember the clean prompt
+if [ -z "$CLEAN_PS" ]; then
+    export CLEAN_PS="$PS1"
+fi
+# Get build & bin dirs from the config script
+BUILD_SUBDIR="$( $PYTHON "$SITE_CONFIG_SCRIPT" build )"
+BIN_SUBDIR="$( $PYTHON "$SITE_CONFIG_SCRIPT" bin )"
+# Get known flavors from the config script
+FLAVORS="$( $PYTHON "$SITE_CONFIG_SCRIPT" flavors )"
+# Iterate over known flavors, removing them from PATH, and adding the selected flavor
+FLAVORS_STR="["
+FOUND_FLAV="0"
+for FLAVOR in $FLAVORS; do
+    if [ "clear" == "$FLAVOR" ]; then
+        echo "WARNING: Flavor 'clear' collides with clearing active flavor!" >&2
+    fi
+    FLAV_BASE="$BASE_DIR/$BUILD_SUBDIR/$FLAVOR"
+    FLAV_BIN="$FLAV_BASE/$BIN_SUBDIR"
+    FLAVORS_STR="${FLAVORS_STR}${FLAVOR}|"
+    if [ "$REQ_FLAVOR" == "$FLAVOR" ]; then
+        # Found requested flavor - mark found and update path and env
+        export BUILD_FLAVOR="$FLAVOR"
+        FOUND_FLAV="1"
+        path_prepend "$FLAV_BIN"
+        # Update prompt with colored flavor decoration
+        export PS1="\[\e[0;36m\]($FLAVOR)\[\e[m\] $CLEAN_PS"
+    else
+        # Not requested flavor - remove from PATH
+        path_remove "$FLAV_BIN"
+    fi
+done
+
+if [ "clear" == "$REQ_FLAVOR" ]; then
+    unset BUILD_FLAVOR
+    export PS1="$CLEAN_PS"
+else
+    if [ "0" == "$FOUND_FLAV" ]; then
+        # not "clear" and no matching flavor - print usage
+        FLAVORS_STR="${FLAVORS_STR}clear]"
+        echo "Usage: source mode $FLAVORS_STR"
+        return 1
+    fi
+fi
+
+# Be polite, Clean up the env
+unset PYTHON
+unset REQ_FLAVOR
+unset BASE_DIR
+unset SITE_CONFIG_SCRIPT
+unset BUILD_SUBDIR
+unset BIN_SUBDIR
+unset FLAVORS
+unset FLAVOR
+unset FLAVORS_STR
+unset FOUND_FLAV
+unset FLAV_BASE
+unset FLAV_BIN
+
+# TODO: prompt string manipulation should be activated and deactivated only
+#       in directories under the project base directory (CBA).
+# TODO: figure out a way to correctly support multiple projects.

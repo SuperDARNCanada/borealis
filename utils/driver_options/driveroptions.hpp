@@ -3,7 +3,7 @@
 #define DRIVEROPTIONS_H
 
 #include <string>
-#include "options.hpp"
+#include "utils/options/options.hpp"
 
 class DriverOptions: public Options {
  public:

@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include "usrp.hpp"
-#include "driveroptions.hpp"
+#include "utils/driver_options/driveroptions.hpp"
 
 USRP::USRP(std::shared_ptr<DriverOptions> driver_options) {
     usrp = uhd::usrp::multi_usrp::make(driver_options->get_device_args());
