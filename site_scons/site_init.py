@@ -188,7 +188,7 @@ class FlavorBuilder(object):
             any_output = False
             for gen_flag_name, default_gen_flag, path_name, default_path in [
                     ('cpp', True, 'PROTOCPPOUT', '$BUILDROOT'),
-                    ('python', False, 'PROTOPYOUT', '$BUILDROOT'),
+                    ('python', True, 'PROTOPYOUT', '$BUILDROOT'),
                 ]:
                 gen_output_flag = kwargs.pop(gen_flag_name, default_gen_flag)
                 if gen_output_flag:

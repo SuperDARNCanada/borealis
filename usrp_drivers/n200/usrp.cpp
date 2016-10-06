@@ -3,7 +3,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "usrp.hpp"
+#include "usrp_drivers/n200/usrp.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
 USRP::USRP(std::shared_ptr<DriverOptions> driver_options) {

@@ -29,5 +29,5 @@ import os
 
 Import('*')
 
-Prog('n200_driver', Glob("./*.c*"), with_libs='utils::utils',
-     LIBS=['protobuf','pthread','boost_system','uhd','zmq'])
+Prog('n200_test_packet', Glob("./*.c*"), with_libs='utils::utils',
+     LIBS=['protobuf','pthread','zmq'])
