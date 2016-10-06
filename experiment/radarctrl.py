@@ -102,7 +102,7 @@ def data_to_driver(data):
 	context=zmq.Context()
 	
 	# connecting
-	socket=context.socket(zmq.REQ)
+	socket=context.socket(zmq.PAIR)
 	socket.connect("tcp://10.65.0.25:33033")
 
 	#for request in myprog.cpo_list[0].channels:
@@ -110,8 +110,8 @@ def data_to_driver(data):
 	socket.send(data.SerializeToString())
 		
 		# get response:
-	tx_ack = socket.recv()
-
+	#tx_ack = socket.recv()
+	tx_ack=1
 	return tx_ack
 	
 
@@ -182,7 +182,9 @@ def main():
 	plt.xlim([0,100])
 	fig.savefig('./plot.png')
 	plt.close(fig)
-
+	#initialize driverpacket.
+	driverpacket=driverpacket_pb2.DriverPacket()
+	#driversamples=driverpacket_pb2.DriverPacket().Samples()
 	# start the scan with cpo_object[0].scan
 	integ_n=len(myprog.cpo_list[0].scan) #integration number starts at 0; simulate end of scan to start new scan inside loop.
 	while True: # TODO: change to while ("receiving a keep-going signal from scheduler/cp")
@@ -190,8 +192,6 @@ def main():
 			print "New Scan Starting"
 			integ_n=0
 		bmnum=myprog.cpo_list[0].scan[integ_n]
-		isamples_list=[] #this will be a list of lists for all channels and their samples.
-		qsamples_list=[]
 		int_time=datetime.utcnow()
 		nave=0
 		# get timing data
@@ -205,6 +205,8 @@ def main():
 				# create one data dictionary for current pulse to send to driver
 				# 
 				# pulse time = time_table[seqn]
+				isamples_list=[] #this will be a list of lists for all channels and their samples.
+				qsamples_list=[]
 				for chan in myprog.cpo_list[0].channels:
 					isamples_list.append((pulse_samples_dict[(0,bmnum,chan,seqn)].real).tolist())
 					qsamples_list.append((pulse_samples_dict[(0,bmnum,chan,seqn)].imag).tolist())
@@ -219,27 +221,24 @@ def main():
 				else:
 					SOB=False
 					EOB=False
-				#pulset=time_table[seqn]
-				#data = [ { 'txrate': rate, 'rxrate': rate, 'isend_samples': isamples_list, 'qsend_samples': qsamples_list,
-				#	'channels': myprog.cpo_list[0].channels, 'ctrfreq': ctrfreq, 'tts_samples': pulset, 'freq': 
-				#	myprog.cpo_list[0].freq, 'SOB': SOB, 'EOB': EOB} ] 
-				# add i/o timing for debug/metadata?, TR timing? - these may come from different source
-				# NOTE: CHANGE TO PROTOBUF
-				#data_to_driver=json.dumps(data) 
 				
-				# a new driver packet.	
-				driverpacket=driverpacket_pb2.DriverPacket()
-			#	driverpacket.channels=myprog.cpo_list[0].channels
+				# clear the message.	
+				#for sam in range(len(driverpacket.samples)):
+				#	driverpacket.samples[sam].Clear() #clear samples message back to empty state.
+			#	driverpacket.ClearField(driversamples.real)
+				#driversamples.Clear()
+				#print "After Clearing samples: ", len(driverpacket.samples)
+				driverpacket.Clear() #clear message back to empty state.
 				for chan in myprog.cpo_list[0].channels:
 					chan_add=driverpacket.channels.append(chan)	
 					#chan_add=chan
-				#print driverpacket.channels	
 				for chi in range(len(isamples_list)):
-					sample_add=driverpacket.samples.add() #new set of samples for this channel.
-					for si in range(len(isamples_list[0])):
-						#print isamples_list[chi][si]
-						real_samp=sample_add.real.append(isamples_list[chi][si]) #add real samples
-						imag_samp=sample_add.imag.append(qsamples_list[chi][si])
+					sample_add=driverpacket.samples.add() # add one Samples message for each channel.
+					real_samp=driverpacket.samples[chi].real.extend(isamples_list[chi])
+					imag_samp=driverpacket.samples[chi].imag.extend(qsamples_list[chi]) # add a list
+					#for si in range(len(isamples_list[0])):
+						#real_samp=sample_add.real.append(isamples_list[chi][si]) #add real samples
+						#imag_samp=sample_add.imag.append(qsamples_list[chi][si])
 						#real_samp=isamples_list[chi][si]
 						#imag_samp=qsamples_list[chi][si]
 				#print "Done getting samples in driver packet!"
@@ -256,6 +255,7 @@ def main():
 #					freq_add=driverpacket.centrefreq.append(ctrfreq[fn])
 
 				ack=data_to_driver(driverpacket)
+				del driverpacket.samples[:]
 				#time.sleep(2)	
 			print "New Sequence!"
 			nave=nave+1 # finished a sequence
