@@ -244,10 +244,10 @@ def main():
 						#real_samp=isamples_list[chi][si]
 						#imag_samp=qsamples_list[chi][si]
 				#print "Done getting samples in driver packet!"
-				freq_add=driverpacket.centerfreq.append(ctrfreq)
+				driverpacket.centerfreq=ctrfreq
 				wfreq_add=driverpacket.waveformfreq.append(wave_freq)
-				rx_add=driverpacket.rxrate.append(rate)
-				tx_add=driverpacket.txrate.append(rate)
+				driverpacket.rxrate=rate
+				driverpacket.txrate=rate
 				driverpacket.timetosendsamples=time_table[seqn]
 				driverpacket.SOB=SOB
 				driverpacket.EOB=EOB
