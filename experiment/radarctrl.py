@@ -15,7 +15,7 @@ import currentctrlprog # this brings in myprog.
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime, timedelta
-sys.path.append('../utils/protobuf')
+sys.path.append('../build/release/utils/protobuf')
 import driverpacket_pb2
 import time
 
@@ -102,16 +102,17 @@ def data_to_driver(data):
 	context=zmq.Context()
 	
 	# connecting
-	socket=context.socket(zmq.REQ)
-	socket.connect("tcp://10.65.0.25:33033")
+	socket=context.socket(zmq.PAIR)
+	socket.connect("tcp://10.65.0.17:5555")
 
 	#for request in myprog.cpo_list[0].channels:
 		# send request:
 	socket.send(data.SerializeToString())
 		
 		# get response:
-	tx_ack = socket.recv()
+	#tx_ack = socket.recv()
 
+	tx_ack = None
 	return tx_ack
 	
 

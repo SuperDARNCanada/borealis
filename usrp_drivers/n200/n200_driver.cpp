@@ -27,6 +27,7 @@
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/protobuf/driverpacket.pb.h"
 #include <chrono>
+#include <complex>
 /*enum TRType {TRANSMIT,RECEIVE};
 enum IntegrationPeriod {START,STOP,CONTINUE};
 
@@ -38,30 +39,149 @@ TRType TR = transmit;
 
 int current_integrations = 0;*/
 
+std::vector<size_t> make_channels(const driverpacket::DriverPacket &dp){
+    std::vector<size_t> channels(dp.channels_size());
+    for (int i=0; i<dp.channels_size(); i++){
+        channels[i] = i;
+    }
+    return channels;
+}
 
-void transmit() {
-    std::cout << "Enter transmit thread" << std::endl;
+std::vector<std::vector<std::complex<float>>> make_samples(const driverpacket::DriverPacket &dp){
+    std::vector<std::vector<std::complex<float>>> samples(dp.samples_size());
+
+    for(int i=0 ; i<dp.samples_size(); i++) {
+        auto num_samps = dp.samples(i).real_size();
+        std::vector<std::complex<float>> v(num_samps);
+        samples[i] = v;
+
+        for (int j=0; j<dp.samples(i).real_size(); j++){
+            samples[i][j] = std::complex<float>(dp.samples(i).real(j),dp.samples(i).imag(j));
+        }
+
+    }
+
+    return samples;
+}
+
+void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d) {
+    std::cout << "Enter transmit thread\n";
+
+    std::cout << "Creating and connecting to thread socket in control\n";
+    zmq::socket_t thread_socket(*thread_c, ZMQ_PAIR);
+    thread_socket.connect("inproc://threads");
+
+    zmq::message_t request;  
+
+    uhd::stream_args_t stream_args("fc32", "sc16");
+
+    auto channels_set = false;
+    auto center_freq_set = false;
+    auto samples_set = false;
+
     while (1) {
-        sleep(1);
+        thread_socket.recv(&request);
+        std::cout << "Received in transmit\n";
+        driverpacket::DriverPacket dp;
+        std::string msg_str(static_cast<char*>(request.data()), request.size());
+        dp.ParseFromString(msg_str);
+
+        std::vector<size_t> channels;
+        uhd::tx_streamer::sptr tx_stream;
+        if (dp.channels_size() > 0) {
+            channels = make_channels(dp);
+            stream_args.channels = channels;
+            usrp_d->set_tx_rate(dp.txrate());
+            tx_stream = usrp_d->get_usrp()->get_tx_stream(stream_args);
+
+            channels_set = true;
+        }
+
+        if (dp.centerfreq() > 0) {
+            usrp_d->set_tx_center_freq(dp.centerfreq(),channels);
+            center_freq_set = true;
+        }
+
+        std::vector<std::vector<std::complex<float>>> samples;
+        if (dp.samples_size() > 0) {
+/*            std::vector<std::vector<std::complex<float>>> samples(dp.samples_size(),
+                                                              std::vector<std::complex<float>>(dp.samples(0).real_size()));*/
+            samples = make_samples(dp);
+
+            samples_set = true; 
+        }
+
+        
+        if ( (dp.sob() == true) && (dp.eob() == false) ) {
+            //todo: enable start signals
+        }
+
+        if ( (dp.sob() == false) && (dp.eob() == true) ) {
+            //todo: do end of sequence stuff
+        }
+
+        if( (channels_set == false) || 
+            (center_freq_set == false) || 
+            (samples_set == false) ) {
+
+            //todo: throw error
+        }
+
+        auto md = TXMetadata();
+        md.set_has_time_spec(true);
+        md.set_time_spec(usrp_d->get_usrp()->get_time_now() + uhd::time_spec_t(0.1));
+
+        auto samples_per_buff = samples[0].size();
+
+        uint64_t num_samps_sent = 0;
+
+        while (num_samps_sent < samples_per_buff){
+            auto num_samps_to_send = samples_per_buff - num_samps_sent;
+            std::cout << "Samples to send " << num_samps_to_send << std::endl;
+
+            num_samps_sent = tx_stream->send(
+                samples, num_samps_to_send, md.get_md()
+            );
+
+            std::cout << "Samples sent " << num_samps_sent << std::endl;
+
+            md.set_start_of_burst(false);
+            md.set_has_time_spec(false);
+
+        }
+
+        md.set_end_of_burst(true);
+        tx_stream->send("", 0, md.get_md());
+
+
+        //sleep(1);
     }
 
 }
 
 void receive() {
-    std::cout << "Enter receive thread" << std::endl;
+    std::cout << "Enter receive thread\n";
     while (1) {
         sleep(1);
     }
 
 }
 
-void control() {
-    std::cout << "Enter control thread" << std::endl;
+void control(zmq::context_t* thread_c) {
+    std::cout << "Enter control thread\n";
 
-    std::cout << "Creating and binding control socket" << std::endl;
-    zmq::context_t context(1);
+    std::cout << "Creating and connecting to thread socket in control\n";
+/*    zmq::socket_t thread_socket(*thread_c, ZMQ_PAIR); // 1
+    thread_socket.connect("inproc://threads"); // 2  */  
+
+
+    zmq::socket_t thread_socket (*thread_c, ZMQ_PAIR);
+    thread_socket.bind("inproc://threads");
+
+    std::cout << "Creating and binding control socket\n";
+    zmq::context_t context(2);
     zmq::socket_t control_sock(context, ZMQ_PAIR);
-    control_sock.bind("tcp://10.65.0.17:5555");
+    control_sock.bind("ipc:///tmp/feeds/0");
 
     zmq::message_t request;
 
@@ -69,14 +189,17 @@ void control() {
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         control_sock.recv(&request);
         std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
-        std::cout << "recv time(ms) = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() <<std::endl;
-        std::cout << "recv time(ns) = " << std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin).count() <<std::endl; 
+/*        std::cout << "recv time(ms) = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() <<std::endl;
+        std::cout << "recv time(ns) = " << std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin).count() <<std::endl; */
 
         begin = std::chrono::steady_clock::now();
         driverpacket::DriverPacket dp;
         std::string msg_str(static_cast<char*>(request.data()), request.size());
-
         dp.ParseFromString(msg_str);
+
+        if ((dp.sob() == true) && (dp.eob() == true)){
+            //todo: throw error
+        }
 
         if (dp.samples_size() != dp.channels_size()){
             //todo: throw error
@@ -88,16 +211,13 @@ void control() {
             }
         }
 
-        std::vector<std::vector<std::complex<float>>> samples(dp.samples_size(),std::vector<std::complex<float>>(dp.samples(0).real_size()));
+        //zmq::message_t forward = request;
+        thread_socket.send(request);
 
-        for (int i=0; i<dp.samples_size(); i++){
-            for (int j=0; j<dp.samples(i).real_size(); j++){
-                samples[i][j] = std::complex<float>(dp.samples(i).real(j),dp.samples(i).imag(j));
-            }
-        }
         end= std::chrono::steady_clock::now();
-        std::cout << "Time difference to deserialize = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() <<std::endl;
-        std::cout << "Time difference to deserialize = " << std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin).count() <<std::endl;
+        std::cout << "Time difference to deserialize and send in control = " 
+                  << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() 
+                  <<std::endl;
 
     }
 
@@ -117,27 +237,17 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     std::cout << driver_options->get_ref() << std::endl;
     std::cout << driver_options->get_tx_subdev() << std::endl;
 
-/*    auto usrp_d = std::make_shared<USRP>(driver_options);
-
-    std::vector<size_t> channels {0,1,2,3};//,4,5,6,7,8,9,10,11,12,13,14,15};
-
-    double tx_freq = 12e6;
-    double rx_freq = 12e6;
-
-    usrp_d->set_tx_center_freq(tx_freq,channels);
-    usrp_d->set_rx_center_freq(rx_freq,channels);
-
-    std::cout << usrp_d->to_string(channels);*/
+    auto usrp_d = std::make_shared<USRP>(driver_options);
 
 
     //  Prepare our context
+    zmq::context_t context(1);
 
-   
     std::vector<std::thread> threads;
 
-    std::thread transmit_t(transmit);
+    std::thread transmit_t(transmit,&context,usrp_d);
     std::thread receive_t(receive);
-    std::thread control_t(control);
+    std::thread control_t(control,&context);
 
     threads.push_back(std::move(transmit_t));
     threads.push_back(std::move(receive_t));

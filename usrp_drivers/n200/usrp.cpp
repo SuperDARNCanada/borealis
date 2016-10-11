@@ -10,9 +10,9 @@ USRP::USRP(std::shared_ptr<DriverOptions> driver_options) {
     usrp = uhd::usrp::multi_usrp::make(driver_options->get_device_args());
     set_usrp_clock_source(driver_options->get_ref());
     set_tx_subdev(driver_options->get_tx_subdev());
-    set_tx_rate(driver_options->get_tx_rate());
+    //set_tx_rate(driver_options->get_tx_rate());
     set_rx_subdev(driver_options->get_rx_subdev());
-    set_rx_rate(driver_options->get_rx_rate());
+    //set_rx_rate(driver_options->get_rx_rate());
 
     set_time_source(driver_options->get_pps());
     check_ref_locked();
@@ -105,6 +105,10 @@ void USRP::check_ref_locked() {
     }
 }
 
+uhd::usrp::multi_usrp::sptr USRP::get_usrp(){
+    return usrp;
+}
+
 std::string USRP::to_string(std::vector<size_t> chs) {
     std::stringstream device_str;
 
@@ -127,13 +131,11 @@ std::string USRP::to_string(std::vector<size_t> chs) {
                   
 }
 
-TXMetadata::TXMetadata(bool start_of_burst,bool end_of_burst,
-           bool has_time_spec,uhd::time_spec_t time_spec) {
-
-    md.start_of_burst = start_of_burst;
-    md.end_of_burst = end_of_burst;
-    md.has_time_spec = has_time_spec;
-    md.time_spec = time_spec;
+TXMetadata::TXMetadata() {
+    md.start_of_burst = false;
+    md.end_of_burst = false;
+    md.has_time_spec = false;
+    md.time_spec = uhd::time_spec_t(0.0);
 
 }
 

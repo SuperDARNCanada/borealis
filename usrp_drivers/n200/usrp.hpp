@@ -19,6 +19,7 @@ class USRP{
         void set_rx_center_freq(double freq, std::vector<size_t> chs);
         void set_time_source(std::string source);
         void check_ref_locked();
+        uhd::usrp::multi_usrp::sptr get_usrp();
         std::string to_string(std::vector<size_t> chs);
 };
 
@@ -26,8 +27,7 @@ class TXMetadata{
  public:
         uhd::tx_metadata_t md;
 
-        TXMetadata(bool start_of_burst,bool end_of_burst,
-                   bool has_time_spec,uhd::time_spec_t time_spec);
+        TXMetadata();
         uhd::tx_metadata_t get_md();
         void set_start_of_burst(bool start_of_burst);
         void set_end_of_burst(bool end_of_burst);

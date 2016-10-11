@@ -7,15 +7,14 @@ int main(int argc, char *argv[]){
 
     driverpacket::DriverPacket dp;
     zmq::context_t context(1);
-    zmq::socket_t socket(context, ZMQ_REQ);
-    socket.connect("tcp://10.65.0.25:33033");
+    zmq::socket_t socket(context, ZMQ_PAIR);
+    socket.connect("ipc:///tmp/feeds/0");
 
-    for (int j=0; j<16; j++){
+    for (int j=0; j<4; j++){
         dp.add_channels(j);
-        dp.add_centerfreq(12e6);
-        dp.add_waveformfreq(1e6);
-        dp.add_txrate(5e6);
-        dp.add_rxrate(3.33e3);
+        dp.add_waveformfreq(0.0);
+/*        dp.add_txrate(1e6);
+        dp.add_rxrate(3.33e3);*/
         auto samples = dp.add_samples();
 
         for (int k=0; k<1600; k++){
@@ -38,20 +37,21 @@ int main(int argc, char *argv[]){
 
             dp.set_sob(SOB);
             dp.set_eob(EOB);
+            dp.set_txrate(1e6);
+            dp.set_rxrate(1e6);
             dp.set_timetoio(timetoio);
             dp.set_timetosendsamples(i);
+            dp.set_centerfreq(12e6);
 
-
-            for (int j=0; j<16; j++){
+            for (int j=0; j<4; j++){
                 dp.set_channels(j,j);
-                dp.set_centerfreq(j,12e6);
                 dp.set_waveformfreq(j,1e6);
-                dp.set_txrate(i,5e6);
-                dp.set_rxrate(i,3.33e3);
+/*                dp.set_txrate(i,1e6);
+                dp.set_rxrate(i,3.33e3);*/
 
                 for (int k=0; k<1600; k++){
-                    dp.mutable_samples(j)->set_real(k,k);
-                    dp.mutable_samples(j)->set_imag(k,k);
+                    dp.mutable_samples(j)->set_real(k,1.0);
+                    dp.mutable_samples(j)->set_imag(k,1.0);
                 }
             }
 
@@ -66,9 +66,6 @@ int main(int argc, char *argv[]){
             begin = std::chrono::steady_clock::now();
             socket.send (request);
             end= std::chrono::steady_clock::now();
-
-            zmq::message_t reply;
-            socket.recv(&reply);
 
             std::cout << "send time(ms) = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() <<std::endl;
             std::cout << "send time(ns) = " << std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin).count() <<std::endl;            
