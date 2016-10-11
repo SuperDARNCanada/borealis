@@ -103,7 +103,7 @@ def data_to_driver(data):
 	
 	# connecting
 	socket=context.socket(zmq.PAIR)
-	socket.connect("tcp://10.65.0.25:33033")
+	socket.connect("ipc:///tmp/feeds/0")
 
 	#for request in myprog.cpo_list[0].channels:
 		# send request:
@@ -177,8 +177,8 @@ def main():
 	#print ipulse_samples_dict[(0,12)].shape[1]
 	#print phshifts_dict[(0,12)]
 	# plot first three channels waveform for cp program 0 beamnum 12:
-	smpplot.plot(range(0,pulse_samples_dict[(0, 12, 7, 0)].shape[0]), pulse_samples_dict[(0, 12, 7, 0)])
-	smpplot.plot(range(0,pulse_samples_dict[(0,12,7,0)].shape[0]), pulse_samples_dict[(0,12,8,0)])
+	#smpplot.plot(range(0,pulse_samples_dict[(0, 12, 7, 0)].shape[0]), pulse_samples_dict[(0, 12, 7, 0)])
+	#smpplot.plot(range(0,pulse_samples_dict[(0,12,7,0)].shape[0]), pulse_samples_dict[(0,12,8,0)])
 	#smpplot.plot(range(0,ipulse_samples_dict[(0,12)].shape[1]), ipulse_samples_dict[(0,12)][2,:])
 	plt.ylim([-1,1])
 	plt.xlim([0,100])
@@ -258,7 +258,8 @@ def main():
 
 				ack=data_to_driver(driverpacket)
 				del driverpacket.samples[:]
-				#time.sleep(2)	
+
+				time.sleep(1)	
 			print "New Sequence!"
 			nave=nave+1 # finished a sequence
 			int_time=datetime.utcnow()
