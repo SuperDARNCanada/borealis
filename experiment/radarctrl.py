@@ -197,7 +197,9 @@ def main():
 		int_time=datetime.utcnow()
 		nave=0
 		# get timing data
-		time_table=myprog.cpo_list[0].sequence*myprog.cpo_list[0].mpinc # in us
+		time_table=[]
+		for i in range(len(myprog.cpo_list[0].sequence)):
+			time_table.append(myprog.cpo_list[0].sequence[i]*myprog.cpo_list[0].mpinc) # in us
 		done_time=int_time+timedelta(0,float(myprog.cpo_list[0].intt)/1000)
 		while int_time < done_time:
 			# send pulses in accordance with pulse table/tau. iterate through pulse table.
