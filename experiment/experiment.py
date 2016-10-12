@@ -4,6 +4,7 @@
 
 from controlprog import controlprog
 import zmq
+import json
 
 def experiment():
 	prog=controlprog(1,150)
@@ -43,25 +44,26 @@ def experiment():
 	# example
 	# prog.interface[0,1]="SCAN"
 
-	updateflag=False
+	updateflag=True
+#	context=zmq.Context()
+#	cpsocket=context.socket(zmq.PAIR)
+#	cpsocket.bind("tcp://10.65.0.25:33555")
 
-	while(True):
-		context=zmq.Context()
-		cpsocket=context.socket(zmq.PAIR)
-		cpsocket.bind("tcp://10.65.0.25:33044")
-
-		message=cpsocket.recv()
-		print "received message"	
-		if json.loads(message)=="UPDATE":
-			print "Time to update"
-			if updateflag==False:
-				cpsocket.send(json.dumps("NO"))
-			elif updateflag==True:
-				cpsocket.send(json.dumps("YES"))
-				message=cpsocket.recv()
-				if json.loads(message)=="READY":
-					cpsocket.send(json.dumps(prog))
-					
+#	while(True):
+#
+#		message=cpsocket.recv() 
+#		print "received message"	
+#		if json.loads(message)=="UPDATE":
+#			print "Time to update"
+#			if updateflag==False:
+#				cpsocket.send(json.dumps("NO"))
+#			elif updateflag==True:
+#				cpsocket.send(json.dumps("YES"))
+#				message=cpsocket.recv()
+#				if json.loads(message)=="READY":
+#					#need to send a dictionary here or use other serialization.
+#					cpsocket.send(json.dumps(prog))
+#					
 	
  	return prog
 
