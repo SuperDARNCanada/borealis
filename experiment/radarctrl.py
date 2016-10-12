@@ -57,7 +57,7 @@ def get_samples(rate, wave_freq, pullength, iwave_table, qwave_table):
 	# sample at wave_freq with given phase shift
 	f_norm=wave_freq/rate # this is a float
 	sample_skip=int(f_norm*wave_table_len) # this must be an int to create perfect sine - this int defines the frequency resolution of our generated waveform
-	print sample_skip, wave_table_len, rate
+	#print sample_skip, wave_table_len, rate
 	ac_freq=(float(sample_skip)/float(wave_table_len))*rate
 	print ac_freq
 	# TODO: add - what is the actual frequency of our waveform? Based on above integer
@@ -70,16 +70,25 @@ def get_samples(rate, wave_freq, pullength, iwave_table, qwave_table):
 	# phasing will be done in shift_samples.
 	for i in range (0, rsampleslen):
 		amp=float(i+1)/float(rsampleslen) # rampup is linear
-		ind=(sample_skip*i)%wave_table_len
+		if sample_skip<0:
+			ind=-1*((abs(sample_skip*i))%wave_table_len)
+		else:
+			ind=(sample_skip*i)%wave_table_len
 		samples[i]=(amp*iwave_table[ind]+amp*qwave_table[ind]*1j)
 		#qsamples[chi,i]=amp*qwave_table[ind]
 	for i in range(rsampleslen, sampleslen-rsampleslen):
-		ind=(sample_skip*i)%wave_table_len
+		if sample_skip<0:
+			ind=-1*((abs(sample_skip*i))%wave_table_len)
+		else:
+			ind=(sample_skip*i)%wave_table_len
 		samples[i]=(iwave_table[ind]+qwave_table[ind]*1j)
 		#qsamples[chi,i]=qwave_table[ind]
 	for i in range(sampleslen-rsampleslen, sampleslen):
 		amp=float(sampleslen-i)/float(rsampleslen)
-		ind=(sample_skip*i)%wave_table_len
+		if sample_skip<0:
+			ind=-1*((abs(sample_skip*i))%wave_table_len)
+		else:
+			ind=(sample_skip*i)%wave_table_len
 		samples[i]=(amp*iwave_table[ind]+amp*qwave_table[ind]*1j)
 		#qsamples[chi,i]=amp*qwave_table[ind]
 		
@@ -96,14 +105,25 @@ def shift_samples(basic_samples, phshift):
 	# samples is a numpy array of len(basic_samples)
 	return samples
 
-def data_to_driver(data):
+def plot_samples(samplesa, samplesb=np.empty([2],dtype=complex), samplesc=np.empty([2],dtype=complex)):
+	"""For testing only"""
+	# plot samples to check
+	fig, smpplot = plt.subplots(1, 1)
+	#print ipulse_samples_dict[(0,12)].shape[1]
+	#print phshifts_dict[(0,12)]
+	# plot first three channels waveform for cp program 0 beamnum 12:
+	smpplot.plot(range(0,samplesa.shape[0]), samplesa)
+	smpplot.plot(range(0,samplesb.shape[0]), samplesb)
+	smpplot.plot(range(0,samplesc.shape[0]), samplesc)
+	plt.ylim([-1,1])
+	plt.xlim([0,100])
+	fig.savefig('./plot.png')
+	plt.close(fig)
+	return None
+
+
+def data_to_driver(data,socket):
 	#Send this data via zeromq to the driver. Receive acknowledgement.	
-	# TX:
-	context=zmq.Context()
-	
-	# connecting
-	socket=context.socket(zmq.PAIR)
-	socket.connect("ipc:///tmp/feeds/0")
 
 	#for request in myprog.cpo_list[0].channels:
 		# send request:
@@ -141,7 +161,7 @@ def main():
 	ctrfreq=12000 # 12 MHz
 	rate=5e6
 	
-	wave_freq=abs(myprog.cpo_list[0].freq-ctrfreq)
+	wave_freq=myprog.cpo_list[0].freq-ctrfreq
 	
 	# create dictionary of all possible pulses
 	# pulse sample array varies by length (pullength), frequency, phasing (beamdir)
@@ -172,21 +192,18 @@ def main():
 		pulse_samples_dict[(cpo,bmnum,chan,pulsen)]=shift_samples(basic_samples, phshifts_dict[cpo,bmnum,chan,pulsen]) # returns numpy array 
 	#print phshifts_dict
 
-	# plot samples to check
-	fig, smpplot = plt.subplots(1, 1)
-	#print ipulse_samples_dict[(0,12)].shape[1]
-	#print phshifts_dict[(0,12)]
-	# plot first three channels waveform for cp program 0 beamnum 12:
-	#smpplot.plot(range(0,pulse_samples_dict[(0, 12, 7, 0)].shape[0]), pulse_samples_dict[(0, 12, 7, 0)])
-	#smpplot.plot(range(0,pulse_samples_dict[(0,12,7,0)].shape[0]), pulse_samples_dict[(0,12,8,0)])
-	#smpplot.plot(range(0,ipulse_samples_dict[(0,12)].shape[1]), ipulse_samples_dict[(0,12)][2,:])
-	plt.ylim([-1,1])
-	plt.xlim([0,100])
-	fig.savefig('./plot.png')
-	plt.close(fig)
+	#plot for testing
+	plot_samples(pulse_samples_dict[(0, 12, 7, 0)].real,pulse_samples_dict[(0,12,7,0)].imag)
+	
+
+	#initialize zmq socket.
+	context=zmq.Context()
+	socket=context.socket(zmq.PAIR)
+	socket.connect("tcp://10.65.0.25:33033")
+
 	#initialize driverpacket.
 	driverpacket=driverpacket_pb2.DriverPacket()
-	#driversamples=driverpacket_pb2.DriverPacket().Samples()
+
 	# start the scan with cpo_object[0].scan
 	integ_n=len(myprog.cpo_list[0].scan) #integration number starts at 0; simulate end of scan to start new scan inside loop.
 	while True: # TODO: change to while ("receiving a keep-going signal from scheduler/cp")
@@ -216,7 +233,10 @@ def main():
 					qsamples_list.append((pulse_samples_dict[(0,bmnum,chan,seqn)].imag).tolist())
 				#print isamples_list[0]
 				#print qsamples_list[0]
-				if seqn==0:
+				if seqn==0 and len(myprog.cpo_list[0].sequence)==1:
+					SOB=True
+					EOB=True
+				elif seqn==0:
 					SOB=True
 					EOB=False
 				elif seqn==len(myprog.cpo_list[0].sequence)-1:
@@ -245,9 +265,9 @@ def main():
 						#imag_samp=sample_add.imag.append(qsamples_list[chi][si])
 						#real_samp=isamples_list[chi][si]
 						#imag_samp=qsamples_list[chi][si]
+				#wfreq_add=driverpacket.waveformfreq.append(wave_freq)
 				#print "Done getting samples in driver packet!"
 				driverpacket.centerfreq=ctrfreq * 1000
-				wfreq_add=driverpacket.waveformfreq.append(wave_freq)
 				driverpacket.rxrate=rate
 				driverpacket.txrate=rate
 				driverpacket.timetosendsamples=time_table[seqn]
@@ -258,7 +278,7 @@ def main():
 #				for fn in range(len(ctrfreq)):
 #					freq_add=driverpacket.centrefreq.append(ctrfreq[fn])
 
-				ack=data_to_driver(driverpacket)
+				ack=data_to_driver(driverpacket,socket)
 				del driverpacket.samples[:]
 
 				#time.sleep(1)	

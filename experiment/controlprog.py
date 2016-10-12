@@ -14,23 +14,16 @@ class controlprog():
 		cpo_list=[]
 		for num in range(self.cpo_num):
 			cpo_list.append(cp_object())
-			cpo_list[num].cp_comp=self.cpo_num # cp_comp is the number of cp_objects in this RCP
+			#cpo_list[num].cp_comp=self.cpo_num # cp_comp is the number of cp_objects in this RCP, don't need this in cp_object though.
 			cpo_list[num].cpid[1]=num # second number in cpid array is the ID of this cp_object in the overall RCP (first, 
 			#second, third, up to cp_comp).
 			cpo_list[num].cpid[0]=self.cpo_id
 		self.cpo_list=cpo_list
-		# space to change defaults of RCP. If unsure what to change try display(myctrlprog) and remember to selfcheck(myctrlprog)
-		# cpo_list[0].freq=13000
-		# cpo_list[0].sequence=[0,2,5,7,8,15,24,29]
-		# ETC
+		# change your control program in your experiment. Use selfcheck(myctrlprog) and print myctrlprog() to see what can be changed
 		
-		# next step is interfacing components, from cp_object the following set: 
-		
-		self.interface=interfacing(self.cpo_num) #dictionary of how each cpo interacts with the other cpo's - default "NONE" in all possible spots, must be modified.
-		# NOTE keys are as such: (0,1), (0,2), (1,2), NEVER includes (2,0) or others as such.
-		
-		# ADD YOUR INTERFACE HERE
-		# OPTIONS:
+		self.interface=interfacing(self.cpo_num) #dictionary of how each cpo interacts with the other cpo's - default "NONE" in all possible spots, must be modified in your experiment.
+		# NOTE keys are as such: (0,1), (0,2), (1,2), NEVER includes (2,0) etc.
+		# The only interface options are:
 		# if_types=frozenset(['NONE', 'SCAN', 'INTTIME', 'INTEGRATION', 'SAME_SEQ', 'MULTI_SEQ'])
 		
 		#INTERFACING TYPES:
@@ -52,8 +45,6 @@ class controlprog():
 			# need to ensure that the multi-sequence is really what they want. cpo A and cpo B will run simultaneously. Both
 			# first pulses will start at the same moment or they may have a time offset so B pulse sequence begins later than A
 			# pulse sequence in each integration.
-
-		#interface[0,1]="SCAN"
 		
 		# must set all possible interfacing variables. Is this straightforward? Is there a better way to do this?
 
