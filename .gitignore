@@ -29,4 +29,7 @@
 *.out
 *.app
 
+# Python
+*.pyc
+
 bin/
