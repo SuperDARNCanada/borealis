@@ -22,6 +22,10 @@ DriverOptions::DriverOptions() {
     rx_sample_rate = config_pt.get<double>("rx_sample_rate");
     cpu = config_pt.get<std::string>("cpu");
     otw = config_pt.get<std::string>("overthewire"); 
+    gpio_bank = config_pt.get<std::string>("gpio_bank");
+    scope_sync_mask = config_pt.get<uint32_t>("scope_sync_mask");
+    atten_mask = config_pt.get<uint32_t>("atten_mask");
+    tr_mask = config_pt.get<uint32_t>("tr_mask");
 }
 
 double DriverOptions::get_tx_rate() {
@@ -58,4 +62,20 @@ std::string DriverOptions::get_cpu() {
 
 std::string DriverOptions::get_otw() {
     return otw;
+}
+
+std::string DriverOptions::get_gpio_bank() {
+    return gpio_bank;
+}
+
+uint32_t DriverOptions::get_scope_sync_mask() {
+    return scope_sync_mask;
+}
+
+uint32_t DriverOptions::get_atten_mask() {
+    return atten_mask;
+}
+
+uint32_t DriverOptions::get_tr_mask() {
+    return tr_mask;
 }
