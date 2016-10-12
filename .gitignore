@@ -32,4 +32,5 @@
 # Python
 *.pyc
 
+*.swp
 bin/
