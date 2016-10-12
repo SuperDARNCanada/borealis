@@ -78,42 +78,63 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d) {
     auto channels_set = false;
     auto center_freq_set = false;
     auto samples_set = false;
-
+    uhd::time_spec_t start_time;
+    std::vector<size_t> channels;
+    uhd::tx_streamer::sptr tx_stream;
     while (1) {
         thread_socket.recv(&request);
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         std::cout << "Received in transmit\n";
         driverpacket::DriverPacket dp;
         std::string msg_str(static_cast<char*>(request.data()), request.size());
         dp.ParseFromString(msg_str);
 
-        std::vector<size_t> channels;
-        uhd::tx_streamer::sptr tx_stream;
-        if (dp.channels_size() > 0) {
+        std::cout <<"BURSTS: " << dp.sob() << " " << dp.eob() <<std::endl;
+        std::cout << "pulse number: " <<dp.timetoio() << std::endl;
+        std::chrono::steady_clock::time_point stream_begin = std::chrono::steady_clock::now();
+        if (dp.channels_size() > 0 && dp.sob() == true && channels_set == false) {
+            std::cout << "STARTING NEW PULSE SEQUENCE" <<std::endl;
             channels = make_channels(dp);
             stream_args.channels = channels;
-            usrp_d->set_tx_rate(dp.txrate());
-            tx_stream = usrp_d->get_usrp()->get_tx_stream(stream_args);
-
+            usrp_d->set_tx_rate(dp.txrate()); //~450us 
+            tx_stream = usrp_d->get_usrp()->get_tx_stream(stream_args); //~44ms
             channels_set = true;
         }
+        std::chrono::steady_clock::time_point stream_end = std::chrono::steady_clock::now();
+        std::cout << "stream set up time: "
+                  << std::chrono::duration_cast<std::chrono::microseconds>(stream_end - stream_begin).count()
+                  << "us" << std::endl;
 
+        std::chrono::steady_clock::time_point ctr_begin = std::chrono::steady_clock::now();
         if (dp.centerfreq() > 0) {
+            std::cout << "DP center freq " << dp.centerfreq() << std::endl;
             usrp_d->set_tx_center_freq(dp.centerfreq(),channels);
             center_freq_set = true;
         }
+        std::chrono::steady_clock::time_point ctr_end= std::chrono::steady_clock::now();
 
+        std::cout << "center frq tuning time: "
+                  << std::chrono::duration_cast<std::chrono::microseconds>(ctr_end - ctr_begin).count()
+                  << "us" << std::endl;
+
+        std::chrono::steady_clock::time_point sample_begin = std::chrono::steady_clock::now();
         std::vector<std::vector<std::complex<float>>> samples;
-        if (dp.samples_size() > 0) {
+        if (dp.samples_size() > 0) { // ~700us to unpack 4x1600 samples
 /*            std::vector<std::vector<std::complex<float>>> samples(dp.samples_size(),
                                                               std::vector<std::complex<float>>(dp.samples(0).real_size()));*/
             samples = make_samples(dp);
 
             samples_set = true; 
         }
-
+        std::chrono::steady_clock::time_point sample_end= std::chrono::steady_clock::now();
+        std::cout << "sample unpack time: "
+                  << std::chrono::duration_cast<std::chrono::microseconds>(sample_end - sample_begin).count()
+                  << "us" << std::endl;
         
         if ( (dp.sob() == true) && (dp.eob() == false) ) {
             //todo: enable start signals
+            start_time = usrp_d->get_usrp()->get_time_now() + uhd::time_spec_t(.05);
+            std::cout << "start time: " << start_time.get_frac_secs() << std::endl;
         }
 
         if ( (dp.sob() == false) && (dp.eob() == true) ) {
@@ -127,14 +148,32 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d) {
             //todo: throw error
         }
 
+        std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
+
+        std::cout << "Total set up time: " 
+                  << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
+                  << "us" << std::endl;
+
         auto md = TXMetadata();
         md.set_has_time_spec(true);
-        md.set_time_spec(usrp_d->get_usrp()->get_time_now() + uhd::time_spec_t(0.1));
+        auto time_now = usrp_d->get_usrp()->get_time_now();
+        auto time_delay = uhd::time_spec_t(dp.timetosendsamples()/1e6);
+        auto send_time = start_time + uhd::time_spec_t(dp.timetosendsamples()/1e6);
+
+
+        std::cout << "timetosendsamples " << dp.timetosendsamples() <<std::endl;
+        std::cout << "start time: " << start_time.get_frac_secs() << std::endl;
+        std::cout << "time delay " << time_delay.get_frac_secs() <<std::endl; 
+        std::cout << "send time " << send_time.get_frac_secs() <<std::endl;
+        std::cout << "time now " << time_now.get_frac_secs() << std::endl;
+        md.set_time_spec(send_time);
+        
 
         auto samples_per_buff = samples[0].size();
 
         uint64_t num_samps_sent = 0;
 
+        begin = std::chrono::steady_clock::now();
         while (num_samps_sent < samples_per_buff){
             auto num_samps_to_send = samples_per_buff - num_samps_sent;
             std::cout << "Samples to send " << num_samps_to_send << std::endl;
@@ -152,7 +191,11 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d) {
 
         md.set_end_of_burst(true);
         tx_stream->send("", 0, md.get_md());
+        end= std::chrono::steady_clock::now();
 
+        std::cout << "time to send to USRP: " 
+                  << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
+                  << "us" << std::endl;
 
         //sleep(1);
     }
@@ -210,6 +253,8 @@ void control(zmq::context_t* thread_c) {
                 //todo: throw error
             }
         }
+
+
 
         //zmq::message_t forward = request;
         thread_socket.send(request);

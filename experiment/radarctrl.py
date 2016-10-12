@@ -15,7 +15,7 @@ import currentctrlprog # this brings in myprog.
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime, timedelta
-sys.path.append('../build/release/utils/protobuf')
+sys.path.append('../build/debug/utils/protobuf')
 import driverpacket_pb2
 import time
 
@@ -29,7 +29,7 @@ def get_phshift(beamdir,freq,chan,pulse_shift):
 	# pointing to right of boresight, use point in middle (hypothetically channel 7.5) as phshift=0 (all channels have a non-zero phase shift)
 	phshift=2*math.pi*freq*(7.5-chan)*15*math.cos(math.pi/2-beamrad)/299792458
 	if beamdir<0:
-		phshift=-phshift # change sign if pointing to the left
+		phshift=-phshift # change sign if pointing to th/e left
 	phshift=phshift+pulse_shift
 	# add an extra phase shift if there is any specified (for phase shift keying, adding phases between pulses in sequence,etc.)
 	# note phase shifts may be greater than 2 pi 	
@@ -124,7 +124,6 @@ def plot_samples(samplesa, samplesb=np.empty([2],dtype=complex), samplesc=np.emp
 
 def data_to_driver(data,socket):
 	#Send this data via zeromq to the driver. Receive acknowledgement.	
-	# TX:
 
 	#for request in myprog.cpo_list[0].channels:
 		# send request:
@@ -160,7 +159,7 @@ def main():
 	# scan boundary? Wait to start
 
 	ctrfreq=12000 # 12 MHz
-	rate=5000000
+	rate=5e6
 	
 	wave_freq=myprog.cpo_list[0].freq-ctrfreq
 	
@@ -201,7 +200,6 @@ def main():
 	context=zmq.Context()
 	socket=context.socket(zmq.PAIR)
 	socket.connect("tcp://10.65.0.25:33033")
-
 
 	#initialize driverpacket.
 	driverpacket=driverpacket_pb2.DriverPacket()
@@ -267,8 +265,9 @@ def main():
 						#imag_samp=sample_add.imag.append(qsamples_list[chi][si])
 						#real_samp=isamples_list[chi][si]
 						#imag_samp=qsamples_list[chi][si]
-				driverpacket.centerfreq=ctrfreq*1000
 				#wfreq_add=driverpacket.waveformfreq.append(wave_freq)
+				#print "Done getting samples in driver packet!"
+				driverpacket.centerfreq=ctrfreq * 1000
 				driverpacket.rxrate=rate
 				driverpacket.txrate=rate
 				driverpacket.timetosendsamples=time_table[seqn]
@@ -281,7 +280,9 @@ def main():
 
 				ack=data_to_driver(driverpacket,socket)
 				del driverpacket.samples[:]
-				#time.sleep(2)	
+
+				#time.sleep(1)	
+			time.sleep(10)
 			print "New Sequence!"
 			nave=nave+1 # finished a sequence
 			int_time=datetime.utcnow()
