@@ -29,7 +29,7 @@ class cp_object:
 	def __init__(self):
 		# instance variables and defaults
 		self.cpid=[150,0] # two numbers: overall RCP ID and the 1st component in that RCP
-		self.cp_comp=1 # total number of components in RCP
+		#self.cp_comp=1 # total number of components in RCP
 		self.channels=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] #what antennas do you want to transmit on
 		self.sequence=[0,14,22,24,27,31,42,43] #sequence, to be multiplied by tau, default normalscan
 		self.pulse_shift=[0,0,0,0,0,0,0,0] # pulse phase shifts between pulses (degrees) - orig for Ashton to do some rm of self-clutter
@@ -52,7 +52,7 @@ class cp_object:
 		self.wavetype='SINE'
 		self.seqtimer=0 # in us. Sequence starts at 0s into start of integration. Useful for when there are multiple cp_objects, and
 			# you want to run them simultaneously (not scan by scan)
-		# to add :wavetype (e.g. SINE), PSK inside pulse, scan boundary start time,how to combine with other 
+		# to add: scan boundary start time? if specific minutes, etc.
 		# objects. types: interleaving (one scan of cp_object[0] then one scan of cp_object[1], etc.); 
 		# simultaneous (using different channels or same). If same-channel simultaneous could be stereo with 
 		# same pulse sequence or multi-sequence?
@@ -160,7 +160,6 @@ class cp_object:
 		#self.acfint=1 # flag for getting lag-zero power of interferometer
 		#self.wavetype='SINE'
 		#self.seqtimer=0 
-		# could check: pulse sequence increasing values
 		# cpid is a unique value?
 		
 		return error_dict
