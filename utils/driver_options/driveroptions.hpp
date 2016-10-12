@@ -2,6 +2,7 @@
 #ifndef DRIVEROPTIONS_H
 #define DRIVEROPTIONS_H
 
+#include <stdint.h>
 #include <string>
 #include "utils/options/options.hpp"
 
@@ -16,6 +17,10 @@ class DriverOptions: public Options {
         double rx_sample_rate;
         std::string cpu;
         std::string otw;
+        std::string gpio_bank;
+        uint32_t scope_sync_mask;
+        uint32_t atten_mask;
+        uint32_t tr_mask;
 
         DriverOptions();
         double get_tx_rate();
@@ -27,6 +32,11 @@ class DriverOptions: public Options {
         std::string get_ref();
         std::string get_cpu();
         std::string get_otw();
+        std::string get_gpio_bank();
+        uint32_t get_scope_sync_mask();
+        uint32_t get_atten_mask();
+        uint32_t get_tr_mask();
+
 };
 
 #endif

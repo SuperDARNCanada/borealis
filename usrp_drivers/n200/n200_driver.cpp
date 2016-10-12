@@ -88,7 +88,10 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d) {
         driverpacket::DriverPacket dp;
         std::string msg_str(static_cast<char*>(request.data()), request.size());
         dp.ParseFromString(msg_str);
-
+        std::cout << "Scope sync high" << std::endl;    
+        if (dp.sob() == true) {
+          usrp_d->set_scope_sync();
+        }
         std::cout <<"BURSTS: " << dp.sob() << " " << dp.eob() <<std::endl;
         std::cout << "pulse number: " <<dp.timetoio() << std::endl;
         std::chrono::steady_clock::time_point stream_begin = std::chrono::steady_clock::now();
@@ -159,7 +162,10 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d) {
         auto time_now = usrp_d->get_usrp()->get_time_now();
         auto time_delay = uhd::time_spec_t(dp.timetosendsamples()/1e6);
         auto send_time = start_time + uhd::time_spec_t(dp.timetosendsamples()/1e6);
-
+        
+        usrp_d->get_usrp()->set_command_time(start_time+uhd::time_spec_t((dp.timetosendsamples()-10)/1e6);
+        usrp_d->set_tr();
+        usrp_d->get_usrp()->clear_command_time();
 
         std::cout << "timetosendsamples " << dp.timetosendsamples() <<std::endl;
         std::cout << "start time: " << start_time.get_frac_secs() << std::endl;
@@ -191,6 +197,10 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d) {
 
         md.set_end_of_burst(true);
         tx_stream->send("", 0, md.get_md());
+        usrp_d->clear_tr();
+        if (dp.eob() == true) {
+          usrp_d->clear_scope_sync();
+        }
         end= std::chrono::steady_clock::now();
 
         std::cout << "time to send to USRP: " 

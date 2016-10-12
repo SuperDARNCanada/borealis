@@ -29,4 +29,8 @@
 *.out
 *.app
 
+# Python
+*.pyc
+
+*.swp
 bin/

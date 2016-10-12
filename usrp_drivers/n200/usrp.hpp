@@ -7,7 +7,7 @@
 
 class USRP{
  public:
-        uhd::usrp::multi_usrp::sptr usrp;
+        uhd::usrp::multi_usrp::sptr usrp_;
 
         explicit USRP(std::shared_ptr<DriverOptions> driver_options);
         void set_usrp_clock_source(std::string source);
@@ -19,13 +19,30 @@ class USRP{
         void set_rx_center_freq(double freq, std::vector<size_t> chs);
         void set_time_source(std::string source);
         void check_ref_locked();
+        void set_gpio(uint32_t mask, std::string gpio_bank, size_t mboard);
+        void set_gpio(uint32_t mask);
+        void set_scope_sync();
+        void set_atten();
+        void set_tr();
+        void clear_gpio(uint32_t mask, std::string gpio_bank, size_t mboard); 
+        void clear_gpio(uint32_t mask); 
+        void clear_scope_sync();
+        void clear_atten();
+        void clear_tr();
         uhd::usrp::multi_usrp::sptr get_usrp();
         std::string to_string(std::vector<size_t> chs);
+
+private:
+        std::string gpio_bank_;
+        uint32_t mboard_;
+        uint32_t scope_sync_mask_;
+        uint32_t atten_mask_;
+        uint32_t tr_mask_;
 };
 
 class TXMetadata{
  public:
-        uhd::tx_metadata_t md;
+        uhd::tx_metadata_t md_;
 
         TXMetadata();
         uhd::tx_metadata_t get_md();
@@ -37,7 +54,7 @@ class TXMetadata{
 
 class RXMetadata{
  public:
-        uhd::rx_metadata_t md;
+        uhd::rx_metadata_t md_;
 
         RXMetadata();
         uhd::rx_metadata_t get_md();
