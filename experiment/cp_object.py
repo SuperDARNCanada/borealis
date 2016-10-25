@@ -34,6 +34,8 @@ class cp_object:
         self.pulse_shift=[0,0,0,0,0,0,0,0] # pulse phase shifts between pulses (degrees) - orig for Ashton to do some rm of self-clutter
         self.mpinc=1500 # period length of pulse (us)
         self.pullen=300 # pulse length, (duty cycle * mpinc) (us)
+        self.nrang=75 # number of range gates
+        self.frang=90 # first range gate begins at this number (in km)
         self.intt=3000 # duration of a single integration, in ms
         self.intn=21 # max number of averages (aka full pulse sequences transmitted) in an integration time intt (default 3s)
         self.beamdir=[-26.25,-22.75,-19.25,-15.75,-12.25,-8.75,-5.25,-1.75,1.75,5.25,8.75,12.25,15.75,19.25,22.75,26.25] # array of angle off boresight, array length equal to intn; positive is E of N (clockwise)
@@ -55,8 +57,8 @@ class cp_object:
         # objects. types: interleaving (one scan of cp_object[0] then one scan of cp_object[1], etc.); 
         # simultaneous (using different channels or same). If same-channel simultaneous could be stereo with 
         # same pulse sequence or multi-sequence?
-        self.iwave_table=[]
-        self.qwave_table=[]
+        #self.iwave_table=[]
+        #self.qwave_table=[]
         #these are reloaded once the wavetype is set.
 
 
@@ -69,6 +71,8 @@ class cp_object:
         print 'Pulse Sequence [sequence]: {}'.format(self.sequence) #sequence, to be multiplied by tau, default normalscan
         print 'Multi-Pulse Increment (us) [mpinc]: {}'.format(self.mpinc) # period length of pulse
         print 'Pulse Length (us) [pullen]: {}'.format(self.pullen) # pulse length, (duty cycle * mpinc)
+        print 'Number of Range Gates: {}'.format(self.nrang) # number of range gates
+        print 'First Range Gate (km): {}'.format(self.frang) # first range gate at km distance from radar
         print 'Integration Time (ms) [intt]: {}'.format(self.intt) # duration of a single integration, in ms
         print 'Number of Integrations (nave max) [intn]: {}'.format(self.intn) # number of integrations in a scan
         print 'Beam Directions off Boresight (Degree) [beamdir]: {}'.format(self.beamdir) # array of angle off boresight, array length equal to intn; positive is E of N (clockwise)
@@ -92,9 +96,9 @@ class cp_object:
         #self.cpid=[150,0] 
         error_count=0
         error_dict={}
-        if self.cp_comp<=self.cpid[1]:
-            error_dict[error_count]='CP Object identifier cpid[1] is greater than total cp components cp_comp'
-            error_count=error_count+1
+        #if self.cp_comp<=self.cpid[1]:
+        #    error_dict[error_count]='CP Object identifier cpid[1] is greater than total cp components cp_comp'
+        #    error_count=error_count+1
 
         #if self.cpid[0] is not unique
 
@@ -153,7 +157,7 @@ class cp_object:
                 error_count=error_count+1	
 
         # check scan boundary not less than minimum required scan time.
-        if self.boundf==1:
+        if self.scanboundf==1:
             if self.scanbound<(len(self.scan)*self.intt):
                 error_dict[error_count]='CP Scan Too Long for ScanBoundary'
                 error_count=error_count+1	

@@ -27,8 +27,8 @@ class RadarPulse():
         self.pulse_shift=cp_object.pulse_shift[pulsen]
         self.freq=cp_object.freq
         self.pullen=cp_object.pullen
-        self.iwave_table=cp_object.iwave_table
-        self.qwave_table=cp_object.qwave_table
+        #self.iwave_table=cp_object.iwave_table
+        #self.qwave_table=cp_object.qwave_table
         #self.phshifts=
         #self.beamdir=cp_object.beamdir #not needed, pulse metadata need only include array of phaseshift for channels, need not know its beamdir.
         self.wavetype=cp_object.wavetype
@@ -82,7 +82,12 @@ class Sequence():
                     pulses.append(RadarPulse(self.cpos[cpoid],i)) 
         # need to sort self.pulses because likely not in correct order with multiple cpos.
         self.pulses=sorted(pulses, key=operator.attrgetter('timing'))
-
+        # 19 is the sample delay below; how do we calculate this?
+        self.ssdelay=(self.cpos[seqn_keys[0]].nrang+19+10)*self.cpos[seqn_keys[0]].pullen
+        for cpoid in seqn_keys:
+            newdelay=(self.cpos[cpoid].nrang+29)*self.cpos[cpoid].pullen
+            if newdelay>self.ssdelay:
+                self.ssdelay=newdelay
         # get beamdir of the pulses
         
 
