@@ -22,8 +22,9 @@ class controlprog():
 
         # Some overall metadata that you can change, that come with a default.
         # TODO: make default none and have a function that will calculate something appropriate if left blank.
-        self.ctrfreq=12000 # in kHz.
-        self.rate=5000000 # 5 MSPS sampling rate.
+        self.txctrfreq=12000 # in kHz.
+        self.txrate=5000000 # 5 MSPS sampling rate.
+        self.rxctrfreq=12000 # in kHz. Note that we have a set bandwidth that we receive and all desired frequencies must be in that BW centered around this rxctrfreq.
         self.xcf=1 #get cross-correlation data in processing block.
         self.acfint=1 #lag-zero interferometer power in fitacf.
 
@@ -172,23 +173,23 @@ class controlprog():
         scan_combos=sorted(scan_combos) # should sort correctly?
         return scan_combos
                            
-    def get_wavetables(self):
-        #NOTE: will there be any other wavetypes.
-        self.iwave_table=[]
-        self.qwave_table=[]
-
-        for cpo in self.cpo_list:
-            if cpo.wavetype=="SINE":
-                wave_table_len=8192
-                for i in range(0, wave_table_len):
-                    cpo.iwave_table.append(math.cos(i*2*math.pi/wave_table_len))
-                    cpo.qwave_table.append(math.sin(i*2*math.pi/wave_table_len))
-
-            else:
-                errmsg="Wavetype %s not defined" % (cpo.wavetype)
-                sys.exit(errmsg)
-
-        #return iwave_table, qwave_table
+#    def get_wavetables(self):
+#        #NOTE: will there be any other wavetypes.
+#        self.iwave_table=[]
+#        self.qwave_table=[]
+#
+#        for cpo in self.cpo_list:
+#            if cpo.wavetype=="SINE":
+#                wave_table_len=8192
+#                for i in range(0, wave_table_len):
+#                    cpo.iwave_table.append(math.cos(i*2*math.pi/wave_table_len))
+#                    cpo.qwave_table.append(math.sin(i*2*math.pi/wave_table_len))
+#
+#            else:
+#                errmsg="Wavetype %s not defined" % (cpo.wavetype)
+#                sys.exit(errmsg)
+#
+#        #return iwave_table, qwave_table
  
 
     def get_seq_combos(self): 

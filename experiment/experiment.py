@@ -67,7 +67,7 @@ def build_RCP():
     # Build experiment written by researcher.
     prog=experiment()
     # get wavetables and load them in their the cp_objects.
-    prog.get_wavetables()
+    #prog.get_wavetables()
     # Build scans
     prog.build_Scans()
 
@@ -101,4 +101,4 @@ def build_RCP():
     return prog
 
 
-build_RCP()
+#build_RCP()

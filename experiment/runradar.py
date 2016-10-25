@@ -15,7 +15,7 @@ import currentctrlprog # this brings in myprog.
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime, timedelta
-sys.path.append('../build/debug/utils/protobuf')
+sys.path.append('../utils/protobuf')
 import driverpacket_pb2
 import time
 
@@ -70,6 +70,22 @@ def get_phshift(beamdir,freq,chan,pulse_shift):
 
     return phshift
 
+def get_wavetables(wavetype):
+    #NOTE: will there be any other wavetypes.
+    iwave_table=[]
+    qwave_table=[]
+
+    if wavetype=="SINE":
+        wave_table_len=8192
+        for i in range(0, wave_table_len):
+            iwave_table.append(math.cos(i*2*math.pi/wave_table_len))
+            qwave_table.append(math.sin(i*2*math.pi/wave_table_len))
+
+    else:
+        errmsg="Wavetype %s not defined" % (wavetype)
+        sys.exit(errmsg)
+
+    return iwave_table, qwave_table
 
 def get_samples(rate, wave_freq, pullength, iwave_table, qwave_table):
     """Find the normalized sample array given the rate (Hz), frequency (Hz), pulse length (s), 
@@ -154,10 +170,10 @@ def plot_samples(samplesa, samplesb=np.empty([2],dtype=complex), samplesc=np.emp
     return None
 
 
-def data_to_driver(driverpacket, txsocket, pulse, isamples_list, qsamples_list, ctrfreq, txrate, repeat=False):
+def data_to_driver(driverpacket, txsocket, pulse, isamples_list, qsamples_list, txctrfreq, rxctrfreq, txrate, numberofreceivesamples, repeat=False):
     #Send this data via zeromq to the driver. Receive acknowledgement.	
     if repeat==True:
-        print "EMPTY"
+        #print "EMPTY"
         driverpacket.Clear()
         # channels empty
         # samples empty
@@ -177,14 +193,14 @@ def data_to_driver(driverpacket, txsocket, pulse, isamples_list, qsamples_list, 
             sample_add=driverpacket.samples.add() # add one Samples message for each channel.
             real_samp=driverpacket.samples[chi].real.extend(isamples_list[chi])
             imag_samp=driverpacket.samples[chi].imag.extend(qsamples_list[chi]) # add a list
-        driverpacket.centerfreq=ctrfreq * 1000
-        driverpacket.rxrate=0
+        driverpacket.txcenterfreq=txctrfreq * 1000
+        driverpacket.rxcenterfreq=rxctrfreq * 1000
         driverpacket.txrate=txrate
+        driverpacket.numberofreceivesamples=numberofreceivesamples
         driverpacket.timetosendsamples=pulse.timing #past time zero, start of sequence.
-        print pulse.timing
+        #print pulse.timing
         driverpacket.SOB=pulse.SOB
         driverpacket.EOB=pulse.EOB
-        driverpacket.timetoio=0
     
     txsocket.send(driverpacket.SerializeToString())
     # get response:
@@ -198,6 +214,9 @@ def data_to_driver(driverpacket, txsocket, pulse, isamples_list, qsamples_list, 
 
 def main():
 
+    with open('../config.ini') as config_data:
+        config=json.load(config_data)
+        #print config
     #setup socket to send pulse samples over.
     txsocket=setup_tx_socket()
 
@@ -217,6 +236,11 @@ def main():
         # decipher the scans and phasing data and iterate through.
 
         prog=currentctrlprog.build_RCP() # make myprog, defined in currentctrlprog
+
+        # make wavetables, and dictionary of pulses so we aren't wasting time making them in actual scan.
+        wavetable_dict={}
+        for cpo in range(prog.cpo_num):
+            wavetable_dict[cpo]=get_wavetables(prog.cpo_list[cpo].wavetype)
 
         #iterate through scans, AveragingPeriods, Sequences, and pulses.
 
@@ -239,14 +263,15 @@ def main():
                     beamdir={} # create a dictionary of beam directions with the keys being the cpos in this averaging period.
                     for cpo in aveperiod.keys:
                         bmnum=scan.scan_beams[cpo][scan_iter]
-                        print bmnum
+                        #print bmnum
                         beamdir[cpo]=scan.beamdir[cpo][bmnum] #get the beamdir from the beamnumber for this CP-object at this iteration.
-                        print beamdir[cpo]          
+                        #print beamdir[cpo]          
                     #TODO:send RX data for this averaging period (each cpo will have own data file? (how stereo is implemented currently))
                     while (int_time < done_time):
                         for sequence in aveperiod.integrations: #just alternate sequences
                             if int_time>=done_time:
                                 break
+                            numberofreceivesamples=int(config[u'rx_sample_rate']*sequence.ssdelay*1e-6)
                             for pulse in sequence.pulses: #pulses are in order of timing so this works.
                                 # TODO: check to see if pulse is any different from last pulse. If it isn't we can send blank fields in driverpacket.
                                 isamples_list=[] #this will be a list of lists for all channels and their samples.
@@ -257,18 +282,18 @@ def main():
                                         # same cp_object, meaning same channels, freq, pullen, wavetype
                                         if last_pulse.pulse_shift==pulse.pulse_shift:
                                         #same phase offset in addition to beam dir, so same within this sequence besides its timing.
-                                            ack=data_to_driver(driverpacket,txsocket,pulse,isamples_list,qsamples_list,0,0,repeat=True)
+                                            ack=data_to_driver(driverpacket,txsocket,pulse,isamples_list,qsamples_list,0,0,0,0,repeat=True)
                                         #if pulse is the same as last pulse, except pulsen, and timing won't be.
                                 for channel in range(0,16):
                                     # get phase shifts for all channels even if not transmitting on all.
                                     phase_array=get_phshift(beamdir[pulse.cpoid],pulse.freq,channel,pulse.pulse_shift)
                                 for channel in pulse.channels:
-                                    basic_samples=get_samples(prog.rate, (pulse.freq-prog.ctrfreq)*1000, float(pulse.pullen)/1000000, pulse.iwave_table, pulse.qwave_table)	
+                                    basic_samples=get_samples(prog.txrate, (pulse.freq-prog.txctrfreq)*1000, float(pulse.pullen)/1000000, wavetable_dict[pulse.cpoid][0], wavetable_dict[pulse.cpoid][1]) #pulse.iwave_talbe, pulse.qwave_table)	
                                     pulse_samples=shift_samples(basic_samples, phase_array) # returns numpy array 
                                     # conver numpy array to lists.
                                     isamples_list.append((pulse_samples.real).tolist())
                                     qsamples_list.append((pulse_samples.imag).tolist())
-                                ack=data_to_driver(driverpacket,txsocket,pulse,isamples_list,qsamples_list,prog.ctrfreq,prog.rate,repeat=False)
+                                ack=data_to_driver(driverpacket,txsocket,pulse,isamples_list,qsamples_list,prog.txctrfreq,prog.rxctrfreq,prog.txrate,numberofreceivesamples,repeat=False)
                                 
                             nave=nave+1
                             int_time=datetime.utcnow()
