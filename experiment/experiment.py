@@ -7,10 +7,12 @@ import zmq
 import json
 
 def experiment():
-    prog=controlprog(6,150)
-    prog.cpo_list[0].freq=9811
-    prog.cpo_list[0].sequence=[0,5,8,12]
-    prog.cpo_list[0].channels=[0,3,5,7,8,9]
+
+        prog=controlprog(1,150)
+        prog.cpo_list[0].freq=9811
+        prog.cpo_list[0].sequence=[0,5,8,12]
+        prog.cpo_list[0].channels=[0]
+
 
 
     # change your control program here. Use selfcheck(myctrlprog) and print myctrlprog() to see what can be changed

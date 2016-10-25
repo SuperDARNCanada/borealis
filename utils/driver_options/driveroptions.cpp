@@ -26,6 +26,9 @@ DriverOptions::DriverOptions() {
     scope_sync_mask = config_pt.get<uint32_t>("scope_sync_mask");
     atten_mask = config_pt.get<uint32_t>("atten_mask");
     tr_mask = config_pt.get<uint32_t>("tr_mask");
+    atten_window_time_start = config_pt.get<double>("atten_window_time_start");
+    atten_window_time_end = config_pt.get<double>("atten_window_time_end");
+    tr_window_time = config_pt.get<double>("tr_window_time");
 }
 
 double DriverOptions::get_tx_rate() {
@@ -78,4 +81,16 @@ uint32_t DriverOptions::get_atten_mask() {
 
 uint32_t DriverOptions::get_tr_mask() {
     return tr_mask;
+}
+
+double DriverOptions::get_atten_window_time_start() {
+    return atten_window_time_start;
+}
+
+double DriverOptions::get_atten_window_time_end() {
+    return atten_window_time_end;
+}
+
+double DriverOptions::get_tr_window_time() {
+    return tr_window_time;
 }

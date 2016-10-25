@@ -193,13 +193,13 @@ def main():
 	#print phshifts_dict
 
 	#plot for testing
-	plot_samples(pulse_samples_dict[(0, 12, 7, 0)].real,pulse_samples_dict[(0,12,7,0)].imag)
+	#plot_samples(pulse_samples_dict[(0, 12, 7, 0)].real,pulse_samples_dict[(0,12,7,0)].imag)
 	
 
 	#initialize zmq socket.
 	context=zmq.Context()
 	socket=context.socket(zmq.PAIR)
-	socket.connect("tcp://10.65.0.25:33033")
+	socket.connect("ipc:///tmp/feeds/0")
 
 	#initialize driverpacket.
 	driverpacket=driverpacket_pb2.DriverPacket()
@@ -282,7 +282,7 @@ def main():
 				del driverpacket.samples[:]
 
 				#time.sleep(1)	
-			time.sleep(10)
+			time.sleep(33e-3)
 			print "New Sequence!"
 			nave=nave+1 # finished a sequence
 			int_time=datetime.utcnow()
