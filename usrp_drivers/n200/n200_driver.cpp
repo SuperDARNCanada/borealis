@@ -64,8 +64,8 @@ std::vector<std::vector<std::complex<float>>> make_samples(const driverpacket::D
   return samples;
 }
 
-void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
-        std::shared_ptr<DriverOptions> driver_options) {
+void transmit(zmq::context_t* thread_c,  zmq::context_t* timing_c,
+        std::shared_ptr<USRP> usrp_d, std::shared_ptr<DriverOptions> driver_options) {
 
   std::cout << "Enter transmit thread\n";
 
@@ -76,6 +76,8 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
   std::cout << "TRANSMIT: Creating and connected to thread socket in control\n";
   zmq::message_t request;  
 
+  zmq::socket_t timing_socket(*timing_c, ZMQ_PAIR);
+  thread_socket.connect("inproc://timing");
 
   auto channels_set = false;
   auto center_freq_set = false;
@@ -120,9 +122,9 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
     
     std::chrono::steady_clock::time_point ctr_begin = std::chrono::steady_clock::now();
     
-    if (dp.centerfreq() > 0) {
-      std::cout << "DP center freq " << dp.centerfreq() << std::endl;
-      usrp_d->set_tx_center_freq(dp.centerfreq(),channels);
+    if (dp.txcenterfreq() > 0) {
+      std::cout << "DP center freq " << dp.txcenterfreq() << std::endl;
+      usrp_d->set_tx_center_freq(dp.txcenterfreq(),channels);
       center_freq_set = true;
     }
     
@@ -167,6 +169,10 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
       auto time_now_tmp = usrp_d->get_usrp()->get_time_now();
       std::cout << "time now tmp " << time_now_tmp.get_frac_secs() << std::endl;
       time_zero = usrp_d->get_usrp()->get_time_now() + uhd::time_spec_t(10e-3);
+
+      zmq::message_t timing (sizeof(time_zero));
+      memcpy(timing.data (), &time_zero, sizeof(&time_zero));
+      timing_socket.send(timing);
     }
 
     
@@ -242,16 +248,12 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
     usrp_d->get_usrp()->set_command_time(tr_time_high);
     usrp_d->set_tr();
 
-
-    
     usrp_d->get_usrp()->set_command_time(tr_time_low);
     usrp_d->clear_tr();
-    
     
     usrp_d->get_usrp()->set_command_time(atten_time_low);
     usrp_d->clear_atten();
 
-    usrp_d->get_usrp()->clear_command_time();
     
     std::chrono::steady_clock::time_point timing_end= std::chrono::steady_clock::now();
 
@@ -268,8 +270,8 @@ void transmit(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
 
 }
 
-void receive(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
-        std::shared_ptr<DriverOptions> driver_options) {
+void receive(zmq::context_t* thread_c, zmq::context_t* timing_c,
+            std::shared_ptr<USRP> usrp_d, std::shared_ptr<DriverOptions> driver_options) {
 
   std::cout << "Enter receive thread\n";
 
@@ -278,6 +280,10 @@ void receive(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
   thread_socket.setsockopt(ZMQ_SUBSCRIBE,"",0);
   zmq::message_t request;
   std::cout << "RECEIVE: Creating and connected to thread socket in control\n";
+
+  zmq::socket_t timing_socket(*timing_c, ZMQ_PAIR);
+  thread_socket.connect("inproc://timing");
+  zmq::message_t timing;
 
   auto channels_set = false;
   auto center_freq_set = false;
@@ -288,8 +294,11 @@ void receive(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
   uhd::time_spec_t time_zero;
   uhd::rx_streamer::sptr rx_stream;
   uhd::stream_args_t stream_args("fc32", "sc16");
+  uhd::stream_cmd_t stream_cmd( 
+      uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE
+    );
 
-  auto rx_rate = driver_options->get_rx_sample_rate();
+  auto rx_rate = driver_options->get_rx_rate();
 
   while (1) {
     thread_socket.recv(&request);
@@ -315,9 +324,9 @@ void receive(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
     
     std::chrono::steady_clock::time_point ctr_begin = std::chrono::steady_clock::now();
     
-    if (dp.centerfreq() > 0) {
-      std::cout << "DP center freq " << dp.centerfreq() << std::endl;
-      usrp_d->set_rx_center_freq(dp.centerfreq(14e6),channels);
+    if (dp.rxcenterfreq() > 0) {
+      std::cout << "DP center freq " << dp.rxcenterfreq() << std::endl;
+      usrp_d->set_rx_center_freq(dp.rxcenterfreq(),channels);
       center_freq_set = true;
     }
     
@@ -331,6 +340,39 @@ void receive(zmq::context_t* thread_c,std::shared_ptr<USRP> usrp_d,
 
       //todo: throw error
     }
+
+    timing_socket.recv(&timing);
+    time_zero = *(reinterpret_cast<uhd::time_spec_t*>(timing.data()));
+
+    std::vector<float> sample_buffer(dp.numberofreceivesamples());
+    stream_cmd.num_samps = size_t(dp.numberofreceivesamples() * channels.size());
+    stream_cmd.stream_now = false;
+    stream_cmd.time_spec = time_zero;
+    rx_stream->issue_stream_cmd(stream_cmd);
+
+    auto md = RXMetadata();
+    size_t total_received_samples = 0;
+    while(total_received_samples < dp.numberofreceivesamples()) {
+      auto md_star = md.get_md();
+      size_t num_rx_samps = rx_stream->recv(&sample_buffer.front(), 
+        (size_t)dp.numberofreceivesamples(), md_star);
+
+      if (md.get_error_code() == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
+          std::cout << boost::format("Timeout while streaming") << std::endl;
+          break;
+      }
+      if (md.get_error_code() == uhd::rx_metadata_t::ERROR_CODE_OVERFLOW) {
+          //TODO: throw error
+      }
+      if (md.get_error_code() != uhd::rx_metadata_t::ERROR_CODE_NONE) {
+          //TODO: throw error
+      }
+
+      total_received_samples += num_rx_samps;
+    }
+
+    std::cout << "total_received_samples " << total_received_samples << std::endl;
+
   }
 
 }
@@ -412,13 +454,14 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
 
   //  Prepare our context
-  zmq::context_t context(1);
+  zmq::context_t control_context(1);
+  zmq::context_t timing_context(3);
 
   std::vector<std::thread> threads;
 
-  std::thread control_t(control,&context);
-  std::thread transmit_t(transmit,&context,usrp_d,driver_options);
-  std::thread receive_t(receive,&context,usrp_d,driver_options);
+  std::thread control_t(control,&control_context);
+  std::thread transmit_t(transmit, &control_context, &timing_context, usrp_d, driver_options);
+  std::thread receive_t(receive, &control_context, &timing_context ,usrp_d, driver_options);
   
 
   threads.push_back(std::move(transmit_t));

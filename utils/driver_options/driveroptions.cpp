@@ -29,6 +29,9 @@ DriverOptions::DriverOptions() {
     atten_window_time_start = config_pt.get<double>("atten_window_time_start");
     atten_window_time_end = config_pt.get<double>("atten_window_time_end");
     tr_window_time = config_pt.get<double>("tr_window_time");
+
+    for (auto& channel : config_pt.get_child("receive_channels"))
+        receive_channels.push_back(channel.second.get_value<uint32_t>());
 }
 
 double DriverOptions::get_tx_rate() {
@@ -93,4 +96,8 @@ double DriverOptions::get_atten_window_time_end() {
 
 double DriverOptions::get_tr_window_time() {
     return tr_window_time;
+}
+
+std::vector<uint32_t> DriverOptions::get_receive_channels() {
+    return receive_channels;
 }

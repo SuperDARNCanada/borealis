@@ -50,13 +50,14 @@ class TXMetadata{
         void set_end_of_burst(bool end_of_burst);
         void set_has_time_spec(bool has_time_spec);
         void set_time_spec(uhd::time_spec_t time_spec);
+
 };
 
 class RXMetadata{
  public:
         uhd::rx_metadata_t md_;
 
-        RXMetadata();
+        RXMetadata() = default;
         uhd::rx_metadata_t get_md();
         bool get_end_of_burst();
         uhd::rx_metadata_t::error_code_t get_error_code();

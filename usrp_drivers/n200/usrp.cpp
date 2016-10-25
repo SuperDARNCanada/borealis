@@ -234,6 +234,8 @@ bool RXMetadata::get_out_of_sequence() {
 
 bool RXMetadata::get_start_of_burst() {
     return md_.start_of_burst;
+
+
 }
 
 uhd::time_spec_t RXMetadata::get_time_spec() {
