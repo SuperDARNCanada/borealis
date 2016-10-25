@@ -21,6 +21,9 @@ class DriverOptions: public Options {
         uint32_t scope_sync_mask;
         uint32_t atten_mask;
         uint32_t tr_mask;
+        double atten_window_time_start;
+        double atten_window_time_end;
+        double tr_window_time;
 
         DriverOptions();
         double get_tx_rate();
@@ -36,6 +39,9 @@ class DriverOptions: public Options {
         uint32_t get_scope_sync_mask();
         uint32_t get_atten_mask();
         uint32_t get_tr_mask();
+        double get_atten_window_time_start();
+        double get_atten_window_time_end();
+        double get_tr_window_time();
 
 };
 
