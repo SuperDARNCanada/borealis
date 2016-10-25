@@ -1,0 +1,70 @@
+syntax="proto3";
+
+package cppacket;
+
+message ControlProg{
+    int cpid=1;
+    int cpo_num=2;
+    int ctrfreq=3; /*in kHz*/
+    int txrate=4; 
+    /* should not need cpobjects or interfacing, that's all included in Scan, AveragingPeriod, Sequence, and RadarPulse. */
+    repeated Scan scan=5;
+    
+
+    message Scan {
+        repeated uint32 keys=1;
+        uint32 scanboundf=2;
+        optional uint32 canbound=3;
+        repeated BeamDir beamdirs=4;
+        repeated ScanBeam scanbeams=5;
+        repeated AvePeriod aveperiods=6;
+
+        message BeamDir {
+            repeated double direction=1;
+        }
+
+        message ScanBeam {
+            repeated uint32 beamnum=1;
+        }
+
+        message AvePeriod {
+            repeated uint32 keys=1;
+            uint32 clrfrqf=2;
+            repeated uint32 clrfrqrange=3; /* in kHz, which will be around the pulse freq.*/
+            /* TODO: include frequencies around which to search here */
+            uint32 intt=4; /*in ms */
+            uint32 intn=5; /*nave goal */
+            repeated Integration integrations=6;
+
+            message Integration {
+                repeated uint32 keys=1;
+                repeated PulseShift pulseshifts=2;
+                repeated Sequence sequence=3;
+                uint32 mpinc=4;
+                repeated uint32 seqtimer=5;
+                repeated Pulse pulses=6;
+
+                message PulseShift {
+                    repeated uint32 phshift=1;
+                }
+ 
+                message Sequence {
+                    repeated uint32 timetable=1;
+                }
+    
+                message Pulse {
+                    bool SOB=1;
+                    bool EOB=2;
+                    uint32 cpoid=3;
+                    uint32 pulsen=4;
+                    repeated uint32 channels=5;
+                    uint32 pulseshift=6;
+                    uint32 freq=7; /* kHz */
+                    uint32 pullen=8; /* us */
+                    string wavetype=9; /*SINE or otherwise */
+                    uint32 timing=10;
+                }
+            }
+        }
+    }
+}

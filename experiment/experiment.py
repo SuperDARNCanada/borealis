@@ -7,9 +7,9 @@ import zmq
 import json
 
 def experiment():
-    prog=controlprog(6,150)
+    prog=controlprog(1,150)
     prog.cpo_list[0].freq=9811
-    prog.cpo_list[0].sequence=[0,5,8,12]
+    prog.cpo_list[0].sequence=[0,5,8,12,18,30,32,33]
     prog.cpo_list[0].channels=[0,3,5,7,8,9]
 
 
@@ -38,22 +38,37 @@ def experiment():
                     # cpo A and B will have integrations that run at the same time. 
 
     # example
-    prog.interface[0,1]="PULSE"
-    prog.interface[0,2]="PULSE"
-    prog.interface[0,3]="INTEGRATION"
-    prog.interface[3,4]="SCAN"
-    prog.interface[4,5]="PULSE"
-    prog.interface[1,2]="PULSE"
-    prog.interface[1,3]="INTEGRATION"
-    prog.interface[2,3]="INTEGRATION"
-    prog.interface[0,4]="SCAN"
-    prog.interface[1,4]="SCAN"
-    prog.interface[2,4]="SCAN"
-    prog.interface[0,5]="SCAN"
-    prog.interface[1,5]="SCAN"
-    prog.interface[2,5]="SCAN"
-    prog.interface[3,5]="SCAN"
+#    prog.interface[0,1]="INTEGRATION"
+#    prog.interface[0,2]="PULSE"
+#    prog.interface[0,3]="INTEGRATION"
+#    prog.interface[3,4]="SCAN"
+#    prog.interface[4,5]="PULSE"
+#    prog.interface[1,2]="PULSE"
+#    prog.interface[1,3]="INTEGRATION"
+#    prog.interface[2,3]="INTEGRATION"
+#    prog.interface[0,4]="SCAN"
+#    prog.interface[1,4]="SCAN"
+#    prog.interface[2,4]="SCAN"
+#    prog.interface[0,5]="SCAN"
+#    prog.interface[1,5]="SCAN"
+#    prog.interface[2,5]="SCAN"
+#    prog.interface[3,5]="SCAN"
 
+    return prog
+    
+
+
+def build_RCP():
+    """Build the experiment into Scans, AveragingPeriods, Sequences, and Pulses and send this data
+    over to radarctrl to create pulses and computation block to receive data"""
+
+        
+
+    # Build experiment written by researcher.
+    prog=experiment()
+    # get wavetables and load them in their the cp_objects.
+    prog.get_wavetables()
+    # Build scans
     prog.build_Scans()
 
     print "Number of Scan types: %d" % (len(prog.scan_objects)) 
@@ -61,29 +76,29 @@ def experiment():
     print "Number of Sequences in Scan #1, Averaging Period #1: %d" % (len(prog.scan_objects[0].aveperiods[0].integrations))
     print "Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: %d" % (len(prog.scan_objects[0].aveperiods[0].integrations[0].cpos))
 
-    updateflag=True
-#	context=zmq.Context()
-#	cpsocket=context.socket(zmq.PAIR)
-#	cpsocket.bind("tcp://10.65.0.25:33555")
+    #transfer these classes to dictionaries to send via JSON to
 
-#	while(True):
-#
-#		message=cpsocket.recv() 
-#		print "received message"	
-#		if json.loads(message)=="UPDATE":
-#			print "Time to update"
-#			if updateflag==False:
-#				cpsocket.send(json.dumps("NO"))
-#			elif updateflag==True:
-#				cpsocket.send(json.dumps("YES"))
-#				message=cpsocket.recv()
-#				if json.loads(message)=="READY":
-#					#need to send a dictionary here or use other serialization.
-#					cpsocket.send(json.dumps(prog))
-#					
+
+    #updateflag=True
+    #context=zmq.Context()
+    #cpsocket=context.socket(zmq.PAIR)
+    #cpsocket.bind("tcp://10.65.0.25:33555")
+
+    #while(True):
+    #    message=cpsocket.recv() 
+    #    print "received message"	
+    #    if json.loads(message)=="UPDATE":
+#            print "Time to update"
+#            if updateflag==False:
+#                cpsocket.send(json.dumps("NO"))
+#            elif updateflag==True:
+#                cpsocket.send(json.dumps("YES"))
+#                message=cpsocket.recv()
+#                if json.loads(message)=="READY":
+#                    #need to send a dictionary here or use other serialization.
+#                    cpsocket.send(json.dumps(prog))
 	
     return prog
 
 
-
-experiment()	
+build_RCP()

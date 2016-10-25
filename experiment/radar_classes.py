@@ -15,27 +15,32 @@ import operator # easy sorting of list of class instances
 
 class RadarPulse():
 
-    def __init__(self, cp_object, pulsen): # Consider sending pulse just 
-        # a given phase shift array for channels, then phase shifts could 
-        # potentially be modified by channel before creating pulse
-
+    def __init__(self, cp_object, pulsen, **kwargs): 
+        'Pulse data, incl timing and channel data but not including phasing data'
+        # pulse metadata will be send alongside separate phasing data
+        # to avoid send 
+        self.SOB=kwargs.get('SOB',False)
+        self.EOB=kwargs.get('EOB',False)
+        self.cpoid=cp_object.cpid[1]
         self.pulsen=pulsen
         self.channels=cp_object.channels
         self.pulse_shift=cp_object.pulse_shift[pulsen]
         self.freq=cp_object.freq
         self.pullen=cp_object.pullen
+        self.iwave_table=cp_object.iwave_table
+        self.qwave_table=cp_object.qwave_table
         #self.phshifts=
-        #self.beamdir=beamdir #not needed, pulse metadata need only include array of phaseshift for channels, need not know its beamdir.
+        #self.beamdir=cp_object.beamdir #not needed, pulse metadata need only include array of phaseshift for channels, need not know its beamdir.
         self.wavetype=cp_object.wavetype
         try:
-            self.timing=cp_object.mpinc*cp_object.sequence[pulsen]
+            self.timing=cp_object.seqtimer+cp_object.mpinc*cp_object.sequence[pulsen]
         except IndexError:
             errmsg="Invalid Pulse Number %d for this CP_Object" % (pulsen)
             sys.exit(errmsg)
 
 class Sequence():
 
-    def __init__(self, aveperiod, seqn_keys): # these cp_objects are all sequence mixed.
+    def __init__(self, aveperiod, seqn_keys): 
         #args=locals()
         #make a list of the cpos in this sequence.
         self.keys=seqn_keys
@@ -46,12 +51,39 @@ class Sequence():
 
         pulses=[]
         #beamdir={} # dictionary because there are multiple cpos and they might have different beam directions.
-        for cpo in seqn_keys:
+        if len(seqn_keys)==1 and len(self.cpos[seqn_keys[0]].sequence)==1:
+            only_pulse=True
+        else:
+            only_pulse=False
+            first_pulse_time=self.cpos[seqn_keys[0]].sequence[0]*self.cpos[seqn_keys[0]].mpinc+self.cpos[seqn_keys[0]].seqtimer
+            first_cpoid=0
+            last_pulse_time=self.cpos[seqn_keys[0]].sequence[-1]*self.cpos[seqn_keys[0]].mpinc+self.cpos[seqn_keys[0]].seqtimer
+            last_cpoid=0
+            for cpoid in self.cpos.keys():
+                cpo_pulse_one_time=self.cpos[cpoid].sequence[0]*self.cpos[cpoid].mpinc+self.cpos[cpoid].seqtimer
+                if cpo_pulse_one_time<first_pulse_time:
+                    first_pulse_time=cpo_pulse_one_time
+                    first_cpoid=cpoid
+                cpo_last_pulse_time=self.cpos[cpoid].sequence[-1]*self.cpos[cpoid].mpinc+self.cpos[cpoid].seqtimer
+                if cpo_last_pulse_time>last_pulse_time:
+                    last_pulse_time=cpo_last_pulse_time
+                    last_cpoid=cpoid
+
+        for cpoid in seqn_keys:
             #beamdir[cpo]=self.cpos[cpo].beamdir[
-            for i in range(len(self.cpos[cpo].sequence)):
-                pulses.append(RadarPulse(self.cpos[cpo],i)) # HOW TO INCORPORATE BEAM DIR INTO PULSE
+            for i in range(len(self.cpos[cpoid].sequence)):
+                if only_pulse==True:
+                    pulses.append(RadarPulse(self.cpos[cpoid],i,SOB=True,EOB=True))
+                elif cpoid==first_cpoid and i==0: 
+                    pulses.append(RadarPulse(self.cpos[cpoid],i,S0B=True))
+                elif cpoid==last_cpoid and i==len(self.cpos[cpoid].sequence)-1:
+                    pulses.append(RadarPulse(self.cpos[cpoid],i,EOB=False))
+                else:
+                    pulses.append(RadarPulse(self.cpos[cpoid],i)) 
         # need to sort self.pulses because likely not in correct order with multiple cpos.
         self.pulses=sorted(pulses, key=operator.attrgetter('timing'))
+
+        # get beamdir of the pulses
         
 
 class AveragingPeriod():
@@ -75,15 +107,35 @@ class AveragingPeriod():
         for p,q in interface_keys:
             self.interface[p,q]=scan.interface[p,q]
 
+        # metadata for this AveragingPeriod: clear frequency search, integration time, number of averages goal,
+        self.clrfrqf=[] #list of cpos in this Averaging Period that have a clrfrq search requirement.
+        self.clrfrqrange=[] #list of ranges needed to be searched.
+        for cpo in self.keys:
+            if self.cpos[cpo].clrfrqf==1:
+                self.clrfrqf.append(cpo)
+                if self.cpos[cpo].clrfrqrange not in self.clrfrqrange:
+                    self.clrfrqrange.append(self.cpos[cpo].clrfrqrange)
+
+        self.intt=self.cpos[self.keys[0]].intt
+        for cpo in self.keys:
+            if self.cpos[cpo].intt!=self.intt:
+                errmsg="CPO %d and %d are INTTIME mixed and do not have the same Averaging Period duration intt" % (self.keys[0], self.keys[cpo])
+                sys.exit(errmsg)
+        self.intn=self.cpos[self.keys[0]].intn
+        for cpo in self.keys:
+            if self.cpos[cpo].intn!=self.intn:
+                errmsg="CPO %d and %d are INTTIME mixed and do not have the same NAVE goal intn" % (self.keys[0], self.keys[cpo])
+                sys.exit(errmsg)
+
+        # do not need beam information inside the AveragingPeriod, change this when iterating through the aveperiods in a scan.
+        #self.scan_beams={} # could be different beam numbers and beam directions for the various CPO's in this AveragingPeriod.
+        
         #determine how this averaging period is made by separating out the INTEGRATION mixed.
         self.cpo_integrations=self.get_integrations()
         self.integrations=[]
         for integration_cpo_list in self.cpo_integrations:
             self.integrations.append(Sequence(self,integration_cpo_list)) 
-        #send data from this Averaging Period and the list of cpo's to combine in sequence
-        #self.interfacing=scan
-        #self.beamdir=
-
+        
     def get_integrations(self):
         integ_combos=[]
 
@@ -145,7 +197,7 @@ class Scan():
         self.cpos={}
         for i in scan_keys: #scan keys is a list of ints that define what cp_objects are in this scan.
             self.cpos[i]=controlprog.cpo_list[i] # list of cp_objects in this scan.
-
+        #self.cpos[1]()
         #create smaller interfacing dictionary for this scan to pass on.
         #this dictionary will only include the cpo's in this scan,
         # therefore it will not include any SCAN interfacing.
@@ -159,25 +211,45 @@ class Scan():
       
         # scan metadata - must be the same between all cpo's combined in scan.
         # Metadata includes:
-        self.scanboundf=self.cpos[self.keys[0].scanboundf
+        self.scanboundf=self.cpos[self.keys[0]].scanboundf
         for cpo in self.keys:        
             if self.cpos[i].scanboundf!=self.scanboundf:
                 errmsg="Scan Boundary Flag not the Same Between CPO's %d and %d combined in Scan" % (self.keys[0], cpo)
                 sys.exit(errmsg)
-        if selfscanboundf==1:
+        if self.scanboundf==1:
             self.scanbound=self.cpos[self.keys[0]].scanbound
             for cpo in self.keys:        
                 if self.cpos[i].scanbound!=self.scanbound:
                     errmsg="Scan Boundary not the Same Between CPO's %d and %d combined in Scan" % (self.keys[0], cpo)
                     sys.exit(errmsg)
- 
+
+        #NOTE: for now we assume that when INTTIME combined, the Averaging Periods of the various Cp_objects in the scan are
+        #interleaved 1 then the other.
+        
+        # create a dictionary of beam directions for cpo # 
+        self.beamdir={}
+        self.scan_beams={}
+        for cpo in self.keys:
+            self.beamdir[cpo]=self.cpos[cpo].beamdir
+            self.scan_beams[cpo]=self.cpos[cpo].scan
+
         # determine how many averaging periods to make by separating out the INTTIME mixed.
         self.cpo_inttimes=self.get_inttimes()
+        
+        # However we need to make sure the length of the scan for this AveragingPeriod is the same for all CPO's.
+        for cpos in self.get_inttimes():
+            for cpo in cpos:
+                if len(self.scan_beams[cpo])!=len(self.scan_beams[cpos[0]]):
+                    errmsg="CPO %d and %d are mixed within the Averaging Period but do not have the same number of AveragingPeriods in their scan" % (self.keys[0], cpo)
+
         self.aveperiods=[]
         for aveperiod_cpo_list in self.cpo_inttimes:
             # each component is an inttime, we should create AveragingPeriods and pass the cpo's in that period.
             self.aveperiods.append(AveragingPeriod(self,aveperiod_cpo_list)) # append an instance of AveragingPeriod giving it the scan for the cp_objects 
                 #and the list of cp_objects included in that 
+        
+        #order of the Averaging Periods - will be in cpo # order.
+        #self.aveperiods=sorted(self.aveperiods, key=operator.attrgetter('timing'))
 
 
     def get_inttimes(self):

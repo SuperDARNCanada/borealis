@@ -14,7 +14,7 @@ def interfacing(cpo_num):
     for i in range(cpo_num):
         for j in range(i+1,cpo_num):
             if_list.append((i,j))
-            if_keys=tuple(if_list) # keys defining interfacing between the cp_objects	
+    if_keys=tuple(if_list) # keys defining interfacing between the cp_objects	
     if_dict={}
     for num1,num2 in if_keys:
         if_dict[num1, num2]="NONE"
@@ -40,7 +40,7 @@ class cp_object:
         # add something here for manual phase shifting between sequences/scans (so that relative phases can be set without beam direction specification)
         self.scan=[15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0] # list of beam number in order of transmission in scan, ie. scan[14]=1 
                 # corresponds to beamdir[1] being the 15th integration in the scan (second last).
-        self.boundf=1 # scan boundary exists?
+        self.scanboundf=1 # scan boundary exists?
         self.scanbound=60000 # max length of scan past the minute/hour if boundary exists, ms
         self.freq=12300 # in kHz
         self.clrfrqf=1 # flag for clear frequency search
@@ -55,6 +55,9 @@ class cp_object:
         # objects. types: interleaving (one scan of cp_object[0] then one scan of cp_object[1], etc.); 
         # simultaneous (using different channels or same). If same-channel simultaneous could be stereo with 
         # same pulse sequence or multi-sequence?
+        self.iwave_table=[]
+        self.qwave_table=[]
+        #these are reloaded once the wavetype is set.
 
 
     def __call__(self):
@@ -70,8 +73,8 @@ class cp_object:
         print 'Number of Integrations (nave max) [intn]: {}'.format(self.intn) # number of integrations in a scan
         print 'Beam Directions off Boresight (Degree) [beamdir]: {}'.format(self.beamdir) # array of angle off boresight, array length equal to intn; positive is E of N (clockwise)
         print 'Scan Beam Directions [scan]: {}'.format(self.scan) # list of beam number in order of transmission in scan.
-        print 'Scan Boundary Exists [boundf]: {}'.format(self.boundf) # scan boundary exists?
-        if (self.boundf==1) :
+        print 'Scan Boundary Exists [boundf]: {}'.format(self.scanboundf) # scan boundary exists?
+        if (self.scanboundf==1) :
                 print 'Scan Boundary (ms) [scanbound]: {}'.format(self.scanbound) # max length of scan past the minute/hour if boundary exists, ms
         print 'Transmit Frequency [freq]: {}'.format(self.freq) # in kHz
         print 'Clear Frequency Search Flag [clrfrqf]: {}'.format(self.clrfrqf) # flag for clear frequency search
