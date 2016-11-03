@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-# Take cp_objects and combine them to make one RCP. 
+# Test Program to take a single cp_object and run it. 
+# Original Test program.
 # Report Errors if cp_objects cannot be combined.
 # Communicate with the driver to control the radar.
 

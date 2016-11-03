@@ -15,12 +15,12 @@ import operator # easy sorting of list of class instances
 
 class RadarPulse():
 
-    def __init__(self, cp_object, pulsen, **kwargs): 
+    def __init__(self, cp_object, pulsen, SOB=False, EOB=False): 
         'Pulse data, incl timing and channel data but not including phasing data'
         # pulse metadata will be send alongside separate phasing data
         # to avoid send 
-        self.SOB=kwargs.get('SOB',False)
-        self.EOB=kwargs.get('EOB',False)
+        self.SOB=SOB
+        self.EOB=EOB
         self.cpoid=cp_object.cpid[1]
         self.pulsen=pulsen
         self.channels=cp_object.channels
@@ -40,15 +40,16 @@ class RadarPulse():
 
 class Sequence():
 
-    def __init__(self, aveperiod, seqn_keys): 
+    def __init__(self, aveperiod, seqn_keys): # TODO: pass clear frequencies to pass to pulses
         #args=locals()
         #make a list of the cpos in this sequence.
         self.keys=seqn_keys
         self.cpos={}
         for i in seqn_keys:
             self.cpos[i]=aveperiod.cpos[i]
-        #no need to make an interfacing dictionary - all interfacing at this point is PULSE.
-
+        # no need to make an interfacing dictionary - all interfacing at this point is PULSE.
+        
+        # TODO: use number of frequencies to determine power output of each frequency (1/2, 1/3)
         pulses=[]
         #beamdir={} # dictionary because there are multiple cpos and they might have different beam directions.
         if len(seqn_keys)==1 and len(self.cpos[seqn_keys[0]].sequence)==1:
@@ -69,15 +70,20 @@ class Sequence():
                     last_pulse_time=cpo_last_pulse_time
                     last_cpoid=cpoid
 
+        print first_cpoid
+        print last_cpoid
+        print only_pulse
+
         for cpoid in seqn_keys:
             #beamdir[cpo]=self.cpos[cpo].beamdir[
+            print len(self.cpos[cpoid].sequence)
             for i in range(len(self.cpos[cpoid].sequence)):
                 if only_pulse==True:
-                    pulses.append(RadarPulse(self.cpos[cpoid],i,SOB=True,EOB=True))
+                    pulses.append(RadarPulse(self.cpos[cpoid],i,True,True))
                 elif cpoid==first_cpoid and i==0: 
-                    pulses.append(RadarPulse(self.cpos[cpoid],i,S0B=True))
+                    pulses.append(RadarPulse(self.cpos[cpoid],i,True, False))
                 elif cpoid==last_cpoid and i==len(self.cpos[cpoid].sequence)-1:
-                    pulses.append(RadarPulse(self.cpos[cpoid],i,EOB=False))
+                    pulses.append(RadarPulse(self.cpos[cpoid],i,False, True))
                 else:
                     pulses.append(RadarPulse(self.cpos[cpoid],i)) 
         # need to sort self.pulses because likely not in correct order with multiple cpos.
