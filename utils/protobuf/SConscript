@@ -27,8 +27,15 @@
 """AddressBook proto-based library SConscript script"""
 
 Import('*')
+import os
 
-RadarProtos = ['driverpacket.proto']
+RadarProtos = []
+#for root, dirnames, filenames in os.walk(os.getcwd()):
+#	for filename in filenames:
+#		if ".proto" in filename:
+#			RadarProtos.append(filename)
 
+RadarProtos = ['driverpacket.proto','computationpacket.proto']
+#print(RadarProtos)
 Proto(RadarProtos)
 
