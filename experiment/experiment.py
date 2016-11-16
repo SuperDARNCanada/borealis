@@ -7,11 +7,12 @@ import zmq
 import json
 
 def experiment():
-    prog=controlprog(1,150)
+    prog=controlprog(2,150)
     prog.cpo_list[0].freq=9811
     prog.cpo_list[0].sequence=[0,5,8,12,18,30,32,33]
     prog.cpo_list[0].channels=[0,3,5,7,8,9]
-
+    prog.cpo_list[1].freq=10588
+    prog.cpo_list[1].sequence=[0,7,19,33]
 
     # change your control program here. Use selfcheck(myctrlprog) and print myctrlprog() to see what can be changed
 
@@ -38,7 +39,7 @@ def experiment():
                     # cpo A and B will have integrations that run at the same time. 
 
     # example
-#    prog.interface[0,1]="INTEGRATION"
+    prog.interface[0,1]="PULSE"
 #    prog.interface[0,2]="PULSE"
 #    prog.interface[0,3]="INTEGRATION"
 #    prog.interface[3,4]="SCAN"

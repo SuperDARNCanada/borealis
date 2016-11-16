@@ -15,16 +15,17 @@ import operator # easy sorting of list of class instances
 
 class RadarPulse():
 
-    def __init__(self, cp_object, pulsen, SOB=False, EOB=False): 
+    def __init__(self, cp_object, phase): #pulsen, **kwargs): 
         'Pulse data, incl timing and channel data but not including phasing data'
         # pulse metadata will be send alongside separate phasing data
         # to avoid send 
-        self.SOB=SOB
-        self.EOB=EOB
+        #self.SOB=kwargs.get('SOB',False)
+        #self.EOB=kwargs.get('EOB',False)
         self.cpoid=cp_object.cpid[1]
-        self.pulsen=pulsen
+        #self.pulsen=pulsen
         self.channels=cp_object.channels
-        self.pulse_shift=cp_object.pulse_shift[pulsen]
+        self.phase=phase # in degrees
+        #self.pulse_shift=cp_object.pulse_shift[pulsen]
         self.freq=cp_object.freq
         self.pullen=cp_object.pullen
         #self.iwave_table=cp_object.iwave_table
@@ -32,11 +33,11 @@ class RadarPulse():
         #self.phshifts=
         #self.beamdir=cp_object.beamdir #not needed, pulse metadata need only include array of phaseshift for channels, need not know its beamdir.
         self.wavetype=cp_object.wavetype
-        try:
-            self.timing=cp_object.seqtimer+cp_object.mpinc*cp_object.sequence[pulsen]
-        except IndexError:
-            errmsg="Invalid Pulse Number %d for this CP_Object" % (pulsen)
-            sys.exit(errmsg)
+      #  try:
+      #      self.timing=cp_object.seqtimer+cp_object.mpinc*cp_object.sequence[pulsen]
+      #  except IndexError:
+      #      errmsg="Invalid Pulse Number %d for this CP_Object" % (pulsen)
+      #      sys.exit(errmsg)
 
 class Sequence():
 
@@ -50,7 +51,7 @@ class Sequence():
         # no need to make an interfacing dictionary - all interfacing at this point is PULSE.
         
         # TODO: use number of frequencies to determine power output of each frequency (1/2, 1/3)
-        pulses=[]
+        #self.pulses=[]
         #beamdir={} # dictionary because there are multiple cpos and they might have different beam directions.
         if len(seqn_keys)==1 and len(self.cpos[seqn_keys[0]].sequence)==1:
             only_pulse=True
@@ -74,21 +75,49 @@ class Sequence():
         print last_cpoid
         print only_pulse
 
-        for cpoid in seqn_keys:
+
+        # make pulses and timing information separate. 
+
+        # TODO: Will need to call a separate function if there is a pulse shift to shift the samples by the shift value.
+        
+        pulse_remaining=True
+        index=0
+        pulse_time=[] # just need a list with times and which cpo.
+        while (pulse_remaining):
+            cpos_done=0
+            for cpoid in seqn_keys:
+                try:
+                    timing=self.cpos[cpoid].sequence[index]*self.cpos[cpoid].mpinc
+                    pulsen=index
+                    pulse_time.append([timing,cpoid,pulsen])
+                except IndexError:     
+                    cpos_done=cpos_done+1
+            if cpos_done==len(seqn_keys):
+                pulse_remaining=False
+            index=index+1
+        pulse_time.sort() #will sort by timing first and then by cpo if timing =.
+        self.pulse_time=pulse_time
+        # NOTE: don't even need pulses. All pulses now just have cp_object details.
+        # NOTE: need to set up SOB And EOB in loop.
+#        for cpoid in seqn_keys:
+#            beam_phase=0
+#            self.pulses.append(RadarPulse(self.cpos[cpoid],beam_phase)) #NOTE: could pass a phase here or do all phase setup inside the loop. trying inside loop.
             #beamdir[cpo]=self.cpos[cpo].beamdir[
-            print len(self.cpos[cpoid].sequence)
-            for i in range(len(self.cpos[cpoid].sequence)):
-                if only_pulse==True:
-                    pulses.append(RadarPulse(self.cpos[cpoid],i,True,True))
-                elif cpoid==first_cpoid and i==0: 
-                    pulses.append(RadarPulse(self.cpos[cpoid],i,True, False))
-                elif cpoid==last_cpoid and i==len(self.cpos[cpoid].sequence)-1:
-                    pulses.append(RadarPulse(self.cpos[cpoid],i,False, True))
-                else:
-                    pulses.append(RadarPulse(self.cpos[cpoid],i)) 
+#            print len(self.cpos[cpoid].sequence)
+           # for i in range(len(self.cpos[cpoid].sequence)):
+           #     if only_pulse==True:
+           #         pulses.append(RadarPulse(self.cpos[cpoid],i,SOB=True,EOB=True))
+           #     elif cpoid==first_cpoid and i==0: 
+           #         pulses.append(RadarPulse(self.cpos[cpoid],i,SOB=True))
+           #     elif cpoid==last_cpoid and i==len(self.cpos[cpoid].sequence)-1:
+           #         pulses.append(RadarPulse(self.cpos[cpoid],i,EOB=True))
+           #     else:
+           #         pulses.append(RadarPulse(self.cpos[cpoid],i)) 
         # need to sort self.pulses because likely not in correct order with multiple cpos.
-        self.pulses=sorted(pulses, key=operator.attrgetter('timing'))
+        # self.pulses=sorted(pulses, key=operator.attrgetter('timing'))
         # 19 is the sample delay below; how do we calculate this?
+        # TODO: Scope sync delay depends on pulse length of entire pulse which may not be from just one CPO.
+        # TODO: Calculate the total time that scope sync is high not the delay after last pulse.
         self.ssdelay=(self.cpos[seqn_keys[0]].nrang+19+10)*self.cpos[seqn_keys[0]].pullen
         for cpoid in seqn_keys:
             newdelay=(self.cpos[cpoid].nrang+29)*self.cpos[cpoid].pullen
@@ -146,7 +175,8 @@ class AveragingPeriod():
         self.integrations=[]
         for integration_cpo_list in self.cpo_integrations:
             self.integrations.append(Sequence(self,integration_cpo_list)) 
-        
+      
+  
     def get_integrations(self):
         integ_combos=[]
 
