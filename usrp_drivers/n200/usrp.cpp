@@ -208,7 +208,8 @@ void TXMetadata::set_time_spec(uhd::time_spec_t time_spec) {
     md_.time_spec = time_spec;
 }
 
-uhd::rx_metadata_t RXMetadata::get_md() {
+
+uhd::rx_metadata_t& RXMetadata::get_md() {
     return md_;
 }
 

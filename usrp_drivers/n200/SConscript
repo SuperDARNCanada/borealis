@@ -30,4 +30,4 @@ import os
 Import('*')
 
 Prog('n200_driver', Glob("./*.c*"), with_libs='utils::utils',
-     LIBS=['protobuf','pthread','boost_system','uhd','zmq'])
+     LIBS=['protobuf','pthread','boost_system','uhd','zmq','rt'])

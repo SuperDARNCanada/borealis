@@ -58,7 +58,7 @@ class RXMetadata{
         uhd::rx_metadata_t md_;
 
         RXMetadata() = default;
-        uhd::rx_metadata_t get_md();
+        uhd::rx_metadata_t& get_md();
         bool get_end_of_burst();
         uhd::rx_metadata_t::error_code_t get_error_code();
         size_t get_fragment_offset();
