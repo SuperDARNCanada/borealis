@@ -12,7 +12,7 @@ def experiment():
     prog.cpo_list[0].sequence=[0,5,8,12,18,30,32,33]
     prog.cpo_list[0].channels=[0,3,5,7,8,9]
     prog.cpo_list[1].freq=10588
-    prog.cpo_list[1].sequence=[0,7,19,33]
+    prog.cpo_list[1].sequence=[0,5,8,12]
 
     # change your control program here. Use selfcheck(myctrlprog) and print myctrlprog() to see what can be changed
 
