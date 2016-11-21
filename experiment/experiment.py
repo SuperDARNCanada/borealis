@@ -2,18 +2,19 @@
 
 # write an experiment that creates a new control program.
 
-from controlprog import controlprog
+from controlprog import ControlProg
 import zmq
 import json
 
 def experiment():
-    prog=controlprog(2,150)
+    prog=ControlProg(3,150)
     prog.cpo_list[0].freq=9811
     prog.cpo_list[0].sequence=[0,5,8,12,18,30,32,33]
     prog.cpo_list[0].channels=[0,3,5,7,8,9]
-    prog.cpo_list[1].freq=10588
+    prog.cpo_list[1].freq=13588
     prog.cpo_list[1].sequence=[0,5,8,12]
-
+    prog.cpo_list[2].freq=13006
+    prog.cpo_list[2].sequence=[0,5,8,12]
     # change your control program here. Use selfcheck(myctrlprog) and print myctrlprog() to see what can be changed
 
     #prog.interfacing is a dictionary of how each cpo interacts with the other cpo's - default "NONE" in all possible spots
@@ -40,11 +41,11 @@ def experiment():
 
     # example
     prog.interface[0,1]="PULSE"
-#    prog.interface[0,2]="PULSE"
+    prog.interface[0,2]="PULSE"
 #    prog.interface[0,3]="INTEGRATION"
 #    prog.interface[3,4]="SCAN"
 #    prog.interface[4,5]="PULSE"
-#    prog.interface[1,2]="PULSE"
+    prog.interface[1,2]="PULSE"
 #    prog.interface[1,3]="INTEGRATION"
 #    prog.interface[2,3]="INTEGRATION"
 #    prog.interface[0,4]="SCAN"

@@ -66,7 +66,8 @@ def get_prog(socket):
 def get_phshift(beamdir,freq,chan,pulse_shift):
     """Form the beam given the beam direction (degrees off boresite),
        and the tx frequency, and a specified extra phase shift if there
-       is any."""
+       is any.
+    """
     beamdir=float(beamdir)
     beamrad=abs(math.pi*float(beamdir)/180.0)
     # Pointing to right of boresight, use point in middle 
@@ -107,7 +108,8 @@ def get_samples(rate, wave_freq, pullength, iwave_table=None,
     """Find the normalized sample array given the rate (Hz), 
        frequency (Hz), pulse length (s), and wavetables (list 
        containing single cycle of waveform). Will shift for beam later.
-       No need to use wavetable if just as sine wave."""
+       No need to use wavetable if just as sine wave.
+    """
 
     wave_freq=float(wave_freq)
     rate=float(rate)
@@ -205,6 +207,7 @@ def plot_samples(filename, samplesa,
 
 def filter_samples(samplesa):
     """For testing only, filters samples"""
+    # Upsample
     #taps=firwin
     pass
 
@@ -243,7 +246,8 @@ def plot_fft(filename, samplesa, rate):
 def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
                        power_divider):
     """Make and phase shift samples, and combine them if there are 
-       multiple pulse types to send within this pulse. """
+       multiple pulse types to send within this pulse. 
+    """
 
     txrate=float(txrate)
     txctrfreq=float(txctrfreq)
@@ -293,7 +297,7 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
     #   before combining them sample by sample.
     for pulse in pulse_list:
         start_samples=samples_begin[pulse_list.index(pulse)]
-        print start_samples
+        #print start_samples
         for channel in range(0,16):
             array=samples_dict[tuple(pulse)][channel]
             new_array=np.empty([total_length],dtype=complex)
@@ -339,7 +343,8 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,
                    qsamples_list, txctrfreq, rxctrfreq, txrate, 
                    numberofreceivesamples, SOB, EOB, timing, repeat=False):
     """ Place data in the driver packet and send it via zeromq to the driver.
-        Then receive the acknowledgement."""
+        Then receive the acknowledgement.
+    """
 
     if repeat:
         driverpacket.Clear()
@@ -384,15 +389,13 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,
 
 def main():
 
-    with open('../config.ini') as config_data:
-        config=json.load(config_data)
-        #print config
-
     # Setup socket to send pulse samples over.
     txsocket=setup_tx_socket()
     # Initialize driverpacket.
     driverpacket=driverpacket_pb2.DriverPacket()
 	
+
+
     while True:
         # Receive pulse data from run_RCP
         #cpsocket=setup_cp_socket()
@@ -413,10 +416,49 @@ def main():
         for cpo in range(prog.cpo_num):
             wavetable_dict[cpo]=get_wavetables(prog.cpo_list[cpo].wavetype)
 
-        # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         # TODO: dictionary of pulses so we aren't wasting time making 
-        #   them in actual scan.
+        #   them in actual scan. To do this we need to move out the 
+        #   phase and beam shifting though.
+        #   This is not possible after combining multiple freqs
 
+#        samples_dictionary={}
+#        for scan in prog.scan_objects:
+#            for aveperiod in scan.aveperiods:
+#                for sequence in aveperiod.integrations: 
+#                    print sequence.combined_pulse_list
+#                    for pulse_index in range(0, len(sequence.combined_pulse_list)): 
+#                        repeat=sequence.combined_pulse_list[pulse_index][0]
+#                        if not repeat:        
+#                            # Initialize a list of lists for 
+#                            #   samples on all channels.
+#                            pulse_list=sequence.combined_pulse_list[pulse_index][:]
+#                            pulse_list.pop(0) # remove boolean repeat value
+#                            pulse_list.pop(1)
+#                            isamples_list=[] 
+#                            qsamples_list=[] 
+#                            # TODO:need to determine what power
+#                            #   to use - should determine using
+#                            #   number of frequencies in 
+#                            #   sequence, but for now use # of 
+#                            #   pulses combined here.
+#                            power_divider=len(pulse_list)
+#                            pulse_samples, pulse_channels = (
+#                                make_pulse_samples(pulse_list, cpos, 
+#                                    beamdir, prog.txctrfreq, 
+#                                    prog.txrate, power_divider))
+#                            # Plot for testing
+#                            plot_samples('channel0.png',
+#                                pulse_samples[0])
+#                            plot_fft('fftplot.png', pulse_samples[0], 
+#                                prog.txrate)
+#                            samples_dictionary[pulse_list]=[pulse_samples,pulse_channels]
+#                            for channel in pulse_channels:
+#                                isamples_list.append((pulse_samples
+#                                    [channel].real).tolist())
+#                                qsamples_list.append((pulse_samples
+#                                    [channel].imag).tolist())
+
+        # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         for scan in prog.scan_objects:
             beam_remaining=True
             # Make iterator for cycling through beam numbers
@@ -454,119 +496,44 @@ def main():
                     while (time_remains):
                         for sequence in aveperiod.integrations: 
                             # Just alternating sequences
-                            print sequence.pulse_time
+                            #print sequence.pulse_time
                             if datetime.utcnow()>=done_time:
                                 time_remains=False
                                 break
-                            # TODO: change to sstotal time not delay
-                            numberofreceivesamples=int(
-                                                    config[u'rx_sample_rate']
-                                                    *sequence.ssdelay*1e-6)
-                            combined_pulse_list=[]
-                            fpulse_index=0
-                            repeat=False 
-                            # Default, send new samples on first pulse
-                            while (fpulse_index<len(sequence.pulse_time)): 
-                                # Pulses are in order of timing
-                                if fpulse_index==0:
+                            print sequence.combined_pulse_list
+                            for pulse_index in range(0, len(sequence.combined_pulse_list)): 
+                                # Pulses are in order
+                                if pulse_index==0:
                                     startofburst=True
                                 else:
                                     startofburst=False
-                                if fpulse_index==len(sequence.pulse_time)-1:
+                                if pulse_index==len(sequence.combined_pulse_list)-1:
                                     endofburst=True
                                 else:
-                                    endofburst=False 
-                                pulse=sequence.pulse_time[fpulse_index] 
-                                # Pulse is just a list of timing (us), 
-                                #   cpoid, pulse number
-                                
-                                # Initialize a list of lists for 
-                                #   samples on all channels.
-                                isamples_list=[] 
-                                qsamples_list=[] 
-
-                                # Determine if we are combining samples
-                                #   based on timing of pulses
-                                combine_pulses=True
-                                lpulse_index=fpulse_index
-                                pulse_list=[]
-                                pulse_list.append(pulse)
-                                if fpulse_index!=len(sequence.pulse_time)-1: 
-                                    # If not the last index
-                                    while (combine_pulses):
-                                        if (sequence.pulse_time[lpulse_index+1]
-                                                [0] <= pulse[0]
-                                                + cpos[pulse[1]].pullen + 125):
-                                            # 125 us is for two TR/RX 
-                                            #   times.
-                                            lpulse_index=lpulse_index+1
-                                            pulse_list.append(
-                                                sequence.pulse_time
-                                                [lpulse_index])
-                                            if (lpulse_index == 
-                                                    len(sequence.pulse_time)
-                                                    - 1):
-                                                endofburst=True 
-                                                # We have added the
-                                                #   last pulse, 
-                                                #   therefore this is 
-                                                #   the last pulse.
-                                                combine_pulses=False
-                                        else:
-                                            combine_pulses=False 
-                                            # Breaks out of while loop
-                                combined_pulse_list.append(pulse_list) 
-                                # Combined pulse list is a list of 
-                                #    lists of pulses, combined as to 
-                                #    how they are sent as samples to 
-                                #    driver.
-                                # TODO: use the above 
-                                #    combined_pulse_list to determine 
-                                #    if current pulse is same as last 
-                                #    pulse (a repeat)
-                               
-                                # Pulses fpulse_index to lpulse_index 
-                                #    will be combined as they are close
-                                #    in timing.
-                                
-                                # Now check to see if pulse is any 
-                                #    different from last pulse. If it 
-                                #    isn't we can send blank fields in 
-                                #    driverpacket.
-                                if sequence.pulse_time.index(pulse)!=0:
-                                    last_pulse=sequence.pulse_time[
-                                            sequence.pulse_time.index(pulse)-1]
-                                    if last_pulse[1]==pulse[1]: 
-                                        # same cp_object, meaning same 
-                                        #   channels, freq, pullen,
-                                        #   wavetype
-                                        if (cpos[pulse[1]].pulse_shift[
-                                                last_pulse[2]] == cpos[
-                                                pulse[1]].pulse_shift[
-                                                pulse[2]]):
-                                        # Same phase offset in addition
-                                        #   to beam dir, so same within 
-                                        #   this sequence besides its 
-                                        #   timing and pulsen.
-                                            repeat=True
-
+                                    endofburst=False  
+                            
+                                repeat=sequence.combined_pulse_list[pulse_index][0]
                                 if repeat:        
+                                    timing=sequence.combined_pulse_list[pulse_index][1]
                                     ack = data_to_driver(
-                                        driverpacket, txsocket, 
-                                        cpos[pulse[1]].channels, isamples_list,
-                                        qsamples_list, 0, 0, 0, 0, 
-                                        startofburst, endofburst, pulse[0], 
-                                        repeat=True)
-                                    #TODO: check timing is actually
-                                    #   pulse[0], which pulse?
-                                
+                                        driverpacket, txsocket, [], [], [], 0,
+                                        0, 0, 0, startofburst, endofburst, 
+                                        timing, repeat=True)
                                 else:
+                                    # Initialize a list of lists for 
+                                    #   samples on all channels.
+                                    pulse_list=sequence.combined_pulse_list[pulse_index][:]
+                                    pulse_list.pop(0) # remove boolean repeat value
+                                    timing=pulse_list[0]
+                                    pulse_list.pop(0)
+                                    isamples_list=[] 
+                                    qsamples_list=[] 
                                     # TODO:need to determine what power
                                     #   to use - should determine using
                                     #   number of frequencies in 
                                     #   sequence, but for now use # of 
                                     #   pulses combined here.
-                                    power_divider=lpulse_index+1-fpulse_index
+                                    power_divider=len(pulse_list)
                                     pulse_samples, pulse_channels = (
                                         make_pulse_samples(pulse_list, cpos, 
                                             beamdir, prog.txctrfreq, 
@@ -585,12 +552,9 @@ def main():
                                         driverpacket, txsocket, pulse_channels,
                                         isamples_list, qsamples_list, 
                                         prog.txctrfreq, prog.rxctrfreq, 
-                                        prog.txrate, numberofreceivesamples, 
-                                        startofburst, endofburst, pulse[0], repeat=False) 
+                                        prog.txrate, sequence.numberofreceivesamples, 
+                                        startofburst, endofburst, timing, repeat=False) 
                                 # Pulse is done.
-                                # Move past all pulses included in the 
-                                #   samples sent.
-                                fpulse_index=lpulse_index+1 
                             # Sequence is done
                             nave=nave+1
                         #print "updating time"

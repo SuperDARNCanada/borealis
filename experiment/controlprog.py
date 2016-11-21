@@ -2,12 +2,13 @@
 
 # A new radar control program.
 import sys
-from cp_object import cp_object, interfacing, if_type
+from cpobject import CPObject, interfacing, if_type
 import numpy as np
 import math
 import radar_classes
+import json
 
-class controlprog():
+class ControlProg():
     'Class combining control program objects, defining how they interface and some overall metadata'
     def __init__(self, cponum, cpid):    
         self.cpo_id=cpid # unique id for each new cp.
@@ -15,7 +16,7 @@ class controlprog():
         self.cpo_num=cponum # number of cp_objects in your control program.
         cpo_list=[]
         for num in range(self.cpo_num):
-            cpo_list.append(cp_object())
+            cpo_list.append(CPObject())
             cpo_list[num].cpid[1]=num # second number in cpid array is the ID of this cp_object in the controlprog.
             cpo_list[num].cpid[0]=self.cpo_id
         self.cpo_list=cpo_list
@@ -23,7 +24,7 @@ class controlprog():
         # Some overall metadata that you can change, that come with a default.
         # TODO: make default none and have a function that will calculate something appropriate if left blank.
         self.txctrfreq=12000 # in kHz.
-        self.txrate=5000000 # 5 MSPS sampling rate.
+        self.txrate=12000000 # 12 MSPS sampling rate.
         self.rxctrfreq=12000 # in kHz. Note that we have a set bandwidth that we receive and all desired frequencies must be in that BW centered around this rxctrfreq.
         self.xcf=1 #get cross-correlation data in processing block.
         self.acfint=1 #lag-zero interferometer power in fitacf.
@@ -63,6 +64,8 @@ class controlprog():
 
     def build_Scans(self):
         'Will run after a controlprogram instance is set up and modified'
+        with open('../config.ini') as config_data:
+            self.config=json.load(config_data)
         # check interfacing
         self.check_objects()
         self.check_interfacing()
