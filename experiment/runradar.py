@@ -495,6 +495,9 @@ def main():
                     
                     while (time_remains):
                         for sequence in aveperiod.integrations: 
+                            # create pulse dictionary.
+                            # use pulse_list as dictionary keys.
+                            pulse_dict={}
                             # Just alternating sequences
                             #print sequence.pulse_time
                             if datetime.utcnow()>=done_time:
@@ -503,6 +506,7 @@ def main():
                             print sequence.combined_pulse_list
                             for pulse_index in range(0, len(sequence.combined_pulse_list)): 
                                 # Pulses are in order
+                                pulse_list=sequence.combined_pulse_list[pulse_index][:]
                                 if pulse_index==0:
                                     startofburst=True
                                 else:
@@ -511,23 +515,18 @@ def main():
                                     endofburst=True
                                 else:
                                     endofburst=False  
-                            
                                 repeat=sequence.combined_pulse_list[pulse_index][0]
+                                isamples_list=[] 
+                                qsamples_list=[] 
                                 if repeat:        
-                                    timing=sequence.combined_pulse_list[pulse_index][1]
-                                    ack = data_to_driver(
-                                        driverpacket, txsocket, [], [], [], 0,
-                                        0, 0, 0, startofburst, endofburst, 
-                                        timing, repeat=True)
+                                    timing=pulse_list[1]
+                                    pulse_channels=[]     
                                 else:
                                     # Initialize a list of lists for 
                                     #   samples on all channels.
-                                    pulse_list=sequence.combined_pulse_list[pulse_index][:]
                                     pulse_list.pop(0) # remove boolean repeat value
                                     timing=pulse_list[0]
                                     pulse_list.pop(0)
-                                    isamples_list=[] 
-                                    qsamples_list=[] 
                                     # TODO:need to determine what power
                                     #   to use - should determine using
                                     #   number of frequencies in 
@@ -539,27 +538,45 @@ def main():
                                             beamdir, prog.txctrfreq, 
                                             prog.txrate, power_divider))
                                     # Plot for testing
-                                    plot_samples('channel0.png',
-                                        pulse_samples[0])
-                                    plot_fft('fftplot.png', pulse_samples[0], 
-                                        prog.txrate)
+                                    #plot_samples('channel0.png',
+                                    #    pulse_samples[0])
+                                    #plot_fft('fftplot.png', pulse_samples[0], 
+                                    #    prog.txrate)
                                     for channel in pulse_channels:
                                         isamples_list.append((pulse_samples
                                             [channel].real).tolist())
                                         qsamples_list.append((pulse_samples
                                             [channel].imag).tolist())
+
+                                pulse_dict[pulse_index]=[startofburst,
+                                    endofburst, pulse_channels,
+                                    isamples_list, qsamples_list]
+                            for pulse_index in range(0, len(sequence.combined_pulse_list)): 
+                                pulse_list=sequence.combined_pulse_list[pulse_index]
+                                repeat=pulse_list[0]
+                                if repeat:        
                                     ack = data_to_driver(
-                                        driverpacket, txsocket, pulse_channels,
-                                        isamples_list, qsamples_list, 
+                                        driverpacket, txsocket, [], [], [], 0,
+                                        0, 0, 0, pulse_dict[pulse_index][0], 
+                                        pulse_dict[pulse_index][1],
+                                        pulse_list[1], repeat=True)
+                                else:
+                                    ack = data_to_driver(
+                                        driverpacket, txsocket, 
+                                        pulse_dict[pulse_index][2], #pulse_channels
+                                        pulse_dict[pulse_index][3], #isamples_list
+                                        pulse_dict[pulse_index][4], #qsamples_list 
                                         prog.txctrfreq, prog.rxctrfreq, 
                                         prog.txrate, sequence.numberofreceivesamples, 
-                                        startofburst, endofburst, timing, repeat=False) 
+                                        pulse_dict[pulse_index][0], #startofburst
+                                        pulse_dict[pulse_index][1], #endofburst, 
+                                        pulse_list[1], repeat=False) 
                                 # Pulse is done.
                             # Sequence is done
                             nave=nave+1
                         #print "updating time"
                         #int_time=datetime.utcnow()
-                    print "Number of integrations: %d" % nave
+                    print "Number of integrations: {}".format(nave)
                 scan_iter=scan_iter+1
                 
 
