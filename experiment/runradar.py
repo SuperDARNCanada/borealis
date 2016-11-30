@@ -493,83 +493,94 @@ def main():
                     #   cpo will have own data file? (how stereo is 
                     #   implemented currently))
                     
+                    # Create a pulse dictionary before running through the 
+                    #   averaging period.
+                    sequence_dict_list=[]
+                    for sequence in aveperiod.integrations: 
+                        # create pulse dictionary.
+                        # use pulse_list as dictionary keys.
+                        sequence_dict_list.append({})
+                        # Just alternating sequences
+                        #print sequence.pulse_time
+                        for pulse_index in range(0, len(sequence.combined_pulse_list)): 
+                            # Pulses are in order
+                            pulse_list=sequence.combined_pulse_list[pulse_index][:]
+                            if pulse_index==0:
+                                startofburst=True
+                            else:
+                                startofburst=False
+                            if pulse_index==len(sequence.combined_pulse_list)-1:
+                                endofburst=True
+                            else:
+                                endofburst=False  
+                            repeat=sequence.combined_pulse_list[pulse_index][0]
+                            isamples_list=[] 
+                            qsamples_list=[] 
+                            if repeat:        
+                                pulse_channels=[]     
+                            else:
+                                # Initialize a list of lists for 
+                                #   samples on all channels.
+                                pulse_list.pop(0) # remove boolean repeat value
+                                timing=pulse_list[0]
+                                pulse_list.pop(0)
+                                # TODO:need to determine what power
+                                #   to use - should determine using
+                                #   number of frequencies in 
+                                #   sequence, but for now use # of 
+                                #   pulses combined here.
+                                power_divider=len(pulse_list)
+                                pulse_samples, pulse_channels = (
+                                    make_pulse_samples(pulse_list, cpos, 
+                                        beamdir, prog.txctrfreq, 
+                                        prog.txrate, power_divider))
+                                # Plot for testing
+                                #plot_samples('channel0.png',
+                                #    pulse_samples[0])
+                                #plot_fft('fftplot.png', pulse_samples[0], 
+                                #    prog.txrate)
+                                for channel in pulse_channels:
+                                    isamples_list.append((pulse_samples
+                                        [channel].real).tolist())
+                                    qsamples_list.append((pulse_samples
+                                        [channel].imag).tolist())
+                            
+                            # Add to dictionary at last place in list (which is
+                            #   the current sequence location in the list)
+                            # This the the pulse_data.
+                            sequence_dict_list[-1][pulse_index]=[startofburst,
+                                endofburst, pulse_channels,
+                                isamples_list, qsamples_list]
                     while (time_remains):
                         for sequence in aveperiod.integrations: 
-                            # create pulse dictionary.
-                            # use pulse_list as dictionary keys.
-                            pulse_dict={}
                             # Just alternating sequences
                             #print sequence.pulse_time
                             if datetime.utcnow()>=done_time:
                                 time_remains=False
                                 break
-                            print sequence.combined_pulse_list
-                            for pulse_index in range(0, len(sequence.combined_pulse_list)): 
-                                # Pulses are in order
-                                pulse_list=sequence.combined_pulse_list[pulse_index][:]
-                                if pulse_index==0:
-                                    startofburst=True
-                                else:
-                                    startofburst=False
-                                if pulse_index==len(sequence.combined_pulse_list)-1:
-                                    endofburst=True
-                                else:
-                                    endofburst=False  
-                                repeat=sequence.combined_pulse_list[pulse_index][0]
-                                isamples_list=[] 
-                                qsamples_list=[] 
-                                if repeat:        
-                                    timing=pulse_list[1]
-                                    pulse_channels=[]     
-                                else:
-                                    # Initialize a list of lists for 
-                                    #   samples on all channels.
-                                    pulse_list.pop(0) # remove boolean repeat value
-                                    timing=pulse_list[0]
-                                    pulse_list.pop(0)
-                                    # TODO:need to determine what power
-                                    #   to use - should determine using
-                                    #   number of frequencies in 
-                                    #   sequence, but for now use # of 
-                                    #   pulses combined here.
-                                    power_divider=len(pulse_list)
-                                    pulse_samples, pulse_channels = (
-                                        make_pulse_samples(pulse_list, cpos, 
-                                            beamdir, prog.txctrfreq, 
-                                            prog.txrate, power_divider))
-                                    # Plot for testing
-                                    #plot_samples('channel0.png',
-                                    #    pulse_samples[0])
-                                    #plot_fft('fftplot.png', pulse_samples[0], 
-                                    #    prog.txrate)
-                                    for channel in pulse_channels:
-                                        isamples_list.append((pulse_samples
-                                            [channel].real).tolist())
-                                        qsamples_list.append((pulse_samples
-                                            [channel].imag).tolist())
-
-                                pulse_dict[pulse_index]=[startofburst,
-                                    endofburst, pulse_channels,
-                                    isamples_list, qsamples_list]
+                            #print sequence.combined_pulse_list
                             for pulse_index in range(0, len(sequence.combined_pulse_list)): 
                                 pulse_list=sequence.combined_pulse_list[pulse_index]
                                 repeat=pulse_list[0]
+                                pulse_data = sequence_dict_list[
+                                    aveperiod.integrations.index(sequence)][
+                                    pulse_index]
                                 if repeat:        
                                     ack = data_to_driver(
                                         driverpacket, txsocket, [], [], [], 0,
-                                        0, 0, 0, pulse_dict[pulse_index][0], 
-                                        pulse_dict[pulse_index][1],
+                                        0, 0, 0, pulse_data[0], 
+                                        pulse_data[1],
                                         pulse_list[1], repeat=True)
                                 else:
                                     ack = data_to_driver(
                                         driverpacket, txsocket, 
-                                        pulse_dict[pulse_index][2], #pulse_channels
-                                        pulse_dict[pulse_index][3], #isamples_list
-                                        pulse_dict[pulse_index][4], #qsamples_list 
+                                        pulse_data[2], #pulse_channels
+                                        pulse_data[3], #isamples_list
+                                        pulse_data[4], #qsamples_list 
                                         prog.txctrfreq, prog.rxctrfreq, 
                                         prog.txrate, sequence.numberofreceivesamples, 
-                                        pulse_dict[pulse_index][0], #startofburst
-                                        pulse_dict[pulse_index][1], #endofburst, 
+                                        pulse_data[0], #startofburst
+                                        pulse_data[1], #endofburst, 
                                         pulse_list[1], repeat=False) 
                                 # Pulse is done.
                             # Sequence is done
