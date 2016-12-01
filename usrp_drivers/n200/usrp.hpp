@@ -13,6 +13,7 @@ class USRP{
         void set_usrp_clock_source(std::string source);
         void set_tx_subdev(std::string tx_subdev);
         void set_tx_rate(double tx_rate);
+        double get_tx_rate();
         void set_tx_center_freq(double freq, std::vector<size_t> chs);
         void set_rx_subdev(std::string rx_subdev);
         void set_rx_rate(double rx_rate);
@@ -24,8 +25,8 @@ class USRP{
         void set_scope_sync();
         void set_atten();
         void set_tr();
-        void clear_gpio(uint32_t mask, std::string gpio_bank, size_t mboard); 
-        void clear_gpio(uint32_t mask); 
+        void clear_gpio(uint32_t mask, std::string gpio_bank, size_t mboard);
+        void clear_gpio(uint32_t mask);
         void clear_scope_sync();
         void clear_atten();
         void clear_tr();

@@ -51,19 +51,22 @@ std::vector<std::vector<std::complex<float>>> make_samples(const driverpacket::D
   return samples;
 }
 
-void transmit(zmq::context_t* thread_c,  zmq::context_t* timing_c,
-        std::shared_ptr<USRP> usrp_d, std::shared_ptr<DriverOptions> driver_options) {
+void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
+                std::shared_ptr<DriverOptions> driver_options) {
   std::cout << "Enter transmit thread\n";
 
 
-  zmq::socket_t thread_socket(*thread_c, ZMQ_SUB);
-  thread_socket.connect("inproc://threads");
-  thread_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+  zmq::socket_t packet_socket(*driver_c, ZMQ_SUB);
+  packet_socket.connect("inproc://threads");
+  packet_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
   std::cout << "TRANSMIT: Creating and connected to thread socket in control\n";
   zmq::message_t request;
 
-  zmq::socket_t timing_socket(*timing_c, ZMQ_PAIR);
+  zmq::socket_t timing_socket(*driver_c, ZMQ_PAIR);
   timing_socket.connect("inproc://timing");
+
+  zmq::socket_t ack_socket(*driver_c, ZMQ_PAIR);
+  ack_socket.connect("inproc://ack");
 
 
   auto channels_set = false;
@@ -85,13 +88,29 @@ void transmit(zmq::context_t* thread_c,  zmq::context_t* timing_c,
   auto atten_window_time_end_us = driver_options->get_atten_window_time_end();
   auto tr_window_time_us = driver_options->get_tr_window_time();
 
+  //default initialize SS. Needs to be outside of loop
+  auto scope_sync_low = uhd::time_spec_t(0.0);
+
+  auto rx_rate = driver_options->get_rx_rate();
+
+  uint32_t sqn_num = -1;
+  uint32_t expected_sqn_num = 0;
+
   while (1) {
-    thread_socket.recv(&request);
+    packet_socket.recv(&request);
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     std::cout << "Received in TRANSMIT\n";
     driverpacket::DriverPacket dp;
     std::string msg_str(static_cast<char*>(request.data()), request.size());
     dp.ParseFromString(msg_str);
+
+    sqn_num = dp.sqnnum();
+
+    if (sqn_num != expected_sqn_num){
+      std::cout << "SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: "
+        << expected_sqn_num << std::endl;
+      //TODO(keith) handle error
+    }
 
     std::cout <<"TRANSMIT burst flags: SOB "  << dp.sob() << " EOB " << dp.eob() <<std::endl;
     std::chrono::steady_clock::time_point stream_begin = std::chrono::steady_clock::now();
@@ -157,21 +176,28 @@ void transmit(zmq::context_t* thread_c,  zmq::context_t* timing_c,
 
 
 
-    if ( (dp.sob() == true) && (dp.eob() == false) ) {
+    if ( (dp.sob() == true) ) {
       time_zero = usrp_d->get_usrp()->get_time_now() + uhd::time_spec_t(10e-3);
-      memcpy(timing.data (), &time_zero, sizeof(time_zero));
-      timing_socket.send(timing);
     }
 
     auto pulse_delay = uhd::time_spec_t(dp.timetosendsamples()/1e6);
     auto pulse_start_time = time_zero + pulse_delay;
-    auto pulse_len_time = uhd::time_spec_t(samples_per_buff/dp.txrate());
+    auto pulse_len_time = uhd::time_spec_t(samples_per_buff/usrp_d->get_tx_rate());
 
     auto tr_time_high = pulse_start_time - uhd::time_spec_t(tr_window_time_us);
     auto atten_time_high = tr_time_high - uhd::time_spec_t(atten_window_time_start_us);
+    auto scope_sync_high = atten_time_high;
     auto tr_time_low = pulse_start_time + pulse_len_time + uhd::time_spec_t(tr_window_time_us);
     auto atten_time_low = tr_time_low + uhd::time_spec_t(atten_window_time_end_us);
 
+    if( dp.sob() == true) {
+      auto sync_time = dp.numberofreceivesamples()/12e6;
+      std::cout << "SYNC TIME " << sync_time << std::endl;
+      scope_sync_low = atten_time_high + uhd::time_spec_t(sync_time);
+
+      memcpy(timing.data (), &scope_sync_high, sizeof(scope_sync_high));
+      timing_socket.send(timing);
+    }
 
     begin = std::chrono::steady_clock::now();
 
@@ -185,6 +211,7 @@ void transmit(zmq::context_t* thread_c,  zmq::context_t* timing_c,
     std::cout << "TRANSMIT pulse start time " << pulse_start_time.get_frac_secs() <<std::endl;
     std::cout << "TRANSMIT tr_time_low " << tr_time_low.get_frac_secs() << std::endl;
     std::cout << "TRANSMIT atten_time_low " << atten_time_low.get_frac_secs() << std::endl;
+    std::cout << "TRANSMIT scope_sync_low " << scope_sync_low.get_frac_secs() << std::endl;
 
     auto md = TXMetadata();
     md.set_has_time_spec(true);
@@ -222,8 +249,9 @@ void transmit(zmq::context_t* thread_c,  zmq::context_t* timing_c,
 
     if (dp.sob() == true) {
       std::cout << "TRANSMIT Scope sync high" << std::endl;
-      usrp_d->get_usrp()->set_command_time(atten_time_high);
+      usrp_d->get_usrp()->set_command_time(scope_sync_high);
       usrp_d->set_scope_sync();
+
     }
 
     usrp_d->get_usrp()->set_command_time(atten_time_high);
@@ -238,6 +266,11 @@ void transmit(zmq::context_t* thread_c,  zmq::context_t* timing_c,
     usrp_d->get_usrp()->set_command_time(atten_time_low);
     usrp_d->clear_atten();
 
+    if (dp.eob() == true) {
+      usrp_d->get_usrp()->set_command_time(scope_sync_low);
+      usrp_d->clear_scope_sync();
+    }
+
 
     std::chrono::steady_clock::time_point timing_end = std::chrono::steady_clock::now();
 
@@ -247,8 +280,20 @@ void transmit(zmq::context_t* thread_c,  zmq::context_t* timing_c,
       << "us" << std::endl;
 
     if (dp.eob() == true) {
-      usrp_d->clear_scope_sync();
+      //usrp_d->clear_scope_sync();
+      driverpacket::DriverPacket ack;
+      ack.set_sqnnum(sqn_num);
+      expected_sqn_num += 1;
+
+      std::string ack_str;
+      ack.SerializeToString(&ack_str);
+
+      zmq::message_t ack_msg(ack_str.size());
+      memcpy((void*)ack_msg.data(), ack_str.c_str(),ack_str.size());
+      ack_socket.send(ack_msg);
     }
+
+
   }
 }
 
@@ -314,23 +359,23 @@ boost::interprocess::mapped_region mmap_create(const char* file_name, size_t siz
   return region;
 }
 
-void receive(zmq::context_t* thread_c, zmq::context_t* timing_c,
-            std::shared_ptr<USRP> usrp_d, std::shared_ptr<DriverOptions> driver_options) {
+void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
+              std::shared_ptr<DriverOptions> driver_options) {
   std::cout << "Enter receive thread\n";
 
-  zmq::socket_t thread_socket(*thread_c, ZMQ_SUB);
-  thread_socket.connect("inproc://threads");
-  thread_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+  zmq::socket_t packet_socket(*driver_c, ZMQ_SUB);
+  packet_socket.connect("inproc://threads");
+  packet_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
   zmq::message_t request;
   std::cout << "RECEIVE: Creating and connected to thread socket in control\n";
 
-  zmq::socket_t timing_socket(*timing_c, ZMQ_PAIR);
+  zmq::socket_t timing_socket(*driver_c, ZMQ_PAIR);
   timing_socket.bind("inproc://timing");
   zmq::message_t timing;
 
-  zmq::context_t context(4);
-  zmq::socket_t computation_socket(context, ZMQ_PAIR);
-  computation_socket.connect("ipc:///tmp/feeds/1");
+  //zmq::context_t context(4);
+  zmq::socket_t data_socket(*driver_c, ZMQ_PAIR);
+  data_socket.connect("inproc://data");
 
   auto channels_set = false;
   auto center_freq_set = false;
@@ -353,7 +398,7 @@ void receive(zmq::context_t* thread_c, zmq::context_t* timing_c,
   computationpacket::ComputationPacket cp;
 
   while (1) {
-    thread_socket.recv(&request);
+    packet_socket.recv(&request);
     std::cout << "Received in RECEIVE\n";
     driverpacket::DriverPacket dp;
     std::string msg_str(static_cast<char*>(request.data()), request.size());
@@ -361,7 +406,7 @@ void receive(zmq::context_t* thread_c, zmq::context_t* timing_c,
 
     std::cout << "RECEIVE burst flags SOB " << dp.sob() << " EOB " << dp.eob() << std::endl;
 
-    if ( !((dp.sob() == true) && (dp.eob() == false)) ) continue;
+    if ( dp.sob() == false ) continue;
 
     std::chrono::steady_clock::time_point stream_begin = std::chrono::steady_clock::now();
     if (dp.channels_size() > 0 && dp.sob() == true && channels_set == false) {
@@ -435,6 +480,7 @@ void receive(zmq::context_t* thread_c, zmq::context_t* timing_c,
     std::cout << "RECEIVE time_zero " << time_zero.get_frac_secs() << std::endl;
 
     std::chrono::steady_clock::time_point recv_begin = std::chrono::steady_clock::now();
+    //TODO(keith) change to complex
     size_t mem_size = channels.size() * dp.numberofreceivesamples() * sizeof(float) * 2;
     zmq::message_t cp_message(mem_size);
     stream_cmd.num_samps = size_t(dp.numberofreceivesamples() * channels.size());
@@ -480,7 +526,7 @@ void receive(zmq::context_t* thread_c, zmq::context_t* timing_c,
 
     memcpy ((void *) cp_message.data (), cp_str.c_str(), cp_str.size());*/
     std::chrono::steady_clock::time_point send_begin = std::chrono::steady_clock::now();
-    computation_socket.send(cp_message);
+    data_socket.send(cp_message);
     std::chrono::steady_clock::time_point send_end = std::chrono::steady_clock::now();
     std::cout << "RECEIVE package and send timing: "
           << std::chrono::duration_cast<std::chrono::microseconds>(send_end - send_begin).count()
@@ -488,28 +534,41 @@ void receive(zmq::context_t* thread_c, zmq::context_t* timing_c,
   }
 }
 
-void control(zmq::context_t* thread_c) {
+void control(zmq::context_t* driver_c) {
   std::cout << "Enter control thread\n";
 
   std::cout << "Creating and connecting to thread socket in control\n";
-/*    zmq::socket_t thread_socket(*thread_c, ZMQ_PAIR); // 1
-  thread_socket.connect("inproc://threads"); // 2  */
+/*    zmq::socket_t packet_socket(*thread_c, ZMQ_PAIR); // 1
+  packet_socket.connect("inproc://threads"); // 2  */
 
 
-  zmq::socket_t thread_socket(*thread_c, ZMQ_PUB);
-  thread_socket.bind("inproc://threads");
+  zmq::socket_t packet_socket(*driver_c, ZMQ_PUB);
+  packet_socket.bind("inproc://threads");
 
   std::cout << "Creating and binding control socket\n";
-  zmq::context_t context(2);
-  zmq::socket_t control_sock(context, ZMQ_PAIR);
-  control_sock.bind("ipc:///tmp/feeds/0");
+  //zmq::context_t context(2);
+  zmq::socket_t radarctrl_socket(*driver_c, ZMQ_PAIR);
+  radarctrl_socket.bind("ipc:///tmp/feeds/0");
 
   zmq::message_t request;
 
+  zmq::socket_t data_socket(*driver_c, ZMQ_PAIR);
+  data_socket.bind("inproc://data");
+
+  zmq::socket_t ack_socket(*driver_c, ZMQ_PAIR);
+  ack_socket.bind("inproc://ack");
+
+  zmq::socket_t computation_socket(*driver_c, ZMQ_PAIR);
+  computation_socket.bind("ipc:///tmp/feeds/1");
+
+
+
+  //Allows for set up of SUB/PUB socket
   sleep(1);
+
   while (1) {
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    control_sock.recv(&request);
+    radarctrl_socket.recv(&request);
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     begin = std::chrono::steady_clock::now();
@@ -534,13 +593,27 @@ void control(zmq::context_t* thread_c) {
       }
     }
 
-    thread_socket.send(request);
+    packet_socket.send(request);
 
     end = std::chrono::steady_clock::now();
     std::cout << "Time difference to deserialize and send in control = "
       << std::chrono::duration_cast<std::chrono::microseconds>
                                                   (end - begin).count()
       <<std::endl;
+
+    if (dp.eob() == true) {
+      zmq::message_t ack;
+      zmq::message_t data;
+
+      data_socket.recv(&data);
+      ack_socket.recv(&ack);
+
+/*      computation_socket.send(data);
+      radarctrl_socket.send(ack);*/
+
+    }
+
+
   }
 }
 
@@ -562,14 +635,14 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
 
   //  Prepare our context
-  zmq::context_t control_context(1);
-  zmq::context_t timing_context(3);
+  zmq::context_t driver_context(1);
+/*  zmq::context_t timing_context(3);*/
 
   std::vector<std::thread> threads;
 
-  std::thread control_t(control, &control_context);
-  std::thread transmit_t(transmit, &control_context, &timing_context, usrp_d, driver_options);
-  std::thread receive_t(receive, &control_context, &timing_context, usrp_d, driver_options);
+  std::thread control_t(control, &driver_context);
+  std::thread transmit_t(transmit, &driver_context, usrp_d, driver_options);
+  std::thread receive_t(receive, &driver_context, usrp_d, driver_options);
 
 
   threads.push_back(std::move(transmit_t));

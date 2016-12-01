@@ -5,6 +5,7 @@ package driverpacket;
 message DriverPacket {
   repeated uint32 channels = 1;
   repeated Samples samples = 2;
+  uint32 sqnnum = 4;
   double txrate = 5;
   double txcenterfreq = 3;
   double rxcenterfreq = 6;

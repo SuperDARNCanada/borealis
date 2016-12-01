@@ -45,6 +45,10 @@ void USRP::set_tx_rate(double tx_rate) {
     }
 }
 
+double USRP::get_tx_rate(){
+    return usrp_->get_tx_rate();
+}
+
 void USRP::set_tx_center_freq(double freq, std::vector<size_t> chs) {
     uhd::tune_request_t tune_request(freq);
 
@@ -89,7 +93,7 @@ void USRP::set_rx_center_freq(double freq, std::vector<size_t> chs) {
     }
 
     /*boost::this_thread::sleep(boost::posix_time::seconds(1)); */
-}        
+}
 
 void USRP::set_time_source(std::string source) {
     usrp_->set_time_source(source);
@@ -163,20 +167,20 @@ std::string USRP::to_string(std::vector<size_t> chs) {
     device_str << "Using device " << usrp_->get_pp_string() << std::endl
                << "TX rate " << usrp_->get_tx_rate()/1e6 << " Msps" << std::endl
                << "RX rate " << usrp_->get_rx_rate()/1e6 << " Msps" << std::endl;
-                 
+
 
     for(auto &channel : chs) {
-        device_str << "TX channel " << channel << " freq " 
+        device_str << "TX channel " << channel << " freq "
                    << usrp_->get_tx_freq(channel) << " MHz" << std::endl;
     }
 
     for(auto &channel : chs) {
-        device_str << "RX channel " << channel << " freq " 
+        device_str << "RX channel " << channel << " freq "
                    << usrp_->get_tx_freq(channel) << " MHz" << std::endl;
     }
 
     return device_str.str();
-                  
+
 }
 
 TXMetadata::TXMetadata() {
