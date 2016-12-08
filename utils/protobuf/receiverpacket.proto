@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package receiverpacket;
+
+message ReceiverPacket {
+    repeated double rxfreqs = 1;
+    repeated double nrang = 2;
+    repeated double frang = 3;
+} 

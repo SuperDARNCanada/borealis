@@ -120,14 +120,15 @@ def get_samples(rate, wave_freq, pullength, iwave_table=None,
         sampleslen=int(rate*pullength+2*rsampleslen)
         samples=np.empty([sampleslen],dtype=complex)
         for i in range(0,rsampleslen):
-            amp=float(i+1)/float(rsampleslen)
+            amp=0.7*float(i+1)/float(rsampleslen)
             rads=math.fmod(sampling_freq*i,2*math.pi)
             samples[i]=amp*math.cos(rads)+amp*math.sin(rads)*1j
         for i in range(rsampleslen,sampleslen-rsampleslen):
+            amp=0.7
             rads=math.fmod(sampling_freq*i,2*math.pi)
-            samples[i]=math.cos(rads)+math.sin(rads)*1j
+            samples[i]=amp*math.cos(rads)+amp*math.sin(rads)*1j
         for i in range(sampleslen-rsampleslen,sampleslen):
-            amp=float(sampleslen-i)/float(rsampleslen)
+            amp=0.7*float(sampleslen-i)/float(rsampleslen)
             rads=math.fmod(sampling_freq*i,2*math.pi)
             samples[i]=amp*math.cos(rads)+amp*math.sin(rads)*1j
         # we are using a sine wave and will use the sampling freq.
@@ -329,6 +330,7 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
 
     # Now get what channels we need to transmit on for this combined
     #   pulse.
+    # print("First cpo: {}".format(pulse_list[0][1]))
     pulse_channels=cpos[pulse_list[0][1]].channels
     for pulse in pulse_list:
         for chan in cpos[pulse[1]].channels:
@@ -393,7 +395,8 @@ def main():
     txsocket=setup_tx_socket()
     # Initialize driverpacket.
     driverpacket=driverpacket_pb2.DriverPacket()
-	
+
+    	
 
 
     while True:
