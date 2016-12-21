@@ -28,7 +28,7 @@ def get_samples(rate,wave_freq,numberofsamps):
     wave_freq = float(wave_freq)
 
     sampling_freq=2*math.pi*wave_freq/rate
-    sampleslen=numberofsamps
+    sampleslen=int(numberofsamps)
     samples=np.empty([sampleslen],dtype=complex)
     for i in range(0,sampleslen):
         amp=1
@@ -38,6 +38,35 @@ def get_samples(rate,wave_freq,numberofsamps):
 
 # Create a signal (pink noise)
 # in frequency domain
+
+def make_pulse_train(fs,wave_freq):
+    pullen=300 # us
+    mpinc=1500 # us
+    pulse_train=[0]
+    #freq=10200 # kHz
+    wave_freq=wave_freq
+    rate=fs #kHz
+    sampleslen=int(mpinc*1e-6*(pulse_train[-1]+1)*rate*1000)
+    print sampleslen
+    samples=np.empty([sampleslen],dtype=complex)
+    i=1
+    for pulse_time in pulse_train:
+        if pulse_train.index(pulse_time)!=0:    
+            numzeros=(pulse_time-(pulse_train[pulse_train.index(pulse_time)-1]+1))*mpinc*1e-6*rate*1000
+            for num in range(0,numzeros):
+                samples[i]=0
+                i=i+1
+        pulse=get_samples(rate*1000,wave_freq*1000,pullen*1e-6*rate*1000)
+        for samp in pulse:
+            samples[i]=samp
+        for num in range(0,int((mpinc-pullen)*1e-6*rate*1000)):
+            samples[i]=0
+            i=i+1
+    if i!=sampleslen:
+        print("ERROR Sampleslen")    
+
+    return sampleslen, samples
+
 
 def get_noise(ncoeff, seq_length):
     seq_length = float(seq_length)
@@ -57,17 +86,31 @@ def get_noise(ncoeff, seq_length):
 
 # SET VALUES
 # Low-pass filter design parameters
-fs = 12e6          # Sample rate, Hz
-cutoff = 100e3     # Desired cutoff frequency, Hz
+fs = 12e6           # Sample rate, Hz
+cutoff = 100e3      # Desired cutoff frequency, Hz
 trans_width = 50e3  # Width of transition from pass band to stop band, Hz
-numtaps = 512      # Size of the FIR filter.
+numtaps = 512       # Size of the FIR filter.
 wave_freq = -1.8e6  # 1.8 MHz below centre freq (12.2 MHz if ctr = 14 MHz)
+ctrfreq = 14000     # kHz
+
+# GET SAMPLES AND decimate.
+num_samples, pulse_samples=make_pulse_train(fs, wave_freq)
+# Assume this is a received signal of ours.
+
+# use the first filter to get down to approximately 250 kHz bandwidth.
+# we are at baseband centered around 12 MHz (ctrfreq)
+# shift filter the appropriate amount, 
 
 lpass = signal.remez(numtaps, [0, cutoff, cutoff + trans_width, 0.5*fs],
                     [1, 0], Hz=fs)
 
 shift_wave = get_samples(fs,wave_freq,numtaps)
 bpass = np.array([l*i for l,i in zip(lpass,shift_wave)])
+
+output = signal.convolve(pulse_samples,bpass,mode='same') / sum(bpass)
+response = plot_fft(output,fs)
+#fig5 = plt.figure()
+#plt.plot(response,
 
 w,h = signal.freqz(bpass, whole=True)
 
