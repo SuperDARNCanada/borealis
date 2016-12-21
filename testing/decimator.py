@@ -59,12 +59,13 @@ def make_pulse_train(fs,wave_freq):
         pulse=get_samples(rate*1000,wave_freq*1000,pullen*1e-6*rate*1000)
         for samp in pulse:
             samples[i]=samp
+            i=i+1
         for num in range(0,int((mpinc-pullen)*1e-6*rate*1000)):
             samples[i]=0
             i=i+1
-    if i!=sampleslen:
+    if i!=sampleslen-1:
         print("ERROR Sampleslen")    
-
+        print(i,sampleslen)
     return sampleslen, samples
 
 
@@ -139,5 +140,3 @@ fig2 = plot_fft(bpass,fs)
 fig3 = plot_fft(lpass,fs)
 
 plt.show()
-
-
