@@ -15,7 +15,11 @@ def plot_fft(samplesa, rate):
     if num_samps%2==1:
         xf = np.linspace(-1.0/(2.0*T), 1.0/(2.0*T), num_samps)
     else:
-        xf = np.arange(-1.0/(2.0*T),1.0/(2.0*T),1.0/(T*num_samps))
+        #xf = np.arange(-1.0/(2.0*T), 1.0/(2.0*T),1.0/(T*num_samps))
+        xf = np.linspace(-1.0/(2.0*T), 1.0/(2.0*T), num_samps)
+    print(num_samps)
+    print(len(fft_samps))
+    print(len(xf))
     fig, smpplt = plt.subplots(1,1)
     fft_to_plot=np.empty([num_samps],dtype=complex)
     fft_to_plot=fftshift(fft_samps)
@@ -28,7 +32,7 @@ def get_samples(rate,wave_freq,numberofsamps):
     wave_freq = float(wave_freq)
 
     sampling_freq=2*math.pi*wave_freq/rate
-    sampleslen=numberofsamps
+    sampleslen=int(numberofsamps)
     samples=np.empty([sampleslen],dtype=complex)
     for i in range(0,sampleslen):
         amp=1
@@ -39,8 +43,49 @@ def get_samples(rate,wave_freq,numberofsamps):
 # Create a signal (pink noise)
 # in frequency domain
 
-def get_noise(ncoeff, seq_length):
-    seq_length = float(seq_length)
+def make_pulse_train(fs,wave_freq):
+    pullen=300 # us
+    mpinc=1500 # us
+    pulse_train=[0]
+    #freq=10200 # kHz
+    wave_freq=wave_freq
+    rate=fs #kHz
+    sampleslen=int(mpinc*1e-6*(pulse_train[-1]+1)*rate*1000)
+    print sampleslen
+    samples=np.empty([sampleslen],dtype=complex)
+    i=1
+    for pulse_time in pulse_train:
+        if pulse_train.index(pulse_time)!=0:
+            numzeros=(pulse_time-(pulse_train[pulse_train.index(pulse_time)-1]+1))*mpinc*1e-6*rate*1000
+            for num in range(0,numzeros):
+                samples[i]=0
+                i=i+1
+        pulse=get_samples(rate*1000,wave_freq*1000,pullen*1e-6*rate*1000)
+        for samp in pulse:
+            samples[i]=samp
+            i=i+1
+        for num in range(0,int((mpinc-pullen)*1e-6*rate*1000)):
+            samples[i]=0
+            i=i+1
+    if i!=sampleslen-1:
+        print("ERROR Sampleslen")
+        print(i,sampleslen)
+    return sampleslen, samples
+
+def downsample(samples, rate):
+    rate = int(rate)
+    sampleslen = len(samples)/rate + 1 # should be an int
+    samples_down=np.empty([sampleslen],dtype=complex)
+    samples_down[0]=samples[0]
+    print sampleslen
+    for i in range(1,len(samples)):
+        if i%rate==0:
+            #print(i/rate)
+            samples_down[i/rate]=samples[i]
+    return samples_down
+
+def get_noise(ncoeff):
+    #seq_length = float(seq_length)
     phase=[random.uniform(0,2*math.pi) for n in range(-ncoeff,1)] #phase of negative spectrum, make symmetric for positive.
     for n in range(1,ncoeff+1):
         phase.append(-phase[-(2*n)])
@@ -66,11 +111,23 @@ def get_noise(ncoeff, seq_length):
 
 # SET VALUES
 # Low-pass filter design parameters
-fs = 12e6          # Sample rate, Hz
-cutoff = 100e3     # Desired cutoff frequency, Hz
+fs = 12e6           # Sample rate, Hz
+cutoff = 100e3      # Desired cutoff frequency, Hz
 trans_width = 50e3  # Width of transition from pass band to stop band, Hz
-numtaps = 512      # Size of the FIR filter.
+numtaps = 512       # Size of the FIR filter.
 wave_freq = -1.8e6  # 1.8 MHz below centre freq (12.2 MHz if ctr = 14 MHz)
+ctrfreq = 14000     # kHz
+
+# GET SAMPLES AND decimate.
+# num_samples, pulse_samples=make_pulse_train(fs, wave_freq)
+# Assume this is a received signal of ours.
+#pulse_samples, fft_of_samps, fft_freqs=get_noise(1000)
+
+pulse_samples = np.random.randn(1000) # Gaussian distributed noise
+
+# use the first filter to get down to approximately 250 kHz bandwidth.
+# we are at baseband centered around 12 MHz (ctrfreq)
+# shift filter the appropriate amount,
 
 lpass = signal.remez(numtaps, [0, cutoff, cutoff + trans_width, 0.5*fs],
                     [1, 0], Hz=fs)
@@ -78,7 +135,19 @@ lpass = signal.remez(numtaps, [0, cutoff, cutoff + trans_width, 0.5*fs],
 shift_wave = get_samples(fs,wave_freq,numtaps)
 bpass = np.array([l*i for l,i in zip(lpass,shift_wave)])
 
+output = signal.convolve(pulse_samples,bpass,mode='full') / sum(bpass)
+
+# Uncomment to plot the fft after first filter stage.
+response1 = plot_fft(output,fs)
+#
+# downsample
+decimation_rate = 10
+new_fs = float(fs) / decimation_rate
+output_down=downsample(output, decimation_rate)
+response2 = plot_fft(output_down, new_fs)
+response3 = plot_fft(pulse_samples, fs)
 w,h = signal.freqz(bpass, whole=True)
+
 
 # noise_seq,noise_fft,noise_freq=get_noise(20,100)
 # fig5 = plt.figure()
@@ -108,5 +177,3 @@ plt.plot(np.arange(len(bpass)),bpass)
 plt.plot(np.arange(len(lpass)),lpass)
 
 plt.show()
-
-
