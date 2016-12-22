@@ -44,14 +44,23 @@ def get_noise(ncoeff, seq_length):
     phase=[random.uniform(0,2*math.pi) for n in range(-ncoeff,1)] #phase of negative spectrum, make symmetric for positive.
     for n in range(1,ncoeff+1):
         phase.append(-phase[-(2*n)])
-    freq=[float(n)/(2*math.pi) for n in range(-ncoeff,ncoeff+1)]
+    phase = np.array(phase)
+
+    freq=np.array([float(n)/(2*math.pi) for n in range(-ncoeff,ncoeff+1)])
+
+    noise_calc = lambda fk,phi: (1.0/fk)*np.exp(phi*1j)
+    coeff = np.array([noise_calc(fk,phi) for fk,phi in zip(freq,phase)])
+    coeff[np.abs(coeff) == np.inf] = 0
     #print(type(math.exp(phase[1]*1j)))
-    zip1=zip(freq[0:ncoeff],phase[0:ncoeff])
-    zip2=zip(freq[ncoeff+1:],phase[ncoeff+1:])
-    coeff=np.empty([len(freq)],dtype=complex)
-    coeff=np.array([(1/fk)*cmath.exp(phi*1j) for fk,phi in zip1] + [0] + [(1/fk)*cmath.exp(phi*1j) for fk,phi in zip2], dtype=complex)
-    print(len(freq))
-    print(len(coeff))
+    # zip1=zip(freq[0:ncoeff],phase[0:ncoeff])
+    # zip2=zip(freq[ncoeff+1:],phase[ncoeff+1:])
+    #coeff=np.empty([len(freq)],dtype=complex)
+    # noise_calc = lambda fk,phi: (1.0/fk)*cmath.exp(phi*1j)
+    # negative_side = [noise_calc(fk,phi) for fk,phi in ]
+    # coeff=np.array([(1/fk)*cmath.exp(phi*1j) for fk,phi in zip1] + [0] + [(1/fk)*cmath.exp(phi*1j) for fk,phi in zip2], dtype=complex)
+    # print(len(freq))
+    # print(len(coeff))
+    print(np.abs(coeff))
     sequence=ifft(coeff)
     return sequence,np.abs(coeff),freq
 
@@ -71,14 +80,12 @@ bpass = np.array([l*i for l,i in zip(lpass,shift_wave)])
 
 w,h = signal.freqz(bpass, whole=True)
 
-#noise_seq,noise_fft,noise_freq=get_noise(20,100)
-#fig5 = plt.figure()
-#plt.plot(np.arange(len(noise_seq)),noise_seq)
-#plt.plot(noise_freq,noise_fft)
+# noise_seq,noise_fft,noise_freq=get_noise(20,100)
+# fig5 = plt.figure()
+# plt.plot(np.arange(len(noise_seq)),noise_seq)
+# plt.plot(noise_freq,noise_fft)
 
-fig4 = plt.figure()
-plt.plot(np.arange(len(bpass)),bpass)
-plt.plot(np.arange(len(lpass)),lpass)
+
 fig = plt.figure()
 plt.title('Digital filter frequency response')
 ax1 = fig.add_subplot(111)
@@ -94,6 +101,11 @@ plt.axis('tight')
 
 fig2 = plot_fft(bpass,fs)
 fig3 = plot_fft(lpass,fs)
+
+fig4 = plt.figure()
+plt.title("Time domain lowpass and bandpass")
+plt.plot(np.arange(len(bpass)),bpass)
+plt.plot(np.arange(len(lpass)),lpass)
 
 plt.show()
 
