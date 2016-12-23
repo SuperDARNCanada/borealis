@@ -52,7 +52,7 @@ def make_pulse_train(fs,wave_freq):
     samples=np.empty([sampleslen],dtype=complex)
     i=1
     for pulse_time in pulse_train:
-        if pulse_train.index(pulse_time)!=0:    
+        if pulse_train.index(pulse_time)!=0:
             numzeros=(pulse_time-(pulse_train[pulse_train.index(pulse_time)-1]+1))*mpinc*1e-6*rate*1000
             for num in range(0,numzeros):
                 samples[i]=0
@@ -65,7 +65,7 @@ def make_pulse_train(fs,wave_freq):
             samples[i]=0
             i=i+1
     if i!=sampleslen-1:
-        print("ERROR Sampleslen")    
+        print("ERROR Sampleslen")
         print(i,sampleslen)
     return sampleslen, samples
 
@@ -75,7 +75,7 @@ def downsample(samples, rate):
     samples_down=np.empty([sampleslen],dtype=complex)
     samples_down[0]=samples[0]
     print sampleslen
-    for i in range(1,len(samples)): 
+    for i in range(1,len(samples)):
         if i%rate==0:
             #print(i/rate)
             samples_down[i/rate]=samples[i]
@@ -89,14 +89,23 @@ def get_noise(ncoeff):
     phase=[random.uniform(0,2*math.pi) for n in range(-ncoeff,1)] #phase of negative spectrum, make symmetric for positive.
     for n in range(1,ncoeff+1):
         phase.append(-phase[-(2*n)])
-    freq=[float(n)/(2*math.pi) for n in range(-ncoeff,ncoeff+1)]
+    phase = np.array(phase)
+
+    freq=np.array([float(n)/(2*math.pi) for n in range(-ncoeff,ncoeff+1)])
+
+    noise_calc = lambda fk,phi: (1.0/fk)*np.exp(phi*1j)
+    coeff = np.array([noise_calc(fk,phi) for fk,phi in zip(freq,phase)])
+    coeff[np.abs(coeff) == np.inf] = 0
     #print(type(math.exp(phase[1]*1j)))
-    zip1=zip(freq[0:ncoeff],phase[0:ncoeff])
-    zip2=zip(freq[ncoeff+1:],phase[ncoeff+1:])
-    coeff=np.empty([len(freq)],dtype=complex)
-    coeff=np.array([(1/fk)*cmath.exp(phi*1j) for fk,phi in zip1] + [0] + [(1/fk)*cmath.exp(phi*1j) for fk,phi in zip2], dtype=complex)
-    print(len(freq))
-    print(len(coeff))
+    # zip1=zip(freq[0:ncoeff],phase[0:ncoeff])
+    # zip2=zip(freq[ncoeff+1:],phase[ncoeff+1:])
+    #coeff=np.empty([len(freq)],dtype=complex)
+    # noise_calc = lambda fk,phi: (1.0/fk)*cmath.exp(phi*1j)
+    # negative_side = [noise_calc(fk,phi) for fk,phi in ]
+    # coeff=np.array([(1/fk)*cmath.exp(phi*1j) for fk,phi in zip1] + [0] + [(1/fk)*cmath.exp(phi*1j) for fk,phi in zip2], dtype=complex)
+    # print(len(freq))
+    # print(len(coeff))
+    print(np.abs(coeff))
     sequence=ifft(coeff)
     return sequence,np.abs(coeff),freq
 
@@ -132,7 +141,7 @@ plt.plot(np.arange(len(pulse_samples)),pulse_samples)
 
 # use the first filter to get down to approximately 250 kHz bandwidth.
 # we are at baseband centered around 12 MHz (ctrfreq)
-# shift filter the appropriate amount, 
+# shift filter the appropriate amount,
 
 lpass = signal.remez(numtaps, [0, cutoff, cutoff + trans_width, 0.5*fs],
                     [1, 0], Hz=fs)
@@ -153,9 +162,12 @@ output_down=downsample(output, decimation_rate)
 response2 = plot_fft(output_down, new_fs)
 w,h = signal.freqz(bpass, whole=True)
 
-fig4 = plt.figure()
-plt.plot(np.arange(len(bpass)),bpass)
-plt.plot(np.arange(len(lpass)),lpass)
+# noise_seq,noise_fft,noise_freq=get_noise(20,100)
+# fig5 = plt.figure()
+# plt.plot(np.arange(len(noise_seq)),noise_seq)
+# plt.plot(noise_freq,noise_fft)
+
+
 fig = plt.figure()
 plt.title('Digital filter frequency response')
 ax1 = fig.add_subplot(111)
@@ -171,5 +183,10 @@ plt.axis('tight')
 
 fig2 = plot_fft(bpass,fs)
 fig3 = plot_fft(lpass,fs)
+
+fig4 = plt.figure()
+plt.title("Time domain lowpass and bandpass")
+plt.plot(np.arange(len(bpass)),bpass)
+plt.plot(np.arange(len(lpass)),lpass)
 
 plt.show()
