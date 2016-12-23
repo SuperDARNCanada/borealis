@@ -40,9 +40,6 @@ def get_samples(rate,wave_freq,numberofsamps):
         samples[i]=amp*math.cos(rads)+amp*math.sin(rads)*1j
     return samples
 
-# Create a signal (pink noise)
-# in frequency domain
-
 def make_pulse_train(fs,wave_freq):
     pullen=300 # us
     mpinc=1500 # us
@@ -84,6 +81,9 @@ def downsample(samples, rate):
             samples_down[i/rate]=samples[i]
     return samples_down
 
+# Create a signal (pink noise)
+# in frequency domain
+
 def get_noise(ncoeff):
     #seq_length = float(seq_length)
     phase=[random.uniform(0,2*math.pi) for n in range(-ncoeff,1)] #phase of negative spectrum, make symmetric for positive.
@@ -114,7 +114,21 @@ ctrfreq = 14000     # kHz
 # Assume this is a received signal of ours.
 #pulse_samples, fft_of_samps, fft_freqs=get_noise(1000)
 
-pulse_samples = np.random.randn(1000) # Gaussian distributed noise
+#pulse_samples = np.random.randn(1000) # Gaussian distributed noise
+
+# FIGURE 1: FFT of pulse samples
+pulse_fft = np.sinc(np.linspace(-10,10,1000))
+fig6 = plt.figure()
+plt.plot(np.arange(len(pulse_fft)),pulse_fft)
+# FIGURE 2: IFFT, pulse samples in time domain.
+pulse_samples = ifft(pulse_fft)
+# FIGURE 3: FFT, pulse samples re-fft'd TODO: Figure out why this is different
+response3 = plot_fft(pulse_samples, fs)
+
+#noise_seq,noise_fft,noise_freq=get_noise(20)
+fig5 = plt.figure()
+plt.plot(np.arange(len(pulse_samples)),pulse_samples)
+#plt.plot(noise_freq,noise_fft)
 
 # use the first filter to get down to approximately 250 kHz bandwidth.
 # we are at baseband centered around 12 MHz (ctrfreq)
@@ -132,17 +146,12 @@ output = signal.convolve(pulse_samples,bpass,mode='full') / sum(bpass)
 response1 = plot_fft(output,fs)
 #
 # downsample
-decimation_rate = 10
+# FIRST DECIMATION STAGE - 
+decimation_rate = 20
 new_fs = float(fs) / decimation_rate
 output_down=downsample(output, decimation_rate)
 response2 = plot_fft(output_down, new_fs)
-response3 = plot_fft(pulse_samples, fs)
 w,h = signal.freqz(bpass, whole=True)
-
-#noise_seq,noise_fft,noise_freq=get_noise(20)
-#fig5 = plt.figure()
-#plt.plot(np.arange(len(noise_seq)),noise_seq)
-#plt.plot(noise_freq,noise_fft)
 
 fig4 = plt.figure()
 plt.plot(np.arange(len(bpass)),bpass)
