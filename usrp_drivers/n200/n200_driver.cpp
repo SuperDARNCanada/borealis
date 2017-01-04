@@ -109,13 +109,13 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     if (sqn_num != expected_sqn_num){
       std::cout << "SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: "
         << expected_sqn_num << std::endl;
-      //TODO(keith) handle error
+      //TODO(keith): handle error
     }
 
     std::cout <<"TRANSMIT burst flags: SOB "  << dp.sob() << " EOB " << dp.eob() <<std::endl;
     std::chrono::steady_clock::time_point stream_begin = std::chrono::steady_clock::now();
     if (dp.channels_size() > 0 && dp.sob() == true && channels_set == false) {
-      std::cout << "TRANSMIT STARTING NEW PULSE SEQUENCE" <<std::endl;
+      std::cout << "TRANSMIT starting something new" <<std::endl;
       channels = make_channels(dp);
       stream_args.channels = channels;
       usrp_d->set_tx_rate(dp.txrate());  // ~450us
@@ -177,6 +177,8 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
 
     if ( (dp.sob() == true) ) {
+      //The USRP needs about a 10ms buffer into the future before time
+      //commands will correctly work
       time_zero = usrp_d->get_usrp()->get_time_now() + uhd::time_spec_t(10e-3);
     }
 
@@ -186,6 +188,7 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     auto tr_time_high = pulse_start_time - uhd::time_spec_t(tr_window_time_us);
     auto atten_time_high = tr_time_high - uhd::time_spec_t(atten_window_time_start_us);
+    tr_time_high = atten_time_high;
     auto scope_sync_high = atten_time_high;
     auto tr_time_low = pulse_start_time + pulse_len_time + uhd::time_spec_t(tr_window_time_us);
     auto atten_time_low = tr_time_low + uhd::time_spec_t(atten_window_time_end_us);
@@ -482,7 +485,7 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     std::chrono::steady_clock::time_point recv_begin = std::chrono::steady_clock::now();
     //TODO(keith) change to complex
     size_t mem_size = channels.size() * dp.numberofreceivesamples() * sizeof(float) * 2;
-    zmq::message_t cp_message(mem_size);
+    zmq::message_t cp_data_message(mem_size);
     stream_cmd.num_samps = size_t(dp.numberofreceivesamples() * channels.size());
     stream_cmd.stream_now = false;
     stream_cmd.time_spec = time_zero;
@@ -493,7 +496,7 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     std::cout << "samples to receive: " << dp.numberofreceivesamples() << " mem size "
     << mem_size << std::endl;
     while (total_received_samples < dp.numberofreceivesamples()) {
-      size_t num_rx_samps = rx_stream->recv(cp_message.data(),
+      size_t num_rx_samps = rx_stream->recv(cp_data_message.data(),
         (size_t)dp.numberofreceivesamples(), md.get_md(), 25, false);
 
       if (md.get_error_code() == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
@@ -516,17 +519,20 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
                                                   (recv_end - recv_begin).count()
       << "us" << std::endl;
 
-/*    for (int i =0; i<500;i++) {
-      buffer[i] = 1.0;
-    }*/
     std::cout << "RECEIVE total_received_samples " << total_received_samples << std::endl;
 
-/*    std::string cp_str;
+    std::chrono::steady_clock::time_point send_begin = std::chrono::steady_clock::now();
+
+    cp.set_size(dp.numberofreceivesamples());
+    std::string cp_str;
     cp.SerializeToString(&cp_str);
 
-    memcpy ((void *) cp_message.data (), cp_str.c_str(), cp_str.size());*/
-    std::chrono::steady_clock::time_point send_begin = std::chrono::steady_clock::now();
-    data_socket.send(cp_message);
+    zmq::message_t cp_size_message(cp_str.size());
+    memcpy ((void *) cp_size_message.data (), cp_str.c_str(), cp_str.size());
+
+    data_socket.send(cp_size_message);
+    data_socket.send(cp_data_message);
+
     std::chrono::steady_clock::time_point send_end = std::chrono::steady_clock::now();
     std::cout << "RECEIVE package and send timing: "
           << std::chrono::duration_cast<std::chrono::microseconds>(send_end - send_begin).count()
@@ -602,10 +608,14 @@ void control(zmq::context_t* driver_c) {
       <<std::endl;
 
     if (dp.eob() == true) {
-      zmq::message_t ack;
-      zmq::message_t data;
+      zmq::message_t ack, data, size;
 
+
+      data_socket.recv(&size);
+      //computation_socket.send(size);
       data_socket.recv(&data);
+      //computation_socket.send(data);
+
       ack_socket.recv(&ack);
 
 /*      computation_socket.send(data);

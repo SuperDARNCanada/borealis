@@ -14,18 +14,18 @@ extern "C" {
     #include "remez.h"
 }
 
-#define FIRST_STAGE_SAMPLE_RATE 1e6 //1 MHz
+#define FIRST_STAGE_SAMPLE_RATE 1.0e6 //1 MHz
 #define SECOND_STAGE_SAMPLE_RATE 0.1e6 // 100 kHz
-#define THIRD_STAGE_SAMPLE_RATE 10000.0/3.0 //3.33 kHz
+#define THIRD_STAGE_SAMPLE_RATE (10000.0/3.0) //3.33 kHz
 
-#define FIRST_STAGE_FILTER_CUTOFF 1e6
-#define FIRST_STAGE_FILTER_TRANSITION FIRST_STAGE_FILTER_CUTOFF * 0.5
+#define FIRST_STAGE_FILTER_CUTOFF 1.0e6
+#define FIRST_STAGE_FILTER_TRANSITION (FIRST_STAGE_FILTER_CUTOFF * 0.5)
 
 #define SECOND_STAGE_FILTER_CUTOFF 0.1e6
-#define SECOND_STAGE_FILTER_TRANSITION SECOND_STAGE_FILTER_CUTOFF * 0.5
+#define SECOND_STAGE_FILTER_TRANSITION (SECOND_STAGE_FILTER_CUTOFF * 0.5)
 
-#define THIRD_STAGE_FILTER_CUTOFF 10000.0/3.0
-#define THIRD_STAGE_FILTER_TRANSITION THIRD_STAGE_FILTER_CUTOFF * 0.25
+#define THIRD_STAGE_FILTER_CUTOFF (10000.0/3.0)
+#define THIRD_STAGE_FILTER_TRANSITION (THIRD_STAGE_FILTER_CUTOFF * 0.25)
 
 #define k 3 //from formula 7-6
 int main(int argc, char **argv){
@@ -54,6 +54,11 @@ int main(int argc, char **argv){
         rate_f = SECOND_STAGE_SAMPLE_RATE/THIRD_STAGE_SAMPLE_RATE;
         third_stage_dm_rate = static_cast<uint32_t>(rate_f);
     }
+
+    std::cout << "1st stage dm rate: " << first_stage_dm_rate << std::endl
+        << "2nd stage taps: " << second_stage_dm_rate << std::endl
+        << "3rd stage taps: " << third_stage_dm_rate <<std::endl;
+
 
     auto S_lowpass1 = k * (rx_rate/FIRST_STAGE_FILTER_TRANSITION);
     auto S_lowpass2 = k * (FIRST_STAGE_SAMPLE_RATE/SECOND_STAGE_FILTER_TRANSITION);
