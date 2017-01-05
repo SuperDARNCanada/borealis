@@ -4,6 +4,8 @@
 #include <thread>
 #include <complex>
 #include <iostream>
+#include <fstream>
+#include <chrono>
 #include <stdint.h>
 #include <math.h>
 
@@ -28,6 +30,20 @@ extern "C" {
 #define THIRD_STAGE_FILTER_TRANSITION (THIRD_STAGE_FILTER_CUTOFF * 0.25)
 
 #define k 3 //from formula 7-6
+
+
+
+std::vector<double> create_normalized_lowpass_filter_bands(float cutoff, float transition_band,
+                        float Fs) {
+    std::vector<double> filterbands;
+    filterbands.push_back(0.0);
+    filterbands.push_back(cutoff/Fs);
+    filterbands.push_back((cutoff + transition_band)/Fs);
+    filterbands.push_back(0.5);
+
+    return filterbands;
+}
+
 int main(int argc, char **argv){
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
@@ -67,14 +83,83 @@ int main(int argc, char **argv){
     std::cout << "1st stage taps: " << S_lowpass1 << std::endl << "2nd stage taps: "
         << S_lowpass2 << std::endl << "3rd stage taps: " << S_lowpass3 <<std::endl;
 
-    while(1){
-/*        sig_proc_socket.recv(&request);
+
+    std::chrono::steady_clock::time_point timing_start = std::chrono::steady_clock::now();
+    std::vector<double> filterbands_1;
+    filterbands_1 = create_normalized_lowpass_filter_bands(FIRST_STAGE_FILTER_CUTOFF,
+                        FIRST_STAGE_FILTER_TRANSITION, rx_rate);
+
+    std::vector<double> filterbands_2;
+    filterbands_2 = create_normalized_lowpass_filter_bands(SECOND_STAGE_FILTER_CUTOFF,
+                        SECOND_STAGE_FILTER_TRANSITION, FIRST_STAGE_SAMPLE_RATE);
+
+    std::vector<double> filterbands_3;
+    filterbands_3 = create_normalized_lowpass_filter_bands(THIRD_STAGE_FILTER_CUTOFF,
+                        THIRD_STAGE_FILTER_TRANSITION, SECOND_STAGE_SAMPLE_RATE);
+
+    std::vector<double> filtertaps_1(S_lowpass1+1);
+    std::vector<double> filtertaps_2(S_lowpass2+1);
+    std::vector<double> filtertaps_3(S_lowpass3+1);
+
+    std::vector<double> desired_band_gain = {1.0,0.0};
+    std::vector<double> weight = {1.0,1.0};
+
+    auto converges = remez(filtertaps_1.data(),filtertaps_1.capacity(),(filterbands_1.size()/2),
+        filterbands_1.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY);
+    if (converges < 0){
+        std::cerr << "Filter 1 failed to converge!" << std::endl;
+        //TODO(keith): throw error
+    }
+
+    converges = remez(filtertaps_2.data(),filtertaps_2.capacity(),(filterbands_2.size()/2),
+        filterbands_2.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY);
+    if (converges < 0){
+        std::cerr << "Filter 2 failed to converge!" << std::endl;
+        //TODO(keith): throw error
+    }
+
+    converges = remez(&filtertaps_3[0],filtertaps_3.capacity(),(filterbands_3.size()/2),
+        filterbands_3.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY);
+    if (converges < 0){
+        std::cerr << "Filter 3 failed to converge!" << std::endl;
+        //TODO(keith): throw error
+    }
+
+    std::chrono::steady_clock::time_point timing_end = std::chrono::steady_clock::now();
+    std::cout << "Time to create 3 filters: "
+      << std::chrono::duration_cast<std::chrono::microseconds>
+                                                  (timing_end - timing_start).count()
+      << "us" << std::endl;
+
+    std::ofstream filter1;
+    filter1.open("filter1coefficients.dat");
+    for (auto i : filtertaps_1){
+        filter1 << i << std::endl;
+    }
+    filter1.close();
+
+    std::ofstream filter2;
+    filter2.open("filter2coefficients.dat");
+    for (auto i : filtertaps_2){
+        filter2 << i << std::endl;
+    }
+    filter2.close();
+
+    std::ofstream filter3;
+    filter3.open("filter3coefficients.dat");
+    for (auto i : filtertaps_3){
+        filter3 << i << std::endl;
+    }
+    filter3.close();
+
+/*    while(1){
+        sig_proc_socket.recv(&request);
         computationpacket::ComputationPacket cp;
         std::string msg_str(static_cast<char*>(request.data()), request.size());
-        cp.ParseFromString(msg_str);*/
+        cp.ParseFromString(msg_str);
 
         sleep(1);
 
-    }
+    }*/
 
 }

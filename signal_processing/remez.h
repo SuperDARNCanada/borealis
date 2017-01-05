@@ -24,6 +24,8 @@
 #ifndef __REMEZ_H__
 #define __REMEZ_H__
 
+
+#define CONST const
 #define BANDPASS       1
 #define DIFFERENTIATOR 2
 #define HILBERT        3
@@ -31,15 +33,18 @@
 #define NEGATIVE       0
 #define POSITIVE       1
 
-#define GRIDDENSITY    16
-#define MAXITERATIONS  90
+#define Pi             3.1415926535897932
+#define Pi2            6.2831853071795865
 
+#define GRIDDENSITY    16
+#define MAXITERATIONS  40
 /* Function prototype for remez() - the only function that should need be
  * called from external code
  */
-void remez(double h[], int numtaps,
-           int numband, double bands[], double des[], double weight[],
-           int type);
+int remez(double h[], int numtaps,
+          int numband, const double bands[],
+          const double des[], const double weight[],
+          int type, int griddensity);
 
 #endif /* __REMEZ_H__ */
 
