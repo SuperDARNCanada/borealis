@@ -4,10 +4,10 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft,fftshift
 
-def create_signal_1(num_samps,rate):
+def create_signal_1(freq1, freq2, num_samps,rate):
 
-    f1 = 5e3 + 2 * np.random.randn(num_samps)
-    f2 = 10e3 + 2 * np.random.randn(num_samps)
+    f1 = freq1 + 2 * np.random.randn(num_samps)
+    f2 = freq2 + 2 * np.random.randn(num_samps)
 
     t = np.arange(num_samps)/rate
 
@@ -34,11 +34,11 @@ def plot_fft(samplesa, rate):
 #    plt.xlim([-2500000,-2000000])
     return fig
 
-sig1 = create_signal_1(10000,25e3)
+#sig1 = create_signal_1(10000,25e3)
 
-fig_1 = plot_fft(sig1,25e3)
+#fig_1 = plot_fft(sig1,25e3)
 
-plt.show()
+#plt.show()
 
 
 

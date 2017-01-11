@@ -7,6 +7,7 @@ from scipy.fftpack import fft,ifft,fftshift
 import math
 import random
 import cmath
+import test_signals
 
 def plot_fft(samplesa, rate):
     fft_samps=fft(samplesa)
@@ -126,11 +127,13 @@ ctrfreq = 14000     # kHz
 #pulse_samples = np.random.randn(1000) # Gaussian distributed noise
 
 # FIGURE 1: FFT of pulse samples
-pulse_fft = np.sinc(np.linspace(-10,10,1000))
-fig6 = plt.figure()
-plt.plot(np.arange(len(pulse_fft)),pulse_fft)
+#pulse_fft = np.sinc(np.linspace(-10,10,1000))
+#fig6 = plt.figure()
+#plt.plot(np.arange(len(pulse_fft)),pulse_fft)
 # FIGURE 2: IFFT, pulse samples in time domain.
-pulse_samples = ifft(pulse_fft)
+#pulse_samples = ifft(pulse_fft)
+
+pulse_samples = test_signals.create_signal_1(wave_freq,4.0e6,1000,fs)
 # FIGURE 3: FFT, pulse samples re-fft'd TODO: Figure out why this is different
 response3 = plot_fft(pulse_samples, fs)
 
