@@ -86,7 +86,9 @@ ENV_OVERRIDES = {
 ENV_EXTENSIONS = {
     '_common': dict(
         # Common flags for all C++ builds
-        CCFLAGS = ['-std=c++11', '-Wall'],
+        CCFLAGS = ['-Wall'],
+        CXXFLAGS = ['-std=c++11'],
+        CFLAGS = ['-std=c99'],
         # Modules should be able to include relative to build root dir
         CPPPATH = ['#$BUILDROOT'],
     ),
