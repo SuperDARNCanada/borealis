@@ -89,12 +89,14 @@ ENV_EXTENSIONS = {
         CCFLAGS = ['-Wall'],
         CXXFLAGS = ['-std=c++11'],
         CFLAGS = ['-std=c99'],
+        NVCCFLAGS = ['-gencode', 'arch=compute_30,code=sm_30'],
         # Modules should be able to include relative to build root dir
         CPPPATH = ['#$BUILDROOT'],
     ),
     'debug': dict(
         # Extra flags for debug C++ builds
         CCFLAGS = ['-g', '-DDEBUG'],
+        NVCCFLAGS = ['-G'],
     ),
     'release': dict(
         # Extra flags for release C++ builds

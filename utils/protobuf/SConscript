@@ -35,7 +35,8 @@ RadarProtos = []
 #		if ".proto" in filename:
 #			RadarProtos.append(filename)
 
-RadarProtos = ['driverpacket.proto','computationpacket.proto']
+RadarProtos = ['driverpacket.proto','computationpacket.proto',
+                'receiverpacket.proto']
 #print(RadarProtos)
 Proto(RadarProtos)
 
