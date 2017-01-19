@@ -20,7 +20,7 @@ int main(int argc, char** argv){
 
     receiverpacket::ReceiverPacket rp;
 
-    std::vector<double> rxfreqs = {0.};
+    std::vector<double> rxfreqs = {0.,0.,0.};
     for (int i=0; i<rxfreqs.size(); i++) {
         rp.add_rxfreqs(i);
         rp.set_rxfreqs(i,rxfreqs[i]);

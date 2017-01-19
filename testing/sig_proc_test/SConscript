@@ -29,5 +29,8 @@ import os
 
 Import('*')
 
-Prog('sig_proc_test', Glob("./*.c*"), with_libs='utils::utils',
+Prog('sig_proc_test', Glob("./sig_proc_test.cpp"), with_libs='utils::utils',
+     LIBS=['protobuf','pthread','zmq'])
+
+Prog('decimate_single_core', Glob("./decimate_single_core.cpp"), with_libs='utils::utils',
      LIBS=['protobuf','pthread','zmq'])

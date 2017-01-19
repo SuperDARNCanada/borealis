@@ -88,49 +88,54 @@ std::vector<cudaDeviceProp> get_gpu_properties(){
 
 __global__ void decimate(T_COMPLEX_F* original_samples,
     T_COMPLEX_F* decimated_samples,
-    T_COMPLEX_F* filter_taps, uint32_t num_taps,
+    T_COMPLEX_F* filter_taps, uint32_t dm_rate,
     uint32_t num_original_samples) {
 
     extern __shared__ T_COMPLEX_F filter_products[];
 
     auto channel_num = blockIdx.y;
-    auto channel_idx = channel_num * num_original_samples;
+    auto channel_offset = channel_num * num_original_samples;
 
 
     auto dec_sample_num = blockIdx.x;
-    auto dec_sample_idx = dec_sample_num * blockDim.x;
+    auto dec_sample_offset = dec_sample_num * dm_rate;
 
-    auto tap_idx = threadIdx.x;
+    auto tap_offset = threadIdx.x;
+    auto bp_filter_offset = blockIdx.z * blockIdx.x;
 
     T_COMPLEX_F sample;
-    if ((dec_sample_idx + tap_idx) >= num_original_samples) {
+    if ((dec_sample_offset + tap_offset) >= num_original_samples) {
         sample = T_COMPLEX_F(0.0,0.0);
     }
     else {
-        auto final_idx = channel_idx + dec_sample_idx + tap_idx;
-        sample = original_samples[final_idx];
+        auto final_offset = channel_offset + dec_sample_offset + tap_offset;
+        sample = original_samples[final_offset];
     }
 
 
-    filter_products[tap_idx] = sample * filter_taps[tap_idx];
+    filter_products[tap_offset] = sample * filter_taps[bp_filter_offset + tap_offset];
 
     __syncthreads();
 
 
     //Simple parallel sum/reduction algorithm
     //http://developer.download.nvidia.com/compute/cuda/1.1-Beta/x86_website/projects/reduction/doc/reduction.pdf
+    auto num_taps = blockDim.x;
     for(uint32_t stride=num_taps/2; stride>0; stride>>=1) {
-        if (tap_idx < stride) {
-            filter_products[tap_idx] = filter_products[tap_idx] +
-                                            filter_products[tap_idx + stride];
+        if (tap_offset < stride) {
+            filter_products[tap_offset] = filter_products[tap_offset] +
+                                            filter_products[tap_offset + stride];
 
         }
         __syncthreads();
     }
 
-    if (tap_idx == 0) {
-        channel_idx = channel_num * blockDim.x;
-        decimated_samples[channel_idx + dec_sample_num] = filter_products[tap_idx];
+    if (tap_offset == 0) {
+        channel_offset = channel_num * num_original_samples/dm_rate;
+        auto total_channels = blockDim.y;
+        auto freq_offset = blockIdx.z * total_channels;
+        auto total_offset = freq_offset + channel_offset + dec_sample_num;
+        decimated_samples[total_offset] = filter_products[tap_offset];
     }
 
 }
@@ -196,8 +201,8 @@ int main(int argc, char **argv){
     }
 
     std::cout << "1st stage dm rate: " << first_stage_dm_rate << std::endl
-        << "2nd stage taps: " << second_stage_dm_rate << std::endl
-        << "3rd stage taps: " << third_stage_dm_rate <<std::endl;
+        << "2nd stage dm rate: " << second_stage_dm_rate << std::endl
+        << "3rd stage dm rate: " << third_stage_dm_rate <<std::endl;
 
 
     auto S_lowpass1 = k * (rx_rate/FIRST_STAGE_FILTER_TRANSITION);
@@ -320,25 +325,26 @@ int main(int argc, char **argv){
         timing_start = std::chrono::steady_clock::now();
         //Creates a vector that holds a host vector of filter coefficients for
         //each frequency. Each host vector is defaulted to the size of the filter
-        std::vector<T_HOST_V(T_COMPLEX_F)> filter1_bp_coefs_h(rx_freqs.size(),
-                T_HOST_V(T_COMPLEX_F)(filtertaps_1.size()));
+        T_HOST_V(T_COMPLEX_F) filtertaps_1_bp_h(rx_freqs.size()*filtertaps_1.size());
 
         for (int i=0; i<rx_freqs.size(); i++) {
             auto sampling_freq = 2 * M_PI * rx_freqs[i]/rx_rate;
-            auto vec_d = filter1_bp_coefs_h[i];
 
             for(int j=0;j < filtertaps_1.size(); j++) {
                 auto radians = fmod(sampling_freq * j,2 * M_PI);
                 auto I = filtertaps_1[j] * cos(radians);
                 auto Q = filtertaps_1[j] * sin(radians);
-                vec_d[j] = std::complex<float>(I,Q);
+                filtertaps_1_bp_h[i*filtertaps_1.size() + j] = std::complex<float>(I,Q);
             }
         }
 
-        std::vector<T_DEVICE_V(T_COMPLEX_F)> filter1_bp_coefs_d(rx_freqs.size());
-        for (int i=0; i<rx_freqs.size(); i++) {
-            filter1_bp_coefs_d[i] = filter1_bp_coefs_h[i];
-        }
+        T_DEVICE_V(T_COMPLEX_F) filtertaps_1_bp_d = filtertaps_1_bp_h;
+
+
+        T_DEVICE_V(T_COMPLEX_F) filtertaps_2_d(filtertaps_2.data(),
+                                                    filtertaps_2.data() + filtertaps_2.size());
+        T_DEVICE_V(T_COMPLEX_F) filtertaps_3_d(filtertaps_3.data(),
+                                                    filtertaps_3.data() + filtertaps_3.size());
         throw_on_cuda_error(cudaPeekAtLastError(), __FILE__,__LINE__);
 
         timing_end = std::chrono::steady_clock::now();
@@ -353,7 +359,8 @@ int main(int argc, char **argv){
         std::cout << num_blocks_x << std::endl;
         auto num_blocks_y = rp.num_channels();
         std::cout << num_blocks_y << std::endl;
-        dim3 dimGrid(num_blocks_x,num_blocks_y);
+        auto num_blocks_z = rx_freqs.size();
+        dim3 dimGrid(num_blocks_x,num_blocks_y,num_blocks_z);
 
         for (auto prop :gpu_properties) {
             if (filtertaps_1.size() > prop.maxThreadsPerBlock) {
@@ -365,16 +372,57 @@ int main(int argc, char **argv){
         std::cout << num_threads_x << std::endl;
         dim3 dimBlock(num_threads_x);
 
-        auto num_output_samples = rx_freqs.size() * cp.numberofreceivesamples()/first_stage_dm_rate;
+        auto num_output_samples = rx_freqs.size() * cp.numberofreceivesamples()/first_stage_dm_rate
+                                        * rp.num_channels();
         auto stage_1_output = T_DEVICE_V(T_COMPLEX_F)(num_output_samples,T_COMPLEX_F(1.0,0.0));
         throw_on_cuda_error(cudaPeekAtLastError(), __FILE__,__LINE__);
 
         auto rf_samples_p = thrust::raw_pointer_cast(rf_samples.data());
+        auto stage_1_output_p = thrust::raw_pointer_cast(stage_1_output.data());
+        auto shr_mem_taps = filtertaps_1.size() * sizeof(T_COMPLEX_F);
+        std::cout << shr_mem_taps << std::endl;
+        auto filter_p = thrust::raw_pointer_cast(filtertaps_1_bp_d.data());
+
+        decimate<<<dimGrid,dimBlock,shr_mem_taps>>>(rf_samples_p, stage_1_output_p, filter_p,
+                    filtertaps_1.size(), cp.numberofreceivesamples());
+        throw_on_cuda_error(cudaPeekAtLastError(), __FILE__,__LINE__);
+        cudaDeviceSynchronize();
+        for(int i = 0; i < 10; i++) {
+            std::cout << "output_samples[" << i << "] = " << stage_1_output[i] << std::endl;
+        }
+
+        timing_end = std::chrono::steady_clock::now();
+
+        std::cout << "First stage decimate timing: "
+          << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
+          << "us" << std::endl;
+
+/*        timing_start = std::chrono::steady_clock::now();
+
+        num_blocks_x = stage_1_output.size()/second_stage_dm_rate;
+        std::cout << num_blocks_x << std::endl;
+        dim3 dimGrid(num_blocks_x,num_blocks_y);
+
+        for (auto prop :gpu_properties) {
+            if (filtertaps_2.size() > prop.maxThreadsPerBlock) {
+                //TODO(Keith) : handle error
+            }
+        }
+
+        auto num_threads_x = filtertaps_2.size();
+        std::cout << num_threads_x << std::endl;
+        dim3 dimBlock(num_threads_x);
+
+        auto num_output_samples = rx_freqs.size() * stage_1_output.size()/second_stage_dm_rate;
+        auto stage_2_output = T_DEVICE_V(T_COMPLEX_F)(num_output_samples,T_COMPLEX_F(1.0,0.0));
+        throw_on_cuda_error(cudaPeekAtLastError(), __FILE__,__LINE__);
+
+
         auto output_p = thrust::raw_pointer_cast(stage_1_output.data());
         auto num_bytes_taps = filtertaps_1.size() * sizeof(T_COMPLEX_F);
         std::cout << num_bytes_taps << std::endl;
 
-        for (auto filter : filter1_bp_coefs_d) {
+        for (auto filter : filter1_bp_taps_d) {
             auto filter_p = thrust::raw_pointer_cast(filter.data());
             decimate<<<dimGrid,dimBlock,num_bytes_taps>>>(rf_samples_p, output_p, filter_p,
                         filtertaps_1.size(), cp.numberofreceivesamples());
@@ -389,12 +437,12 @@ int main(int argc, char **argv){
 
         std::cout << "First stage decimate timing: "
           << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
-          << "us" << std::endl;
+          << "us" << std::endl;      */
 
-        for (auto vec_d : filter1_bp_coefs_d) {
+/*        for (auto vec_d : filter1_bp_taps_d) {
             vec_d.clear();
             vec_d.shrink_to_fit();
-        }
+        }*/
     }
 
 }
