@@ -152,6 +152,11 @@ lpass = signal.remez(numtaps, [0, cutoff, cutoff + trans_width, 0.5*fs],
 shift_wave = get_samples(fs,wave_freq,numtaps)
 bpass = np.array([l*i for l,i in zip(lpass,shift_wave)])
 
+# plot shift_wave
+fig7 = plt.figure()
+plt.plot(range(0,numtaps),shift_wave)
+plt.title('Shift Wave Samples')
+
 output = signal.convolve(pulse_samples,bpass,mode='full') / sum(bpass)
 
 # Uncomment to plot the fft after first filter stage.
