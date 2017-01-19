@@ -34,12 +34,12 @@ def plot_fft(samplesa, rate):
 #    plt.xlim([-2500000,-2000000])
     return fig
 
-def get_samples(rate,wave_freq):
+def get_samples(rate,wave_freq,filter_len):
     rate = float(rate)
     wave_freq = float(wave_freq)
 
     sampling_freq=2*math.pi*wave_freq/rate
-    sampleslen=512
+    sampleslen=filter_len
     samples=np.empty([sampleslen],dtype=complex)
     for i in range(0,sampleslen):
         amp=1
@@ -47,8 +47,9 @@ def get_samples(rate,wave_freq):
         samples[i]=amp*math.cos(rads)+amp*math.sin(rads)*1j
     return samples
 
-lpass = signal.remez(175, [0, 5800, 6000, 8000, 8200, 11025], [0, 1, 0], Hz=22050, maxiter=50000000)
-shift_wave = get_samples(22050,-4000)
+filter_len=175
+lpass = signal.remez(filter_len, [0, 5800, 6000, 8000, 8200, 11025], [0, 1, 0], Hz=22050, maxiter=50000000)
+shift_wave = get_samples(22050,-4000,filter_len)
 bpass = np.array([l*i for l,i in zip(lpass,shift_wave)])
 
 

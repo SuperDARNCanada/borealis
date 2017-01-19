@@ -4,6 +4,7 @@ package receiverpacket;
 
 message ReceiverPacket {
     repeated double rxfreqs = 1;
-    repeated double nrang = 2;
-    repeated double frang = 3;
+    repeated uint32 nrang = 2;
+    repeated uint32 frang = 3;
+    uint32 sequencenum = 4;
 } 
