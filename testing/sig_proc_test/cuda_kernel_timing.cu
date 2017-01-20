@@ -30,7 +30,7 @@ int main() {
     for (int i=0; i<N; i++) {
 
         cudaEventRecord(start, 0);
-        dim3 dimGrid(83333,20,1);
+        dim3 dimGrid(84,20,1);
         dim3 dimBlock(1024);
         auto bytes = 1024 * sizeof(thrust::complex<float>);
         EmptyKernel<<<dimGrid,dimBlock>>>();

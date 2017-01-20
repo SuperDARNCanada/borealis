@@ -20,7 +20,7 @@ extern "C" {
 }
 
 #define T_DEVICE_V(x) thrust::device_vector<x>
-#define T_HOST_V(x) thrust::device_vector<x>
+#define T_HOST_V(x) thrust::host_vector<x>
 #define T_COMPLEX_F thrust::complex<float>
 
 #define FIRST_STAGE_SAMPLE_RATE 1.0e6 //1 MHz
@@ -93,7 +93,7 @@ __global__ void decimate(T_COMPLEX_F* original_samples,
 
     extern __shared__ T_COMPLEX_F filter_products[];
 
-    auto channel_num = blockIdx.y;
+    /*auto channel_num = blockIdx.y;
     auto channel_offset = channel_num * num_original_samples;
 
 
@@ -136,7 +136,7 @@ __global__ void decimate(T_COMPLEX_F* original_samples,
         auto freq_offset = blockIdx.z * total_channels;
         auto total_offset = freq_offset + channel_offset + dec_sample_num;
         decimated_samples[total_offset] = filter_products[tap_offset];
-    }
+    }*/
 
 }
 
@@ -340,7 +340,6 @@ int main(int argc, char **argv){
 
         T_DEVICE_V(T_COMPLEX_F) filtertaps_1_bp_d = filtertaps_1_bp_h;
 
-
         T_DEVICE_V(T_COMPLEX_F) filtertaps_2_d(filtertaps_2.data(),
                                                     filtertaps_2.data() + filtertaps_2.size());
         T_DEVICE_V(T_COMPLEX_F) filtertaps_3_d(filtertaps_3.data(),
@@ -387,9 +386,9 @@ int main(int argc, char **argv){
                     filtertaps_1.size(), cp.numberofreceivesamples());
         throw_on_cuda_error(cudaPeekAtLastError(), __FILE__,__LINE__);
         cudaDeviceSynchronize();
-        for(int i = 0; i < 10; i++) {
+/*        for(int i = 0; i < 10; i++) {
             std::cout << "output_samples[" << i << "] = " << stage_1_output[i] << std::endl;
-        }
+        }*/
 
         timing_end = std::chrono::steady_clock::now();
 

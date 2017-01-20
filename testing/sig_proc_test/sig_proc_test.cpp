@@ -42,7 +42,7 @@ int main(int argc, char** argv){
 
     computationpacket::ComputationPacket cp;
 
-    auto num_samples = 1000000;
+    auto num_samples = 1000000/2;
     cp.set_numberofreceivesamples(num_samples);
 
     auto default_v = std::complex<float>(2.0,2.0);
