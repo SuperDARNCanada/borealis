@@ -341,5 +341,12 @@ plt.plot(xf, angles1, 'm')
 plt.plot(xf, angles2, 'g')
 plt.plot(xf, angles3, 'r')
 
+# in time domain, all filtered outputs:
+fig7 = plt.figure()
+plt.plot(range(0,len(output1)), output1)
+plt.plot(range(0,len(output2)), output2)
+plt.plot(range(0,len(output3)), output3)
+
+
 
 plt.show()
