@@ -8,6 +8,7 @@ import math
 import random
 import cmath
 import test_signals
+import sys
 
 def plot_fft(samplesa, rate):
     fft_samps=fft(samplesa)
@@ -56,35 +57,6 @@ def get_samples(rate,wave_freq,numberofsamps,start_rads):
         samples[i]=amp*math.cos(rads)+amp*math.sin(rads)*1j
     return samples
 
-def make_pulse_train(fs,wave_freq):
-    pullen=300 # us
-    mpinc=1500 # us
-    pulse_train=[0]
-    #freq=10200 # kHz
-    wave_freq=wave_freq
-    rate=fs #kHz
-    sampleslen=int(mpinc*1e-6*(pulse_train[-1]+1)*rate*1000)
-    print sampleslen
-    samples=np.empty([sampleslen],dtype=complex)
-    i=1
-    for pulse_time in pulse_train:
-        if pulse_train.index(pulse_time)!=0:
-            numzeros=(pulse_time-(pulse_train[pulse_train.index(pulse_time)-1]+1))*mpinc*1e-6*rate*1000
-            for num in range(0,numzeros):
-                samples[i]=0
-                i=i+1
-        pulse=get_samples(rate*1000,wave_freq*1000,pullen*1e-6*rate*1000)
-        for samp in pulse:
-            samples[i]=samp
-            i=i+1
-        for num in range(0,int((mpinc-pullen)*1e-6*rate*1000)):
-            samples[i]=0
-            i=i+1
-    if i!=sampleslen-1:
-        print("ERROR Sampleslen")
-        print(i,sampleslen)
-    return sampleslen, samples
-
 def downsample(samples, rate):
     rate = int(rate)
     sampleslen = len(samples)/rate + 1 # should be an int
@@ -117,27 +89,26 @@ def band_limited_noise(min_freq, max_freq, samples=1024, samplerate=1):
 # SET VALUES
 # Low-pass filter design parameters
 fs = 12e6           # Sample rate, Hz
-wave_freq = -1.95e6  # 1.8 MHz below centre freq (12.2 MHz if ctr = 14 MHz)
+wave_freq = -2.55e6  # 1.8 MHz below centre freq (12.2 MHz if ctr = 14 MHz)
 ctrfreq = 14000     # kHz
 cutoff = 100e3      # Desired cutoff frequency, Hz
 trans_width = 50e3  # Width of transition from pass band to stop band, Hz
-numtaps = 512       # Size of the FIR filter.
+numtaps = 1024       # Size of the FIR filter.
 
-decimation_rate = 50.0
+decimation_rate = 18.0
 
 # Calculate for Frerking's filter, Rf/fs which must be rational.
 
 frerking = abs(decimation_rate * wave_freq / fs)
 # find number of filter coefficients
 
-for x in range(1, 100):
+for x in range(1, 100000):
     if x*frerking % 1 == 0:
         number_of_coeff_sets = x
         break
-else: # no break
-    # P is over 100, don't use.
-    sys.exit(["Error: number of coefficient sets required is too large."])
- 
+if number_of_coeff_sets > 100:
+    sys.exit(['Error: number of coefficient sets required is too large: %d' % number_of_coeff_sets])
+
 pulse_samples = test_signals.create_signal_1(wave_freq,4.0e6,10000,fs)
 #pulse_samples = 0.008*np.asarray(random.sample(range(-10000,10000),10000))
 #pulse_samples = band_limited_noise(-6000000,6000000,10000,fs)
@@ -199,14 +170,6 @@ for x in range(0,num_output_samps):
 print num_output_samps
 # Uncomment to plot the fft after first filter stage.
 #response1 = plot_fft(output,fs)
-#
-# downsample
-# FIRST DECIMATION STAGE - 
-
-# noise_seq,noise_fft,noise_freq=get_noise(20,100)
-# fig5 = plt.figure()
-# plt.plot(np.arange(len(noise_seq)),noise_seq)
-# plt.plot(noise_freq,noise_fft)
 
 
 fig2 = plot_all_ffts(bpass,fs)
@@ -295,7 +258,6 @@ for x in range(0,num_output_samps):
     output3=np.append(output3, samp)
 # Plot the output using Frerking's method
 new_fs = float(fs) / decimation_rate
-#output_down=downsample(output, decimation_rate)
 
 #
 #
@@ -347,6 +309,14 @@ plt.plot(range(0,len(output1)), output1)
 plt.plot(range(0,len(output2)), output2)
 plt.plot(range(0,len(output3)), output3)
 
-
-
+for n in range(0,len(output1)):
+    if output1[n] == output2[n] == output3[n]:
+        continue
+else:
+    print "NOT EQUAL: %d" % n
+    print output1[n]
+    print output2[n] 
+    print output3[n]
+    # WHY? The last output sample is not exactly equal but the rest are....
+    # Maybe a python float thing?
 plt.show()
