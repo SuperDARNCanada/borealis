@@ -89,7 +89,7 @@ def band_limited_noise(min_freq, max_freq, samples=1024, samplerate=1):
 # SET VALUES
 # Low-pass filter design parameters
 fs = 12e6           # Sample rate, Hz
-wave_freq = -2.55e6  # 1.8 MHz below centre freq (12.2 MHz if ctr = 14 MHz)
+wave_freq = -1.5e6  # 1.8 MHz below centre freq (12.2 MHz if ctr = 14 MHz)
 ctrfreq = 14000     # kHz
 cutoff = 100e3      # Desired cutoff frequency, Hz
 trans_width = 50e3  # Width of transition from pass band to stop band, Hz
@@ -102,7 +102,7 @@ decimation_rate = 18.0
 frerking = abs(decimation_rate * wave_freq / fs)
 # find number of filter coefficients
 
-for x in range(1, 100000):
+for x in range(1, 12000000):
     if x*frerking % 1 == 0:
         number_of_coeff_sets = x
         break

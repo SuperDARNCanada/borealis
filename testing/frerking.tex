@@ -1,0 +1,50 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{upgreek}
+\begin{document}
+    \section{Another representation of Frerking's method}
+        \paragraph{} 
+        Frerking's method is found in Frerking, M. E., \textit{Digital Signal Processing in Communications Systems}, Chapman \& Hall, 1994, pp. 171-174. It is a method for creating a frequency-translating FIR filter by translating the filter coefficients to a bandpass filter and then convolving with the input samples (to simultaneously mix to baseband and decimate). The method involves created multiple bandpass filters so as to maintain the linear phase property of the FIR filter. The number of bandpass filters (sets of coefficients) required is defined as $P$, and this value is also therefore the number of unique ${\phi}$ as shown below. The method can really be defined as doing the following:
+        
+        \begin{center}
+            ${{b}_k[n]} = h[n]e^{j({\phi}_k + 2{\pi}nf/{F}_s)} $
+        \end{center}
+        where ${b}_k$ are the bandpass filters from $k=0$ to $k=P$. ${h[n]}$ is the original low pass filter coefficient set of length $N$, $f$ is the translation frequency, and ${F}_s$ is the input sampling frequency. ${{\phi}_k}$ is the starting phase of the NCO (numerically controlled oscillator) being multiplied element by element with the low pass filter where 
+        \begin{center}
+            ${\phi}_k = 2{\pi}Rkf/{F}_s$
+        \end{center}
+        and where the minimum integer value $P$ is determined by the equation given by Frerking:
+        \begin{center}
+            $PRf/{F}_s = int,\ \ 1 \leq P \leq {F}_s $
+        \end{center}
+        
+        \paragraph{}
+        Then, to filter and decimate,
+        \begin{center}
+            ${y[m]} = {y[Rl]} = \sum\limits_{n=0}^N x[Rl-n]{b}_{(n{\bmod}P)}[n] $
+        \end{center}
+        where ${y[m]}$ is each baseband decimated sample,  and ${x[l]}$ is the input samples, and using Frerking's notation, $R$ is the decimation rate.
+        
+        \paragraph{} 
+        Our new sampling rate will be
+        \begin{center}
+            ${F}_{new} = {F}_{s}/R$
+        \end{center}
+        
+        \paragraph{}    
+        However, by using a single bandpass filter, Frerking's method can be rewritten to become more computationally efficient. The starting phase of the NCO on the filter coefficient set is pulled out from the sum, and then phase correction is done on the decimated samples after the convolution step.
+                
+        \begin{center}
+            ${{b}[n]} = h[n]e^{j({2{\pi}nf/{F}_s)}} $
+        \end{center}
+
+        \begin{center}
+            ${y[m]} = {y[Rl]} = e^{j{\phi}_k} \sum\limits_{n=0}^N x[Rl-n]{b[n]},\ \ k = m{\bmod}P $
+        \end{center} 
+        Both methods are equivalent:
+        \begin{center}   
+            $e^{j{\phi}_k} \sum\limits_{n=0}^N x[Rl-n]h[n]e^{j(2{\pi}nf/{F}_s)} = \sum\limits_{n=0}^N x[Rl-n]h[n]e^{j({\phi}_k + 2{\pi}nf/{F}_s)} $
+        \end{center}
+
+
+\end{document}\Psi 
