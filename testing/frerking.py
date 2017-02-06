@@ -7,8 +7,27 @@ from scipy.fftpack import fft,ifft,fftshift
 import math
 import random
 import cmath
-import test_signals
+#import test_signals
 import sys
+
+def create_signal_1(freq1, freq2, num_samps,rate):
+
+    f1 = freq1 + 2 * np.random.randn(num_samps)
+    f2 = freq2 + 2 * np.random.randn(num_samps)
+
+    t = np.arange(num_samps)/rate
+
+    sig = 10*np.exp(1j*2*np.pi*f1*t) + 10*np.exp(1j*2*np.pi*f2*t)
+
+    return sig
+
+def create_signal_2(freq1, freq2, num_samps,rate):
+
+    t = np.arange(num_samps)/rate
+
+    sig = 10*np.exp(1j*2*np.pi*freq1*t) + 10*np.exp(1j*2*np.pi*freq2*t)
+
+    return sig
 
 def isclose(a, b, rel_tol=1e-09, abs_tol=0.0):
     return abs(a-b) <= max(rel_tol * max(abs(a), abs(b)), abs_tol)
@@ -102,13 +121,32 @@ def band_limited_noise(min_freq, max_freq, samples=1024, samplerate=1):
 # SET VALUES
 # Low-pass filter design parameters
 fs = 12e6           # Sample rate, Hz
-wave_freq = -1.0e6  # 1.8 MHz below centre freq (12.2 MHz if ctr = 14 MHz)
+wave_freq = -0.96e6 # 1.8 MHz below centre freq (12.2 MHz if ctr = 14 MHz)
 ctrfreq = 14000     # kHz
 cutoff = 400e3      # Desired cutoff frequency, Hz
 trans_width = 50e3  # Width of transition from pass band to stop band, Hz
 numtaps = 1024       # Size of the FIR filter.
 
-decimation_rate = 40.0
+decimation_rate = 200.0
+
+# Set the number of output samples first so we can get correct number of 
+#   input samples to have our three frequencies all perfectly in the FFT
+#   bins.
+num_output_samps = 5001
+
+if numtaps > decimation_rate:
+    num_input_samps = num_output_samps*decimation_rate+numtaps
+    #num_output_samps = int((len(pulse_samples)-len(lpass))/decimation_rate)
+else:
+    num_input_samps = num_output_samps*decimation_rate
+    #num_output_samps = int(len(pulse_samples)/decimation_rate)
+
+fft_bin_increment = (fs/decimation_rate)/((num_output_samps-1)/2)
+
+# Set the frequencies depending on FFT bins so that we can prove 
+#   phase linearity.
+freq_2 = wave_freq+10*fft_bin_increment
+freq_3 = wave_freq-10*fft_bin_increment
 
 # Calculate for Frerking's filter, Rf/fs which must be rational.
 
@@ -122,11 +160,11 @@ for x in range(1, 12000000):
 if number_of_coeff_sets > 100:
     sys.exit(['Error: number of coefficient sets required is too large: %d' % number_of_coeff_sets])
 
-#pulse_samples = test_signals.create_signal_1(wave_freq,4.0e6,10000,fs)
+#pulse_samples = test_signals.create_signal_1(wave_freq,4.0e6,10000,fs) # with added noise
 #pulse_samples = 0.008*np.asarray(random.sample(range(-10000,10000),10000))
 #pulse_samples = band_limited_noise(-6000000,6000000,10000,fs)
-pulse_samples = test_signals.create_signal_1(wave_freq,0,10000,fs)
-pulse_samples += test_signals.create_signal_1(-1.02e6,-0.98e6,10000,fs)
+pulse_samples = create_signal_2(wave_freq,0,num_input_samps,fs) # without noise added
+pulse_samples += create_signal_2(freq_2,freq_3,num_input_samps,fs)
 
 print 'Fs = %d' % fs
 print 'F = %d' % wave_freq
@@ -157,10 +195,6 @@ for i in range(0, number_of_coeff_sets):
 
 
 # have to implement special convolution with multiple filters.
-if len(lpass) > decimation_rate:
-    num_output_samps = int((len(pulse_samples)-len(lpass))/decimation_rate)
-else:
-    num_output_samps = int(len(pulse_samples)/decimation_rate)
 
 #
 #
@@ -319,15 +353,22 @@ plt.plot(xf, angles2, 'b')
 plt.plot(xf, angles3, 'g')
 
 for ind,freq in enumerate(xf):
-    if freq == -20000.0:
+    if freq == -10*fft_bin_increment:
         angle1=angles1[ind]
-        print 'Angle 1: %d' % angle1
+        print 'Angle 1: %f Rads' % angle1
     if freq == 0.0:
         angle2=angles1[ind]
-        print 'Angle 2: %d' % angle2
-    if freq == 20000.0:
+        print 'Angle 2: %f Rads' % angle2
+    if freq == 10*fft_bin_increment:
         angle3=angles1[ind]
-        print 'Angle 3: %d' % angle3
+        print 'Angle 3: %f Rads' % angle3
+
+angle_offset1 = angle2-angle1
+angle_offset2 = angle3-angle2
+
+print 'Angle2 - Angle1 = %f = Angle3 - Angle2 = %f' % (angle2-angle1, angle3-angle2)
+
+print 'Error of : %f Degrees' % (abs(angle_offset2-angle_offset1)*360/(2*math.pi))
 
 # in time domain, all filtered outputs:
 fig7 = plt.figure()
