@@ -135,11 +135,11 @@ ctrfreq = 14000     # kHz
 
 pulse_samples = test_signals.create_signal_1(wave_freq,4.0e6,1000,fs)
 # FIGURE 3: FFT, pulse samples re-fft'd TODO: Figure out why this is different
-response3 = plot_fft(pulse_samples, fs)
+#:response3 = plot_fft(pulse_samples, fs)
 
 #noise_seq,noise_fft,noise_freq=get_noise(20)
-fig5 = plt.figure()
-plt.plot(np.arange(len(pulse_samples)),pulse_samples)
+#fig5 = plt.figure()
+#plt.plot(np.arange(len(pulse_samples)),pulse_samples)
 #plt.plot(noise_freq,noise_fft)
 
 # use the first filter to get down to approximately 250 kHz bandwidth.

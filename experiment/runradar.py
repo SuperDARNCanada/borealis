@@ -23,6 +23,7 @@ from scipy.signal import kaiserord, lfilter, firwin, freqz
 
 sys.path.append('../utils/protobuf')
 import driverpacket_pb2
+import receiverpacket_pb2
 import currentctrlprog # this brings in myprog.
 
 
@@ -33,7 +34,7 @@ def setup_tx_socket(): # to send pulses to driver.
     return cpsocket
 
 
-def setup_rx_socket(): #to send data to be written to iqdat.
+def setup_rx_socket(): #to send data to receive code.
     context=zmq.Context()
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("tcp://10.65.0.25:33044")
@@ -388,6 +389,37 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,
             
     return tx_ack
 	
+def data_to_receiver(receiverpacket, rxfreqs, nrang, frang, seqnum, 
+                     beamdirs):
+    """ Place data in the receiver packet and send it via zeromq to the
+        receiver unit.
+    """
+
+    receiverpacket.Clear()
+    for freq in rxfreqs:
+        freq_add=receiverpacket.rxfreqs.append(freq)
+    for numrang in nrang:
+        nrang_add=receiverpacket.nrang.append(numrang)
+    for firstrang in frang:
+        frang_add=receiverpacket.frang.append(firstrang)
+    receiverpacket.sequence_num=seqnum
+    # Don't need channel numbers, always send 20 beam directions
+    #for chan in channels:
+    #    receiverpacket.channels.append(chan)
+    # Beam directions will be formated e^i*phi so that a 0 will indicate not
+    # to receive on that channel.
+    
+    for i in range(0,len(rxfreqs)):
+        beam_array_add=receiverpacket.BeamDirections.add()
+        for phi in beamdirs[i,:]:
+            phase = math.exp(phi*1j)
+            receiverpacket.BeamDirections[i].phase.append(phase)
+    
+    # get response TODO
+    rx_ack = 1 
+
+    return rx_ack
+
 
 def main():
 
@@ -396,8 +428,8 @@ def main():
     # Initialize driverpacket.
     driverpacket=driverpacket_pb2.DriverPacket()
 
-    	
-
+    rxsocket=setup_rx_socket()
+    receiverpacket=receiverpacket_pb2.ReceiverPacket()
 
     while True:
         # Receive pulse data from run_RCP
@@ -586,6 +618,8 @@ def main():
                                         pulse_data[1], #endofburst, 
                                         pulse_list[1], repeat=False) 
                                 # Pulse is done.
+                            # TODO: SEND Sequence data to receiver to process with rx data.
+                            rxack = data_to_receiver(receiverpacket, nrangs, frangs, seqnum, beamdirs)
                             # Sequence is done
                             nave=nave+1
                         #print "updating time"
