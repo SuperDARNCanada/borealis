@@ -22,13 +22,18 @@ def plot_fft(samplesa, rate, title):
     else:
         #xf = np.arange(-1.0/(2.0*T), 1.0/(2.0*T),1.0/(T*num_samps))
         xf = np.linspace(-1.0/(2.0*T), 1.0/(2.0*T), num_samps)
-    fig, smpplt = plt.subplots(1,1)
+    fig= plt.figure()
+    ax1 = fig.add_subplot(111)
     fft_to_plot=np.empty([num_samps],dtype=complex)
     fft_to_plot=fftshift(fft_samps)
-    smpplt.plot(xf, 1.0/num_samps * np.abs(fft_to_plot))
-    smpplt.set_title(title)
-    smpplt.set_xlabel('Frequency (Hz)')
-    smpplt.set_ylabel('Amplitude')
+    plt.plot(xf, 1.0/num_samps * np.abs(fft_to_plot))
+    plt.title(title)
+    plt.xlabel('Frequency (Hz)')
+    plt.ylabel('Amplitude')
+    ax2 = ax1.twinx()
+    plt.ylabel('Phase [rads]', color='g')
+    angles=np.angle(fft_to_plot)
+    plt.plot(xf, angles, 'm')
     return fig
 
 def plot_all_ffts(bpass_filters, rate, title):
@@ -48,8 +53,7 @@ def plot_all_ffts(bpass_filters, rate, title):
     smpplt.set_title(title)
     smpplt.set_xlabel('Frequency (Hz)')
     smpplt.set_ylabel('Amplitude')
-    return fig
-    
+    return fig 
 
 def get_samples(rate,wave_freq,numberofsamps,start_rads):
     rate = float(rate)
@@ -98,13 +102,13 @@ def band_limited_noise(min_freq, max_freq, samples=1024, samplerate=1):
 # SET VALUES
 # Low-pass filter design parameters
 fs = 12e6           # Sample rate, Hz
-wave_freq = -1.5e6  # 1.8 MHz below centre freq (12.2 MHz if ctr = 14 MHz)
+wave_freq = -1.0e6  # 1.8 MHz below centre freq (12.2 MHz if ctr = 14 MHz)
 ctrfreq = 14000     # kHz
-cutoff = 100e3      # Desired cutoff frequency, Hz
+cutoff = 400e3      # Desired cutoff frequency, Hz
 trans_width = 50e3  # Width of transition from pass band to stop band, Hz
 numtaps = 1024       # Size of the FIR filter.
 
-decimation_rate = 18.0
+decimation_rate = 40.0
 
 # Calculate for Frerking's filter, Rf/fs which must be rational.
 
@@ -120,8 +124,9 @@ if number_of_coeff_sets > 100:
 
 #pulse_samples = test_signals.create_signal_1(wave_freq,4.0e6,10000,fs)
 #pulse_samples = 0.008*np.asarray(random.sample(range(-10000,10000),10000))
-pulse_samples = band_limited_noise(-6000000,6000000,10000,fs)
-pulse_samples = 
+#pulse_samples = band_limited_noise(-6000000,6000000,10000,fs)
+pulse_samples = test_signals.create_signal_1(wave_freq,0,10000,fs)
+pulse_samples += test_signals.create_signal_1(-1.02e6,-0.98e6,10000,fs)
 
 print 'Fs = %d' % fs
 print 'F = %d' % wave_freq
@@ -313,6 +318,17 @@ plt.plot(xf, angles1, 'm')
 plt.plot(xf, angles2, 'b')
 plt.plot(xf, angles3, 'g')
 
+for ind,freq in enumerate(xf):
+    if freq == -20000.0:
+        angle1=angles1[ind]
+        print 'Angle 1: %d' % angle1
+    if freq == 0.0:
+        angle2=angles1[ind]
+        print 'Angle 2: %d' % angle2
+    if freq == 20000.0:
+        angle3=angles1[ind]
+        print 'Angle 3: %d' % angle3
+
 # in time domain, all filtered outputs:
 fig7 = plt.figure()
 plt.title('Three Filtered Outputs Of Different Methods, Time Domain')
@@ -320,12 +336,12 @@ plt.plot(range(0,len(output1)), output1)
 plt.plot(range(0,len(output2)), output2)
 plt.plot(range(0,len(output3)), output3)
 
-for n in range(0,len(output1)):
-    if not isclose(output1[n], output2[n]) or not isclose(output2[n], output3[n]) or not isclose(output1[n],output3[n]):
-        print "NOT EQUAL: %d" % n
-        print output1[n]
-        print output2[n] 
-        print output3[n]
+#for n in range(0,len(output1)):
+#    if not isclose(output1[n], output2[n]) or not isclose(output2[n], output3[n]) or not isclose(output1[n],output3[n]):
+#        print "NOT EQUAL: %d" % n
+#        print output1[n]
+#        print output2[n] 
+#        print output3[n]
     # WHY? The last output sample is not exactly equal but the rest are....
     # Maybe a python float thing?
 plt.show()
