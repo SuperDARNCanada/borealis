@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package receiverpacket;
+
+message ReceiverPacket {
+    repeated RXChan rxchannel = 1;
+    uint32 sequence_num = 2;
+/*    uint32 num_channels = 5;*/
+
+    message RXChan {
+        double rxfreq = 1;
+        uint32 nrang = 2;
+        uint32 frang = 3;
+        repeated BeamDirections beam_directions = 4;
+
+        message BeamDirections {
+            repeated double phase = 1;
+        }
+    }
+
+}
