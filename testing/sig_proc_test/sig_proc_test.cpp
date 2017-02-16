@@ -36,8 +36,10 @@ int main(int argc, char** argv){
     }
 
     rp.set_num_channels(num_channels);
-    rp.set_nrang(75);
-    rp.set_frang(180);
+    rp.add_nrang(0);
+    rp.set_nrang(0,75);
+    rp.add_frang(0);
+    rp.set_frang(0,180);
 
 
     computationpacket::ComputationPacket cp;
@@ -47,7 +49,7 @@ int main(int argc, char** argv){
 
     auto default_v = std::complex<float>(2.0,2.0);
     std::vector<std::complex<float>> samples(num_samples*num_channels, default_v);
-
+    zmq::message_t data(samples.data(),samples.size()*sizeof(std::complex<float>));
 
 
 
@@ -67,6 +69,7 @@ int main(int argc, char** argv){
         zmq::message_t c_msg (c_msg_str.size());
         memcpy ((void *) c_msg.data (), c_msg_str.c_str(), c_msg_str.size());
 
+        std::cout << "sending data->>>" << std::endl;
         radctrl_socket.send(r_msg);
         driver_socket.send(c_msg);
 
