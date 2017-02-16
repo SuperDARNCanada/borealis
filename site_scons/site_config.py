@@ -100,7 +100,7 @@ ENV_EXTENSIONS = {
     ),
     'release': dict(
         # Extra flags for release C++ builds
-        CCFLAGS = ['-O2', '-DNDEBUG'],
+        CCFLAGS = ['-DNDEBUG'],
     ),
 }
 

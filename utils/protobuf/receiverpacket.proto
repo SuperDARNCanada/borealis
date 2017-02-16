@@ -7,7 +7,7 @@ message ReceiverPacket {
     repeated uint32 nrang = 2;
     repeated uint32 frang = 3;
     uint32 sequence_num = 4;
-/*    uint32 num_channels = 5;*/
+    uint32 num_channels = 5;
     repeated BeamDirections beam_directions = 6;
 
     message BeamDirections {

@@ -36,13 +36,15 @@ int main(int argc, char** argv){
     }
 
     rp.set_num_channels(num_channels);
-    rp.set_nrang(75);
-    rp.set_frang(180);
+    rp.add_nrang(0);
+    rp.set_nrang(0,75);
+    rp.add_frang(0);
+    rp.set_frang(0,180);
 
 
     computationpacket::ComputationPacket cp;
 
-    auto num_samples = 1000000/2;
+    auto num_samples = 1000000;
     cp.set_numberofreceivesamples(num_samples);
 
     auto default_v = std::complex<float>(2.0,2.0);
@@ -73,7 +75,7 @@ int main(int argc, char** argv){
         zmq::message_t data(samples.data(),samples.size()*sizeof(std::complex<float>));
         driver_socket.send(data);
 
-        sleep(1);
+        sleep(30);
 
     }
 
