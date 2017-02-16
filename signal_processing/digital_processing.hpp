@@ -33,7 +33,7 @@ class DigitalProcessing {
     void allocate_first_stage_output(uint32_t first_stage_samples);
     void allocate_second_stage_output(uint32_t second_stage_samples);
     void allocate_third_stage_output(uint32_t third_stage_samples);
-    void allocate_host_output(uint32_t host_samples);
+    void allocate_and_copy_host_output(uint32_t host_samples);
     void copy_output_to_host();
     void clear_device_and_destroy();
     void call_decimate(cuComplex* original_samples,cuComplex* decimated_samples,
@@ -74,7 +74,7 @@ class DigitalProcessing {
     cuComplex *third_stage_output;
     size_t third_stage_output_size;
 
-    std::vector<std::complex<float>> host_output;
+    cuComplex *host_output;
     size_t host_output_size;
 
     cudaEvent_t start, stop;

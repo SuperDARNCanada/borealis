@@ -271,14 +271,16 @@ void DigitalProcessing::allocate_third_stage_output(uint32_t third_stage_samples
     gpuErrchk(cudaMalloc(&third_stage_output, third_stage_output_size));
 }
 
-void DigitalProcessing::allocate_host_output(uint32_t host_samples) {
-    host_output_size = host_samples * sizeof(std::complex<float>);
-    //gpuErrchk(cudaHostAlloc(&host_output, host_output_size, cudaHostAllocDefault));
-    host_output = std::vector<std::complex<float>>(host_samples);
+void DigitalProcessing::allocate_and_copy_host_output(uint32_t host_samples) {
+    host_output_size = host_samples * sizeof(cuComplex);
+    gpuErrchk(cudaHostAlloc(&host_output, host_output_size, cudaHostAllocDefault));
+    //host_output = std::vector<std::complex<float>>(host_samples);
+    gpuErrchk(cudaMemcpyAsync(host_output, third_stage_output,
+                host_output_size, cudaMemcpyDeviceToHost,stream));
 }
 
 void DigitalProcessing::copy_output_to_host() {
-    gpuErrchk(cudaMemcpy(host_output.data(), third_stage_output,
+    gpuErrchk(cudaMemcpy(host_output, third_stage_output,
                 host_output_size, cudaMemcpyDeviceToHost));
 }
 
@@ -290,8 +292,7 @@ void DigitalProcessing::clear_device_and_destroy(){
     gpuErrchk(cudaFree(first_stage_output));
     gpuErrchk(cudaFree(second_stage_output));
     gpuErrchk(cudaFree(third_stage_output));
-    host_output.clear();
-    //gpuErrchk(cudaFreeHost(host_output));
+    gpuErrchk(cudaFreeHost(host_output));
     gpuErrchk(cudaStreamDestroy(stream));
 
     //delete this;
@@ -302,18 +303,19 @@ CUT_THREADPROC postprocess(void *void_arg)
 {
     DigitalProcessing *dp = static_cast<DigitalProcessing*>(void_arg);
     // ... GPU is done with processing, continue on new CPU thread...
-    std::chrono::steady_clock::time_point timing_start = std::chrono::steady_clock::now();
-    dp->copy_output_to_host();
+/*    std::chrono::steady_clock::time_point timing_start = std::chrono::steady_clock::now();
+    //dp->copy_output_to_host();
     std::chrono::steady_clock::time_point timing_end = std::chrono::steady_clock::now();
     std::cout << "Time to copy back to host: "
       << std::chrono::duration_cast<std::chrono::milliseconds>
                                                   (timing_end - timing_start).count()
-      << "ms" << std::endl;
+      << "ms" << std::endl;*/
 
 
     dp->report_timing();
     dp->clear_device_and_destroy();
     delete dp;
+    //cudaDeviceReset();
     CUT_THREADEND;
 }
 
