@@ -128,10 +128,11 @@ trans_width = 50e3  # Width of transition from pass band to stop band, Hz
 numtaps = 1024       # Size of the FIR filter.
 
 decimation_rate = 200.0
+pmax = 100 # max value of P (integer) that we will run the script at.
 
 # Set the number of output samples first so we can get correct number of 
 #   input samples to have our three frequencies all perfectly in the FFT
-#   bins.
+#   bins to check phase linearity.
 num_output_samps = 5001
 
 if numtaps > decimation_rate:
@@ -153,11 +154,14 @@ freq_3 = wave_freq-10*fft_bin_increment
 frerking = abs(decimation_rate * wave_freq / fs)
 # find number of filter coefficients
 
-for x in range(1, 12000000):
+for x in range(1, int(fs)):
     if x*frerking % 1 == 0:
         number_of_coeff_sets = x
         break
-if number_of_coeff_sets > 100:
+else: # no break
+    sys.exit(['Error: could not find number of coefficient sets, greater than fs') 
+
+if number_of_coeff_sets > pmax:
     sys.exit(['Error: number of coefficient sets required is too large: %d' % number_of_coeff_sets])
 
 #pulse_samples = test_signals.create_signal_1(wave_freq,4.0e6,10000,fs) # with added noise

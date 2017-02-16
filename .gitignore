@@ -32,5 +32,9 @@
 # Python
 *.pyc
 
+# Scons
+.sconsign*
+
 *.swp
 bin/
+build/
