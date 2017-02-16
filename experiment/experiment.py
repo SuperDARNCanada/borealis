@@ -10,13 +10,13 @@ def experiment():
     prog=ControlProg(3,150)
     prog.cpo_list[0].freq=9811
     prog.cpo_list[0].sequence=[0,5,8,12,18,30,32,33]
-    prog.cpo_list[0].channels=[0]
+    prog.cpo_list[0].txchannels=[0]
     prog.cpo_list[1].freq=13588
     prog.cpo_list[1].sequence=[0,5,8,12]
-    prog.cpo_list[1].channels=[0]
+    prog.cpo_list[1].txchannels=[0]
     prog.cpo_list[2].freq=13006
     prog.cpo_list[2].sequence=[0,5,8,12]
-    prog.cpo_list[2].channels=[0]
+    prog.cpo_list[2].txchannels=[0]
     # change your control program here. Use selfcheck(myctrlprog) and print myctrlprog() to see what can be changed
 
     #prog.interfacing is a dictionary of how each cpo interacts with the other cpo's - default "NONE" in all possible spots
