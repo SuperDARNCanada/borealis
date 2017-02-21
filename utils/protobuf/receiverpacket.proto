@@ -3,14 +3,24 @@ syntax = "proto3";
 package receiverpacket;
 
 message ReceiverPacket {
-    repeated double rxfreqs = 1;
-    repeated uint32 nrang = 2;
-    repeated uint32 frang = 3;
-    uint32 sequence_num = 4;
-    uint32 num_channels = 5;
-    repeated BeamDirections beam_directions = 6;
+    repeated RXChan rxchannel = 1;
+    uint32 sequence_num = 2;
+/*    uint32 num_channels = 5; put this in config file, will be 20 for our radars */
 
-    message BeamDirections {
-        repeated double phase = 1;
+    message RXChan {
+        double rxfreq = 1;
+        uint32 nrang = 2;
+        uint32 frang = 3;
+        repeated BeamDirections beam_directions = 4;
+
+        message BeamDirections {
+            repeated Phase phase = 1; /* must be length 20 */
+            
+            message Phase {
+                double real_phase = 1;
+                double imag_phase = 2;
+            }
+        }
     }
+
 }

@@ -33,7 +33,8 @@ class CPObject:
     def __init__(self):
         self.cpid=[150,0] 
         # Two numbers: overall RCP ID and the 1st CPObject in that RCP
-        self.channels=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] 
+        self.txchannels = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] 
+        self.rxchannels = self.txchannels # initilization
         # What antennas do you want to transmit on
         self.sequence=[0,14,22,24,27,31,42,43] 
         # Sequence, to be multiplied by tau, default normalscan
@@ -69,7 +70,8 @@ class CPObject:
         # 1 if scan boundary exists
         self.scanbound=60000 
         # Max length of scan past the minute/hour if bound exists, ms
-        self.freq=12300 
+        self.txfreq=12300 
+        self.rxfreq = self.txfreq
         # Frequency in kHz
         self.clrfrqf=1 
         # flag for clear frequency search - 1 if required
@@ -92,7 +94,8 @@ class CPObject:
     def __call__(self):
         """Print values in this CP component."""
         print 'CPID [cpid]: {}'.format(self.cpid) 
-        print 'Channels/Antennas to Use [channels]: {}'.format(self.channels) 
+        print 'Channels/Antennas to Transmit [txchannels]: {}'.format(self.txchannels) 
+        print 'Channels/Antennas to Receive [rxchannels]: {}'.format(self.rxchannels) 
         print 'Number of Pulses : {}'.format(len(self.sequence)) 
         print 'Pulse Sequence [sequence]: {}'.format(self.sequence) 
         print 'Multi-Pulse Increment (us) [mpinc]: {}'.format(self.mpinc)
@@ -108,7 +111,8 @@ class CPObject:
         if (self.scanboundf==1) :
             print 'Scan Boundary (ms) [scanbound]: {}'.format(
                 self.scanbound)
-        print 'Transmit Frequency [freq] in kHz: {}'.format(self.freq)
+        print 'Transmit Frequency [freq] in kHz: {}'.format(self.txfreq)
+        print 'Receive Frequency [freq] in kHz: {}'.format(self.rxfreq)
         print 'Clear Frequency Search Flag [clrfrqf]: {}'.format(self.clrfrqf)
         if (self.clrfrqf==1):
             print 'Clear Frequency Range [clrfrqrange]: {}'.format(
@@ -128,16 +132,16 @@ class CPObject:
         #if self.cpid[0] is not unique
 
         # check none greater than 15, no duplicates
-        if len(self.channels)>16:
+        if len(self.txchannels)>16 or len(self.rxchannels)>16:
             error_dict[error_count]="CP Object Has Too Many Channels"
             error_count=error_count+1	
-        for i in range(len(self.channels)):
-            if self.channels[i]>= 16:
+        for i in range(len(self.txchannels)):
+            if self.txchannels[i]>= 16 or self.rxchannels[i]>=16:
                 error_dict[error_count]="CP Object Specifies Channel \
                     Numbers Over 16"
                 error_count=error_count+1
-            for j in range(i+1, len(self.channels)):
-                if self.channels[i]==self.channels[j]:
+            for j in range(i+1, len(self.txchannels)):
+                if self.txchannels[i]==self.txchannels[j] or self.rxchannels[i]==self.rxchannels[j]:
                     error_dict[error_count]="CP Object Has Duplicate Channels"
                     error_count=error_count+1	
                                         

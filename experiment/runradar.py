@@ -69,7 +69,12 @@ def get_phshift(beamdir,freq,chan,pulse_shift):
        and the tx frequency, and a specified extra phase shift if there
        is any.
     """
-    beamdir=float(beamdir)
+    if type(beamdir) == list:
+        # if we're imaging and have multiple beam directions per integration period
+        beamdir = 0 # directly ahead for now
+    else: # is a float
+        beamdir=float(beamdir)
+
     beamrad=abs(math.pi*float(beamdir)/180.0)
     # Pointing to right of boresight, use point in middle 
     #   (hypothetically channel 7.5) as phshift=0 
@@ -269,7 +274,7 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
                                   float(cpos[pulse[1]].pullen)/1000000, None,
                                   None) 
         for channel in range(0,16):
-            if channel in cpos[pulse[1]].channels:
+            if channel in cpos[pulse[1]].txchannels:
                 pulse_samples=shift_samples(basic_samples, 
                                             phase_array[channel])
                 samples_dict[tuple(pulse)].append(pulse_samples) 
@@ -332,9 +337,9 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
     # Now get what channels we need to transmit on for this combined
     #   pulse.
     # print("First cpo: {}".format(pulse_list[0][1]))
-    pulse_channels=cpos[pulse_list[0][1]].channels
+    pulse_channels=cpos[pulse_list[0][1]].txchannels
     for pulse in pulse_list:
-        for chan in cpos[pulse[1]].channels:
+        for chan in cpos[pulse[1]].txchannels:
             if chan not in pulse_channels:
                 pulse_channels.append(chan)
     pulse_channels.sort()
@@ -389,32 +394,41 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,
             
     return tx_ack
 	
-def data_to_receiver(receiverpacket, rxfreqs, nrang, frang, seqnum, 
-                     beamdirs):
+def data_to_receiver(receiverpacket, seqnum, cpos, cpo_list, beam_dict):
     """ Place data in the receiver packet and send it via zeromq to the
         receiver unit.
     """
 
     receiverpacket.Clear()
-    for freq in rxfreqs:
-        freq_add=receiverpacket.rxfreqs.append(freq)
-    for numrang in nrang:
-        nrang_add=receiverpacket.nrang.append(numrang)
-    for firstrang in frang:
-        frang_add=receiverpacket.frang.append(firstrang)
     receiverpacket.sequence_num=seqnum
+    for num, cpo in enumerate(cpos):
+        channel_add = receiverpacket.rxchannel.add()
+        receiverpacket.rxchannel[num].rxfreq = cpo_list[cpo].rxfreq
+        receiverpacket.rxchannel[num].nrang = cpo_list[cpo].nrang
+        receiverpacket.rxchannel[num].frang = cpo_list[cpo].frang
+        for bnum, beamdir in enumerate(beam_dict[cpo]):
+            beam_add = receiverpacket.rxchannel[num].beam_directions.add()
+            # beamdir is a list 20-long with phase for each antenna for that beam direction.
+            for pnum, phi in enumerate(beamdir):
+                print phi
+                phase = cmath.exp(phi*1j)
+                phase_add = receiverpacket.rxchannel[num].beam_directions[bnum].phase.add()
+                receiverpacket.rxchannel[num].beam_directions[bnum].phase[pnum].real_phase = phase.real
+                receiverpacket.rxchannel[num].beam_directions[bnum].phase[pnum].imag_phase = phase.imag
+            
+
     # Don't need channel numbers, always send 20 beam directions
     #for chan in channels:
     #    receiverpacket.channels.append(chan)
     # Beam directions will be formated e^i*phi so that a 0 will indicate not
     # to receive on that channel.
     
-    for i in range(0,len(rxfreqs)):
-        beam_array_add=receiverpacket.BeamDirections.add()
-        for phi in beamdirs[i,:]:
-            phase = math.exp(phi*1j)
-            receiverpacket.BeamDirections[i].phase.append(phase)
-    
+#    for i in range(0,len(rxfreqs)):
+#        beam_array_add=receiverpacket.BeamDirections.add()
+#        for phi in beamdirs[i,:]:
+#            phase = math.exp(phi*1j)
+#            receiverpacket.BeamDirections[i].phase.append(phase)
+#    
     # get response TODO
     rx_ack = 1 
 
@@ -520,8 +534,13 @@ def main():
                     # Create a dictionary of beam directions with the
                     #   keys being the cpos in this averaging period.
                     for cpo in aveperiod.keys:
-                        bmnum=scan.scan_beams[cpo][scan_iter]
-                        beamdir[cpo]=scan.beamdir[cpo][bmnum] 
+                        bmnums=scan.scan_beams[cpo][scan_iter]
+                        beamdir[cpo]=[]
+                        if type(bmnums) == int:
+                            beamdir[cpo]=scan.beamdir[cpo][bmnums]
+                        else: # is a list
+                            for bmnum in bmnums:
+                                beamdir[cpo].append(scan.beamdir[cpo][bmnum])
                         # Get the beamdir from the beamnumber for this
                         #    CP-object at this iteration.
                     # TODO:send RX data for this averaging period (each
@@ -593,7 +612,7 @@ def main():
                             if datetime.utcnow()>=done_time:
                                 time_remains=False
                                 break
-                            #print sequence.combined_pulse_list
+                            print sequence.combined_pulse_list
                             for pulse_index in range(0, len(sequence.combined_pulse_list)): 
                                 pulse_list=sequence.combined_pulse_list[pulse_index]
                                 repeat=pulse_list[0]
@@ -619,7 +638,45 @@ def main():
                                         pulse_list[1], repeat=False) 
                                 # Pulse is done.
                             # TODO: SEND Sequence data to receiver to process with rx data.
-                            rxack = data_to_receiver(receiverpacket, nrangs, frangs, seqnum, beamdirs)
+                            # 1. Decipher what CPOs were in pulse. 2. Pull out beam dir per CPO. 3. Pull out RXfreqs per CPO. Pull out frangs & nrangs.
+                            beam_phase_dict = {}
+                            for cpo in sequence.cpos:
+                                beam_phase_dict[cpo]=[]
+                                if type(beamdir[cpo]) != list:
+                                    phase_array = []
+                                    for channel in range(0,16):
+                                        # Get phase shifts for all channels
+                                        phase_array.append(get_phshift(
+                                                                beamdir[cpo], 
+                                                                prog.cpo_list[cpo].freq,channel,
+                                                                0))
+                                    for channel in range(6,9): # interferometer
+                                        # Get phase shifts for all channels
+                                        phase_array.append(get_phshift(
+                                                                beamdir[cpo], 
+                                                                prog.cpo_list[cpo].freq,channel,
+                                                                0)) # zero pulse shift b/w pulses when beamforming.
+                                    beam_phase_dict[cpo].append(phase_array)
+                                else: 
+                                    for beam in beamdir[cpo]:
+                                        phase_array = []
+                                        for channel in range(0,16):
+                                            # Get phase shifts for all channels
+                                            phase_array.append(get_phshift(
+                                                                    beam, 
+                                                                    prog.cpo_list[cpo].freq,channel,
+                                                                    0))
+                                        for channel in range(6,9): # interferometer
+                                            # Get phase shifts for all channels
+                                            phase_array.append(get_phshift(
+                                                                    beam, 
+                                                                    prog.cpo_list[cpo].freq,channel,
+                                                                    0)) # zero pulse shift b/w pulses when beamforming.
+                                        beam_phase_dict[cpo].append(phase_array)
+
+
+                            # TODO: Make sure you can have a CPO that doesn't transmit, only receives on a frequency.
+                            rxack = data_to_receiver(receiverpacket, nave, sequence.cpos, prog.cpo_list, beam_phase_dict) # nave = seqnum; beamdir is dictionary
                             # Sequence is done
                             nave=nave+1
                         #print "updating time"
