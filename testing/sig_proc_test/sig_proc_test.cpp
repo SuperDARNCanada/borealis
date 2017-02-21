@@ -13,10 +13,10 @@ int main(int argc, char** argv){
 
     zmq::context_t context(1);
     zmq::socket_t driver_socket(context, ZMQ_PAIR);
-    driver_socket.connect("ipc:///tmp/feeds/1");
+    driver_socket.connect("tcp://localhost:3395");
 
     zmq::socket_t radctrl_socket(context, ZMQ_PAIR);
-    radctrl_socket.connect("ipc:///tmp/feeds/2");
+    radctrl_socket.connect("tcp://localhost:3396");
 
     receiverpacket::ReceiverPacket rp;
 
@@ -76,7 +76,7 @@ int main(int argc, char** argv){
         zmq::message_t data(samples.data(),samples.size()*sizeof(std::complex<float>));
         driver_socket.send(data);
 
-        sleep(1);
+        usleep(250000);
 
     }
 

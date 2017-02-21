@@ -5,11 +5,8 @@
 #include <sstream>
 #include <cuComplex.h>
 #include <chrono>
+#include <thread>
 #include "multithreading.h"
-
-//#define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
-
-
 
 __global__ void decimate1024(cuComplex* original_samples,
     cuComplex* decimated_samples,
@@ -28,8 +25,6 @@ __global__ void decimate1024(cuComplex* original_samples,
 
     cuComplex sample;
     if ((dec_sample_offset + threadIdx.x) >= samples_per_channel) {
-/*        sample.real = 0.0;
-        sample.imag = 0.0;*/
         sample = make_cuComplex(0.0,0.0);
     }
     else {
@@ -214,12 +209,8 @@ std::vector<cudaDeviceProp> get_gpu_properties(){
 
 DigitalProcessing::DigitalProcessing() {
     gpuErrchk(cudaStreamCreate(&stream));
-
     gpuErrchk(cudaEventCreate(&start));
     gpuErrchk(cudaEventCreate(&stop));
-
-    gpuErrchk(cudaEventRecord(start));
-
     gpuErrchk(cudaEventRecord(start, stream));
 
 }
@@ -235,7 +226,6 @@ void DigitalProcessing::allocate_and_copy_rf_samples(void *data, uint32_t total_
 void DigitalProcessing::allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps) {
     first_stage_bp_filters_size = total_taps * sizeof(cuComplex);
     gpuErrchk(cudaMalloc(&first_stage_bp_filters, first_stage_bp_filters_size));
-
     gpuErrchk(cudaMemcpyAsync(first_stage_bp_filters, taps,
                 first_stage_bp_filters_size, cudaMemcpyHostToDevice, stream));
 }
@@ -243,15 +233,13 @@ void DigitalProcessing::allocate_and_copy_first_stage_filters(void *taps, uint32
 void DigitalProcessing::allocate_and_copy_second_stage_filters(void *taps, uint32_t total_taps) {
     second_stage_filters_size = total_taps * sizeof(cuComplex);
     gpuErrchk(cudaMalloc(&second_stage_filters, second_stage_filters_size));
-
     gpuErrchk(cudaMemcpyAsync(second_stage_filters, taps,
-                second_stage_filters_size, cudaMemcpyHostToDevice, stream));
+               second_stage_filters_size, cudaMemcpyHostToDevice, stream));
 }
 
 void DigitalProcessing::allocate_and_copy_third_stage_filters(void *taps, uint32_t total_taps) {
     third_stage_filters_size = total_taps * sizeof(cuComplex);
     gpuErrchk(cudaMalloc(&third_stage_filters, third_stage_filters_size));
-
     gpuErrchk(cudaMemcpyAsync(third_stage_filters, taps,
                 third_stage_filters_size, cudaMemcpyHostToDevice, stream));
 }
@@ -274,14 +262,13 @@ void DigitalProcessing::allocate_third_stage_output(uint32_t third_stage_samples
 void DigitalProcessing::allocate_and_copy_host_output(uint32_t host_samples) {
     host_output_size = host_samples * sizeof(cuComplex);
     gpuErrchk(cudaHostAlloc(&host_output, host_output_size, cudaHostAllocDefault));
-    //host_output = std::vector<std::complex<float>>(host_samples);
     gpuErrchk(cudaMemcpyAsync(host_output, third_stage_output,
                 host_output_size, cudaMemcpyDeviceToHost,stream));
 }
 
 void DigitalProcessing::copy_output_to_host() {
     gpuErrchk(cudaMemcpy(host_output, third_stage_output,
-                host_output_size, cudaMemcpyDeviceToHost));
+               host_output_size, cudaMemcpyDeviceToHost));
 }
 
 void DigitalProcessing::clear_device_and_destroy(){
@@ -293,44 +280,28 @@ void DigitalProcessing::clear_device_and_destroy(){
     gpuErrchk(cudaFree(second_stage_output));
     gpuErrchk(cudaFree(third_stage_output));
     gpuErrchk(cudaFreeHost(host_output));
+    gpuErrchk(cudaEventDestroy(start));
+    gpuErrchk(cudaEventDestroy(stop));
     gpuErrchk(cudaStreamDestroy(stream));
-
-    //delete this;
 
 }
 
-CUT_THREADPROC postprocess(void *void_arg)
+void postprocess(DigitalProcessing *dp)
 {
-    DigitalProcessing *dp = static_cast<DigitalProcessing*>(void_arg);
-    // ... GPU is done with processing, continue on new CPU thread...
-/*    std::chrono::steady_clock::time_point timing_start = std::chrono::steady_clock::now();
-    //dp->copy_output_to_host();
-    std::chrono::steady_clock::time_point timing_end = std::chrono::steady_clock::now();
-    std::cout << "Time to copy back to host: "
-      << std::chrono::duration_cast<std::chrono::milliseconds>
-                                                  (timing_end - timing_start).count()
-      << "ms" << std::endl;*/
-
-
     dp->report_timing();
     dp->clear_device_and_destroy();
     delete dp;
-    //cudaDeviceReset();
-    CUT_THREADEND;
 }
+
 
 void CUDART_CB DigitalProcessing::cuda_stream_callback(cudaStream_t stream, cudaError_t status,
                                                         void *processing_data)
 {
     gpuErrchk(status);
-    cutStartThread(postprocess, processing_data);
-    //dp->callback_postprocess();
+    std::thread start_pp(postprocess,static_cast<DigitalProcessing*>(processing_data));
+    start_pp.detach();
 }
 
-/*void DigitalProcessing::callback_postprocess()
-{
-    cutStartThread(postprocess_data, data);
-}*/
 
 void DigitalProcessing::call_decimate(cuComplex* original_samples,
     cuComplex* decimated_samples,

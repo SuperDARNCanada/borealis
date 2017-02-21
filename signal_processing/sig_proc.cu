@@ -18,6 +18,7 @@
 #include "utils/protobuf/computationpacket.pb.h"
 #include "utils/protobuf/receiverpacket.pb.h"
 #include "utils/driver_options/driveroptions.hpp"
+#include "utils/signal_processing_options/signalprocessingoptions.hpp"
 
 #include "digital_processing.hpp"
 #include "multithreading.h"
@@ -26,23 +27,23 @@ extern "C" {
     #include "remez.h"
 }
 
-#define T_DEVICE_V(x) thrust::device_vector<x>
+/*#define T_DEVICE_V(x) thrust::device_vector<x>
 #define T_HOST_V(x) thrust::host_vector<x,thrust::cuda::experimental::pinned_allocator<x>>
 #define T_COMPLEX_F thrust::complex<float>
 
-#define FIRST_STAGE_SAMPLE_RATE 1.0e6 //1 MHz
-#define SECOND_STAGE_SAMPLE_RATE 0.1e6 // 100 kHz
-#define THIRD_STAGE_SAMPLE_RATE (10000.0/3.0) //3.33 kHz
+#define sig_options.get_first_stage_sample_rate() 1.0e6 //1 MHz
+#define sig_options.get_second_stage_sample_rate() 0.1e6 // 100 kHz
+#define sig_options.get_third_stage_sample_rate() (10000.0/3.0) //3.33 kHz
 
-#define FIRST_STAGE_FILTER_CUTOFF 1.0e6
-#define FIRST_STAGE_FILTER_TRANSITION (FIRST_STAGE_FILTER_CUTOFF * 0.5)
+#define sig_options.get_first_stage_filter_cutoff() 1.0e6
+#define sig_options.get_first_stage_filter_transition() (sig_options.get_first_stage_filter_cutoff() * 0.5)
 
-#define SECOND_STAGE_FILTER_CUTOFF 0.1e6
-#define SECOND_STAGE_FILTER_TRANSITION (SECOND_STAGE_FILTER_CUTOFF * 0.5)
+#define sig_options.get_second_stage_filter_cutoff() 0.1e6
+#define sig_options.get_second_stage_filter_transition() (sig_options.get_second_stage_filter_cutoff() * 0.5)
 
-#define THIRD_STAGE_FILTER_CUTOFF (10000.0/3.0)
-#define THIRD_STAGE_FILTER_TRANSITION (THIRD_STAGE_FILTER_CUTOFF * 0.25)
-
+#define sig_options.get_third_stage_filter_cutoff() (10000.0/3.0)
+#define sig_options.get_third_stage_filter_transition() (sig_options.get_third_stage_filter_cutoff() * 0.25)
+*/
 std::vector<double> create_normalized_lowpass_filter_bands(float cutoff, float transition_band,
                         float Fs) {
     std::vector<double> filterbands;
@@ -126,34 +127,38 @@ void save_filter_to_file(std::vector<std::complex<float>> filter_taps, const cha
 int main(int argc, char **argv){
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-    //auto driver_options = DriverOptions();
-    //auto rx_rate = driver_options.get_rx_rate();
-   auto rx_rate = 12e6;
-   zmq::context_t sig_proc_context(1);
+    auto driver_options = DriverOptions();
+    auto sig_options = SignalProcessingOptions();
+    auto rx_rate = driver_options.get_rx_rate();
+    zmq::context_t sig_proc_context(1);
 
     zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
-    driver_socket.bind("ipc:///tmp/feeds/1");
+    //driver_socket.bind("ipc:///tmp/feeds/1");
+    driver_socket.bind("tcp://*:3395");
 
 
     zmq::socket_t radarctrl_socket(sig_proc_context, ZMQ_PAIR);
-    radarctrl_socket.bind("ipc:///tmp/feeds/2");
+    //radarctrl_socket.bind("ipc:///tmp/feeds/2");
+    radarctrl_socket.bind("tcp://*:3396");
 
 
-/*    auto gpu_properties = get_gpu_properties();
-    print_gpu_properties(gpu_properties);*/
+    auto gpu_properties = get_gpu_properties();
+    print_gpu_properties(gpu_properties);
 
     uint32_t first_stage_dm_rate, second_stage_dm_rate, third_stage_dm_rate = 0;
-    if (fmod(rx_rate,FIRST_STAGE_SAMPLE_RATE) > 0.0){
+    if (fmod(rx_rate,sig_options.get_first_stage_sample_rate()) > 0.0){
         //TODO(keith): handle error
     }
     else{
-        auto rate_f = rx_rate/FIRST_STAGE_SAMPLE_RATE;
+        auto rate_f = rx_rate/sig_options.get_first_stage_sample_rate();
         first_stage_dm_rate = static_cast<uint32_t>(rate_f);
 
-        rate_f = FIRST_STAGE_SAMPLE_RATE/SECOND_STAGE_SAMPLE_RATE;
+        rate_f = sig_options.get_first_stage_sample_rate()/
+                    sig_options.get_second_stage_sample_rate();
         second_stage_dm_rate = static_cast<uint32_t>(rate_f);
 
-        rate_f = SECOND_STAGE_SAMPLE_RATE/THIRD_STAGE_SAMPLE_RATE;
+        rate_f = sig_options.get_second_stage_sample_rate()/
+                    sig_options.get_third_stage_sample_rate();
         third_stage_dm_rate = static_cast<uint32_t>(rate_f);
     }
 
@@ -162,9 +167,12 @@ int main(int argc, char **argv){
         << "3rd stage dm rate: " << third_stage_dm_rate <<std::endl;
 
 
-    auto S_lowpass1 = calculate_num_filter_taps(rx_rate,FIRST_STAGE_FILTER_TRANSITION);
-    auto S_lowpass2 = calculate_num_filter_taps(FIRST_STAGE_SAMPLE_RATE,SECOND_STAGE_FILTER_TRANSITION);
-    auto S_lowpass3 = calculate_num_filter_taps(SECOND_STAGE_SAMPLE_RATE,THIRD_STAGE_FILTER_TRANSITION);
+    auto S_lowpass1 = calculate_num_filter_taps(rx_rate,
+                                    sig_options.get_first_stage_filter_transition());
+    auto S_lowpass2 = calculate_num_filter_taps(sig_options.get_first_stage_sample_rate(),
+                                    sig_options.get_second_stage_filter_transition());
+    auto S_lowpass3 = calculate_num_filter_taps(sig_options.get_second_stage_sample_rate(),
+                                    sig_options.get_third_stage_filter_transition());
 
     std::cout << "1st stage taps: " << S_lowpass1 << std::endl << "2nd stage taps: "
         << S_lowpass2 << std::endl << "3rd stage taps: " << S_lowpass3 <<std::endl;
@@ -173,12 +181,14 @@ int main(int argc, char **argv){
     std::chrono::steady_clock::time_point timing_start = std::chrono::steady_clock::now();
 
 
-    auto filtertaps_1 = create_filter(S_lowpass1, FIRST_STAGE_FILTER_CUTOFF,
-                        FIRST_STAGE_FILTER_TRANSITION, rx_rate);
-    auto filtertaps_2 = create_filter(S_lowpass2,SECOND_STAGE_FILTER_CUTOFF,
-                        SECOND_STAGE_FILTER_TRANSITION, FIRST_STAGE_SAMPLE_RATE);
-    auto filtertaps_3 = create_filter(S_lowpass3,THIRD_STAGE_FILTER_CUTOFF,
-                        THIRD_STAGE_FILTER_TRANSITION, SECOND_STAGE_SAMPLE_RATE);
+    auto filtertaps_1 = create_filter(S_lowpass1, sig_options.get_first_stage_filter_cutoff(),
+                        sig_options.get_first_stage_filter_transition(), rx_rate);
+    auto filtertaps_2 = create_filter(S_lowpass2,sig_options.get_second_stage_filter_cutoff(),
+                        sig_options.get_second_stage_filter_transition(),
+                        sig_options.get_first_stage_sample_rate());
+    auto filtertaps_3 = create_filter(S_lowpass3,sig_options.get_third_stage_filter_cutoff(),
+                        sig_options.get_third_stage_filter_transition(),
+                        sig_options.get_second_stage_sample_rate());
 
     std::chrono::steady_clock::time_point timing_end = std::chrono::steady_clock::now();
     std::cout << "Time to create 3 filters: "
@@ -191,7 +201,6 @@ int main(int argc, char **argv){
     save_filter_to_file(filtertaps_3,"filter3coefficients.dat");
 
     while(1){
-    //for(int i=0; i<1; i++){
         //Receive packet from radar control
         zmq::message_t radctl_request;
         radarctrl_socket.recv(&radctl_request);
@@ -220,14 +229,9 @@ int main(int argc, char **argv){
           << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
           << "us" << std::endl;
 
-        auto start = static_cast<T_COMPLEX_F *>(driver_request.data());
-        auto data_size = static_cast<size_t>(driver_request.size());
-        auto num_elements = data_size/sizeof(T_COMPLEX_F);
-        auto total_samples = cp.numberofreceivesamples() * rp.num_channels();
-
-        std::cout << "Total elements in data message: " << num_elements
-            << std::endl;
-
+        //auto start = static_cast<T_COMPLEX_F *>(driver_request.data());
+        //auto data_size = static_cast<size_t>(driver_request.size());
+        //auto num_elements = data_size/sizeof(T_COMPLEX_F);
 
 
 
@@ -266,7 +270,12 @@ int main(int argc, char **argv){
 
         DigitalProcessing *dp = new DigitalProcessing();
 
-        dp->allocate_and_copy_rf_samples(start, total_samples);
+        auto total_samples = cp.numberofreceivesamples() * rp.num_channels();
+
+        std::cout << "Total elements in data message: " << total_samples
+            << std::endl;
+
+        dp->allocate_and_copy_rf_samples(driver_request.data(), total_samples);
         dp->allocate_and_copy_first_stage_filters(filtertaps_1_bp_h.data(), filtertaps_1_bp_h.size());
 
 
@@ -282,7 +291,6 @@ int main(int argc, char **argv){
 
 
 
-
         dp->allocate_and_copy_second_stage_filters(filtertaps_2_h.data(), filtertaps_2_h.size());
         auto num_output_samples_2 = num_output_samples_1 / second_stage_dm_rate;
         dp->allocate_second_stage_output(num_output_samples_2);
@@ -293,7 +301,6 @@ int main(int argc, char **argv){
             num_samps_2, filtertaps_2.size(), rx_freqs.size(),
             rp.num_channels(), "Second stage of decimation");
 
-       // timing_start = std::chrono::steady_clock::now();
 
 
         dp->allocate_and_copy_third_stage_filters(filtertaps_3_h.data(), filtertaps_3_h.size());
@@ -311,6 +318,7 @@ int main(int argc, char **argv){
         // New in CUDA 5.0: Add a CPU callback which is called once all currently pending operations in the CUDA stream have finished
         gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
                                             DigitalProcessing::cuda_stream_callback, dp, 0));
+
 
     }
 

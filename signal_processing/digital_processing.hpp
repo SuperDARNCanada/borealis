@@ -20,6 +20,7 @@ inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
     throw thrust::system_error(code, thrust::cuda_category(), file_and_line);
   }
 }
+std::vector<cudaDeviceProp> get_gpu_properties();
 
 class DigitalProcessing {
  public:
