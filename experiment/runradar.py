@@ -349,7 +349,7 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
 
 def data_to_driver(driverpacket, txsocket, channels, isamples_list,
                    qsamples_list, txctrfreq, rxctrfreq, txrate,
-                   numberofreceivesamples, SOB, EOB, timing, repeat=False):
+                   numberofreceivesamples, SOB, EOB, timing, seqnum, repeat=False):
     """ Place data in the driver packet and send it via zeromq to the driver.
         Then receive the acknowledgement.
     """
@@ -363,6 +363,7 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,
         driverpacket.timetosendsamples=timing
         driverpacket.SOB=SOB
         driverpacket.EOB=EOB
+        driverpacket.sqnnum=seqnum
         print "EMPTY {0} {1} {2} {3}".format(timing,SOB,EOB,channels)
         # timetoio empty
     else:
@@ -380,6 +381,7 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,
         driverpacket.txrate=txrate
         driverpacket.numberofreceivesamples=numberofreceivesamples
         driverpacket.timetosendsamples=timing
+        driverpacket.sqnnum=seqnum
         # Past time zero which is start of the sequence.
         print "New samples {0} {1} {2} {3}".format(timing,SOB,EOB,channels)
         driverpacket.SOB=SOB
@@ -625,7 +627,7 @@ def main():
                                         driverpacket, txsocket, [], [], [], 0,
                                         0, 0, 0, pulse_data[0],
                                         pulse_data[1],
-                                        pulse_list[1], repeat=True)
+                                        pulse_list[1], nave, repeat=True)
                                 else:
                                     ack = data_to_driver(
                                         driverpacket, txsocket,
@@ -636,7 +638,7 @@ def main():
                                         prog.txrate, sequence.numberofreceivesamples,
                                         pulse_data[0], #startofburst
                                         pulse_data[1], #endofburst,
-                                        pulse_list[1], repeat=False)
+                                        pulse_list[1], nave, repeat=False)
                                 # Pulse is done.
                             # TODO: SEND Sequence data to receiver to process with rx data.
                             # 1. Decipher what CPOs were in pulse. 2. Pull out beam dir per CPO. 3. Pull out RXfreqs per CPO. Pull out frangs & nrangs.
