@@ -4,3 +4,20 @@ NOTE: protoc is in /usr/local/lib/protobuf......../src/
 
 use the line protoc -I=$SRC_DIR --python_out=$DST_DIR $SRC_DIR/driverpacket.proto
 (I used $SRC_DIR=$DST_DIR).
+
+# FILES CONTAINED HERE
+1. experiment.py - An example of what a researcher would write.
+2. currentctrlprog.py - a soft link to experiment.py for now (some sort of scheduler TBD)
+3. cpobject.py - defines the cpobject. One object represents one frequency, one pulse sequence, one scan. 
+    In this way all typical RCP's would be made with one cpobject. Multi-beam (imaging) or multi-freq (stereo)
+    operations would require more than one control program. Other more complex functionality could be done with
+    different methods of interfacing multiple cpobjects (different types of scans interleaved, etc.).
+4. controlprog.py - combines one or more cpobjects into a control program. The experiment needs to create a
+    ControlProg instance which initializes how many cpobjects you need.
+5. radar_classes.py - Takes the controlprogram given and builds Scan, AveragingPeriod, and Sequence 
+    objects which are used to run the radar.
+6. runradar.py - Uses radar_classes objects to iterate through pulses, sequences, averaging periods, and 
+    scans.
+
+
+

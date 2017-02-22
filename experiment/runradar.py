@@ -410,7 +410,7 @@ def data_to_receiver(receiverpacket, seqnum, cpos, cpo_list, beam_dict):
             beam_add = receiverpacket.rxchannel[num].beam_directions.add()
             # beamdir is a list 20-long with phase for each antenna for that beam direction.
             for pnum, phi in enumerate(beamdir):
-                print phi
+                #print phi
                 phase = cmath.exp(phi*1j)
                 phase_add = receiverpacket.rxchannel[num].beam_directions[bnum].phase.add()
                 receiverpacket.rxchannel[num].beam_directions[bnum].phase[pnum].real_phase = phase.real
