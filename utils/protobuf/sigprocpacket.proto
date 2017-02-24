@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package sigprocpacket;
 
-message ReceiverPacket {
+message SigProcPacket {
     repeated RXChan rxchannel = 1;
     uint32 sequence_num = 2;
     double kerneltime = 3;
