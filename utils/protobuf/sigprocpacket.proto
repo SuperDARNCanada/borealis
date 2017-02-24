@@ -1,10 +1,11 @@
 syntax = "proto3";
 
-package receiverpacket;
+package sigprocpacket;
 
 message ReceiverPacket {
     repeated RXChan rxchannel = 1;
     uint32 sequence_num = 2;
+    double kerneltime = 3;
 /*    uint32 num_channels = 5; put this in config file, will be 20 for our radars */
 
     message RXChan {
