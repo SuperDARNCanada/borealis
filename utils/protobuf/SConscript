@@ -36,7 +36,7 @@ RadarProtos = []
 #			RadarProtos.append(filename)
 
 RadarProtos = ['driverpacket.proto','computationpacket.proto',
-                'receiverpacket.proto']
+                'sigprocpacket.proto']
 #print(RadarProtos)
 Proto(RadarProtos)
 
