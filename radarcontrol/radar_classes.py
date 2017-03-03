@@ -75,33 +75,14 @@ class Sequence():
         # Will sort by timing first and then by cpo if timing =.
         self.pulse_time=pulse_time
 
-        # 19 is the sample delay below; how do we calculate this?
-        self.ssdelay=((self.cpos[seqn_keys[0]].nrang+19+10)
-                        * self.cpos[seqn_keys[0]].pullen)
-        for cpoid in seqn_keys:
-            newdelay=(self.cpos[cpoid].nrang+29)*self.cpos[cpoid].pullen
-            if newdelay>self.ssdelay:
-                self.ssdelay=newdelay
-        # The delay is long enough for any CPO pulse length and nrang
-        #    to be accounted for.
-        # Time before the first pulse is 70 us when RX and TR set up
-        #    for the first pulse. The timing to the last pulse is
-        #    added, as well as its pulse length and the ssdelay.
-        self.sstime=(70+self.pulse_time[-1][0]
-            + self.cpos[pulse_time[-1][1]].pullen+self.ssdelay)
-        # TODO: this could be wrong, may want to calculate after 
-        #    pulses are combined. Pulse length may be longer on 2nd
-        #    last pulse ...
         # NOTE: beamdirs are set up in Scan.
 
-        self.numberofreceivesamples=int(aveperiod.rxrate 
-            * self.sstime*1e-6)
         # Set up the combined pulse list
         self.combined_pulse_list=[]
         fpulse_index=0
         while (fpulse_index<len(self.pulse_time)):
             pulse=self.pulse_time[fpulse_index][:]
-            # Pulse is just a list of timing (us), cpoid, pulse number
+            # Pulse is just a list of repeat, timing (us), cpoid, pulse number
 
             # Determine if we are combining samples based on timing of
             #   pulses
@@ -181,6 +162,45 @@ class Sequence():
                 #   and the repeat value.
                 # Non repeats will look like [False,pulse_time[i],
                 #   pulse_time[i+1]...]
+        
+        # FIND THE max length of the last pulse 
+        last_pulse_len = 0
+        last_pulse_type = -1
+        for i in range(len(self.combined_pulse_list)):
+            if self.combined_pulse_list[last_pulse_type][0]==True:
+               last_pulse_type -= 1
+            else:
+                break 
+        for element in self.combined_pulse_list[last_pulse_type]:
+            if type(element) == list:
+                # get cpo
+                if self.cpos[element[1]].pullen > last_pulse_len:
+                    last_pulse_len = self.cpos[element[1]].pullen
+        self.last_pulse_len = last_pulse_len
+        
+        # FIND the max scope sync time
+        # 19 is the sample delay below; how do we calculate this?
+        self.ssdelay=((self.cpos[seqn_keys[0]].nrang+19+10)
+                        * self.cpos[seqn_keys[0]].pullen)
+        for cpoid in seqn_keys:
+            newdelay=(self.cpos[cpoid].nrang+29)*self.cpos[cpoid].pullen
+            if newdelay>self.ssdelay:
+                self.ssdelay=newdelay
+        # The delay is long enough for any CPO pulse length and nrang
+        #    to be accounted for.
+
+        # FIND the sequence time
+        # Time before the first pulse is 70 us when RX and TR set up
+        #    for the first pulse. The timing to the last pulse is
+        #    added, as well as its pulse length and the ssdelay.n 
+        self.seqtime=(70 + self.combined_pulse_list[-1][1] 
+            + self.last_pulse_len)
+
+        # FIND the total scope sync time and number of samples to receive.
+        self.sstime=self.seqtime + self.ssdelay
+        self.numberofreceivesamples=int(aveperiod.rxrate 
+            * self.sstime*1e-6)
+        print self.combined_pulse_list
 
 
 class AveragingPeriod():
