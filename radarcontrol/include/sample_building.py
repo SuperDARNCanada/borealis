@@ -245,7 +245,7 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
         #print start_samples
         for channel in range(0,16):
             array=samples_dict[tuple(pulse)][channel]
-            new_array=np.empty([total_length],dtype=complex)
+            new_array=np.empty([total_length],dtype=np.complex_)
             for i in range(0,total_length):
                 if i<start_samples:
                     new_array[i]=0.0
@@ -264,7 +264,7 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
         total_samples.append(samples_dict[tuple(pulse_list[0])][channel])
         for samplen in range(0,total_length):
             total_samples[channel][samplen]=(total_samples[channel][samplen]
-                                                /power_divider)
+                                                / power_divider)
             for pulse in pulse_list:
                 if pulse==pulse_list[0]:
                     continue
