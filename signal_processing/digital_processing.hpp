@@ -3,10 +3,12 @@
 
 #include <cuComplex.h>
 #include <complex>
+#include <zmq.hpp>
 #include <vector>
 #include <stdint.h>
 #include <cstdlib>
 #include <thrust/device_vector.h>
+#include "utils/shared_memory/shared_memory.hpp"
 
 #define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
 inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
@@ -24,10 +26,13 @@ std::vector<cudaDeviceProp> get_gpu_properties();
 
 class DigitalProcessing {
  public:
-    static void CUDART_CB cuda_stream_callback(cudaStream_t stream, cudaError_t status,
+    static void CUDART_CB cuda_postprocessing_callback(cudaStream_t stream, cudaError_t status,
                                                 void *processing_data);
-    explicit DigitalProcessing();
-    void allocate_and_copy_rf_samples(void *data, uint32_t total_samples);
+    static void CUDART_CB initial_memcpy_callback(cudaStream_t stream, cudaError_t status,
+                                                void *processing_data);
+    explicit DigitalProcessing(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
+                                 uint32_t sq_num, const char* shr_mem_name);
+    void allocate_and_copy_rf_samples(uint32_t total_samples);
     void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
     void allocate_and_copy_second_stage_filters(void *taps, uint32_t total_taps);
     void allocate_and_copy_third_stage_filters(void *taps, uint32_t total_taps);
@@ -47,12 +52,27 @@ class DigitalProcessing {
     cuComplex* get_first_stage_output_p();
     cuComplex* get_second_stage_output_p();
     cuComplex* get_third_stage_output_p();
+    float get_total_timing();
+    float get_decimate_timing();
     cudaStream_t get_cuda_stream();
-    void report_timing();
+/*    uint32_t get_sequence_num();
+    zmq::socket_t *get_ack_socket();
+    zmq::socket_t *get_timing_socket();*/
+    void start_decimate_timing();
+    void stop_timing();
+    void send_ack();
+    void send_timing();
 
 
  private:
     cudaStream_t stream;
+
+    uint32_t sequence_num;
+    zmq::socket_t *ack_socket;
+    zmq::socket_t *timing_socket;
+
+    float total_process_timing_ms;
+    float decimate_kernel_timing_ms;
 
     cuComplex *rf_samples;
     size_t rf_samples_size;
@@ -78,7 +98,9 @@ class DigitalProcessing {
     cuComplex *host_output;
     size_t host_output_size;
 
-    cudaEvent_t start, stop;
+    cudaEvent_t initial_start, kernel_start, stop;
+
+    SharedMemoryHandler *shr_mem;
 
     void callbackFunc();
 

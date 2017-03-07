@@ -16,12 +16,12 @@
 #include <cuda_profiler_api.h>
 #include <thrust/system/cuda/experimental/pinned_allocator.h>
 #include "utils/protobuf/computationpacket.pb.h"
-#include "utils/protobuf/receiverpacket.pb.h"
+#include "utils/protobuf/sigprocpacket.pb.h"
 #include "utils/driver_options/driveroptions.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
+#include "utils/shared_memory/shared_memory.hpp"
 
 #include "digital_processing.hpp"
-#include "multithreading.h"
 
 extern "C" {
     #include "remez.h"
@@ -133,14 +133,16 @@ int main(int argc, char **argv){
     zmq::context_t sig_proc_context(1);
 
     zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
-    //driver_socket.bind("ipc:///tmp/feeds/1");
-    driver_socket.bind("tcp://*:3395");
-
+    driver_socket.bind("ipc:///tmp/feeds/1");
 
     zmq::socket_t radarctrl_socket(sig_proc_context, ZMQ_PAIR);
-    //radarctrl_socket.bind("ipc:///tmp/feeds/2");
-    radarctrl_socket.bind("tcp://*:3396");
+    radarctrl_socket.bind("ipc:///tmp/feeds/2");
 
+    zmq::socket_t ack_socket(sig_proc_context, ZMQ_PAIR);
+    ack_socket.bind("ipc:///tmp/feeds/3");
+
+    zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
+    timing_socket.bind("ipc:///tmp/feeds/4");
 
     auto gpu_properties = get_gpu_properties();
     print_gpu_properties(gpu_properties);
@@ -204,9 +206,9 @@ int main(int argc, char **argv){
         //Receive packet from radar control
         zmq::message_t radctl_request;
         radarctrl_socket.recv(&radctl_request);
-        receiverpacket::ReceiverPacket rp;
+        sigprocpacket::SigProcPacket sp;
         std::string r_msg_str(static_cast<char*>(radctl_request.data()), radctl_request.size());
-        rp.ParseFromString(r_msg_str);
+        sp.ParseFromString(r_msg_str);
 
         //Then receive packet from driver
         zmq::message_t driver_request;
@@ -216,18 +218,18 @@ int main(int argc, char **argv){
         cp.ParseFromString(c_msg_str);
 
         //Verify driver and radar control packets align
-        if (rp.sequence_num() != cp.sequence_num()) {
+        if (sp.sequence_num() != cp.sequence_num()) {
             //TODO(keith): handle error
         }
 
 
         //Receive driver samples now
-        timing_start = std::chrono::steady_clock::now();
-        driver_socket.recv(&driver_request);
-        timing_end = std::chrono::steady_clock::now();
-        std::cout << "recv: "
-          << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
-          << "us" << std::endl;
+        //timing_start = std::chrono::steady_clock::now();
+        //driver_socket.recv(&driver_request);
+        //timing_end = std::chrono::steady_clock::now();
+        //std::cout << "recv: "
+        //  << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
+        //  << "us" << std::endl;
 
         //auto start = static_cast<T_COMPLEX_F *>(driver_request.data());
         //auto data_size = static_cast<size_t>(driver_request.size());
@@ -237,8 +239,8 @@ int main(int argc, char **argv){
 
         //Parse needed packet values now
         std::vector<double> rx_freqs;
-        for(int i=0; i<rp.rxfreqs_size(); i++) {
-            rx_freqs.push_back(rp.rxfreqs(i));
+        for(int i=0; i<sp.rxchannel_size(); i++) {
+            rx_freqs.push_back(sp.rxchannel(i).rxfreq());
         }
 
         timing_start = std::chrono::steady_clock::now();
@@ -268,26 +270,30 @@ int main(int argc, char **argv){
             filtertaps_3_h.insert(filtertaps_3_h.end(),filtertaps_3.begin(),filtertaps_3.end());
         }
 
-        DigitalProcessing *dp = new DigitalProcessing();
+        DigitalProcessing *dp = new DigitalProcessing(&ack_socket, &timing_socket,
+                                                         sp.sequence_num(), cp.name().c_str());
 
-        auto total_samples = cp.numberofreceivesamples() * rp.num_channels();
+        auto total_samples = cp.numberofreceivesamples() * sig_options.get_total_receive_antennas();
 
         std::cout << "Total elements in data message: " << total_samples
             << std::endl;
 
-        dp->allocate_and_copy_rf_samples(driver_request.data(), total_samples);
+        dp->allocate_and_copy_rf_samples(total_samples);
         dp->allocate_and_copy_first_stage_filters(filtertaps_1_bp_h.data(), filtertaps_1_bp_h.size());
 
 
         auto num_output_samples_1 = rx_freqs.size() * cp.numberofreceivesamples()/first_stage_dm_rate
-                                        * rp.num_channels();
+                                        * sig_options.get_total_receive_antennas();
         dp->allocate_first_stage_output(num_output_samples_1);
+
+        gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
+                                    DigitalProcessing::initial_memcpy_callback, dp, 0));
 
         dp->call_decimate(dp->get_rf_samples_p(),
             dp->get_first_stage_output_p(),
             dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
             cp.numberofreceivesamples(), filtertaps_1.size(), rx_freqs.size(),
-            rp.num_channels(), "First stage of decimation");
+            sig_options.get_total_receive_antennas(), "First stage of decimation");
 
 
 
@@ -299,7 +305,7 @@ int main(int argc, char **argv){
             dp->get_second_stage_output_p(),
             dp->get_second_stage_filters_p(), second_stage_dm_rate,
             num_samps_2, filtertaps_2.size(), rx_freqs.size(),
-            rp.num_channels(), "Second stage of decimation");
+            sig_options.get_total_receive_antennas(), "Second stage of decimation");
 
 
 
@@ -311,13 +317,13 @@ int main(int argc, char **argv){
             dp->get_third_stage_output_p(),
             dp->get_third_stage_filters_p(), third_stage_dm_rate,
             num_samps_3, filtertaps_3.size(), rx_freqs.size(),
-            rp.num_channels(), "Third stage of decimation");
+            sig_options.get_total_receive_antennas(), "Third stage of decimation");
 
         dp->allocate_and_copy_host_output(num_output_samples_3);
 
         // New in CUDA 5.0: Add a CPU callback which is called once all currently pending operations in the CUDA stream have finished
         gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
-                                            DigitalProcessing::cuda_stream_callback, dp, 0));
+                                            DigitalProcessing::cuda_postprocessing_callback, dp, 0));
 
 
     }

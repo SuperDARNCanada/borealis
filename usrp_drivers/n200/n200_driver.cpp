@@ -25,6 +25,7 @@
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/protobuf/driverpacket.pb.h"
 #include "utils/protobuf/computationpacket.pb.h"
+#include "utils/shared_memory/shared_memory.hpp"
 
 
 std::vector<size_t> make_channels(const driverpacket::DriverPacket &dp) {
@@ -188,6 +189,8 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     auto tr_time_high = pulse_start_time - uhd::time_spec_t(tr_window_time_us);
     auto atten_time_high = tr_time_high - uhd::time_spec_t(atten_window_time_start_us);
+    //This line lets us trigger TR with atten timing, but
+    //we can still keep the existing logic if we want to use it.
     tr_time_high = atten_time_high;
     auto scope_sync_high = atten_time_high;
     auto tr_time_low = pulse_start_time + pulse_len_time + uhd::time_spec_t(tr_window_time_us);
@@ -311,7 +314,7 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
 
 
-boost::interprocess::mapped_region shr_mem_create(const char* name, size_t size) {
+/*boost::interprocess::mapped_region shr_mem_create(const char* name, size_t size) {
   boost::interprocess::shared_memory_object::remove(name);
 
   // Create a shared memory object.
@@ -360,6 +363,22 @@ boost::interprocess::mapped_region mmap_create(const char* file_name, size_t siz
   }
 
   return region;
+}*/
+
+std::string random_string( size_t length )
+{
+    auto randchar = []() -> char
+    {
+        const char charset[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+        const size_t max_index = (sizeof(charset) - 1);
+        return charset[ rand() % max_index ];
+    };
+    std::string str(length,0);
+    std::generate_n( str.begin(), length, randchar );
+    return str;
 }
 
 void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
@@ -399,7 +418,10 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
   auto rx_rate = driver_options->get_rx_rate();
 
   computationpacket::ComputationPacket cp;
-
+/*    size_t mem_size = 1 * 1000000 * sizeof(std::complex<float>);
+    auto shr_mem_name = random_string(25);
+    SharedMemoryHandler shrmem(shr_mem_name);
+    shrmem.create_shr_mem(mem_size);*/
   while (1) {
     packet_socket.recv(&request);
     std::cout << "Received in RECEIVE\n";
@@ -474,6 +496,19 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
           << std::chrono::duration_cast<std::chrono::microseconds>(shr_mem_end - shr_mem_begin).count()
           << "us" << std::endl;*/
 
+    std::chrono::steady_clock::time_point shr_begin = std::chrono::steady_clock::now();
+
+    size_t mem_size = channels.size() * dp.numberofreceivesamples() * sizeof(std::complex<float>);
+    auto shr_mem_name = random_string(25);
+    SharedMemoryHandler shrmem(shr_mem_name);
+    shrmem.create_shr_mem(mem_size);
+
+    std::chrono::steady_clock::time_point shr_end = std::chrono::steady_clock::now();
+    std::cout << "RECEIVE shr timing: "
+      << std::chrono::duration_cast<std::chrono::microseconds>
+                                                  (shr_end - shr_begin).count()
+      << "us" << std::endl;
+
     std::cout << "Got to RECEIVE timing" << std::endl;
     timing_socket.recv(&timing);
     std::cout << "RECEIVED timing data" << std::endl;
@@ -483,8 +518,8 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     std::cout << "RECEIVE time_zero " << time_zero.get_frac_secs() << std::endl;
 
     std::chrono::steady_clock::time_point recv_begin = std::chrono::steady_clock::now();
-    //TODO(keith) change to complex
-    size_t mem_size = channels.size() * dp.numberofreceivesamples() * sizeof(float) * 2;
+    //TODO(keith) change to complex;
+
     zmq::message_t cp_data_message(mem_size);
     stream_cmd.num_samps = size_t(dp.numberofreceivesamples() * channels.size());
     stream_cmd.stream_now = false;
@@ -495,8 +530,8 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     size_t total_received_samples = 0;
     std::cout << "samples to receive: " << dp.numberofreceivesamples() << " mem size "
     << mem_size << std::endl;
-    while (total_received_samples < dp.numberofreceivesamples()) {
-      size_t num_rx_samps = rx_stream->recv(cp_data_message.data(),
+    while (total_received_samples < dp.numberofreceivesamples() * channels.size()) {
+      size_t num_rx_samps = rx_stream->recv(shrmem.get_shrmem_addr(),
         (size_t)dp.numberofreceivesamples(), md.get_md(), 25, false);
 
       if (md.get_error_code() == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
@@ -524,6 +559,7 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     std::chrono::steady_clock::time_point send_begin = std::chrono::steady_clock::now();
 
     cp.set_size(dp.numberofreceivesamples());
+    cp.set_name(shr_mem_name);
     std::string cp_str;
     cp.SerializeToString(&cp_str);
 

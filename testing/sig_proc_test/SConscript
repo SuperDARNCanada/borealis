@@ -30,7 +30,7 @@ import os
 Import('*')
 
 Prog('sig_proc_test', Glob("./sig_proc_test.cpp"), with_libs='utils::utils',
-     LIBS=['protobuf','pthread','zmq'])
+     LIBS=['protobuf','pthread','zmq', 'boost_system', 'rt'])
 
 Prog('decimate_single_core', Glob("./decimate_single_core.cpp"), with_libs='utils::utils',
      LIBS=['protobuf','pthread','zmq'])
