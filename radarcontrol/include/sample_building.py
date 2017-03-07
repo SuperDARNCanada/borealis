@@ -263,8 +263,10 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
     for channel in range(0,16):
         total_samples.append(samples_dict[tuple(pulse_list[0])][channel])
         for samplen in range(0,total_length):
-            total_samples[channel][samplen]=(total_samples[channel][samplen]
-                                                / power_divider)
+            try:
+                total_samples[channel][samplen]=(total_samples[channel][samplen] / power_divider)
+            except RuntimeWarning:
+                print "RUNTIMEWARNING {} {}".format(total_samples[channel][samplen], powerdivider)
             for pulse in pulse_list:
                 if pulse==pulse_list[0]:
                     continue

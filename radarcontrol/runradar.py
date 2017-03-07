@@ -567,7 +567,7 @@ def main():
 
 
                             # TODO: Make sure you can have a CPO that doesn't transmit, only receives on a frequency.
-                            time.sleep(0.5)
+                            #time.sleep(0.5)
                             # Sequence is done
                             nave = nave + 1
                         #print "updating time"

@@ -27,36 +27,50 @@ def main():
     # another to talk to runradar.
     data_socket=setup_data_socket()
     ctrl_socket=setup_control_socket()
-    prog=setup_my_experiment()
-    prog.build_Scans()
     
-    # SEND the first setup prog to runradar to run. 
-    message=ctrl_socket.recv_pyobj() 
-    print "received message"
-    print message
-    ctrl_socket.send_pyobj(prog)
+#    print "Number of Scan types: %d" % (len(prog.scan_objects))
+#    print "Number of AveragingPeriods in Scan #1: %d" % (len(prog.scan_objects[0].aveperiods)) #NOTE: this is currently not taking beam direction into account.
+#    print "Number of Sequences in Scan #1, Averaging Period #1: %d" % (len(prog.scan_objects[0].aveperiods[0].integrations))
+#    print "Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: %d" % (len(prog.scan_objects[0].aveperiods[0].integrations[0].cpos))
 
-    print "Number of Scan types: %d" % (len(prog.scan_objects))
-    print "Number of AveragingPeriods in Scan #1: %d" % (len(prog.scan_objects[0].aveperiods)) #NOTE: this is currently not taking beam direction into account.
-    print "Number of Sequences in Scan #1, Averaging Period #1: %d" % (len(prog.scan_objects[0].aveperiods[0].integrations))
-    print "Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: %d" % (len(prog.scan_objects[0].aveperiods[0].integrations[0].cpos))
-
-
+    change_flag = False
     while True:
+
+        # WAIT until runradar is ready to receive a changed prog.
+        message=ctrl_socket.recv_pyobj() 
+        if isinstance(message, radar_status.RadarStatus):
+            if message.status == 0:
+                print "received READY {} and starting program as new".format(message.status)
+                # starting anew
+                prog=setup_my_experiment()
+                prog.build_Scans()
+                ctrl_socket.send_pyobj(prog) 
+            elif message.status == 1:
+                # no errors 
+                if change_flag == True:
+                    ctrl_socket.send_pyobj(prog)
+                else:
+                    ctrl_socket.send_pyobj(None)
+            elif message.status == 2:
+                #TODO: log the warning
+                if change_flag == True:
+                    ctrl_socket.send_pyobj(prog)
+                else:
+                    ctrl_socket.send_pyobj(None)
+            elif message.status == 3:
+                #TODO: log the error
+                if change_flag == True:
+                    ctrl_socket.send_pyobj(prog)
+                else:
+                    ctrl_socket.send_pyobj(None)
+                
+
 
         some_data = None
         prog, change_flag = change_my_experiment(prog, some_data)
         if change_flag == True:
             prog.build_Scans()
         
-        # WAIT until runradar is ready to receive a changed prog.
-        message=ctrl_socket.recv_pyobj() 
-        if isinstance(message, radar_status.RadarStatus):
-            print "received READY {}".format(message.status)
-        if change_flag == True:
-            ctrl_socket.send_pyobj(prog)
-        else:
-            ctrl_socket.send_pyobj(None)
 
     #    if json.loads(message)=="UPDATE":
 #            print "Time to update"
