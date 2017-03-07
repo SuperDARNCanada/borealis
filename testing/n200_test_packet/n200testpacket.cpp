@@ -24,7 +24,7 @@ int main(int argc, char *argv[]){
     while (1){
         for (int i=0; i<8; i++){
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-            
+
             if (i == 0){
                 SOB = true;
             }
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]){
             dp.set_timetosendsamples(i * 1500);
             dp.set_txcenterfreq(12e6);
             dp.set_rxcenterfreq(14e6);
-            dp.set_numberofreceivesamples(20 * 5000000);
+            dp.set_numberofreceivesamples(1000000);
 
             for (int j=0; j<1; j++){
                 dp.set_channels(j,j);
@@ -69,11 +69,11 @@ int main(int argc, char *argv[]){
             end= std::chrono::steady_clock::now();
 
             std::cout << "send time(us) = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() <<std::endl;
-            std::cout << "send time(ns) = " << std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin).count() <<std::endl;            
-            
+            std::cout << "send time(ns) = " << std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin).count() <<std::endl;
+
         }
-        sleep(25);
-    
+        sleep(1);
+
     }
 
 }

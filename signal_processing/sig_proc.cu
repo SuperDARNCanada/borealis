@@ -19,9 +19,9 @@
 #include "utils/protobuf/sigprocpacket.pb.h"
 #include "utils/driver_options/driveroptions.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
+#include "utils/shared_memory/shared_memory.hpp"
 
 #include "digital_processing.hpp"
-#include "multithreading.h"
 
 extern "C" {
     #include "remez.h"
@@ -224,12 +224,12 @@ int main(int argc, char **argv){
 
 
         //Receive driver samples now
-        timing_start = std::chrono::steady_clock::now();
-        driver_socket.recv(&driver_request);
-        timing_end = std::chrono::steady_clock::now();
-        std::cout << "recv: "
-          << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
-          << "us" << std::endl;
+        //timing_start = std::chrono::steady_clock::now();
+        //driver_socket.recv(&driver_request);
+        //timing_end = std::chrono::steady_clock::now();
+        //std::cout << "recv: "
+        //  << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
+        //  << "us" << std::endl;
 
         //auto start = static_cast<T_COMPLEX_F *>(driver_request.data());
         //auto data_size = static_cast<size_t>(driver_request.size());
@@ -271,14 +271,14 @@ int main(int argc, char **argv){
         }
 
         DigitalProcessing *dp = new DigitalProcessing(&ack_socket, &timing_socket,
-                                                         sp.sequence_num());
+                                                         sp.sequence_num(), cp.name().c_str());
 
         auto total_samples = cp.numberofreceivesamples() * sig_options.get_total_receive_antennas();
 
         std::cout << "Total elements in data message: " << total_samples
             << std::endl;
 
-        dp->allocate_and_copy_rf_samples(driver_request.data(), total_samples);
+        dp->allocate_and_copy_rf_samples(total_samples);
         dp->allocate_and_copy_first_stage_filters(filtertaps_1_bp_h.data(), filtertaps_1_bp_h.size());
 
 

@@ -214,26 +214,30 @@ std::vector<cudaDeviceProp> get_gpu_properties()
 
 
 DigitalProcessing::DigitalProcessing(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
-                                        uint32_t sq_num)
+                                        uint32_t sq_num, const char* shr_mem_name)
 {
 
     sequence_num = sq_num;
     ack_socket = ack_s;
     timing_socket = timing_s;
+
     gpuErrchk(cudaStreamCreate(&stream));
     gpuErrchk(cudaEventCreate(&initial_start));
     gpuErrchk(cudaEventCreate(&kernel_start));
     gpuErrchk(cudaEventCreate(&stop));
     gpuErrchk(cudaEventRecord(initial_start, stream));
 
+    shr_mem = new SharedMemoryHandler(shr_mem_name);
+    shr_mem->open_shr_mem();
+
 }
 
-void DigitalProcessing::allocate_and_copy_rf_samples(void *data, uint32_t total_samples)
+void DigitalProcessing::allocate_and_copy_rf_samples(uint32_t total_samples)
 {
 
     rf_samples_size = total_samples * sizeof(cuComplex);
     gpuErrchk(cudaMalloc(&rf_samples, rf_samples_size));
-    gpuErrchk(cudaMemcpyAsync(rf_samples,data, rf_samples_size, cudaMemcpyHostToDevice, stream));
+    gpuErrchk(cudaMemcpyAsync(rf_samples,shr_mem->get_shrmem_addr(), rf_samples_size, cudaMemcpyHostToDevice, stream));
 
 }
 
@@ -308,6 +312,9 @@ void DigitalProcessing::clear_device_and_destroy()
     gpuErrchk(cudaEventDestroy(stop));
     gpuErrchk(cudaStreamDestroy(stream));
 
+    shr_mem->remove_shr_mem();
+    delete shr_mem;
+
 }
 
 void DigitalProcessing::stop_timing()
@@ -323,9 +330,7 @@ void DigitalProcessing::stop_timing()
 void DigitalProcessing::send_timing()
 {
     sigprocpacket::SigProcPacket sp;
-    std::cout << decimate_kernel_timing_ms << std::endl;
     sp.set_kerneltime(decimate_kernel_timing_ms);
-    std::cout << sp.kerneltime() << std::endl;
     sp.set_sequence_num(sequence_num);
 
     std::string s_msg_str;

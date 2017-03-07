@@ -6,4 +6,5 @@ message ComputationPacket {
   uint32 sequence_num = 1;
   uint32 numberofreceivesamples = 2;
   uint32 size = 3;
+  string name = 4;
 }

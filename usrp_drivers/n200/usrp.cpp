@@ -96,8 +96,13 @@ void USRP::set_rx_center_freq(double freq, std::vector<size_t> chs) {
 }
 
 void USRP::set_time_source(std::string source) {
-    usrp_->set_time_source(source);
-    usrp_->set_time_unknown_pps(uhd::time_spec_t(0.0));
+    if (source == "pps"){
+        usrp_->set_time_source(source);
+        usrp_->set_time_unknown_pps(uhd::time_spec_t(0.0));
+    }
+    else {
+        usrp_->set_time_now(0.0);
+    }
 }
 
 void USRP::check_ref_locked() {

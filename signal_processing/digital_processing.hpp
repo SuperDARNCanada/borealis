@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <cstdlib>
 #include <thrust/device_vector.h>
+#include "utils/shared_memory/shared_memory.hpp"
 
 #define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
 inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
@@ -29,8 +30,9 @@ class DigitalProcessing {
                                                 void *processing_data);
     static void CUDART_CB initial_memcpy_callback(cudaStream_t stream, cudaError_t status,
                                                 void *processing_data);
-    explicit DigitalProcessing(zmq::socket_t *ack_s, zmq::socket_t *timing_s, uint32_t sq_num);
-    void allocate_and_copy_rf_samples(void *data, uint32_t total_samples);
+    explicit DigitalProcessing(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
+                                 uint32_t sq_num, const char* shr_mem_name);
+    void allocate_and_copy_rf_samples(uint32_t total_samples);
     void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
     void allocate_and_copy_second_stage_filters(void *taps, uint32_t total_taps);
     void allocate_and_copy_third_stage_filters(void *taps, uint32_t total_taps);
@@ -97,6 +99,8 @@ class DigitalProcessing {
     size_t host_output_size;
 
     cudaEvent_t initial_start, kernel_start, stop;
+
+    SharedMemoryHandler *shr_mem;
 
     void callbackFunc();
 

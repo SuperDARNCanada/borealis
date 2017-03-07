@@ -6,8 +6,23 @@
 #include <zmq.hpp>
 #include "utils/protobuf/computationpacket.pb.h"
 #include "utils/protobuf/sigprocpacket.pb.h"
+#include "utils/shared_memory/shared_memory.hpp"
 
-
+std::string random_string( size_t length )
+{
+    auto randchar = []() -> char
+    {
+        const char charset[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+        const size_t max_index = (sizeof(charset) - 1);
+        return charset[ rand() % max_index ];
+    };
+    std::string str(length,0);
+    std::generate_n( str.begin(), length, randchar );
+    return str;
+}
 
 int main(int argc, char** argv){
 
@@ -25,6 +40,13 @@ int main(int argc, char** argv){
     timing_socket.connect("ipc:///tmp/feeds/4");
 
     sigprocpacket::SigProcPacket sp;
+
+
+    std::vector<float> sample_buffer;
+    enum shr_mem_switcher {FIRST, SECOND};
+    shr_mem_switcher region_switcher = FIRST;
+    boost::interprocess::mapped_region first_region, second_region;
+    void *current_region_addr;
 
     std::vector<double> rxfreqs = {0.,0.,0.};
     for (int i=0; i<rxfreqs.size(); i++) {
@@ -47,7 +69,7 @@ int main(int argc, char** argv){
 
     computationpacket::ComputationPacket cp;
 
-    auto num_samples = 1000000;
+    auto num_samples = 800000;
     cp.set_numberofreceivesamples(num_samples);
 
     auto default_v = std::complex<float>(2.0,2.0);
@@ -57,6 +79,8 @@ int main(int argc, char** argv){
 
 
     auto sqn_num = 0;
+
+
     while(1) {
 
         sp.set_sequence_num(sqn_num);
@@ -67,20 +91,36 @@ int main(int argc, char** argv){
         zmq::message_t r_msg (r_msg_str.size());
         memcpy ((void *) r_msg.data (), r_msg_str.c_str(), r_msg_str.size());
 
-        std::string c_msg_str;
-        cp.SerializeToString(&c_msg_str);
-        zmq::message_t c_msg (c_msg_str.size());
-        memcpy ((void *) c_msg.data (), c_msg_str.c_str(), c_msg_str.size());
+        auto name_str = random_string(10);
+
+        auto shr_start = std::chrono::steady_clock::now();
+        SharedMemoryHandler shrmem(name_str);
+        auto size = samples.size() * sizeof(std::complex<float>);
+        shrmem.create_shr_mem(size);
+        memcpy(shrmem.get_shrmem_addr(), samples.data(), size);
+        auto shr_end = std::chrono::steady_clock::now();
+        std::cout << "shrmem + memcpy for " << sp.sequence_num()
+            << " after "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(shr_end - shr_start).count()
+            << "ms" << std::endl;
 
         std::cout << "Sending data with sequence_num: " << sqn_num << std::endl;
 
         auto timing_ack_start = std::chrono::steady_clock::now();
 
         radctrl_socket.send(r_msg);
+
+        cp.set_name(name_str.c_str());
+
+        std::string c_msg_str;
+        cp.SerializeToString(&c_msg_str);
+        zmq::message_t c_msg (c_msg_str.size());
+        memcpy ((void *) c_msg.data (), c_msg_str.c_str(), c_msg_str.size());
+
         driver_socket.send(c_msg);
 
-        zmq::message_t data(samples.data(),samples.size()*sizeof(std::complex<float>));
-        driver_socket.send(data);
+/*        zmq::message_t data(samples.data(),samples.size()*sizeof(std::complex<float>));
+        driver_socket.send(data);*/
 
         zmq::message_t ack;
         ack_socket.recv(&ack);
