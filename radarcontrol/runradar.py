@@ -141,7 +141,7 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,
         driverpacket.txrate=txrate
         driverpacket.numberofreceivesamples=numberofreceivesamples
         driverpacket.timetosendsamples=timing
-        driverpacket.sqnnum=seqnum
+        driverpacket.sequence_num=seqnum
         # Past time zero which is start of the sequence.
         print "New samples {0} {1} {2} {3}".format(timing,SOB,EOB,channels)
         driverpacket.SOB=SOB
@@ -538,7 +538,7 @@ def main():
                                             else:
                                                 print "RXSEQNUM {}".format(rxseqnum)
                                         if socks[txsocket] == zmq.POLLIN:
-                                            txseqnum = get_ack(txsocket,sigprocpacket)
+                                            txseqnum = get_ack(txsocket,driverpacket)
                                             if txseqnum != seqnum_start + nave:
                                                 print "*********************ERROR: wrong txseqnum {} != {}".format(txseqnum, seqnum_start+nave)
                                                 # TODO: LOG ERRORS,break as required
