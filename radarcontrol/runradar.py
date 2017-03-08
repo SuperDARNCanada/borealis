@@ -60,7 +60,7 @@ def setup_sigproc_timing_ack_socket():
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/4")
     return cpsocket
- 
+
 
 def setup_cp_socket(): #to get refreshed control program updates.
     context=zmq.Context()
@@ -106,7 +106,7 @@ def get_prog(socket):
     prog = socket.recv_pyobj()
 
     return prog
-    
+
 def data_to_driver(driverpacket, txsocket, channels, isamples_list,
                    qsamples_list, txctrfreq, rxctrfreq, txrate,
                    numberofreceivesamples, SOB, EOB, timing, seqnum, repeat=False):
@@ -197,7 +197,7 @@ def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict):
     return
 
 
-def get_ack(xsocket,procpacket): 
+def get_ack(xsocket,procpacket):
     try:
         x=xsocket.recv(flags=zmq.NOBLOCK)
         procpacket.ParseFromString(x)
@@ -219,15 +219,15 @@ def main():
     sigprocpacket=sigprocpacket_pb2.SigProcPacket()
     proctimesocket=setup_sigproc_timing_ack_socket()
     proccpsocket=setup_sigproc_cpack_socket()
-   
+
     cpsocket=setup_cp_socket()
-     
+
 #    seqpoller = setup_ack_poller(txsocket,procsocket)
 
     # seqnum is used as a identifier in all packets while
     # runradar is running so set it up here.
-    # seqnum will get increased by nave at the end of 
-    # every integration time. 
+    # seqnum will get increased by nave at the end of
+    # every integration time.
     seqnum_start = 0
 
     status = radar_status.RadarStatus()
@@ -237,7 +237,7 @@ def main():
     while should_poll:
         poller=zmq.Poller()
         poller.register(cpsocket, zmq.POLLIN)
-        cpsocks = dict(poller.poll(10)) #polls for 3 ms, NOTE this is before inttime timer starts. 
+        cpsocks = dict(poller.poll(10)) #polls for 3 ms, NOTE this is before inttime timer starts.
         if cpsocket in cpsocks: #
             if cpsocks[cpsocket] == zmq.POLLIN:
                 new_cp = get_prog(cpsocket) # TODO: write this function
@@ -252,7 +252,7 @@ def main():
                     should_poll = False
         else:
             print "No CP - keep polling"
-        
+
 
     while True:
         # Receive pulse data from run_RCP
@@ -268,7 +268,7 @@ def main():
         #import experiment
         #prog = experiment.main()
         #prog=myexperiment.build_RCP()
-        
+
         cpos=prog.cpo_list
         updated_cp_received = False
 
@@ -331,15 +331,15 @@ def main():
             while (beam_remaining and not updated_cp_received):
                 for aveperiod in scan.aveperiods:
                 # If there are multiple aveperiods in a scan they are alternated
-                #   beam by beam. So we need to iterate through 
+                #   beam by beam. So we need to iterate through
                 # Go through each aveperiod once then increase the scan
                 #   iterator to the next beam in each scan.
-                    
+
                     # poll for new cp here, before starting a new integration.
                     cpsocket.send_pyobj(status)
                     poller=zmq.Poller()
                     poller.register(cpsocket, zmq.POLLIN)
-                    cpsocks = dict(poller.poll(3)) #polls for 3 ms, NOTE this is before inttime timer starts. 
+                    cpsocks = dict(poller.poll(3)) #polls for 3 ms, NOTE this is before inttime timer starts.
                     if cpsocket in cpsocks: #
                         if cpsocks[cpsocket] == zmq.POLLIN:
                             new_cp = get_prog(cpsocket) # TODO: write this function
@@ -350,14 +350,14 @@ def main():
                                 updated_cp_received = True
                                 print "NEW CP!!"
                                 break
-                
+
                     if scan_iter>=len(scan.scan_beams[aveperiod.keys[0]]):
                     # All keys will have the same length scan_beams
                     #   inside the aveperiod, but not necessarily all aveperiods
                     #   in the scan will have same length scan_beams so we have to
                     #   record how many scans are done.
                         # TODO: Fix this to record in a list which aveperiods are done
-                        # so we do not increase scans_done for same aveperiod 
+                        # so we do not increase scans_done for same aveperiod
                         scans_done=scans_done+1
                         if scans_done==len(scan.aveperiods):
                             beam_remaining=False
@@ -492,7 +492,7 @@ def main():
 
                             #
                             #
-                            # SEND ALL PULSES IN SEQUENCE. 
+                            # SEND ALL PULSES IN SEQUENCE.
                             #
                             for pulse_index in range(0, len(sequence.combined_pulse_list)):
                                 pulse_list=sequence.combined_pulse_list[pulse_index]
@@ -519,8 +519,8 @@ def main():
                                         pulse_list[1], seqnum_start + nave, repeat=False)
                                 # Pulse is done.
 
-                            # Get sequence acknowledgements and log 
-                            # synchronization and communication errors between 
+                            # Get sequence acknowledgements and log
+                            # synchronization and communication errors between
                             # the n200_driver, sig_proc, and runradar.
                             if seqnum_start + nave != 0:
                                 poller2=zmq.Poller()
@@ -529,7 +529,7 @@ def main():
                                 should_poll = True
                                 while should_poll:
                                     #print "Polling for {} - why is it not polling this long?".format(poll_timeout)
-                                    socks = dict(poller2.poll(poll_timeout + 23000)) # get two messages with timeout of 100 ms 
+                                    socks = dict(poller2.poll(poll_timeout + 23000)) # get two messages with timeout of 100 ms
                                     if proccpsocket in socks and txsocket in socks: # need one message from both.
                                         if socks[proccpsocket] == zmq.POLLIN:
                                             rxseqnum = get_ack(proccpsocket,sigprocpacket)
@@ -547,7 +547,7 @@ def main():
                                         should_poll = False
                                     else:
                                         pass
-                                        #print "******************ERROR: Have not received both ACKS"                                
+                                        #print "******************ERROR: Have not received both ACKS"
                             else: # on the very first sequence since starting runradar.
                                 poller=zmq.Poller()
                                 poller.register(txsocket, zmq.POLLIN)
@@ -555,7 +555,7 @@ def main():
                                 sock = poller.poll(poll_timeout + 23000)
                                 try:
                                     txsocket.recv(flags=zmq.NOBLOCK)
-                                    print "FIRST ACK RECEIVED" 
+                                    print "FIRST ACK RECEIVED"
                                 except zmq.Again:
                                     print "No first ack from driver - This shouldn't happen"
                                     # TODO: Log error because no ack returned from driver on first send.
@@ -567,7 +567,7 @@ def main():
 
 
                             # TODO: Make sure you can have a CPO that doesn't transmit, only receives on a frequency.
-                            #time.sleep(0.5)
+                            time.sleep(1)
                             # Sequence is done
                             nave = nave + 1
                         #print "updating time"
