@@ -123,7 +123,7 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,
         driverpacket.timetosendsamples=timing
         driverpacket.SOB=SOB
         driverpacket.EOB=EOB
-        driverpacket.sqnnum=seqnum
+        driverpacket.sequence_num=seqnum
         print "EMPTY {0} {1} {2} {3}".format(timing,SOB,EOB,channels)
         # timetoio empty
     else:
