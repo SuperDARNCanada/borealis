@@ -83,7 +83,12 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
 
 uint32_t calculate_num_filter_taps(float rate, float transition_width) {
     auto k = 3; //from formula 7-6 of Lyons text
-    return k * (rate/transition_width);
+    auto num_taps = k * (rate/transition_width);
+
+    //The parallel reduction in the GPU code requires at least 64 taps,
+    //so we have to use at least that many as a minimum.
+    return (num_taps > 64) ? num_taps : 64;
+    //return num_taps;
 }
 
 std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_cutoff, float transition_width,
@@ -95,9 +100,9 @@ std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_c
     auto filter_bands = create_normalized_lowpass_filter_bands(filter_cutoff,transition_width,
                             rate);
 
-    std::vector<double> filter_taps(num_taps+1); //remez returns number of taps + 1
-
-    auto converges = remez(filter_taps.data(),filter_taps.capacity(),(filter_bands.size()/2),
+    //std::vector<double> filter_taps(63+1); //remez returns number of taps + 1
+    double filter_taps[num_taps + 1];
+    auto converges = remez(filter_taps, num_taps + 1, (filter_bands.size()/2),
         filter_bands.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY);
     if (converges < 0){
         std::cerr << "Filter failed to converge with cutoff of " << filter_cutoff
@@ -106,7 +111,7 @@ std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_c
         //TODO(keith): throw error
     }
 
-    std::vector<std::complex<float>> complex_taps(num_taps+1);
+    std::vector<std::complex<float>> complex_taps(num_taps + 1);
     for (auto &i : filter_taps) {
         complex_taps[i] = std::complex<float>(i,0.0);
     }
@@ -210,6 +215,8 @@ int main(int argc, char **argv){
         std::string r_msg_str(static_cast<char*>(radctl_request.data()), radctl_request.size());
         sp.ParseFromString(r_msg_str);
 
+        std::cout << "Got radarctrl request" << std::endl;
+
         //Then receive packet from driver
         zmq::message_t driver_request;
         driver_socket.recv(&driver_request);
@@ -217,9 +224,13 @@ int main(int argc, char **argv){
         std::string c_msg_str(static_cast<char*>(driver_request.data()), driver_request.size());
         cp.ParseFromString(c_msg_str);
 
+        std::cout << "Got driver request" << std::endl;
+
         //Verify driver and radar control packets align
         if (sp.sequence_num() != cp.sequence_num()) {
             //TODO(keith): handle error
+            std::cout << "SEQUENCE NUMBER mismatch rctl: " << sp.sequence_num()
+                << " driver: " << cp.sequence_num();
         }
 
 
@@ -272,6 +283,7 @@ int main(int argc, char **argv){
 
         DigitalProcessing *dp = new DigitalProcessing(&ack_socket, &timing_socket,
                                                          sp.sequence_num(), cp.name().c_str());
+
 
         auto total_samples = cp.numberofreceivesamples() * sig_options.get_total_receive_antennas();
 

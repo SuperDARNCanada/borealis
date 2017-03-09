@@ -2,6 +2,7 @@
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/range/algorithm_ext/erase.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
 #include <string>
 #include "utils/options/options.hpp"
 #include "utils/driver_options/driveroptions.hpp"
@@ -21,7 +22,7 @@ DriverOptions::DriverOptions() {
     tx_sample_rate = config_pt.get<double>("tx_sample_rate");
     rx_sample_rate = config_pt.get<double>("rx_sample_rate");
     cpu = config_pt.get<std::string>("cpu");
-    otw = config_pt.get<std::string>("overthewire"); 
+    otw = config_pt.get<std::string>("overthewire");
     gpio_bank = config_pt.get<std::string>("gpio_bank");
     scope_sync_mask = config_pt.get<uint32_t>("scope_sync_mask");
     atten_mask = config_pt.get<uint32_t>("atten_mask");
@@ -30,8 +31,8 @@ DriverOptions::DriverOptions() {
     atten_window_time_end = config_pt.get<double>("atten_window_time_end");
     tr_window_time = config_pt.get<double>("tr_window_time");
 
-    for (auto& channel : config_pt.get_child("receive_channels"))
-        receive_channels.push_back(channel.second.get_value<uint32_t>());
+    total_receive_antennas = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("total_receive_antennas"));
 }
 
 double DriverOptions::get_tx_rate() {
@@ -98,6 +99,6 @@ double DriverOptions::get_tr_window_time() {
     return tr_window_time;
 }
 
-std::vector<uint32_t> DriverOptions::get_receive_channels() {
-    return receive_channels;
+uint32_t DriverOptions::get_total_receive_antennas(){
+    return total_receive_antennas;
 }
