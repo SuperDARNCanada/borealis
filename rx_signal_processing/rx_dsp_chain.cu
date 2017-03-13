@@ -21,7 +21,7 @@
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 #include "utils/shared_memory/shared_memory.hpp"
 
-#include "digital_processing.hpp"
+#include "dsp.hpp"
 
 extern "C" {
     #include "remez.h"
@@ -100,7 +100,9 @@ std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_c
     auto filter_bands = create_normalized_lowpass_filter_bands(filter_cutoff,transition_width,
                             rate);
 
-    //std::vector<double> filter_taps(63+1); //remez returns number of taps + 1
+    /*remez returns number of taps + 1. Should we use num_taps + 1
+      or should we pass num_taps - 1 to remez?
+    */
     double filter_taps[num_taps + 1];
     auto converges = remez(filter_taps, num_taps + 1, (filter_bands.size()/2),
         filter_bands.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY);
@@ -281,7 +283,7 @@ int main(int argc, char **argv){
             filtertaps_3_h.insert(filtertaps_3_h.end(),filtertaps_3.begin(),filtertaps_3.end());
         }
 
-        DigitalProcessing *dp = new DigitalProcessing(&ack_socket, &timing_socket,
+        DSPCore *dp = new DSPCore(&ack_socket, &timing_socket,
                                                          sp.sequence_num(), cp.name().c_str());
 
 
@@ -299,7 +301,7 @@ int main(int argc, char **argv){
         dp->allocate_first_stage_output(num_output_samples_1);
 
         gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
-                                    DigitalProcessing::initial_memcpy_callback, dp, 0));
+                                    DSPCore::initial_memcpy_callback, dp, 0));
 
         dp->call_decimate(dp->get_rf_samples_p(),
             dp->get_first_stage_output_p(),
@@ -335,7 +337,7 @@ int main(int argc, char **argv){
 
         // New in CUDA 5.0: Add a CPU callback which is called once all currently pending operations in the CUDA stream have finished
         gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
-                                            DigitalProcessing::cuda_postprocessing_callback, dp, 0));
+                                            DSPCore::cuda_postprocessing_callback, dp, 0));
 
 
     }

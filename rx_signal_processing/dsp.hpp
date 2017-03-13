@@ -22,15 +22,16 @@ inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
     throw thrust::system_error(code, thrust::cuda_category(), file_and_line);
   }
 }
+
 std::vector<cudaDeviceProp> get_gpu_properties();
 
-class DigitalProcessing {
+class DSPCore {
  public:
     static void CUDART_CB cuda_postprocessing_callback(cudaStream_t stream, cudaError_t status,
                                                 void *processing_data);
     static void CUDART_CB initial_memcpy_callback(cudaStream_t stream, cudaError_t status,
                                                 void *processing_data);
-    explicit DigitalProcessing(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
+    explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
                                  uint32_t sq_num, const char* shr_mem_name);
     void allocate_and_copy_rf_samples(uint32_t total_samples);
     void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
