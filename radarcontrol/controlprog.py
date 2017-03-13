@@ -13,6 +13,10 @@ from cpobject import CPObject, interfacing, if_type
 class ControlProg():
     """Class combining control program objects, defining how they 
     interface and some overall metadata
+
+    :param cpo_id: unique id (RCP number)
+    :param cpo_num: number of CPObjects in this control program.
+    :
     """
 
     def __init__(self, cponum, cpid):    
