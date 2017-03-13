@@ -1,6 +1,6 @@
 #include <vector>
 #include <string>
-#include <zmq.hpp>
+#include <zmq.hpp> // REVIEW #4 Need to explain what we use from this lib in our general documentation
 #include <thread>
 #include <complex>
 #include <iostream>
@@ -55,9 +55,10 @@ std::vector<double> create_normalized_lowpass_filter_bands(float cutoff, float t
     return filterbands;
 }
 
-
+// REVIEW #30 Is this in the right file? Should it be in dsp.cu along with get_gpu_properties?
+// REVIEW #4 not sure where cudaDeviceProp is found...
 void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
-    for(auto i : gpu_properties) {
+    for(auto i : gpu_properties) { // REVIEW #28 does this need to be "auto&" stackoverflow says use this way "auto" if you aren't changing anything, but use auto& if you are.? 
         std::cout << "Device name: " << i.name << std::endl;
         std::cout << "  Max grid size x: " << i.maxGridSize[0] << std::endl;
         std::cout << "  Max grid size y: " << i.maxGridSize[1] << std::endl;
@@ -75,7 +76,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
         std::cout << "  Memory Bus Width (bits): " << i.memoryBusWidth
             << std::endl;
         std::cout << "  Peak Memory Bandwidth (GB/s): " <<
-           2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6 << std::endl;
+           2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6 << std::endl; // REVIEW #29 magic calculation with magic numbers? 
         std::cout << "  Max shared memory per block: " << i.sharedMemPerBlock
             << std::endl;
     }
@@ -91,7 +92,7 @@ uint32_t calculate_num_filter_taps(float rate, float transition_width) {
     //return num_taps;
 }
 
-std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_cutoff, float transition_width,
+std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_cutoff, float transition_width, // REVIEW #31 this line is over 80 characters, need to be consistent. #31
                                     float rate) {
 
     std::vector<double> desired_band_gain = {1.0,0.0};
@@ -132,17 +133,18 @@ void save_filter_to_file(std::vector<std::complex<float>> filter_taps, const cha
 
 
 int main(int argc, char **argv){
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
+    GOOGLE_PROTOBUF_VERIFY_VERSION; // REVIEW #4 state what this does? macro to verify headers and lib are same version.
 
     auto driver_options = DriverOptions();
-    auto sig_options = SignalProcessingOptions();
-    auto rx_rate = driver_options.get_rx_rate();
-    zmq::context_t sig_proc_context(1);
+    auto sig_options = SignalProcessingOptions(); // #26 REVIEW Should the naming be updated along with DSP ?
+    auto rx_rate = driver_options.get_rx_rate(); // #5 REVIEW What units is rx_rate in? 
+    zmq::context_t sig_proc_context(1); // REVIEW #4 - what is "1"?
 
     zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
-    driver_socket.bind("ipc:///tmp/feeds/1");
+    driver_socket.bind("ipc:///tmp/feeds/1"); // REVIEW #29 Should this be in a config file? Sort of a magic string right now
 
-    zmq::socket_t radarctrl_socket(sig_proc_context, ZMQ_PAIR);
+    // REVIEW #1 Need a comment here to explain which blocks these 3 sockets talk to, the driver socket is obvious, but these three may not be
+    zmq::socket_t radarctrl_socket(sig_proc_context, ZMQ_PAIR); // REVIEW #26 Name of radarctrl may need to be updated to be consistent with our discussion on Friday March 10th
     radarctrl_socket.bind("ipc:///tmp/feeds/2");
 
     zmq::socket_t ack_socket(sig_proc_context, ZMQ_PAIR);
@@ -151,15 +153,15 @@ int main(int argc, char **argv){
     zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
     timing_socket.bind("ipc:///tmp/feeds/4");
 
-    auto gpu_properties = get_gpu_properties();
+    auto gpu_properties = get_gpu_properties(); 
     print_gpu_properties(gpu_properties);
 
-    uint32_t first_stage_dm_rate, second_stage_dm_rate, third_stage_dm_rate = 0;
-    if (fmod(rx_rate,sig_options.get_first_stage_sample_rate()) > 0.0){
+    uint32_t first_stage_dm_rate, second_stage_dm_rate, third_stage_dm_rate = 0; // REVIEW #32 this line only initializes third stage, the others are only declared. bad style?
+    if (fmod(rx_rate,sig_options.get_first_stage_sample_rate()) > 0.0){ // REVIEW #1 or #2 perhaps a comment needed to clarify what this error means (dm rate needs to be int)
         //TODO(keith): handle error
     }
     else{
-        auto rate_f = rx_rate/sig_options.get_first_stage_sample_rate();
+        auto rate_f = rx_rate/sig_options.get_first_stage_sample_rate(); // REVIEW #26 don't like the name rate_f, not obvious why it's called that, seems like a temp variable, so perhaps indicate that?
         first_stage_dm_rate = static_cast<uint32_t>(rate_f);
 
         rate_f = sig_options.get_first_stage_sample_rate()/
@@ -170,6 +172,7 @@ int main(int argc, char **argv){
                     sig_options.get_third_stage_sample_rate();
         third_stage_dm_rate = static_cast<uint32_t>(rate_f);
     }
+    // REVIEW #15 Even though the second and third stage sample rates are set in config, the same error check should be done on the 2nd and 3rd stage dm rates as for first stage dm rate.
 
     std::cout << "1st stage dm rate: " << first_stage_dm_rate << std::endl
         << "2nd stage dm rate: " << second_stage_dm_rate << std::endl
