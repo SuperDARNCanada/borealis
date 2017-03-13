@@ -105,7 +105,7 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     std::string msg_str(static_cast<char*>(request.data()), request.size());
     dp.ParseFromString(msg_str);
 
-    sqn_num = dp.sqnnum();
+    sqn_num = dp.sequence_num();
 
     if (sqn_num != expected_sqn_num){
       std::cout << "SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: "
@@ -288,7 +288,8 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     if (dp.eob() == true) {
       //usrp_d->clear_scope_sync();
       driverpacket::DriverPacket ack;
-      ack.set_sqnnum(sqn_num);
+      std::cout << "SEQUENCENUM " << sqn_num << std::endl;
+      ack.set_sequence_num(sqn_num);
       expected_sqn_num += 1;
 
       std::string ack_str;
@@ -435,7 +436,10 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     std::chrono::steady_clock::time_point stream_begin = std::chrono::steady_clock::now();
     if (dp.channels_size() > 0 && dp.sob() == true && channels_set == false) {
-      channels = make_channels(dp);
+      channels.clear();
+      for (uint32_t i=0; i<driver_options->get_total_receive_antennas(); i++){
+        channels.push_back(i);
+      }
       stream_args.channels = channels;
       usrp_d->set_rx_rate(rx_rate);  // ~450us
       rx_stream = usrp_d->get_usrp()->get_rx_stream(stream_args);  // ~44ms
@@ -497,11 +501,18 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
           << "us" << std::endl;*/
 
     std::chrono::steady_clock::time_point shr_begin = std::chrono::steady_clock::now();
-
     size_t mem_size = channels.size() * dp.numberofreceivesamples() * sizeof(std::complex<float>);
     auto shr_mem_name = random_string(25);
     SharedMemoryHandler shrmem(shr_mem_name);
     shrmem.create_shr_mem(mem_size);
+
+    //create a vector of pointers to where each channel's data gets received.
+    std::vector<std::complex<float> *> buffer_ptrs;
+    for(uint32_t i=0; i<channels.size(); i++){
+      auto ptr = static_cast<std::complex<float>*>(shrmem.get_shrmem_addr()) +
+                                  i*dp.numberofreceivesamples();
+      buffer_ptrs.push_back(ptr);
+    }
 
     std::chrono::steady_clock::time_point shr_end = std::chrono::steady_clock::now();
     std::cout << "RECEIVE shr timing: "
@@ -518,21 +529,31 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     std::cout << "RECEIVE time_zero " << time_zero.get_frac_secs() << std::endl;
 
     std::chrono::steady_clock::time_point recv_begin = std::chrono::steady_clock::now();
-    //TODO(keith) change to complex;
 
-    zmq::message_t cp_data_message(mem_size);
-    stream_cmd.num_samps = size_t(dp.numberofreceivesamples() * channels.size());
+    //Documentation is unclear, but num samps is per channel
+    stream_cmd.num_samps = size_t(dp.numberofreceivesamples());
     stream_cmd.stream_now = false;
     stream_cmd.time_spec = time_zero;
     rx_stream->issue_stream_cmd(stream_cmd);
 
     auto md = RXMetadata();
-    size_t total_received_samples = 0;
-    std::cout << "samples to receive: " << dp.numberofreceivesamples() << " mem size "
-    << mem_size << std::endl;
-    while (total_received_samples < dp.numberofreceivesamples() * channels.size()) {
-      size_t num_rx_samps = rx_stream->recv(shrmem.get_shrmem_addr(),
-        (size_t)dp.numberofreceivesamples(), md.get_md(), 25, false);
+    size_t accumulated_received_samples = 0;
+    std::cout << "RECEIVE total samples to receive: " << channels.size() * dp.numberofreceivesamples()
+    << " mem size " << mem_size << std::endl;
+
+/*    //allocate buffers to receive with samples (one buffer per channel)
+    const size_t samps_per_buff = dp.numberofreceivesamples();
+    std::vector<std::vector<std::complex<float> > > buffs(
+        channels.size(), std::vector<std::complex<float> >(samps_per_buff+10,std::complex<float>(0.0,0.0))
+    );
+
+    //create a vector of pointers to point to each of the channel buffers
+    std::vector<std::complex<float> *> buff_ptrs;
+    for (size_t i = 0; i < buffs.size(); i++) buff_ptrs.push_back(&buffs[i].front());
+*/
+    while (accumulated_received_samples < dp.numberofreceivesamples()) {
+      size_t num_rx_samps = rx_stream->recv(buffer_ptrs,
+        (size_t)dp.numberofreceivesamples(), md.get_md());
 
       if (md.get_error_code() == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
           std::cout << boost::format("Timeout while streaming") << std::endl;
@@ -545,21 +566,34 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
           // TODO(keith): throw error
       }
 
-      total_received_samples += num_rx_samps;
-      std::cout << "Total received samples " << total_received_samples <<std::endl;
+      accumulated_received_samples += num_rx_samps;
+      std::cout << "Accumulated received samples " << accumulated_received_samples <<std::endl;
     }
+
+/*    auto counter = 0;
+    for(int i=0; i<buffs.size();i++){
+      for(int j=0;j<buffs[i].size();j++){
+        if(buffs[i][j] != std::complex<float>(0.0,0.0)){
+          counter++;
+        }
+      }
+      std::cout <<"buff count: " << counter <<std::endl;
+      counter=0;
+    }*/
+    std::cout << "RECEIVE received samples per channel " << accumulated_received_samples << std::endl;
+
     std::chrono::steady_clock::time_point recv_end = std::chrono::steady_clock::now();
     std::cout << "RECEIVE receive timing: "
       << std::chrono::duration_cast<std::chrono::microseconds>
                                                   (recv_end - recv_begin).count()
       << "us" << std::endl;
 
-    std::cout << "RECEIVE total_received_samples " << total_received_samples << std::endl;
 
     std::chrono::steady_clock::time_point send_begin = std::chrono::steady_clock::now();
 
-    cp.set_size(dp.numberofreceivesamples());
+    cp.set_numberofreceivesamples(dp.numberofreceivesamples());
     cp.set_name(shr_mem_name);
+    cp.set_sequence_num(dp.sequence_num());
     std::string cp_str;
     cp.SerializeToString(&cp_str);
 
@@ -567,7 +601,7 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     memcpy ((void *) cp_size_message.data (), cp_str.c_str(), cp_str.size());
 
     data_socket.send(cp_size_message);
-    data_socket.send(cp_data_message);
+    //data_socket.send(cp_data_message);
 
     std::chrono::steady_clock::time_point send_end = std::chrono::steady_clock::now();
     std::cout << "RECEIVE package and send timing: "
@@ -601,7 +635,7 @@ void control(zmq::context_t* driver_c) {
   ack_socket.bind("inproc://ack");
 
   zmq::socket_t computation_socket(*driver_c, ZMQ_PAIR);
-  computation_socket.bind("ipc:///tmp/feeds/1");
+  computation_socket.connect("ipc:///tmp/feeds/1");
 
 
 
@@ -646,16 +680,11 @@ void control(zmq::context_t* driver_c) {
     if (dp.eob() == true) {
       zmq::message_t ack, data, size;
 
-
       data_socket.recv(&size);
-      //computation_socket.send(size);
-      data_socket.recv(&data);
-      //computation_socket.send(data);
+      computation_socket.send(size);
 
       ack_socket.recv(&ack);
-
-/*      computation_socket.send(data);
-      radarctrl_socket.send(ack);*/
+      radarctrl_socket.send(ack);
 
     }
 

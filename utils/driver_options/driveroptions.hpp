@@ -24,7 +24,7 @@ class DriverOptions: public Options {
         double atten_window_time_start;
         double atten_window_time_end;
         double tr_window_time;
-        std::vector<uint32_t> receive_channels;
+        uint32_t total_receive_antennas;
 
         DriverOptions();
         double get_tx_rate();
@@ -43,7 +43,7 @@ class DriverOptions: public Options {
         double get_atten_window_time_start();
         double get_atten_window_time_end();
         double get_tr_window_time();
-        std::vector<uint32_t> get_receive_channels();
+        uint32_t get_total_receive_antennas();
 };
 
 #endif
