@@ -44,9 +44,11 @@ extern "C" {
 #define sig_options.get_third_stage_filter_cutoff() (10000.0/3.0)
 #define sig_options.get_third_stage_filter_transition() (sig_options.get_third_stage_filter_cutoff() * 0.25)
 */
+
+// REVIEW #30 all filter-building functions could be placed in a separate file? 
 std::vector<double> create_normalized_lowpass_filter_bands(float cutoff, float transition_band,
-                        float Fs) {
-    std::vector<double> filterbands;
+                        float Fs) { //REVIEW #5 units for params
+    std::vector<double> filterbands; //REVIEW #3 describe band choices and how this works
     filterbands.push_back(0.0);
     filterbands.push_back(cutoff/Fs);
     filterbands.push_back((cutoff + transition_band)/Fs);
@@ -82,33 +84,34 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
     }
 }
 
-uint32_t calculate_num_filter_taps(float rate, float transition_width) {
-    auto k = 3; //from formula 7-6 of Lyons text
-    auto num_taps = k * (rate/transition_width);
+uint32_t calculate_num_filter_taps(float rate, float transition_width) { // REVIEW #26 transition_width and transition_band are both used?
+    auto k = 3; //from formula 7-6 of Lyons text REVIEW #1 and #7 add some explanation for design of choice of k=3
+    auto num_taps = k * (rate/transition_width); //REVIEW #5 provide units for rate & transition width
 
     //The parallel reduction in the GPU code requires at least 64 taps,
     //so we have to use at least that many as a minimum.
     return (num_taps > 64) ? num_taps : 64;
-    //return num_taps;
+    //return num_taps; // REVIEW #33
+    //REVIEW #28 this function is returning a uint32; will this always round down? comment/document this
 }
 
 std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_cutoff, float transition_width, // REVIEW #31 this line is over 80 characters, need to be consistent. #31
-                                    float rate) {
-
-    std::vector<double> desired_band_gain = {1.0,0.0};
-    std::vector<double> weight = {1.0,1.0};
+                                    float rate) { // REVIEW #5 filter_cutoff, transition_width, rate
+    // REVIEW #3 explain algorithm including weight
+    std::vector<double> desired_band_gain = {1.0,0.0}; 
+    std::vector<double> weight = {1.0,1.0}; 
 
     auto filter_bands = create_normalized_lowpass_filter_bands(filter_cutoff,transition_width,
                             rate);
 
     /*remez returns number of taps + 1. Should we use num_taps + 1
       or should we pass num_taps - 1 to remez?
-    */
-    double filter_taps[num_taps + 1];
-    auto converges = remez(filter_taps, num_taps + 1, (filter_bands.size()/2),
-        filter_bands.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY);
-    if (converges < 0){
-        std::cerr << "Filter failed to converge with cutoff of " << filter_cutoff
+    */ //REVIEW #6 make this a TODO - does this depend on num_taps being odd or even?
+    double filter_taps[num_taps + 1]; 
+    auto converges = remez(filter_taps, num_taps + 1, (filter_bands.size()/2), // REVIEW #32 declare and initialize number of bands for better readability
+        filter_bands.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY); // REVIEW #15 are we passing the right values, should error check before passing these params
+    if (converges < 0){ // REVIEW #10 remez returns True or False is this check correct?
+        std::cerr << "Filter failed to converge with cutoff of " << filter_cutoff // REVIEW #5 & #34 print units
             << ", transition width " << transition_width << ", and rate "
             << rate << std::endl;
         //TODO(keith): throw error
@@ -116,7 +119,7 @@ std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_c
 
     std::vector<std::complex<float>> complex_taps(num_taps + 1);
     for (auto &i : filter_taps) {
-        complex_taps[i] = std::complex<float>(i,0.0);
+        complex_taps[i] = std::complex<float>(i,0.0); // REVIEW #0 does this work?
     }
 
     return complex_taps;
@@ -133,6 +136,7 @@ void save_filter_to_file(std::vector<std::complex<float>> filter_taps, const cha
 
 
 int main(int argc, char **argv){
+    // REVIEW #35 main is > 200 lines, kind of large maybe the entire filter setup process could be moved out?
     GOOGLE_PROTOBUF_VERIFY_VERSION; // REVIEW #4 state what this does? macro to verify headers and lib are same version.
 
     auto driver_options = DriverOptions();
@@ -176,17 +180,17 @@ int main(int argc, char **argv){
 
     std::cout << "1st stage dm rate: " << first_stage_dm_rate << std::endl
         << "2nd stage dm rate: " << second_stage_dm_rate << std::endl
-        << "3rd stage dm rate: " << third_stage_dm_rate <<std::endl;
+        << "3rd stage dm rate: " << third_stage_dm_rate << std::endl;
 
 
-    auto S_lowpass1 = calculate_num_filter_taps(rx_rate,
+    auto S_lowpass1 = calculate_num_filter_taps(rx_rate, //REVIEW #26 perhaps name of S_lowpass1 could be more self-explanatory as lowpass1_numtaps ?
                                     sig_options.get_first_stage_filter_transition());
     auto S_lowpass2 = calculate_num_filter_taps(sig_options.get_first_stage_sample_rate(),
                                     sig_options.get_second_stage_filter_transition());
     auto S_lowpass3 = calculate_num_filter_taps(sig_options.get_second_stage_sample_rate(),
                                     sig_options.get_third_stage_filter_transition());
 
-    std::cout << "1st stage taps: " << S_lowpass1 << std::endl << "2nd stage taps: "
+    std::cout << "1st stage taps: " << S_lowpass1 << std::endl << "2nd stage taps: " // REVIEW #34 mention that it's the number of taps?
         << S_lowpass2 << std::endl << "3rd stage taps: " << S_lowpass3 <<std::endl;
 
 
