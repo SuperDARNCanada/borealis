@@ -1,11 +1,11 @@
 #!/usr/bin/python
 
 # experiment.py
-# 2016-11-17
+# 2017-03-13
 # Marci Detwiller
-# Get a radar control program and build it.
-# Create pulse samples in sequences, in averaging periods, in scans.
-# Communicate with the driver to control the radar.
+# Get a radar control program made of objects (scans, averaging periods, and sequences).
+# Communicate with the n200_driver to control the radar.
+# Communicate with the rx_dsp_chain to process the data.
 
 import sys
 import os
