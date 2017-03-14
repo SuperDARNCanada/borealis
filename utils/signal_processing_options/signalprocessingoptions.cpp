@@ -11,8 +11,6 @@
 SignalProcessingOptions::SignalProcessingOptions() {
     Options::parse_config_file();
 
-    total_receive_antennas = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("total_receive_antennas"));
     first_stage_sample_rate = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("first_stage_sample_rate"));
     second_stage_sample_rate = boost::lexical_cast<double>(
@@ -31,12 +29,19 @@ SignalProcessingOptions::SignalProcessingOptions() {
                                 config_pt.get<std::string>("third_stage_filter_cutoff"));
     third_stage_filter_transition = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("third_stage_filter_transition"));
+    main_antenna_count = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("main_antenna_count"));
+    interferometer_antenna_count = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("interferometer_antenna_count"));
 }
 
-uint32_t SignalProcessingOptions::get_total_receive_antennas(){
-    return total_receive_antennas;
+uint32_t SignalProcessingOptions::get_main_antenna_count() {
+    return main_antenna_count;
 }
 
+uint32_t SignalProcessingOptions::get_interferometer_antenna_count() {
+    return interferometer_antenna_count;
+}
 double SignalProcessingOptions::get_first_stage_sample_rate(){
     return first_stage_sample_rate;
 }

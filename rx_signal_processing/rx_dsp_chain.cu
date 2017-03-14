@@ -287,7 +287,9 @@ int main(int argc, char **argv){
                                                          sp.sequence_num(), cp.name().c_str());
 
 
-        auto total_samples = cp.numberofreceivesamples() * sig_options.get_total_receive_antennas();
+        auto total_antennas = sig_options.get_main_antenna_count() +
+                                sig_options.get_interferometer_antenna_count();
+        auto total_samples = cp.numberofreceivesamples() * total_antennas;
 
         std::cout << "Total elements in data message: " << total_samples
             << std::endl;
@@ -297,7 +299,7 @@ int main(int argc, char **argv){
 
 
         auto num_output_samples_1 = rx_freqs.size() * cp.numberofreceivesamples()/first_stage_dm_rate
-                                        * sig_options.get_total_receive_antennas();
+                                        * total_antennas;
         dp->allocate_first_stage_output(num_output_samples_1);
 
         gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
@@ -307,7 +309,7 @@ int main(int argc, char **argv){
             dp->get_first_stage_output_p(),
             dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
             cp.numberofreceivesamples(), filtertaps_1.size(), rx_freqs.size(),
-            sig_options.get_total_receive_antennas(), "First stage of decimation");
+            total_antennas, "First stage of decimation");
 
 
 
@@ -319,7 +321,7 @@ int main(int argc, char **argv){
             dp->get_second_stage_output_p(),
             dp->get_second_stage_filters_p(), second_stage_dm_rate,
             num_samps_2, filtertaps_2.size(), rx_freqs.size(),
-            sig_options.get_total_receive_antennas(), "Second stage of decimation");
+            total_antennas, "Second stage of decimation");
 
 
 
@@ -331,7 +333,7 @@ int main(int argc, char **argv){
             dp->get_third_stage_output_p(),
             dp->get_third_stage_filters_p(), third_stage_dm_rate,
             num_samps_3, filtertaps_3.size(), rx_freqs.size(),
-            sig_options.get_total_receive_antennas(), "Third stage of decimation");
+            total_antennas, "Third stage of decimation");
 
         dp->allocate_and_copy_host_output(num_output_samples_3);
 

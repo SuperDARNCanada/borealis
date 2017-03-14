@@ -7,15 +7,15 @@
 
 class USRP{
  public:
-        uhd::usrp::multi_usrp::sptr usrp_;
-
         explicit USRP(std::shared_ptr<DriverOptions> driver_options);
         void set_usrp_clock_source(std::string source);
         void set_tx_subdev(std::string tx_subdev);
         void set_tx_rate(double tx_rate);
         double get_tx_rate();
         void set_tx_center_freq(double freq, std::vector<size_t> chs);
-        void set_rx_subdev(std::string rx_subdev);
+        void set_main_rx_subdev(std::string main_subdev);
+        void set_interferometer_rx_subdev(std::string interferometer_subdev,
+                                                uint32_t interferometer_antenna_count);
         void set_rx_rate(double rx_rate);
         void set_rx_center_freq(double freq, std::vector<size_t> chs);
         void set_time_source(std::string source);
@@ -30,15 +30,22 @@ class USRP{
         void clear_scope_sync();
         void clear_atten();
         void clear_tr();
+        std::vector<size_t> get_receive_channels();
         uhd::usrp::multi_usrp::sptr get_usrp();
         std::string to_string(std::vector<size_t> chs);
 
 private:
+        uhd::usrp::multi_usrp::sptr usrp_;
         std::string gpio_bank_;
         uint32_t mboard_;
         uint32_t scope_sync_mask_;
         uint32_t atten_mask_;
         uint32_t tr_mask_;
+        std::vector<size_t> receive_channels;
+
+        std::vector<size_t> create_receive_channels(uint32_t main_antenna_count,
+                                                        uint32_t interferometer_antenna_count);
+
 };
 
 class TXMetadata{

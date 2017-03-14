@@ -8,8 +8,23 @@
 
 class SignalProcessingOptions: public Options {
  public:
-    uint32_t total_receive_antennas;
+    explicit SignalProcessingOptions();
 
+    double get_first_stage_sample_rate();
+    double get_second_stage_sample_rate();
+    double get_third_stage_sample_rate();
+    double get_first_stage_filter_cutoff();
+    double get_first_stage_filter_transition();
+    double get_second_stage_filter_cutoff();
+    double get_second_stage_filter_transition();
+    double get_third_stage_filter_cutoff();
+    double get_third_stage_filter_transition();
+    uint32_t get_main_antenna_count();
+    uint32_t get_interferometer_antenna_count();
+
+ private:
+    uint32_t main_antenna_count;
+    uint32_t interferometer_antenna_count;
     double first_stage_sample_rate;
     double second_stage_sample_rate;
     double third_stage_sample_rate;
@@ -21,17 +36,6 @@ class SignalProcessingOptions: public Options {
     double third_stage_filter_transition;
 
 
-    SignalProcessingOptions();
-    uint32_t get_total_receive_antennas();
-    double get_first_stage_sample_rate();
-    double get_second_stage_sample_rate();
-    double get_third_stage_sample_rate();
-    double get_first_stage_filter_cutoff();
-    double get_first_stage_filter_transition();
-    double get_second_stage_filter_cutoff();
-    double get_second_stage_filter_transition();
-    double get_third_stage_filter_cutoff();
-    double get_third_stage_filter_transition();
 };
 
 #endif

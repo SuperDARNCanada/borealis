@@ -16,23 +16,33 @@ DriverOptions::DriverOptions() {
     boost::remove_erase_if (devices, boost::is_any_of(" \n"));
 
     tx_subdev = config_pt.get<std::string>("tx_subdev");
-    rx_subdev = config_pt.get<std::string>("rx_subdev");
+    main_rx_subdev = config_pt.get<std::string>("main_rx_subdev");
+    interferometer_rx_subdev = config_pt.get<std::string>("interferometer_rx_subdev");
     pps = config_pt.get<std::string>("pps");
     ref = config_pt.get<std::string>("ref");
-    tx_sample_rate = config_pt.get<double>("tx_sample_rate");
-    rx_sample_rate = config_pt.get<double>("rx_sample_rate");
     cpu = config_pt.get<std::string>("cpu");
     otw = config_pt.get<std::string>("overthewire");
     gpio_bank = config_pt.get<std::string>("gpio_bank");
-    scope_sync_mask = config_pt.get<uint32_t>("scope_sync_mask");
-    atten_mask = config_pt.get<uint32_t>("atten_mask");
-    tr_mask = config_pt.get<uint32_t>("tr_mask");
-    atten_window_time_start = config_pt.get<double>("atten_window_time_start");
-    atten_window_time_end = config_pt.get<double>("atten_window_time_end");
-    tr_window_time = config_pt.get<double>("tr_window_time");
-
-    total_receive_antennas = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("total_receive_antennas"));
+    rx_sample_rate = boost::lexical_cast<double>(
+                                config_pt.get<std::string>("rx_sample_rate"));
+    tx_sample_rate = boost::lexical_cast<double>(
+                                config_pt.get<std::string>("tx_sample_rate"));
+    scope_sync_mask = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("scope_sync_mask"));
+    atten_mask = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("atten_mask"));
+    tr_mask = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("tr_mask"));
+    atten_window_time_start = boost::lexical_cast<double>(
+                                config_pt.get<std::string>("atten_window_time_start"));
+    atten_window_time_end = boost::lexical_cast<double>(
+                                config_pt.get<std::string>("atten_window_time_end"));
+    tr_window_time = boost::lexical_cast<double>(
+                                config_pt.get<std::string>("tr_window_time"));
+    main_antenna_count = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("main_antenna_count"));
+    interferometer_antenna_count = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("interferometer_antenna_count"));
 }
 
 double DriverOptions::get_tx_rate() {
@@ -51,8 +61,12 @@ std::string DriverOptions::get_tx_subdev() {
     return tx_subdev;
 }
 
-std::string DriverOptions::get_rx_subdev() {
-    return rx_subdev;
+std::string DriverOptions::get_main_rx_subdev() {
+    return main_rx_subdev;
+}
+
+std::string DriverOptions::get_interferometer_rx_subdev() {
+    return interferometer_rx_subdev;
 }
 
 std::string DriverOptions::get_pps() {
@@ -99,6 +113,10 @@ double DriverOptions::get_tr_window_time() {
     return tr_window_time;
 }
 
-uint32_t DriverOptions::get_total_receive_antennas(){
-    return total_receive_antennas;
+uint32_t DriverOptions::get_main_antenna_count() {
+    return main_antenna_count;
+}
+
+uint32_t DriverOptions::get_interferometer_antenna_count() {
+    return interferometer_antenna_count;
 }

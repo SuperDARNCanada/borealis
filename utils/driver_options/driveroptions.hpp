@@ -8,9 +8,32 @@
 
 class DriverOptions: public Options {
  public:
+        DriverOptions();
+        double get_tx_rate();
+        double get_rx_rate();
+        std::string get_device_args();
+        std::string get_tx_subdev();
+        std::string get_main_rx_subdev();
+        std::string get_interferometer_rx_subdev();
+        std::string get_pps();
+        std::string get_ref();
+        std::string get_cpu();
+        std::string get_otw();
+        std::string get_gpio_bank();
+        uint32_t get_scope_sync_mask();
+        uint32_t get_atten_mask();
+        uint32_t get_tr_mask();
+        double get_atten_window_time_start();
+        double get_atten_window_time_end();
+        double get_tr_window_time();
+        uint32_t get_main_antenna_count();
+        uint32_t get_interferometer_antenna_count();
+
+ private:
         std::string devices;
         std::string tx_subdev;
-        std::string rx_subdev;
+        std::string main_rx_subdev;
+        std::string interferometer_rx_subdev;
         std::string pps;
         std::string ref;
         double tx_sample_rate;
@@ -24,26 +47,8 @@ class DriverOptions: public Options {
         double atten_window_time_start;
         double atten_window_time_end;
         double tr_window_time;
-        uint32_t total_receive_antennas;
-
-        DriverOptions();
-        double get_tx_rate();
-        double get_rx_rate();
-        std::string get_device_args();
-        std::string get_tx_subdev();
-        std::string get_rx_subdev();
-        std::string get_pps();
-        std::string get_ref();
-        std::string get_cpu();
-        std::string get_otw();
-        std::string get_gpio_bank();
-        uint32_t get_scope_sync_mask();
-        uint32_t get_atten_mask();
-        uint32_t get_tr_mask();
-        double get_atten_window_time_start();
-        double get_atten_window_time_end();
-        double get_tr_window_time();
-        uint32_t get_total_receive_antennas();
+        uint32_t main_antenna_count;
+        uint32_t interferometer_antenna_count;
 };
 
 #endif

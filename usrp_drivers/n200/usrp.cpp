@@ -19,13 +19,20 @@ USRP::USRP(std::shared_ptr<DriverOptions> driver_options) {
     set_usrp_clock_source(driver_options->get_ref());
     set_tx_subdev(driver_options->get_tx_subdev());
     //set_tx_rate(driver_options->get_tx_rate());
-    set_rx_subdev(driver_options->get_rx_subdev());
+    set_main_rx_subdev(driver_options->get_main_rx_subdev());
+    set_interferometer_rx_subdev(driver_options->get_interferometer_rx_subdev(),
+                                    driver_options->get_interferometer_antenna_count());
+    receive_channels = create_receive_channels(driver_options->get_main_antenna_count(),
+                                    driver_options->get_interferometer_antenna_count());
     //set_rx_rate(driver_options->get_rx_rate());
 
     set_time_source(driver_options->get_pps());
     check_ref_locked();
 
 }
+
+
+
 
 void USRP::set_usrp_clock_source(std::string source) {
     usrp_->set_clock_source(source);
@@ -57,16 +64,59 @@ void USRP::set_tx_center_freq(double freq, std::vector<size_t> chs) {
 
         double actual_freq = usrp_->get_tx_freq(channel);
         if (actual_freq != freq) {
-            /*TODO: something*/
+            /*TODO(Keith): something*/
         }
 
     }
-
-    /*boost::this_thread::sleep(boost::posix_time::seconds(1)); */
 }
 
-void USRP::set_rx_subdev(std::string rx_subdev) {
-    usrp_->set_rx_subdev_spec(rx_subdev);
+void USRP::set_main_rx_subdev(std::string main_subdev) {
+    //Will set all boxes to receive from first channel of all mboards for main array
+    usrp_->set_rx_subdev_spec(main_subdev);
+}
+
+
+void USRP::set_interferometer_rx_subdev(std::string interferometer_subdev,
+                                         uint32_t interferometer_antenna_count) {
+    //Override the subdev spec of the first mboards to receive on a second channel for
+    //the interferometer
+    for(uint32_t i=0; i<interferometer_antenna_count; i++) {
+        usrp_->set_rx_subdev_spec(interferometer_subdev, i);
+    }
+
+}
+
+std::vector<size_t> USRP::create_receive_channels(uint32_t main_antenna_count,
+                                                uint32_t interferometer_antenna_count) {
+
+    std::vector<size_t> channels;
+
+    //Add the main array channels from the mboards that will also be receiving the
+    //interferometer samples
+    for(uint32_t i=0; i<interferometer_antenna_count; i++) {
+        channels.push_back(2*i);
+    }
+
+    //starts at 2 * i_count since those channels are interleaved
+    auto start = 2 * interferometer_antenna_count;
+    auto end = main_antenna_count + interferometer_antenna_count;
+
+    //Add the rest of main array channels
+    for(uint32_t i=start; i<end; i++){
+        channels.push_back(i);
+    }
+
+    //Now add the interferometer channels
+    for(uint32_t i=0; i<interferometer_antenna_count; i++) {
+        channels.push_back(2*i + 1);
+    }
+
+    return channels;
+
+}
+
+std::vector<size_t> USRP::get_receive_channels() {
+    return receive_channels;
 }
 
 void USRP::set_rx_rate(double rx_rate) {
@@ -179,7 +229,7 @@ std::string USRP::to_string(std::vector<size_t> chs) {
                    << usrp_->get_tx_freq(channel) << " MHz" << std::endl;
     }
 
-    for(auto &channel : chs) {
+    for(auto &channel : receive_channels) {
         device_str << "RX channel " << channel << " freq "
                    << usrp_->get_tx_freq(channel) << " MHz" << std::endl;
     }

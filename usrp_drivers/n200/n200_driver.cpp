@@ -403,13 +403,6 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
   auto channels_set = false;
   auto center_freq_set = false;
 
-  std::vector<size_t> channels;
-  // std::vector<float> sample_buffer;
-  // enum shr_mem_switcher {FIRST, SECOND};
-  // shr_mem_switcher region_switcher = FIRST;
-  // boost::interprocess::mapped_region first_region, second_region;
-  // void *current_region_addr;
-
   uhd::time_spec_t time_zero;
   uhd::rx_streamer::sptr rx_stream;
   uhd::stream_args_t stream_args("fc32", "sc16");
@@ -418,11 +411,9 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
   auto rx_rate = driver_options->get_rx_rate();
 
+  auto receive_channels = usrp_d->get_receive_channels();
+
   computationpacket::ComputationPacket cp;
-/*    size_t mem_size = 1 * 1000000 * sizeof(std::complex<float>);
-    auto shr_mem_name = random_string(25);
-    SharedMemoryHandler shrmem(shr_mem_name);
-    shrmem.create_shr_mem(mem_size);*/
   while (1) {
     packet_socket.recv(&request);
     std::cout << "Received in RECEIVE\n";
@@ -436,11 +427,7 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     std::chrono::steady_clock::time_point stream_begin = std::chrono::steady_clock::now();
     if (dp.channels_size() > 0 && dp.sob() == true && channels_set == false) {
-      channels.clear();
-      for (uint32_t i=0; i<driver_options->get_total_receive_antennas(); i++){
-        channels.push_back(i);
-      }
-      stream_args.channels = channels;
+      stream_args.channels = receive_channels;
       usrp_d->set_rx_rate(rx_rate);  // ~450us
       rx_stream = usrp_d->get_usrp()->get_rx_stream(stream_args);  // ~44ms
       channels_set = true;
@@ -456,7 +443,7 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     if (dp.rxcenterfreq() > 0) {
       std::cout << "RECEIVE center freq " << dp.rxcenterfreq() << std::endl;
-      usrp_d->set_rx_center_freq(dp.rxcenterfreq(), channels);
+      usrp_d->set_rx_center_freq(dp.rxcenterfreq(), receive_channels);
       center_freq_set = true;
     }
 
@@ -472,43 +459,15 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     }
 
 
-/*    std::chrono::steady_clock::time_point shr_mem_begin= std::chrono::steady_clock::now();
-    size_t mem_size = channels.size() * dp.numberofreceivesamples() * sizeof(float);
-    if ((dp.numberofreceivesamples() != 0) &&
-        (dp.numberofreceivesamples() != current_num_samples)) {
-
-      first_region = mmap_create("/tmp/first_region",mem_size);
-      second_region = mmap_create("/tmp/second_region",mem_size);
-      sample_num_set = true;
-      current_num_samples = dp.numberofreceivesamples();
-      cp.set_size(channels.size() * dp.numberofreceivesamples());
-    }
-
-    if (region_switcher == FIRST) {
-      current_region_addr = first_region.get_address();
-      region_switcher = SECOND;
-      cp.set_region_name("/tmp/first_region");
-    }
-    else {
-      current_region_addr = second_region.get_address();
-      region_switcher = FIRST;
-      cp.set_region_name("/tmp/second_region");
-    }
-
-    std::chrono::steady_clock::time_point shr_mem_end= std::chrono::steady_clock::now();
-    std::cout << "RECEIVE shared_memory timing: "
-          << std::chrono::duration_cast<std::chrono::microseconds>(shr_mem_end - shr_mem_begin).count()
-          << "us" << std::endl;*/
-
     std::chrono::steady_clock::time_point shr_begin = std::chrono::steady_clock::now();
-    size_t mem_size = channels.size() * dp.numberofreceivesamples() * sizeof(std::complex<float>);
+    size_t mem_size = receive_channels.size() * dp.numberofreceivesamples() * sizeof(std::complex<float>);
     auto shr_mem_name = random_string(25);
     SharedMemoryHandler shrmem(shr_mem_name);
     shrmem.create_shr_mem(mem_size);
 
     //create a vector of pointers to where each channel's data gets received.
     std::vector<std::complex<float> *> buffer_ptrs;
-    for(uint32_t i=0; i<channels.size(); i++){
+    for(uint32_t i=0; i<receive_channels.size(); i++){
       auto ptr = static_cast<std::complex<float>*>(shrmem.get_shrmem_addr()) +
                                   i*dp.numberofreceivesamples();
       buffer_ptrs.push_back(ptr);
@@ -538,19 +497,9 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     auto md = RXMetadata();
     size_t accumulated_received_samples = 0;
-    std::cout << "RECEIVE total samples to receive: " << channels.size() * dp.numberofreceivesamples()
+    std::cout << "RECEIVE total samples to receive: " << receive_channels.size() * dp.numberofreceivesamples()
     << " mem size " << mem_size << std::endl;
 
-/*    //allocate buffers to receive with samples (one buffer per channel)
-    const size_t samps_per_buff = dp.numberofreceivesamples();
-    std::vector<std::vector<std::complex<float> > > buffs(
-        channels.size(), std::vector<std::complex<float> >(samps_per_buff+10,std::complex<float>(0.0,0.0))
-    );
-
-    //create a vector of pointers to point to each of the channel buffers
-    std::vector<std::complex<float> *> buff_ptrs;
-    for (size_t i = 0; i < buffs.size(); i++) buff_ptrs.push_back(&buffs[i].front());
-*/
     while (accumulated_received_samples < dp.numberofreceivesamples()) {
       size_t num_rx_samps = rx_stream->recv(buffer_ptrs,
         (size_t)dp.numberofreceivesamples(), md.get_md());
@@ -570,16 +519,6 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
       std::cout << "Accumulated received samples " << accumulated_received_samples <<std::endl;
     }
 
-/*    auto counter = 0;
-    for(int i=0; i<buffs.size();i++){
-      for(int j=0;j<buffs[i].size();j++){
-        if(buffs[i][j] != std::complex<float>(0.0,0.0)){
-          counter++;
-        }
-      }
-      std::cout <<"buff count: " << counter <<std::endl;
-      counter=0;
-    }*/
     std::cout << "RECEIVE received samples per channel " << accumulated_received_samples << std::endl;
 
     std::chrono::steady_clock::time_point recv_end = std::chrono::steady_clock::now();
