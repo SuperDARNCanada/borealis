@@ -1,11 +1,11 @@
 #!/usr/bin/python
 
 # experiment.py
-# 2016-11-17
+# 2017-03-13
 # Marci Detwiller
-# Get a radar control program and build it.
-# Create pulse samples in sequences, in averaging periods, in scans.
-# Communicate with the driver to control the radar.
+# Get a radar control program made of objects (scans, averaging periods, and sequences).
+# Communicate with the n200_driver to control the radar.
+# Communicate with the rx_dsp_chain to process the data.
 
 import sys
 import os
@@ -35,6 +35,10 @@ import controlprog
 import radar_status
 
 def setup_driver_socket(): # to send pulses to driver.
+    """
+    
+    """
+
     context=zmq.Context()
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/0")
@@ -42,6 +46,10 @@ def setup_driver_socket(): # to send pulses to driver.
 
 
 def setup_sigproc_params_socket(): #to send data to receive code.
+    """
+    
+    """
+
     context=zmq.Context()
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/2")
@@ -49,6 +57,10 @@ def setup_sigproc_params_socket(): #to send data to receive code.
 
 
 def setup_sigproc_cpack_socket(): #to send data to receive code.
+    """
+    
+    """
+
     context=zmq.Context()
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/3")
@@ -56,6 +68,10 @@ def setup_sigproc_cpack_socket(): #to send data to receive code.
 
 
 def setup_sigproc_timing_ack_socket():
+    """
+    
+    """
+
     context=zmq.Context()
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/4")
@@ -63,6 +79,10 @@ def setup_sigproc_timing_ack_socket():
 
 
 def setup_cp_socket(): #to get refreshed control program updates.
+    """
+    
+    """
+
     context=zmq.Context()
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/5")
@@ -70,6 +90,10 @@ def setup_cp_socket(): #to get refreshed control program updates.
 
 
 def setup_ack_poller(socket1,socket2):
+    """
+    
+    """
+
     poller=zmq.Poller()
     poller.register(socket1, zmq.POLLIN)
     poller.register(socket2, zmq.POLLIN)
@@ -77,6 +101,10 @@ def setup_ack_poller(socket1,socket2):
 
 
 def pollzmq(socket1, socket2, rxseqnum, txseqnum):
+    """
+    
+    """
+
     poller=zmq.Poller()
     poller.register(socket1, zmq.POLLIN)
     poller.register(socket2, zmq.POLLIN)
@@ -89,6 +117,10 @@ def pollzmq(socket1, socket2, rxseqnum, txseqnum):
 
 
 def get_prog(socket):
+    """
+    
+    """
+
 #    update=json.dumps("UPDATE")
 #    socket.send(update)
 #    ack=socket.recv(zmq.NOBLOCK)
@@ -197,7 +229,10 @@ def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict):
     return
 
 
-def get_ack(xsocket,procpacket):
+def get_ack(xsocket,procpacket): 
+    """
+    
+    """
     try:
         x=xsocket.recv(flags=zmq.NOBLOCK)
         procpacket.ParseFromString(x)
@@ -208,7 +243,16 @@ def get_ack(xsocket,procpacket):
         return
 
 
-def main():
+def runradar():
+    """
+    Receives an instance of ControlProg from the experiment. Iterates through
+    the Scans, AveragingPeriods, Sequences, and pulses of the experiment. 
+    For every pulse, samples and other control information are sent to the n200_driver.
+    For every pulse sequence, processing information is sent to the signal processing block.
+    After every integration time (AveragingPeriod), the experiment block is given the opportunity
+    to change the control program (if it sends a new one, runradar will halt the old one and begin with
+    the new ControlProg.
+    """
 
     # Setup socket to send pulse samples over.
     txsocket=setup_driver_socket()
@@ -221,9 +265,6 @@ def main():
     proccpsocket=setup_sigproc_cpack_socket()
 
     cpsocket=setup_cp_socket()
-
-#    seqpoller = setup_ack_poller(txsocket,procsocket)
-
     # seqnum is used as a identifier in all packets while
     # runradar is running so set it up here.
     # seqnum will get increased by nave at the end of
@@ -577,5 +618,5 @@ def main():
                 scan_iter=scan_iter+1
 
 
-main()
+#runradar()
 

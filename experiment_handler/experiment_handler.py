@@ -8,6 +8,10 @@ sys.path.append('../radarcontrol')
 import radar_status
 
 def setup_data_socket(): #to send data to receive code.
+    """
+    To setup the socket for communication with the 
+    signal processing block. 
+    """
     context=zmq.Context()
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/4")
@@ -40,7 +44,7 @@ def main():
         message=ctrl_socket.recv_pyobj() 
         if isinstance(message, radar_status.RadarStatus):
             if message.status == 0:
-                print "received READY {} and starting program as new".format(message.status)
+                print("received READY {} and starting program as new".format(message.status))
                 # starting anew
                 prog=setup_my_experiment()
                 prog.build_Scans()
@@ -84,5 +88,5 @@ def main():
 #                    cpsocket.send(json.dumps(prog))
 
 
-main()
+#main()
     
