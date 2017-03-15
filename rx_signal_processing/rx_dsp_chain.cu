@@ -127,9 +127,9 @@ std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_c
 
 void save_filter_to_file(std::vector<std::complex<float>> filter_taps, const char* name) {
     std::ofstream filter;
-    filter.open(name);
-    for (auto &i : filter_taps){
-        filter << i << std::endl;
+    filter.open(name); // REVIEW #15 Should check that name isn't null, also - can we use c++ string here?
+    for (auto &i : filter_taps){ // REVIEW #15 Should filter_taps be error checked? What if it's an empty vector?
+        filter << i << std::endl; // REVIEW #9 Does the initialization of filter always succeed? What if not?
     }
     filter.close();
 }
@@ -209,41 +209,41 @@ int main(int argc, char **argv){
     std::chrono::steady_clock::time_point timing_end = std::chrono::steady_clock::now();
     std::cout << "Time to create 3 filters: "
       << std::chrono::duration_cast<std::chrono::microseconds>
-                                                  (timing_end - timing_start).count()
+                                                  (timing_end - timing_start).count() // REVIEW #31 fix this whitespace up
       << "us" << std::endl;
 
     save_filter_to_file(filtertaps_1,"filter1coefficients.dat");
-    save_filter_to_file(filtertaps_2,"filter2coefficients.dat");
+    save_filter_to_file(filtertaps_2,"filter2coefficients.dat"); // REVIEW #36 where should the coefficient files be placed? Currently this will put them in the calling dir I think 
     save_filter_to_file(filtertaps_3,"filter3coefficients.dat");
 
     while(1){
         //Receive packet from radar control
         zmq::message_t radctl_request;
         radarctrl_socket.recv(&radctl_request);
-        sigprocpacket::SigProcPacket sp;
+        sigprocpacket::SigProcPacket sp;  // REVIEW #26 'sp' and 'r_msg_str' var names need re-thinking (same below with 'cp' and 'c_msg_str')
         std::string r_msg_str(static_cast<char*>(radctl_request.data()), radctl_request.size());
-        sp.ParseFromString(r_msg_str);
+        sp.ParseFromString(r_msg_str); // REVIEW #37 need to check the boolean return value from each ParseFromString call http://stackoverflow.com/questions/22121922/how-can-i-get-more-details-about-errors-generated-during-protobuf-parsing-c
 
-        std::cout << "Got radarctrl request" << std::endl;
+        std::cout << "Got radarctrl request" << std::endl; // REVIEW #34 Change to radar_control to indicate where the request actually came from? (same with 'drive' below, maybe name 'usrp_driver' to be consistent with naming of dir structure)
 
         //Then receive packet from driver
         zmq::message_t driver_request;
         driver_socket.recv(&driver_request);
         computationpacket::ComputationPacket cp;
         std::string c_msg_str(static_cast<char*>(driver_request.data()), driver_request.size());
-        cp.ParseFromString(c_msg_str);
+        cp.ParseFromString(c_msg_str); 
 
         std::cout << "Got driver request" << std::endl;
 
         //Verify driver and radar control packets align
         if (sp.sequence_num() != cp.sequence_num()) {
             //TODO(keith): handle error
-            std::cout << "SEQUENCE NUMBER mismatch rctl: " << sp.sequence_num()
+            std::cout << "SEQUENCE NUMBER mismatch rctl: " << sp.sequence_num() // REVIEW #34 - debug output 'rctl' should be renamed to radar_control and driver to 'usrp_driver'
                 << " driver: " << cp.sequence_num();
         }
 
 
-        //Receive driver samples now
+        //Receive driver samples now    // REVIEW #33 - Use GIT to remove the code and then you can always get it back again if you need to
         //timing_start = std::chrono::steady_clock::now();
         //driver_socket.recv(&driver_request);
         //timing_end = std::chrono::steady_clock::now();
@@ -265,11 +265,12 @@ int main(int argc, char **argv){
 
         timing_start = std::chrono::steady_clock::now();
 
-        std::vector<std::complex<float>> filtertaps_1_bp_h(rx_freqs.size()*filtertaps_1.size());
-        for (int i=0; i<rx_freqs.size(); i++) {
-            auto sampling_freq = 2 * M_PI * rx_freqs[i]/rx_rate;
+        // REVIEW #1 since filtertaps_1_bp_h has a filter in it for each rx freq, it should be indicated/documented somehow
+        std::vector<std::complex<float>> filtertaps_1_bp_h(rx_freqs.size()*filtertaps_1.size()); // REVIEW #26 - what does 'bp_h' mean?
+        for (int i=0; i<rx_freqs.size(); i++) { // REVIEW #10 What is rx_freq? Is it actual freq or offset from centre freq?
+            auto sampling_freq = 2 * M_PI * rx_freqs[i]/rx_rate; // REVIEW #5 radians per sample
 
-            for(int j=0;j < filtertaps_1.size(); j++) {
+            for(int j=0;j < filtertaps_1.size(); j++) { // REVIEW #0 and #8 If filter taps had imaginary part, this would not break, but it wouldn't work properly and it would be a mystery as to why. Place full calculation of I and Q
                 auto radians = fmod(sampling_freq * j,2 * M_PI);
                 auto I = filtertaps_1[j].real() * cos(radians);
                 auto Q = filtertaps_1[j].real() * sin(radians);
