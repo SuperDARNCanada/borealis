@@ -8,6 +8,8 @@
 #include <chrono>
 #include <thread>
 
+// REVIEW #13 Multiple functions for 'allocate_and_copy', 'allocate_x_stage_output', and 'get_x_stage_filters', 'get_x_stage_output' could be combined into one for each?
+
 extern void decimate1024_wrapper(cuComplex* original_samples,
     cuComplex* decimated_samples,
     cuComplex* filter_taps, uint32_t dm_rate,
@@ -49,14 +51,14 @@ std::vector<cudaDeviceProp> get_gpu_properties()
 
 
 DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
-                                        uint32_t sq_num, const char* shr_mem_name)
+                                        uint32_t sq_num, const char* shr_mem_name) // REVIEW #28 why use c_str and not string?
 {
 
     sequence_num = sq_num;
     ack_socket = ack_s;
     timing_socket = timing_s;
 
-    gpuErrchk(cudaStreamCreate(&stream));
+    gpuErrchk(cudaStreamCreate(&stream)); // REVIEW #1 explain what's going on here
     gpuErrchk(cudaEventCreate(&initial_start));
     gpuErrchk(cudaEventCreate(&kernel_start));
     gpuErrchk(cudaEventCreate(&stop));
@@ -67,7 +69,7 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
 
 }
 
-void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples)
+void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples) 
 {
 
     rf_samples_size = total_samples * sizeof(cuComplex);

@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <cstdlib>
 #include <thrust/device_vector.h>
-#include "utils/shared_memory/shared_memory.hpp"
+#include "utils/shared_memory/shared_memory.hpp" // REVIEW #0 can't find this file does this work?
 
 #define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
 inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
@@ -18,7 +18,7 @@ inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
     std::stringstream ss;
     ss << file << "(" << line << ")";
     std::string file_and_line;
-    ss >> file_and_line;
+    ss >> file_and_line; // REVIEW #25 is this necessary to have stringstream then string vs just putting it in a string?
     throw thrust::system_error(code, thrust::cuda_category(), file_and_line);
   }
 }
@@ -32,7 +32,7 @@ class DSPCore {
     static void CUDART_CB initial_memcpy_callback(cudaStream_t stream, cudaError_t status,
                                                 void *processing_data);
     explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
-                                 uint32_t sq_num, const char* shr_mem_name);
+                                 uint32_t sq_num, const char* shr_mem_name); // REVIEW explain to us why this is explicit
     void allocate_and_copy_rf_samples(uint32_t total_samples);
     void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
     void allocate_and_copy_second_stage_filters(void *taps, uint32_t total_taps);

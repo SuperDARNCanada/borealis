@@ -6,5 +6,5 @@ message ComputationPacket {
   uint32 sequence_num = 1;
   uint32 numberofreceivesamples = 2;
   uint32 size = 3;
-  string name = 4;
+  string name = 4; // REVIEW #26 this should indicate that it's the location of shared memory?
 }

@@ -152,7 +152,7 @@ int main(int argc, char **argv){
     radarctrl_socket.bind("ipc:///tmp/feeds/2");
 
     zmq::socket_t ack_socket(sig_proc_context, ZMQ_PAIR);
-    ack_socket.bind("ipc:///tmp/feeds/3");
+    ack_socket.bind("ipc:///tmp/feeds/3"); // REVIEW #37 check the errno on all binds
 
     zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
     timing_socket.bind("ipc:///tmp/feeds/4");
@@ -223,7 +223,7 @@ int main(int argc, char **argv){
         sigprocpacket::SigProcPacket sp;  // REVIEW #26 'sp' and 'r_msg_str' var names need re-thinking (same below with 'cp' and 'c_msg_str')
         std::string r_msg_str(static_cast<char*>(radctl_request.data()), radctl_request.size());
         sp.ParseFromString(r_msg_str); // REVIEW #37 need to check the boolean return value from each ParseFromString call http://stackoverflow.com/questions/22121922/how-can-i-get-more-details-about-errors-generated-during-protobuf-parsing-c
-
+	// REVIEW #15 all protobuf fields are optional, check all fields you require are filled (similarly when using computationpacket)
         std::cout << "Got radarctrl request" << std::endl; // REVIEW #34 Change to radar_control to indicate where the request actually came from? (same with 'drive' below, maybe name 'usrp_driver' to be consistent with naming of dir structure)
 
         //Then receive packet from driver
@@ -284,20 +284,20 @@ int main(int argc, char **argv){
           << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
           << "us" << std::endl;
 
-        std::vector<std::complex<float>> filtertaps_2_h(filtertaps_2.size());
+        std::vector<std::complex<float>> filtertaps_2_h(filtertaps_2.size()); // REVIEW #26 what does _h mean?
         std::vector<std::complex<float>> filtertaps_3_h(filtertaps_3.size());
-        for (uint32_t i=0; i< rx_freqs.size(); i++){
-            filtertaps_2_h.insert(filtertaps_2_h.end(),filtertaps_2.begin(),filtertaps_2.end());
+        for (uint32_t i=0; i< rx_freqs.size(); i++){ // REVIEW #28 iterator type not consistent with previous for loop, should it be of type size_t?
+            filtertaps_2_h.insert(filtertaps_2_h.end(),filtertaps_2.begin(),filtertaps_2.end()); // REVIEW #22 is this duplication necessary?
             filtertaps_3_h.insert(filtertaps_3_h.end(),filtertaps_3.begin(),filtertaps_3.end());
         }
 
         DSPCore *dp = new DSPCore(&ack_socket, &timing_socket,
-                                                         sp.sequence_num(), cp.name().c_str());
+                                                         sp.sequence_num(), cp.name().c_str()); 
 
 
         auto total_samples = cp.numberofreceivesamples() * sig_options.get_total_receive_antennas();
 
-        std::cout << "Total elements in data message: " << total_samples
+        std::cout << "Total elements in data message: " << total_samples // REVIEW #34 change 'elements' to 'samples' to be clear
             << std::endl;
 
         dp->allocate_and_copy_rf_samples(total_samples);
