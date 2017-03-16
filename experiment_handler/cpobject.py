@@ -56,7 +56,7 @@ class CPObject:
         #   in an integration time intt (default 3s)
         self.beamdir=[-26.25,-22.75,-19.25,-15.75,-12.25,-8.75,-5.25,-1.75,
             1.75,5.25,8.75,12.25,15.75,19.25,22.75,26.25] 
-        # Array of angle off boresight, array length equal to intn; 
+        # Array of angle off boresight, array length equal to number of beams; 
         #   positive is E of N (clockwise)
 
         # TODO: Potentially add something here for manual phase shifts

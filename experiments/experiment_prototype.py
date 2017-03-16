@@ -7,10 +7,26 @@ import math
 import numpy as np
 import json
 
-import radar_classes
-from cpobject import CPObject, interfacing, if_type
+sys.path.append("../radar_control/scan_classes/")
+import scans
+#from cpobject import CPObject, interfacing, if_type
 
-class ExperimentPrototype():
+def if_type():
+    return frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
+
+def interfacing(cpo_num):
+    if_list=[]
+    for i in range(cpo_num):
+        for j in range(i+1,cpo_num):
+            if_list.append((i,j))
+    if_keys=tuple(if_list) 
+    if_dict={}
+    for num1,num2 in if_keys:
+        if_dict[num1, num2]="NONE"
+
+    return if_dict      
+
+class ExperimentPrototype(object):
     """Class combining control program objects, defining how they 
     interface and some overall metadata
 
@@ -27,11 +43,37 @@ class ExperimentPrototype():
         # Number of CPObjects in this program.
         cpo_list=[]
         for num in range(self.cpo_num):
-            cpo_list.append(CPObject())
-            cpo_list[num].cpid[1]=num 
-            # Second number in cpid array is the ID of this cp_object
-            #   in the controlprog.
-            cpo_list[num].cpid[0]=self.cpo_id
+            cp_object = {
+                "obj_id":       num,
+                "cpid":         cpid,
+                "txchannels":   None, 
+                "rxchannels":   None,    
+                "sequence":     None,   
+                "pulse_shift":  None,   
+                "mpinc":        None,   
+                "pulse_len":    None,   
+                "nrang":        None,   
+                "frang":        None,   
+                "intt":         None,   
+                "intn":         None,   
+                "beamdir":      None,   
+                "scan":         None,   
+                "scanboundf":   None,     
+                "scanbound":    None,   
+                "txfreq":       None,   
+                "rxfreq":       None,   
+                "clrfrqf":      None,   
+                "clrfrqrange":  None,   
+                "xcf":          None,   
+                "acfint":       None,   
+                "wavetype":     None,   
+                "seqtimer":     None,   
+            }
+            cpo_list.append(cp_object)
+#            cpo_list[num].cpid[1]=num 
+#            # Second number in cpid array is the ID of this cp_object
+#            #   in the controlprog.
+#            cpo_list[num].cpid[0]=self.cpo_id
         self.cpo_list=cpo_list
 
         # Next some metadata that you can change, with defaults.
