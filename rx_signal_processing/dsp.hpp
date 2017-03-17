@@ -44,7 +44,7 @@ class DSPCore {
     void copy_output_to_host();
     void clear_device_and_destroy();
     void call_decimate(cuComplex* original_samples,cuComplex* decimated_samples,
-        cuComplex* filter_taps, uint32_t dm_rate,uint32_t samples_per_channel,
+        cuComplex* filter_taps, uint32_t dm_rate,uint32_t samples_per_channel, // REVIEW #26 -Again here channels/freqs/antennas is confused and needs to be consistent, maybe we avoid the word 'channel' altogether
         uint32_t num_taps, uint32_t num_freqs, uint32_t num_channels, const char *output_msg);
     cuComplex* get_rf_samples_p();
     cuComplex* get_first_stage_bp_filters_p();

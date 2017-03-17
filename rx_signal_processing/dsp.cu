@@ -235,24 +235,24 @@ void CUDART_CB DSPCore::initial_memcpy_callback(cudaStream_t stream, cudaError_t
     start_imc.join();
 
 }
-
+// REVIEW #1 should we comment this code to indicate filter_taps contains filters for each rx_freq?
 void DSPCore::call_decimate(cuComplex* original_samples,
     cuComplex* decimated_samples,
     cuComplex* filter_taps, uint32_t dm_rate,
     uint32_t samples_per_channel, uint32_t num_taps, uint32_t num_freqs,
     uint32_t num_channels, const char *output_msg) {
-
-    std::cout << output_msg << std::endl;
+// REVIEW #15 This function assumes filter_taps size has been set up properly, how do we assure this is done properly and we're not going out of bounds of the array? The function is called so it doesn't know it's working on the class' own private data, should it be set up this way? Shouldn't you just call_decimate from the while loop and have it act on its own private data? 
+    std::cout << output_msg << std::endl; 
 
 
     auto gpu_properties = get_gpu_properties();
 
 
     //For now we have a kernel that will process 2 samples per thread if need be
-    if (num_taps * num_freqs > 2 * gpu_properties[0].maxThreadsPerBlock) {
+    if (num_taps * num_freqs > 2 * gpu_properties[0].maxThreadsPerBlock) { // REVIEW #29 We should make gpu_device a config option, here it's just grabbing the first one but to be general we should make that a config option.
         //TODO(Keith) : handle error
     }
-    else if (num_taps * num_freqs > gpu_properties[0].maxThreadsPerBlock) {
+    else if (num_taps * num_freqs > gpu_properties[0].maxThreadsPerBlock) { // REVIEW #26 Where does the 1024 and 2048 in the function names come from? Is it from the fact that all our devices have 1024 max threads per block? 
         decimate2048_wrapper(original_samples, decimated_samples, filter_taps,  dm_rate,
             samples_per_channel, num_taps, num_freqs, num_channels, stream);
     }
@@ -260,7 +260,7 @@ void DSPCore::call_decimate(cuComplex* original_samples,
         decimate1024_wrapper(original_samples, decimated_samples, filter_taps,  dm_rate,
             samples_per_channel, num_taps, num_freqs, num_channels, stream);
     }
-    gpuErrchk(cudaPeekAtLastError());
+    gpuErrchk(cudaPeekAtLastError()); // REVIEW #4 do we need to do a cudaDeviceSynchronize after calling cudaPeekAtLastError here?
 
 }
 

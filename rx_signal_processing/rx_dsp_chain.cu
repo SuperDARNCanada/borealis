@@ -81,7 +81,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
            2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6 << std::endl; // REVIEW #29 magic calculation with magic numbers? 
         std::cout << "  Max shared memory per block: " << i.sharedMemPerBlock
             << std::endl;
-    }
+    }// REVIEW other properties: asyncEngineCount, totalGlobalMem, regsPerBlock, regsPerMultiprocessor, warpSize, memPitch, clockRate, totalConstMem, major, minor, textureAlignment, deviceOverlap, multiProcessorCount, kernelExecTimeoutEnabled, integrated, canMapHostMemory, computeMode, concurrentKernels, concurrentManagedAccess, ECCEnabled, pciBusID, pciDeviceID, pciDomainID, tccDriver, globalL1CacheSupported, hostNativeAtomicSupported, isMultiGpuBoard, l2CacheSize, localL1CacheSupported, managedMemory, maxSurface[1,2,3]D, maxSurface[1,2]DLayered, maxSurfaceCubemap, maxSurfaceCubemapLayered, maxTexture[1,2]D[Layered,Linear,Mipmap], maxTexture2DGather, maxTexture3D[Alt],maxThreadsPerMultiprocessor, multiGpuBoardGroupID, pageableMemoryAccess, sharedMemPerMultiprocessor, singleToDoublePrecisionPerfRatio, streamPrioritiesSupported, surfaceAlignment, texturePitchAlignment, unifiedAddressing,
 }
 
 uint32_t calculate_num_filter_taps(float rate, float transition_width) { // REVIEW #26 transition_width and transition_band are both used?
@@ -258,7 +258,7 @@ int main(int argc, char **argv){
 
 
         //Parse needed packet values now
-        std::vector<double> rx_freqs;
+        std::vector<double> rx_freqs; // REVIEW #28 Shouldn't this just be a vector of integers? I don't think sub-hz resolution available or necessary? Careful of division elsewhere if it's changed
         for(int i=0; i<sp.rxchannel_size(); i++) {
             rx_freqs.push_back(sp.rxchannel(i).rxfreq());
         }
