@@ -45,7 +45,7 @@ extern "C" {
 #define sig_options.get_third_stage_filter_transition() (sig_options.get_third_stage_filter_cutoff() * 0.25)
 */
 
-// REVIEW #30 all filter-building functions could be placed in a separate file? 
+// REVIEW #30 all filter-building functions could be placed in a separate file?
 std::vector<double> create_normalized_lowpass_filter_bands(float cutoff, float transition_band,
                         float Fs) { //REVIEW #5 units for params
     std::vector<double> filterbands; //REVIEW #3 describe band choices and how this works
@@ -60,7 +60,7 @@ std::vector<double> create_normalized_lowpass_filter_bands(float cutoff, float t
 // REVIEW #30 Is this in the right file? Should it be in dsp.cu along with get_gpu_properties?
 // REVIEW #4 not sure where cudaDeviceProp is found...
 void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
-    for(auto i : gpu_properties) { // REVIEW #28 does this need to be "auto&" stackoverflow says use this way "auto" if you aren't changing anything, but use auto& if you are.? 
+    for(auto i : gpu_properties) { // REVIEW #28 does this need to be "auto&" stackoverflow says use this way "auto" if you aren't changing anything, but use auto& if you are.?
         std::cout << "Device name: " << i.name << std::endl;
         std::cout << "  Max grid size x: " << i.maxGridSize[0] << std::endl;
         std::cout << "  Max grid size y: " << i.maxGridSize[1] << std::endl;
@@ -78,7 +78,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
         std::cout << "  Memory Bus Width (bits): " << i.memoryBusWidth
             << std::endl;
         std::cout << "  Peak Memory Bandwidth (GB/s): " <<
-           2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6 << std::endl; // REVIEW #29 magic calculation with magic numbers? 
+           2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6 << std::endl; // REVIEW #29 magic calculation with magic numbers?
         std::cout << "  Max shared memory per block: " << i.sharedMemPerBlock
             << std::endl;
     }
@@ -90,16 +90,16 @@ uint32_t calculate_num_filter_taps(float rate, float transition_width) { // REVI
 
     //The parallel reduction in the GPU code requires at least 64 taps,
     //so we have to use at least that many as a minimum.
-    return (num_taps > 64) ? num_taps : 64;
-    //return num_taps; // REVIEW #33
+    //return (num_taps > 65) ? num_taps : 65;
+    return num_taps; // REVIEW #33
     //REVIEW #28 this function is returning a uint32; will this always round down? comment/document this
 }
 
 std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_cutoff, float transition_width, // REVIEW #31 this line is over 80 characters, need to be consistent. #31
                                     float rate) { // REVIEW #5 filter_cutoff, transition_width, rate
     // REVIEW #3 explain algorithm including weight
-    std::vector<double> desired_band_gain = {1.0,0.0}; 
-    std::vector<double> weight = {1.0,1.0}; 
+    std::vector<double> desired_band_gain = {1.0,0.0};
+    std::vector<double> weight = {1.0,1.0};
 
     auto filter_bands = create_normalized_lowpass_filter_bands(filter_cutoff,transition_width,
                             rate);
@@ -107,8 +107,8 @@ std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_c
     /*remez returns number of taps + 1. Should we use num_taps + 1
       or should we pass num_taps - 1 to remez?
     */ //REVIEW #6 make this a TODO - does this depend on num_taps being odd or even?
-    double filter_taps[num_taps + 1]; 
-    auto converges = remez(filter_taps, num_taps + 1, (filter_bands.size()/2), // REVIEW #32 declare and initialize number of bands for better readability
+    std::vector<double> filter_taps(num_taps + 1,0.0);
+    auto converges = remez(filter_taps.data(), num_taps + 1, (filter_bands.size()/2), // REVIEW #32 declare and initialize number of bands for better readability
         filter_bands.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY); // REVIEW #15 are we passing the right values, should error check before passing these params
     if (converges < 0){ // REVIEW #10 remez returns True or False is this check correct?
         std::cerr << "Filter failed to converge with cutoff of " << filter_cutoff // REVIEW #5 & #34 print units
@@ -117,9 +117,17 @@ std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_c
         //TODO(keith): throw error
     }
 
-    std::vector<std::complex<float>> complex_taps(num_taps + 1);
+    std::vector<std::complex<float>> complex_taps;
     for (auto &i : filter_taps) {
-        complex_taps[i] = std::complex<float>(i,0.0); // REVIEW #0 does this work?
+        auto complex_tap = std::complex<float>(i,0.0);
+        complex_taps.push_back(complex_tap); // REVIEW #0 does this work?
+    }
+
+    if (complex_taps.size() < 64) {
+        auto size_difference = 64 - complex_taps.size();
+        for (uint32_t i=0 ; i<size_difference; i++){
+            complex_taps.push_back(std::complex<float>(0.0,0.0));
+        }
     }
 
     return complex_taps;
@@ -141,7 +149,7 @@ int main(int argc, char **argv){
 
     auto driver_options = DriverOptions();
     auto sig_options = SignalProcessingOptions(); // #26 REVIEW Should the naming be updated along with DSP ?
-    auto rx_rate = driver_options.get_rx_rate(); // #5 REVIEW What units is rx_rate in? 
+    auto rx_rate = driver_options.get_rx_rate(); // #5 REVIEW What units is rx_rate in?
     zmq::context_t sig_proc_context(1); // REVIEW #4 - what is "1"?
 
     zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
@@ -157,7 +165,7 @@ int main(int argc, char **argv){
     zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
     timing_socket.bind("ipc:///tmp/feeds/4");
 
-    auto gpu_properties = get_gpu_properties(); 
+    auto gpu_properties = get_gpu_properties();
     print_gpu_properties(gpu_properties);
 
     uint32_t first_stage_dm_rate, second_stage_dm_rate, third_stage_dm_rate = 0; // REVIEW #32 this line only initializes third stage, the others are only declared. bad style?
@@ -272,7 +280,7 @@ int main(int argc, char **argv){
             for(int j=0;j < filtertaps_1.size(); j++) {
                 auto radians = fmod(sampling_freq * j,2 * M_PI);
                 auto I = filtertaps_1[j].real() * cos(radians);
-                auto Q = filtertaps_1[j].real() * sin(radians);
+                auto Q = filtertaps_1[j].imag() * sin(radians);
                 filtertaps_1_bp_h[i*filtertaps_1.size() + j] = std::complex<float>(I,Q);
             }
         }
