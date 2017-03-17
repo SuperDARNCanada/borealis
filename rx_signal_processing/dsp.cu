@@ -8,6 +8,8 @@
 #include <chrono>
 #include <thread>
 
+// REVIEW #13 Multiple functions for 'allocate_and_copy', 'allocate_x_stage_output', and 'get_x_stage_filters', 'get_x_stage_output' could be combined into one for each?
+
 extern void decimate1024_wrapper(cuComplex* original_samples,
     cuComplex* decimated_samples,
     cuComplex* filter_taps, uint32_t dm_rate,
@@ -49,14 +51,14 @@ std::vector<cudaDeviceProp> get_gpu_properties()
 
 
 DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
-                                        uint32_t sq_num, const char* shr_mem_name)
+                                        uint32_t sq_num, const char* shr_mem_name) // REVIEW #28 why use c_str and not string?
 {
 
     sequence_num = sq_num;
     ack_socket = ack_s;
     timing_socket = timing_s;
 
-    gpuErrchk(cudaStreamCreate(&stream));
+    gpuErrchk(cudaStreamCreate(&stream)); // REVIEW #1 explain what's going on here
     gpuErrchk(cudaEventCreate(&initial_start));
     gpuErrchk(cudaEventCreate(&kernel_start));
     gpuErrchk(cudaEventCreate(&stop));
@@ -67,16 +69,16 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
 
 }
 
-void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples)
+void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples) 
 {
-
+// REVIEW #15 - What happens when total_samples is negative, 0 or really high?
     rf_samples_size = total_samples * sizeof(cuComplex);
     gpuErrchk(cudaMalloc(&rf_samples, rf_samples_size));
     gpuErrchk(cudaMemcpyAsync(rf_samples,shr_mem->get_shrmem_addr(), rf_samples_size, cudaMemcpyHostToDevice, stream));
 
 }
 
-void DSPCore::allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps)
+void DSPCore::allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps) // REVIEW #9 Consider passing in the size of taps so you don't assume it is a cuComplex (This goes for all allocate_and_copy functions)
 {
     first_stage_bp_filters_size = total_taps * sizeof(cuComplex);
     gpuErrchk(cudaMalloc(&first_stage_bp_filters, first_stage_bp_filters_size));
@@ -100,7 +102,7 @@ void DSPCore::allocate_and_copy_third_stage_filters(void *taps, uint32_t total_t
                 third_stage_filters_size, cudaMemcpyHostToDevice, stream));
 }
 
-void DSPCore::allocate_first_stage_output(uint32_t first_stage_samples)
+void DSPCore::allocate_first_stage_output(uint32_t first_stage_samples) // REVIEW # 26 'x_stage_samples' doesn't indicate that it is the number of samples. Same for 'host_samples'. Consider changing name to better reflect this
 {
     first_stage_output_size = first_stage_samples * sizeof(cuComplex);
     gpuErrchk(cudaMalloc(&first_stage_output, first_stage_output_size));
@@ -224,7 +226,7 @@ void initial_memcpy_callback_handler(DSPCore *dp)
     dp->start_decimate_timing();
 }
 
-void CUDART_CB DSPCore::initial_memcpy_callback(cudaStream_t stream, cudaError_t status,
+void CUDART_CB DSPCore::initial_memcpy_callback(cudaStream_t stream, cudaError_t status, // REVIEW #0 Do you need to put CUDART_CB* ?
                                                 void *processing_data)
 {
     gpuErrchk(status);
@@ -233,24 +235,24 @@ void CUDART_CB DSPCore::initial_memcpy_callback(cudaStream_t stream, cudaError_t
     start_imc.join();
 
 }
-
+// REVIEW #1 should we comment this code to indicate filter_taps contains filters for each rx_freq?
 void DSPCore::call_decimate(cuComplex* original_samples,
     cuComplex* decimated_samples,
     cuComplex* filter_taps, uint32_t dm_rate,
     uint32_t samples_per_channel, uint32_t num_taps, uint32_t num_freqs,
     uint32_t num_channels, const char *output_msg) {
-
-    std::cout << output_msg << std::endl;
+// REVIEW #15 This function assumes filter_taps size has been set up properly, how do we assure this is done properly and we're not going out of bounds of the array? The function is called so it doesn't know it's working on the class' own private data, should it be set up this way? Shouldn't you just call_decimate from the while loop and have it act on its own private data? 
+    std::cout << output_msg << std::endl; 
 
 
     auto gpu_properties = get_gpu_properties();
 
 
     //For now we have a kernel that will process 2 samples per thread if need be
-    if (num_taps * num_freqs > 2 * gpu_properties[0].maxThreadsPerBlock) {
+    if (num_taps * num_freqs > 2 * gpu_properties[0].maxThreadsPerBlock) { // REVIEW #29 We should make gpu_device a config option, here it's just grabbing the first one but to be general we should make that a config option.
         //TODO(Keith) : handle error
     }
-    else if (num_taps * num_freqs > gpu_properties[0].maxThreadsPerBlock) {
+    else if (num_taps * num_freqs > gpu_properties[0].maxThreadsPerBlock) { // REVIEW #26 Where does the 1024 and 2048 in the function names come from? Is it from the fact that all our devices have 1024 max threads per block? 
         decimate2048_wrapper(original_samples, decimated_samples, filter_taps,  dm_rate,
             samples_per_channel, num_taps, num_freqs, num_channels, stream);
     }
@@ -258,7 +260,7 @@ void DSPCore::call_decimate(cuComplex* original_samples,
         decimate1024_wrapper(original_samples, decimated_samples, filter_taps,  dm_rate,
             samples_per_channel, num_taps, num_freqs, num_channels, stream);
     }
-    gpuErrchk(cudaPeekAtLastError());
+    gpuErrchk(cudaPeekAtLastError()); // REVIEW #4 do we need to do a cudaDeviceSynchronize after calling cudaPeekAtLastError here?
 
 }
 

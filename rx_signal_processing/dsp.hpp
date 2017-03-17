@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <cstdlib>
 #include <thrust/device_vector.h>
-#include "utils/shared_memory/shared_memory.hpp"
+#include "utils/shared_memory/shared_memory.hpp" // REVIEW #0 can't find this file does this work?
 
 #define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
 inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
@@ -18,8 +18,8 @@ inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
     std::stringstream ss;
     ss << file << "(" << line << ")";
     std::string file_and_line;
-    ss >> file_and_line;
-    throw thrust::system_error(code, thrust::cuda_category(), file_and_line);
+    ss >> file_and_line; // REVIEW #25 is this necessary to have stringstream then string vs just putting it in a string?
+    throw thrust::system_error(code, thrust::cuda_category(), file_and_line); // REVIEW #6 Should we be catching all the thrown cuda errors?
   }
 }
 
@@ -32,7 +32,7 @@ class DSPCore {
     static void CUDART_CB initial_memcpy_callback(cudaStream_t stream, cudaError_t status,
                                                 void *processing_data);
     explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
-                                 uint32_t sq_num, const char* shr_mem_name);
+                                 uint32_t sq_num, const char* shr_mem_name); // REVIEW explain to us why this is explicit
     void allocate_and_copy_rf_samples(uint32_t total_samples);
     void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
     void allocate_and_copy_second_stage_filters(void *taps, uint32_t total_taps);
@@ -44,7 +44,7 @@ class DSPCore {
     void copy_output_to_host();
     void clear_device_and_destroy();
     void call_decimate(cuComplex* original_samples,cuComplex* decimated_samples,
-        cuComplex* filter_taps, uint32_t dm_rate,uint32_t samples_per_channel,
+        cuComplex* filter_taps, uint32_t dm_rate,uint32_t samples_per_channel, // REVIEW #26 -Again here channels/freqs/antennas is confused and needs to be consistent, maybe we avoid the word 'channel' altogether
         uint32_t num_taps, uint32_t num_freqs, uint32_t num_channels, const char *output_msg);
     cuComplex* get_rf_samples_p();
     cuComplex* get_first_stage_bp_filters_p();

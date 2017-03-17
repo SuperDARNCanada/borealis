@@ -81,7 +81,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
            2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6 << std::endl; // REVIEW #29 magic calculation with magic numbers?
         std::cout << "  Max shared memory per block: " << i.sharedMemPerBlock
             << std::endl;
-    }
+    }// REVIEW other properties: asyncEngineCount, totalGlobalMem, regsPerBlock, regsPerMultiprocessor, warpSize, memPitch, clockRate, totalConstMem, major, minor, textureAlignment, deviceOverlap, multiProcessorCount, kernelExecTimeoutEnabled, integrated, canMapHostMemory, computeMode, concurrentKernels, concurrentManagedAccess, ECCEnabled, pciBusID, pciDeviceID, pciDomainID, tccDriver, globalL1CacheSupported, hostNativeAtomicSupported, isMultiGpuBoard, l2CacheSize, localL1CacheSupported, managedMemory, maxSurface[1,2,3]D, maxSurface[1,2]DLayered, maxSurfaceCubemap, maxSurfaceCubemapLayered, maxTexture[1,2]D[Layered,Linear,Mipmap], maxTexture2DGather, maxTexture3D[Alt],maxThreadsPerMultiprocessor, multiGpuBoardGroupID, pageableMemoryAccess, sharedMemPerMultiprocessor, singleToDoublePrecisionPerfRatio, streamPrioritiesSupported, surfaceAlignment, texturePitchAlignment, unifiedAddressing,
 }
 
 uint32_t calculate_num_filter_taps(float rate, float transition_width) { // REVIEW #26 transition_width and transition_band are both used?
@@ -135,9 +135,9 @@ std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_c
 
 void save_filter_to_file(std::vector<std::complex<float>> filter_taps, const char* name) {
     std::ofstream filter;
-    filter.open(name);
-    for (auto &i : filter_taps){
-        filter << i << std::endl;
+    filter.open(name); // REVIEW #15 Should check that name isn't null, also - can we use c++ string here?
+    for (auto &i : filter_taps){ // REVIEW #15 Should filter_taps be error checked? What if it's an empty vector?
+        filter << i << std::endl; // REVIEW #9 Does the initialization of filter always succeed? What if not?
     }
     filter.close();
 }
@@ -147,7 +147,7 @@ int main(int argc, char **argv){
     // REVIEW #35 main is > 200 lines, kind of large maybe the entire filter setup process could be moved out?
     GOOGLE_PROTOBUF_VERIFY_VERSION; // REVIEW #4 state what this does? macro to verify headers and lib are same version.
 
-    auto driver_options = DriverOptions();
+    auto driver_options = DriverOptions(); // REVIEW #15 Should do a quick sanity check on all config options for driver, sig
     auto sig_options = SignalProcessingOptions(); // #26 REVIEW Should the naming be updated along with DSP ?
     auto rx_rate = driver_options.get_rx_rate(); // #5 REVIEW What units is rx_rate in?
     zmq::context_t sig_proc_context(1); // REVIEW #4 - what is "1"?
@@ -160,7 +160,7 @@ int main(int argc, char **argv){
     radarctrl_socket.bind("ipc:///tmp/feeds/2");
 
     zmq::socket_t ack_socket(sig_proc_context, ZMQ_PAIR);
-    ack_socket.bind("ipc:///tmp/feeds/3");
+    ack_socket.bind("ipc:///tmp/feeds/3"); // REVIEW #37 check the errno on all binds
 
     zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
     timing_socket.bind("ipc:///tmp/feeds/4");
@@ -217,22 +217,22 @@ int main(int argc, char **argv){
     std::chrono::steady_clock::time_point timing_end = std::chrono::steady_clock::now();
     std::cout << "Time to create 3 filters: "
       << std::chrono::duration_cast<std::chrono::microseconds>
-                                                  (timing_end - timing_start).count()
+                                                  (timing_end - timing_start).count() // REVIEW #31 fix this whitespace up
       << "us" << std::endl;
 
     save_filter_to_file(filtertaps_1,"filter1coefficients.dat");
-    save_filter_to_file(filtertaps_2,"filter2coefficients.dat");
+    save_filter_to_file(filtertaps_2,"filter2coefficients.dat"); // REVIEW #36 where should the coefficient files be placed? Currently this will put them in the calling dir I think
     save_filter_to_file(filtertaps_3,"filter3coefficients.dat");
 
     while(1){
         //Receive packet from radar control
         zmq::message_t radctl_request;
         radarctrl_socket.recv(&radctl_request);
-        sigprocpacket::SigProcPacket sp;
+        sigprocpacket::SigProcPacket sp;  // REVIEW #26 'sp' and 'r_msg_str' var names need re-thinking (same below with 'cp' and 'c_msg_str')
         std::string r_msg_str(static_cast<char*>(radctl_request.data()), radctl_request.size());
-        sp.ParseFromString(r_msg_str);
-
-        std::cout << "Got radarctrl request" << std::endl;
+        sp.ParseFromString(r_msg_str); // REVIEW #37 need to check the boolean return value from each ParseFromString call http://stackoverflow.com/questions/22121922/how-can-i-get-more-details-about-errors-generated-during-protobuf-parsing-c
+	// REVIEW #15 all protobuf fields are optional, check all fields you require are filled (similarly when using computationpacket)
+        std::cout << "Got radarctrl request" << std::endl; // REVIEW #34 Change to radar_control to indicate where the request actually came from? (same with 'drive' below, maybe name 'usrp_driver' to be consistent with naming of dir structure)
 
         //Then receive packet from driver
         zmq::message_t driver_request;
@@ -246,12 +246,12 @@ int main(int argc, char **argv){
         //Verify driver and radar control packets align
         if (sp.sequence_num() != cp.sequence_num()) {
             //TODO(keith): handle error
-            std::cout << "SEQUENCE NUMBER mismatch rctl: " << sp.sequence_num()
+            std::cout << "SEQUENCE NUMBER mismatch rctl: " << sp.sequence_num() // REVIEW #34 - debug output 'rctl' should be renamed to radar_control and driver to 'usrp_driver'
                 << " driver: " << cp.sequence_num();
         }
 
 
-        //Receive driver samples now
+        //Receive driver samples now    // REVIEW #33 - Use GIT to remove the code and then you can always get it back again if you need to
         //timing_start = std::chrono::steady_clock::now();
         //driver_socket.recv(&driver_request);
         //timing_end = std::chrono::steady_clock::now();
@@ -266,21 +266,22 @@ int main(int argc, char **argv){
 
 
         //Parse needed packet values now
-        std::vector<double> rx_freqs;
+        std::vector<double> rx_freqs; // REVIEW #28 Shouldn't this just be a vector of integers? I don't think sub-hz resolution available or necessary? Careful of division elsewhere if it's changed
         for(int i=0; i<sp.rxchannel_size(); i++) {
             rx_freqs.push_back(sp.rxchannel(i).rxfreq());
         }
 
         timing_start = std::chrono::steady_clock::now();
 
-        std::vector<std::complex<float>> filtertaps_1_bp_h(rx_freqs.size()*filtertaps_1.size());
-        for (int i=0; i<rx_freqs.size(); i++) {
-            auto sampling_freq = 2 * M_PI * rx_freqs[i]/rx_rate;
+        // REVIEW #1 since filtertaps_1_bp_h has a filter in it for each rx freq, it should be indicated/documented somehow
+        std::vector<std::complex<float>> filtertaps_1_bp_h(rx_freqs.size()*filtertaps_1.size()); // REVIEW #26 - what does 'bp_h' mean?
+        for (int i=0; i<rx_freqs.size(); i++) { // REVIEW #10 What is rx_freq? Is it actual freq or offset from centre freq?
+            auto sampling_freq = 2 * M_PI * rx_freqs[i]/rx_rate; // REVIEW #5 radians per sample
 
-            for(int j=0;j < filtertaps_1.size(); j++) {
+            for(int j=0;j < filtertaps_1.size(); j++) { // REVIEW #0 and #8 If filter taps had imaginary part, this would not break, but it wouldn't work properly and it would be a mystery as to why. Place full calculation of I and Q
                 auto radians = fmod(sampling_freq * j,2 * M_PI);
                 auto I = filtertaps_1[j].real() * cos(radians);
-                auto Q = filtertaps_1[j].imag() * sin(radians);
+                auto Q = filtertaps_1[j].real() * sin(radians);
                 filtertaps_1_bp_h[i*filtertaps_1.size() + j] = std::complex<float>(I,Q);
             }
         }
@@ -291,10 +292,10 @@ int main(int argc, char **argv){
           << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
           << "us" << std::endl;
 
-        std::vector<std::complex<float>> filtertaps_2_h(filtertaps_2.size());
+        std::vector<std::complex<float>> filtertaps_2_h(filtertaps_2.size()); // REVIEW #26 what does _h mean?
         std::vector<std::complex<float>> filtertaps_3_h(filtertaps_3.size());
-        for (uint32_t i=0; i< rx_freqs.size(); i++){
-            filtertaps_2_h.insert(filtertaps_2_h.end(),filtertaps_2.begin(),filtertaps_2.end());
+        for (uint32_t i=0; i< rx_freqs.size(); i++){ // REVIEW #28 iterator type not consistent with previous for loop, should it be of type size_t?
+            filtertaps_2_h.insert(filtertaps_2_h.end(),filtertaps_2.begin(),filtertaps_2.end()); // REVIEW #22 is this duplication necessary?
             filtertaps_3_h.insert(filtertaps_3_h.end(),filtertaps_3.begin(),filtertaps_3.end());
         }
 
@@ -306,19 +307,21 @@ int main(int argc, char **argv){
                                 sig_options.get_interferometer_antenna_count();
         auto total_samples = cp.numberofreceivesamples() * total_antennas;
 
-        std::cout << "Total elements in data message: " << total_samples
+        std::cout << "Total elements in data message: " << total_samples // REVIEW #34 change 'elements' to 'samples' to be clear
             << std::endl;
 
         dp->allocate_and_copy_rf_samples(total_samples);
         dp->allocate_and_copy_first_stage_filters(filtertaps_1_bp_h.data(), filtertaps_1_bp_h.size());
 
 
-        auto num_output_samples_1 = rx_freqs.size() * cp.numberofreceivesamples()/first_stage_dm_rate
-                                        * total_antennas;
+// REVIEW #10 Should num of output samples also be based on length of filter to reduce edge effects? See overlap-save algorithm
+        auto num_output_samples_1 = rx_freqs.size() * cp.numberofreceivesamples()/first_stage_dm_rate // REVIEW #28 - What if the division has a remainder?
+                                        * sig_options.get_total_receive_antennas();
+
         dp->allocate_first_stage_output(num_output_samples_1);
 
         gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
-                                    DSPCore::initial_memcpy_callback, dp, 0));
+                                    DSPCore::initial_memcpy_callback, dp, 0)); // REVIEW #3 explain how the timing is done, explain what this does (events, callback, kernel call) a diagram would probably be good in the user-facing documentation
 
         dp->call_decimate(dp->get_rf_samples_p(),
             dp->get_first_stage_output_p(),
