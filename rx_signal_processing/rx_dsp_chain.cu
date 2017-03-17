@@ -139,7 +139,7 @@ int main(int argc, char **argv){
     // REVIEW #35 main is > 200 lines, kind of large maybe the entire filter setup process could be moved out?
     GOOGLE_PROTOBUF_VERIFY_VERSION; // REVIEW #4 state what this does? macro to verify headers and lib are same version.
 
-    auto driver_options = DriverOptions();
+    auto driver_options = DriverOptions(); // REVIEW #15 Should do a quick sanity check on all config options for driver, sig
     auto sig_options = SignalProcessingOptions(); // #26 REVIEW Should the naming be updated along with DSP ?
     auto rx_rate = driver_options.get_rx_rate(); // #5 REVIEW What units is rx_rate in? 
     zmq::context_t sig_proc_context(1); // REVIEW #4 - what is "1"?
@@ -303,13 +303,13 @@ int main(int argc, char **argv){
         dp->allocate_and_copy_rf_samples(total_samples);
         dp->allocate_and_copy_first_stage_filters(filtertaps_1_bp_h.data(), filtertaps_1_bp_h.size());
 
-
-        auto num_output_samples_1 = rx_freqs.size() * cp.numberofreceivesamples()/first_stage_dm_rate
+// REVIEW #10 Should num of output samples also be based on length of filter to reduce edge effects? See overlap-save algorithm 
+        auto num_output_samples_1 = rx_freqs.size() * cp.numberofreceivesamples()/first_stage_dm_rate // REVIEW #28 - What if the division has a remainder?
                                         * sig_options.get_total_receive_antennas();
         dp->allocate_first_stage_output(num_output_samples_1);
 
         gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
-                                    DSPCore::initial_memcpy_callback, dp, 0));
+                                    DSPCore::initial_memcpy_callback, dp, 0)); // REVIEW #3 explain how the timing is done, explain what this does (events, callback, kernel call) a diagram would probably be good in the user-facing documentation
 
         dp->call_decimate(dp->get_rf_samples_p(),
             dp->get_first_stage_output_p(),

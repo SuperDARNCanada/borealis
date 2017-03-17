@@ -71,14 +71,14 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
 
 void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples) 
 {
-
+// REVIEW #15 - What happens when total_samples is negative, 0 or really high?
     rf_samples_size = total_samples * sizeof(cuComplex);
     gpuErrchk(cudaMalloc(&rf_samples, rf_samples_size));
     gpuErrchk(cudaMemcpyAsync(rf_samples,shr_mem->get_shrmem_addr(), rf_samples_size, cudaMemcpyHostToDevice, stream));
 
 }
 
-void DSPCore::allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps)
+void DSPCore::allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps) // REVIEW #9 Consider passing in the size of taps so you don't assume it is a cuComplex (This goes for all allocate_and_copy functions)
 {
     first_stage_bp_filters_size = total_taps * sizeof(cuComplex);
     gpuErrchk(cudaMalloc(&first_stage_bp_filters, first_stage_bp_filters_size));
@@ -102,7 +102,7 @@ void DSPCore::allocate_and_copy_third_stage_filters(void *taps, uint32_t total_t
                 third_stage_filters_size, cudaMemcpyHostToDevice, stream));
 }
 
-void DSPCore::allocate_first_stage_output(uint32_t first_stage_samples)
+void DSPCore::allocate_first_stage_output(uint32_t first_stage_samples) // REVIEW # 26 'x_stage_samples' doesn't indicate that it is the number of samples. Same for 'host_samples'. Consider changing name to better reflect this
 {
     first_stage_output_size = first_stage_samples * sizeof(cuComplex);
     gpuErrchk(cudaMalloc(&first_stage_output, first_stage_output_size));
@@ -226,7 +226,7 @@ void initial_memcpy_callback_handler(DSPCore *dp)
     dp->start_decimate_timing();
 }
 
-void CUDART_CB DSPCore::initial_memcpy_callback(cudaStream_t stream, cudaError_t status,
+void CUDART_CB DSPCore::initial_memcpy_callback(cudaStream_t stream, cudaError_t status, // REVIEW #0 Do you need to put CUDART_CB* ?
                                                 void *processing_data)
 {
     gpuErrchk(status);
