@@ -123,6 +123,8 @@ std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_c
         complex_taps.push_back(complex_tap); // REVIEW #0 does this work?
     }
 
+    //TODO(keith): either pad to pwr of 2 or make pwr of 2 filter len
+    //Pads to len 64 to stop seg fault for now.
     if (complex_taps.size() < 64) {
         auto size_difference = 64 - complex_taps.size();
         for (uint32_t i=0 ; i<size_difference; i++){
@@ -316,7 +318,7 @@ int main(int argc, char **argv){
 
 // REVIEW #10 Should num of output samples also be based on length of filter to reduce edge effects? See overlap-save algorithm
         auto num_output_samples_1 = rx_freqs.size() * cp.numberofreceivesamples()/first_stage_dm_rate // REVIEW #28 - What if the division has a remainder?
-                                        * sig_options.get_total_receive_antennas();
+                                        * total_antennas;
 
         dp->allocate_first_stage_output(num_output_samples_1);
 

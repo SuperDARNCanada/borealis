@@ -1,6 +1,64 @@
 #include <cuComplex.h>
 #include <iostream>
 #include <stdint.h>
+
+/*Overloaded __shfl_down function. Default does not recognize cuComplex but
+does for equivalent float2 type.
+https://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/
+http://docs.nvidia.com/cuda/cuda-c-programming-guide/#warp-shuffle-functions
+*/
+__device__ inline cuComplex __shfl_down(cuComplex var, unsigned int srcLane, int width=32){
+    float2 a = *reinterpret_cast<float2*>(&var);
+    a.x = __shfl_down(a.x, srcLane, width);
+    a.y = __shfl_down(a.y, srcLane, width);
+    return *reinterpret_cast<cuComplex*>(&a);
+}
+
+/*Slightly modified version of reduction #5 from NVIDIA examples
+/usr/local/cuda/samples/6_Advanced/reduction
+*/
+__device__ cuComplex parallel_reduce(cuComplex* data, int tap_offset) {
+
+    auto filter_tap_num = threadIdx.x;
+    auto num_filter_taps = blockDim.x;
+    cuComplex total_sum = data[tap_offset];
+
+
+    if ((num_filter_taps >= 512) && (filter_tap_num < 256))
+    {
+        data[tap_offset] = total_sum = cuCaddf(total_sum,data[tap_offset  + 256]);
+    }
+
+    __syncthreads();
+
+    if ((num_filter_taps >= 256) && (filter_tap_num < 128))
+    {
+            data[tap_offset] = total_sum = cuCaddf(total_sum, data[tap_offset + 128]);
+    }
+
+     __syncthreads();
+
+    if ((num_filter_taps >= 128) && (filter_tap_num <  64))
+    {
+       data[tap_offset] = total_sum = cuCaddf(total_sum, data[tap_offset  +  64]);
+    }
+
+    __syncthreads();
+
+    if ( filter_tap_num < 32 )
+    {
+        // Fetch final intermediate sum from 2nd warp
+        if (num_filter_taps >=  64) total_sum = cuCaddf(total_sum, data[tap_offset + 32]);
+        // Reduce final warp using shuffle
+        for (int offset = warpSize/2; offset > 0; offset /= 2)
+        {
+            total_sum = cuCaddf(total_sum,__shfl_down(total_sum, offset));
+        }
+    }
+
+    return total_sum;
+}
+
 __global__ void decimate1024(cuComplex* original_samples,
     cuComplex* decimated_samples,
     cuComplex* filter_taps, uint32_t dm_rate,
@@ -27,39 +85,47 @@ __global__ void decimate1024(cuComplex* original_samples,
     }
 
 
-    filter_products[threadIdx.x] = cuCmulf(sample,filter_taps[tap_offset]);
+    filter_products[tap_offset] = cuCmulf(sample,filter_taps[tap_offset]);
 
     __syncthreads();
 
 
-    auto num_taps = blockDim.x;
+/*    auto num_taps = blockDim.x;
     for (unsigned int s=num_taps/2; s>32; s>>=1) {
-        if (tap_offset < s)
+        if (threadIdx.x < s)
             filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                     filter_products[tap_offset + s]);
         __syncthreads();
     }
-    if (tap_offset < 32){
+    if (threadIdx.x < 32){
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 32]);
+        __syncthreads();
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 16]);
+        __syncthreads();
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 8]);
+        __syncthreads();
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 4]);
+        __syncthreads();
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 2]);
+        __syncthreads();
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 1]);
+        __syncthreads();
     }
+*/
+    auto total_sum = parallel_reduce(filter_products, tap_offset);
 
     if (threadIdx.x == 0) {
         channel_offset = channel_num * samples_per_channel/dm_rate;
         auto total_channels = blockDim.y;
         auto freq_offset = threadIdx.y * total_channels;
         auto total_offset = freq_offset + channel_offset + dec_sample_num;
-        decimated_samples[total_offset] = filter_products[tap_offset];
+        decimated_samples[total_offset] = total_sum;//filter_products[tap_offset];
     }
 }
 
@@ -92,32 +158,38 @@ __global__ void decimate2048(cuComplex* original_samples,
     }
 
 
-    filter_products[threadIdx.x] = cuCmulf(sample_1,filter_taps[tap_offset]);
-    filter_products[threadIdx.x+1] = cuCmulf(sample_2, filter_taps[tap_offset+1]);
+    filter_products[tap_offset] = cuCmulf(sample_1,filter_taps[tap_offset]);
+    filter_products[tap_offset+1] = cuCmulf(sample_2, filter_taps[tap_offset+1]);
 
     __syncthreads();
 
-    auto half_num_taps = blockDim.x;
+/*    auto half_num_taps = blockDim.x;
     for (unsigned int s=half_num_taps; s>32; s>>=1) {
-        if (tap_offset < s)
+        if (threadIdx.x < s)
             filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                     filter_products[tap_offset + s]);
         __syncthreads();
     }
-    if (tap_offset < 32){
+    if (threadIdx.x < 32){
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 32]);
+        __syncthreads();
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 16]);
+        __syncthreads();
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 8]);
+        __syncthreads();
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 4]);
+        __syncthreads();
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 2]);
+        __syncthreads();
         filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
                                                 filter_products[tap_offset + 1]);
-    }
+        __syncthreads();
+    }*/
 
 /*    auto half_num_taps = blockDim.x;
     for (unsigned int s=half_num_taps; s>32; s>>=1) {
@@ -155,12 +227,14 @@ __global__ void decimate2048(cuComplex* original_samples,
         filter_products[tap_offset + 1] = cuCaddf(filter_products[tap_offset + 1],
                                                     filter_products[tap_offset + 1 + 1]);
     }*/
+
+    auto total_sum = parallel_reduce(filter_products, tap_offset);
     if (threadIdx.x == 0) {
         channel_offset = channel_num * samples_per_channel/dm_rate;
         auto total_channels = blockDim.y;
         auto freq_offset = threadIdx.y * total_channels;
         auto total_offset = freq_offset + channel_offset + dec_sample_num;
-        decimated_samples[total_offset] = filter_products[tap_offset];
+        decimated_samples[total_offset] = total_sum;//filter_products[tap_offset];
     }
 }
 
@@ -194,7 +268,7 @@ void decimate1024_wrapper(cuComplex* original_samples,
     uint32_t samples_per_channel, uint32_t num_taps, uint32_t num_freqs,
     uint32_t num_channels, cudaStream_t stream) {
 
-    auto shr_mem_taps = num_taps * sizeof(cuComplex);
+    auto shr_mem_taps = num_freqs * num_taps * sizeof(cuComplex);
     std::cout << "    Number of shared memory bytes: "<< shr_mem_taps << std::endl;
 
     auto dimGrid = create_grid(samples_per_channel, dm_rate, num_channels);
@@ -210,7 +284,7 @@ void decimate2048_wrapper(cuComplex* original_samples,
     uint32_t samples_per_channel, uint32_t num_taps, uint32_t num_freqs,
     uint32_t num_channels, cudaStream_t stream) {
 
-    auto shr_mem_taps = num_taps * sizeof(cuComplex);
+    auto shr_mem_taps = num_freqs * num_taps * sizeof(cuComplex);
     std::cout << "    Number of shared memory bytes: "<< shr_mem_taps << std::endl;
 
     auto dimGrid = create_grid(samples_per_channel, dm_rate, num_channels);
