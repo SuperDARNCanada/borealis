@@ -190,7 +190,7 @@ static void postprocess(DSPCore *dp)
     std::cout << "Complete process timing: " << dp->get_total_timing()
         << "ms" <<std::endl;
 
-    dp->clear_device_and_destroy();
+    dp->clear_device_and_destroy(); // REVIEW #6 need a TODO here
     delete dp;
 }
 
@@ -199,7 +199,7 @@ void CUDART_CB DSPCore::cuda_postprocessing_callback(cudaStream_t stream, cudaEr
 {
     gpuErrchk(status);
     std::thread start_pp(postprocess,static_cast<DSPCore*>(processing_data));
-    start_pp.detach();
+    start_pp.detach(); 
 }
 
 void DSPCore::send_ack()

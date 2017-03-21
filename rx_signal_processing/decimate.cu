@@ -65,7 +65,7 @@ __global__ void decimate1024(cuComplex* original_samples,
     uint32_t samples_per_channel) //REVIEW #1 describe thread/block/grid dimensions and indices 
 { 
 
-    extern __shared__ cuComplex filter_products[]; // REVIEW #4 comment why is this extern 
+    extern __shared__ cuComplex filter_products[]; // REVIEW #4 comment why is this extern and why is it necessary to be dynamically allocated?
 
     auto channel_num = blockIdx.y;
     auto channel_offset = channel_num * samples_per_channel;
@@ -143,26 +143,27 @@ __global__ void decimate2048(cuComplex* original_samples,
     auto dec_sample_num = blockIdx.x;
     auto dec_sample_offset = dec_sample_num * dm_rate;
 
-    auto tap_offset = threadIdx.y * blockDim.y + 2 * threadIdx.x; //REVIEW #0 should be blockDim.x ?
+    auto tap_offset = threadIdx.y * blockDim.y + 2 * threadIdx.x; //REVIEW #0 should be blockDim.x 
 
     cuComplex sample_1;
     cuComplex sample_2;
-    if ((dec_sample_offset + 2 * threadIdx.x) >= samples_per_channel) {
+    if ((dec_sample_offset + 2 * threadIdx.x) >= samples_per_channel) { 
         sample_1 = make_cuComplex(0.0,0.0);
         sample_2 = make_cuComplex(0.0,0.0);
     }
     else {
         auto final_offset = channel_offset + dec_sample_offset + 2*threadIdx.x;
         sample_1 = original_samples[final_offset];
-        sample_2 = original_samples[final_offset+1];
+        sample_2 = original_samples[final_offset+1];  // REVIEW #0 what if final_offset = samples_per_channel - 1 so that sample_1 is in bounds but sample_2 is out of bounds
     }
 
 
-    filter_products[tap_offset] = cuCmulf(sample_1,filter_taps[tap_offset]);
-    filter_products[tap_offset+1] = cuCmulf(sample_2, filter_taps[tap_offset+1]);
-
+    filter_products[tap_offset] = cuCmulf(sample_1,filter_taps[tap_offset]); //
+    filter_products[tap_offset+1] = cuCmulf(sample_2, filter_taps[tap_offset+1]); // REVIEW #0 what if you have an odd number of taps so that in the last thread filter_taps[tap_offset+1] isn't defined ? (unless all filters are of length 2^x)
+    // REVIEW #0 does parallel reduce work when you are only passing even tap_offset values? should we change filter_products to be half the length of filter_taps and do a filter_products[tap_offset/2] = cuCaddf(filter_products[tap_offset/2], cuCmulf(sample_2, filter_taps[tap_offset+1])) here?  suggest creating a new variable for offset within filter_products
     __syncthreads();
 
+      // REVIEW # 33 use git
 /*    auto half_num_taps = blockDim.x;
     for (unsigned int s=half_num_taps; s>32; s>>=1) {
         if (threadIdx.x < s)
@@ -228,17 +229,17 @@ __global__ void decimate2048(cuComplex* original_samples,
                                                     filter_products[tap_offset + 1 + 1]);
     }*/
 
-    auto total_sum = parallel_reduce(filter_products, tap_offset);
-    if (threadIdx.x == 0) {
-        channel_offset = channel_num * samples_per_channel/dm_rate;
-        auto total_channels = blockDim.y;
-        auto freq_offset = threadIdx.y * total_channels;
+    auto total_sum = parallel_reduce(filter_products, tap_offset); // REVIEW #0 pass new variable for offset in filter products so you are not passing only even values
+    if (threadIdx.x == 0) { // REVIEW #1 Explain how you're setting up the array of decimated samples
+        channel_offset = channel_num * samples_per_channel/dm_rate; // REVIEW #13 gridDimx is already samples_per_channel/dm_rate, use it instead
+        auto total_channels = blockDim.y; // REVIEW #0 This should be gridDim.y if you intend to use 'total_channels' as antennas (should use 'antennas')
+        auto freq_offset = threadIdx.y * total_channels; // REVIEW #0 still need to multiply by gridDim.x here to get index into proper location
         auto total_offset = freq_offset + channel_offset + dec_sample_num;
         decimated_samples[total_offset] = total_sum;//filter_products[tap_offset];
     }
 }
 
-static dim3 create_grid(uint32_t num_samples, uint32_t dm_rate, uint32_t num_channels)
+static dim3 create_grid(uint32_t num_samples, uint32_t dm_rate, uint32_t num_channels) // REVIEW #26 no more channels
 {
     auto num_blocks_x = num_samples/dm_rate;
     auto num_blocks_y = num_channels;
@@ -268,7 +269,7 @@ void decimate1024_wrapper(cuComplex* original_samples,
     uint32_t samples_per_channel, uint32_t num_taps, uint32_t num_freqs,
     uint32_t num_channels, cudaStream_t stream) { // REVIEW #1 describe how this works including choice of blocks and grids
 
-    auto shr_mem_taps = num_freqs * num_taps * sizeof(cuComplex);
+    auto shr_mem_taps = num_freqs * num_taps * sizeof(cuComplex); // REVIEW #32 why do we need this?
     std::cout << "    Number of shared memory bytes: "<< shr_mem_taps << std::endl;
 
     auto dimGrid = create_grid(samples_per_channel, dm_rate, num_channels); 

@@ -294,8 +294,8 @@ int main(int argc, char **argv){
           << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
           << "us" << std::endl;
 
-        std::vector<std::complex<float>> filtertaps_2_h(filtertaps_2.size()); // REVIEW #26 what does _h mean?
-        std::vector<std::complex<float>> filtertaps_3_h(filtertaps_3.size());
+        std::vector<std::complex<float>> filtertaps_2_h(filtertaps_2.size()); // REVIEW #26 what does _h mean? 
+        std::vector<std::complex<float>> filtertaps_3_h(filtertaps_3.size()); // REVIEW #0 need filtertaps_3 and filtertaps_2.size() * rx_freqs.size()
         for (uint32_t i=0; i< rx_freqs.size(); i++){ // REVIEW #28 iterator type not consistent with previous for loop, should it be of type size_t?
             filtertaps_2_h.insert(filtertaps_2_h.end(),filtertaps_2.begin(),filtertaps_2.end()); // REVIEW #22 is this duplication necessary?
             filtertaps_3_h.insert(filtertaps_3_h.end(),filtertaps_3.begin(),filtertaps_3.end());
@@ -334,16 +334,16 @@ int main(int argc, char **argv){
 
 
         dp->allocate_and_copy_second_stage_filters(filtertaps_2_h.data(), filtertaps_2_h.size());
-        auto num_output_samples_2 = num_output_samples_1 / second_stage_dm_rate;
+        auto num_output_samples_2 = num_output_samples_1 / second_stage_dm_rate; //REVIEW #28 what if there is a remainder? Should this be declared as some form of int if it's necessary for it to be an int?
         dp->allocate_second_stage_output(num_output_samples_2);
-        auto num_samps_2 = cp.numberofreceivesamples()/first_stage_dm_rate;
+        auto num_samps_2 = cp.numberofreceivesamples()/first_stage_dm_rate; // REVIEW #26 num_samps_2 could be better named, samples2_per_antenna ?
         dp->call_decimate(dp->get_first_stage_output_p(),
             dp->get_second_stage_output_p(),
             dp->get_second_stage_filters_p(), second_stage_dm_rate,
             num_samps_2, filtertaps_2.size(), rx_freqs.size(),
-            total_antennas, "Second stage of decimation");
-
-
+            total_antennas, "Second stage of decimation"); // REVIEW #0 first_stage_output_p points to array of data that has separate datapoints for different frequencies, is this taken into account?
+// REVIEW #0 should we pass rx_freqs.size() or should we just pass = 1 because there is only one lowpass filter in this stage? Perhaps should write another decimate function for this.
+// REVIEW #0 current call_decimate function is built for the bandpass filters (to separate data by frequency) - for the second stage, we don't need this so a separate function would be better
 
         dp->allocate_and_copy_third_stage_filters(filtertaps_3_h.data(), filtertaps_3_h.size());
         auto num_output_samples_3 = num_output_samples_2 / third_stage_dm_rate;
