@@ -62,10 +62,10 @@ __device__ cuComplex parallel_reduce(cuComplex* data, int tap_offset) {
 __global__ void decimate1024(cuComplex* original_samples,
     cuComplex* decimated_samples,
     cuComplex* filter_taps, uint32_t dm_rate,
-    uint32_t samples_per_channel)
-{
+    uint32_t samples_per_channel) //REVIEW #1 describe thread/block/grid dimensions and indices 
+{ 
 
-    extern __shared__ cuComplex filter_products[];
+    extern __shared__ cuComplex filter_products[]; // REVIEW #4 comment why is this extern 
 
     auto channel_num = blockIdx.y;
     auto channel_offset = channel_num * samples_per_channel;
@@ -73,11 +73,11 @@ __global__ void decimate1024(cuComplex* original_samples,
     auto dec_sample_num = blockIdx.x;
     auto dec_sample_offset = dec_sample_num * dm_rate;
 
-    auto tap_offset = threadIdx.y * blockDim.y + threadIdx.x;
+    auto tap_offset = threadIdx.y * blockDim.y + threadIdx.x; // REVIEW #0 should be blockDim.x
 
     cuComplex sample;
     if ((dec_sample_offset + threadIdx.x) >= samples_per_channel) {
-        sample = make_cuComplex(0.0,0.0);
+        sample = make_cuComplex(0.0,0.0); // REVIEW #1 explain zero-padding, #0, correct this after to throw out edge effects (per stage) ceil((num_samps - num_taps)/dm_rate)
     }
     else {
         auto final_offset = channel_offset + dec_sample_offset + threadIdx.x;
@@ -137,13 +137,13 @@ __global__ void decimate2048(cuComplex* original_samples,
 
     extern __shared__ cuComplex filter_products[];
 
-    auto channel_num = blockIdx.y;
+    auto channel_num = blockIdx.y; // REVIEW #26 -Again here channels/freqs/antennas is confused and needs to be consistent, maybe we avoid the word 'channel' altogether
     auto channel_offset = channel_num * samples_per_channel;
 
     auto dec_sample_num = blockIdx.x;
     auto dec_sample_offset = dec_sample_num * dm_rate;
 
-    auto tap_offset = threadIdx.y * blockDim.y + 2 * threadIdx.x;
+    auto tap_offset = threadIdx.y * blockDim.y + 2 * threadIdx.x; //REVIEW #0 should be blockDim.x ?
 
     cuComplex sample_1;
     cuComplex sample_2;
@@ -266,12 +266,12 @@ void decimate1024_wrapper(cuComplex* original_samples,
     cuComplex* decimated_samples,
     cuComplex* filter_taps, uint32_t dm_rate,
     uint32_t samples_per_channel, uint32_t num_taps, uint32_t num_freqs,
-    uint32_t num_channels, cudaStream_t stream) {
+    uint32_t num_channels, cudaStream_t stream) { // REVIEW #1 describe how this works including choice of blocks and grids
 
     auto shr_mem_taps = num_freqs * num_taps * sizeof(cuComplex);
     std::cout << "    Number of shared memory bytes: "<< shr_mem_taps << std::endl;
 
-    auto dimGrid = create_grid(samples_per_channel, dm_rate, num_channels);
+    auto dimGrid = create_grid(samples_per_channel, dm_rate, num_channels); 
     auto dimBlock = create_block(num_taps,num_freqs);
     decimate1024<<<dimGrid,dimBlock,shr_mem_taps,stream>>>(original_samples, decimated_samples,
                 filter_taps, dm_rate, samples_per_channel);

@@ -240,7 +240,7 @@ void DSPCore::call_decimate(cuComplex* original_samples,
     cuComplex* decimated_samples,
     cuComplex* filter_taps, uint32_t dm_rate,
     uint32_t samples_per_channel, uint32_t num_taps, uint32_t num_freqs,
-    uint32_t num_channels, const char *output_msg) {
+    uint32_t num_channels, const char *output_msg) { // REVIEW #26 -Again here channels/freqs/antennas is confused and needs to be consistent, maybe we avoid the word 'channel' altogether
 // REVIEW #15 This function assumes filter_taps size has been set up properly, how do we assure this is done properly and we're not going out of bounds of the array? The function is called so it doesn't know it's working on the class' own private data, should it be set up this way? Shouldn't you just call_decimate from the while loop and have it act on its own private data? 
     std::cout << output_msg << std::endl; 
 
@@ -256,7 +256,7 @@ void DSPCore::call_decimate(cuComplex* original_samples,
         decimate2048_wrapper(original_samples, decimated_samples, filter_taps,  dm_rate,
             samples_per_channel, num_taps, num_freqs, num_channels, stream);
     }
-    else {
+    else { // REVIEW #30 Could the decimateXXXX_wrapper function be moved into call_decimate to reduce code size and duplication and readability?
         decimate1024_wrapper(original_samples, decimated_samples, filter_taps,  dm_rate,
             samples_per_channel, num_taps, num_freqs, num_channels, stream);
     }
