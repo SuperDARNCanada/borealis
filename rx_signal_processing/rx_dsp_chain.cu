@@ -124,12 +124,32 @@ std::vector<std::complex<float>> create_filter(uint32_t num_taps, float filter_c
     }
 
     //TODO(keith): either pad to pwr of 2 or make pwr of 2 filter len
-    //Pads to len 64 to stop seg fault for now.
-    if (complex_taps.size() < 64) {
-        auto size_difference = 64 - complex_taps.size();
-        for (uint32_t i=0 ; i<size_difference; i++){
-            complex_taps.push_back(std::complex<float>(0.0,0.0));
-        }
+    //Pads to at least len 32 or next pwr of 2 to stop seg fault for now.
+
+    //Quick and small lambda to get the next power of 2. Returns the same
+    //number if already power of two.
+    auto next_pwr2 = [](uint32_t n) -> uint32_t {
+        n--;
+        n |= n >> 1;
+        n |= n >> 2;
+        n |= n >> 4;
+        n |= n >> 8;
+        n |= n >> 16;
+        n++;
+        return n;
+
+    };
+
+    uint32_t size_difference = 0;
+    if (complex_taps.size() < 32) {
+        size_difference = 32 - complex_taps.size();
+    }
+    else {
+        size_difference = next_pwr2(complex_taps.size()) - complex_taps.size();
+    }
+    //pad the filter with the result.
+    for (uint32_t i=0 ; i<size_difference; i++) {
+        complex_taps.push_back(std::complex<float>(0.0,0.0));
     }
 
     return complex_taps;
@@ -200,9 +220,6 @@ int main(int argc, char **argv){
     auto S_lowpass3 = calculate_num_filter_taps(sig_options.get_second_stage_sample_rate(),
                                     sig_options.get_third_stage_filter_transition());
 
-    std::cout << "1st stage taps: " << S_lowpass1 << std::endl << "2nd stage taps: " // REVIEW #34 mention that it's the number of taps?
-        << S_lowpass2 << std::endl << "3rd stage taps: " << S_lowpass3 <<std::endl;
-
 
     std::chrono::steady_clock::time_point timing_start = std::chrono::steady_clock::now();
 
@@ -216,6 +233,12 @@ int main(int argc, char **argv){
                         sig_options.get_third_stage_filter_transition(),
                         sig_options.get_second_stage_sample_rate());
 
+    std::cout << "Number of 1st stage taps: " << S_lowpass1 << std::endl
+        << "Number of 2nd stage taps: " << S_lowpass2 << std::endl // REVIEW #34 mention that it's the number of taps?
+        << "Number of 3rd stage taps: " << S_lowpass3 <<std::endl
+        << "Number of 1st stage taps after padding: " << filtertaps_1.size() <<std::endl
+        << "Number of 2nd stage taps after padding: " << filtertaps_2.size() <<std::endl
+        << "Number of 3rd stage taps after padding: " << filtertaps_3.size() <<std::endl;
     std::chrono::steady_clock::time_point timing_end = std::chrono::steady_clock::now();
     std::cout << "Time to create 3 filters: "
       << std::chrono::duration_cast<std::chrono::microseconds>
