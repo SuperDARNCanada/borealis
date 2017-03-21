@@ -9,7 +9,7 @@ http://docs.nvidia.com/cuda/cuda-c-programming-guide/#warp-shuffle-functions
 */
 __device__ inline cuComplex __shfl_down(cuComplex var, unsigned int srcLane, int width=32){
     float2 a = *reinterpret_cast<float2*>(&var);
-    a.x = __shfl_down(a.x, srcLane, width);
+    a.x = __shfl_down(a.x, srcLane, width); // REVIEW #0 Does this call the original function since the a variable is a float now?
     a.y = __shfl_down(a.y, srcLane, width);
     return *reinterpret_cast<cuComplex*>(&a);
 }
@@ -17,7 +17,7 @@ __device__ inline cuComplex __shfl_down(cuComplex var, unsigned int srcLane, int
 /*Slightly modified version of reduction #5 from NVIDIA examples
 /usr/local/cuda/samples/6_Advanced/reduction
 */
-__device__ cuComplex parallel_reduce(cuComplex* data, int tap_offset) {
+__device__ cuComplex parallel_reduce(cuComplex* data, int tap_offset) { // REVIEW #28 can tap_offset ever be negative? Maybe should make it uint32_t
 
     auto filter_tap_num = threadIdx.x;
     auto num_filter_taps = blockDim.x;
@@ -26,7 +26,7 @@ __device__ cuComplex parallel_reduce(cuComplex* data, int tap_offset) {
 
     if ((num_filter_taps >= 512) && (filter_tap_num < 256))
     {
-        data[tap_offset] = total_sum = cuCaddf(total_sum,data[tap_offset  + 256]);
+        data[tap_offset] = total_sum = cuCaddf(total_sum,data[tap_offset  + 256]); // REVIEW #25 Is it necessary for speed to have two '=' statements on one line? it took a while to see the second one, therefore more confusing. split into two lines
     }
 
     __syncthreads();
@@ -49,10 +49,10 @@ __device__ cuComplex parallel_reduce(cuComplex* data, int tap_offset) {
     {
         // Fetch final intermediate sum from 2nd warp
         if (num_filter_taps >=  64) total_sum = cuCaddf(total_sum, data[tap_offset + 32]);
-        // Reduce final warp using shuffle
-        for (int offset = warpSize/2; offset > 0; offset /= 2)
+        // Reduce final warp using shuffle // REVEW #3 This code depends upon a warp all executing threads at exactly the same time, if it didn't then double the total_sum value for the second half of the threads would be accidentally used. Can be explicit by putting if statement in the for loop [if (filter_tap_num < offset) we think]
+        for (int offset = warpSize/2; offset > 0; offset /= 2) // REVIEW #0 Where does warpSize come from? Don't you need to get it from the gpu_properties?
         {
-            total_sum = cuCaddf(total_sum,__shfl_down(total_sum, offset));
+            total_sum = cuCaddf(total_sum,__shfl_down(total_sum, offset)); // REVIEW #3 Very not-obvious. Seems like it needs to know that total_sum is the variable/memory to work on, need a comment to tell us how this works
         }
     }
 
@@ -85,11 +85,11 @@ __global__ void decimate1024(cuComplex* original_samples,
     }
 
 
-    filter_products[tap_offset] = cuCmulf(sample,filter_taps[tap_offset]);
+    filter_products[tap_offset] = cuCmulf(sample,filter_taps[tap_offset]); // REVIEW #4 tell user that this comes from cuComplex.h, any side effects?
 
-    __syncthreads();
+    __syncthreads(); // REVIEW #1 Synchronizes all threads in a block, meaning 1 output sample per rx freq is ready to be calculated with the parallel reduce
 
-
+// REVIEW #33 Use git to keep old code if you need it
 /*    auto num_taps = blockDim.x;
     for (unsigned int s=num_taps/2; s>32; s>>=1) {
         if (threadIdx.x < s)
@@ -118,12 +118,12 @@ __global__ void decimate1024(cuComplex* original_samples,
         __syncthreads();
     }
 */
-    auto total_sum = parallel_reduce(filter_products, tap_offset);
+    auto total_sum = parallel_reduce(filter_products, tap_offset); // REVIEW #26 Should this be called something like 'decimated_sample' instead - to indicate that it is going into the array of decimated samples? total_sum could be the variable name in parallel reduce, but not here in this context
 
-    if (threadIdx.x == 0) {
-        channel_offset = channel_num * samples_per_channel/dm_rate;
-        auto total_channels = blockDim.y;
-        auto freq_offset = threadIdx.y * total_channels;
+    if (threadIdx.x == 0) { // REVIEW #1 Explain how you're setting up the array of decimated samples
+        channel_offset = channel_num * samples_per_channel/dm_rate; // REVIEW #13 gridDimx is already samples_per_channel/dm_rate, use it instead
+        auto total_channels = blockDim.y; // REVIEW #0 This should be gridDim.y if you intend to use 'total_channels' as antennas (should use 'antennas')
+        auto freq_offset = threadIdx.y * total_channels; // REVIEW #0 still need to multiply by gridDim.x here to get index into proper location
         auto total_offset = freq_offset + channel_offset + dec_sample_num;
         decimated_samples[total_offset] = total_sum;//filter_products[tap_offset];
     }
