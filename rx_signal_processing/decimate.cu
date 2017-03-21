@@ -89,35 +89,6 @@ __global__ void decimate1024(cuComplex* original_samples,
 
     __syncthreads();
 
-
-/*    auto num_taps = blockDim.x;
-    for (unsigned int s=num_taps/2; s>32; s>>=1) {
-        if (threadIdx.x < s)
-            filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                    filter_products[tap_offset + s]);
-        __syncthreads();
-    }
-    if (threadIdx.x < 32){
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 32]);
-        __syncthreads();
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 16]);
-        __syncthreads();
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 8]);
-        __syncthreads();
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 4]);
-        __syncthreads();
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 2]);
-        __syncthreads();
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 1]);
-        __syncthreads();
-    }
-*/
     auto total_sum = parallel_reduce(filter_products, tap_offset);
 
     if (threadIdx.x == 0) {
@@ -125,7 +96,7 @@ __global__ void decimate1024(cuComplex* original_samples,
         auto total_channels = blockDim.y;
         auto freq_offset = threadIdx.y * total_channels;
         auto total_offset = freq_offset + channel_offset + dec_sample_num;
-        decimated_samples[total_offset] = total_sum;//filter_products[tap_offset];
+        decimated_samples[total_offset] = total_sum;
     }
 }
 
@@ -157,76 +128,10 @@ __global__ void decimate2048(cuComplex* original_samples,
         sample_2 = original_samples[final_offset+1];
     }
 
-
     filter_products[tap_offset] = cuCmulf(sample_1,filter_taps[tap_offset]);
     filter_products[tap_offset+1] = cuCmulf(sample_2, filter_taps[tap_offset+1]);
 
     __syncthreads();
-
-/*    auto half_num_taps = blockDim.x;
-    for (unsigned int s=half_num_taps; s>32; s>>=1) {
-        if (threadIdx.x < s)
-            filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                    filter_products[tap_offset + s]);
-        __syncthreads();
-    }
-    if (threadIdx.x < 32){
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 32]);
-        __syncthreads();
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 16]);
-        __syncthreads();
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 8]);
-        __syncthreads();
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 4]);
-        __syncthreads();
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 2]);
-        __syncthreads();
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 1]);
-        __syncthreads();
-    }*/
-
-/*    auto half_num_taps = blockDim.x;
-    for (unsigned int s=half_num_taps; s>32; s>>=1) {
-        if (tap_offset < s)
-            filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                    filter_products[tap_offset + s]);
-            filter_products[tap_offset+1] = cuCaddf(filter_products[tap_offset+1],
-                                                        filter_products[tap_offset+1 + s]);
-        __syncthreads();
-    }
-    if (tap_offset < 32){
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 32]);
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 16]);
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 8]);
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 4]);
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 2]);
-        filter_products[tap_offset] = cuCaddf(filter_products[tap_offset],
-                                                filter_products[tap_offset + 1]);
-
-        filter_products[tap_offset + 1] = cuCaddf(filter_products[tap_offset + 1],
-                                                    filter_products[tap_offset + 1 + 32]);
-        filter_products[tap_offset + 1] = cuCaddf(filter_products[tap_offset + 1],
-                                                    filter_products[tap_offset + 1 + 16]);
-        filter_products[tap_offset + 1] = cuCaddf(filter_products[tap_offset + 1],
-                                                    filter_products[tap_offset + 1 + 8]);
-        filter_products[tap_offset + 1] = cuCaddf(filter_products[tap_offset + 1],
-                                                    filter_products[tap_offset + 1 + 4]);
-        filter_products[tap_offset + 1] = cuCaddf(filter_products[tap_offset + 1],
-                                                    filter_products[tap_offset + 1 + 2]);
-        filter_products[tap_offset + 1] = cuCaddf(filter_products[tap_offset + 1],
-                                                    filter_products[tap_offset + 1 + 1]);
-    }*/
 
     auto total_sum = parallel_reduce(filter_products, tap_offset);
     if (threadIdx.x == 0) {
@@ -234,7 +139,7 @@ __global__ void decimate2048(cuComplex* original_samples,
         auto total_channels = blockDim.y;
         auto freq_offset = threadIdx.y * total_channels;
         auto total_offset = freq_offset + channel_offset + dec_sample_num;
-        decimated_samples[total_offset] = total_sum;//filter_products[tap_offset];
+        decimated_samples[total_offset] = total_sum;
     }
 }
 
