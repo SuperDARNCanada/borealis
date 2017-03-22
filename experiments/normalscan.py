@@ -37,6 +37,9 @@ class Normalscan(ExperimentPrototype):
             "seqtimer":     0
         })
 
+        self.txctrfreq = 12000
+        self.txrate = 
+
 
 #def change_my_experiment(prog, acfdata):
 #    """ Use this function to change your experiment based on
