@@ -9,7 +9,7 @@
 #include <cstdlib>
 #include <thrust/device_vector.h>
 #include "utils/shared_memory/shared_memory.hpp" // REVIEW #0 can't find this file does this work?
-
+                                                 // REPLY perhaps was not added to git.
 #define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
 inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
 {
@@ -19,7 +19,9 @@ inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
     ss << file << "(" << line << ")";
     std::string file_and_line;
     ss >> file_and_line; // REVIEW #25 is this necessary to have stringstream then string vs just putting it in a string?
+                         // REPLY many ways to do this. stringstream lets you use >> << though.
     throw thrust::system_error(code, thrust::cuda_category(), file_and_line); // REVIEW #6 Should we be catching all the thrown cuda errors?
+                                                                              // REPLY I planned for that, but only if we can recover from it. These signify pretty critical errors.
   }
 }
 
@@ -37,10 +39,10 @@ class DSPCore {
     void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
     void allocate_and_copy_second_stage_filters(void *taps, uint32_t total_taps);
     void allocate_and_copy_third_stage_filters(void *taps, uint32_t total_taps);
-    void allocate_first_stage_output(uint32_t first_stage_samples);
-    void allocate_second_stage_output(uint32_t second_stage_samples);
-    void allocate_third_stage_output(uint32_t third_stage_samples);
-    void allocate_and_copy_host_output(uint32_t host_samples);
+    void allocate_first_stage_output(uint32_t num_first_stage_output_samples);
+    void allocate_second_stage_output(uint32_t num_second_stage_output_samples);
+    void allocate_third_stage_output(uint32_t num_third_stage_output_samples);
+    void allocate_and_copy_host_output(uint32_t num_host_samples);
     void copy_output_to_host();
     void clear_device_and_destroy();
     void call_decimate(cuComplex* original_samples,cuComplex* decimated_samples,
@@ -56,9 +58,6 @@ class DSPCore {
     float get_total_timing();
     float get_decimate_timing();
     cudaStream_t get_cuda_stream();
-/*    uint32_t get_sequence_num();
-    zmq::socket_t *get_ack_socket();
-    zmq::socket_t *get_timing_socket();*/
     void start_decimate_timing();
     void stop_timing();
     void send_ack();
