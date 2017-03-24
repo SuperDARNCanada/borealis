@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+
+
+# NOTE THIS FILE IS OBSOLETE 03/24/2017
+
 # Definition of the cp_object class
 # All CPObjects will create one ControlProg and then implemented in
 # runradar.

@@ -84,19 +84,6 @@ def main():
         change_flag = prog.update(some_data)
         if change_flag == True:
             prog.build_Scans()
-        
-
-    #    if json.loads(message)=="UPDATE":
-#            print "Time to update"
-#            if updateflag==False:
-#                cpsocket.send(json.dumps("NO"))
-#            elif updateflag==True:
-#                cpsocket.send(json.dumps("YES"))
-#                message=cpsocket.recv()
-#                if json.loads(message)=="READY":
-#                    #need to send a dictionary here or use other serialization.
-#                    cpsocket.send(json.dumps(prog))
-
 
 main()
     

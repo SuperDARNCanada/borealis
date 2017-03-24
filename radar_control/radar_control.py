@@ -199,18 +199,9 @@ def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict):
 
 
     # Don't need channel numbers, always send 20 beam directions
-    #for chan in channels:
-    #    receiverpacket.channels.append(chan)
     # Beam directions will be formated e^i*phi so that a 0 will indicate not
     # to receive on that channel.
 
-#    for i in range(0,len(rxfreqs)):
-#        beam_array_add=receiverpacket.BeamDirections.add()
-#        for phi in beamdirs[i,:]:
-#            phase = math.exp(phi*1j)
-#            receiverpacket.BeamDirections[i].phase.append(phase)
-#
-    # get response TODO
     procsocket.send(packet.SerializeToString());
     return
 
@@ -252,7 +243,7 @@ def radar():
 
     cpsocket=setup_cp_socket()
     # seqnum is used as a identifier in all packets while
-    # runradar is running so set it up here.
+    # radar is running so set it up here.
     # seqnum will get increased by nave at the end of
     # every integration time.
     seqnum_start = 0
@@ -292,11 +283,6 @@ def radar():
         wavetable_dict={}
         for cpo in range(prog.cponum):
             wavetable_dict[cpo]=get_wavetables(prog.cpo_list[cpo]['wavetype'])
-
-        # TODO: dictionary of pulses so we aren't wasting time making
-        #   them in actual scan. To do this we need to move out the
-        #   phase and beam shifting though.
-        #   This is not possible after combining multiple freqs
 
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         for scan in prog.scan_objects:
@@ -359,10 +345,7 @@ def radar():
                                 beamdir[cpo].append(scan.beamdir[cpo][bmnum])
                         # Get the beamdir from the beamnumber for this
                         #    CP-object at this iteration.
-                    # TODO:send RX data for this averaging period (each
-                    #   cpo will have own data file? (how stereo is
-                    #   implemented currently))
-
+                    
                     # Create a pulse dictionary before running through the
                     #   averaging period.
                     sequence_dict_list=[]
@@ -405,7 +388,7 @@ def radar():
                                     make_pulse_samples(pulse_list, cpos,
                                         beamdir, prog.txctrfreq,
                                         prog.txrate, power_divider))
-                                # Plot for testing
+                                # Can plot for testing here
                                 #plot_samples('channel0.png',
                                 #    pulse_samples[0])
                                 #plot_fft('fftplot.png', pulse_samples[0],
@@ -425,7 +408,6 @@ def radar():
                     while (time_remains):
                         for sequence in aveperiod.integrations:
                             poll_timeout = int(sequence.seqtime/1000) + 1 # seqtime is in us, need ms
-                           # TODO: Consider where the best place to break should be for communication w/ driver and sigproc
                             if datetime.utcnow()>=done_time:
                                 time_remains=False
                                 break
