@@ -14,10 +14,10 @@ import scans
 def if_type():
     return frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
-def interfacing(cpo_num):
+def interfacing(cponum):
     if_list=[]
-    for i in range(cpo_num):
-        for j in range(i+1,cpo_num):
+    for i in range(cponum):
+        for j in range(i+1,cponum):
             if_list.append((i,j))
     if_keys=tuple(if_list) 
     if_dict={}
@@ -26,71 +26,151 @@ def interfacing(cpo_num):
 
     return if_dict      
 
+def selfcheck_piece(cpdict, configdata):
+    """
+    Do some tests of the dictionaries in the experiment
+    to ensure values in this component make sense.
+    """
+    error_count=0
+    error_dict={}
+
+    main_antenna_count = int(configdata['main_antenna_count'])
+    
+    # check none greater than 15, no duplicates
+    if len(cpdict['txchannels']) > main_antenna_count or len(cpdict['rxchannels'])> main_antenna_count:
+        error_dict[error_count]="CP Object Has Too Many Antenna Channels"
+        error_count=error_count+1	
+    for i in range(len(cpdict['txchannels'])):
+        if cpdict['txchannels'][i]>= main_antenna_count or cpdict['rxchannels'][i] >= main_antenna_count:
+            error_dict[error_count]="CP Object Specifies Channel \
+                Numbers Over {}".format(main_antenna_count)
+            error_count=error_count+1
+        for j in range(i+1, len(cpdict['txchannels'])):
+            if cpdict['txchannels'][i]== cpdict['txchannels'][j] or cpdict['rxchannels'][i]== cpdict['rxchannels'][j]:
+                error_dict[error_count]="CP Object Has Duplicate Antennas"
+                error_count=error_count+1	
+                                    
+    # check sequence increasing
+    if len(cpdict['sequence'])!=1:
+        for i in range(1, len(cpdict['sequence'])):
+            if cpdict['sequence'][i]<= cpdict['sequence'][i-1]:
+                error_dict[error_count]="CP Object Sequence Not Increasing"
+                error_count=error_count+1	
+                    
+    #check pulse_len and mpinc make sense (values in us)
+    if cpdict['pulse_len'] > cpdict['mpinc']:
+        error_dict['error_count']="CP Pulse Length Greater than MPINC"
+        error_count=error_count+1	
+    if cpdict['pulse_len'] < 0.01:	
+        error_dict[error_count]="CP Pulse Length Too Small"
+        error_count=error_count+1	
+
+    # check intn and intt make sense given mpinc, and pulse sequence.		
+    seq_len=cpdict['mpinc']*(cpdict['sequence'][-1]+1)
+
+# TODO: Check these
+#        self.intt=3000 # duration of the direction, in ms
+#        self.intn=21 # max number of averages (aka full pulse sequences transmitted) in an integration time intt (default 3s)
+
+    # check no duplicates in beam directions
+    for i in range(len(cpdict['beamdir'])):
+        for j in range(i+1,len(cpdict['beamdir'])):
+            if cpdict['beamdir'][i]== cpdict['beamdir'][j]:
+                error_dict[error_count]="CP Beam Direction Has Duplicates"
+                error_count=error_count+1
+            if cpdict['beamdir'][i] > cpdict['beamdir'][j]:
+                error_dict[error_count]="CP Beam Directions Not in Order \
+                    Clockwise (E of N is positive)"
+                error_count=error_count+1	
+
+    if (not cpdict['scan']): # if empty
+        error_dict[error_count]="Scan Empty"
+        error_count=error_count+1
+
+    # check beam numbers in scan exist
+    for i in cpdict['scan']:
+        if i>=len(cpdict['beamdir']):
+            error_dict[error_count]="CP Scan Beam Direction DNE, not \
+                Enough Beams in beamdir"
+            error_count=error_count+1	
+
+    # check scan boundary not less than minimum required scan time.
+    if cpdict['scanboundf']==1:
+        if cpdict['scanbound'] < (len(cpdict['scan'])*cpdict['intt']):
+            error_dict[error_count]="CP Scan Too Long for ScanBoundary"
+            error_count=error_count+1	
+
+    #TODO other checks
+
+    #freq=12300 # in kHz
+    #clrfrqf=1 # flag for clear frequency search
+    #clrfrqrange=300 # clear frequency range if searching
+    # receiving params
+    #xcf=1 # flag for cross-correlation
+    #acfint=1 # flag for getting lag-zero power of interferometer
+    #wavetype='SINE'
+    #seqtimer=0 
+    # cpid is a unique value?
+
+    return error_dict
+
+
 class ExperimentPrototype(object):
     """Class combining control program objects, defining how they 
     interface and some overall metadata
 
-    :param cpo_id: unique id (RCP number)
-    :param cpo_num: number of CPObjects in this control program.
+    :param cpid: unique id (RCP number)
+    :param cponum: number of CPObjects in this control program.
     :
     """
 
     def __init__(self, cponum, cpid):    
 
-        self.cpo_id=cpid 
+        self.cpid=cpid 
         # Unique ID for each new cp.
-        self.cpo_num=cponum 
+        self.cponum=cponum 
         # Number of CPObjects in this program.
         cpo_list=[]
-        for num in range(self.cpo_num):
-            cp_object = {
-                "obj_id":       num,
-                "cpid":         cpid,
-                "txchannels":   None, 
-                "rxchannels":   None,    
-                "sequence":     None,   
-                "pulse_shift":  None,   
-                "mpinc":        None,   
-                "pulse_len":    None,   
-                "nrang":        None,   
-                "frang":        None,   
-                "intt":         None,   
-                "intn":         None,   
-                "beamdir":      None,   
-                "scan":         None,   
-                "scanboundf":   None,     
-                "scanbound":    None,   
-                "txfreq":       None,   
-                "rxfreq":       None,   
-                "clrfrqf":      None,   
-                "clrfrqrange":  None,   
-                "xcf":          None,   
-                "acfint":       None,   
-                "wavetype":     None,   
-                "seqtimer":     None,   
-            }
+
+        self.cpo_keys = [ "obj_id", "cpid", "txchannels", "rxchannels", 
+            "sequence", "pulse_shift", "mpinc", "pulse_len", "nrang", "frang", 
+            "intt", "intn", "beamdir", "scan", "scanboundf", "scanbound", 
+            "txfreq", "rxfreq", "clrfrqf", "clrfrqrange", "xcf", "acfint", 
+            "wavetype", "seqtimer" ]   
+
+        for num in range(self.cponum):
+            cp_object = {} # I don't know what to call these anymore
+            for key in self.cpo_keys:
+                cp_object[key] = None
+            cp_object["obj_id"] = num
+            cp_object["cpid"] = self.cpid
+
             cpo_list.append(cp_object)
-#            cpo_list[num].cpid[1]=num 
-#            # Second number in cpid array is the ID of this cp_object
-#            #   in the controlprog.
-#            cpo_list[num].cpid[0]=self.cpo_id
+
         self.cpo_list=cpo_list
+
+        # Load the config data
+        with open('../config.ini') as config_data:
+            self.config=json.load(config_data)
 
         # Next some metadata that you can change, with defaults.
         # TODO: make default none and have a function that will 
         #   calculate something appropriate if left blank.
+
         self.txctrfreq=12000 # in kHz.
         self.txrate=12000000 # sampling rate, samples per sec
         self.rxctrfreq=12000 # in kHz. 
-        # rx sampling rate is set in config.
+        # NOTE: rx sampling rate is set in config.
+
         self.xcf=1 
         # Get cross-correlation data in processing block.
+
         self.acfint=1 
         # Determine lag-zero interferometer power in fitacf.
 
-        self.interface=interfacing(self.cpo_num) 
+        self.interface=interfacing(self.cponum) 
         # Dictionary of how each cpo interacts with the other cpos.
-        # Default is "NONE" for all, must be modified in experiment.
+        # Default is "NONE" for all, but must be modified in experiment.
         # NOTE keys are as such: (0,1), (0,2), (1,2), NEVER 
         # includes (2,0) etc. The only interface options are:
         # if_types=frozenset(['NONE', 'SCAN', 'INTTIME', 'INTEGRATION',
@@ -130,26 +210,24 @@ class ExperimentPrototype(object):
         """
 
     def __call__(self):
-        print 'CPID [cpo_id]: {}'.format(self.cpo_id)
-        print 'Num of CP Objects [cpo_num]: {}'.format(self.cpo_num)
-        for i in range(self.cpo_num):
+        print 'CPID [cpid]: {}'.format(self.cpid)
+        print 'Num of CP Objects [cponum]: {}'.format(self.cponum)
+        for i in range(self.cponum):
             print '\n'
             print 'CP Object : {}'.format(i)
-            print self.cpo_list[i]()
+            print self.cpo_list[i]
         print '\n'
         print 'Interfacing [interface]: {}'.format(self.interface)
         return None
 
     def build_Scans(self):
-        """Will run after a controlprogram instance is set up and
-        modified
+        """
+        Will run after a controlprogram instance is set up and
+        modified - build iterable objects for radar_control
         """
 
-        with open('../config.ini') as config_data:
-            self.config=json.load(config_data)
-
         # Check interfacing
-        self.check_objects()
+        self.selfcheck()
         self.check_interfacing()
         # Find separate scans.
         self.cpo_scans=self.get_scans() 
@@ -157,29 +235,40 @@ class ExperimentPrototype(object):
         #   cpo numbers for that scan.
         self.scan_objects=[]
         for scan_cpo_list in self.cpo_scans:
-            self.scan_objects.append(radar_classes.Scan(self, scan_cpo_list)) 
+            self.scan_objects.append(scans.Scan(self, scan_cpo_list)) 
         # Append a Scan instance, passing this controlprog, list of cpo
         #   numbers to include in scan.
     
-    def check_objects(self):
-        if (self.cpo_num<1):
+    def selfcheck(self):
+        """
+        Check that the values in this experiment are valid
+        """
+
+        if (self.cponum<1):
             errmsg="Error: No objects in control program"
             sys.exit(errmsg)
-        for cpo in range(self.cpo_num):
-            selferrs=self.cpo_list[cpo].selfcheck()
+
+        #TODO: somehow check if self.cpid is not unique
+
+        for cpo in range(self.cponum):
+            selferrs=selfcheck_piece(self.cpo_list[cpo],self.config)
             if (not selferrs): 
                 # If returned error dictionary is empty
                 continue
             errmsg="Self Check Errors Occurred with Object Number : {} \nSelf \
                 Check Errors are : {}".format(cpo, selferrs)
             sys.exit(errmsg)
-        else: # no break
+        else: # no break (exit)
             print "No Self Check Errors. Continuing..."
         return None
 
+
     def check_interfacing(self):
-        # Check that the keys in the interface are not NONE and are 
-        #   valid.
+        """
+        Check that the keys in the interface are not NONE and are 
+        valid.
+        """
+
         for key in self.interface.keys():
             if self.interface[key]=="NONE":
                 errmsg='Interface keys are still default, must set key \
@@ -187,7 +276,7 @@ class ExperimentPrototype(object):
                 sys.exit(errmsg)
 
         for num1,num2 in self.interface.keys(): 
-            if ((num1>=self.cpo_num) or (num2>=self.cpo_num) or (num1<0) 
+            if ((num1>=self.cponum) or (num2>=self.cponum) or (num1<0) 
                     or (num2<0)):
                 errmsg='Interfacing key ({}, {}) is not necessary and not \
                     valid'.format(num1, num2)
@@ -196,6 +285,9 @@ class ExperimentPrototype(object):
                 errmsg='Interfacing Not Valid Type between CPO {} and CPO \
                     {}'.format(num1, num2)
                 sys.exit(errmsg)
+
+        # TODO: add checks that verify interfacing makes sense - ie 0,1 is pulse by pulse, and 1,2 is scan therefore 0,2 must also be scan
+        # Could also accept NONE at 0,2 in that ^^ example ??
         return None
 
     def get_scans(self):
@@ -248,7 +340,7 @@ class ExperimentPrototype(object):
             i=i+1
         # now scan_combos is a list of lists, where a cp object occurs
         #   only once in the nested list.
-        for cpo in range(self.cpo_num):
+        for cpo in range(self.cponum):
             found=False
             for i in range(len(scan_combos)):
                 for j in range(len(scan_combos[i])):
@@ -265,101 +357,3 @@ class ExperimentPrototype(object):
         scan_combos=sorted(scan_combos)
         return scan_combos
                            
-#    def get_integrations(self, seq_combos):
-#        """Determine how the sequence combos are interfaced before building"""
-#        # seq_combos is a list of lists that defines how many different types of sequences there are in this control program.
-#        interface_integrations=[]
-#        integ # will create a dictionary using the sequence combos as values for keys (number of different integrations)
-#        for num1,num2 in self.interface.keys():
-#            if self.interface[num1, num2]=="INTEGRATION"
-#                interface_integrations.append([num1,num2]) # save keys of integration combos.
-#        interface_integrations=sorted(interface_integrations)
-#        for num1,num2 in interface_integrations:
-#            for i in range(len(seq_combos)):
-#                for k in seq_combos[i]:
-#                    if k==num1:
-#                        # we have found an interface integration between pulse sequences.
-                        
-#    def get_wavetables(self):
-#        #NOTE: will there be any other wavetypes.
-#        self.iwave_table=[]
-#        self.qwave_table=[]
-#
-#        for cpo in self.cpo_list:
-#            if cpo.wavetype=="SINE":
-#                wave_table_len=8192
-#                for i in range(0, wave_table_len):
-#                    cpo.iwave_table.append(math.cos(i*2*math.pi/wave_table_len))
-#                    cpo.qwave_table.append(math.sin(i*2*math.pi/wave_table_len))
-#
-#            else:
-#                errmsg="Wavetype %s not defined" % (cpo.wavetype)
-#                sys.exit(errmsg)
-#
-#        #return iwave_table, qwave_table
- 
-
-#    def get_seq_combos(self): 
-#        """TAKE MY OWN INTERFACING SPECS AND COMBINE INTO WORKABLE 
-#        ARRAY - NOT USED
-#        """
-#        # check the interfacing, and combine sequences first.
-#        seq_combos=[]
-#    
-#        for num1,num2 in self.interface.keys():
-#            if self.interface[num1, num2]=="PULSE": # Changed the interface options or self.interface[num1, num2]=="MULTI_SEQ":
-#                seq_combos.append([num1,num2]) # save the keys that are sequence combinations.
-#
-#        seq_combos=sorted(seq_combos)
-#        #print seq_combos
-#        #if [2,4] and [1,4], then also must be [1,2] in the seq_combos list!
-#        i=0
-#        while (i<len(seq_combos)):
-#        #for i in range(0,(len(seq_combos)-1)):     
-#            #print "i: ", i,        seq_combos[i]
-#            k=0
-#            #for k in range(len(seq_combos[i])):
-#            while (k<len(seq_combos[i])):
-#                j=i+1
-#                while (j<len(seq_combos)):
-#                #for j in range(i+1,len(seq_combos)):
-#                    #print "j: ", j, seq_combos[j]
-#                    if seq_combos[i][k]==seq_combos[j][0]:
-#                        add_n=seq_combos[j][1]
-#                        #print "Adding ", add_n, " to sequence combo ", seq_combos[i]
-#                        seq_combos[i].append(add_n) #combine the indices if there are 3+ cp_objects combining in same seq.
-#                        #if seq_combos[i][1]>seq_combos[j][1]:
-#                            #seq_combos.remove([seq_combos[j][1],seq_combos[i][1]])
-#                        #else:
-#                            #print seq_combos[i][1], seq_combos[j][1]
-#                        for m in range(0,len(seq_combos[i])-1): # try all values in seq_combos[i] except the last value, which is = to add_n.
-#                            try:
-#                                #print "Removing sequence combo ", seq_combos[i][m], add_n
-#                                seq_combos.remove([seq_combos[i][m],add_n]) # seq_combos[j][1] is the known last value in seq_combos[i]
-#                            except ValueError:
-#                                # if there is an error because that index does not exist!
-#                                errmsg='Interfacing not Valid: CPO %d and CPO %d are a sequence combination and do not interface the same with CPO %d' % (seq_combos[i][m], seq_combos[i][k], add_n)
-#                                sys.exit(errmsg)
-#                                #print seq_combos
-#                        j=j-1 # this means that the former seq_combos[j] has been deleted and there are new values at index j, so decrement before incrementing in for.
-#                    j=j+1 # increment
-#                k=k+1
-#            i=i+1
-#
-#        # now seq_combos is a list of lists, where a cp object occurs in only once in the nested list.
-#        for cpo in range(self.cpo_num):
-#            found=False
-#            for i in range(len(seq_combos)):
-#                for j in range(len(seq_combos[i])):
-#                    if cpo==seq_combos[i][j]:
-#                        found=True
-#                        break
-#                if found==False:
-#                    continue
-#                break
-#            else: # no break
-#                seq_combos.append([cpo]) # append the cpo on its own, is not sequence combined.
-#
-#        seq_combos=sorted(seq_combos)
-#        return seq_combos
-# 

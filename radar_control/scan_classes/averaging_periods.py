@@ -46,22 +46,24 @@ class AveragingPeriod():
         #   search requirement.
         self.clrfrqrange=[] 
         # List of ranges needing to be searched.
-        for cpo in self.keys:
-            if self.cpos[cpo].clrfrqf==1:
-                self.clrfrqf.append(cpo)
-                if self.cpos[cpo].clrfrqrange not in self.clrfrqrange:
-                    self.clrfrqrange.append(self.cpos[cpo].clrfrqrange)
 
-        self.intt=self.cpos[self.keys[0]].intt
+        # TODO: SET UP CLEAR FREQUENCY SEARCH CAPABILITY
         for cpo in self.keys:
-            if self.cpos[cpo].intt!=self.intt:
+            if self.cpos[cpo]['clrfrqf'] == 1:
+                self.clrfrqf.append(cpo)
+                if self.cpos[cpo]['clrfrqrange'] not in self.clrfrqrange:
+                    self.clrfrqrange.append(self.cpos[cpo]['clrfrqrange'])
+
+        self.intt=self.cpos[self.keys[0]]['intt']
+        for cpo in self.keys:
+            if self.cpos[cpo]['intt'] != self.intt:
                 errmsg="CPO %d and %d are INTTIME mixed and do not have the \
                     same Averaging Period duration intt" % (self.keys[0], 
                     self.keys[cpo])
                 sys.exit(errmsg)
-        self.intn=self.cpos[self.keys[0]].intn
+        self.intn=self.cpos[self.keys[0]]['intn']
         for cpo in self.keys:
-            if self.cpos[cpo].intn!=self.intn:
+            if self.cpos[cpo]['intn'] != self.intn:
                 errmsg="CPO %d and %d are INTTIME mixed and do not have the \
                     same NAVE goal intn" % (self.keys[0], self.keys[cpo])
                 sys.exit(errmsg)
@@ -74,7 +76,7 @@ class AveragingPeriod():
         self.cpo_integrations=self.get_integrations()
         self.integrations=[]
         for integration_cpo_list in self.cpo_integrations:
-            self.integrations.append(Sequence(self,integration_cpo_list)) 
+            self.integrations.append(sequences.Sequence(self,integration_cpo_list)) 
       
   
     def get_integrations(self):
