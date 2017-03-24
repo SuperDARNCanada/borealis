@@ -7,6 +7,8 @@
 #include "utils/protobuf/computationpacket.pb.h"
 #include "utils/protobuf/sigprocpacket.pb.h"
 #include "utils/shared_memory/shared_memory.hpp"
+#include "utils/signal_processing_options/signalprocessingoptions.hpp"
+#include "utils/driver_options/driveroptions.hpp"
 
 std::string random_string( size_t length )
 {
@@ -41,6 +43,9 @@ int main(int argc, char** argv){
 
     sigprocpacket::SigProcPacket sp;
 
+    auto driver_options = DriverOptions();
+    auto rx_rate = driver_options.get_rx_rate();
+
 
     std::vector<float> sample_buffer;
     enum shr_mem_switcher {FIRST, SECOND};
@@ -48,7 +53,7 @@ int main(int argc, char** argv){
     boost::interprocess::mapped_region first_region, second_region;
     void *current_region_addr;
 
-    std::vector<double> rxfreqs = {0.,0.,0.};
+    std::vector<double> rxfreqs = {0.0,0.0,0.0};
     for (int i=0; i<rxfreqs.size(); i++) {
         auto rxchan = sp.add_rxchannel();
         rxchan->set_rxfreq(rxfreqs[i]);
@@ -57,23 +62,33 @@ int main(int argc, char** argv){
 
     }
 
-    auto num_channels = 20;
-
-/*    std::vector<double> beam_dir(num_channels,1.0);
-    auto beam_dirs = sp.add_beam_directions();
-    for(int i=0; i<beam_dir.size(); i++) {
-        beam_dirs->add_phase(i);
-        beam_dirs->set_phase(i,beam_dir[i]);
-    }*/
+    auto num_channels = driver_options.get_main_antenna_count() +
+                            driver_options.get_interferometer_antenna_count();
 
 
     computationpacket::ComputationPacket cp;
 
-    auto num_samples = 800000;
+    auto num_samples = int(rx_rate * 0.1);
     cp.set_numberofreceivesamples(num_samples);
 
-    auto default_v = std::complex<float>(2.0,2.0);
-    std::vector<std::complex<float>> samples(num_samples*num_channels, default_v);
+    auto default_v = std::complex<float>(0.0,0.0);
+    std::vector<std::complex<float>> samples(num_samples*num_channels,default_v);
+
+
+    for (int i=0; i<samples.size(); i++) {
+        auto nco_point = std::complex<float>(0.0,0.0);
+        for (auto freq : rx_freqs) {
+            auto sampling_freq = 2 * M_PI * freq/rx_rate;
+
+            auto radians = fmod(sampling_freq * i, 2 * M_PI);
+            auto I = cos(radians);
+            auto Q = sin(radians);
+
+            nco_point += std::complex<float>(I,Q);
+        }
+        samples[i] = nco_point;
+    }
+
     zmq::message_t data(samples.data(),samples.size()*sizeof(std::complex<float>));
 
 
