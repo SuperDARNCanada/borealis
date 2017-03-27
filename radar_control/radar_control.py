@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# experiment.py
+# radar_control.py
 # 2017-03-13
 # Marci Detwiller
 # Get a radar control program made of objects (scans, averaging periods, and sequences).
@@ -25,18 +25,18 @@ from scipy.signal import kaiserord, lfilter, firwin, freqz
 sys.path.append('../build/release/utils/protobuf')
 import driverpacket_pb2
 import sigprocpacket_pb2
-sys.path.append('../experiment')
-import myexperiment # this brings in myprog.
 
 sys.path.append('./include')
 from sample_building import get_phshift, get_wavetables, make_pulse_samples
 
-import controlprog
+sys.path.append('../experiments')
+import normalscan # TODO - have it setup by scheduler
+
 import radar_status
 
 def setup_driver_socket(): # to send pulses to driver.
     """
-    
+    Setup a zmq socket to communicate with the driver. 
     """
 
     context=zmq.Context()
@@ -47,7 +47,7 @@ def setup_driver_socket(): # to send pulses to driver.
 
 def setup_sigproc_params_socket(): #to send data to receive code.
     """
-    
+    Setup a zmq socket to communicate with rx_signal_processing.
     """
 
     context=zmq.Context()
@@ -58,7 +58,7 @@ def setup_sigproc_params_socket(): #to send data to receive code.
 
 def setup_sigproc_cpack_socket(): #to send data to receive code.
     """
-    
+    Setup a zmq socket to get acks from rx_signal_processing.
     """
 
     context=zmq.Context()
@@ -69,7 +69,7 @@ def setup_sigproc_cpack_socket(): #to send data to receive code.
 
 def setup_sigproc_timing_ack_socket():
     """
-    
+    Setup a zmq socket to get timing information from rx_signal_processing.
     """
 
     context=zmq.Context()
@@ -78,9 +78,9 @@ def setup_sigproc_timing_ack_socket():
     return cpsocket
 
 
-def setup_cp_socket(): #to get refreshed control program updates.
+def setup_cp_socket(): 
     """
-    
+    Setup a zmq socket to get updated experiment parameters from the experiment.
     """
 
     context=zmq.Context()
@@ -89,52 +89,38 @@ def setup_cp_socket(): #to get refreshed control program updates.
     return cpsocket
 
 
-def setup_ack_poller(socket1,socket2):
-    """
-    
-    """
+#def setup_ack_poller(socket1,socket2):
+#    """
+#     
+#    """
+#
+#    poller=zmq.Poller()
+#    poller.register(socket1, zmq.POLLIN)
+#    poller.register(socket2, zmq.POLLIN)
+#    return poller
 
-    poller=zmq.Poller()
-    poller.register(socket1, zmq.POLLIN)
-    poller.register(socket2, zmq.POLLIN)
-    return poller
 
-
-def pollzmq(socket1, socket2, rxseqnum, txseqnum):
-    """
-    
-    """
-
-    poller=zmq.Poller()
-    poller.register(socket1, zmq.POLLIN)
-    poller.register(socket2, zmq.POLLIN)
-    socks = dict(poller.poll(100)) # get two messages
-    if procsocket in socks and txsocket in socks: # need one message from both.
-        if socks[procsocket] == zmq.POLLIN:
-            rxseqnum = get_ack(procsocket)
-        if socks[txsocket] == zmq.POLLIN:
-            txseqnum = get_ack(txsocket)
+#def pollzmq(socket1, socket2, rxseqnum, txseqnum):
+#    """
+#    
+#    """
+#
+#    poller=zmq.Poller()
+#    poller.register(socket1, zmq.POLLIN)
+#    poller.register(socket2, zmq.POLLIN)
+#    socks = dict(poller.poll(100)) # get two messages
+#    if procsocket in socks and txsocket in socks: # need one message from both.
+#        if socks[procsocket] == zmq.POLLIN:
+#            rxseqnum = get_ack(procsocket)
+#        if socks[txsocket] == zmq.POLLIN:
+#            txseqnum = get_ack(txsocket)
 
 
 def get_prog(socket):
     """
-    
+    Receive pickled python object of the experiment class. 
     """
 
-#    update=json.dumps("UPDATE")
-#    socket.send(update)
-#    ack=socket.recv(zmq.NOBLOCK)
-#    reply=json.loads(ack)
-#    if reply=="YES":
-#        socket.send(json.dumps("READY"))
-#        new_prog=socket.recv(zmq.NOBLOCK)
-#        prog=json.loads(new_prog)
-#        return prog
-#    #TODO: serialize a control program (class not JSON serializable)
-#    elif reply=="NO":
-#        print "no update"
-#        return None
-#
     prog = socket.recv_pyobj()
 
     return prog
@@ -198,9 +184,9 @@ def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict):
     packet.sequence_num=seqnum
     for num, cpo in enumerate(cpos):
         channel_add = packet.rxchannel.add()
-        packet.rxchannel[num].rxfreq = cpo_list[cpo].rxfreq
-        packet.rxchannel[num].nrang = cpo_list[cpo].nrang
-        packet.rxchannel[num].frang = cpo_list[cpo].frang
+        packet.rxchannel[num].rxfreq = cpo_list[cpo]['rxfreq']
+        packet.rxchannel[num].nrang = cpo_list[cpo]['nrang']
+        packet.rxchannel[num].frang = cpo_list[cpo]['frang']
         for bnum, beamdir in enumerate(beam_dict[cpo]):
             beam_add = packet.rxchannel[num].beam_directions.add()
             # beamdir is a list 20-long with phase for each antenna for that beam direction.
@@ -213,18 +199,9 @@ def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict):
 
 
     # Don't need channel numbers, always send 20 beam directions
-    #for chan in channels:
-    #    receiverpacket.channels.append(chan)
     # Beam directions will be formated e^i*phi so that a 0 will indicate not
     # to receive on that channel.
 
-#    for i in range(0,len(rxfreqs)):
-#        beam_array_add=receiverpacket.BeamDirections.add()
-#        for phi in beamdirs[i,:]:
-#            phase = math.exp(phi*1j)
-#            receiverpacket.BeamDirections[i].phase.append(phase)
-#
-    # get response TODO
     procsocket.send(packet.SerializeToString());
     return
 
@@ -243,9 +220,9 @@ def get_ack(xsocket,procpacket):
         return
 
 
-def runradar():
+def radar():
     """
-    Receives an instance of ControlProg from the experiment. Iterates through
+    Receives an instance of an experiment. Iterates through
     the Scans, AveragingPeriods, Sequences, and pulses of the experiment. 
     For every pulse, samples and other control information are sent to the n200_driver.
     For every pulse sequence, processing information is sent to the signal processing block.
@@ -266,7 +243,7 @@ def runradar():
 
     cpsocket=setup_cp_socket()
     # seqnum is used as a identifier in all packets while
-    # runradar is running so set it up here.
+    # radar is running so set it up here.
     # seqnum will get increased by nave at the end of
     # every integration time.
     seqnum_start = 0
@@ -284,7 +261,8 @@ def runradar():
                 new_cp = get_prog(cpsocket) # TODO: write this function
                 if new_cp == None:
                     print "NO NEW CP"
-                elif isinstance(new_cp, controlprog.ControlProg): # is this how to check if it's a correct class type?
+                elif isinstance(new_cp, normalscan.Normalscan): # is this how to check if it's a correct class type?
+                    # TODO: scheduler
                     prog = new_cp
                     beam_remaining = False
                     updated_cp_received = True
@@ -296,19 +274,6 @@ def runradar():
 
 
     while True:
-        # Receive pulse data from run_RCP
-        #cpsocket=setup_cp_socket()
-        #scan=None
-        #while scan is None:
-        #    prog=get_prog(cp_socket)
-        # Build_RCP will reload after every scan.
-        #print "got a prog"
-
-        # Make myprog, defined in currentctrlprog
-        # For now just import the experiment.
-        #import experiment
-        #prog = experiment.main()
-        #prog=myexperiment.build_RCP()
 
         cpos=prog.cpo_list
         updated_cp_received = False
@@ -316,50 +281,8 @@ def runradar():
         # Wavetables are currently None for sine waves, instead just
         #   use a sampling freq in rads/sample
         wavetable_dict={}
-        for cpo in range(prog.cpo_num):
-            wavetable_dict[cpo]=get_wavetables(prog.cpo_list[cpo].wavetype)
-
-        # TODO: dictionary of pulses so we aren't wasting time making
-        #   them in actual scan. To do this we need to move out the
-        #   phase and beam shifting though.
-        #   This is not possible after combining multiple freqs
-
-#        samples_dictionary={}
-#        for scan in prog.scan_objects:
-#            for aveperiod in scan.aveperiods:
-#                for sequence in aveperiod.integrations:
-#                    print sequence.combined_pulse_list
-#                    for pulse_index in range(0, len(sequence.combined_pulse_list)):
-#                        repeat=sequence.combined_pulse_list[pulse_index][0]
-#                        if not repeat:
-#                            # Initialize a list of lists for
-#                            #   samples on all channels.
-#                            pulse_list=sequence.combined_pulse_list[pulse_index][:]
-#                            pulse_list.pop(0) # remove boolean repeat value
-#                            pulse_list.pop(1)
-#                            isamples_list=[]
-#                            qsamples_list=[]
-#                            # TODO:need to determine what power
-#                            #   to use - should determine using
-#                            #   number of frequencies in
-#                            #   sequence, but for now use # of
-#                            #   pulses combined here.
-#                            power_divider=len(pulse_list)
-#                            pulse_samples, pulse_channels = (
-#                                make_pulse_samples(pulse_list, cpos,
-#                                    beamdir, prog.txctrfreq,
-#                                    prog.txrate, power_divider))
-#                            # Plot for testing
-#                            plot_samples('channel0.png',
-#                                pulse_samples[0])
-#                            plot_fft('fftplot.png', pulse_samples[0],
-#                                prog.txrate)
-#                            samples_dictionary[pulse_list]=[pulse_samples,pulse_channels]
-#                            for channel in pulse_channels:
-#                                isamples_list.append((pulse_samples
-#                                    [channel].real).tolist())
-#                                qsamples_list.append((pulse_samples
-#                                    [channel].imag).tolist())
+        for cpo in range(prog.cponum):
+            wavetable_dict[cpo]=get_wavetables(prog.cpo_list[cpo]['wavetype'])
 
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         for scan in prog.scan_objects:
@@ -422,10 +345,7 @@ def runradar():
                                 beamdir[cpo].append(scan.beamdir[cpo][bmnum])
                         # Get the beamdir from the beamnumber for this
                         #    CP-object at this iteration.
-                    # TODO:send RX data for this averaging period (each
-                    #   cpo will have own data file? (how stereo is
-                    #   implemented currently))
-
+                    
                     # Create a pulse dictionary before running through the
                     #   averaging period.
                     sequence_dict_list=[]
@@ -468,7 +388,7 @@ def runradar():
                                     make_pulse_samples(pulse_list, cpos,
                                         beamdir, prog.txctrfreq,
                                         prog.txrate, power_divider))
-                                # Plot for testing
+                                # Can plot for testing here
                                 #plot_samples('channel0.png',
                                 #    pulse_samples[0])
                                 #plot_fft('fftplot.png', pulse_samples[0],
@@ -488,7 +408,6 @@ def runradar():
                     while (time_remains):
                         for sequence in aveperiod.integrations:
                             poll_timeout = int(sequence.seqtime/1000) + 1 # seqtime is in us, need ms
-                           # TODO: Consider where the best place to break should be for communication w/ driver and sigproc
                             if datetime.utcnow()>=done_time:
                                 time_remains=False
                                 break
@@ -501,13 +420,13 @@ def runradar():
                                         # Get phase shifts for all channels
                                         phase_array.append(get_phshift(
                                                                 beamdir[cpo],
-                                                                prog.cpo_list[cpo].freq,channel,
+                                                                prog.cpo_list[cpo]['txfreq'],channel,
                                                                 0))
                                     for channel in range(6,9): # interferometer
                                         # Get phase shifts for all channels
                                         phase_array.append(get_phshift(
                                                                 beamdir[cpo],
-                                                                prog.cpo_list[cpo].freq,channel,
+                                                                prog.cpo_list[cpo]['txfreq'],channel,
                                                                 0)) # zero pulse shift b/w pulses when beamforming.
                                     beam_phase_dict[cpo].append(phase_array)
                                 else:
@@ -517,13 +436,13 @@ def runradar():
                                             # Get phase shifts for all channels
                                             phase_array.append(get_phshift(
                                                                     beam,
-                                                                    prog.cpo_list[cpo].freq,channel,
+                                                                    prog.cpo_list[cpo]['txfreq'],channel,
                                                                     0))
                                         for channel in range(6,9): # interferometer
                                             # Get phase shifts for all channels
                                             phase_array.append(get_phshift(
                                                                     beam,
-                                                                    prog.cpo_list[cpo].freq,channel,
+                                                                    prog.cpo_list[cpo]['txfreq'],channel,
                                                                     0)) # zero pulse shift b/w pulses when beamforming.
                                         beam_phase_dict[cpo].append(phase_array)
                             data_to_processing(sigprocpacket, procsocket, seqnum_start + nave, sequence.cpos, prog.cpo_list, beam_phase_dict) # beamdir is dictionary
@@ -562,7 +481,7 @@ def runradar():
 
                             # Get sequence acknowledgements and log
                             # synchronization and communication errors between
-                            # the n200_driver, sig_proc, and runradar.
+                            # the n200_driver, rx_sig_proc, and radar_control.
                             if seqnum_start + nave != 0:
                                 poller2=zmq.Poller()
                                 poller2.register(txsocket, zmq.POLLIN)
@@ -589,7 +508,7 @@ def runradar():
                                     else:
                                         pass
                                         #print "******************ERROR: Have not received both ACKS"
-                            else: # on the very first sequence since starting runradar.
+                            else: # on the very first sequence since starting radar.
                                 poller=zmq.Poller()
                                 poller.register(txsocket, zmq.POLLIN)
                                 print "Polling for {}".format(poll_timeout)
@@ -618,5 +537,5 @@ def runradar():
                 scan_iter=scan_iter+1
 
 
-#runradar()
+radar()
 

@@ -54,7 +54,7 @@ def get_wavetables(wavetype):
 
     return iwave_table, qwave_table
 
-def get_samples(rate, wave_freq, pullength, iwave_table=None,
+def get_samples(rate, wave_freq, pulse_len, iwave_table=None,
                 qwave_table=None):
     """Find the normalized sample array given the rate (Hz),
        frequency (Hz), pulse length (s), and wavetables (list
@@ -68,7 +68,7 @@ def get_samples(rate, wave_freq, pullength, iwave_table=None,
     if iwave_table is None and qwave_table is None:
         sampling_freq=2*math.pi*wave_freq/rate
         rsampleslen=int(rate*0.00001)
-        sampleslen=int(rate*pullength+2*rsampleslen)
+        sampleslen=int(rate*pulse_len+2*rsampleslen)
         samples=np.empty([sampleslen],dtype=complex)
         for i in range(0,rsampleslen):
             amp=0.7*float(i+1)/float(rsampleslen)
@@ -88,7 +88,7 @@ def get_samples(rate, wave_freq, pullength, iwave_table=None,
         wave_table_len=len(iwave_table)
         rsampleslen=int(rate*0.00001)
         # Number of samples in ramp-up, ramp-down
-        sampleslen=int(rate*pullength+2*rsampleslen)
+        sampleslen=int(rate*pulse_len+2*rsampleslen)
         samples=np.empty([sampleslen],dtype=complex)
 
         # sample at wave_freq with given phase shift
@@ -199,20 +199,20 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
     samples_dict={}
 
     for pulse in pulse_list:
-        wave_freq=float(cpos[pulse[1]].freq)-txctrfreq
+        wave_freq=float(cpos[pulse[1]]['txfreq'])-txctrfreq
         samples_dict[tuple(pulse)]=[]
         phase_array=[]
         for channel in range(0,16):
             # Get phase shifts for all channels
             phase_array.append(get_phshift(
                                     beamdir[pulse[1]],
-                                    cpos[pulse[1]].freq,channel,
-                                    cpos[pulse[1]].pulse_shift[pulse[2]]))
+                                    cpos[pulse[1]]['txfreq'],channel,
+                                    cpos[pulse[1]]['pulse_shift'][pulse[2]]))
         basic_samples=get_samples(txrate, wave_freq*1000,
-                                  float(cpos[pulse[1]].pullen)/1000000, None,
+                                  float(cpos[pulse[1]]['pulse_len'])/1000000, None,
                                   None)
         for channel in range(0,16):
-            if channel in cpos[pulse[1]].txchannels:
+            if channel in cpos[pulse[1]]['txchannels']:
                 pulse_samples=shift_samples(basic_samples,
                                             phase_array[channel])
                 samples_dict[tuple(pulse)].append(pulse_samples)
@@ -277,9 +277,9 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
     # Now get what channels we need to transmit on for this combined
     #   pulse.
     # print("First cpo: {}".format(pulse_list[0][1]))
-    pulse_channels=cpos[pulse_list[0][1]].txchannels
+    pulse_channels=cpos[pulse_list[0][1]]['txchannels']
     for pulse in pulse_list:
-        for chan in cpos[pulse[1]].txchannels:
+        for chan in cpos[pulse[1]]['txchannels']:
             if chan not in pulse_channels:
                 pulse_channels.append(chan)
     pulse_channels.sort()

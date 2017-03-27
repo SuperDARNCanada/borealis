@@ -12,7 +12,7 @@ def errortype():
     return {}
 
 
-class RadarStatus:
+class RadarStatus():
     """Class to define transmit specifications of a certain frequency, 
     beam, and pulse sequence.
     """

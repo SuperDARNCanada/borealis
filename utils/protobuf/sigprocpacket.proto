@@ -3,14 +3,14 @@ syntax = "proto3";
 package sigprocpacket;
 
 message SigProcPacket {
-    repeated RXChan rxchannel = 1;
+    repeated RXChan rxchannel = 1; // REVIEW #28 spec?
     uint32 sequence_num = 2;
     double kerneltime = 3;
 /*    uint32 num_channels = 5; put this in config file, will be 20 for our radars */
 
     message RXChan {
-        double rxfreq = 1;
-        uint32 nrang = 2;
+        double rxfreq = 1; // REVIEW #28 Does this need to be a double? 
+        uint32 nrang = 2; // REVIEW #1 What is rxfreq? From 0 or from centre freq?
         uint32 frang = 3;
         repeated BeamDirections beam_directions = 4;
 

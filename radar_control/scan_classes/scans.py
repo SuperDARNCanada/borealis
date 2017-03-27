@@ -20,7 +20,7 @@ class Scan():
     """
 
     def __init__(self, controlprog, scan_keys):
-        self.rxrate=controlprog.config[u'rx_sample_rate']
+        self.rxrate=int(float(controlprog.config[u'rx_sample_rate']))
         self.keys=scan_keys
         self.cpos={}
         for i in scan_keys: 
@@ -39,16 +39,16 @@ class Scan():
       
         # scan metadata - must be the same between all cpo's combined
         # in scan.  Metadata includes:
-        self.scanboundf=self.cpos[self.keys[0]].scanboundf
+        self.scanboundf=self.cpos[self.keys[0]]['scanboundf']
         for cpo in self.keys:        
-            if self.cpos[i].scanboundf!=self.scanboundf:
+            if self.cpos[i]['scanboundf'] !=self.scanboundf:
                 errmsg="Scan Boundary Flag not the Same Between CPO's %d and \
                     %d combined in Scan" % (self.keys[0], cpo)
                 sys.exit(errmsg)
         if self.scanboundf==1:
-            self.scanbound=self.cpos[self.keys[0]].scanbound
+            self.scanbound=self.cpos[self.keys[0]]['scanbound']
             for cpo in self.keys:        
-                if self.cpos[i].scanbound!=self.scanbound:
+                if self.cpos[i]['scanbound'] !=self.scanbound:
                     errmsg="Scan Boundary not the Same Between CPO's %d and %d \
                          combined in Scan" % (self.keys[0], cpo)
                     sys.exit(errmsg)
@@ -61,8 +61,8 @@ class Scan():
         self.beamdir={}
         self.scan_beams={}
         for cpo in self.keys:
-            self.beamdir[cpo]=self.cpos[cpo].beamdir
-            self.scan_beams[cpo]=self.cpos[cpo].scan
+            self.beamdir[cpo]=self.cpos[cpo]['beamdir']
+            self.scan_beams[cpo]=self.cpos[cpo]['scan']
 
         # Determine how many averaging periods to make by separating 
         #   out the INTTIME mixed.
@@ -81,7 +81,7 @@ class Scan():
         for aveperiod_cpo_list in self.cpo_inttimes:
             # Each component is an inttime, we should create 
             # AveragingPeriods and pass the cpo's in that period.
-            self.aveperiods.append(AveragingPeriod(self,aveperiod_cpo_list))
+            self.aveperiods.append(averaging_periods.AveragingPeriod(self,aveperiod_cpo_list))
         
         #order of the Averaging Periods - will be in cpo # order.
         #self.aveperiods=sorted(self.aveperiods, key=operator.attrgetter('timing'))

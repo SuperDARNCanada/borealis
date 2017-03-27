@@ -62,8 +62,8 @@ class Sequence():
             cpos_done=0
             for cpoid in seqn_keys:
                 try:
-                    timing=(self.cpos[cpoid].sequence[index]
-                        * self.cpos[cpoid].mpinc)
+                    timing=(self.cpos[cpoid]['sequence'][index]
+                        * self.cpos[cpoid]['mpinc'])
                     pulsen=index
                     pulse_time.append([timing,cpoid,pulsen])
                 except IndexError:     
@@ -99,7 +99,7 @@ class Sequence():
                 # If not the last index
                 while (combine_pulses):
                     if (self.pulse_time[lpulse_index+1][0] <= pulse_list[1]
-                            + self.cpos[pulse[1]].pullen + 125):
+                            + self.cpos[pulse[1]]['pulse_len'] + 125):
                         # 125 us is for two TR/RX times.
                         lpulse_index=lpulse_index+1
                         next_pulse=self.pulse_time[lpulse_index][:]
@@ -150,8 +150,8 @@ class Sequence():
                     break
                 pulse_n=pulse[pulse_part_index][2]
                 last_pulse_n=last_pulse[pulse_part_index][2]
-                if (self.cpos[pulse_cpoid].pulse_shift[pulse_n] != 
-                        self.cpos[last_pulse_cpoid].pulse_shift[last_pulse_n]):
+                if (self.cpos[pulse_cpoid]['pulse_shift'][pulse_n] != 
+                        self.cpos[last_pulse_cpoid]['pulse_shift'][last_pulse_n]):
                     # Pulse shift for the pulse number is not the same
                     break
                 # Nothing wrong with above pulse_part, check the next.
@@ -174,16 +174,16 @@ class Sequence():
         for element in self.combined_pulse_list[last_pulse_type]:
             if type(element) == list:
                 # get cpo
-                if self.cpos[element[1]].pullen > last_pulse_len:
-                    last_pulse_len = self.cpos[element[1]].pullen
+                if self.cpos[element[1]]['pulse_len'] > last_pulse_len:
+                    last_pulse_len = self.cpos[element[1]]['pulse_len']
         self.last_pulse_len = last_pulse_len
         
         # FIND the max scope sync time
         # 19 is the sample delay below; how do we calculate this?
-        self.ssdelay=((self.cpos[seqn_keys[0]].nrang+19+10)
-                        * self.cpos[seqn_keys[0]].pullen)
+        self.ssdelay=((self.cpos[seqn_keys[0]]['nrang']+19+10)
+                        * self.cpos[seqn_keys[0]]['pulse_len'])
         for cpoid in seqn_keys:
-            newdelay=(self.cpos[cpoid].nrang+29)*self.cpos[cpoid].pullen
+            newdelay=(self.cpos[cpoid]['nrang']+29)*self.cpos[cpoid]['pulse_len']
             if newdelay>self.ssdelay:
                 self.ssdelay=newdelay
         # The delay is long enough for any CPO pulse length and nrang

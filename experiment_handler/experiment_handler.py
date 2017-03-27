@@ -2,10 +2,17 @@
 
 import zmq
 import sys
-from myexperiment import setup_my_experiment,change_my_experiment
+import importlib
 
-sys.path.append('../radarcontrol')
+sys.path.append('../radar_control')
+sys.path.append('../experiments')
+# TODO: dynamic import ??
+
+import normalscan
+#importlib.import_module('normalscan')
+
 import radar_status
+#importlib.import_module('radar_status')
 
 def setup_data_socket(): #to send data to receive code.
     """
@@ -46,7 +53,9 @@ def main():
             if message.status == 0:
                 print("received READY {} and starting program as new".format(message.status))
                 # starting anew
-                prog=setup_my_experiment()
+                # TODO: change line to be scheduled
+                prog=normalscan.Normalscan()
+
                 prog.build_Scans()
                 ctrl_socket.send_pyobj(prog) 
             elif message.status == 1:
@@ -63,6 +72,7 @@ def main():
                     ctrl_socket.send_pyobj(None)
             elif message.status == 3:
                 #TODO: log the error
+                #TODO: determine what to do here, may want to revert experiment back to original (could reload to original by calling new instance)
                 if change_flag == True:
                     ctrl_socket.send_pyobj(prog)
                 else:
@@ -71,22 +81,9 @@ def main():
 
 
         some_data = None
-        prog, change_flag = change_my_experiment(prog, some_data)
+        change_flag = prog.update(some_data)
         if change_flag == True:
             prog.build_Scans()
-        
 
-    #    if json.loads(message)=="UPDATE":
-#            print "Time to update"
-#            if updateflag==False:
-#                cpsocket.send(json.dumps("NO"))
-#            elif updateflag==True:
-#                cpsocket.send(json.dumps("YES"))
-#                message=cpsocket.recv()
-#                if json.loads(message)=="READY":
-#                    #need to send a dictionary here or use other serialization.
-#                    cpsocket.send(json.dumps(prog))
-
-
-#main()
+main()
     
