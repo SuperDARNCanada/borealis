@@ -1,6 +1,6 @@
-#!/usr/bin/python
-
-# The template for an experiment.
+#!/usr/bin/python # REVIEW #37 Best way to call interpreter? there's also "/usr/bin/env python" that allows you to have python installed anywhere
+# REVIEW #7 We need some kind of license at top of all files - or a referral to the license/copyright/etc
+# The template for an experiment. # REVIEW # 7 Also need this to conform to docstring PEP 257 for modules (""" example """)
 import sys
 import math
 
@@ -9,7 +9,7 @@ import json
 
 sys.path.append("../radar_control/scan_classes/")
 import scans
-#from cpobject import CPObject, interfacing, if_type
+#from cpobject import CPObject, interfacing, if_type # REVIEW #33 
 
 def if_type():
     return frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
@@ -37,7 +37,7 @@ def selfcheck_piece(cpdict, configdata):
     main_antenna_count = int(configdata['main_antenna_count'])
     
     # check none greater than 15, no duplicates
-    if len(cpdict['txchannels']) > main_antenna_count or len(cpdict['rxchannels'])> main_antenna_count:
+    if len(cpdict['txchannels']) > main_antenna_count or len(cpdict['rxchannels'])> main_antenna_count: # REVIEW #31 looks like three lines are over 100 chars, consider editing to be under 100
         error_dict[error_count]="CP Object Has Too Many Antenna Channels"
         error_count=error_count+1	
     for i in range(len(cpdict['txchannels'])):
@@ -122,24 +122,24 @@ class ExperimentPrototype(object):
     :param cpid: unique id (RCP number)
     :param cponum: number of CPObjects in this control program.
     :
-    """
+    """ # REVIEW #26 - the ordering of arguments in the documentation isn't consistent with the ordering in the __init__ function. cpid should go first based on the comment
 
     def __init__(self, cponum, cpid):    
 
-        self.cpid=cpid 
+        self.cpid=cpid # REVIEW #40 use spaces around '=' signs - it's easier to read. Follow PEP 8 style guide. This applies to all
         # Unique ID for each new cp.
         self.cponum=cponum 
-        # Number of CPObjects in this program.
+        # Number of CPObjects in this program. # REVIEW #38 These comments are superfluous since the docstring tells all you need to know
         cpo_list=[]
 
-        self.cpo_keys = [ "obj_id", "cpid", "txchannels", "rxchannels", 
+        self.cpo_keys = [ "obj_id", "cpid", "txchannels", "rxchannels",  # REVIEW #26 Should this be named cpo_keys or something like radar_parameters, scan_parameters, scan_constructs. The idea being that an experiment will have a list of some lower level object (experiment_parameters will be a list of 'scans' or 'radar params' OR a scan parameter list will contain 1 or more sets of 'radar params')
             "sequence", "pulse_shift", "mpinc", "pulse_len", "nrang", "frang", 
             "intt", "intn", "beamdir", "scan", "scanboundf", "scanbound", 
             "txfreq", "rxfreq", "clrfrqf", "clrfrqrange", "xcf", "acfint", 
             "wavetype", "seqtimer" ]   
 
-        for num in range(self.cponum):
-            cp_object = {} # I don't know what to call these anymore
+        for num in range(self.cponum): # REVIEW #39 You might just want to instantiate the dict and set all to None above, avoiding the for loop. You can also use a dictionary comprehension: http://stackoverflow.com/questions/1747817/create-a-dictionary-with-list-comprehension-in-python - in this way you can increment the obj_id we think
+            cp_object = {} # I don't know what to call these anymore # REVIEW #6 should be labelled TODO
             for key in self.cpo_keys:
                 cp_object[key] = None
             cp_object["obj_id"] = num
@@ -150,7 +150,7 @@ class ExperimentPrototype(object):
         self.cpo_list=cpo_list
 
         # Load the config data
-        with open('../config.ini') as config_data:
+        with open('../config.ini') as config_data: # REVIEW #15 An option would be to make the config file location string an argument, and supply this as the default. Also, should probably make a config handler class to error check and give a first pass at the config options. Similar to Keith's C++ code.
             self.config=json.load(config_data)
 
         # Next some metadata that you can change, with defaults.
@@ -162,19 +162,19 @@ class ExperimentPrototype(object):
         self.rxctrfreq=12000 # in kHz. 
         # NOTE: rx sampling rate is set in config.
 
-        self.xcf=1 
+        self.xcf=1 # REVIEW #0 #28 correct if propogated to rawacf/iq file writing, otherwise should be boolean. Same for acfint
         # Get cross-correlation data in processing block.
 
         self.acfint=1 
         # Determine lag-zero interferometer power in fitacf.
 
-        self.interface=interfacing(self.cponum) 
+        self.interface=interfacing(self.cponum) # REVIEW #26 We got a bit confused if just looking at this line, is cponum the total number or the 'index' (specific identifier of cpo) so maybe the name needs updating to reflect this. cpo_count, num_cp_objects, 'total' something
         # Dictionary of how each cpo interacts with the other cpos.
         # Default is "NONE" for all, but must be modified in experiment.
         # NOTE keys are as such: (0,1), (0,2), (1,2), NEVER 
         # includes (2,0) etc. The only interface options are:
         # if_types=frozenset(['NONE', 'SCAN', 'INTTIME', 'INTEGRATION',
-        # 'SAME_SEQ', 'MULTI_SEQ'])
+        # 'SAME_SEQ', 'MULTI_SEQ']) # REVIEW #3 Where are SAME_SEQ and MULTI_SEQ below? also, does PULSE need to be in this list?
 
         """ 
         INTERFACING TYPES:
