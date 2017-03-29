@@ -271,13 +271,13 @@ class ExperimentPrototype(object):
         valid.
         """
 
-        for key in self.interface.keys():
+        for key in self.interface.keys(): # REVIEW #39 There is a more pythonic way to iterate over dicts http://stackoverflow.com/questions/3294889/iterating-over-dictionaries-using-for-loops-in-python
             if self.interface[key]=="NONE": # REVIEW #34 Do you mean to say that interface type, not key, is default?
                 errmsg='Interface keys are still default, must set key \
                     {}'.format(key)
                 sys.exit(errmsg) # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead.
 
-        for num1,num2 in self.interface.keys():
+        for num1,num2 in self.interface.keys(): # REVIEW #39 There is a more pythonic way to iterate over dicts http://stackoverflow.com/questions/3294889/iterating-over-dictionaries-using-for-loops-in-python
             if ((num1>=self.cponum) or (num2>=self.cponum) or (num1<0) # REVIEW #15 Should you check ordering? Num 1 always less than num 2 based off your interfacing comments.
                     or (num2<0)):
                 errmsg='Interfacing key ({}, {}) is not necessary and not \ # REVIEW #34 Maybe split these into two error checks/messages. One for invalid parameters and then one for unnecessary keys
@@ -293,12 +293,12 @@ class ExperimentPrototype(object):
         return None
 
     def get_scans(self):
-        """Take my own interfacing and get info on how many scans and
+        """Take my own interfacing and get info on how many scans and # REVIEW #1 Could use a more clear description.
             which cpos make which scans
         """
         scan_combos=[]
 
-        for num1,num2 in self.interface.keys():
+        for num1,num2 in self.interface.keys(): # REVIEW #39 There is a more pythonic way to iterate over dicts http://stackoverflow.com/questions/3294889/iterating-over-dictionaries-using-for-loops-in-python
             if (self.interface[num1, num2]=="PULSE" or
                     self.interface[num1, num2]=="INT_TIME" or
                     self.interface[num1, num2]=="INTEGRATION"):
@@ -307,25 +307,29 @@ class ExperimentPrototype(object):
 
         scan_combos=sorted(scan_combos)
         #if [2,4] and [1,4], then also must be [1,2] in the scan_combos
-        i=0
+        i=0 # REVIEW #3 This needs a detailed explaination with examples.
         while (i<len(scan_combos)):
             k=0
             while (k<len(scan_combos[i])):
                 j=i+1
                 while (j<len(scan_combos)):
                     if scan_combos[i][k]==scan_combos[j][0]:
-                        add_n=scan_combos[j][1]
+                        add_n=scan_combos[j][1] # REVIEW #26 add_n  perhaps better name
                         scan_combos[i].append(add_n)
                         # Combine the indices if there are 3+ CPObjects
                         #   combining in same seq.
                         for m in range(0,len(scan_combos[i])-1):
                             # Try all values in seq_combos[i] except
                             #    the last value, which is = to add_n.
+                            """
+                            if scan_combos[i][m] > add_n:
+                                .......
+                            """
                             try:
-                                scan_combos.remove([scan_combos[i][m],add_n])
+                                scan_combos.remove([scan_combos[i][m],add_n]) # REVIEW #0 what happens if the item you try to remove is in the form [n,m] where n > m
                                 # seq_combos[j][1] is the known last
                                 #   value in seq_combos[i]
-                            except ValueError:
+                            except ValueError: # REVIEW #3 This error needs to be either more detailed, or explain how it would happen.
                                 errmsg='Interfacing not Valid: CPO {} and CPO \
                                     {} are combined in-scan and do not \
                                     interface the same with CPO {}'.format(
@@ -336,7 +340,7 @@ class ExperimentPrototype(object):
                         # This means that the former scan_combos[j] has
                         #   been deleted and there are new values at
                         #   index j, so decrement before
-                        #   incrementing in for.
+                        #   incrementing in for. #REVIEW #1 Do you mean while instead of for here?
                     j=j+1
                 k=k+1
             i=i+1
