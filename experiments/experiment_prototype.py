@@ -57,14 +57,14 @@ def selfcheck_piece(cpdict, configdata): #REVIEW #1 #26 Name and docstring could
                 Numbers Over {}""".format(main_antenna_count)
             error_count=error_count+1
         for j in range(i+1, len(cpdict['txchannels'])):
-            if cpdict['txchannels'][i]== cpdict['txchannels'][j] or cpdict['rxchannels'][i]== cpdict['rxchannels'][j]:
+            if cpdict['txchannels'][i]== cpdict['txchannels'][j] or cpdict['rxchannels'][i]== cpdict['rxchannels'][j]: # REVIEW #0 #39 This will work only if the rxchannels and txchannels lists are sorted. Maybe you can use a list comprehension as shown here instead: http://stackoverflow.com/questions/9835762/find-and-list-duplicates-in-a-list
                 error_dict[error_count]="CP Object Has Duplicate Antennas"
                 error_count=error_count+1
 
-    # check sequence increasing
+    # check sequence increasing # REVIEW #26 Is this supposed to be pulse sequence? would make it more clear if named pulse_sequence or something
     if len(cpdict['sequence'])!=1:
         for i in range(1, len(cpdict['sequence'])):
-            if cpdict['sequence'][i]<= cpdict['sequence'][i-1]:
+            if cpdict['sequence'][i]<= cpdict['sequence'][i-1]: # REVIEW #39 Can use pythonic way of doing this: http://stackoverflow.com/questions/4983258/python-how-to-check-list-monotonicity
                 error_dict[error_count]="CP Object Sequence Not Increasing"
                 error_count=error_count+1
 
@@ -72,18 +72,18 @@ def selfcheck_piece(cpdict, configdata): #REVIEW #1 #26 Name and docstring could
     if cpdict['pulse_len'] > cpdict['mpinc']:
         error_dict['error_count']="CP Pulse Length Greater than MPINC"
         error_count=error_count+1
-    if cpdict['pulse_len'] < 0.01:
+    if cpdict['pulse_len'] < 0.01: # REVIEW #29 Magic number - Define this as a minimum pulse length in us variable somewhere
         error_dict[error_count]="CP Pulse Length Too Small"
         error_count=error_count+1
 
     # check intn and intt make sense given mpinc, and pulse sequence.
-    seq_len=cpdict['mpinc']*(cpdict['sequence'][-1]+1)
+    seq_len=cpdict['mpinc']*(cpdict['sequence'][-1]+1) # REVIEW #0 Do you really need the +1 here? Also need to take into account the wait time at end of pulse sequence (ss_delay in current system)
 
 # TODO: Check these
 #        self.intt=3000 # duration of the direction, in ms
 #        self.intn=21 # max number of averages (aka full pulse sequences transmitted) in an integration time intt (default 3s)
 
-    # check no duplicates in beam directions
+    # check no duplicates in beam directions # REVIEW #0 Why can we not have duplicates in beam directions? And why do they have to be in order? Example: interleaved_normalscan
     for i in range(len(cpdict['beamdir'])):
         for j in range(i+1,len(cpdict['beamdir'])):
             if cpdict['beamdir'][i]== cpdict['beamdir'][j]:
@@ -94,20 +94,20 @@ def selfcheck_piece(cpdict, configdata): #REVIEW #1 #26 Name and docstring could
                     Clockwise (E of N is positive)"
                 error_count=error_count+1
 
-    if (not cpdict['scan']): # if empty
+    if (not cpdict['scan']): # if empty # REVIEW #1 We're not sure what 'scan' parameter is just from looking at this, and below code. Why can't it be empty?
         error_dict[error_count]="Scan Empty"
         error_count=error_count+1
 
-    # check beam numbers in scan exist
+    # check beam numbers in scan exist # REVIEW #1 Also here we're not sure what the error check implies 
     for i in cpdict['scan']:
         if i>=len(cpdict['beamdir']):
             error_dict[error_count]="CP Scan Beam Direction DNE, not \
                 Enough Beams in beamdir"
             error_count=error_count+1
 
-    # check scan boundary not less than minimum required scan time.
-    if cpdict['scanboundf']==1:
-        if cpdict['scanbound'] < (len(cpdict['scan'])*cpdict['intt']):
+    # check scan boundary not less than minimum required scan time. 
+    if cpdict['scanboundf']==1: # REVIEW #26 We assume this is a flag, but naming could be better, also can use True and False instead of 1's and 0's if it's a boolean
+        if cpdict['scanbound'] < (len(cpdict['scan'])*cpdict['intt']): # REVIEW #5 Need units documented somewhere highly visible for scanbound, intt
             error_dict[error_count]="CP Scan Too Long for ScanBoundary"
             error_count=error_count+1
 
@@ -121,7 +121,7 @@ def selfcheck_piece(cpdict, configdata): #REVIEW #1 #26 Name and docstring could
     #acfint=1 # flag for getting lag-zero power of interferometer
     #wavetype='SINE'
     #seqtimer=0
-    # cpid is a unique value?
+    # cpid is a unique value? # REVIEW Talked about placing a file with all known cpids in git repo
 
     return error_dict
 
@@ -144,7 +144,7 @@ class ExperimentPrototype(object):
         cpo_list=[]
 
         self.cpo_keys = [ "obj_id", "cpid", "txchannels", "rxchannels",  # REVIEW #26 Should this be named cpo_keys or something like radar_parameters, scan_parameters, scan_constructs. The idea being that an experiment will have a list of some lower level object (experiment_parameters will be a list of 'scans' or 'radar params' OR a scan parameter list will contain 1 or more sets of 'radar params')
-            "sequence", "pulse_shift", "mpinc", "pulse_len", "nrang", "frang",
+            "sequence", "pulse_shift", "mpinc", "pulse_len", "nrang", "frang", # REVIEW #1 Each of these should have a description - perhaps in a docstring
             "intt", "intn", "beamdir", "scan", "scanboundf", "scanbound",
             "txfreq", "rxfreq", "clrfrqf", "clrfrqrange", "xcf", "acfint",
             "wavetype", "seqtimer" ]
