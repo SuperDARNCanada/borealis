@@ -11,22 +11,30 @@ sys.path.append("../radar_control/scan_classes/")
 import scans
 #from cpobject import CPObject, interfacing, if_type # REVIEW #33
 
-def if_type():
+# REVIEW #26 When we refer to comments about anything "cpobject" related, we know that naming scheme may be changed entirely.
+
+
+# REVIEW #28 This could potentially be a global variable instead.
+#interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
+def if_type(): #REVIEW #26 Could just expand this to the full "interface_types"
     return frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
-def interfacing(cponum):
+def interfacing(cponum): # REVIEW #26 Could use a more informative name.
     if_list=[]
-    for i in range(cponum):
+    for i in range(cponum): # REVIEW #26 i and j can have more meaningful names. Perhaps cpo1, cpo2, something like that. Could go for most places indexing is used.
         for j in range(i+1,cponum):
             if_list.append((i,j))
-    if_keys=tuple(if_list)
+    if_keys=tuple(if_list) # REVIEW #33 Fairly sure this conversion to a tuple is unneeded for what is happening here.
     if_dict={}
     for num1,num2 in if_keys:
         if_dict[num1, num2]="NONE"
+    # REVIEW #39 That for loop could just be
+    #if_dict = dict((key,"NONE") for key in if_list)
+
 
     return if_dict
 
-def selfcheck_piece(cpdict, configdata):
+def selfcheck_piece(cpdict, configdata): #REVIEW #1 #26 Name and docstring could be more clear
     """
     Do some tests of the dictionaries in the experiment
     to ensure values in this component make sense.
@@ -34,11 +42,14 @@ def selfcheck_piece(cpdict, configdata):
     error_count=0
     error_dict={}
 
-    main_antenna_count = int(configdata['main_antenna_count'])
+    main_antenna_count = int(configdata['main_antenna_count']) #REVIEW #15 should probably make a config handler class. More in a further comment.
 
-    # check none greater than 15, no duplicates
+    # check none greater than 15, no duplicates # REVIEW #29 could say in this comment that none greater than main antenna count instead of 15.
+    # REVIEW #0 Since we decided for now that we would receive on all antennas, the check for rxchannels should be equal to main+inter count.
+    # REVIEW #26 Lets reflect our decision to not use the word channel.
     if len(cpdict['txchannels']) > main_antenna_count or len(cpdict['rxchannels'])> main_antenna_count: # REVIEW #31 looks like three lines are over 100 chars, consider editing to be under 100
-        error_dict[error_count]="CP Object Has Too Many Antenna Channels"
+        #REVIEW #39 These errors could just be appended to a list instead of using a dictionary.
+        error_dict[error_count]="CP Object Has Too Many Antenna Channels" # REVIEW #34 Could include the actual value that caused the error. Goes for all error statements.
         error_count=error_count+1
     for i in range(len(cpdict['txchannels'])):
         if cpdict['txchannels'][i]>= main_antenna_count or cpdict['rxchannels'][i] >= main_antenna_count:
@@ -346,7 +357,7 @@ class ExperimentPrototype(object):
             i=i+1
         # now scan_combos is a list of lists, where a cp object occurs
         #   only once in the nested list.
-        for cpo in range(self.cponum):
+        for cpo in range(self.cponum): # REVIEW #26
             found=False
             for i in range(len(scan_combos)):
                 for j in range(len(scan_combos[i])):
@@ -359,6 +370,15 @@ class ExperimentPrototype(object):
             else: # no break
                 scan_combos.append([cpo])
             # Append the cpo on its own, is not scan combined.
+
+        # REVIEW 39 All the above can be rewritten as this. Else excutes in a similar manner
+        # for cpo in range(self.cponum):
+        #     for sc in scan_combos:
+        #         if cpo in sc:
+        #             break
+        #     else:
+        #         scan_combos.append([cpo])
+
 
         scan_combos=sorted(scan_combos)
         return scan_combos
