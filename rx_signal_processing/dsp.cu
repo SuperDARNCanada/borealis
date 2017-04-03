@@ -197,10 +197,10 @@ void DSPCore::allocate_and_copy_first_stage_filters(void *taps, uint32_t total_t
  */
 void DSPCore::allocate_and_copy_second_stage_filter(void *taps, uint32_t total_taps)
 {
-  second_stage_filters_size = total_taps * sizeof(cuComplex);
-  gpuErrchk(cudaMalloc(&second_stage_filters_d, second_stage_filters_size));
-  gpuErrchk(cudaMemcpyAsync(second_stage_filters_d, taps,
-         second_stage_filters_size, cudaMemcpyHostToDevice, stream));
+  second_stage_filter_size = total_taps * sizeof(cuComplex);
+  gpuErrchk(cudaMalloc(&second_stage_filter_d, second_stage_filter_size));
+  gpuErrchk(cudaMemcpyAsync(second_stage_filter_d, taps,
+         second_stage_filter_size, cudaMemcpyHostToDevice, stream));
 }
 
 /**
@@ -212,10 +212,10 @@ void DSPCore::allocate_and_copy_second_stage_filter(void *taps, uint32_t total_t
  */
 void DSPCore::allocate_and_copy_third_stage_filter(void *taps, uint32_t total_taps)
 {
-  third_stage_filters_size = total_taps * sizeof(cuComplex);
-  gpuErrchk(cudaMalloc(&third_stage_filters_d, third_stage_filters_size));
-  gpuErrchk(cudaMemcpyAsync(third_stage_filters_d, taps,
-        third_stage_filters_size, cudaMemcpyHostToDevice, stream));
+  third_stage_filter_size = total_taps * sizeof(cuComplex);
+  gpuErrchk(cudaMalloc(&third_stage_filter_d, third_stage_filter_size));
+  gpuErrchk(cudaMemcpyAsync(third_stage_filter_d, taps,
+        third_stage_filter_size, cudaMemcpyHostToDevice, stream));
 }
 
 /**
@@ -282,8 +282,8 @@ void DSPCore::clear_device_and_destroy() //TODO(keith): rework into destructor?
 {
   gpuErrchk(cudaFree(rf_samples_d));
   gpuErrchk(cudaFree(first_stage_bp_filters_d));
-  gpuErrchk(cudaFree(second_stage_filters_d));
-  gpuErrchk(cudaFree(third_stage_filters_d));
+  gpuErrchk(cudaFree(second_stage_filter_d));
+  gpuErrchk(cudaFree(third_stage_filter_d));
   gpuErrchk(cudaFree(first_stage_output_d));
   gpuErrchk(cudaFree(second_stage_output_d));
   gpuErrchk(cudaFree(third_stage_output_d));
@@ -479,19 +479,19 @@ cuComplex* DSPCore::get_first_stage_bp_filters_p(){
 /**
  * @brief      Gets the device pointer to the second stage filters.
  *
- * @return     The second stage filters device pointer.
+ * @return     The second stage filter device pointer.
  */
 cuComplex* DSPCore::get_second_stage_filter_p(){
-  return second_stage_filters_d;
+  return second_stage_filter_d;
 }
 
 /**
  * @brief      Gets the device pointer to the third stage filters.
  *
- * @return     The third stage filters device pointer.
+ * @return     The third stage filter device pointer.
  */
 cuComplex* DSPCore::get_third_stage_filter_p(){
-  return third_stage_filters_d;
+  return third_stage_filter_d;
 }
 
 /**
@@ -509,7 +509,7 @@ cuComplex* DSPCore::get_first_stage_output_p(){
  * @return     The second stage output device pointer.
  */
 cuComplex* DSPCore::get_second_stage_output_p(){
-  return second_stage_filters_d;
+  return second_stage_output_d;
 }
 
 /**
@@ -518,7 +518,7 @@ cuComplex* DSPCore::get_second_stage_output_p(){
  * @return     The third stage output device pointer.
  */
 cuComplex* DSPCore::get_third_stage_output_p(){
-  return third_stage_filters_d;
+  return third_stage_output_d;
 }
 
 /**

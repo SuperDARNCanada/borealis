@@ -22,7 +22,8 @@ class Filtering {
     explicit Filtering(double initial_rx_sample_rate, const SignalProcessingOptions &sig_options);
     void save_filter_to_file(const std::vector<std::complex<float>> &filter_taps,
                               std::string name);
-
+    void mix_first_stage_to_bandpass(const std::vector<double> &rx_freqs,
+                                      double initial_rx_rate);
     uint32_t get_num_first_stage_taps();
     uint32_t get_num_second_stage_taps();
     uint32_t get_num_third_stage_taps();
@@ -59,8 +60,7 @@ class Filtering {
                                                                 double Fs);
     std::vector<std::complex<float>> create_filter(uint32_t num_taps, double filter_cutoff,
                                                     double transition_band, double rate);
-    void mix_first_stage_to_bandpass(const std::vector<double> &rx_freqs,
-                                      double initial_rx_rate);
+
 
 };
 

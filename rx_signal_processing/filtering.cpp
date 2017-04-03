@@ -113,14 +113,14 @@ std::vector<std::complex<float>> Filtering::create_filter(uint32_t num_taps, dou
   auto filter_bands = create_normalized_lowpass_filter_bands(filter_cutoff,transition_band,
               rate);
 
-  //remez returns number of taps + 1. Should we use num_taps + 1
+  //remez returns number of taps + 1.
   //TODO(Keith): Investigate number of taps behaviour - does this depend on num_taps being odd or even?
   std::vector<double> filter_taps(num_taps + 1,0.0);
   auto num_filter_band_edges = filter_bands.size()/2;
-  auto converges = remez(filter_taps.data(), num_taps + 1, num_filter_band_edges,
-    filter_bands.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY); // REVIEW #15 are we passing the right values, should error check before passing these params
-                                              //REPLY We should maybe error check the function inputs. we should have a strong error case in the failure to converge, or verify the filters saved to file.
-  if (converges == false){
+  //TODO(keith): test args are right maybe?
+  auto converges = remez(filter_taps.data(), num_taps+1, num_filter_band_edges,
+    filter_bands.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY);
+  if (converges < 0){
     std::cerr << "Filter failed to converge with cutoff of " << filter_cutoff
       << "Hz, transition width " << transition_band << "Hz, and rate "
       << rate << "Hz" << std::endl;

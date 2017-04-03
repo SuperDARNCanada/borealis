@@ -40,7 +40,7 @@ int main(int argc, char **argv){
   try {
     driver_socket.bind("ipc:///tmp/feeds/1"); // REVIEW #29 Should this be in a config file? Sort of a magic string right now
   }
-  catch {
+  catch (std::exception &e){
     //TODO(keith): handle error.
   }
 
@@ -49,7 +49,7 @@ int main(int argc, char **argv){
   try {
     radarctrl_socket.bind("ipc:///tmp/feeds/2");
   }
-  catch {
+  catch (std::exception &e){
     //TODO(keith): handle error.
   }
 
@@ -57,7 +57,7 @@ int main(int argc, char **argv){
   try {
     ack_socket.bind("ipc:///tmp/feeds/3");
   }
-  catch {
+  catch (std::exception &e){
     //TODO(keith): handle error.
   }
 
@@ -65,7 +65,7 @@ int main(int argc, char **argv){
   try {
     timing_socket.bind("ipc:///tmp/feeds/4");
   }
-  catch {
+  catch (std::exception &e){
     //TODO(keith): handle error.
   }
 
@@ -76,15 +76,15 @@ int main(int argc, char **argv){
   //Check for non integer dm rates
   if (fmod(rx_rate,sig_options.get_first_stage_sample_rate()) > 0.0) {
     //TODO(keith): handle error
-  }
-  else if (fmod(sig_options.get_first_stage_sample_rate(),
+  } //TODO(keith): not sure these checks will work.
+/*  else if (fmod(sig_options.get_first_stage_sample_rate(),
           sig_options.get_second_stage_sample_rate()) > 0.0) {
     //TODO(keith): handle error
   }
   else if(fmod(sig_options.get_second_stage_sample_rate(),
         sig_options.get_third_stage_sample_rate()) > 0.0) {
     //TODO(keith): handle error
-  }
+  }*/
   else{
     auto float_dm_rate = rx_rate/sig_options.get_first_stage_sample_rate();
     first_stage_dm_rate = static_cast<uint32_t>(float_dm_rate);
@@ -122,11 +122,10 @@ int main(int argc, char **argv){
     << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
     << "us" << std::endl;
 
-    //TODO(Keith): fix saving filter to file
-/*  save_filter_to_file(filtertaps_1,"filter1coefficients.dat");
-  save_filter_to_file(filtertaps_2,"filter2coefficients.dat"); // REVIEW #36 where should the coefficient files be placed? Currently this will put them in the calling dir I think
-                                 // REPLY It does, and I do not know. Up to us I guess.
-  save_filter_to_file(filtertaps_3,"filter3coefficients.dat");*/
+  //FIXME(Keith): fix saving filter to file
+  filters.save_filter_to_file(filters.get_first_stage_lowpass_taps(),"filter1coefficients.dat");
+  filters.save_filter_to_file(filters.get_second_stage_lowpass_taps(),"filter2coefficients.dat");
+  filters.save_filter_to_file(filters.get_third_stage_lowpass_taps(),"filter3coefficients.dat");
 
   while(1){
     //Receive packet from radar control
@@ -137,15 +136,7 @@ int main(int argc, char **argv){
     if (sp_packet.ParseFromString(radctrl_str) == false){
       //TODO(keith): handle error
     }
-    // REVIEW #37 need to check the boolean return value from each ParseFromString call
-    // http://stackoverflow.com/questions/22121922/how-can-i-get-more-details-about-errors-generated-during-protobuf-parsing-c
-    // REPLY Should this just halt the program? The only feasible way this goes wrong is if someone sends
-    //non protobufs
 
-    // REVIEW #15 all protobuf fields are optional, check all fields you require are filled (similarly when using computationpacket)
-    // REPLY I think this is only possible if default fields are not also valid values
-    std::cout << "Got radar_control request" << std::endl; // REVIEW #34 Change to radar_control to indicate where the request actually came from? (same with 'drive' below, maybe name 'usrp_driver' to be consistent with naming of dir structure)
-                               // REPLY okay. I was thinking of removing this though.
     //Then receive packet from driver
     zmq::message_t driver_request;
     driver_socket.recv(&driver_request);
@@ -184,18 +175,6 @@ int main(int argc, char **argv){
       << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
       << "us" << std::endl;
 
-/*    std::vector<std::complex<float>> filtertaps_2_h(filtertaps_2.size()); // REVIEW #26 what does _h mean?
-                                        // REPLY cuda examples will often denote a distinction between host and device with d and h. I followed the same scheme. could rename
-    std::vector<std::complex<float>> filtertaps_3_h(filtertaps_3.size()); // REVIEW #0 need filtertaps_3 and filtertaps_2.size() * rx_freqs.size()
-                                        // REPLY I actually think this is wrong to supply a size here at all.
-    for (uint32_t i=0; i< rx_freqs.size(); i++){ // REVIEW #28 iterator type not consistent with previous for loop, should it be of type size_t?
-                           // REPLY I need more clarifying here
-      filtertaps_2_h.insert(filtertaps_2_h.end(),filtertaps_2.begin(),filtertaps_2.end()); // REVIEW #22 is this duplication necessary?
-                                                 // REPLY Maybe not. I now realize from reviewing that we go from one set of samples and multiple filters
-                                                 // to multiple sets of samples and one filter
-      filtertaps_3_h.insert(filtertaps_3_h.end(),filtertaps_3.begin(),filtertaps_3.end());
-    }*/
-
     if (rx_metadata.shrmemname().empty()){
       //TODO(keith): handle missing name error
     }
@@ -211,15 +190,16 @@ int main(int argc, char **argv){
     }
     auto total_samples = rx_metadata.numberofreceivesamples() * total_antennas;
 
-    std::cout << "Total samples in data message: " << total_samples // REVIEW #34 change 'elements' to 'samples' to be clear
-      << std::endl;                                               // REPLY okay
+    std::cout << "Total samples in data message: " << total_samples
+      << std::endl;
 
     dp->allocate_and_copy_rf_samples(total_samples);
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),
                                                 filters.get_first_stage_bandpass_taps_h().size());
 
-    auto num_output_samples_1 = rx_freqs.size() * rx_metadata.numberofreceivesamples()/first_stage_dm_rate // REVIEW #28 - What if the division has a remainder?
-                    * total_antennas;
+    auto num_output_samples_1 = rx_freqs.size() *
+                                  rx_metadata.numberofreceivesamples()/first_stage_dm_rate *
+                                  total_antennas;
 
     dp->allocate_first_stage_output(num_output_samples_1);
 
@@ -237,16 +217,20 @@ int main(int argc, char **argv){
     // to multiple sets of reduced samples for each frequency in further stages. Output samples are
     // grouped by frequency with all samples for each antenna following each other
     // before samples of another frequency start. In the first stage need a filter for each frequency,
-  // but in the next stages we only need one filter for all data sets.
+    // but in the next stages we only need one filter for all data sets.
     dp->allocate_and_copy_second_stage_filter(filters.get_second_stage_lowpass_taps().data(),
                                                 filters.get_second_stage_lowpass_taps().size());
 
     auto num_output_samples_2 = rx_freqs.size() * num_output_samples_1 / second_stage_dm_rate;
+
     dp->allocate_second_stage_output(num_output_samples_2);
-    auto samples_per_antenna_2 = rx_metadata.numberofreceivesamples()/first_stage_dm_rate;
+
+    // each antenna has a data set for each frequency after filtering.
+    auto samples_per_antenna_2 = rx_freqs.size() *
+                                  rx_metadata.numberofreceivesamples()/first_stage_dm_rate;
     dp->call_decimate(dp->get_first_stage_output_p(),
       dp->get_second_stage_output_p(),
-      dp->get_second_stage_filters_p(), second_stage_dm_rate,
+      dp->get_second_stage_filter_p(), second_stage_dm_rate,
       samples_per_antenna_2, filters.get_second_stage_lowpass_taps().size(), rx_freqs.size(),
       total_antennas, "Second stage of decimation");
 
@@ -258,13 +242,12 @@ int main(int argc, char **argv){
     auto samples_per_antenna_3 = samples_per_antenna_2/second_stage_dm_rate;
     dp->call_decimate(dp->get_second_stage_output_p(),
       dp->get_third_stage_output_p(),
-      dp->get_third_stage_filters_p(), third_stage_dm_rate,
+      dp->get_third_stage_filter_p(), third_stage_dm_rate,
       samples_per_antenna_3, filters.get_third_stage_lowpass_taps().size(), rx_freqs.size(),
       total_antennas, "Third stage of decimation");
 
     dp->allocate_and_copy_host_output(num_output_samples_3);
 
-    // New in CUDA 5.0: Add a CPU callback which is called once all currently pending operations in the CUDA stream have finished
     gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
                       DSPCore::cuda_postprocessing_callback, dp, 0));
 

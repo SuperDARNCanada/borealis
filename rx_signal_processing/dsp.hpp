@@ -62,8 +62,8 @@ class DSPCore {
         uint32_t num_taps_per_filter, uint32_t num_freqs, uint32_t num_channels, const char *output_msg);
     cuComplex* get_rf_samples_p();
     cuComplex* get_first_stage_bp_filters_p();
-    cuComplex* get_second_stage_filters_p();
-    cuComplex* get_third_stage_filters_p();
+    cuComplex* get_second_stage_filter_p();
+    cuComplex* get_third_stage_filter_p();
     cuComplex* get_first_stage_output_p();
     cuComplex* get_second_stage_output_p();
     cuComplex* get_third_stage_output_p();
@@ -105,12 +105,12 @@ class DSPCore {
     size_t first_stage_bp_filters_size;
 
     //! Pointer to the second stage filters on device.
-    cuComplex *second_stage_filters_d;
-    size_t second_stage_filters_size;
+    cuComplex *second_stage_filter_d;
+    size_t second_stage_filter_size;
 
     //! Pointer to the third stage filters on device.
-    cuComplex *third_stage_filters_d;
-    size_t third_stage_filters_size;
+    cuComplex *third_stage_filter_d;
+    size_t third_stage_filter_size;
 
     //! Pointer to the output of the first stage decimation on device.
     cuComplex *first_stage_output_d;
