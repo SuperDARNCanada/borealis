@@ -75,7 +75,7 @@ class DSPCore {
     void send_ack();
     void send_timing();
 
-
+//TODO(keith): May remove sizes as member variables.
  private:
 
     //! CUDA stream the work will be associated with.
