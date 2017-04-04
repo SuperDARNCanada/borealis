@@ -34,34 +34,35 @@ import normalscan # TODO - have it setup by scheduler
 
 import radar_status
 
-def setup_driver_socket(): # to send pulses to driver.
+#REVIEW #1 Add description of params with units in docstring. Maybe find a docstring generator for vim.
+def setup_driver_socket(): # to send pulses to driver. # REVIEW #38 could move this into docstring
     """
-    Setup a zmq socket to communicate with the driver. 
+    Setup a zmq socket to communicate with the driver.
     """
 
-    context=zmq.Context()
+    context=zmq.Context() # REVIEW #33 Apparently it's best to just use one zmq context in the entire application - http://stackoverflow.com/questions/32280271/zeromq-same-context-for-multiple-sockets. So maybe have a global context or set it up in the main function and pass it to these functions.
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/0")
     return cpsocket
 
 
-def setup_sigproc_params_socket(): #to send data to receive code.
+def setup_sigproc_params_socket(): #to send data to receive code. # REVIEW #38 could move this into docstring
     """
     Setup a zmq socket to communicate with rx_signal_processing.
     """
 
-    context=zmq.Context()
+    context=zmq.Context() # REVIEW #33
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/2")
     return cpsocket
 
 
-def setup_sigproc_cpack_socket(): #to send data to receive code.
+def setup_sigproc_cpack_socket(): #to send data to receive code. # REVIEW #38 could move this into docstring
     """
     Setup a zmq socket to get acks from rx_signal_processing.
     """
 
-    context=zmq.Context()
+    context=zmq.Context() # REVIEW #33
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/3")
     return cpsocket
@@ -72,26 +73,26 @@ def setup_sigproc_timing_ack_socket():
     Setup a zmq socket to get timing information from rx_signal_processing.
     """
 
-    context=zmq.Context()
+    context=zmq.Context() # REVIEW #33
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/4")
     return cpsocket
 
 
-def setup_cp_socket(): 
+def setup_cp_socket():
     """
     Setup a zmq socket to get updated experiment parameters from the experiment.
     """
 
-    context=zmq.Context()
+    context=zmq.Context() # REVIEW #33
     cpsocket=context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/5")
     return cpsocket
 
-
+# REVIEW #33 Can this be removed?
 #def setup_ack_poller(socket1,socket2):
 #    """
-#     
+#
 #    """
 #
 #    poller=zmq.Poller()
@@ -102,7 +103,7 @@ def setup_cp_socket():
 
 #def pollzmq(socket1, socket2, rxseqnum, txseqnum):
 #    """
-#    
+#
 #    """
 #
 #    poller=zmq.Poller()
@@ -118,64 +119,64 @@ def setup_cp_socket():
 
 def get_prog(socket):
     """
-    Receive pickled python object of the experiment class. 
+    Receive pickled python object of the experiment class.
     """
 
     prog = socket.recv_pyobj()
 
     return prog
 
-def data_to_driver(driverpacket, txsocket, channels, isamples_list,
+def data_to_driver(driverpacket, txsocket, channels, isamples_list, #REVIEW #26 change channels to antennas
                    qsamples_list, txctrfreq, rxctrfreq, txrate,
-                   numberofreceivesamples, SOB, EOB, timing, seqnum, repeat=False):
+                   numberofreceivesamples, SOB, EOB, timing, seqnum, repeat=False): #REVIEW #5 Add description of params with units in docstring. Maybe find a docstring generator for vim.
     """ Place data in the driver packet and send it via zeromq to the driver.
         Then receive the acknowledgement.
     """
 
-    if repeat:
-        driverpacket.Clear()
+    if repeat: #REVIEW #1 Add detailed description to docstring on how the repeat functionality works.
+        driverpacket.Clear() # REVIEW #22 duplicated code can be moved above and below if/else
         # channels empty
         # samples empty
         # ctrfreq empty
         # rxrate and txrate empty
-        driverpacket.timetosendsamples=timing
-        driverpacket.SOB=SOB
-        driverpacket.EOB=EOB
-        driverpacket.sequence_num=seqnum
+        driverpacket.timetosendsamples=timing # REVIEW #22
+        driverpacket.SOB=SOB # REVIEW #22
+        driverpacket.EOB=EOB # REVIEW #22
+        driverpacket.sequence_num=seqnum # REVIEW #22
         print "EMPTY {0} {1} {2} {3}".format(timing,SOB,EOB,channels)
         # timetoio empty
     else:
         # SETUP data to send to driver for transmit.
-        driverpacket.Clear()
+        driverpacket.Clear() # REVIEW #22
         for chan in channels:
-            chan_add=driverpacket.channels.append(chan)
-        for chi in range(len(isamples_list)):
-            sample_add=driverpacket.samples.add()
+            chan_add=driverpacket.channels.append(chan) #REVIEW #33 this assignment is not needed?
+        for chi in range(len(isamples_list)): #REVIEW #26 Chi? Perhaps better name?
+            sample_add=driverpacket.samples.add() #REVIEW #0 sample_add not used. Can driverpacket.samples[chi] be replaced with sample_add? Do they point the the same object, because C++ works a like that.
             # Add one Samples message for each channel.
-            real_samp=driverpacket.samples[chi].real.extend(isamples_list[chi])
-            imag_samp=driverpacket.samples[chi].imag.extend(qsamples_list[chi])
-        driverpacket.txcenterfreq=txctrfreq * 1000
-        driverpacket.rxcenterfreq=rxctrfreq * 1000
+            real_samp=driverpacket.samples[chi].real.extend(isamples_list[chi]) #REVIEW #33 this assignment is not needed?
+            imag_samp=driverpacket.samples[chi].imag.extend(qsamples_list[chi]) #REVIEW #33 this assignment is not needed?
+        driverpacket.txcenterfreq=txctrfreq * 1000 #REVIEW #5 comment on unit conversion?
+        driverpacket.rxcenterfreq=rxctrfreq * 1000 #REVIEW #5 comment on unit conversion?
         driverpacket.txrate=txrate
         driverpacket.numberofreceivesamples=numberofreceivesamples
-        driverpacket.timetosendsamples=timing
-        driverpacket.sequence_num=seqnum
+        driverpacket.timetosendsamples=timing # REVIEW #22
+        driverpacket.sequence_num=seqnum # REVIEW #22
         # Past time zero which is start of the sequence.
         print "New samples {0} {1} {2} {3}".format(timing,SOB,EOB,channels)
-        driverpacket.SOB=SOB
-        driverpacket.EOB=EOB
+        driverpacket.SOB=SOB # REVIEW #22
+        driverpacket.EOB=EOB # REVIEW #22
 
     txsocket.send(driverpacket.SerializeToString())
     # get response:
-    #tx_ack = socket.recv()
+    #tx_ack = socket.recv() #REVIEW #6 Add todo for the response
     tx_ack=1
 
-    del driverpacket.samples[:]
+    del driverpacket.samples[:] #REVIEW #33 Is this needed in conjunction with .Clear()?
 
     return tx_ack
 
 
-def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict):
+def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict): #REVIEW #26 Perhaps better name now that dsp naming convention is figured out
     """ Place data in the receiver packet and send it via zeromq to the
         receiver unit.
     """
@@ -183,22 +184,22 @@ def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict):
     packet.Clear()
     packet.sequence_num=seqnum
     for num, cpo in enumerate(cpos):
-        channel_add = packet.rxchannel.add()
+        channel_add = packet.rxchannel.add() #REVIEW #0 channel_add not used. Same as above.
         packet.rxchannel[num].rxfreq = cpo_list[cpo]['rxfreq']
         packet.rxchannel[num].nrang = cpo_list[cpo]['nrang']
         packet.rxchannel[num].frang = cpo_list[cpo]['frang']
         for bnum, beamdir in enumerate(beam_dict[cpo]):
-            beam_add = packet.rxchannel[num].beam_directions.add()
-            # beamdir is a list 20-long with phase for each antenna for that beam direction.
+            beam_add = packet.rxchannel[num].beam_directions.add() #REVIEW #0 channel_add not used. Same as above.
+            # beamdir is a list 20-long with phase for each antenna for that beam direction. #REVIEW 1 This doesn't have to 20. Its just total antennas.
             for pnum, phi in enumerate(beamdir):
                 #print phi
                 phase = cmath.exp(phi*1j)
-                phase_add = packet.rxchannel[num].beam_directions[bnum].phase.add()
+                phase_add = packet.rxchannel[num].beam_directions[bnum].phase.add() #REVIEW #0 channel_add not used. Same as above.
                 packet.rxchannel[num].beam_directions[bnum].phase[pnum].real_phase = phase.real
                 packet.rxchannel[num].beam_directions[bnum].phase[pnum].imag_phase = phase.imag
 
 
-    # Don't need channel numbers, always send 20 beam directions
+    # Don't need channel numbers, always send 20 beam directions #REVIEW 1 This doesn't have to 20. Its just total antennas.
     # Beam directions will be formated e^i*phi so that a 0 will indicate not
     # to receive on that channel.
 
@@ -206,9 +207,9 @@ def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict):
     return
 
 
-def get_ack(xsocket,procpacket): 
+def get_ack(xsocket,procpacket):
     """
-    
+
     """
     try:
         x=xsocket.recv(flags=zmq.NOBLOCK)
@@ -223,7 +224,7 @@ def get_ack(xsocket,procpacket):
 def radar():
     """
     Receives an instance of an experiment. Iterates through
-    the Scans, AveragingPeriods, Sequences, and pulses of the experiment. 
+    the Scans, AveragingPeriods, Sequences, and pulses of the experiment.
     For every pulse, samples and other control information are sent to the n200_driver.
     For every pulse sequence, processing information is sent to the signal processing block.
     After every integration time (AveragingPeriod), the experiment block is given the opportunity
@@ -345,7 +346,7 @@ def radar():
                                 beamdir[cpo].append(scan.beamdir[cpo][bmnum])
                         # Get the beamdir from the beamnumber for this
                         #    CP-object at this iteration.
-                    
+
                     # Create a pulse dictionary before running through the
                     #   averaging period.
                     sequence_dict_list=[]
