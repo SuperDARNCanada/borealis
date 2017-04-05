@@ -22,11 +22,11 @@ from scipy.fftpack import fft
 from scipy.signal import kaiserord, lfilter, firwin, freqz
 #from multiprocessing import Process, Value
 
-sys.path.append('../build/release/utils/protobuf')
+sys.path.append('../build/release/utils/protobuf') # REVIEW #6 TODO need to make this a dynamic import since 'release' may be 'debug'
 import driverpacket_pb2
 import sigprocpacket_pb2
 
-sys.path.append('./include')
+sys.path.append('./include') # REVIEW #0 What is this path append for? there don't appear to be any include directories in the git repo
 from sample_building import get_phshift, get_wavetables, make_pulse_samples
 
 sys.path.append('../experiments')
@@ -207,18 +207,18 @@ def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict): #R
     return
 
 
-def get_ack(xsocket,procpacket):
+def get_ack(xsocket,procpacket): # REVIEW #26 what does the 'x' mean in xsocket? Could be more clear
     """
-
+# REVIEW #1 Add docstring
     """
     try:
         x=xsocket.recv(flags=zmq.NOBLOCK)
-        procpacket.ParseFromString(x)
+        procpacket.ParseFromString(x) # REVIEW #37 error check this - it might not throw a zmq.Again exception. You can use multiple except blocks after 1 try block
         return procpacket.sequence_num
-        print procpacket.sequence_num
+        print procpacket.sequence_num # REVIEW #33 this won't run, can remove
     except zmq.Again:
         print "ACK ERROR"
-        return
+        return # REVIEW #6 Here we return None implicity, can type "return None" to be more explicit, or do something else with the error, TODO?
 
 
 def radar():
@@ -245,7 +245,7 @@ def radar():
     cpsocket=setup_cp_socket()
     # seqnum is used as a identifier in all packets while
     # radar is running so set it up here.
-    # seqnum will get increased by nave at the end of
+    # seqnum will get increased by nave at the end of # REVIEW #1 The wording here makes it sound like seqnum is increased once at the end of every integration time, not once every pulse sequence
     # every integration time.
     seqnum_start = 0
 
@@ -254,27 +254,27 @@ def radar():
     cpsocket.send_pyobj(status)
     should_poll = True
     while should_poll:
-        poller=zmq.Poller()
+        poller=zmq.Poller() # REVIEW #0 Should these two lines really be in the while loop? 
         poller.register(cpsocket, zmq.POLLIN)
-        cpsocks = dict(poller.poll(10)) #polls for 3 ms, NOTE this is before inttime timer starts.
+        cpsocks = dict(poller.poll(10)) #polls for 3 ms, NOTE this is before inttime timer starts. # REVIEW #5 where do you find the units for poll? we assume that the comment is just outdated and should read "10 ms"
         if cpsocket in cpsocks: #
-            if cpsocks[cpsocket] == zmq.POLLIN:
+            if cpsocks[cpsocket] == zmq.POLLIN: # REVIEW #3 Why do you need to check if this is a zmq.POLLIN? 
                 new_cp = get_prog(cpsocket) # TODO: write this function
-                if new_cp == None:
+                if new_cp == None: # REVIEW #39 This if/elif can be slimmed down to one if isinstance(new_cp, normalscan.Normalscan)?, else statement could just be "No New CP" unless you're distinguising between new_cp == None and new_cp == something else
                     print "NO NEW CP"
-                elif isinstance(new_cp, normalscan.Normalscan): # is this how to check if it's a correct class type?
+                elif isinstance(new_cp, normalscan.Normalscan): # is this how to check if it's a correct class type? # REVIEW #5 TODO need to make this dynamic or check some other way (parent?)
                     # TODO: scheduler
                     prog = new_cp
-                    beam_remaining = False
-                    updated_cp_received = True
+                    beam_remaining = False # REVIEW #0 Why is this set to False here, when it's being set to True at the top of the while True loop below?
+                    updated_cp_received = True # REVIEW #0 Why is this set to True here, when it's being set to False at the top of the while True loop below?
                     print "NEW CP!!"
-                    status.status = 1
-                    should_poll = False
+                    status.status = 1 # REVIEW #26 What does this mean, better names for status'
+                    should_poll = False # REVIEW #33 This could just be a 'break' with the while loop using 'while True' since you're not doing anything else after this elif block is entered
         else:
             print "No CP - keep polling"
 
 
-    while True:
+    while True: # REVIEW #35 This is > 250 lines, should be refactored into smaller chunks
 
         cpos=prog.cpo_list
         updated_cp_received = False
@@ -301,7 +301,7 @@ def radar():
                 #   iterator to the next beam in each scan.
 
                     # poll for new cp here, before starting a new integration.
-                    cpsocket.send_pyobj(status)
+                    cpsocket.send_pyobj(status) # REVIEW #22 Duplicated code (above lines ~256-275), can be refactored into a function like 'search_for_experiment'
                     poller=zmq.Poller()
                     poller.register(cpsocket, zmq.POLLIN)
                     cpsocks = dict(poller.poll(3)) #polls for 3 ms, NOTE this is before inttime timer starts.
