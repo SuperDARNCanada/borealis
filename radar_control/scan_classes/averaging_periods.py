@@ -22,7 +22,7 @@ class AveragingPeriod():
     def __init__(self, scan, ave_keys): 
         #make a list of the cpos in this AveragingPeriod.
         self.rxrate=scan.rxrate
-        self.keys=ave_keys
+        self.keys=ave_keys # REVIEW #26 Why is this called a key
         self.cpos={}
         for i in ave_keys:
             self.cpos[i]=scan.cpos[i]

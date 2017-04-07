@@ -11,7 +11,7 @@ any), freq, pulse length, beamdir, and wavetype.
 import sys
 import operator 
 
-#class RadarPulse():
+#class RadarPulse(): # REVIEW #33 Can remove this commented code
 #
 #    def __init__(self, cp_object, phase): #pulsen, **kwargs): 
 #        'Pulse data, incl timing and channel data but not including phasing data'
@@ -48,7 +48,7 @@ class Sequence():
         self.keys=seqn_keys
         self.cpos={}
         for i in seqn_keys:
-            self.cpos[i]=aveperiod.cpos[i]
+            self.cpos[i]=aveperiod.cpos[i] # REVIEW #41 Should use 'getters' and 'setters' when accessing member variables of a class instead of using the dot notation (example - aveperiod.get_cpos(i))
         # All interfacing at this point is PULSE.
         
         # TODO: use number of frequencies to determine power output of
@@ -58,7 +58,13 @@ class Sequence():
         index=0
         pulse_time=[] 
         # List of lists formatted [timing, cpo, pulse_n],...
-        while (pulse_remaining):
+        while (pulse_remaining): # REVIEW #39 We think this can be replaced by for(cpoid in #seqn_keys):
+        #for pulse_index, pulse in enumerate(self.cpos[cpoid]['sequence']):
+         #       inter_pulse_time = pulse*mpinc
+          #      pulse_time.append([inter_pulse_time, cpoid, pulse_index)
+
+#pulse_time.sort()
+#self.pulse_time = pulse_time
             cpos_done=0
             for cpoid in seqn_keys:
                 try:

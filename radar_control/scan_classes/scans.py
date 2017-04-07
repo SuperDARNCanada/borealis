@@ -62,7 +62,7 @@ class Scan():
         self.scan_beams={}
         for cpo in self.keys:
             self.beamdir[cpo]=self.cpos[cpo]['beamdir']
-            self.scan_beams[cpo]=self.cpos[cpo]['scan']
+            self.scan_beams[cpo]=self.cpos[cpo]['scan'] # REVIEW #26 Names are inconsistent, also difficult to tell what 'scan' is - is it the number? Is it the order you're scanning on? indexed from 0? is beamdir the azimuth? in degrees?
 
         # Determine how many averaging periods to make by separating 
         #   out the INTTIME mixed.

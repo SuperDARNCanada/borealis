@@ -264,7 +264,7 @@ def radar():
                     print "NO NEW CP"
                 elif isinstance(new_cp, normalscan.Normalscan): # is this how to check if it's a correct class type? # REVIEW #5 TODO need to make this dynamic or check some other way (parent?)
                     # TODO: scheduler
-                    prog = new_cp
+                    prog = new_cp # REVIEW #26 'prog' should now be 'experiment' or similar. same with 'cp'
                     beam_remaining = False # REVIEW #0 Why is this set to False here, when it's being set to True at the top of the while True loop below?
                     updated_cp_received = True # REVIEW #0 Why is this set to True here, when it's being set to False at the top of the while True loop below?
                     print "NEW CP!!"
@@ -283,7 +283,7 @@ def radar():
         #   use a sampling freq in rads/sample
         wavetable_dict={}
         for cpo in range(prog.cponum):
-            wavetable_dict[cpo]=get_wavetables(prog.cpo_list[cpo]['wavetype'])
+            wavetable_dict[cpo]=get_wavetables(prog.cpo_list[cpo]['wavetype']) # REVIEW #6 #33 Is this not needed anymore or is there a TODO to implement type of wave somewhere? We noticed it wasn't used in this file and it is a local dictionary variable
 
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         for scan in prog.scan_objects:
