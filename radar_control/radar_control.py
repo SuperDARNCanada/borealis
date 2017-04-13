@@ -189,12 +189,12 @@ def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict): #R
         packet.rxchannel[num].nrang = cpo_list[cpo]['nrang']
         packet.rxchannel[num].frang = cpo_list[cpo]['frang']
         for bnum, beamdir in enumerate(beam_dict[cpo]):
-            beam_add = packet.rxchannel[num].beam_directions.add() #REVIEW #0 channel_add not used. Same as above.
+            beam_add = packet.rxchannel[num].beam_directions.add() #REVIEW #0 beam_add not used. Same as above.
             # beamdir is a list 20-long with phase for each antenna for that beam direction. #REVIEW 1 This doesn't have to 20. Its just total antennas.
             for pnum, phi in enumerate(beamdir):
                 #print phi
                 phase = cmath.exp(phi*1j)
-                phase_add = packet.rxchannel[num].beam_directions[bnum].phase.add() #REVIEW #0 channel_add not used. Same as above.
+                phase_add = packet.rxchannel[num].beam_directions[bnum].phase.add() #REVIEW #0 phase_add not used. Same as above.
                 packet.rxchannel[num].beam_directions[bnum].phase[pnum].real_phase = phase.real
                 packet.rxchannel[num].beam_directions[bnum].phase[pnum].imag_phase = phase.imag
 
@@ -203,7 +203,7 @@ def data_to_processing(packet,procsocket, seqnum, cpos, cpo_list, beam_dict): #R
     # Beam directions will be formated e^i*phi so that a 0 will indicate not
     # to receive on that channel.
 
-    procsocket.send(packet.SerializeToString());
+    procsocket.send(packet.SerializeToString())
     return
 
 
@@ -254,11 +254,11 @@ def radar():
     cpsocket.send_pyobj(status)
     should_poll = True
     while should_poll:
-        poller=zmq.Poller() # REVIEW #0 Should these two lines really be in the while loop? 
+        poller=zmq.Poller() # REVIEW #0 Should these two lines really be in the while loop?
         poller.register(cpsocket, zmq.POLLIN)
         cpsocks = dict(poller.poll(10)) #polls for 3 ms, NOTE this is before inttime timer starts. # REVIEW #5 where do you find the units for poll? we assume that the comment is just outdated and should read "10 ms"
         if cpsocket in cpsocks: #
-            if cpsocks[cpsocket] == zmq.POLLIN: # REVIEW #3 Why do you need to check if this is a zmq.POLLIN? 
+            if cpsocks[cpsocket] == zmq.POLLIN: # REVIEW #3 Why do you need to check if this is a zmq.POLLIN?
                 new_cp = get_prog(cpsocket) # TODO: write this function
                 if new_cp == None: # REVIEW #39 This if/elif can be slimmed down to one if isinstance(new_cp, normalscan.Normalscan)?, else statement could just be "No New CP" unless you're distinguising between new_cp == None and new_cp == something else
                     print "NO NEW CP"
@@ -291,7 +291,7 @@ def radar():
                 break
             beam_remaining=True
             # Make iterator for cycling through beam numbers
-            scan_iter=0
+            scan_iter=0 # REVIEW #26 Seems more apt to name this beam_iter.
             scans_done=0
             while (beam_remaining and not updated_cp_received):
                 for aveperiod in scan.aveperiods:
@@ -316,7 +316,7 @@ def radar():
                                 print "NEW CP!!"
                                 break
 
-                    if scan_iter>=len(scan.scan_beams[aveperiod.keys[0]]):
+                    if scan_iter>=len(scan.scan_beams[aveperiod.keys[0]]): #REVIEW #3 We just don't understand this.
                     # All keys will have the same length scan_beams
                     #   inside the aveperiod, but not necessarily all aveperiods
                     #   in the scan will have same length scan_beams so we have to
@@ -329,17 +329,17 @@ def radar():
                             break
                         continue
                     print "New AveragingPeriod"
-                    int_time=datetime.utcnow()
+                    int_time=datetime.utcnow() #REVIEW #26 Name is confusing with respect to what int time is usually known as
                     time_remains=True
-                    done_time=int_time+timedelta(0,float(aveperiod.intt)/1000)
+                    done_time=int_time+timedelta(0,float(aveperiod.intt)/1000) #REVIEW #1 comment on unit conversion
                     nave=0
                     beamdir={}
                     # Create a dictionary of beam directions with the
                     #   keys being the cpos in this averaging period.
                     for cpo in aveperiod.keys:
-                        bmnums=scan.scan_beams[cpo][scan_iter]
+                        bmnums=scan.scan_beams[cpo][scan_iter] # REVIEW #3 Do not understand how this could be an iterable???
                         beamdir[cpo]=[]
-                        if type(bmnums) == int:
+                        if type(bmnums) == int: #REVIEW #39 should use isinstance instead http://stackoverflow.com/questions/707674/how-to-compare-type-of-an-object-in-python
                             beamdir[cpo]=scan.beamdir[cpo][bmnums]
                         else: # is a list
                             for bmnum in bmnums:
