@@ -45,78 +45,97 @@ DriverOptions::DriverOptions() {
                                 config_pt.get<std::string>("interferometer_antenna_count"));
 }
 
-double DriverOptions::get_tx_rate() {
+double DriverOptions::get_tx_rate() const
+{
     return tx_sample_rate;
 }
 
-double DriverOptions::get_rx_rate() {
+double DriverOptions::get_rx_rate() const
+{
     return rx_sample_rate;
 }
 
-std::string DriverOptions::get_device_args() {
+std::string DriverOptions::get_device_args() const
+{
     return devices;
 }
 
-std::string DriverOptions::get_tx_subdev() {
+std::string DriverOptions::get_tx_subdev() const
+{
     return tx_subdev;
 }
 
-std::string DriverOptions::get_main_rx_subdev() {
+std::string DriverOptions::get_main_rx_subdev() const
+{
     return main_rx_subdev;
 }
 
-std::string DriverOptions::get_interferometer_rx_subdev() {
+std::string DriverOptions::get_interferometer_rx_subdev() const
+{
     return interferometer_rx_subdev;
 }
 
-std::string DriverOptions::get_pps() {
+std::string DriverOptions::get_pps() const
+{
     return pps;
 }
 
-std::string DriverOptions::get_ref() {
+std::string DriverOptions::get_ref() const
+{
     return ref;
 }
 
-std::string DriverOptions::get_cpu() {
+std::string DriverOptions::get_cpu() const
+{
     return cpu;
 }
 
-std::string DriverOptions::get_otw() {
+std::string DriverOptions::get_otw() const
+{
     return otw;
 }
 
-std::string DriverOptions::get_gpio_bank() {
+std::string DriverOptions::get_gpio_bank() const
+{
     return gpio_bank;
 }
 
-uint32_t DriverOptions::get_scope_sync_mask() {
+uint32_t DriverOptions::get_scope_sync_mask() const
+{
     return scope_sync_mask;
 }
 
-uint32_t DriverOptions::get_atten_mask() {
+uint32_t DriverOptions::get_atten_mask() const
+{
     return atten_mask;
 }
 
-uint32_t DriverOptions::get_tr_mask() {
+uint32_t DriverOptions::get_tr_mask() const
+{
     return tr_mask;
 }
 
-double DriverOptions::get_atten_window_time_start() {
+double DriverOptions::get_atten_window_time_start() const
+{
     return atten_window_time_start;
 }
 
-double DriverOptions::get_atten_window_time_end() {
+double DriverOptions::get_atten_window_time_end() const
+{
     return atten_window_time_end;
 }
 
-double DriverOptions::get_tr_window_time() {
+double DriverOptions::get_tr_window_time() const
+{
     return tr_window_time;
 }
 
-uint32_t DriverOptions::get_main_antenna_count() {
+uint32_t DriverOptions::get_main_antenna_count() const
+{
     return main_antenna_count;
 }
 
-uint32_t DriverOptions::get_interferometer_antenna_count() {
+uint32_t DriverOptions::get_interferometer_antenna_count() const
+{
     return interferometer_antenna_count;
 }

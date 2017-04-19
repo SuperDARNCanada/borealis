@@ -52,21 +52,21 @@ std::vector<std::vector<std::complex<float>>> make_samples(const driverpacket::D
   return samples;
 }
 
-void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
-                std::shared_ptr<DriverOptions> driver_options) {
+void transmit(zmq::context_t &driver_c, USRP &usrp_d,
+                const DriverOptions &driver_options) {
   std::cout << "Enter transmit thread\n";
 
 
-  zmq::socket_t packet_socket(*driver_c, ZMQ_SUB);
+  zmq::socket_t packet_socket(driver_c, ZMQ_SUB);
   packet_socket.connect("inproc://threads");
   packet_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
   std::cout << "TRANSMIT: Creating and connected to thread socket in control\n";
   zmq::message_t request;
 
-  zmq::socket_t timing_socket(*driver_c, ZMQ_PAIR);
+  zmq::socket_t timing_socket(driver_c, ZMQ_PAIR);
   timing_socket.connect("inproc://timing");
 
-  zmq::socket_t ack_socket(*driver_c, ZMQ_PAIR);
+  zmq::socket_t ack_socket(driver_c, ZMQ_PAIR);
   ack_socket.connect("inproc://ack");
 
 
@@ -85,14 +85,14 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
   size_t samples_per_buff;
   std::vector<std::vector<std::complex<float>>> samples;
 
-  auto atten_window_time_start_us = driver_options->get_atten_window_time_start();
-  auto atten_window_time_end_us = driver_options->get_atten_window_time_end();
-  auto tr_window_time_us = driver_options->get_tr_window_time();
+  auto atten_window_time_start_us = driver_options.get_atten_window_time_start();
+  auto atten_window_time_end_us = driver_options.get_atten_window_time_end();
+  auto tr_window_time_us = driver_options.get_tr_window_time();
 
   //default initialize SS. Needs to be outside of loop
   auto scope_sync_low = uhd::time_spec_t(0.0);
 
-  auto rx_rate = driver_options->get_rx_rate();
+  auto rx_rate = driver_options.get_rx_rate();
 
   uint32_t sqn_num = -1;
   uint32_t expected_sqn_num = 0;
@@ -119,8 +119,8 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
       std::cout << "TRANSMIT starting something new" <<std::endl;
       channels = make_channels(dp);
       stream_args.channels = channels;
-      usrp_d->set_tx_rate(dp.txrate());  // ~450us
-      tx_stream = usrp_d->get_usrp()->get_tx_stream(stream_args);  // ~44ms
+      usrp_d.set_tx_rate(dp.txrate());  // ~450us
+      tx_stream = usrp_d.get_usrp()->get_tx_stream(stream_args);  // ~44ms
       channels_set = true;
     }
     std::chrono::steady_clock::time_point stream_end = std::chrono::steady_clock::now();
@@ -135,7 +135,7 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     if (dp.txcenterfreq() > 0) {
       std::cout << "TRANSMIT center freq " << dp.txcenterfreq() << std::endl;
-      usrp_d->set_tx_center_freq(dp.txcenterfreq(), channels);
+      usrp_d.set_tx_center_freq(dp.txcenterfreq(), channels);
       center_freq_set = true;
     }
 
@@ -180,12 +180,12 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     if ( (dp.sob() == true) ) {
       //The USRP needs about a 10ms buffer into the future before time
       //commands will correctly work
-      time_zero = usrp_d->get_usrp()->get_time_now() + uhd::time_spec_t(10e-3);
+      time_zero = usrp_d.get_usrp()->get_time_now() + uhd::time_spec_t(10e-3);
     }
 
     auto pulse_delay = uhd::time_spec_t(dp.timetosendsamples()/1e6);
     auto pulse_start_time = time_zero + pulse_delay;
-    auto pulse_len_time = uhd::time_spec_t(samples_per_buff/usrp_d->get_tx_rate());
+    auto pulse_len_time = uhd::time_spec_t(samples_per_buff/usrp_d.get_tx_rate());
 
     auto tr_time_high = pulse_start_time - uhd::time_spec_t(tr_window_time_us);
     auto atten_time_high = tr_time_high - uhd::time_spec_t(atten_window_time_start_us);
@@ -207,7 +207,7 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     begin = std::chrono::steady_clock::now();
 
-    auto time_now = usrp_d->get_usrp()->get_time_now();
+    auto time_now = usrp_d.get_usrp()->get_time_now();
     std::cout << "TRANSMIT time zero: " << time_zero.get_frac_secs() << std::endl;
     std::cout << "TRANSMIT time now " << time_now.get_frac_secs() << std::endl;
     std::cout << "TRANSMIT timetosendsamples(us) " << dp.timetosendsamples() <<std::endl;
@@ -251,30 +251,30 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     std::chrono::steady_clock::time_point timing_start = std::chrono::steady_clock::now();
 
-    usrp_d->get_usrp()->clear_command_time();
+    usrp_d.get_usrp()->clear_command_time();
 
     if (dp.sob() == true) {
       std::cout << "TRANSMIT Scope sync high" << std::endl;
-      usrp_d->get_usrp()->set_command_time(scope_sync_high);
-      usrp_d->set_scope_sync();
+      usrp_d.get_usrp()->set_command_time(scope_sync_high);
+      usrp_d.set_scope_sync();
 
     }
 
-    usrp_d->get_usrp()->set_command_time(atten_time_high);
-    usrp_d->set_atten();
+    usrp_d.get_usrp()->set_command_time(atten_time_high);
+    usrp_d.set_atten();
 
-    usrp_d->get_usrp()->set_command_time(tr_time_high);
-    usrp_d->set_tr();
+    usrp_d.get_usrp()->set_command_time(tr_time_high);
+    usrp_d.set_tr();
 
-    usrp_d->get_usrp()->set_command_time(tr_time_low);
-    usrp_d->clear_tr();
+    usrp_d.get_usrp()->set_command_time(tr_time_low);
+    usrp_d.clear_tr();
 
-    usrp_d->get_usrp()->set_command_time(atten_time_low);
-    usrp_d->clear_atten();
+    usrp_d.get_usrp()->set_command_time(atten_time_low);
+    usrp_d.clear_atten();
 
     if (dp.eob() == true) {
-      usrp_d->get_usrp()->set_command_time(scope_sync_low);
-      usrp_d->clear_scope_sync();
+      usrp_d.get_usrp()->set_command_time(scope_sync_low);
+      usrp_d.clear_scope_sync();
     }
 
 
@@ -286,7 +286,7 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
       << "us" << std::endl;
 
     if (dp.eob() == true) {
-      //usrp_d->clear_scope_sync();
+      //usrp_d.clear_scope_sync();
       driverpacket::DriverPacket ack;
       std::cout << "SEQUENCENUM " << sqn_num << std::endl;
       ack.set_sequence_num(sqn_num);
@@ -304,68 +304,6 @@ void transmit(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-/*boost::interprocess::mapped_region shr_mem_create(const char* name, size_t size) {
-  boost::interprocess::shared_memory_object::remove(name);
-
-  // Create a shared memory object.
-  auto create_mode = boost::interprocess::open_or_create;
-  auto access_mode = boost::interprocess::read_write;
-  boost::interprocess::shared_memory_object shm(create_mode, name, access_mode);
-
-  // Set size
-  shm.truncate(size);
-
-  // Map the whole shared memory in this process
-  boost::interprocess::mapped_region region(shm, access_mode);
-
-  return region;
-}
-
-boost::interprocess::mapped_region mmap_create(const char* file_name, size_t size) {
-  boost::interprocess::mapped_region region;
-  try {
-    // Create a file
-    std::filebuf fbuf;
-    fbuf.open(file_name, std::ios_base::in | std::ios_base::out
-                         | std::ios_base::trunc | std::ios_base::binary);
-
-    // Set the size
-    fbuf.pubseekoff(size, std::ios_base::beg);
-    fbuf.sputc(0);
-    fbuf.close();
-
-    // Create a file mapping.
-    auto access_mode = boost::interprocess::read_write;
-    boost::interprocess::file_mapping mapped_file(file_name, access_mode);
-
-    // Map the whole file in this process
-    region = boost::interprocess::mapped_region(mapped_file  // What to map
-       , access_mode);  // Map it as read-write
-
-    if (region.get_size() != size) {
-      // TODO(keith): throw error
-    }
-  }
-  catch(boost::interprocess::interprocess_exception &ex) {
-    // TODO(keith): throw error
-    std::remove(file_name);
-    std::cout << ex.what() << std::endl;
-  }
-
-  return region;
-}*/
-
 std::string random_string( size_t length )
 {
     auto randchar = []() -> char
@@ -382,22 +320,22 @@ std::string random_string( size_t length )
     return str;
 }
 
-void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
-              std::shared_ptr<DriverOptions> driver_options) {
+void receive(zmq::context_t &driver_c, USRP &usrp_d,
+              const DriverOptions &driver_options) {
   std::cout << "Enter receive thread\n";
 
-  zmq::socket_t packet_socket(*driver_c, ZMQ_SUB);
+  zmq::socket_t packet_socket(driver_c, ZMQ_SUB);
   packet_socket.connect("inproc://threads");
   packet_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
   zmq::message_t request;
   std::cout << "RECEIVE: Creating and connected to thread socket in control\n";
 
-  zmq::socket_t timing_socket(*driver_c, ZMQ_PAIR);
+  zmq::socket_t timing_socket(driver_c, ZMQ_PAIR);
   timing_socket.bind("inproc://timing");
   zmq::message_t timing;
 
   //zmq::context_t context(4);
-  zmq::socket_t data_socket(*driver_c, ZMQ_PAIR);
+  zmq::socket_t data_socket(driver_c, ZMQ_PAIR);
   data_socket.connect("inproc://data");
 
   auto channels_set = false;
@@ -409,9 +347,9 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
   uhd::stream_cmd_t stream_cmd(
       uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
 
-  auto rx_rate = driver_options->get_rx_rate();
+  auto rx_rate = driver_options.get_rx_rate();
 
-  auto receive_channels = usrp_d->get_receive_channels();
+  auto receive_channels = usrp_d.get_receive_channels();
 
   while (1) {
     packet_socket.recv(&request);
@@ -427,8 +365,8 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     std::chrono::steady_clock::time_point stream_begin = std::chrono::steady_clock::now();
     if (dp.channels_size() > 0 && dp.sob() == true && channels_set == false) {
       stream_args.channels = receive_channels;
-      usrp_d->set_rx_rate(rx_rate);  // ~450us
-      rx_stream = usrp_d->get_usrp()->get_rx_stream(stream_args);  // ~44ms
+      usrp_d.set_rx_rate(rx_rate);  // ~450us
+      rx_stream = usrp_d.get_usrp()->get_rx_stream(stream_args);  // ~44ms
       channels_set = true;
     }
     std::chrono::steady_clock::time_point stream_end = std::chrono::steady_clock::now();
@@ -441,7 +379,7 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     if (dp.rxcenterfreq() > 0) {
       std::cout << "RECEIVE center freq " << dp.rxcenterfreq() << std::endl;
-      usrp_d->set_rx_center_freq(dp.rxcenterfreq(), receive_channels);
+      usrp_d.set_rx_center_freq(dp.rxcenterfreq(), receive_channels);
       center_freq_set = true;
     }
 
@@ -549,7 +487,7 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
   }
 }
 
-void control(zmq::context_t* driver_c) {
+void control(zmq::context_t &driver_c) {
   std::cout << "Enter control thread\n";
 
   std::cout << "Creating and connecting to thread socket in control\n";
@@ -557,23 +495,23 @@ void control(zmq::context_t* driver_c) {
   packet_socket.connect("inproc://threads"); // 2  */
 
 
-  zmq::socket_t packet_socket(*driver_c, ZMQ_PUB);
+  zmq::socket_t packet_socket(driver_c, ZMQ_PUB);
   packet_socket.bind("inproc://threads");
 
   std::cout << "Creating and binding control socket\n";
   //zmq::context_t context(2);
-  zmq::socket_t radarctrl_socket(*driver_c, ZMQ_PAIR);
+  zmq::socket_t radarctrl_socket(driver_c, ZMQ_PAIR);
   radarctrl_socket.bind("ipc:///tmp/feeds/0");
 
   zmq::message_t request;
 
-  zmq::socket_t data_socket(*driver_c, ZMQ_PAIR);
+  zmq::socket_t data_socket(driver_c, ZMQ_PAIR);
   data_socket.bind("inproc://data");
 
-  zmq::socket_t ack_socket(*driver_c, ZMQ_PAIR);
+  zmq::socket_t ack_socket(driver_c, ZMQ_PAIR);
   ack_socket.bind("inproc://ack");
 
-  zmq::socket_t computation_socket(*driver_c, ZMQ_PAIR);
+  zmq::socket_t computation_socket(driver_c, ZMQ_PAIR);
   computation_socket.connect("ipc:///tmp/feeds/1");
 
 
@@ -637,15 +575,15 @@ void control(zmq::context_t* driver_c) {
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-  auto driver_options = std::make_shared<DriverOptions>();
+  DriverOptions driver_options;
 
-  std::cout << driver_options->get_device_args() << std::endl;
-  std::cout << driver_options->get_tx_rate() << std::endl;
-  std::cout << driver_options->get_pps() << std::endl;
-  std::cout << driver_options->get_ref() << std::endl;
-  std::cout << driver_options->get_tx_subdev() << std::endl;
+  std::cout << driver_options.get_device_args() << std::endl;
+  std::cout << driver_options.get_tx_rate() << std::endl;
+  std::cout << driver_options.get_pps() << std::endl;
+  std::cout << driver_options.get_ref() << std::endl;
+  std::cout << driver_options.get_tx_subdev() << std::endl;
 
-  auto usrp_d = std::make_shared<USRP>(driver_options);
+  USRP usrp_d(driver_options);
 
 
   //  Prepare our context
@@ -654,9 +592,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   std::vector<std::thread> threads;
 
-  std::thread control_t(control, &driver_context);
-  std::thread transmit_t(transmit, &driver_context, usrp_d, driver_options);
-  std::thread receive_t(receive, &driver_context, usrp_d, driver_options);
+  std::thread control_t(control, std::ref(driver_context));
+  std::thread transmit_t(transmit, std::ref(driver_context), std::ref(usrp_d),
+                          std::ref(driver_options));
+  std::thread receive_t(receive, std::ref(driver_context), std::ref(usrp_d),
+                          std::ref(driver_options));
 
 
   threads.push_back(std::move(transmit_t));
