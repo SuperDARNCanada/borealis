@@ -383,7 +383,7 @@ def radar():
                                 #   number of frequencies in
                                 #   sequence, but for now use # of
                                 #   pulses combined here.
-                                power_divider=len(pulse_list)
+                                power_divider=len(pulse_list) # REVIEW #6 We should make a test of the hardware (transmitter input level limits)
                                 print "POWER DIVIDER: {}".format(power_divider)
                                 pulse_samples, pulse_channels = (
                                     make_pulse_samples(pulse_list, cpos,
