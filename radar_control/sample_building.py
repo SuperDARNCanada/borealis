@@ -257,7 +257,7 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
             samples_dict[tuple(pulse)][channel]=new_array
             # Sub in new array of right length for old array.
 
-    total_samples=[]
+    total_samples=[] # REVIEW #26 maybe combined_samples instead of total_samples?
     # This is a list of arrays (one for each channel) with the combined
     #   samples in it (which will be transmitted).
     for channel in range(0,16): # REVIEW #29 Magic number 16 - is this equal to main antennas? should be a config option now
@@ -284,7 +284,7 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
                 pulse_channels.append(chan)
     pulse_channels.sort()
 
-    return total_samples,pulse_channels
+    return total_samples,pulse_channels 
 
 
 

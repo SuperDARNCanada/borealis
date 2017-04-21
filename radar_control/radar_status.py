@@ -4,15 +4,15 @@ import sys
 import os
 
 
-def statustype():
+def statustype(): # REVIEW #39 since we don't really need the numbers here, can we just make this a tuple of strings?
     return { 0 : 'CPNEEDED', 1 : 'NOERROR', 2 : 'WARNING', 3 : 'EXITERROR' }
 
 
 def errortype():
-    return {}
+    return {} # REVIEW #6 TODO?
 
 
-class RadarStatus():
+class RadarStatus(): # REVIEW #6 TODO to finish the class?
     """Class to define transmit specifications of a certain frequency, 
     beam, and pulse sequence.
     """
