@@ -198,7 +198,7 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
     txctrfreq=float(txctrfreq)
     samples_dict={}
 
-    for pulse in pulse_list:
+    for pulse in pulse_list: # REVIEW #35 This loop is good candidate to make into function called create_samples or something
         wave_freq=float(cpos[pulse[1]]['txfreq'])-txctrfreq
         samples_dict[tuple(pulse)]=[]
         phase_array=[]
@@ -227,26 +227,26 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
     #   pulse, and find out the total number of samples for this
     #   combined pulse.
     samples_begin=[]
-    total_length=len(samples_dict[tuple(pulse_list[0])][0])
-    for pulse in pulse_list:
+    total_length=len(samples_dict[tuple(pulse_list[0])][0]) # REVIEW #26 This is difficult to debug, so maybe break this up into several lines - make variable for tuple(pulse_list[0]) and give meaningful name to key into samples_dict. Then you can do the same for samples_dict[key] [0] perhaps.
+    for pulse in pulse_list: # REVIEW #35 This for loop is good candidate to make into function called calculate_true_sample_length or similar
         # pulse_list is in order of timing
-        start_samples=int(txrate*float(pulse[0]-pulse_list[0][0])*1e-6)
+        start_samples=int(txrate*float(pulse[0]-pulse_list[0][0])*1e-6) # REVIEW #26 #29 #1 same here difficult to debug, also magic number of 1e-6. Also, why do you use pulse_list[0][0] instead of just '0'? isn't the first pulse's timing always set to 0? pls explain
         # First value in samples_begin should be zero.
         samples_begin.append(start_samples)
         if start_samples+len(samples_dict[tuple(pulse)][0])>total_length:
-            total_length=start_samples+len(samples_dict[tuple(pulse)])
+            total_length=start_samples+len(samples_dict[tuple(pulse)]) # REVIEW #26 - we think total_lenght should be called max_length_of_pulse or max_length or overlap_length or similar since it's actually the maximum length of any overlapping pulses or long pulse in the pulse_list
             # Timing from first sample + length of this pulse is max
     #print "Total Length : {}".format(total_length)
 
     # Now we have total length so make all pulse samples same length
     #   before combining them sample by sample.
-    for pulse in pulse_list:
-        start_samples=samples_begin[pulse_list.index(pulse)]
+    for pulse in pulse_list: # REVIEW #35 can be refactored into a zero-pad function that creates a zero_pad prepend array, a zero-pad postpend array and the 'array' in the middle of actual samples. Continued below at the for i in range(0,total_length) : line
+        start_samples=samples_begin[pulse_list.index(pulse)] # REVIEW #39 Can also do 'for i, pulse in enumerate(pulse_list)' and use i as the index. OR use 'for start_sample, pulse in zip(start_samples, pulse_list)' which will give you the start sample, as well as the tuple from pulse_list that coincide
         #print start_samples
-        for channel in range(0,16):
-            array=samples_dict[tuple(pulse)][channel]
+        for channel in range(0,16): # REVIEW #29 Magic number 16 - is this equal to main antennas? should be a config option now
+            array=samples_dict[tuple(pulse)][channel] # REVIEW #26 - array and new_array can be named something meaningful 
             new_array=np.empty([total_length],dtype=np.complex_) # REVIEW #28 We believe that the dtype for samples array should be complex float ( np.complex64 ) instead of complex (which seems to default to complex128  - or a double complex value) Also - what is the reason for np.complex_ ?
-            for i in range(0,total_length):
+            for i in range(0,total_length): # REVIEW #39, continued from above: an example of how to do this: zero_prepend = np.zeros(start_sample,dtype=np.complex64); zero_append = np.zeros(max_length - len_samples_array - start_sample, dtype=np.complex64); pulse = samples_dict[tuple(pulse)][channel]; complete_new_array = np.concatenate((zero_prepend, pulse, zero_append))
                 if i<start_samples:
                     new_array[i]=0.0
                 if i>=start_samples and i<(start_samples+len(array)):
@@ -260,24 +260,24 @@ def make_pulse_samples(pulse_list, cpos, beamdir, txctrfreq, txrate,
     total_samples=[]
     # This is a list of arrays (one for each channel) with the combined
     #   samples in it (which will be transmitted).
-    for channel in range(0,16):
+    for channel in range(0,16): # REVIEW #29 Magic number 16 - is this equal to main antennas? should be a config option now
         total_samples.append(samples_dict[tuple(pulse_list[0])][channel])
         for samplen in range(0,total_length):
             try:
-                total_samples[channel][samplen]=(total_samples[channel][samplen] / power_divider)
-            except RuntimeWarning:
-                print "RUNTIMEWARNING {} {}".format(total_samples[channel][samplen], powerdivider)
+                total_samples[channel][samplen]=(total_samples[channel][samplen] / power_divider) # REVIEW #39 Can use np.array division. Don't need the for samplen loop, just do 'total_samples[channel] = total_samples[channel] / power_divider'
+            except RuntimeWarning: # REVIEW #3 What would cause this exception? 
+                print "RUNTIMEWARNING {} {}".format(total_samples[channel][samplen], powerdivider) # REVIEW #0 powerdivider has no underscore
             for pulse in pulse_list:
                 if pulse==pulse_list[0]:
                     continue
-                total_samples[channel][samplen]+=(samples_dict[tuple(pulse)]
-                                                    [channel][samplen]
-                                                    /power_divider)
+                total_samples[channel][samplen]+=(samples_dict[tuple(pulse)] # REVIEW #39 if you take this out of the for samplen loop, can do 'total_samples[channel] +=  samples_dict[tuple(pulse)][channel]/power_divider'
+                                                    [channel][samplen] # REVIEW #1 why do you have parenthesis around this? Is it a tuple?
+                                                    /power_divider) # REVIEW #0 are you dividing by power_divider twice?
 
     # Now get what channels we need to transmit on for this combined
     #   pulse.
     # print("First cpo: {}".format(pulse_list[0][1]))
-    pulse_channels=cpos[pulse_list[0][1]]['txchannels']
+    pulse_channels=cpos[pulse_list[0][1]]['txchannels'] # REVIEW #35 can make this a function 
     for pulse in pulse_list:
         for chan in cpos[pulse[1]]['txchannels']:
             if chan not in pulse_channels:

@@ -371,12 +371,12 @@ def radar():
                             isamples_list=[]
                             qsamples_list=[]
                             if repeat:
-                                pulse_channels=[]
+                                pulse_channels=[] # REVIEW #26 channel vs antenna name
                             else:
                                 # Initialize a list of lists for
                                 #   samples on all channels.
                                 pulse_list.pop(0) # remove boolean repeat value
-                                timing=pulse_list[0]
+                                timing=pulse_list[0] # REVIEW #33 You can just do: 'timing = pulse_list.pop(0)'
                                 pulse_list.pop(0)
                                 # TODO:need to determine what power
                                 #   to use - should determine using
