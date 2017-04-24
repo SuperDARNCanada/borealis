@@ -4,7 +4,7 @@
 #include <thread>
 #include <unistd.h>
 #include <zmq.hpp>
-#include "utils/protobuf/computationpacket.pb.h"
+#include "utils/protobuf/rxsamplesmetadata.pb.h"
 #include "utils/protobuf/sigprocpacket.pb.h"
 #include "utils/shared_memory/shared_memory.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
@@ -53,7 +53,7 @@ int main(int argc, char** argv){
     boost::interprocess::mapped_region first_region, second_region;
     void *current_region_addr;
 
-    std::vector<double> rxfreqs = {0.0,0.0,0.0};
+    std::vector<double> rxfreqs = {12.0e6,10.0e6,14.0e6};
     for (int i=0; i<rxfreqs.size(); i++) {
         auto rxchan = sp.add_rxchannel();
         rxchan->set_rxfreq(rxfreqs[i]);
@@ -66,10 +66,10 @@ int main(int argc, char** argv){
                             driver_options.get_interferometer_antenna_count();
 
 
-    computationpacket::ComputationPacket cp;
+    rxsamplesmetadata::RxSamplesMetadata samples_metadata;
 
     auto num_samples = int(rx_rate * 0.1);
-    cp.set_numberofreceivesamples(num_samples);
+    samples_metadata.set_numberofreceivesamples(num_samples);
 
     auto default_v = std::complex<float>(0.0,0.0);
     std::vector<std::complex<float>> samples(num_samples*num_channels,default_v);
@@ -77,7 +77,7 @@ int main(int argc, char** argv){
 
     for (int i=0; i<samples.size(); i++) {
         auto nco_point = std::complex<float>(0.0,0.0);
-        for (auto freq : rx_freqs) {
+        for (auto freq : rxfreqs) {
             auto sampling_freq = 2 * M_PI * freq/rx_rate;
 
             auto radians = fmod(sampling_freq * i, 2 * M_PI);
@@ -99,7 +99,7 @@ int main(int argc, char** argv){
     while(1) {
 
         sp.set_sequence_num(sqn_num);
-        cp.set_sequence_num(sqn_num);
+        samples_metadata.set_sequence_num(sqn_num);
 
         std::string r_msg_str;
         sp.SerializeToString(&r_msg_str);
@@ -125,14 +125,15 @@ int main(int argc, char** argv){
 
         radctrl_socket.send(r_msg);
 
-        cp.set_name(name_str.c_str());
+        samples_metadata.set_shrmemname(name_str.c_str());
 
-        std::string c_msg_str;
-        cp.SerializeToString(&c_msg_str);
-        zmq::message_t c_msg (c_msg_str.size());
-        memcpy ((void *) c_msg.data (), c_msg_str.c_str(), c_msg_str.size());
+        std::string samples_metadata_str;
+        samples_metadata.SerializeToString(&samples_metadata_str);
+        zmq::message_t samples_metadata_msg (samples_metadata_str.size());
+        memcpy ((void *) samples_metadata_msg.data (), samples_metadata_str.c_str(),
+                samples_metadata_str.size());
 
-        driver_socket.send(c_msg);
+        driver_socket.send(samples_metadata_msg);
 
 /*        zmq::message_t data(samples.data(),samples.size()*sizeof(std::complex<float>));
         driver_socket.send(data);*/
