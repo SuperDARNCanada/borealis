@@ -42,15 +42,16 @@ class Scan():
         self.scanboundf=self.cpos[self.keys[0]]['scanboundf']
         for cpo in self.keys:
             if self.cpos[i]['scanboundf'] !=self.scanboundf: #REVIEW #0 wrong iterator 'i' being used
-                errmsg="Scan Boundary Flag not the Same Between CPO's %d and \ #REVIEW #40 use triple quotes for multiline string
+                errmsg="Scan Boundary Flag not the Same Between CPO's %d and \
                     %d combined in Scan" % (self.keys[0], cpo)
+                    #REVIEW #40 use triple quotes for multiline string
                 sys.exit(errmsg)
         if self.scanboundf==1:
             self.scanbound=self.cpos[self.keys[0]]['scanbound']
             for cpo in self.keys:
                 if self.cpos[i]['scanbound'] !=self.scanbound: #REVIEW #0 wrong iterator 'i' being used
-                    errmsg="Scan Boundary not the Same Between CPO's %d and %d \ #REVIEW #40 use triple quotes for multiline string
-                         combined in Scan" % (self.keys[0], cpo)
+                    errmsg="""Scan Boundary not the Same Between CPO's %d and %d
+                         combined in Scan""" % (self.keys[0], cpo)
                     sys.exit(errmsg)
 
         # NOTE: for now we assume that when INTTIME combined, the
@@ -73,9 +74,10 @@ class Scan():
         for cpos in self.get_inttimes(): #REVIEW #33 could just use self.cpo_inttimes instead of recalling this fn
             for cpo in cpos:
                 if len(self.scan_beams[cpo])!=len(self.scan_beams[cpos[0]]):
-                    errmsg="CPO %d and %d are mixed within the AveragingPeriod \ #REVIEW #40 use triple quotes for multiline string
-                         but do not have the same number of AveragingPeriods \
-                        in their scan" % (self.keys[0], cpo)
+                    errmsg="""CPO %d and %d are mixed within the AveragingPeriod
+                         but do not have the same number of AveragingPeriods
+                        in their scan""" % (self.keys[0], cpo)
+                    #REVIEW #40 use triple quotes for multiline string -REPLY OK
                     #REVIEW #6 need a todo for error handling this.
 
         self.aveperiods=[]

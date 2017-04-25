@@ -61,15 +61,15 @@ class AveragingPeriod():
         self.intt=self.cpos[self.keys[0]]['intt']
         for cpo in self.keys:
             if self.cpos[cpo]['intt'] != self.intt:
-                errmsg="CPO %d and %d are INTTIME mixed and do not have the \ #REVIEW #40 use triple quotes for multiline string
-                    same Averaging Period duration intt" % (self.keys[0],
+                errmsg="""CPO %d and %d are INTTIME mixed and do not have the
+                    same Averaging Period duration intt""" % (self.keys[0],
                     self.keys[cpo])
                 sys.exit(errmsg)
         self.intn=self.cpos[self.keys[0]]['intn']
         for cpo in self.keys:
             if self.cpos[cpo]['intn'] != self.intn:
-                errmsg="CPO %d and %d are INTTIME mixed and do not have the \ #REVIEW #40 use triple quotes for multiline string
-                    same NAVE goal intn" % (self.keys[0], self.keys[cpo])
+                errmsg="""CPO %d and %d are INTTIME mixed and do not have the
+                    same NAVE goal intn""" % (self.keys[0], self.keys[cpo])
                 sys.exit(errmsg)
 
         # NOTE: Do not need beam information inside the AveragingPeriod
@@ -112,9 +112,9 @@ class AveragingPeriod():
                                 # seq_combos[j][1] is the known last
                                 #   value in seq_combos[i]
                             except ValueError:
-                                errmsg="Interfacing not Valid: CPO %d and CPO \ #REVIEW #40 use triple quotes for multiline string
-                                    %d are combined in-integration period and \
-                                    do not interface the same with CPO %d" % (
+                                errmsg="""Interfacing not Valid: CPO %d and CPO 
+                                    %d are combined in-integration period and
+                                    do not interface the same with CPO %d""" % (
                                     integ_combos[i][m], integ_combos[i][k],
                                     add_n)
                                 sys.exit(errmsg)

@@ -291,8 +291,9 @@ class ExperimentPrototype(object):
         for num1,num2 in self.interface.keys(): # REVIEW #39 There is a more pythonic way to iterate over dicts http://stackoverflow.com/questions/3294889/iterating-over-dictionaries-using-for-loops-in-python
             if ((num1>=self.cponum) or (num2>=self.cponum) or (num1<0) # REVIEW #15 Should you check ordering? Num 1 always less than num 2 based off your interfacing comments.
                     or (num2<0)):
-                errmsg='Interfacing key ({}, {}) is not necessary and not \ # REVIEW #34 Maybe split these into two error checks/messages. One for invalid parameters and then one for unnecessary keys
+                errmsg='Interfacing key ({}, {}) is not necessary and not \
                     valid'.format(num1, num2)
+                    # REVIEW #34 Maybe split these into two error checks/messages. One for invalid parameters and then one for unnecessary keys
                 sys.exit(errmsg) # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead.
             if self.interface[num1, num2] not in if_type():
                 errmsg='Interfacing Not Valid Type between CPO {} and CPO \
