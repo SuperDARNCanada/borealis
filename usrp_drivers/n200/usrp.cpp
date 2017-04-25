@@ -18,19 +18,19 @@ See LICENSE for details.
 /**
  * @brief      Creates the multiUSRP abstraction with the options from the config file.
  *
- * @param[in]  driver_options  The driver options
+ * @param[in]  driver_options  The driver options // REVIEW #1 hmmm... a better comment? "The driver options parsed from config file" 
  */
 USRP::USRP(const DriverOptions& driver_options)
 {
-  mboard_ = 0;
+  mboard_ = 0; // REVIEW #1 the UHD documentation is bad here, so we should make a comment or document this somewhere, what does mboard 0 vs mboard 1 mean? will this be tied to a specific USRP?
   gpio_bank_ = driver_options.get_gpio_bank();
   scope_sync_mask_ = driver_options.get_scope_sync_mask();
   atten_mask_ = driver_options.get_atten_mask();
   tr_mask_ = driver_options.get_tr_mask();
-
+// REVIEW #37 The make function can raise uhd::key_error and index_error, should we check this? or should it be a separate 'check config' program that does it?
   usrp_ = uhd::usrp::multi_usrp::make(driver_options.get_device_args());
   // Set first four GPIO on gpio_bank_ to output, the rest are input
-  usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x000F, 0xFFFF);
+  usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x000F, 0xFFFF); // REVIEW #33 Do you actually need the mask since it's a default 0xffffffff? Also not sure how 16 bits gets expanded to 32, would it be 0x0000FFFF or 0xFFFFFFFF since the function takes 32 bit number?
   set_usrp_clock_source(driver_options.get_ref());
   set_tx_subdev(driver_options.get_tx_subdev());
   set_main_rx_subdev(driver_options.get_main_rx_subdev());
@@ -131,7 +131,7 @@ void USRP::set_main_rx_subdev(std::string main_subdev)
   usrp_->set_rx_subdev_spec(main_subdev);
 }
 
-
+// REVIEW #43 It would be best if we could have in the config file a map of direct antenna to USRP box/subdev/channel so you can change the interferometer to a different set of boxes for example. Also if a rx daughterboard stopped working and you needed to move both main and int to a totally different box for receive, then you could do that.
 /**
  * @brief      Sets the interferometer receive subdev.
  *
@@ -255,7 +255,7 @@ void USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
  */
 void USRP::set_time_source(std::string source)
 {
-  if (source == "pps"){
+  if (source == "pps"){ // REVIEW #0 This should be "external" - otherwise we'll never get into this if statement since the config has "external"
     usrp_->set_time_source(source);
     usrp_->set_time_unknown_pps(uhd::time_spec_t(0.0));
   }
@@ -280,7 +280,7 @@ void USRP::check_ref_locked()
       TODO: something like this
       UHD_ASSERT_THROW(ref_locked.to_bool());
       */
-    }
+    } // REVIEW #6 TODO: Get an else statement and do something if there's no ref_locked sensor found
 
   }
 }
