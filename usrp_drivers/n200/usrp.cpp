@@ -73,9 +73,9 @@ void USRP::set_tx_subdev(std::string tx_subdev)
  */
 void USRP::set_tx_rate(double tx_rate)
 {
-  usrp_->set_tx_rate(tx_rate);
+  usrp_->set_tx_rate(tx_rate); // REVIEW #43 set and check channels separately similar to set_tx_freq ? 
 
-  double actual_rate = usrp_->get_tx_rate();
+  double actual_rate = usrp_->get_tx_rate(); // REVIEW #37 default channel to check is channel 0 - should check all channels?
 
   if (actual_rate != tx_rate) {
     /*TODO: something*/
@@ -87,9 +87,9 @@ void USRP::set_tx_rate(double tx_rate)
  *
  * @return     The transmit sample rate in Sps.
  */
-double USRP::get_tx_rate()
+double USRP::get_tx_rate() // REVIEW #37 pass the channel to check here 
 {
-  return usrp_->get_tx_rate();
+  return usrp_->get_tx_rate(); 
 }
 
 /**
@@ -108,7 +108,7 @@ void USRP::set_tx_center_freq(double freq, std::vector<size_t> chs)
   uhd::tune_request_t tune_request(freq);
 
   for(auto &channel : chs) {
-    usrp_->set_tx_freq(tune_request, channel);
+    usrp_->set_tx_freq(tune_request, channel); // REVIEW #22 use the return value from this (of type tune_result_t) to find actual RF frequency, might be faster and provide more information
 
     double actual_freq = usrp_->get_tx_freq(channel);
     if (actual_freq != freq) {
@@ -212,9 +212,9 @@ std::vector<size_t> USRP::get_receive_channels()
  */
 void USRP::set_rx_rate(double rx_rate)
 {
-  usrp_->set_rx_rate(rx_rate);
+  usrp_->set_rx_rate(rx_rate); // REVIEW #43 set and check channels separately similar to set_tx_freq ? 
 
-  double actual_rate = usrp_->get_rx_rate();
+  double actual_rate = usrp_->get_rx_rate(); // REVIEW #37 default channel to check is channel 0 - should check all channels?
 
   if (actual_rate != rx_rate) {
     /*TODO: something*/
@@ -230,14 +230,14 @@ void USRP::set_rx_rate(double rx_rate)
  * The USRP uses a numbered channel mapping system to identify which data streams come from which
  * USRP and its daughterboard frontends. With the daughtboard frontends connected to the
  * transmitters, controlling what USRP channels are selected will control what antennas are
- * used and what order they are in. To simplify data processing, all receive channels are used.
+ * used and what order they are in. To simplify data processing, all receive channels are used. // REVIEW #1 does this statement mean all channels availabe (ie all 32) or all channels set up in the USRP class (returned from create_receive_channels) - clarify
  */
 void USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
 {
   uhd::tune_request_t tune_request(freq);
 
   for(auto &channel : chs) {
-    usrp_->set_rx_freq(tune_request, channel);
+    usrp_->set_rx_freq(tune_request, channel); // REVIEW #22 use the return value from this (of type tune_result_t) to find actual RF frequency, might be faster and provide more information
 
     double actual_freq = usrp_->get_rx_freq(channel);
     if (actual_freq != freq) {
@@ -288,10 +288,10 @@ void USRP::check_ref_locked()
 
 void USRP::set_gpio(uint32_t mask, std::string gpio_bank, size_t mboard)
 {
-  usrp_->set_gpio_attr(gpio_bank, "OUT", 0xFFFF, mask, mboard);
+  usrp_->set_gpio_attr(gpio_bank, "OUT", 0xFFFF, mask, mboard); // REVIEW #1 provide a docstring
 }
 
-void USRP::set_gpio(uint32_t mask)
+void USRP::set_gpio(uint32_t mask) // REVIEW #1 provide docstring
 {
   set_gpio(mask, gpio_bank_, mboard_);
 }
@@ -321,14 +321,14 @@ void USRP::set_tr()
   usrp_->set_gpio_attr(gpio_bank_, "OUT", 0xFFFF, tr_mask_, mboard_);
 }
 
-void USRP::clear_gpio(uint32_t mask, std::string gpio_bank, size_t mboard)
+void USRP::clear_gpio(uint32_t mask, std::string gpio_bank, size_t mboard) // REVIEW #1 provide docstring
 {
   usrp_->set_gpio_attr(gpio_bank, "OUT", 0x0000, mask, mboard);
 }
 
-void USRP::clear_gpio(uint32_t mask)
+void USRP::clear_gpio(uint32_t mask) // REVIEW #1 provide docstring
 {
-  set_gpio(mask, gpio_bank_, mboard_);
+  set_gpio(mask, gpio_bank_, mboard_); // REVIEW #0 should call clear_gpio not set_gpio
 }
 
 /**
@@ -355,10 +355,12 @@ void USRP::clear_tr()
   usrp_->set_gpio_attr(gpio_bank_, "OUT", 0x0000, tr_mask_, mboard_);
 }
 
+// REVIEW #6 TODO create a set and clear for new method of timing that is a hybrid between atten and t/r (we are only using one pin for both and breaking off on separate board)
+
 /**
  * @brief      Gets the usrp.
  *
- * @return     The usrp.
+ * @return     The usrp. // REVIEW #1 ... object which is a usrp multi_usrp shared pointer
  */
 uhd::usrp::multi_usrp::sptr USRP::get_usrp()
 {
@@ -371,7 +373,7 @@ uhd::usrp::multi_usrp::sptr USRP::get_usrp()
  *
  * @param[in]  chs   USRP channels of which to generate info for.
  *
- * @return     String representation of the USRP parameters.
+ * @return     String representation of the USRP parameters. // REVIEW #1 what does get_pp_string tell us
  */
 std::string USRP::to_string(std::vector<size_t> chs)
 {
@@ -389,7 +391,7 @@ std::string USRP::to_string(std::vector<size_t> chs)
 
   for(auto &channel : receive_channels) {
     device_str << "RX channel " << channel << " freq "
-           << usrp_->get_tx_freq(channel) << " MHz" << std::endl;
+           << usrp_->get_tx_freq(channel) << " MHz" << std::endl; // REVIEW #0 should be get_rx_freq
   }
 
   return device_str.str();
@@ -397,7 +399,7 @@ std::string USRP::to_string(std::vector<size_t> chs)
 }
 
 /**
- * @brief      Constructs a blank USRP TX metadata object.
+ * @brief      Constructs a blank USRP TX metadata object. // REVIEW #1 maybe explain the purpose of this?
  */
 TXMetadata::TXMetadata()
 {
