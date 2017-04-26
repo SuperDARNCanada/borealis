@@ -29,14 +29,14 @@ interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
 
 def interfacing(cponum):  # REVIEW #26 Could use a more informative name.
-    if_list = []
-    for i in range(
-            cponum):  # REVIEW #26 i and j can have more meaningful names. Perhaps cpo1, cpo2, something like that. Could go for most places indexing is used.
+    if_keys = []
+    for i in range(cponum):
+        # REVIEW #26 i and j can have more meaningful names. Perhaps cpo1, cpo2, something like that. Could go for most places indexing is used.
         for j in range(i + 1, cponum):
-            if_list.append((i, j))
-    if_keys = tuple(if_list)  # REVIEW #33 Fairly sure this conversion to a tuple is unneeded for what is happening here.
-    if_dict = dict((key,"NONE") for key in if_list)
-
+            if_keys.append((i, j))
+    # REVIEW #33 Fairly sure this conversion to a tuple is unneeded for what is happening here. REPLY - right because
+    # it's already a list of tuples oops.
+    if_dict = dict((key,"NONE") for key in if_keys)
 
     return if_dict
 
