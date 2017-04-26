@@ -40,7 +40,9 @@ def setup_driver_socket():  # to send pulses to driver. # REVIEW #38 could move 
     Setup a zmq socket to communicate with the driver.
     """
 
-    context = zmq.Context()  # REVIEW #33 Apparently it's best to just use one zmq context in the entire application - http://stackoverflow.com/questions/32280271/zeromq-same-context-for-multiple-sockets. So maybe have a global context or set it up in the main function and pass it to these functions.
+    context = zmq.Context()  # REVIEW #33 Apparently it's best to just use one zmq context in the entire application
+    # - http://stackoverflow.com/questions/32280271/zeromq-same-context-for-multiple-sockets. So maybe have a global
+    # context or set it up in the main function and pass it to these functions.
     cpsocket = context.socket(zmq.PAIR)
     cpsocket.connect("ipc:///tmp/feeds/0")
     return cpsocket
@@ -82,6 +84,8 @@ def setup_sigproc_timing_ack_socket():
 def setup_cp_socket():
     """
     Setup a zmq socket to get updated experiment parameters from the experiment.
+    :rtype: object
+    :return: 
     """
 
     context = zmq.Context()  # REVIEW #33
@@ -90,37 +94,12 @@ def setup_cp_socket():
     return cpsocket
 
 
-# REVIEW #33 Can this be removed?
-# def setup_ack_poller(socket1,socket2):
-#    """
-#
-#    """
-#
-#    poller=zmq.Poller()
-#    poller.register(socket1, zmq.POLLIN)
-#    poller.register(socket2, zmq.POLLIN)
-#    return poller
-
-
-# def pollzmq(socket1, socket2, rxseqnum, txseqnum):
-#    """
-#
-#    """
-#
-#    poller=zmq.Poller()
-#    poller.register(socket1, zmq.POLLIN)
-#    poller.register(socket2, zmq.POLLIN)
-#    socks = dict(poller.poll(100)) # get two messages
-#    if procsocket in socks and txsocket in socks: # need one message from both.
-#        if socks[procsocket] == zmq.POLLIN:
-#            rxseqnum = get_ack(procsocket)
-#        if socks[txsocket] == zmq.POLLIN:
-#            txseqnum = get_ack(txsocket)
-
-
 def get_prog(socket):
     """
     Receive pickled python object of the experiment class.
+    :rtype: object
+    :param socket: 
+    :return: 
     """
 
     prog = socket.recv_pyobj()
@@ -132,9 +111,26 @@ def get_prog(socket):
 def data_to_driver(driverpacket, txsocket, channels, isamples_list,  # REVIEW #26 change channels to antennas
                    qsamples_list, txctrfreq, rxctrfreq, txrate,
                    numberofreceivesamples, SOB, EOB, timing, seqnum,
-                   repeat=False):  # REVIEW #5 Add description of params with units in docstring. Maybe find a docstring generator for vim.
+                   repeat=False):  # REVIEW #5 Add description of params with units in docstring. Maybe find a 
+    # docstring generator for vim. 
     """ Place data in the driver packet and send it via zeromq to the driver.
         Then receive the acknowledgement.
+        :rtype: object
+        :param driverpacket: 
+        :param txsocket: 
+        :param channels: 
+        :param isamples_list: 
+        :param qsamples_list: 
+        :param txctrfreq: 
+        :param rxctrfreq: 
+        :param txrate: 
+        :param numberofreceivesamples: 
+        :param SOB: 
+        :param EOB: 
+        :param timing: 
+        :param seqnum: 
+        :param repeat: 
+        :return: 
     """
 
     if repeat:  # REVIEW #1 Add detailed description to docstring on how the repeat functionality works.
@@ -316,17 +312,17 @@ def radar():
                     poller = zmq.Poller()
                     poller.register(cpsocket, zmq.POLLIN)
                     cpsocks = dict(poller.poll(3))  # polls for 3 ms, NOTE this is before inttime timer starts.
-                    if cpsocket in cpsocks:  #
-                        if cpsocks[cpsocket] == zmq.POLLIN:
-                            new_cp = get_prog(cpsocket)  # TODO: write this function
-                            if new_cp == None:
-                                print "NO NEW CP"
-                            elif isinstance(new_cp,
-                                            controlprog.ControlProg):  # is this how to check if it's a correct class type?
-                                prog = new_cp
-                                updated_cp_received = True
-                                print "NEW CP!!"
-                                break
+                    if cpsocket in cpsocks and cpsocks[cpsocket] == zmq.POLLIN:
+                    #
+                        new_cp = get_prog(cpsocket)  # TODO: write this function
+                        if new_cp == None:
+                            print "NO NEW CP"
+                        elif isinstance(new_cp, controlprog.ControlProg):  # is this how to check if it's
+                            # a correct class type?
+                            prog = new_cp
+                            updated_cp_received = True
+                            print "NEW CP!!"
+                            break
 
                     if scan_iter >= len(scan.scan_beams[aveperiod.keys[0]]):  # REVIEW #3 We just don't understand this.
                         # All keys will have the same length scan_beams

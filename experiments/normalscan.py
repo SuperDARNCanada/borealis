@@ -1,10 +1,7 @@
 #!/usr/bin/python
 
 # write an experiment that creates a new control program.
-import sys
 from experiment_prototype import ExperimentPrototype
-import zmq
-import json
 
 
 class Normalscan(ExperimentPrototype):
