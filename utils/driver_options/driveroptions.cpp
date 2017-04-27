@@ -13,12 +13,12 @@ DriverOptions::DriverOptions() {
 
     devices = config_pt.get<std::string>("devices");
     /*Remove whitespace/new lines from device list*/
-    boost::remove_erase_if (devices, boost::is_any_of(" \n"));
+    boost::remove_erase_if (devices, boost::is_any_of(" \n"));// REVIEW #0 Do you need to also remove \r \f \t \v for example?
 
     tx_subdev = config_pt.get<std::string>("tx_subdev");
-    main_rx_subdev = config_pt.get<std::string>("main_rx_subdev");
+    main_rx_subdev = config_pt.get<std::string>("main_rx_subdev");// REVIEW #7 Talk about the subdevs/ etc in documentation since the USRP documentation is not very straightforward.
     interferometer_rx_subdev = config_pt.get<std::string>("interferometer_rx_subdev");
-    pps = config_pt.get<std::string>("pps");
+    pps = config_pt.get<std::string>("pps");// REVIEW #7 Document all the options available to user in config.ini file - with examples
     ref = config_pt.get<std::string>("ref");
     cpu = config_pt.get<std::string>("cpu");
     otw = config_pt.get<std::string>("overthewire");

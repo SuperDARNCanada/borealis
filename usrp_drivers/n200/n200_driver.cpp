@@ -58,16 +58,16 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
 
 
   zmq::socket_t packet_socket(driver_c, ZMQ_SUB);
-  packet_socket.connect("inproc://threads");
-  packet_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+  packet_socket.connect("inproc://threads"); // REVIEW #37 check return value (0 if success, -1 if fail with errno set)
+  packet_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0); // REVIEW #37 check return value (0 if success, -1 if fail with errno set)
   std::cout << "TRANSMIT: Creating and connected to thread socket in control\n";
-  zmq::message_t request;
+  zmq::message_t request;// REVIEW #32 Where should this be? The other message_t is initialized down below the socket connections, but this one is here, any reason why?
 
   zmq::socket_t timing_socket(driver_c, ZMQ_PAIR);
-  timing_socket.connect("inproc://timing");
+  timing_socket.connect("inproc://timing");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
 
   zmq::socket_t ack_socket(driver_c, ZMQ_PAIR);
-  ack_socket.connect("inproc://ack");
+  ack_socket.connect("inproc://ack");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
 
 
   auto channels_set = false;
@@ -325,18 +325,18 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
   std::cout << "Enter receive thread\n";
 
   zmq::socket_t packet_socket(driver_c, ZMQ_SUB);
-  packet_socket.connect("inproc://threads");
-  packet_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+  packet_socket.connect("inproc://threads");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
+  packet_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0);// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
   zmq::message_t request;
   std::cout << "RECEIVE: Creating and connected to thread socket in control\n";
 
   zmq::socket_t timing_socket(driver_c, ZMQ_PAIR);
-  timing_socket.bind("inproc://timing");
+  timing_socket.bind("inproc://timing");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
   zmq::message_t timing;
 
   //zmq::context_t context(4);
   zmq::socket_t data_socket(driver_c, ZMQ_PAIR);
-  data_socket.connect("inproc://data");
+  data_socket.connect("inproc://data");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
 
   auto channels_set = false;
   auto center_freq_set = false;
@@ -496,22 +496,22 @@ void control(zmq::context_t &driver_c) {
 
 
   zmq::socket_t packet_socket(driver_c, ZMQ_PUB);
-  packet_socket.bind("inproc://threads");
+  packet_socket.bind("inproc://threads");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
 
   std::cout << "Creating and binding control socket\n";
   //zmq::context_t context(2);
-  zmq::socket_t radarctrl_socket(driver_c, ZMQ_PAIR);
-  radarctrl_socket.bind("ipc:///tmp/feeds/0");
+  zmq::socket_t radarctrl_socket(driver_c, ZMQ_PAIR);// REVIEW #29 Should this be in a config file? Sort of a magic string
+  radarctrl_socket.bind("ipc:///tmp/feeds/0");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
 
   zmq::message_t request;
 
   zmq::socket_t data_socket(driver_c, ZMQ_PAIR);
-  data_socket.bind("inproc://data");
+  data_socket.bind("inproc://data");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
 
   zmq::socket_t ack_socket(driver_c, ZMQ_PAIR);
-  ack_socket.bind("inproc://ack");
+  ack_socket.bind("inproc://ack");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
 
-  zmq::socket_t computation_socket(driver_c, ZMQ_PAIR);
+  zmq::socket_t computation_socket(driver_c, ZMQ_PAIR);// REVIEW #29 Should this be in a config file? Sort of a magic string
   computation_socket.connect("ipc:///tmp/feeds/1");
 
 
@@ -571,7 +571,7 @@ void control(zmq::context_t &driver_c) {
 
 
 
-
+// REVIEW #1 documentation
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
@@ -588,10 +588,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   //  Prepare our context
   zmq::context_t driver_context(1);
-/*  zmq::context_t timing_context(3);*/
+/*  zmq::context_t timing_context(3);*/ // REVIEW #33 use git, don't need the commented out code
 
   std::vector<std::thread> threads;
-
+// REVIEW #1 All threads work on same objects? Is that the reason for std::ref?
   std::thread control_t(control, std::ref(driver_context));
   std::thread transmit_t(transmit, std::ref(driver_context), std::ref(usrp_d),
                           std::ref(driver_options));
