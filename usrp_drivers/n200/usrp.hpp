@@ -92,11 +92,11 @@ class TXMetadata{
 };
 
 /**
- * @brief      Wrapper for the USRP RX metadata object.
+ * @brief      Wrapper for the USRP RX metadata object. // REVIEW #1 what is this used for .. more explanation
  */
 class RXMetadata{
   public:
-    RXMetadata() = default;
+    RXMetadata() = default;  // REVIEW #1 what does this do?
     uhd::rx_metadata_t& get_md();
     bool get_end_of_burst();
     uhd::rx_metadata_t::error_code_t get_error_code();
@@ -104,7 +104,7 @@ class RXMetadata{
     bool get_has_time_spec();
     bool get_out_of_sequence();
     bool get_start_of_burst();
-    uhd::time_spec_t get_time_spec();
+    uhd::time_spec_t get_time_spec(); // REVIEW #6 TODO: add getter for more_fragments boolean
 
   private:
     //! A raw USRP RX metadata object.
