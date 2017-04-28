@@ -10,87 +10,87 @@
 The template for an experiment. 
 """
 
-import sys
 import json
+import sys
 
-sys.path.append('../radar_control/scan_classes/')
 # REPLY going to try making the scan_classes into a separate package and then import because this is a relative path to
 # the running directory
+from utils.experiment_options.experimentoptions import ExperimentOptions
+from radar_control.scan_classes import scans
 
-import scans
 
-
+sys.path.append('/home/marci/code/USRP/placeholderOS/utils')
 # REVIEW #26 When we refer to comments about anything "cpobject" related, we know that naming scheme may be changed
-# entirely. REPLY ok, how about something like 'part' or a synonym: piece, component, segment, item, sliver, slice,
-# branch, module, unit, sector, or dict since it is no longer an object? I would get rid of 'cp' as well.
+# entirely. REPLY ok, changing to experiment_slice .
 
 # REVIEW #28 This could potentially be a global variable instead.
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
 
-def interfacing(cponum):  # REVIEW #26 Could use a more informative name.
+def setup_interfacing(slice_num):
     if_keys = []
-    for i in range(cponum):
-        # REVIEW #26 i and j can have more meaningful names. Perhaps cpo1, cpo2, something like that. Could go for most places indexing is used.
-        for j in range(i + 1, cponum):
-            if_keys.append((i, j))
-    # REVIEW #33 Fairly sure this conversion to a tuple is unneeded for what is happening here. REPLY - right because
-    # it's already a list of tuples oops.
+    for slice1 in range(slice_num):
+        # REVIEW #26 i and j can have more meaningful names. Perhaps cpo1, cpo2, something like that. Could go for
+        # most places indexing is used. REPLY - ok
+        for slice2 in range(slice1 + 1, slice_num):
+            if_keys.append((slice1, slice2))
+
     if_dict = dict((key,"NONE") for key in if_keys)
+    # REPLY THIS IS AWESOME
 
     return if_dict
 
 
-def selfcheck_piece(cpdict, configdata):  # REVIEW #1 #26 Name and docstring could be more clear
+def selfcheckslice(slice, configdata):  # REVIEW #1 #26 Name and docstring could be more clear REPLY ok
     """
-    Do some tests of the dictionaries in the experiment
-    to ensure values in this component make sense.
+    This is the first test of the dictionary in the experiment done to ensure values in this component make sense. This 
+    is a self-check to ensure the parameters (for example, txfreq, antennas) are appropriate.
     """
     error_count = 0
     error_dict = {}
 
-    main_antenna_count = int(configdata[
-                                 'main_antenna_count'])  # REVIEW #15 should probably make a config handler class. More in a further comment.
+    options = ExperimentOptions()
+    main_antenna_count = options.main_antenna_count
 
     # check none greater than 15, no duplicates # REVIEW #29 could say in this comment that none greater than main antenna count instead of 15.
     # REVIEW #0 Since we decided for now that we would receive on all antennas, the check for rxchannels should be equal to main+inter count.
     # REVIEW #26 Lets reflect our decision to not use the word channel.
-    if len(cpdict['txchannels']) > main_antenna_count or len(cpdict[
+    if len(slice['txchannels']) > main_antenna_count or len(slice[
                                                                  'rxchannels']) > main_antenna_count:  # REVIEW #31 looks like three lines are over 100 chars, consider editing to be under 100
         # REVIEW #39 These errors could just be appended to a list instead of using a dictionary.
         error_dict[
             error_count] = "CP Object Has Too Many Antenna Channels"  # REVIEW #34 Could include the actual value that caused the error. Goes for all error statements.
         error_count = error_count + 1
-    for i in range(len(cpdict['txchannels'])):
-        if cpdict['txchannels'][i] >= main_antenna_count or cpdict['rxchannels'][i] >= main_antenna_count:
+    for i in range(len(slice['txchannels'])):
+        if slice['txchannels'][i] >= main_antenna_count or slice['rxchannels'][i] >= main_antenna_count:
             error_dict[error_count] = """ Object Specifies Channel \
                 Numbers Over {}""".format(main_antenna_count)
             error_count = error_count + 1
-        for j in range(i + 1, len(cpdict['txchannels'])):
-            if cpdict['txchannels'][i] == cpdict['txchannels'][j] or cpdict['rxchannels'][i] == cpdict['rxchannels'][
+        for j in range(i + 1, len(slice['txchannels'])):
+            if slice['txchannels'][i] == slice['txchannels'][j] or slice['rxchannels'][i] == slice['rxchannels'][
                 j]:  # REVIEW #0 #39 This will work only if the rxchannels and txchannels lists are sorted. Maybe you can use a list comprehension as shown here instead: http://stackoverflow.com/questions/9835762/find-and-list-duplicates-in-a-list
                 error_dict[error_count] = "CP Object Has Duplicate Antennas"
                 error_count = error_count + 1
 
     # check sequence increasing # REVIEW #26 Is this supposed to be pulse sequence? would make it more clear if named pulse_sequence or something
-    if len(cpdict['sequence']) != 1:
-        for i in range(1, len(cpdict['sequence'])):
-            if cpdict['sequence'][i] <= cpdict['sequence'][
+    if len(slice['sequence']) != 1:
+        for i in range(1, len(slice['sequence'])):
+            if slice['sequence'][i] <= slice['sequence'][
                         i - 1]:  # REVIEW #39 Can use pythonic way of doing this: http://stackoverflow.com/questions/4983258/python-how-to-check-list-monotonicity
                 error_dict[error_count] = "CP Object Sequence Not Increasing"
                 error_count = error_count + 1
 
     # check pulse_len and mpinc make sense (values in us)
-    if cpdict['pulse_len'] > cpdict['mpinc']:
+    if slice['pulse_len'] > slice['mpinc']:
         error_dict['error_count'] = "CP Pulse Length Greater than MPINC"
         error_count = error_count + 1
-    if cpdict[
+    if slice[
         'pulse_len'] < 0.01:  # REVIEW #29 Magic number - Define this as a minimum pulse length in us variable somewhere
         error_dict[error_count] = "CP Pulse Length Too Small"
         error_count = error_count + 1
 
     # check intn and intt make sense given mpinc, and pulse sequence.
-    seq_len = cpdict['mpinc'] * (cpdict['sequence'][
+    seq_len = slice['mpinc'] * (slice['sequence'][
                                      -1] + 1)  # REVIEW #0 Do you really need the +1 here? Also need to take into account the wait time at end of pulse sequence (ss_delay in current system)
 
     # TODO: Check these
@@ -98,32 +98,32 @@ def selfcheck_piece(cpdict, configdata):  # REVIEW #1 #26 Name and docstring cou
     #        self.intn=21 # max number of averages (aka full pulse sequences transmitted) in an integration time intt (default 3s)
 
     # check no duplicates in beam directions # REVIEW #0 Why can we not have duplicates in beam directions? And why do they have to be in order? Example: interleaved_normalscan
-    for i in range(len(cpdict['beamdir'])):
-        for j in range(i + 1, len(cpdict['beamdir'])):
-            if cpdict['beamdir'][i] == cpdict['beamdir'][j]:
+    for i in range(len(slice['beamdir'])):
+        for j in range(i + 1, len(slice['beamdir'])):
+            if slice['beamdir'][i] == slice['beamdir'][j]:
                 error_dict[error_count] = "CP Beam Direction Has Duplicates"
                 error_count = error_count + 1
-            if cpdict['beamdir'][i] > cpdict['beamdir'][j]:
+            if slice['beamdir'][i] > slice['beamdir'][j]:
                 error_dict[error_count] = "CP Beam Directions Not in Order \
                     Clockwise (E of N is positive)"
                 error_count = error_count + 1
 
-    if (not cpdict[
+    if (not slice[
         'scan']):  # if empty # REVIEW #1 We're not sure what 'scan' parameter is just from looking at this, and below code. Why can't it be empty?
         error_dict[error_count] = "Scan Empty"
         error_count = error_count + 1
 
     # check beam numbers in scan exist # REVIEW #1 Also here we're not sure what the error check implies 
-    for i in cpdict['scan']:
-        if i >= len(cpdict['beamdir']):
+    for i in slice['scan']:
+        if i >= len(slice['beamdir']):
             error_dict[error_count] = "CP Scan Beam Direction DNE, not \
                 Enough Beams in beamdir"
             error_count = error_count + 1
 
     # check scan boundary not less than minimum required scan time. 
-    if cpdict[
+    if slice[
         'scanboundf'] == 1:  # REVIEW #26 We assume this is a flag, but naming could be better, also can use True and False instead of 1's and 0's if it's a boolean
-        if cpdict['scanbound'] < (len(cpdict['scan']) * cpdict[
+        if slice['scanbound'] < (len(slice['scan']) * slice[
             'intt']):  # REVIEW #5 Need units documented somewhere highly visible for scanbound, intt
             error_dict[error_count] = "CP Scan Too Long for ScanBoundary"
             error_count = error_count + 1
@@ -200,7 +200,7 @@ class ExperimentPrototype(object):
         self.acfint = 1
         # Determine lag-zero interferometer power in fitacf.
 
-        self.interface = interfacing(
+        self.interface = setup_interfacing(
             self.cponum)  # REVIEW #26 We got a bit confused if just looking at this line, is cponum the total number or the 'index' (specific identifier of cpo) so maybe the name needs updating to reflect this. cpo_count, num_cp_objects, 'total' something
         # Dictionary of how each cpo interacts with the other cpos.
         # Default is "NONE" for all, but must be modified in experiment.
@@ -285,7 +285,7 @@ class ExperimentPrototype(object):
         # TODO: somehow check if self.cpid is not unique
 
         for cpo in range(self.cponum):
-            selferrs = selfcheck_piece(self.cpo_list[cpo], self.config)
+            selferrs = selfcheckslice(self.cpo_list[cpo], self.config)
             if (not selferrs):  # REVIEW #39 unneeded parenthesis
                 # If returned error dictionary is empty
                 continue
