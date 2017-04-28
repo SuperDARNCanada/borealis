@@ -18,8 +18,6 @@ import sys
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from radar_control.scan_classes import scans
 
-
-sys.path.append('/home/marci/code/USRP/placeholderOS/utils')
 # REVIEW #26 When we refer to comments about anything "cpobject" related, we know that naming scheme may be changed
 # entirely. REPLY ok, changing to experiment_slice .
 
@@ -35,13 +33,13 @@ def setup_interfacing(slice_num):
         for slice2 in range(slice1 + 1, slice_num):
             if_keys.append((slice1, slice2))
 
-    if_dict = dict((key,"NONE") for key in if_keys)
+    if_dict = dict((key, "NONE") for key in if_keys)
     # REPLY THIS IS AWESOME
 
     return if_dict
 
 
-def selfcheckslice(slice, configdata):  # REVIEW #1 #26 Name and docstring could be more clear REPLY ok
+def selfcheckslice(slice):  # REVIEW #1 #26 Name and docstring could be more clear REPLY ok
     """
     This is the first test of the dictionary in the experiment done to ensure values in this component make sense. This 
     is a self-check to ensure the parameters (for example, txfreq, antennas) are appropriate.
@@ -56,7 +54,7 @@ def selfcheckslice(slice, configdata):  # REVIEW #1 #26 Name and docstring could
     # REVIEW #0 Since we decided for now that we would receive on all antennas, the check for rxchannels should be equal to main+inter count.
     # REVIEW #26 Lets reflect our decision to not use the word channel.
     if len(slice['txchannels']) > main_antenna_count or len(slice[
-                                                                 'rxchannels']) > main_antenna_count:  # REVIEW #31 looks like three lines are over 100 chars, consider editing to be under 100
+                                                                'rxchannels']) > main_antenna_count:  # REVIEW #31 looks like three lines are over 100 chars, consider editing to be under 100
         # REVIEW #39 These errors could just be appended to a list instead of using a dictionary.
         error_dict[
             error_count] = "CP Object Has Too Many Antenna Channels"  # REVIEW #34 Could include the actual value that caused the error. Goes for all error statements.
@@ -91,7 +89,7 @@ def selfcheckslice(slice, configdata):  # REVIEW #1 #26 Name and docstring could
 
     # check intn and intt make sense given mpinc, and pulse sequence.
     seq_len = slice['mpinc'] * (slice['sequence'][
-                                     -1] + 1)  # REVIEW #0 Do you really need the +1 here? Also need to take into account the wait time at end of pulse sequence (ss_delay in current system)
+                                    -1] + 1)  # REVIEW #0 Do you really need the +1 here? Also need to take into account the wait time at end of pulse sequence (ss_delay in current system)
 
     # TODO: Check these
     #        self.intt=3000 # duration of the direction, in ms
@@ -285,7 +283,7 @@ class ExperimentPrototype(object):
         # TODO: somehow check if self.cpid is not unique
 
         for cpo in range(self.cponum):
-            selferrs = selfcheckslice(self.cpo_list[cpo], self.config)
+            selferrs = selfcheckslice(self.cpo_list[cpo])
             if (not selferrs):  # REVIEW #39 unneeded parenthesis
                 # If returned error dictionary is empty
                 continue
@@ -312,7 +310,7 @@ class ExperimentPrototype(object):
 
         for num1, num2 in self.interface.keys():  # REVIEW #39 There is a more pythonic way to iterate over dicts http://stackoverflow.com/questions/3294889/iterating-over-dictionaries-using-for-loops-in-python
             if ((num1 >= self.cponum) or (num2 >= self.cponum) or (
-                num1 < 0)  # REVIEW #15 Should you check ordering? Num 1 always less than num 2 based off your interfacing comments.
+                        num1 < 0)  # REVIEW #15 Should you check ordering? Num 1 always less than num 2 based off your interfacing comments.
                 or (num2 < 0)):
                 errmsg = 'Interfacing key ({}, {}) is not necessary and not \
                     valid'.format(num1, num2)
