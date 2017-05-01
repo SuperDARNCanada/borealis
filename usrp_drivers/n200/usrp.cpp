@@ -103,7 +103,7 @@ double USRP::get_tx_rate() // REVIEW #37 pass the channel to check here
  * transmitters, controlling what USRP channels are selected will control what antennas are
  * used and what order they are in.
  */
-void USRP::set_tx_center_freq(double freq, std::vector<size_t> chs)
+void USRP::set_tx_center_freq(double freq, std::vector<size_t> chs) // REVIEW #28 could return the actual frequency here, could be used to adjust wave frequencies if necessary
 {
   uhd::tune_request_t tune_request(freq);
 
@@ -131,7 +131,7 @@ void USRP::set_main_rx_subdev(std::string main_subdev)
   usrp_->set_rx_subdev_spec(main_subdev);
 }
 
-// REVIEW #43 It would be best if we could have in the config file a map of direct antenna to USRP box/subdev/channel so you can change the interferometer to a different set of boxes for example. Also if a rx daughterboard stopped working and you needed to move both main and int to a totally different box for receive, then you could do that.
+// REVIEW #43 It would be best if we could have in the config file a map of direct antenna to USRP box/subdev/channel so you can change the interferometer to a different set of boxes for example. Also if a rx daughterboard stopped working and you needed to move both main and int to a totally different box for receive, then you could do that. This would be useful for both rx and tx channels.
 /**
  * @brief      Sets the interferometer receive subdev.
  *

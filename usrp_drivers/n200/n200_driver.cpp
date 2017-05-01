@@ -47,7 +47,7 @@ std::vector<size_t> make_tx_channels(const driverpacket::DriverPacket &driver_pa
 {
   std::vector<size_t> channels(driver_packet.channels_size());
   for (int i = 0; i < driver_packet.channels_size(); i++) {
-    channels[i] = i;
+    channels[i] = i; // REVIEW # 0 why not = driver_packet.channels(i) ?
   }
   return channels;
 }
@@ -55,7 +55,7 @@ std::vector<size_t> make_tx_channels(const driverpacket::DriverPacket &driver_pa
 /**
  * @brief      Makes a set of vectors of the samples for each TX channel from the driver packet.
  *
- * @param[in]  driver_packet    A received driver packet.
+ * @param[in]  driver_packet    A received driver packet. // REVIEW #1 from the radar_control parsed via protobuf
  *
  * @return     A set of vectors of TX samples for each USRP channel.
  *
@@ -66,7 +66,7 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(const driverpacket
                                                                 &driver_packet)
 {
   std::vector<std::vector<std::complex<float>>> samples(driver_packet.samples_size());
-
+ // REVIEW # 15 are all channel buffers (vectors) the same length - should verify.
   for (int i = 0 ; i < driver_packet.samples_size(); i++) {
     auto num_samps = driver_packet.samples(i).real_size();
     std::vector<std::complex<float>> v(num_samps);
@@ -129,19 +129,19 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
   //default initialize SS. Needs to be outside of loop
   auto scope_sync_low = uhd::time_spec_t(0.0);
 
-  uint32_t sqn_num = -1;
+  uint32_t sqn_num = -1; // REVIEW #0 assigning -1 to uint does this work as intended? also unnecessary
   uint32_t expected_sqn_num = 0;
 
   while (1)
   {
     packet_socket.recv(&request);
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now(); // REVIEW #26 begin_setup ?
     DEBUG_MSG("Received in TRANSMIT");
     driverpacket::DriverPacket driver_packet;
     std::string packet_msg_str(static_cast<char*>(request.data()), request.size());
-    driver_packet.ParseFromString(packet_msg_str);
+    driver_packet.ParseFromString(packet_msg_str); // REVIEW 37 check for return False
 
-    sqn_num = driver_packet.sequence_num();
+    sqn_num = driver_packet.sequence_num(); // REVIEW #0 default value for numeric types in protobuf is =0 this could create errors, should start at 1?
 
     if (sqn_num != expected_sqn_num){
       std::cout << "SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: "
@@ -158,12 +158,12 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     {
       std::cout << "TRANSMIT starting something new" <<std::endl;
       channels = make_tx_channels(driver_packet);
-      stream_args.channels = channels;
-      usrp_d.set_tx_rate(driver_packet.txrate());  // ~450us
-      tx_stream = usrp_d.get_usrp()->get_tx_stream(stream_args);  // ~44ms
+      stream_args.channels = channels; // REVIEW #15 check that the channels from the driver packet are actually available (a mapping as mentioned in other comment would be handy here)
+      usrp_d.set_tx_rate(driver_packet.txrate());  // ~450us REVIEW #15 check that it's not = 0 (default)
+      tx_stream = usrp_d.get_usrp()->get_tx_stream(stream_args);  // ~44ms REVIEW : idea maybe could we set this up with all channels and then send 0s to any that we don't want to transmit on? then this tx_stream setup could be removed from while loop. 
       usrp_channels_set = true;
     }
-    std::chrono::steady_clock::time_point stream_end = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point stream_end = std::chrono::steady_clock::now(); // REVIEW #26 stream_setup_end ? (similarly stream_setup_begin) 
 
     std::cout << "TRANSMIT stream set up time: "
       << std::chrono::duration_cast<std::chrono::microseconds>
@@ -171,12 +171,12 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       << "us" << std::endl;
 
 
-    std::chrono::steady_clock::time_point ctr_begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point ctr_begin = std::chrono::steady_clock::now(); // REVIEW #26 ctr_setup_begin & ctr_setup_end:
 
     //If there is new center frequency data, set TX center frequency for each USRP TX channel.
     if (driver_packet.txcenterfreq() > 0.0)
     {
-      std::cout << "TRANSMIT center freq " << driver_packet.txcenterfreq() << std::endl;
+      std::cout << "TRANSMIT center freq " << driver_packet.txcenterfreq() << std::endl; // REVIEW #34 should print the actual freq after it's been set (return actual frequency from set_tx_center_freq)
       usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), channels);
       center_freq_set = true;
     }
@@ -188,7 +188,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       << "us" << std::endl;
 
 
-    std::chrono::steady_clock::time_point sample_begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point sample_begin = std::chrono::steady_clock::now(); // REVIEW #26 sample_unpack_begin
 
     //Parse new samples from driver packet if they exist.
     if (driver_packet.samples_size() > 0)
@@ -212,7 +212,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     }
 
 
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now(); // REVIEW #26 end_setup
 
     std::cout << "TRANSMIT Total set up time: "
           << std::chrono::duration_cast<std::chrono::microseconds>
@@ -226,7 +226,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       //The USRP needs about a 10ms buffer into the future before time
       //commands will correctly work. This was found through testing and may be subject to change
       //with USRP firmware updates.
-      time_zero = usrp_d.get_usrp()->get_time_now() + uhd::time_spec_t(10e-3);
+      time_zero = usrp_d.get_usrp()->get_time_now() + uhd::time_spec_t(10e-3); // REVIEW #29 could set this magic number in config or global const?
     }
 
 
@@ -237,9 +237,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     auto tr_time_high = pulse_start_time - uhd::time_spec_t(tr_window_time_s);
     auto atten_time_high = tr_time_high - uhd::time_spec_t(atten_window_time_start_s);
     //This line lets us trigger TR with atten timing, but
-    //we can still keep the existing logic if we want to use it.
-    tr_time_high = atten_time_high;
-    auto scope_sync_high = atten_time_high;
+    //we can still keep the existing logic if we want to use it. 
+    tr_time_high = atten_time_high; // REVIEW #26 separate and create a new name for the new timing signal where x_high = atten_time_high and x_low = tr_time_low
+    auto scope_sync_high = atten_time_high; // REVIEW #32 move this to within the next if(driver_packet.sob() == true) because it's only used in those instances ?
     auto tr_time_low = pulse_start_time + pulse_len_time + uhd::time_spec_t(tr_window_time_s);
     auto atten_time_low = tr_time_low + uhd::time_spec_t(atten_window_time_end_s);
 
@@ -247,7 +247,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     //thread.
     if( driver_packet.sob() == true)
     {
-      memcpy(timing.data (), &scope_sync_high, sizeof(scope_sync_high));
+      memcpy(timing.data(), &scope_sync_high, sizeof(scope_sync_high));
       timing_socket.send(timing);
     }
 
