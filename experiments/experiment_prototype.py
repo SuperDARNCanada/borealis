@@ -13,25 +13,29 @@ The template for an experiment.
 import json
 import sys
 
-# REPLY going to try making the scan_classes into a separate package and then import because this is a relative path to
+# REPLY going to try making the scans into a separate package and then import because this is a relative path to
 # the running directory
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from radar_control.scan_classes import scans
 
 # REVIEW #26 When we refer to comments about anything "cpobject" related, we know that naming scheme may be changed
-# entirely. REPLY ok, changing to experiment_slice .
+# entirely. REPLY ok, changing to experiment_exp_slice .
+
+# REPLY question : should all of this be inside the ExperimentPrototype class
 
 # REVIEW #28 This could potentially be a global variable instead.
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
+MINIMUM_PULSE_LENGTH = 0.01  # us
 
-def setup_interfacing(slice_num):
+
+def setup_interfacing(exp_slice_num):
     if_keys = []
-    for slice1 in range(slice_num):
+    for exp_slice1 in range(exp_slice_num):
         # REVIEW #26 i and j can have more meaningful names. Perhaps cpo1, cpo2, something like that. Could go for
         # most places indexing is used. REPLY - ok
-        for slice2 in range(slice1 + 1, slice_num):
-            if_keys.append((slice1, slice2))
+        for exp_slice2 in range(exp_slice1 + 1, exp_slice_num):
+            if_keys.append((exp_slice1, exp_slice2))
 
     if_dict = dict((key, "NONE") for key in if_keys)
     # REPLY THIS IS AWESOME
@@ -39,7 +43,7 @@ def setup_interfacing(slice_num):
     return if_dict
 
 
-def selfcheckslice(slice):  # REVIEW #1 #26 Name and docstring could be more clear REPLY ok
+def selfcheck_slice(exp_slice):  # REVIEW #1 #26 Name and docstring could be more clear REPLY ok
     """
     This is the first test of the dictionary in the experiment done to ensure values in this component make sense. This 
     is a self-check to ensure the parameters (for example, txfreq, antennas) are appropriate.
@@ -48,80 +52,139 @@ def selfcheckslice(slice):  # REVIEW #1 #26 Name and docstring could be more cle
     error_dict = {}
 
     options = ExperimentOptions()
-    main_antenna_count = options.main_antenna_count
 
-    # check none greater than 15, no duplicates # REVIEW #29 could say in this comment that none greater than main antenna count instead of 15.
-    # REVIEW #0 Since we decided for now that we would receive on all antennas, the check for rxchannels should be equal to main+inter count.
-    # REVIEW #26 Lets reflect our decision to not use the word channel.
-    if len(slice['txchannels']) > main_antenna_count or len(slice[
-                                                                'rxchannels']) > main_antenna_count:  # REVIEW #31 looks like three lines are over 100 chars, consider editing to be under 100
-        # REVIEW #39 These errors could just be appended to a list instead of using a dictionary.
-        error_dict[
-            error_count] = "CP Object Has Too Many Antenna Channels"  # REVIEW #34 Could include the actual value that caused the error. Goes for all error statements.
+    # check none greater than number of transmitting antennas, no duplicates REVIEW #29 could say in this comment
+    # that none greater than main antenna count instead of 15. REVIEW #0 Since we decided for now that we would
+    # receive on all antennas, the check for rxchannels should be equal to main+inter count. REPLY: I disagree this
+    # is where you set up which antenna channels you want to include in your data so you can have less channels if you
+    # want to! - but should include interferometer probably separately in another list
+    # REVIEW #26 Lets reflect our decision to not use the word channel - AGREED
+    if len(exp_slice['txantennas']) > options.main_antenna_count:
+        error_dict[error_count] = "Slice Has Too Many Main TX Antenna Channels {} Greater than Config {}"\
+            .format(len(exp_slice['txantennas']), options.main_antenna_count)
+    # REVIEW #34 Could include the actual value that caused the error. Goes for all error statements. REPLY agreed
+    if len(exp_slice['rx_main_antennas']) > options.main_antenna_count:
+        # REVIEW #39 These errors could just be appended to a list instead of using a dictionary. - REPLY or I could
+        # TODO use our own exception class for these errors.
+        error_dict[error_count] = "Slice Has Too Many Main RX Antenna Channels {} Greater than Config {}"\
+            .format(len(exp_slice['rx_main_antennas']), options.main_antenna_count)
         error_count = error_count + 1
-    for i in range(len(slice['txchannels'])):
-        if slice['txchannels'][i] >= main_antenna_count or slice['rxchannels'][i] >= main_antenna_count:
-            error_dict[error_count] = """ Object Specifies Channel \
-                Numbers Over {}""".format(main_antenna_count)
+    if len(exp_slice['rx_int_antennas']) > options.interferometer_antenna_count:
+        error_dict[error_count] = "Slice Has Too Many RX Interferometer Antenna Channels {} Greater than Config {}"\
+            .format(len(exp_slice['rx_int_antennas']), options.interferometer_antenna_count)
+        error_count = error_count + 1
+    for i in range(len(exp_slice['txantennas'])):
+        if exp_slice['txantennas'][i] >= options.main_antenna_count:
+            error_dict[error_count] = "Slice Specifies Main Array Antenna Numbers Over Config Max {}" \
+                .format(options.main_antenna_count)
             error_count = error_count + 1
-        for j in range(i + 1, len(slice['txchannels'])):
-            if slice['txchannels'][i] == slice['txchannels'][j] or slice['rxchannels'][i] == slice['rxchannels'][
-                j]:  # REVIEW #0 #39 This will work only if the rxchannels and txchannels lists are sorted. Maybe you can use a list comprehension as shown here instead: http://stackoverflow.com/questions/9835762/find-and-list-duplicates-in-a-list
-                error_dict[error_count] = "CP Object Has Duplicate Antennas"
+        # REVIEW #0 #39 This will work only if the rxchannels and txchannels lists are sorted. - REPLY I disagree, will
+        # work for unsorted as well but can implement this way
+        # Maybe you can use a list comprehension as shown here instead:
+        # http://stackoverflow.com/questions/9835762/find-and-list-duplicates-in-a-list
+
+        # for j in range(i + 1, len(exp_slice['txantennas'])):
+        #    if exp_slice['txantennas'][i] == exp_slice['txantennas'][j]:
+        #        error_dict[error_count] = "exp_slice TX Main Antennas Has Duplicate Antennas"
+        #        error_count = error_count + 1
+
+        # OR
+
+        # if any(exp_slice['txantennas'][i] == exp_slice['txantennas'][j] \
+            # for j in range(i + 1, len(exp_slice['txantennas'])):
+        #    error ...
+
+    no_duplicates = set()
+    for ant in exp_slice['txantennas']:
+        if ant not in no_duplicates:
+            no_duplicates.add(ant)
+        else:
+            error_dict[error_count] = "Slice TX Main Antennas Has Duplicate Antennas"
+            error_count = error_count + 1
+
+    for i in range(len(exp_slice['rx_main_antennas'])):
+        if exp_slice['rx_main_antennas'][i] >= options.main_antenna_count:
+            error_dict[error_count] = "Slice Specifies Main Array Antenna Numbers Over Config Max {}"\
+                .format(options.main_antenna_count)
+            error_count = error_count + 1
+
+    # TODO use the same method as above
+        for j in range(i + 1, len(exp_slice['rx_main_antennas'])):
+            if exp_slice['rx_main_antennas'][i] == exp_slice['rx_main_antennas'][j]:
+                error_dict[error_count] = "Slice RX Main Antennas Has Duplicate Antennas"
+                error_count = error_count + 1
+    for i in range(len(exp_slice['rx_int_antennas'])):
+        if exp_slice['rx_int_antennas'][i] >= options.interferometer_antenna_count:
+            error_dict[error_count] = "Slice Specifies Interferometer Array Antenna Numbers Over Config Max {}"\
+                .format(options.interferometer_antenna_count)
+            error_count = error_count + 1
+
+    # TODO use the same method as above
+        for j in range(i + 1, len(exp_slice['rx_int_antennas'])):
+            if exp_slice['rx_int_antennas'][i] == exp_slice['rx_int_antennas'][j]:
+                error_dict[error_count] = "Slice RX Interferometer Antennas Has Duplicate Antennas"
                 error_count = error_count + 1
 
-    # check sequence increasing # REVIEW #26 Is this supposed to be pulse sequence? would make it more clear if named pulse_sequence or something
-    if len(slice['sequence']) != 1:
-        for i in range(1, len(slice['sequence'])):
-            if slice['sequence'][i] <= slice['sequence'][
-                        i - 1]:  # REVIEW #39 Can use pythonic way of doing this: http://stackoverflow.com/questions/4983258/python-how-to-check-list-monotonicity
-                error_dict[error_count] = "CP Object Sequence Not Increasing"
-                error_count = error_count + 1
+    # REVIEW #26 Is this supposed to be pulse sequence? would make it more clear if named pulse_sequence or something
+    # REPLY - sure
+    if not all(x < y for x, y in zip(exp_slice['pulse_sequence'], exp_slice['pulse_sequence'][1:])):
+        # pulse_sequence is not increasing
+        error_dict[error_count] = "Slice pulse_sequence Not Increasing"
+        error_count = error_count + 1
 
     # check pulse_len and mpinc make sense (values in us)
-    if slice['pulse_len'] > slice['mpinc']:
-        error_dict['error_count'] = "CP Pulse Length Greater than MPINC"
+    if exp_slice['pulse_len'] > exp_slice['mpinc']:
+        error_dict['error_count'] = "Slice Pulse Length Greater than MPINC"
         error_count = error_count + 1
-    if slice[
-        'pulse_len'] < 0.01:  # REVIEW #29 Magic number - Define this as a minimum pulse length in us variable somewhere
-        error_dict[error_count] = "CP Pulse Length Too Small"
+    if exp_slice['pulse_len'] < MINIMUM_PULSE_LENGTH:
+        error_dict[error_count] = "Slice Pulse Length Too Small"
         error_count = error_count + 1
 
-    # check intn and intt make sense given mpinc, and pulse sequence.
-    seq_len = slice['mpinc'] * (slice['sequence'][
-                                    -1] + 1)  # REVIEW #0 Do you really need the +1 here? Also need to take into account the wait time at end of pulse sequence (ss_delay in current system)
+    # check intn and intt make sense given mpinc, and pulse_sequence.
+    seq_len = exp_slice['mpinc'] * (exp_slice['pulse_sequence'][-1] + 1)
+    # REVIEW #0 Do you really need the +1 here? Also need to take into account the wait time at end of pulse_sequence
+    # (ss_delay in current system) REPLY agree TODO will fix
 
     # TODO: Check these
     #        self.intt=3000 # duration of the direction, in ms
-    #        self.intn=21 # max number of averages (aka full pulse sequences transmitted) in an integration time intt (default 3s)
+    #        self.intn=21 # max number of averages (aka full pulse_sequences transmitted)
+    # in an integration time intt (default 3s)
 
-    # check no duplicates in beam directions # REVIEW #0 Why can we not have duplicates in beam directions? And why do they have to be in order? Example: interleaved_normalscan
-    for i in range(len(slice['beamdir'])):
-        for j in range(i + 1, len(slice['beamdir'])):
-            if slice['beamdir'][i] == slice['beamdir'][j]:
-                error_dict[error_count] = "CP Beam Direction Has Duplicates"
+    # check no duplicates in beam directions REVIEW #0 Why can we not have duplicates in beam directions? And why do
+    # they have to be in order? Example: interleaved_normalscan REPLY : beam directions is different than the scan,
+    # which uses beam numbers, and can have duplicates. Traditionally beams have been 3.75 degrees separated but we
+    # don't refer to them as beam -22.75 degrees, we refer as beam 1, beam 2. This is like a mapping of beam number
+    # to beam direction off azimuth . Then you can use the beam numbers in the scan list so you can reuse beams
+    # within one scan, or use multiple beamnumbers in a single integration time. Open to revision. I imagine when we
+    # do imaging we will still have to quantize the directions we are looking in to certain beam directions,
+    # and if you wanted to add directions you could do so in experiment modification functions.
+
+    for i in range(len(exp_slice['beamdir'])):
+        for j in range(i + 1, len(exp_slice['beamdir'])):
+            if exp_slice['beamdir'][i] == exp_slice['beamdir'][j]:
+                error_dict[error_count] = "Slice Beam Direction Has Duplicates"
                 error_count = error_count + 1
-            if slice['beamdir'][i] > slice['beamdir'][j]:
-                error_dict[error_count] = "CP Beam Directions Not in Order \
+            if exp_slice['beamdir'][i] > exp_slice['beamdir'][j]:
+                error_dict[error_count] = "Slice Beam Directions Not in Order \
                     Clockwise (E of N is positive)"
                 error_count = error_count + 1
 
-    if (not slice[
+    if (not exp_slice[
         'scan']):  # if empty # REVIEW #1 We're not sure what 'scan' parameter is just from looking at this, and below code. Why can't it be empty?
         error_dict[error_count] = "Scan Empty"
         error_count = error_count + 1
 
     # check beam numbers in scan exist # REVIEW #1 Also here we're not sure what the error check implies 
-    for i in slice['scan']:
-        if i >= len(slice['beamdir']):
+    for i in exp_slice['scan']:
+        if i >= len(exp_slice['beamdir']):
             error_dict[error_count] = "CP Scan Beam Direction DNE, not \
                 Enough Beams in beamdir"
             error_count = error_count + 1
 
     # check scan boundary not less than minimum required scan time. 
-    if slice[
+    if exp_slice[
         'scanboundf'] == 1:  # REVIEW #26 We assume this is a flag, but naming could be better, also can use True and False instead of 1's and 0's if it's a boolean
-        if slice['scanbound'] < (len(slice['scan']) * slice[
+        if exp_slice['scanbound'] < (len(exp_slice['scan']) * exp_slice[
             'intt']):  # REVIEW #5 Need units documented somewhere highly visible for scanbound, intt
             error_dict[error_count] = "CP Scan Too Long for ScanBoundary"
             error_count = error_count + 1
@@ -158,9 +221,9 @@ class ExperimentPrototype(object):
         # Number of CPObjects in this program. # REVIEW #38 These comments are superfluous since the docstring tells all you need to know
         cpo_list = []
 
-        self.cpo_keys = ["obj_id", "cpid", "txchannels", "rxchannels",
+        self.cpo_keys = ["obj_id", "cpid", "txantennas", "rx_main_antennas", "rx_int_antennas"
                          # REVIEW #26 Should this be named cpo_keys or something like radar_parameters, scan_parameters, scan_constructs. The idea being that an experiment will have a list of some lower level object (experiment_parameters will be a list of 'scans' or 'radar params' OR a scan parameter list will contain 1 or more sets of 'radar params')
-                         "sequence", "pulse_shift", "mpinc", "pulse_len", "nrang", "frang",
+                         "pulse_sequence", "pulse_shift", "mpinc", "pulse_len", "nrang", "frang",
                          # REVIEW #1 Each of these should have a description - perhaps in a docstring
                          "intt", "intn", "beamdir", "scan", "scanboundf", "scanbound",
                          "txfreq", "rxfreq", "clrfrqf", "clrfrqrange", "xcf", "acfint",
@@ -214,7 +277,7 @@ class ExperimentPrototype(object):
         SCAN : Scan by scan interfacing. cpo #1 will scan first
             followed by cpo #2 and subsequent cpo's.
         INTTIME : nave by nave interfacing (full integration time of
-             one sequence, then the next). Time/number of sequences
+             one pulse_sequence, then the next). Time/number of pulse_sequences
             dependent on intt and intn in cp_object. Effectively
             simultaneous scan interfacing, interleaving each
             integration time in the scans. cpo #1 first inttime or
@@ -225,14 +288,14 @@ class ExperimentPrototype(object):
             and 2 must have the same scan boundary, if any boundary.
             All other may differ.
         INTEGRATION : integration by integration interfacing (one
-            sequence of one cp_object, then the next). CPObject #1 and
+            pulse_sequence of one cp_object, then the next). CPObject #1 and
             CPO #2 must have same intt and intn. Integrations will
             switch between one and the other until time is up/nave is
             reached.
-        PULSE : Simultaneous sequence interfacing, pulse by pulse
-            creates a single sequence. CPO A and B might have different
+        PULSE : Simultaneous pulse_sequence interfacing, pulse by pulse
+            creates a single pulse_sequence. CPO A and B might have different
             frequencies (stereo) and/or may have different pulse
-            length, mpinc, sequence, but must have the same integration
+            length, mpinc, pulse_sequence, but must have the same integration
             time. They must also have same len(scan), although they may
             use different directions in scan. They must have the same
             scan boundary if any. A time offset between the pulses
@@ -283,7 +346,7 @@ class ExperimentPrototype(object):
         # TODO: somehow check if self.cpid is not unique
 
         for cpo in range(self.cponum):
-            selferrs = selfcheckslice(self.cpo_list[cpo])
+            selferrs = selfcheck_slice(self.cpo_list[cpo])
             if (not selferrs):  # REVIEW #39 unneeded parenthesis
                 # If returned error dictionary is empty
                 continue
