@@ -114,7 +114,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
   std::vector<size_t> channels;
 
   uhd::time_spec_t time_zero;
-  zmq::message_t timing (sizeof(time_zero));
+  zmq::message_t timing (sizeof(time_zero)); // REVIEW #26 Since the only thing this is used for is scope sync timing - maybe change the name to reflect that.
 
   uhd::tx_streamer::sptr tx_stream;
   uhd::stream_args_t stream_args("fc32", "sc16");
@@ -131,9 +131,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
 
   uint32_t sqn_num = -1; // REVIEW #0 assigning -1 to uint does this work as intended? also unnecessary
   uint32_t expected_sqn_num = 0;
-
-  while (1)
-  {
+// REVIEW #0 If there are large periods of time between pulses, this while loop might be too speedy, resulting in overflows to the usrp - may have seen this in testing? - can we calculate an amount of time to sleep if that's the case?
+  while (1) // REVIEW #35 Over 220 lines. are there any candidates for functions? (timing and cout code?)
+  {// REVIEW #1 this while loop is for one pulse sequence, it does blah
     packet_socket.recv(&request);
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now(); // REVIEW #26 begin_setup ?
     DEBUG_MSG("Received in TRANSMIT");
@@ -229,7 +229,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       time_zero = usrp_d.get_usrp()->get_time_now() + uhd::time_spec_t(10e-3); // REVIEW #29 could set this magic number in config or global const?
     }
 
-
+// REVIEW #26 pulse_delay might not be the best name, why don't we just use timetosendsamples_s or get rid of it entirely, or something_better ? 
     auto pulse_delay = uhd::time_spec_t(driver_packet.timetosendsamples()/1e6); //convert us to s
     auto pulse_start_time = time_zero + pulse_delay;
     auto pulse_len_time = uhd::time_spec_t(samples_per_buff/usrp_d.get_tx_rate());
@@ -251,10 +251,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       timing_socket.send(timing);
     }
 
-    begin = std::chrono::steady_clock::now();
+    begin = std::chrono::steady_clock::now(); // REVIEW #26 begin_send?  
 
-    auto time_now = usrp_d.get_usrp()->get_time_now();
-    std::cout << "TRANSMIT time zero: " << time_zero.get_frac_secs() << std::endl;
+    auto time_now = usrp_d.get_usrp()->get_time_now(); // REVIEW #34 making these print statements every single pulse is a lot. make them verbose debug output? This goes for all the cout statements in this while loop
+    std::cout << "TRANSMIT time zero: " << time_zero.get_frac_secs() << std::endl; // REVIEW #34 make the print statments match the variable names - need a few underscores
     std::cout << "TRANSMIT time now " << time_now.get_frac_secs() << std::endl;
     std::cout << "TRANSMIT timetosendsamples(us) " << driver_packet.timetosendsamples() <<std::endl;
     std::cout << "TRANSMIT pulse delay " << pulse_delay.get_frac_secs() <<std::endl;
@@ -268,16 +268,16 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     auto md = TXMetadata();
     md.set_has_time_spec(true);
     md.set_time_spec(pulse_start_time);
-    md.set_start_of_burst(true);
+    md.set_start_of_burst(true); // REVIEW #3 different than the driver packet's sob() - maybe make a comment somewhere explaining the TXmetadata object and its purpose?
 
     uint64_t num_samps_sent = 0;
-
+// REVIEW #3 comment how this loop is working. send has a default timeout of 0.1s, blocks... etc. The samples variable is a vector of buffers containing the complex samples, etc...
     while (num_samps_sent < samples_per_buff) {
       auto num_samps_to_send = samples_per_buff - num_samps_sent;
       std::cout << "TRANSMIT Samples to send " << num_samps_to_send << std::endl;
 
-      num_samps_sent = tx_stream->send(
-        samples, num_samps_to_send, md.get_md());
+      num_samps_sent = tx_stream->send( // REVIEW #37 How do we know if it's timed out? Does it do the fragmentation of packets internal to the send(...) if above the max num samps value?
+        samples, num_samps_to_send, md.get_md()); // REVIEW #0 Should we set the timeout to a reasonable value given our timing constraints? 100ms would be way too long to recover this pulse sequence. Maybe we can make a calculation based on how long this pulse is and set the timeout slightly beyond that - or beyond atten_time_low (at which point you should be in this loop for the next pulse) We can also get_max_num_samps to find out if this call will fragment into multiple packets, not sure of the behaviour there, does it return before the timeout??
 
       std::cout << "TRANSMIT Samples sent " << num_samps_sent << std::endl;
 
@@ -286,9 +286,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     }
 
     md.set_end_of_burst(true);
-    tx_stream->send("", 0, md.get_md());
+    tx_stream->send("", 0, md.get_md()); // REVIEW #43 If we know that we are under the max num samps value, then we could send start of burst and end of burst in the same send(...) call
 
-    end = std::chrono::steady_clock::now();
+    end = std::chrono::steady_clock::now(); // REVIEW #26 end_send?
 
     std::cout << "TRANSMIT time to send to USRP: "
       << std::chrono::duration_cast<std::chrono::microseconds>
@@ -298,19 +298,19 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     std::chrono::steady_clock::time_point timing_start = std::chrono::steady_clock::now();
 
     //Set high speed IO timing on the USRP now.
-    usrp_d.get_usrp()->clear_command_time();
+    usrp_d.get_usrp()->clear_command_time(); // REVIEW #0 The GPIO timing setup should be moved to above the samples sending, in case we timeout on sending samples (i.e. we sent half of them) then the RF waveform would be transmitting without timing signals, bad idea. Alternatively, what if there was a 4th thread for timing specifically?
 
     if (driver_packet.sob() == true) {
       auto sync_time = driver_packet.numberofreceivesamples()/driver_options.get_rx_rate();
       std::cout << "SYNC TIME " << sync_time << std::endl;
-      scope_sync_low = atten_time_high + uhd::time_spec_t(sync_time);
+      scope_sync_low = atten_time_high + uhd::time_spec_t(sync_time); // REVIEW #26 use scope_sync_high instead of atten_time_high for clarity
 
-      std::cout << "TRANSMIT Scope sync high" << std::endl;
+      std::cout << "TRANSMIT Scope sync high" << std::endl; // REVIEW #34 this comment isn't really true, since the scope sync high happens in the 'future' since it's a timed command
       usrp_d.get_usrp()->set_command_time(scope_sync_high);
       usrp_d.set_scope_sync();
 
     }
-
+// REVIEW #0 The other timing signal needs to happen here as well where x_high = atten_time_high and x_low = tr_time_low
     usrp_d.get_usrp()->set_command_time(atten_time_high);
     usrp_d.set_atten();
 
@@ -338,8 +338,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
 
     //Final end of sequence work to acknowledge seq num.
     if (driver_packet.eob() == true) {
-      //usrp_d.clear_scope_sync();
-      driverpacket::DriverPacket ack;
+      //usrp_d.clear_scope_sync(); // REVIEW #33 use git
+      driverpacket::DriverPacket ack; // REVIEW #33 Can this just be set up once at the start, otherwise duplicating this code. same with ack_str and ack_msg
       std::cout << "SEQUENCENUM " << sqn_num << std::endl;
       ack.set_sequence_num(sqn_num);
       expected_sqn_num += 1;

@@ -17,7 +17,7 @@ See LICENSE for details.
 /**
  * @brief      Contains an abstract wrapper for the USRP object.
  */
-class USRP{
+class USRP{ // REVIEW #43 why not change the set_ gpio and clear_ gpio functions to take in an optional command time, then within the functions, call get_usrp()->set_command_time(optional_time) if the class is supposed to abstract away the USRP object this would clear up the driver code a bit
   public:
     explicit USRP(const DriverOptions& driver_options);
     void set_usrp_clock_source(std::string source);
