@@ -7,15 +7,13 @@ To load the config options to be used by the experiment and radar_control blocks
 
 import json
 
-config_file = 'config.ini'
+config_file = '/home/marci/code/URSP/placeholderOS/config.ini'  # TODO how to add this file
 
 
 class ExperimentOptions:
-
     def __init__(self):
         """
         Create an object of config data for use in the experiment.
-        :rtype: object of type ExperimentOptions
         """
         with open(config_file) as config_data:
             config = json.load(config_data)

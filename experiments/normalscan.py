@@ -7,10 +7,10 @@ from experiment_prototype import ExperimentPrototype
 class Normalscan(ExperimentPrototype):
     
     def __init__(self):
-        super(Normalscan,self).__init__(1,150) #number of cpo_list dictionaries to interface, 'control program' ID  
+        super(Normalscan,self).__init__(150, 1) #number of cpo_list dictionaries to interface, 'control program' ID
 
         # If you created this experiment with x number of cpo_list dictionaries, update cpo_list[0] through cpo_list[x-1]
-        self.cpo_list[0].update({      
+        self.slice_list[0].update({
             "txchannels":   [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
             "rxchannels":   [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
             "sequence":     [0,14,22,24,27,31,42,43],
