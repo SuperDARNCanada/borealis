@@ -137,7 +137,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     packet_socket.recv(&request);
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now(); // REVIEW #26 begin_setup ?
     DEBUG_MSG("Received in TRANSMIT");
-    driverpacket::DriverPacket driver_packet;
+    driverpacket::DriverPacket driver_packet; // REVIEW #32 can move this and declaration of the packet_msg_str out of the while loop
     std::string packet_msg_str(static_cast<char*>(request.data()), request.size());
     driver_packet.ParseFromString(packet_msg_str); // REVIEW 37 check for return False
 
@@ -356,9 +356,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
   }
 }
 
-std::string random_string( size_t length )
+std::string random_string( size_t length ) // REVIEW #1 explain what this is for
 {
-    auto randchar = []() -> char
+    auto randchar = []() -> char // REVIEW #1 how does this work?
     {
         const char charset[] =
         "0123456789"
@@ -382,60 +382,60 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
   zmq::message_t request;
   std::cout << "RECEIVE: Creating and connected to thread socket in control\n";
 
-  zmq::socket_t timing_socket(driver_c, ZMQ_PAIR);
+  zmq::socket_t timing_socket(driver_c, ZMQ_PAIR); // REVIEW #26 rename to scope_sync_socket or something of the sort?
   timing_socket.bind("inproc://timing");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
-  zmq::message_t timing;
+  zmq::message_t timing; // REVIEW #26 - as mentioned before change name
 
-  //zmq::context_t context(4);
+  //zmq::context_t context(4);  // REVIEW #33 remove
   zmq::socket_t data_socket(driver_c, ZMQ_PAIR);
   data_socket.connect("inproc://data");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
 
-  auto usrp_channels_changed = false;
+  auto usrp_channels_changed = false; // REVIEW #26 rename to rx_streamer_set as they don't get changed, always receives on all and acts as a flag 
   auto center_freq_set = false;
 
   uhd::time_spec_t time_zero;
   uhd::rx_streamer::sptr rx_stream;
   uhd::stream_args_t stream_args("fc32", "sc16");
   uhd::stream_cmd_t stream_cmd(
-      uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE);
+      uhd::stream_cmd_t::STREAM_MODE_NUM_SAMPS_AND_DONE); // REVIEW #3 why did we choose this stream_mode?
 
   auto rx_rate_hz = driver_options.get_rx_rate();
 
   auto receive_channels = usrp_d.get_receive_channels();
 
-  while (1) {
+  while (1) { // REVIEW #1 comment this while loop is for one pulse sequence / scope sync time of receiving.
     packet_socket.recv(&request);
     std::cout << "Received in RECEIVE\n";
-    driverpacket::DriverPacket driver_packet;
-    std::string msg_str(static_cast<char*>(request.data()), request.size());
+    driverpacket::DriverPacket driver_packet; // REVIEW #32 can move this and declaration of the packet_msg_str out of the while loop
+    std::string msg_str(static_cast<char*>(request.data()), request.size()); // REVIEW #26 stay consistent with packet_msg_str
     driver_packet.ParseFromString(msg_str);
 
     std::cout << "RECEIVE burst flags SOB " << driver_packet.sob() << " EOB " << driver_packet.eob() << std::endl;
 
     if ( driver_packet.sob() == false ) continue;
 
-    std::chrono::steady_clock::time_point stream_begin = std::chrono::steady_clock::now();
-    if (driver_packet.channels_size() > 0 && driver_packet.sob() == true && usrp_channels_changed == false) {
+    std::chrono::steady_clock::time_point stream_begin = std::chrono::steady_clock::now(); // REVIEW #26 rename to setup_rx_stream_begin or something more clear
+    if (driver_packet.channels_size() > 0 && driver_packet.sob() == true && usrp_channels_changed == false) { // REVIEW #0 this would prevent us from doing receive-only operation. Should come up with another way to check this. Should do error handling if we receive first packet and sob = False ; also could be moved out of the while loop because doesn't depend on the driver packet information.
       stream_args.channels = receive_channels;
       usrp_d.set_rx_rate(rx_rate_hz);  // ~450us
       rx_stream = usrp_d.get_usrp()->get_rx_stream(stream_args);  // ~44ms
       usrp_channels_changed = true;
     }
-    std::chrono::steady_clock::time_point stream_end = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point stream_end = std::chrono::steady_clock::now(); // REVIEW #26 rename
     std::cout << "RECEIVE stream set up time: "
       << std::chrono::duration_cast<std::chrono::microseconds>(stream_end - stream_begin).count()
       << "us" << std::endl;
 
 
-    std::chrono::steady_clock::time_point ctr_begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point ctr_begin = std::chrono::steady_clock::now(); // REVIEW #26 rename
 
     if (driver_packet.rxcenterfreq() > 0) {
-      std::cout << "RECEIVE center freq " << driver_packet.rxcenterfreq() << std::endl;
+      std::cout << "RECEIVE center freq " << driver_packet.rxcenterfreq() << std::endl; // REVIEW #34 move this print statement below and use actual set rxcenterfreq
       usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), receive_channels);
       center_freq_set = true;
     }
 
-    std::chrono::steady_clock::time_point ctr_end = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point ctr_end = std::chrono::steady_clock::now(); // REVIEW #26
     std::cout << "RECEIVE center frq tuning time: "
       << std::chrono::duration_cast<std::chrono::microseconds>
                                                   (ctr_end - ctr_begin).count()
@@ -443,25 +443,25 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
 
 
     if ((usrp_channels_changed == false) || (center_freq_set == false)) {
-      // TODO(keith): throw error
+      // TODO(keith): throw error // REVIEW #15 possible idea for recovering from these types of errors: to have a set of defaults that could be used to recover with 
     }
 
-
-    std::chrono::steady_clock::time_point shr_begin = std::chrono::steady_clock::now();
+    // REVIEW #22 could do this only when mem_size needs to increase ?
+    std::chrono::steady_clock::time_point shr_begin = std::chrono::steady_clock::now(); // REVIEW #26 
     size_t mem_size = receive_channels.size() * driver_packet.numberofreceivesamples() * sizeof(std::complex<float>);
-    auto shr_mem_name = random_string(25);
+    auto shr_mem_name = random_string(25); // REVIEW #1 why is this a different name every time ... explain
     SharedMemoryHandler shrmem(shr_mem_name);
-    shrmem.create_shr_mem(mem_size);
+    shrmem.create_shr_mem(mem_size); // REVIEW #41 would it be worthwhile to put this into the constructor?
 
     //create a vector of pointers to where each channel's data gets received.
     std::vector<std::complex<float> *> buffer_ptrs;
     for(uint32_t i=0; i<receive_channels.size(); i++){
       auto ptr = static_cast<std::complex<float>*>(shrmem.get_shrmem_addr()) +
-                                  i*driver_packet.numberofreceivesamples();
+                                  i*driver_packet.numberofreceivesamples(); // REVIEW #0 does this work auto = complex float * + int 
       buffer_ptrs.push_back(ptr);
     }
 
-    std::chrono::steady_clock::time_point shr_end = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point shr_end = std::chrono::steady_clock::now(); // REVIEW #26
     std::cout << "RECEIVE shr timing: "
       << std::chrono::duration_cast<std::chrono::microseconds>
                                                   (shr_end - shr_begin).count()
