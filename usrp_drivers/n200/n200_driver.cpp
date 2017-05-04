@@ -349,7 +349,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
 
       zmq::message_t ack_msg(ack_str.size());
       memcpy((void*)ack_msg.data(), ack_str.c_str(),ack_str.size());
-      ack_socket.send(ack_msg);
+      ack_socket.send(ack_msg); // REVIEW #43 let's make the ack have more information than just 'I received the packet' so we can make intelligent decisions elsewhere in the code if something unexpected/error happens
     }
 
 
@@ -538,16 +538,16 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
           << "us" << std::endl;
   }
 }
-
+// REVIEW #7 you may already have this, but a flow diagram of the data going around in the sockets btw the various threads would be handy. (packet_socket, timing_socket, ack_socket, data_socket, radarctrl_socket, computation_socket)
 void control(zmq::context_t &driver_c) {
   std::cout << "Enter control thread\n";
 
   std::cout << "Creating and connecting to thread socket in control\n";
 /*    zmq::socket_t packet_socket(*thread_c, ZMQ_PAIR); // 1
-  packet_socket.connect("inproc://threads"); // 2  */
+  packet_socket.connect("inproc://threads"); // 2  */ // REVIEW #33 use git
 
 
-  zmq::socket_t packet_socket(driver_c, ZMQ_PUB);
+  zmq::socket_t packet_socket(driver_c, ZMQ_PUB); // REVIEW #26 driver_packet_socket? request_socket? radar_control_socket? etc...
   packet_socket.bind("inproc://threads");// REVIEW #37 check return value (0 if success, -1 if fail with errno set)
 
   std::cout << "Creating and binding control socket\n";
@@ -569,22 +569,22 @@ void control(zmq::context_t &driver_c) {
 
 
   //Allows for set up of SUB/PUB socket
-  sleep(1);
+  sleep(1); // REVIEW #1 why? Link to zmq docs?
 
   while (1) {
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now(); // REVIEW #26 #33 looks like you're not using this value until it's changed later
     radarctrl_socket.recv(&request);
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now(); // REVIEW #26 #33 looks like you're not using this value until it's changed later
 
     begin = std::chrono::steady_clock::now();
-    driverpacket::DriverPacket driver_packet;
+    driverpacket::DriverPacket driver_packet; // REVIEW #32 Can these declarations go outside while loop? making new objects every time through loop
     std::string msg_str(static_cast<char*>(request.data()), request.size());
     driver_packet.ParseFromString(msg_str);
 
     std::cout << "Control " << driver_packet.sob() << " " << driver_packet.eob()
       << " " << driver_packet.channels_size() << std::endl;
 
-    if ((driver_packet.sob() == true) && (driver_packet.eob() == true)) {
+    if ((driver_packet.sob() == true) && (driver_packet.eob() == true)) { // REVIEW #33 Is this really an error? Or is it just not very likely to happen in our applications? Don't want to limit the driver like this
       // TODO(keith): throw error
     }
 
@@ -596,23 +596,23 @@ void control(zmq::context_t &driver_c) {
       if (driver_packet.samples(i).real_size() != driver_packet.samples(i).imag_size()) {
         // TODO(keith): throw error
       }
-    }
+    }// REVIEW #6 TODO: Check that seq num is not 0 (assuming we change it to start at 1 -either way check that there is a seq num) TODO: Check that timetosendsamples is set - maybe check if in future? TODO: Check that channels, samples, ctrfreq, rxrate, txrate are set if sob==true
 
     packet_socket.send(request);
 
     end = std::chrono::steady_clock::now();
-    std::cout << "Time difference to deserialize and send in control = "
+    std::cout << "Time difference to deserialize and send in control = " // REVIEW #5 units
       << std::chrono::duration_cast<std::chrono::microseconds>
                                                   (end - begin).count()
       <<std::endl;
 
     if (driver_packet.eob() == true) {
-      zmq::message_t ack, data, size;
+      zmq::message_t ack, data, size; // REVIEW #33 'data' not used here
 
-      data_socket.recv(&size);
+      data_socket.recv(&size);// REVIEW #15 if we want to have a check that the receive worked fine, then need to have an additional variable in data_socket to get from receive thread. Then it could be passed along to radarctrl_socket with the ack so radarctl knows what happened( i.e. if this average failed - so it only counts successful averages). See comment above at line ~483
       computation_socket.send(size);
 
-      ack_socket.recv(&ack);
+      ack_socket.recv(&ack); // REVIEW #30 Currently, without implementing the changes we suggest above, this should probably go above the recv for data_socket, since it's from the transmit thread and it would be expected to finish before the receive thread
       radarctrl_socket.send(ack);
 
     }
