@@ -467,32 +467,32 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
                                                   (shr_end - shr_begin).count()
       << "us" << std::endl;
 
-    std::cout << "Got to RECEIVE timing" << std::endl;
+    std::cout << "Got to RECEIVE timing" << std::endl; // REVIEW #34 should these be debug along with most other couts in here
     timing_socket.recv(&timing);
     std::cout << "RECEIVED timing data" << std::endl;
     time_zero = *(reinterpret_cast<uhd::time_spec_t*>(timing.data()));
 
-    std::cout << "timing data " << timing.data() << " size "<< timing.size();
-    std::cout << "RECEIVE time_zero " << time_zero.get_frac_secs() << std::endl;
+    std::cout << "timing data " << timing.data() << " size "<< timing.size(); // REVIEW #5 units?
+    std::cout << "RECEIVE time_zero " << time_zero.get_frac_secs() << std::endl; // REVIEW #5 units?
 
     std::chrono::steady_clock::time_point recv_begin = std::chrono::steady_clock::now();
 
     //Documentation is unclear, but num samps is per channel
     stream_cmd.num_samps = size_t(driver_packet.numberofreceivesamples());
     stream_cmd.stream_now = false;
-    stream_cmd.time_spec = time_zero;
+    stream_cmd.time_spec = time_zero; // REVIEW #15 If this is in the past does it just execute immediately? Should check if it's in the past and do something about it (recv samples would be offset from where we want them)? Docs say that in multi-device setup, should have a timespec in the future so that usrps are all aligned - so may need to change the time_zero to be in future and log the error. Maybe abandon the pulse sequence, in case you keep getting more behind. ERROR_CODE_LATE_COMMAND ? One thought is to send 'success' or 'fail' boolean or something along with the ACK to the radar_control so it can handle failed pulse sequences.
     rx_stream->issue_stream_cmd(stream_cmd);
 
     auto md = RXMetadata();
-    size_t accumulated_received_samples = 0;
+    size_t accumulated_received_samples = 0; // REVIEW #30 This cout statement might be better situated near the line that calculates mem_size. Currently it's between issuing of stream_cmd and actual recv while loop.
     std::cout << "RECEIVE total samples to receive: " << receive_channels.size() * driver_packet.numberofreceivesamples()
-    << " mem size " << mem_size << std::endl;
+    << " mem size " << mem_size << std::endl; // REVIEW #5 what units is mem size in? bytes?
 
     while (accumulated_received_samples < driver_packet.numberofreceivesamples()) {
       size_t num_rx_samps = rx_stream->recv(buffer_ptrs,
         (size_t)driver_packet.numberofreceivesamples(), md.get_md());
-
-      if (md.get_error_code() == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) {
+// REVIEW #6 TODO: Calculate appropriate timeout for the recv command given number of receive samples and rx_rate 
+      if (md.get_error_code() == uhd::rx_metadata_t::ERROR_CODE_TIMEOUT) { // REVIEW #22 Have a variable used to get the error code so you don't have to call md.get_error_code three or more times. Then you could print out the specific error (strerror()) or what-not in the final check
           std::cout << boost::format("Timeout while streaming") << std::endl;
           break;
       }
@@ -501,7 +501,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
       }
       if (md.get_error_code() != uhd::rx_metadata_t::ERROR_CODE_NONE) {
           // TODO(keith): throw error
-      }
+      } // REVIEW #6 TODO: Handle fragmentation flag being set in metadata. If this happens that means the buffer was too small to hold the number of samples (shouldn't happen, so this would be an error)
 
       accumulated_received_samples += num_rx_samps;
       std::cout << "Accumulated received samples " << accumulated_received_samples <<std::endl;
@@ -519,7 +519,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
     std::chrono::steady_clock::time_point send_begin = std::chrono::steady_clock::now();
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
-    samples_metadata.set_numberofreceivesamples(driver_packet.numberofreceivesamples());
+    samples_metadata.set_numberofreceivesamples(driver_packet.numberofreceivesamples()); // REVIEW #0 Should this be accumulated_received_samples ? 
     samples_metadata.set_shrmemname(shr_mem_name);
     samples_metadata.set_sequence_num(driver_packet.sequence_num());
     std::string samples_metadata_str;
@@ -530,7 +530,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
             samples_metadata_str.size());
 
     data_socket.send(samples_metadata_size_message);
-    //data_socket.send(cp_data_message);
+    //data_socket.send(cp_data_message); // REVIEW #33 use git
 
     std::chrono::steady_clock::time_point send_end = std::chrono::steady_clock::now();
     std::cout << "RECEIVE package and send timing: "
