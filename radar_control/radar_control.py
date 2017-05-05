@@ -133,7 +133,7 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,  # REVIEW #2
         :return: 
     """
 
-    if repeat:  # REVIEW #1 Add detailed description to docstring on how the repeat functionality works.
+    if repeat:  # REVIEW #1 Add detailed description to docstring on how the repeat functionality works. REPLY OK to all
         driverpacket.Clear()  # REVIEW #22 duplicated code can be moved above and below if/else
         # channels empty
         # samples empty
@@ -149,14 +149,12 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,  # REVIEW #2
         # SETUP data to send to driver for transmit.
         driverpacket.Clear()  # REVIEW #22
         for chan in channels:
-            chan_add = driverpacket.channels.append(chan)  # REVIEW #33 this assignment is not needed?
+            driverpacket.channels.append(chan)
         for chi in range(len(isamples_list)):  # REVIEW #26 Chi? Perhaps better name?
-            sample_add = driverpacket.samples.add()  # REVIEW #0 sample_add not used. Can driverpacket.samples[chi] be replaced with sample_add? Do they point the the same object, because C++ works a like that.
+            sample_add = driverpacket.samples.add()
             # Add one Samples message for each channel.
-            real_samp = driverpacket.samples[chi].real.extend(
-                isamples_list[chi])  # REVIEW #33 this assignment is not needed?
-            imag_samp = driverpacket.samples[chi].imag.extend(
-                qsamples_list[chi])  # REVIEW #33 this assignment is not needed?
+            sample_add.real.extend(isamples_list[chi])
+            sample_add.imag.extend(qsamples_list[chi])
         driverpacket.txcenterfreq = txctrfreq * 1000  # REVIEW #5 comment on unit conversion?
         driverpacket.rxcenterfreq = rxctrfreq * 1000  # REVIEW #5 comment on unit conversion?
         driverpacket.txrate = txrate
@@ -173,7 +171,7 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,  # REVIEW #2
     # tx_ack = socket.recv() #REVIEW #6 Add todo for the response
     tx_ack = 1
 
-    del driverpacket.samples[:]  # REVIEW #33 Is this needed in conjunction with .Clear()?
+    del driverpacket.samples[:]  # REVIEW #33 Is this needed in conjunction with .Clear()? REPLY Not sure, had problems at one point so was playing around with this, will have to find out.
 
     return tx_ack
 
@@ -187,20 +185,19 @@ def data_to_processing(packet, procsocket, seqnum, cpos, cpo_list,
     packet.Clear()
     packet.sequence_num = seqnum
     for num, cpo in enumerate(cpos):
-        channel_add = packet.rxchannel.add()  # REVIEW #0 channel_add not used. Same as above.
-        packet.rxchannel[num].rxfreq = cpo_list[cpo]['rxfreq']
-        packet.rxchannel[num].nrang = cpo_list[cpo]['nrang']
-        packet.rxchannel[num].frang = cpo_list[cpo]['frang']
+        chan_add = packet.rxchannel.add()
+        chan_add.rxfreq = cpo_list[cpo]['rxfreq']
+        chan_add.nrang = cpo_list[cpo]['nrang']
+        chan_add.frang = cpo_list[cpo]['frang']
         for bnum, beamdir in enumerate(beam_dict[cpo]):
-            beam_add = packet.rxchannel[num].beam_directions.add()  # REVIEW #0 beam_add not used. Same as above.
+            beam_add = packet.rxchannel[num].beam_directions.add()
             # beamdir is a list 20-long with phase for each antenna for that beam direction. #REVIEW 1 This doesn't have to 20. Its just total antennas.
             for pnum, phi in enumerate(beamdir):
                 # print phi
                 phase = cmath.exp(phi * 1j)
-                phase_add = packet.rxchannel[num].beam_directions[
-                    bnum].phase.add()  # REVIEW #0 phase_add not used. Same as above.
-                packet.rxchannel[num].beam_directions[bnum].phase[pnum].real_phase = phase.real
-                packet.rxchannel[num].beam_directions[bnum].phase[pnum].imag_phase = phase.imag
+                phase_add = beam_add.phase.add()
+                phase_add.real_phase = phase.real
+                phase_add.imag_phase = phase.imag
 
     # Don't need channel numbers, always send 20 beam directions #REVIEW 1 This doesn't have to 20. Its just total antennas.
     # Beam directions will be formated e^i*phi so that a 0 will indicate not
@@ -216,10 +213,8 @@ def get_ack(xsocket, procpacket):  # REVIEW #26 what does the 'x' mean in xsocke
     """
     try:
         x = xsocket.recv(flags=zmq.NOBLOCK)
-        procpacket.ParseFromString(
-            x)  # REVIEW #37 error check this - it might not throw a zmq.Again exception. You can use multiple except blocks after 1 try block
+        procpacket.ParseFromString(x)  # REVIEW #37 error check this - it might not throw a zmq.Again exception. You can use multiple except blocks after 1 try block
         return procpacket.sequence_num
-        print procpacket.sequence_num  # REVIEW #33 this won't run, can remove
     except zmq.Again:
         print "ACK ERROR"
         return  # REVIEW #6 Here we return None implicity, can type "return None" to be more explicit, or do something else with the error, TODO?
@@ -249,8 +244,8 @@ def radar():
     cpsocket = setup_cp_socket()
     # seqnum is used as a identifier in all packets while
     # radar is running so set it up here.
-    # seqnum will get increased by nave at the end of # REVIEW #1 The wording here makes it sound like seqnum is increased once at the end of every integration time, not once every pulse sequence
-    # every integration time.
+    # seqnum will get increased by nave (number of averages or sequences in the integration period) at the end of every integration time.
+    # REVIEW #1 The wording here makes it sound like seqnum is increased once at the end of every integration time, not once every pulse sequence # REPLY that's true here, by nave.
     seqnum_start = 0
 
     status = radar_status.RadarStatus()
@@ -260,22 +255,20 @@ def radar():
     while should_poll:
         poller = zmq.Poller()  # REVIEW #0 Should these two lines really be in the while loop?
         poller.register(cpsocket, zmq.POLLIN)
-        cpsocks = dict(poller.poll(
-            10))  # polls for 3 ms, NOTE this is before inttime timer starts. # REVIEW #5 where do you find the units for poll? we assume that the comment is just outdated and should read "10 ms"
+        cpsocks = dict(poller.poll(10))  # polls for 10 ms, NOTE this is before inttime timer starts.
         if cpsocket in cpsocks:  #
-            if cpsocks[cpsocket] == zmq.POLLIN:  # REVIEW #3 Why do you need to check if this is a zmq.POLLIN?
-                new_cp = get_prog(cpsocket)  # TODO: write this function
-                if new_cp == None:  # REVIEW #39 This if/elif can be slimmed down to one if isinstance(new_cp, normalscan.Normalscan)?, else statement could just be "No New CP" unless you're distinguising between new_cp == None and new_cp == something else
-                    print "NO NEW CP"
-                elif isinstance(new_cp,
-                                normalscan.Normalscan):  # is this how to check if it's a correct class type? # REVIEW #5 TODO need to make this dynamic or check some other way (parent?)
+            if cpsocks[cpsocket] == zmq.POLLIN:  # REVIEW #3 Why do you need to check if this is a zmq.POLLIN? REPLY: Not sure, was in an example, will investigate.
+                new_cp = get_prog(cpsocket)
+                if isinstance(new_cp, normalscan.Normalscan):  # is this how to check if it's a correct class type? # REVIEW #5 TODO need to make this dynamic or check some other way (parent?) REPLY yes
                     # TODO: scheduler
                     prog = new_cp  # REVIEW #26 'prog' should now be 'experiment' or similar. same with 'cp'
                     beam_remaining = False  # REVIEW #0 Why is this set to False here, when it's being set to True at the top of the while True loop below?
                     updated_cp_received = True  # REVIEW #0 Why is this set to True here, when it's being set to False at the top of the while True loop below?
                     print "NEW CP!!"
-                    status.status = 1  # REVIEW #26 What does this mean, better names for status'
+                    status.status = 'NOERROR'  # REVIEW #26 What does this mean, better names for status'
                     should_poll = False  # REVIEW #33 This could just be a 'break' with the while loop using 'while True' since you're not doing anything else after this elif block is entered
+                else:
+                    print "NO NEW CP"
         else:
             print "No CP - keep polling"
 
@@ -299,7 +292,7 @@ def radar():
             # Make iterator for cycling through beam numbers
             scan_iter = 0  # REVIEW #26 Seems more apt to name this beam_iter.
             scans_done = 0
-            while (beam_remaining and not updated_cp_received):
+            while beam_remaining and not updated_cp_received:
                 for aveperiod in scan.aveperiods:
                     # If there are multiple aveperiods in a scan they are alternated
                     #   beam by beam. So we need to iterate through
@@ -307,8 +300,7 @@ def radar():
                     #   iterator to the next beam in each scan.
 
                     # poll for new cp here, before starting a new integration.
-                    cpsocket.send_pyobj(
-                        status)  # REVIEW #22 Duplicated code (above lines ~256-275), can be refactored into a function like 'search_for_experiment'
+                    cpsocket.send_pyobj(status)  # REVIEW #22 Duplicated code (above lines ~256-275), can be refactored into a function like 'search_for_experiment' REPLY ok
                     poller = zmq.Poller()
                     poller.register(cpsocket, zmq.POLLIN)
                     cpsocks = dict(poller.poll(3))  # polls for 3 ms, NOTE this is before inttime timer starts.
@@ -346,13 +338,10 @@ def radar():
                     # Create a dictionary of beam directions with the
                     #   keys being the cpos in this averaging period.
                     for cpo in aveperiod.keys:
-                        bmnums = scan.scan_beams[cpo][
-                            scan_iter]  # REVIEW #3 Do not understand how this could be an iterable???
+                        bmnums = scan.scan_beams[cpo][scan_iter]  # REVIEW #3 Do not understand how this could be an iterable??? # REPLY having multiple beam numbers for one integration period, like in imaging.
                         beamdir[cpo] = []
-                        if type(
-                                bmnums) == int:  # REVIEW #39 should use isinstance instead http://stackoverflow.com/questions/707674/how-to-compare-type-of-an-object-in-python
-                            beamdir[cpo] = scan.beamdir[cpo][
-                                bmnums]  # REVIEW #33 why not just always have bmnums a list and then you can get rid of half this code, just keeping the for loop under the else clause.
+                        if type(bmnums) == int:  # REVIEW #39 should use isinstance instead http://stackoverflow.com/questions/707674/how-to-compare-type-of-an-object-in-python
+                            beamdir[cpo] = scan.beamdir[cpo][bmnums]  # REVIEW #33 why not just always have bmnums a list and then you can get rid of half this code, just keeping the for loop under the else clause.
                         else:  # is a list
                             for bmnum in bmnums:
                                 beamdir[cpo].append(scan.beamdir[cpo][bmnum])
@@ -420,8 +409,7 @@ def radar():
                                                                    # REVIEW #39 to make this more understandable: remove the sequence_dict_list.append({}) at the top of the outer for loop, create a blank dictionary 'sequence_dict' there instead, then here do: 'sequence_dict[pulse_index] = [...]' then after the for loop, do 'sequence_dict_list.append(sequence_dict)'
                                                                    endofburst, pulse_channels,
                                                                    isamples_list, qsamples_list]
-                    while (
-                    time_remains):  # REVIEW #32 Put the initialization of 'time_remains = True' right before it's used, i.e. right above this while loop
+                    while time_remains:  # REVIEW #32 Put the initialization of 'time_remains = True' right before it's used, i.e. right above this while loop
                         for sequence in aveperiod.integrations:  # REVIEW #39 is it possible to refactor this to use zip or enumerate because we noticed you're using aveperiod.integrations.index(sequence) down below. Then you would have 'for sequence_index, sequence in enumerate(aveperiod.integrations)'
                             poll_timeout = int(
                                 sequence.seqtime / 1000) + 1  # seqtime is in us, need ms # REVIEW #1 explain why you need to add 1 to this (int rounds down?)
@@ -431,8 +419,7 @@ def radar():
                             beam_phase_dict = {}
                             for cpo in sequence.cpos:
                                 beam_phase_dict[cpo] = []
-                                if type(beamdir[
-                                            cpo]) != list:  # REVIEW #33 why check if this is a list? why not just have a list of one element and build up from there for more beam directions? then you can get rid of half this code and just keep the code under the else clause.
+                                if type(beamdir[cpo]) != list:  # REVIEW #33 why check if this is a list? why not just have a list of one element and build up from there for more beam directions? then you can get rid of half this code and just keep the code under the else clause.
                                     phase_array = []
                                     for channel in range(0, 16):  # REVIEW #26 #29 channel /antenna magic 16 number
                                         # Get phase shifts for all channels
@@ -440,8 +427,7 @@ def radar():
                                             beamdir[cpo],
                                             prog.cpo_list[cpo]['txfreq'], channel,
                                             0))
-                                    for channel in range(6,
-                                                         9):  # interferometer # REVIEW #0 #1, #29 #35 should be 6,10 to get 6,7,8,9, also explain why you are going for channels 6 through 9, also magic numbers - also make a function to phase main array as well a function for phasing int array, decouple them. Potentially means you need a second set of variables for the interferometer such as beamdir - alternatively you could have the beamdir and other variables 20 long for both int and main antennas..
+                                    for channel in range(6, 9):  # interferometer # REVIEW #0 #1, #29 #35 should be 6,10 to get 6,7,8,9, also explain why you are going for channels 6 through 9, also magic numbers - also make a function to phase main array as well a function for phasing int array, decouple them. Potentially means you need a second set of variables for the interferometer such as beamdir - alternatively you could have the beamdir and other variables 20 long for both int and main antennas..
                                         # Get phase shifts for all channels
                                         phase_array.append(get_phshift(
                                             beamdir[cpo],
@@ -474,8 +460,7 @@ def radar():
                             #
                             # SEND ALL PULSES IN SEQUENCE.
                             #
-                            for pulse_index in range(0, len(
-                                    sequence.combined_pulse_list)):  # REVIEW #35 maybe this for loop can be refactored into a send_data_to_driver function along with the data_to_driver code
+                            for pulse_index in range(0, len(sequence.combined_pulse_list)):  # REVIEW #35 maybe this for loop can be refactored into a send_data_to_driver function along with the data_to_driver code
                                 pulse_list = sequence.combined_pulse_list[pulse_index]
                                 repeat = pulse_list[0]
                                 pulse_data = sequence_dict_list[
@@ -488,7 +473,7 @@ def radar():
                                         0, 0, 0, pulse_data[0],
                                         pulse_data[1],
                                         pulse_list[1], seqnum_start + nave,
-                                        repeat=True)  # REVIEW #33 can just put 'repeat' instead of 'repeat=...'
+                                        repeat=True)  # REVIEW #33 can just put 'repeat' instead of 'repeat=...' REPLY: repeat is an optional param the way I have it written.
                                 else:
                                     ack = data_to_driver(
                                         driverpacket, txsocket,
@@ -499,11 +484,10 @@ def radar():
                                         prog.txrate, sequence.numberofreceivesamples,
                                         pulse_data[0],  # startofburst
                                         pulse_data[1],  # endofburst,
-                                        pulse_list[1], seqnum_start + nave, repeat=False)
+                                        pulse_list[1], seqnum_start + nave)
                                     # Pulse is done.
 
-                            # Get sequence acknowledgements and log
-                            # synchronization and communication errors between
+                            # Get sequence acknowledgements and log synchronization and communication errors between
                             # the n200_driver, rx_sig_proc, and radar_control.
                             if seqnum_start + nave != 0:  # REVIEW #35 make this if/else a function - call it something like acknowledge_completed_sequence/ verify_completed_sequence/ verify_something
                                 poller2 = zmq.Poller()  # REVIEW #33 can these three lines be done only once or do they need to be repeated every sequence (and every time through the while(time_remains) loop)?
@@ -535,7 +519,7 @@ def radar():
                                     else:
                                         pass
                                         # print "******************ERROR: Have not received both ACKS"
-                            else:  # on the very first sequence since starting radar. # REVIEW #1 what does this comment imply?
+                            else:  # on the very first sequence since starting the radar. # REVIEW #1 what does this comment imply? REPLY: ?
                                 poller = zmq.Poller()
                                 poller.register(txsocket, zmq.POLLIN)
                                 print "Polling for {}".format(poll_timeout)
@@ -548,8 +532,7 @@ def radar():
                                     # TODO: Log error because no ack returned from driver on first send.
                             # Now, check how long the kernel is taking to process (non-blocking)
                             try:
-                                kernel_time_ack = proctimesocket.recv(
-                                    flags=zmq.NOBLOCK)  # REVIEW #5 units of the ack (ms?)
+                                kernel_time_ack = proctimesocket.recv(flags=zmq.NOBLOCK)  # REVIEW #5 units of the ack (ms?) TODO: use this ack value in error checking
                             except zmq.Again:
                                 pass  # TODO: Should do something if don't receive kernel_time_ack for many sequences.
 

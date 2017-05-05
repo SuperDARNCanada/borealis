@@ -5,47 +5,45 @@ from experiment_prototype import ExperimentPrototype
 
 
 class Normalscan(ExperimentPrototype):
-    
     def __init__(self):
-        super(Normalscan,self).__init__(150, 1) #number of cpo_list dictionaries to interface, 'control program' ID
+        super(Normalscan, self).__init__(150, 1)
+        # :param cpid : 'control program' ID
+        # :param num_slices : number of slice dictionaries to interface in this experiment.
 
-        # If you created this experiment with x number of cpo_list dictionaries, update cpo_list[0] through cpo_list[x-1]
+        # If you created this experiment with x number of slice dictionaries, update cpo_list[0] through cpo_list[x-1]
         self.slice_list[0].update({
-            "txchannels":   [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-            "rxchannels":   [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
-            "sequence":     [0,14,22,24,27,31,42,43],
-            "pulse_shift":  [0,0,0,0,0,0,0,0],
-            "mpinc":        1500, # us
-            "pulse_len":    300, # us
-            "nrang":        75, # range gates
-            "frang":        90, # first range gate, in km
-            "intt":         3000, # duration of an integration, in ms
-            "intn":         21, # number of averages if intt is None.
-            "beamdir":      [-26.25,-22.75,-19.25,-15.75,-12.25,-8.75,
-                -5.25,-1.75,1.75,5.25,8.75,12.25,15.75,19.25,22.75,26.25],
-            "scan":         [15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,0],
-            "scanboundf":   1, 
-            "scanbound":    60000,
-            "txfreq":       12300,
-            "rxfreq":       12300,
-            "clrfrqf":      1, 
-            "clrfrqrange":  [12200,12500],
-            "xcf":          1,
-            "acfint":       1, 
-            "wavetype":     "SINE",
-            "seqtimer":     0
+            "txchannels": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+            "rxchannels": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+            "sequence": [0, 14, 22, 24, 27, 31, 42, 43],
+            "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
+            "mpinc": 1500,  # us
+            "pulse_len": 300,  # us
+            "nrang": 75,  # range gates
+            "frang": 90,  # first range gate, in km
+            "intt": 3000,  # duration of an integration, in ms
+            "intn": 21,  # number of averages if intt is None.
+            "beamdir": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
+                        -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75, 26.25],
+            "scan": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+            "scanboundf": 1,
+            "scanbound": 60000,
+            "txfreq": 12300,
+            "rxfreq": 12300,
+            "clrfrqf": 1,
+            "clrfrqrange": [12200, 12500],
+            "xcf": 1,
+            "acfint": 1,
+            "wavetype": "SINE",
+            "seqtimer": 0
         })
 
-        # Other things you can change if you wish.
-        #self.txctrfreq = 12000
-        #self.txrate = 12000000 
-        #self.rxctrfreq = 12000 
-        #self.xcf = 1
-        #self.acfint = 1
+        # Other things you can change if you wish. Be cautious.
+        # self.txctrfreq = 12000 # kHz
+        # self.txrate = 12000000 # Hz
+        # self.rxctrfreq = 12000 # kHz
+        # self.xcf = 1 # flag for cross-correlation data between main and interferometer
+        # self.acfint = 1 # flag for auto-correlation with interferometer data.
 
-        
-        # Update the following interface dictionary if you have more than one cpo_list dictionary.
-        
         """ 
         INTERFACING TYPES:
         
@@ -79,10 +77,14 @@ class Normalscan(ExperimentPrototype):
             and B will have integrations that run at the same time. 
         """
 
-         # NOTE keys are as such: (0,1), (0,2), (1,2), NEVER includes (2,0) etc.
-#        self.interface.update({
-#            (0,1) : 'PULSE'
-#        }) 
+        # Update the following interface dictionary if you have more than one slice dictionary in your slice_list.
+        # The keys in the interface dictionary correspond to the slice_ids of the slices in your slice_list.
+
+        # NOTE keys are as such: (0,1), (0,2), (1,2), NEVER includes (2,0) etc.
+
+    #        self.interface.update({
+    #            (0,1) : 'PULSE'
+    #        })
 
     def update(self, acfdata):
         """
@@ -90,8 +92,8 @@ class Normalscan(ExperimentPrototype):
         retrieved from the rx_signal_processing block
 
         :param acfdata ??? TBD
-        """ # TODO update with how acfdata will be passed in
+        :rtype boolean
+        :return change_flag, indicating whether the experiment has changed or not. True = change has occurred.
+        """  # TODO update with how acfdata will be passed in
         change_flag = False
         return change_flag
-
-

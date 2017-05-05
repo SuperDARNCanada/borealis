@@ -26,6 +26,39 @@ from radar_control.scan_classes import scans
 # REVIEW #28 This could potentially be a global variable instead.
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
+"""
+INTERFACING TYPES:
+
+NONE : Only the default, must be changed.
+SCAN : Scan by scan interfacing. cpo #1 will scan first
+    followed by cpo #2 and subsequent cpo's.
+INTTIME : nave by nave interfacing (full integration time of
+     one pulse_sequence, then the next). Time/number of pulse_sequences
+    dependent on intt and intn in exp_slice. Effectively
+    simultaneous scan interfacing, interleaving each
+    integration time in the scans. cpo #1 first inttime or
+    beam direction will run followed by cpo #2's first inttime,
+    etc. if cpo #1's len(scan) is greater than cpo #2's, cpo
+    #2's last integration will run and then all the rest of cpo
+    #1's will continue until the full scan is over. CPObject 1
+    and 2 must have the same scan boundary, if any boundary.
+    All other may differ.
+INTEGRATION : integration by integration interfacing (one
+    pulse_sequence of one exp_slice, then the next). CPObject #1 and
+    CPO #2 must have same intt and intn. Integrations will
+    switch between one and the other until time is up/nave is
+    reached.
+PULSE : Simultaneous pulse_sequence interfacing, pulse by pulse
+    creates a single pulse_sequence. CPO A and B might have different
+    frequencies (stereo) and/or may have different pulse
+    length, mpinc, pulse_sequence, but must have the same integration
+    time. They must also have same len(scan), although they may
+    use different directions in scan. They must have the same
+    scan boundary if any. A time offset between the pulses
+    starting may be set (seq_timer in exp_slice). CPObject A
+    and B will have integrations that run at the same time.
+"""
+
 MINIMUM_PULSE_LENGTH = 0.01  # us
 
 
@@ -76,9 +109,10 @@ def selfcheck_slice(exp_slice, options):  # REVIEW #1 #26 Name and docstring cou
             error_dict[error_count] = "Slice {} Specifies Main Array Antenna Numbers Over Config Max {}" \
                 .format(exp_slice['slice_id'], options.main_antenna_count)
             error_count = error_count + 1
-            # REVIEW #0 #39 This will work only if the rxchannels and txchannels lists are sorted. - REPLY I disagree, will
-            # work for unsorted as well but can implement this way
-            # Maybe you can use a list comprehension as shown here instead:
+
+            # REVIEW #0 #39 This will work only if the rxchannels and txchannels lists are sorted. - REPLY I
+            # disagree, will work for unsorted as well but can implement this way ; Maybe you can use a list
+            # comprehension as shown here instead:
             # http://stackoverflow.com/questions/9835762/find-and-list-duplicates-in-a-list
 
             # for j in range(i + 1, len(exp_slice['txantennas'])):
@@ -233,7 +267,7 @@ class ExperimentPrototype(object):
 
         for num in range(self.num_slices):
             exp_slice = {key: None for key in self.slice_keys}
-            exp_slice["obj_id"] = num
+            exp_slice["slice_id"] = num
             exp_slice["cpid"] = self.cpid
             slice_list.append(exp_slice)
 
@@ -261,79 +295,52 @@ class ExperimentPrototype(object):
         self.interface = setup_interfacing(self.num_slices)
         # Dictionary of how each cpo interacts with the other slices. Default is "NONE" for all, but must be modified
         # in experiment. NOTE keys are as such: (0,1), (0,2), (1,2), NEVER includes (2,0) etc. The only interface
-        # options are: if_types=frozenset(['NONE', 'SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
+        # options are: interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
-        """ #REVIEW #3 Perhaps this comment should go with the interfacing, or if_type method. Seems to be a better place.
-        INTERFACING TYPES:
+        self.slice_id_scan_lists = None
+        self.scan_objects = []
+        # These are used internally by the radar_control block to build iterable objects out of the slice using the
+        # interfacing specified.
 
-        NONE : Only the default, must be changed.
-        SCAN : Scan by scan interfacing. cpo #1 will scan first
-            followed by cpo #2 and subsequent cpo's.
-        INTTIME : nave by nave interfacing (full integration time of
-             one pulse_sequence, then the next). Time/number of pulse_sequences
-            dependent on intt and intn in exp_slice. Effectively
-            simultaneous scan interfacing, interleaving each
-            integration time in the scans. cpo #1 first inttime or
-            beam direction will run followed by cpo #2's first inttime,
-            etc. if cpo #1's len(scan) is greater than cpo #2's, cpo
-            #2's last integration will run and then all the rest of cpo
-            #1's will continue until the full scan is over. CPObject 1
-            and 2 must have the same scan boundary, if any boundary.
-            All other may differ.
-        INTEGRATION : integration by integration interfacing (one
-            pulse_sequence of one exp_slice, then the next). CPObject #1 and
-            CPO #2 must have same intt and intn. Integrations will
-            switch between one and the other until time is up/nave is
-            reached.
-        PULSE : Simultaneous pulse_sequence interfacing, pulse by pulse
-            creates a single pulse_sequence. CPO A and B might have different
-            frequencies (stereo) and/or may have different pulse
-            length, mpinc, pulse_sequence, but must have the same integration
-            time. They must also have same len(scan), although they may
-            use different directions in scan. They must have the same
-            scan boundary if any. A time offset between the pulses
-            starting may be set (seq_timer in exp_slice). CPObject A
-            and B will have integrations that run at the same time.
-        """
+    def __repr__(self):
+        represent = 'self.cpid = {}\nself.num_slices = {}\nself.slice_keys = {}\nself.slice_list = {}\nself.options = \
+        {}\nself.txctrfreq = {}\nself.txrate = {}\nself.rxctrfreq = {}\nself. xcf = {}\nself.acfint = {}\nself.i\
+        nterface = {}\n'.format(self.cpid, self.num_slices, self.slice_keys, self.slice_list, self.options,
+                                self.txctrfreq, self.txrate, self.rxctrfreq, self.xcf, self.acfint, self.interface)
+        return represent
 
-    def __call__(
-            self):  # REVIEW #28 It seems this method is used to print stuff. try to use __repr__ or __str__ instead http://stackoverflow.com/questions/1436703/difference-between-str-and-repr-in-python
-        print 'CPID [cpid]: {}'.format(self.cpid)
-        print 'Num of CP Objects [cponum]: {}'.format(self.num_slices)
-        for i in range(self.num_slices):
-            print '\n'
-            print 'CP Object : {}'.format(i)
-            print self.slice_list[i]
-        print '\n'
-        print 'Interfacing [interface]: {}'.format(self.interface)
-        return None
+    def __str__(self):
+        represent = 'CPID [cpid]: {}'.format(self.cpid)
+        represent += '\nNum of Slices [num_slices]: {}'.format(self.num_slices)
+        for exp_slice in self.slice_list:
+            represent += '\nSlice {} : '.format(exp_slice['slice_id']) + exp_slice
+        represent += '\nInterfacing [interface]: {}'.format(self.interface)
+        return represent
 
-    def build_Scans(self):  # REVIEW #40 Function name does not adhere to PEP. Should not have caps.
-        """ REVIEW #7 Just a note to update this documentation away from controlprogram
-        Will run after a controlprogram instance is set up and
-        modified - build iterable objects for radar_control
-        
+    def build_scans(self):
+        """ 
+        Will be run by experiment handler, to build iterable objects for radar_control to use.
         """
 
         # Check interfacing
-        self.selfcheck()
+        self.self_check()
         self.check_interfacing()
-        # Find separate scans.
-        self.cpo_scans = self.get_scans()  # REVIEW #32 We think its more clear to the reader to declare all members in the constructor so that we know what to expect. Just set them to None or empty container type.
-        # Returns list of scan lists. Each scan list is a list of the
-        #   cpo numbers for that scan.
-        self.scan_objects = []  # REVIEW #32
-        for scan_cpo_list in self.cpo_scans:  # REVIEW #39 This could be converted to list comprehension to be more pythonic
-            self.scan_objects.append(scans.Scan(self, scan_cpo_list))
-            # Append a Scan instance, passing this controlprog, list of cpo # REVIEW #7
-            #   numbers to include in scan.
+        self.slice_id_scan_lists = self.get_scans
+        # Returns list of scan lists. Each scan list is a list of the slice_ids for the slices included in the scan.
+        if self.slice_id_scan_lists:  # if list is not empty, can make scans
+            self.scan_objects = [scans.Scan(self, scan_list) for scan_list in self.slice_id_scan_lists]
+        # Append a scan instance, passing in the list of slice ids to include in scan.
+        else:
+            pass  # TODO error
 
-    def selfcheck(self):  # REVIEW #40 Perhaps add an underscore in between self and check
+        # REPLY should I make scan_id 's as well ?
+
+    def self_check(self):
         """
         Check that the values in this experiment are valid
         """
 
-        if (self.num_slices < 1):
+        if self.num_slices < 1:
             errmsg = "Error: No objects in control program"
             sys.exit(errmsg)  # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead.
 
@@ -341,7 +348,7 @@ class ExperimentPrototype(object):
 
         for cpo in range(self.num_slices):
             selferrs = selfcheck_slice(self.slice_list[cpo], self.options)
-            if (not selferrs):  # REVIEW #39 unneeded parenthesis
+            if not selferrs:  # REVIEW #39 unneeded parenthesis
                 # If returned error dictionary is empty
                 continue
             errmsg = "Self Check Errors Occurred with Object Number : {} \nSelf \
@@ -351,114 +358,123 @@ class ExperimentPrototype(object):
             print "No Self Check Errors. Continuing..."
         return None
 
-    # REVIEW #30 Consider splitting interface/error checking into a seperate class. It would decouple this behaviour and could simplify the experiment significantly. The experiment handler would be able to make
-    # sure that the experiment is error checked, and someone developing the experiment could just run their experiment through it in the interpretter or something.
+    # REVIEW #30 Consider splitting interface/error checking into a seperate class. It would decouple this behaviour
+    # and could simplify the experiment significantly. The experiment handler would be able to make sure that the
+    # experiment is error checked, and someone developing the experiment could just run their experiment through it
+    # in the interpretter or something. REPLY - OK TODO
     def check_interfacing(self):
         """
         Check that the keys in the interface are not NONE and are
         valid.
         """
 
-        for key in self.interface.keys():  # REVIEW #39 There is a more pythonic way to iterate over dicts http://stackoverflow.com/questions/3294889/iterating-over-dictionaries-using-for-loops-in-python
-            if self.interface[key] == "NONE":  # REVIEW #34 Do you mean to say that interface type, not key, is default?
-                errmsg = 'Interface keys are still default, must set key \
-                    {}'.format(key)
-                sys.exit(errmsg)  # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead.
+        for key, interface_type in self.interface.items():
+            if interface_type == "NONE":
+                errmsg = 'Interfacing is still default, must set key {}'.format(key)
+                sys.exit(errmsg)  # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead. REPLY OK
 
-        for num1, num2 in self.interface.keys():  # REVIEW #39 There is a more pythonic way to iterate over dicts http://stackoverflow.com/questions/3294889/iterating-over-dictionaries-using-for-loops-in-python
-            if ((num1 >= self.num_slices) or (num2 >= self.num_slices) or (
-                        num1 < 0)  # REVIEW #15 Should you check ordering? Num 1 always less than num 2 based off your interfacing comments.
-                or (num2 < 0)):
-                errmsg = 'Interfacing key ({}, {}) is not necessary and not \
-                    valid'.format(num1, num2)
-                # REVIEW #34 Maybe split these into two error checks/messages. One for invalid parameters and then one for unnecessary keys
+        for num1, num2 in self.interface.iterkeys():  # REPLY: Have to specify keys here because we don't want value
+            if num1 >= self.num_slices or num2 >= self.num_slices or num1 < 0 or num2 < 0:
+                # REVIEW #15 Should you check ordering? Num 1 always less than num 2 based off
+                # your interfacing comments. - REPLY: this is required for how I have it set up. Avoids any confusion
+                #  with keys [0,2] vs [2,0] for example. Because you could add your own keys I check it.
+                errmsg = 'Interfacing key ({}, {}) is not valid, all keys must refer to (slice_id1, slice_id2) where \
+                slice_id1 < slice_id2'.format(num1, num2)
+                # REVIEW #34 Maybe split these into two error checks/messages. One for invalid parameters and then
+                # one for unnecessary keys REPLY: I think all possibilities are invalid - added
+                # more description
                 sys.exit(errmsg)  # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead.
             if self.interface[num1, num2] not in interface_types:
-                errmsg = 'Interfacing Not Valid Type between CPO {} and CPO \
-                    {}'.format(num1, num2)
+                errmsg = 'Interfacing Not Valid Type between Slice_id {} and Slice_id {}'.format(num1, num2)
                 sys.exit(errmsg)  # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead.
 
-        # TODO: add checks that verify interfacing makes sense - ie 0,1 is pulse by pulse, and 1,2 is scan therefore 0,2 must also be scan
-        # Could also accept NONE at 0,2 in that ^^ example ??
+        # Could also accept NONE at 0,2 in that ^^ example ?? REPLY: sure, although, I have set up the get_scans
+        # to do the check that if 0,1 is pulse and 1,2 is scan that 0,2 must also be scan.
         return None
 
     def get_scans(self):
-        """Take my own interfacing and get info on how many scans and # REVIEW #1 Could use a more clear description.
-            which cpos make which scans
+        """
+        Take my own interfacing and get info on how many scans and which slices make which scans.
+        :rtype list
+        :return list of lists. The list has one element per scan. Each element is a list of slice_id's signifying which
+         slices are combined inside that scan. The element could be a list of length 1, meaning only one slice_id is 
+         included in that scan. The list returned could be of length 1, meaning only one scan is present in the 
+         experiment.
         """
         scan_combos = []
 
-        for num1, num2 in self.interface.keys():  # REVIEW #39 There is a more pythonic way to iterate over dicts http://stackoverflow.com/questions/3294889/iterating-over-dictionaries-using-for-loops-in-python
-            if (self.interface[num1, num2] == "PULSE" or
-                        self.interface[num1, num2] == "INT_TIME" or
-                        self.interface[num1, num2] == "INTEGRATION"):
+        for num1, num2 in self.interface.iterkeys():  # REPLY: Ok but need to specify keys so we don't get key,value
+            if self.interface[num1, num2] == "PULSE" or self.interface[num1, num2] == "INT_TIME" or \
+                    self.interface[num1, num2] == "INTEGRATION":
                 scan_combos.append([num1, num2])
-                # Save the keys that are scan combos.
+                # Save the keys that are scan combos (that != SCAN, as that would mean they are in separate scans)
 
         scan_combos = sorted(scan_combos)
         # if [2,4] and [1,4], then also must be [1,2] in the scan_combos
-        i = 0  # REVIEW #3 This needs a detailed explaination with examples.
-        while (i < len(scan_combos)):
-            k = 0
-            while (k < len(scan_combos[i])):
-                j = i + 1
-                while (j < len(scan_combos)):
-                    if scan_combos[i][k] == scan_combos[j][0]:
-                        add_n = scan_combos[j][1]  # REVIEW #26 add_n  perhaps better name
-                        scan_combos[i].append(add_n)
-                        # Combine the indices if there are 3+ CPObjects
-                        #   combining in same seq.
-                        for m in range(0, len(scan_combos[i]) - 1):
-                            # Try all values in seq_combos[i] except
-                            #    the last value, which is = to add_n.
+        # Now we are going to modify the list of lists of length = 2 to be a list of length x so that if [1,2] and [2,4]
+        # and [1,4] are in scan_combos, we want only one list element for this scan : [1,2,4] .
+        scan_i = 0  # REVIEW #3 This needs a detailed explaination with examples. REPLY OK TODO
+        while scan_i < len(scan_combos):  # i: element in scan_combos (representing one scan)
+            slice_id_k = 0
+            while slice_id_k < len(scan_combos[scan_i]):  # k: element in scan (representing a slice)
+                scan_j = scan_i + 1  # j: iterates through the other elements of scan_combos, to combine them into
+                # the first, i, if they are in fact part of the same scan.
+                while scan_j < len(scan_combos):
+                    if scan_combos[scan_i][slice_id_k] == scan_combos[scan_j][0]:  # if an element (slice_id) inside
+                        # the i scan is the same as a slice_id in the j scan (somewhere further in the scan_combos),
+                        # then we need to combine that j scan into the i scan. We only need to check the first element
+                        # of the j scan because scan_combos has been sorted and we know the first slice_id in the scan
+                        # is less than the second slice id.
+                        add_n_slice_id = scan_combos[scan_j][1]  # the slice_id to add to the i scan from the j scan.
+                        scan_combos[scan_i].append(add_n_slice_id)
+                        # Combine the indices if there are 3+ slices combining in same scan
+                        for m in range(0, len(scan_combos[scan_i]) - 1):  # if we have added z to scan_i, such that
+                            # scan_i is now [x,y,z], we now have to remove from the scan_combos list [x,z], and [y,z].
+                            # If x,z existed as SCAN but y,z did not, we have an error. REPLY TODO change this
+                            # functionality if we let y,z be None although x,z is set.
+                            # Try all values in scan_combos[i] except the last value, which is = to add_n.
                             """
                             if scan_combos[i][m] > add_n:
                                 .......
                             """
                             try:
-                                scan_combos.remove([scan_combos[i][m],
-                                                    add_n])  # REVIEW #0 what happens if the item you try to remove is in the form [n,m] where n > m
-                                # seq_combos[j][1] is the known last
-                                #   value in seq_combos[i]
-                            except ValueError:  # REVIEW #3 This error needs to be either more detailed, or explain how it would happen.
-                                errmsg = 'Interfacing not Valid: CPO {} and CPO \
-                                    {} are combined in-scan and do not \
-                                    interface the same with CPO {}'.format(
-                                    scan_combos[i][m], scan_combos[i][k], add_n
-                                )
+                                scan_combos.remove([scan_combos[scan_i][m], add_n_slice_id])
+                                # REVIEW #0 what happens if the item you try to remove is in the form [n,m] where n > m
+                                # REPLY: that would have shown up in the self checks as an error
+                                # scan_combos[j][1] is the known last value in scan_combos[i]
+                            except ValueError:
+                                # REVIEW #3 This error needs to be either more detailed, or explain how it would happen.
+                                # REPLY: This error would occur if you had set [x,y] and [x,z] to PULSE but [y,z] to
+                                # SCAN. This means that we couldn't remove the scan_combo y,z from the list because it
+                                # was not added to scan_combos because it wasn't a scan type, so the interfacing would
+                                # not make sense (conflict).
+                                errmsg = 'Interfacing not Valid: CPO {} and CPO {} are combined in-scan and do not \
+                                    interface the same with CPO {}'.format(scan_combos[scan_i][m],
+                                                                           scan_combos[scan_i][slice_id_k],
+                                                                           add_n_slice_id)
                                 sys.exit(errmsg)
-                        j = j - 1
-                        # This means that the former scan_combos[j] has
-                        #   been deleted and there are new values at
-                        #   index j, so decrement before
-                        #   incrementing in for. #REVIEW #1 Do you mean while instead of for here?
-                    j = j + 1
-                k = k + 1
-            i = i + 1
-        # now scan_combos is a list of lists, where a cp object occurs
-        #   only once in the nested list.
-        for cpo in range(self.num_slices):  # REVIEW #26
-            found = False
-            for i in range(len(scan_combos)):
-                for j in range(len(scan_combos[i])):
-                    if cpo == scan_combos[i][j]:
-                        found = True
-                        break
-                if found == False:
-                    continue
-                break
+                        scan_j = scan_j - 1
+                        # This means that the former scan_combos[j] has been deleted and there are new values at
+                        #   index j, so decrement before incrementing in while.
+                        # The above for loop will delete more than one element of scan_combos (min 2) but the
+                        # while scan_j < len(scan_combos) will reevaluate the length of scan_combos.
+                    scan_j = scan_j + 1
+                slice_id_k = slice_id_k + 1  # if interfacing has been properly set up, the loop will only ever find
+                # elements to add to scan_i when slice_id_k = 0. If there were errors though (ex. x,y and y,z = PULSE
+                # but x,z did not) then iterating through the slice_id elements will allow us to find the
+                # error.
+            scan_i = scan_i + 1  # At this point, all elements in the just-finished scan_i will not be found anywhere
+            #  else in scan_combos.
+
+        # now scan_combos is a list of lists, where a slice_id occurs only once, within the nested list.
+
+        for slice_id in range(self.num_slices):
+            for sc in scan_combos:
+                if slice_id in sc:
+                    break
             else:  # no break
-                scan_combos.append([cpo])
-                # Append the cpo on its own, is not scan combined.
-
-        # REVIEW 39 All the above can be rewritten as this. Else excutes in a similar manner
-        # for cpo in range(self.cponum):
-        #     for sc in scan_combos:
-        #         if cpo in sc:
-        #             break
-        #     else:
-        #         scan_combos.append([cpo])
-
+                scan_combos.append([slice_id])
+                # Append the slice_id on its own, is not combined within scan.
 
         scan_combos = sorted(scan_combos)
         return scan_combos
