@@ -1,8 +1,11 @@
 #!/usr/bin/python
 
+# Copyright 2017 SuperDARN Canada
+#
+# Marci Detwiller
+#
 # radar_control.py
 # 2017-03-13
-# Marci Detwiller
 # Get a radar control program made of objects (scans, averaging periods, and sequences).
 # Communicate with the n200_driver to control the radar.
 # Communicate with the rx_dsp_chain to process the data.
@@ -11,14 +14,9 @@ import sys
 import cmath
 from datetime import datetime, timedelta
 import time
-
 import zmq
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.fftpack import fft
-from scipy.signal import kaiserord, lfilter, firwin, freqz
 
-# from multiprocessing import Process, Value
+from utils.experiment_options.experimentoptions import ExperimentOptions
 
 sys.path.append('../build/release/utils/protobuf')  # REVIEW #6 TODO need to make this a dynamic import since
 # 'release' may be 'debug'
@@ -27,77 +25,71 @@ import driverpacket_pb2
 import sigprocpacket_pb2
 
 from sample_building import get_phshift, get_wavetables, make_pulse_samples
+from experiments.experiment_prototype import ExperimentPrototype
 
-sys.path.append('../experiments')
-import normalscan  # TODO - have it setup by scheduler
+from experiments.normalscan import Normalscan  # TODO - have it setup by scheduler
 
 import radar_status
 
 
-# REVIEW #1 Add description of params with units in docstring. Maybe find a docstring generator for vim.
-def setup_driver_socket():  # to send pulses to driver. # REVIEW #38 could move this into docstring
+def setup_driver_socket(context):
     """
     Setup a zmq socket to communicate with the driver.
+    :param context: zmq context
+    :return: zmq socket
     """
-
-    context = zmq.Context()  # REVIEW #33 Apparently it's best to just use one zmq context in the entire application
-    # - http://stackoverflow.com/questions/32280271/zeromq-same-context-for-multiple-sockets. So maybe have a global
-    # context or set it up in the main function and pass it to these functions.
-    cpsocket = context.socket(zmq.PAIR)
-    cpsocket.connect("ipc:///tmp/feeds/0")
-    return cpsocket
+    socket = context.socket(zmq.PAIR)
+    socket.connect("ipc:///tmp/feeds/0")
+    return socket
 
 
-def setup_sigproc_params_socket():  # to send data to receive code. # REVIEW #38 could move this into docstring
+def setup_sigproc_params_socket(context):
     """
     Setup a zmq socket to communicate with rx_signal_processing.
+    :param context: zmq context
+    :return: zmq socket
     """
-
-    context = zmq.Context()  # REVIEW #33
-    cpsocket = context.socket(zmq.PAIR)
-    cpsocket.connect("ipc:///tmp/feeds/2")
-    return cpsocket
+    socket = context.socket(zmq.PAIR)
+    socket.connect("ipc:///tmp/feeds/2")
+    return socket
 
 
-def setup_sigproc_cpack_socket():  # to send data to receive code. # REVIEW #38 could move this into docstring
+def setup_sigproc_cpack_socket(context):
     """
     Setup a zmq socket to get acks from rx_signal_processing.
+    :param context: zmq context
+    :return: zmq socket
     """
-
-    context = zmq.Context()  # REVIEW #33
-    cpsocket = context.socket(zmq.PAIR)
-    cpsocket.connect("ipc:///tmp/feeds/3")
-    return cpsocket
+    socket = context.socket(zmq.PAIR)
+    socket.connect("ipc:///tmp/feeds/3")
+    return socket
 
 
-def setup_sigproc_timing_ack_socket():
+def setup_sigproc_timing_ack_socket(context):
     """
     Setup a zmq socket to get timing information from rx_signal_processing.
+    :param context: zmq context
+    :return: zmq socket
     """
-
-    context = zmq.Context()  # REVIEW #33
-    cpsocket = context.socket(zmq.PAIR)
-    cpsocket.connect("ipc:///tmp/feeds/4")
-    return cpsocket
+    socket = context.socket(zmq.PAIR)
+    socket.connect("ipc:///tmp/feeds/4")
+    return socket
 
 
-def setup_cp_socket():
+def setup_cp_socket(context):
     """
     Setup a zmq socket to get updated experiment parameters from the experiment.
-    :rtype: object
-    :return: 
+    :param context: zmq context
+    :return: zmq socket
     """
-
-    context = zmq.Context()  # REVIEW #33
-    cpsocket = context.socket(zmq.PAIR)
-    cpsocket.connect("ipc:///tmp/feeds/5")
-    return cpsocket
+    socket = context.socket(zmq.PAIR)
+    socket.connect("ipc:///tmp/feeds/5")
+    return socket
 
 
 def get_prog(socket):
     """
     Receive pickled python object of the experiment class.
-    :rtype: object
     :param socket: 
     :return: 
     """
@@ -220,6 +212,37 @@ def get_ack(xsocket, procpacket):  # REVIEW #26 what does the 'x' mean in xsocke
         return  # REVIEW #6 Here we return None implicity, can type "return None" to be more explicit, or do something else with the error, TODO?
 
 
+def search_for_experiment(socket, status):
+    """
+    Check for new experiments from the experiment handler
+    :param socket: socket to experiment handler
+    :param status: status of type RadarStatus.
+    :return: boolean (True for new experiment received), and the experiment (or None if there is no new experiment)
+    """
+    socket.send_pyobj(status)
+    poller = zmq.Poller()
+    poller.register(socket, zmq.POLLIN)
+    while True:
+        socks = dict(poller.poll(10))  # polls for 10 ms, NOTE this is before inttime timer starts.
+        if socket in socks:  #
+            if socks[socket] == zmq.POLLIN:  # REVIEW #3 Why do you need to check if this is a zmq.POLLIN? REPLY: Not sure, was in an example, will investigate.
+                new_exp = get_prog(socket)
+                if isinstance(new_exp, ExperimentPrototype):
+                    experiment = new_exp
+                    new_experiment_received = True
+                    print "NEW CP!!"
+                    break
+                else:
+                    experiment = None
+                    new_experiment_received = False
+                    print "NO NEW CP"
+                    break
+        else:
+            print "No CP - keep polling"
+
+    return new_experiment_received, experiment
+
+
 def radar():
     """
     Receives an instance of an experiment. Iterates through
@@ -231,17 +254,21 @@ def radar():
     the new ControlProg.
     """
 
-    # Setup socket to send pulse samples over.
-    txsocket = setup_driver_socket()
     # Initialize driverpacket.
     driverpacket = driverpacket_pb2.DriverPacket()
 
-    procsocket = setup_sigproc_params_socket()
-    sigprocpacket = sigprocpacket_pb2.SigProcPacket()
-    proctimesocket = setup_sigproc_timing_ack_socket()
-    proccpsocket = setup_sigproc_cpack_socket()
+    # Get config options.
+    options = ExperimentOptions()
 
-    cpsocket = setup_cp_socket()
+    context = zmq.Context()  # single context for all sockets involved in this process.
+    # Setup socket to send pulse samples over.
+    txsocket = setup_driver_socket(context)
+
+    procsocket = setup_sigproc_params_socket(context)
+    sigprocpacket = sigprocpacket_pb2.SigProcPacket()
+    proctimesocket = setup_sigproc_timing_ack_socket(context)
+    proccpsocket = setup_sigproc_cpack_socket(context)
+    cpsocket = setup_cp_socket(context)
     # seqnum is used as a identifier in all packets while
     # radar is running so set it up here.
     # seqnum will get increased by nave (number of averages or sequences in the integration period) at the end of every integration time.
@@ -250,101 +277,81 @@ def radar():
 
     status = radar_status.RadarStatus()
 
-    cpsocket.send_pyobj(status)
-    should_poll = True
-    while should_poll:
-        poller = zmq.Poller()  # REVIEW #0 Should these two lines really be in the while loop?
-        poller.register(cpsocket, zmq.POLLIN)
-        cpsocks = dict(poller.poll(10))  # polls for 10 ms, NOTE this is before inttime timer starts.
-        if cpsocket in cpsocks:  #
-            if cpsocks[cpsocket] == zmq.POLLIN:  # REVIEW #3 Why do you need to check if this is a zmq.POLLIN? REPLY: Not sure, was in an example, will investigate.
-                new_cp = get_prog(cpsocket)
-                if isinstance(new_cp, normalscan.Normalscan):  # is this how to check if it's a correct class type? # REVIEW #5 TODO need to make this dynamic or check some other way (parent?) REPLY yes
-                    # TODO: scheduler
-                    prog = new_cp  # REVIEW #26 'prog' should now be 'experiment' or similar. same with 'cp'
-                    beam_remaining = False  # REVIEW #0 Why is this set to False here, when it's being set to True at the top of the while True loop below?
-                    updated_cp_received = True  # REVIEW #0 Why is this set to True here, when it's being set to False at the top of the while True loop below?
-                    print "NEW CP!!"
-                    status.status = 'NOERROR'  # REVIEW #26 What does this mean, better names for status'
-                    should_poll = False  # REVIEW #33 This could just be a 'break' with the while loop using 'while True' since you're not doing anything else after this elif block is entered
-                else:
-                    print "NO NEW CP"
-        else:
-            print "No CP - keep polling"
+    new_experiment_flag = False
 
-    while True:  # REVIEW #35 This is > 250 lines, should be refactored into smaller chunks
+    while not new_experiment_flag:  # poll the socket at the start until we have an experiment to run.
+        new_experiment_flag, experiment = search_for_experiment(cpsocket, status)
 
-        cpos = prog.cpo_list
-        updated_cp_received = False
+    new_experiment_flag = False
+
+    while True:  # REVIEW #35 This is > 250 lines, should be refactored into smaller chunks REPLY agreed.
+        # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.
 
         # Wavetables are currently None for sine waves, instead just
         #   use a sampling freq in rads/sample
         wavetable_dict = {}
-        for cpo in range(prog.cponum):
-            wavetable_dict[cpo] = get_wavetables(prog.cpo_list[cpo][
-                                                     'wavetype'])  # REVIEW #6 #33 Is this not needed anymore or is there a TODO to implement type of wave somewhere? We noticed it wasn't used in this file and it is a local dictionary variable
+        for slice_id in range(experiment.num_slices):
+            wavetable_dict[slice_id] = get_wavetables(experiment.slice_list[slice_id][
+                                                     'wavetype'])  # REVIEW #6 #33 Is this not needed anymore or is there a TODO to implement type of wave somewhere? We noticed it wasn't used in this file and it is a local dictionary variable REPLY: I think we should get rid of it?
 
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
-        for scan in prog.scan_objects:
-            if updated_cp_received == True:
+        for scan in experiment.scan_objects:
+            if new_experiment_flag:  # start anew on first scan if we have a new experiment. REPLY: question - should this be how we handle a new experiment that's received at the start of a new integration period - end scan after that inttime and start the new experiment?
+                try:
+                    experiment = new_experiment
+                except NameError:
+                    # new_experiment does not exist, should never happen as flag only gets set when there is a new
+                    # experiment.
+                    pass  # TODO error
+                new_experiment_flag = False
                 break
-            beam_remaining = True
+            beam_remaining = True  # started a new scan, therefore this must be True.
+
             # Make iterator for cycling through beam numbers
-            scan_iter = 0  # REVIEW #26 Seems more apt to name this beam_iter.
-            scans_done = 0
-            while beam_remaining and not updated_cp_received:
+            aveperiods_done_list = []
+            beam_iter = 0
+            while beam_remaining and not new_experiment_flag:
                 for aveperiod in scan.aveperiods:
                     # If there are multiple aveperiods in a scan they are alternated
                     #   beam by beam. So we need to iterate through
-                    # Go through each aveperiod once then increase the scan
+                    # Go through each aveperiod once then increase the beam
                     #   iterator to the next beam in each scan.
 
-                    # poll for new cp here, before starting a new integration.
-                    cpsocket.send_pyobj(status)  # REVIEW #22 Duplicated code (above lines ~256-275), can be refactored into a function like 'search_for_experiment' REPLY ok
-                    poller = zmq.Poller()
-                    poller.register(cpsocket, zmq.POLLIN)
-                    cpsocks = dict(poller.poll(3))  # polls for 3 ms, NOTE this is before inttime timer starts.
-                    if cpsocket in cpsocks and cpsocks[cpsocket] == zmq.POLLIN:
-                    #
-                        new_cp = get_prog(cpsocket)  # TODO: write this function
-                        if new_cp == None:
-                            print "NO NEW CP"
-                        elif isinstance(new_cp, controlprog.ControlProg):  # is this how to check if it's
-                            # a correct class type?
-                            prog = new_cp
-                            updated_cp_received = True
-                            print "NEW CP!!"
-                            break
+                    # poll for new experiment here, before starting a new integration.
+                    # if new_experiment_flag is set here, we will implement the new_experiment after this integration
+                    # period.
+                    new_experiment_flag, new_experiment = search_for_experiment(cpsocket, status)
 
-                    if scan_iter >= len(scan.scan_beams[aveperiod.keys[0]]):  # REVIEW #3 We just don't understand this.
-                        # All keys will have the same length scan_beams
-                        #   inside the aveperiod, but not necessarily all aveperiods
-                        #   in the scan will have same length scan_beams so we have to
-                        #   record how many scans are done.
-                        # TODO: Fix this to record in a list which aveperiods are done
-                        # so we do not increase scans_done for same aveperiod
-                        scans_done = scans_done + 1
-                        if scans_done == len(scan.aveperiods):
-                            beam_remaining = False
-                            break
-                        continue
+                    # Check if there are beams remaining in this aveperiod, or in any aveperiods.
+                    if aveperiod in aveperiods_done_list:
+                        continue  # beam_iter is past the end of the beam_orders list for this aveperiod.
+                    else:
+                        if beam_iter == len(scan.scan_beams[aveperiod.keys[0]]):  # REVIEW #3 We just don't understand this. REPLY: fixed up, tried to make more clear
+                            # Check if we are at the end of the scan for this aveperiod instance.
+                            # If we are, we still might not be done all of the beams in another aveperiod,
+                            # so we should just record that we are done with this one for this scan and
+                            # keep going to check the next aveperiod. All sequences inside aveperiods must have
+                            # same length of scan beam, but not all aveperiods in scan as they are just alternated.
+                            aveperiods_done_list.append(aveperiod)
+                            if len(aveperiods_done_list) == len(scan.aveperiods):
+                                beam_remaining = False  # all aveperiods are at the end of their beam_order list.
+                                break
+                            continue
                     print "New AveragingPeriod"
-                    int_time = datetime.utcnow()  # REVIEW #26 Name is confusing with respect to what int time is usually known as
+                    int_start_time = datetime.utcnow()
                     time_remains = True
-                    done_time = int_time + timedelta(0, float(
-                        aveperiod.intt) / 1000)  # REVIEW #1 comment on unit conversion
+                    int_done_time = int_start_time + timedelta(0, float(aveperiod.intt) / 1000)  # REVIEW #1 comment on unit conversion
                     nave = 0  # REVIEW #32 Put the initialization of nave right before it's used, i.e. right above the below while time_remains loop
                     beamdir = {}
-                    # Create a dictionary of beam directions with the
-                    #   keys being the cpos in this averaging period.
-                    for cpo in aveperiod.keys:
-                        bmnums = scan.scan_beams[cpo][scan_iter]  # REVIEW #3 Do not understand how this could be an iterable??? # REPLY having multiple beam numbers for one integration period, like in imaging.
-                        beamdir[cpo] = []
+                    # Create a dictionary of beam directions with the keys being the slice_ids in this averaging period.
+                    for slice_id in aveperiod.keys:
+                        bmnums = scan.scan_beams[slice_id][beam_iter]  # REVIEW #3 Do not understand how this could be an iterable??? # REPLY having multiple beam numbers for one integration period, like in imaging.
+                        beamdir[slice_id] = []
                         if type(bmnums) == int:  # REVIEW #39 should use isinstance instead http://stackoverflow.com/questions/707674/how-to-compare-type-of-an-object-in-python
-                            beamdir[cpo] = scan.beamdir[cpo][bmnums]  # REVIEW #33 why not just always have bmnums a list and then you can get rid of half this code, just keeping the for loop under the else clause.
+                            beamdir[slice_id] = scan.beamdir[slice_id][bmnums]  # REVIEW #33 why not just always have bmnums a list and then you can get rid of half this code, just keeping the for loop under the else clause.
                         else:  # is a list
                             for bmnum in bmnums:
-                                beamdir[cpo].append(scan.beamdir[cpo][bmnum])
+                                beamdir[slice_id].append(scan.beamdir[slice_id][bmnum])
                                 # Get the beamdir from the beamnumber for this
                                 #    CP-object at this iteration.
 
@@ -377,20 +384,18 @@ def radar():
                                 # Initialize a list of lists for
                                 #   samples on all channels.
                                 pulse_list.pop(0)  # remove boolean repeat value
-                                timing = pulse_list[0]  # REVIEW #33 You can just do: 'timing = pulse_list.pop(0)'
-                                pulse_list.pop(0)
+                                timing = pulse_list.pop(0)
                                 # TODO:need to determine what power
                                 #   to use - should determine using
                                 #   number of frequencies in
                                 #   sequence, but for now use # of
                                 #   pulses combined here.
-                                power_divider = len(
-                                    pulse_list)  # REVIEW #6 We should make a test of the hardware (transmitter input level limits)
+                                power_divider = len(pulse_list)  # REVIEW #6 We should make a test of the hardware (transmitter input level limits)
                                 print "POWER DIVIDER: {}".format(power_divider)
                                 pulse_samples, pulse_channels = (
-                                    make_pulse_samples(pulse_list, cpos,
-                                                       beamdir, prog.txctrfreq,
-                                                       prog.txrate, power_divider))
+                                    make_pulse_samples(pulse_list, experiment.slice_list,
+                                                       beamdir, experiment.txctrfreq,
+                                                       experiment.txrate, power_divider, options))
                                 # Can plot for testing here
                                 # plot_samples('channel0.png',
                                 #    pulse_samples[0])
@@ -413,45 +418,45 @@ def radar():
                         for sequence in aveperiod.integrations:  # REVIEW #39 is it possible to refactor this to use zip or enumerate because we noticed you're using aveperiod.integrations.index(sequence) down below. Then you would have 'for sequence_index, sequence in enumerate(aveperiod.integrations)'
                             poll_timeout = int(
                                 sequence.seqtime / 1000) + 1  # seqtime is in us, need ms # REVIEW #1 explain why you need to add 1 to this (int rounds down?)
-                            if datetime.utcnow() >= done_time:  # REVIEW #32 Put the initialization of done_time right before it's used, i.e. right above this while loop
+                            if datetime.utcnow() >= int_done_time:  # REVIEW #32 Put the initialization of done_time right before it's used, i.e. right above this while loop
                                 time_remains = False
                                 break
                             beam_phase_dict = {}
-                            for cpo in sequence.cpos:
-                                beam_phase_dict[cpo] = []
-                                if type(beamdir[cpo]) != list:  # REVIEW #33 why check if this is a list? why not just have a list of one element and build up from there for more beam directions? then you can get rid of half this code and just keep the code under the else clause.
+                            for slice_id in sequence.cpos:
+                                beam_phase_dict[slice_id] = []
+                                if type(beamdir[slice_id]) != list:  # REVIEW #33 why check if this is a list? why not just have a list of one element and build up from there for more beam directions? then you can get rid of half this code and just keep the code under the else clause.
                                     phase_array = []
                                     for channel in range(0, 16):  # REVIEW #26 #29 channel /antenna magic 16 number
                                         # Get phase shifts for all channels
                                         phase_array.append(get_phshift(
-                                            beamdir[cpo],
-                                            prog.cpo_list[cpo]['txfreq'], channel,
-                                            0))
+                                            beamdir[slice_id],
+                                            experiment.slice_list[slice_id]['txfreq'], channel,
+                                            0, options.main_antenna_count, options.main_antenna_spacing))
                                     for channel in range(6, 9):  # interferometer # REVIEW #0 #1, #29 #35 should be 6,10 to get 6,7,8,9, also explain why you are going for channels 6 through 9, also magic numbers - also make a function to phase main array as well a function for phasing int array, decouple them. Potentially means you need a second set of variables for the interferometer such as beamdir - alternatively you could have the beamdir and other variables 20 long for both int and main antennas..
                                         # Get phase shifts for all channels
                                         phase_array.append(get_phshift(
-                                            beamdir[cpo],
-                                            prog.cpo_list[cpo]['txfreq'], channel,
-                                            0))  # zero pulse shift b/w pulses when beamforming.
-                                    beam_phase_dict[cpo].append(phase_array)
+                                            beamdir[slice_id],
+                                            experiment.slice_list[slice_id]['txfreq'], channel,
+                                            0, options.interferometer_antenna_count, options.interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
+                                    beam_phase_dict[slice_id].append(phase_array)
                                 else:
-                                    for beam in beamdir[cpo]:
+                                    for beam in beamdir[slice_id]:
                                         phase_array = []
                                         for channel in range(0, 16):
                                             # Get phase shifts for all channels
                                             phase_array.append(get_phshift(
                                                 beam,
-                                                prog.cpo_list[cpo]['txfreq'], channel,
-                                                0))
+                                                experiment.slice_list[slice_id]['txfreq'], channel,
+                                                0, options.main_antenna_count, options.main_antenna_spacing))
                                         for channel in range(6, 9):  # interferometer
                                             # Get phase shifts for all channels
                                             phase_array.append(get_phshift(
                                                 beam,
-                                                prog.cpo_list[cpo]['txfreq'], channel,
-                                                0))  # zero pulse shift b/w pulses when beamforming.
-                                        beam_phase_dict[cpo].append(phase_array)
+                                                experiment.slice_list[slice_id]['txfreq'], channel,
+                                                0, options.interferometer_antenna_count, options.interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
+                                        beam_phase_dict[slice_id].append(phase_array)
                             data_to_processing(sigprocpacket, procsocket, seqnum_start + nave, sequence.cpos,
-                                               prog.cpo_list, beam_phase_dict)  # beamdir is dictionary
+                                               experiment.slice_list, beam_phase_dict)  # beamdir is dictionary
                             # Just alternating sequences
                             # print sequence.pulse_time
                             print sequence.combined_pulse_list
@@ -480,8 +485,8 @@ def radar():
                                         pulse_data[2],  # pulse_channels
                                         pulse_data[3],  # isamples_list
                                         pulse_data[4],  # qsamples_list
-                                        prog.txctrfreq, prog.rxctrfreq,
-                                        prog.txrate, sequence.numberofreceivesamples,
+                                        experiment.txctrfreq, experiment.rxctrfreq,
+                                        experiment.txrate, sequence.numberofreceivesamples,
                                         pulse_data[0],  # startofburst
                                         pulse_data[1],  # endofburst,
                                         pulse_list[1], seqnum_start + nave)
@@ -544,7 +549,7 @@ def radar():
                             # int_time=datetime.utcnow()
                     print "Number of integrations: {}".format(nave)
                     seqnum_start += nave
-                scan_iter = scan_iter + 1
+                beam_iter = beam_iter + 1
 
 
 radar()  # REVIEW #39 this should be in a 'if __name__ == "__main__":' block otherwise it will run if you import this file

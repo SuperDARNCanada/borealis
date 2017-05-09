@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-# COPYRIGHT 2017 SUPERDARN CANADA
+# Copyright 2017 SuperDARN Canada
+
 """
 To load the config options to be used by the experiment and radar_control blocks. 
 """
@@ -20,8 +21,12 @@ class ExperimentOptions:
         try:
             self.main_antenna_count = int(config['main_antenna_count'])
             self.interferometer_antenna_count = int(config['interferometer_antenna_count'])
+            self.main_antenna_spacing = int(config['main_antenna_spacing'])
+            self.interferometer_antenna_spacing = int(config['interferometer_antenna_spacing'])
             self.tx_sample_rate = float(config['tx_sample_rate'])
             self.rx_sample_rate = float(config['rx_sample_rate'])
+            self.max_usrp_dac_amplitude = float(config['max_usrp_dac_amplitude'])
+            self.pulse_ramp_time = float(config['pulse_ramp_time'])  # in seconds
             self.tr_window_time = float(config['tr_window_time'])
             self.output_sample_rate = float(config['third_stage_sample_rate'])  # should use to check iqdata samples
             # when adjusting the experiment during operations.

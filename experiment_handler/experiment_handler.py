@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+# Copyright 2017 SuperDARN Canada
+#
+# Marci Detwiller
+#
+
 import zmq
 import sys
 import importlib

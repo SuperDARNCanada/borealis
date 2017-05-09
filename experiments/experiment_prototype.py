@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
-
+# Copyright 2017 SuperDARN Canada
+#
+# Marci Detwiller
+#
 # REVIEW #37 Best way to call interpreter? there's also "/usr/bin/env python" that allows you to
 # have python installed anywhere REPLY sure
 # REVIEW #7 We need some kind of license at top of all files - or a referral to the
