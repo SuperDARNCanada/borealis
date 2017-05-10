@@ -17,48 +17,44 @@ import json
 import sys
 
 # REPLY going to try making the scans into a separate package and then import because this is a relative path to
-# the running directory
+# the running directory TODO: Set up python path in scons
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from radar_control.scan_classes import scans
 
-# REVIEW #26 When we refer to comments about anything "cpobject" related, we know that naming scheme may be changed
-# entirely. REPLY ok, changing to experiment_exp_slice .
-
 # REPLY question : should all of this be inside the ExperimentPrototype class
 
-# REVIEW #28 This could potentially be a global variable instead.
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
 """
 INTERFACING TYPES:
 
 NONE : Only the default, must be changed.
-SCAN : Scan by scan interfacing. cpo #1 will scan first
-    followed by cpo #2 and subsequent cpo's.
+SCAN : Scan by scan interfacing. exp_slice #1 will scan first
+    followed by exp_slice #2 and subsequent exp_slice's.
 INTTIME : nave by nave interfacing (full integration time of
      one pulse_sequence, then the next). Time/number of pulse_sequences
     dependent on intt and intn in exp_slice. Effectively
     simultaneous scan interfacing, interleaving each
-    integration time in the scans. cpo #1 first inttime or
-    beam direction will run followed by cpo #2's first inttime,
-    etc. if cpo #1's len(scan) is greater than cpo #2's, cpo
-    #2's last integration will run and then all the rest of cpo
-    #1's will continue until the full scan is over. CPObject 1
+    integration time in the scans. exp_slice #1 first inttime or
+    beam direction will run followed by exp_slice #2's first inttime,
+    etc. if exp_slice #1's len(scan) is greater than exp_slice #2's, exp_slice
+    #2's last integration will run and then all the rest of exp_slice
+    #1's will continue until the full scan is over. exp_slice 1
     and 2 must have the same scan boundary, if any boundary.
     All other may differ.
 INTEGRATION : integration by integration interfacing (one
-    pulse_sequence of one exp_slice, then the next). CPObject #1 and
-    CPO #2 must have same intt and intn. Integrations will
+    #pulse_sequence of one exp_slice, then the next). exp_slice #1 and
+    exp_slice #2 must have same intt and intn. Integrations will
     switch between one and the other until time is up/nave is
     reached.
 PULSE : Simultaneous pulse_sequence interfacing, pulse by pulse
-    creates a single pulse_sequence. CPO A and B might have different
+    creates a single pulse_sequence. exp_slice A and B might have different
     frequencies (stereo) and/or may have different pulse
     length, mpinc, pulse_sequence, but must have the same integration
     time. They must also have same len(scan), although they may
     use different directions in scan. They must have the same
     scan boundary if any. A time offset between the pulses
-    starting may be set (seq_timer in exp_slice). CPObject A
+    starting may be set (seq_timer in exp_slice). exp_slice A
     and B will have integrations that run at the same time.
 """
 
@@ -68,35 +64,29 @@ MINIMUM_PULSE_LENGTH = 0.01  # us
 def setup_interfacing(exp_slice_num):
     if_keys = []
     for exp_slice1 in range(exp_slice_num):
-        # REVIEW #26 i and j can have more meaningful names. Perhaps cpo1, cpo2, something like that. Could go for
-        # most places indexing is used. REPLY - ok
         for exp_slice2 in range(exp_slice1 + 1, exp_slice_num):
             if_keys.append((exp_slice1, exp_slice2))
 
     if_dict = dict((key, "NONE") for key in if_keys)
-    # REPLY THIS IS AWESOME
 
     return if_dict
 
 
-def selfcheck_slice(exp_slice, options):  # REVIEW #1 #26 Name and docstring could be more clear REPLY ok
+def selfcheck_slice(exp_slice, options):  
     """
-    This is the first test of the dictionary in the experiment done to ensure values in this component make sense. This 
+    This is the first test of the dictionary in the experiment done to ensure values in this slice make sense. This 
     is a self-check to ensure the parameters (for example, txfreq, antennas) are appropriate.
     """
     error_count = 0
     error_dict = {}
 
-    # check none greater than number of transmitting antennas, no duplicates REVIEW #29 could say in this comment
-    # that none greater than main antenna count instead of 15. REVIEW #0 Since we decided for now that we would
+    # check none greater than number of transmitting antennas, no duplicates REVIEW #0 Since we decided for now that we would
     # receive on all antennas, the check for rxchannels should be equal to main+inter count. REPLY: I disagree this
     # is where you set up which antenna channels you want to include in your data so you can have less channels if you
     # want to! - but should include interferometer probably separately in another list
-    # REVIEW #26 Lets reflect our decision to not use the word channel - AGREED
     if len(exp_slice['txantennas']) > options.main_antenna_count:
         error_dict[error_count] = "Slice {} Has Too Many Main TX Antenna Channels {} Greater than Config {}" \
             .format(exp_slice['slice_id'], len(exp_slice['txantennas']), options.main_antenna_count)
-    # REVIEW #34 Could include the actual value that caused the error. Goes for all error statements. REPLY agreed
     if len(exp_slice['rx_main_antennas']) > options.main_antenna_count:
         # REVIEW #39 These errors could just be appended to a list instead of using a dictionary. - REPLY or I could
         # TODO use our own exception class for these errors.
@@ -107,27 +97,15 @@ def selfcheck_slice(exp_slice, options):  # REVIEW #1 #26 Name and docstring cou
         error_dict[error_count] = "Slice {} Has Too Many RX Interferometer Antenna Channels {} Greater than Config {}" \
             .format(exp_slice['slice_id'], len(exp_slice['rx_int_antennas']), options.interferometer_antenna_count)
         error_count = error_count + 1
+        
+    # Check if the antenna identifier number is greater than the config file's 
+    # maximum antennas for all three of tx antennas, rx antennas and rx int antennas
+    # Also check for duplicates
     for i in range(len(exp_slice['txantennas'])):
         if exp_slice['txantennas'][i] >= options.main_antenna_count:
             error_dict[error_count] = "Slice {} Specifies Main Array Antenna Numbers Over Config Max {}" \
                 .format(exp_slice['slice_id'], options.main_antenna_count)
             error_count = error_count + 1
-
-            # REVIEW #0 #39 This will work only if the rxchannels and txchannels lists are sorted. - REPLY I
-            # disagree, will work for unsorted as well but can implement this way ; Maybe you can use a list
-            # comprehension as shown here instead:
-            # http://stackoverflow.com/questions/9835762/find-and-list-duplicates-in-a-list
-
-            # for j in range(i + 1, len(exp_slice['txantennas'])):
-            #    if exp_slice['txantennas'][i] == exp_slice['txantennas'][j]:
-            #        error_dict[error_count] = "exp_slice TX Main Antennas Has Duplicate Antennas"
-            #        error_count = error_count + 1
-
-            # OR
-
-            # if any(exp_slice['txantennas'][i] == exp_slice['txantennas'][j] \
-            # for j in range(i + 1, len(exp_slice['txantennas'])):
-            #    error ...
 
     no_duplicates = set()
     for ant in exp_slice['txantennas']:
@@ -162,14 +140,12 @@ def selfcheck_slice(exp_slice, options):  # REVIEW #1 #26 Name and docstring cou
                     .format(exp_slice['slice_id'])
                 error_count = error_count + 1
 
-    # REVIEW #26 Is this supposed to be pulse sequence? would make it more clear if named pulse_sequence or something
-    # REPLY - sure
+    # Check if the pulse_sequence is not increasing, which would be an error
     if not all(x < y for x, y in zip(exp_slice['pulse_sequence'], exp_slice['pulse_sequence'][1:])):
-        # pulse_sequence is not increasing
         error_dict[error_count] = "Slice {} pulse_sequence Not Increasing".format(exp_slice['slice_id'])
         error_count = error_count + 1
 
-    # check pulse_len and mpinc make sense (values in us)
+    # Check that pulse_len and mpinc make sense (values in us)
     if exp_slice['pulse_len'] > exp_slice['mpinc']:
         error_dict['error_count'] = "Slice {} Pulse Length Greater than MPINC".format(exp_slice['slice_id'])
         error_count = error_count + 1
@@ -187,16 +163,16 @@ def selfcheck_slice(exp_slice, options):  # REVIEW #1 #26 Name and docstring cou
     #        self.intn=21 # max number of averages (aka full pulse_sequences transmitted)
     # in an integration time intt (default 3s)
 
-    # check no duplicates in beam directions REVIEW #0 Why can we not have duplicates in beam directions? And why do
-    # they have to be in order? Example: interleaved_normalscan REPLY : beam directions is different than the scan,
-    # which uses beam numbers, and can have duplicates. Traditionally beams have been 3.75 degrees separated but we
+    # Traditionally beams have been 3.75 degrees separated but we
     # don't refer to them as beam -22.75 degrees, we refer as beam 1, beam 2. This is like a mapping of beam number
     # to beam direction off azimuth . Then you can use the beam numbers in the scan list so you can reuse beams
     # within one scan, or use multiple beamnumbers in a single integration time. Open to revision. I imagine when we
     # do imaging we will still have to quantize the directions we are looking in to certain beam directions,
     # and if you wanted to add directions you could do so in experiment modification functions.
-
-    for i in range(len(exp_slice['beamdir'])):
+    
+    # exp_slice['beamdir'] is going to be a list of possible beam directions for this
+    # experiment slice in degrees off azimuth. It doesn't mean that these are the beam directions that will be used in this scan, those beams are in the scan list #TODO: update this comment with the new keys
+    for i in range(len(exp_slice['beamdir'])): # TODO: Make methods 'check_for_duplicates(dict, key)' and 'check_for_proper_order(dict,key,increasing)'
         for j in range(i + 1, len(exp_slice['beamdir'])):
             if exp_slice['beamdir'][i] == exp_slice['beamdir'][j]:
                 error_dict[error_count] = "Slice {} Beam Direction List Has Duplicates".format(exp_slice['slice_id'])
@@ -206,22 +182,19 @@ def selfcheck_slice(exp_slice, options):  # REVIEW #1 #26 Name and docstring cou
                     Clockwise (E of N is positive)".format(exp_slice['slice_id'])
                 error_count = error_count + 1
 
-    if not exp_slice['scan']:  # if empty
-        # REVIEW #1 We're not sure what 'scan' parameter is just from looking at this, and below code. Why can't it
-        # be empty? REPLY - will describe it below
+    # Check if the list of beams to transmit on is empty
+    if not exp_slice['scan']:
         error_dict[error_count] = "Slice {} Scan Empty".format(exp_slice['slice_id'])
         error_count = error_count + 1
 
-    # check beam numbers in scan exist # REVIEW #1 Also here we're not sure what the error check implies REPLY: will
-    # explain below
+    # Check that the beam numbers in scan exist  # TODO: Update comment
     for bmnum in exp_slice['scan']:
         if bmnum >= len(exp_slice['beamdir']):
             error_dict[error_count] = "Slice {} Scan Beam Number {} DNE".format(exp_slice['slice_id'], bmnum)
             error_count = error_count + 1
 
     # check scan boundary not less than minimum required scan time. 
-    if exp_slice['scanboundflag']:  # REVIEW #26 We assume this is a flag, but naming could be better, also can use
-        # True and False instead of 1's and 0's if it's a boolean REPLY ok
+    if exp_slice['scanboundflag']: 
         if exp_slice['scanbound'] < (len(exp_slice['scan']) * exp_slice['intt']):  # REVIEW #5 TODO Need units
             # documented somewhere highly visible for scanbound, intt
             error_dict[error_count] = "Slice {} Scan Too Long for ScanBoundary".format(exp_slice['slice_id'])
@@ -266,7 +239,7 @@ class ExperimentPrototype(object):
                            "scanboundflag", "scanbound", "txfreq", "rxfreq", "clrfrqf", "clrfrqrange", "xcf", "acfint",
                            "wavetype", "seqtimer"]
 
-        """ The slice keys are described as follows: """  # TODO
+        """ The slice keys are described as follows: """  # TODO Can we change the name of scan to 'beam_order' and perhaps 'beamdir' can be changed to 'beam_angle'
 
         for num in range(self.num_slices):
             exp_slice = {key: None for key in self.slice_keys}
@@ -288,15 +261,14 @@ class ExperimentPrototype(object):
         self.rxctrfreq = 12000  # in kHz.
         # NOTE: rx sampling rate is set in config.
 
-        self.xcf = 1  # REVIEW #0 #28 correct if propogated to rawacf/iq file writing, otherwise should be boolean.
-        # Same for acfint - REPLY Ok hasn't been implemented yet but it will be so which should I use?
+        self.xcf = 1 # TODO: Make into booleans, we should
         # Get cross-correlation data in processing block.
 
         self.acfint = 1
         # Determine lag-zero interferometer power in fitacf.
 
-        self.interface = setup_interfacing(self.num_slices)
-        # Dictionary of how each cpo interacts with the other slices. Default is "NONE" for all, but must be modified
+        self.interface = setup_interfacing(self.num_slices) 
+        # Dictionary of how each exp_slice interacts with the other slices. Default is "NONE" for all, but must be modified
         # in experiment. NOTE keys are as such: (0,1), (0,2), (1,2), NEVER includes (2,0) etc. The only interface
         # options are: interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
@@ -328,7 +300,7 @@ class ExperimentPrototype(object):
         # Check interfacing
         self.self_check()
         self.check_interfacing()
-        self.slice_id_scan_lists = self.get_scans
+        self.slice_id_scan_lists = self.get_scans()
         # Returns list of scan lists. Each scan list is a list of the slice_ids for the slices included in the scan.
         if self.slice_id_scan_lists:  # if list is not empty, can make scans
             self.scan_objects = [scans.Scan(self, scan_list) for scan_list in self.slice_id_scan_lists]
@@ -336,27 +308,25 @@ class ExperimentPrototype(object):
         else:
             pass  # TODO error
 
-        # REPLY should I make scan_id 's as well ?
-
     def self_check(self):
         """
         Check that the values in this experiment are valid
         """
 
         if self.num_slices < 1:
-            errmsg = "Error: No objects in control program"
+            errmsg = "Error: No slices in control program"
             sys.exit(errmsg)  # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead.
 
         # TODO: somehow check if self.cpid is not unique
 
-        for cpo in range(self.num_slices):
-            selferrs = selfcheck_slice(self.slice_list[cpo], self.options)
-            if not selferrs:  # REVIEW #39 unneeded parenthesis
+        for slice in range(self.num_slices):
+            selferrs = selfcheck_slice(self.slice_list[slice], self.options)
+            if not selferrs:
                 # If returned error dictionary is empty
                 continue
-            errmsg = "Self Check Errors Occurred with Object Number : {} \nSelf \
-                Check Errors are : {}".format(cpo, selferrs)
-            sys.exit(errmsg)  # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead.
+            errmsg = "Self Check Errors Occurred with slice Number : {} \nSelf \
+                Check Errors are : {}".format(slice, selferrs)
+            sys.exit(errmsg)  #TODO error handling. Perhaps use exceptions instead.
         else:  # no break (exit)
             print "No Self Check Errors. Continuing..."
         return None
@@ -364,7 +334,7 @@ class ExperimentPrototype(object):
     # REVIEW #30 Consider splitting interface/error checking into a seperate class. It would decouple this behaviour
     # and could simplify the experiment significantly. The experiment handler would be able to make sure that the
     # experiment is error checked, and someone developing the experiment could just run their experiment through it
-    # in the interpretter or something. REPLY - OK TODO
+    # in the interpretter or something. REPLY - OK TODO: Make experiment_checker class that you can pass an experiment object - it would spit out pass/fail for each criteria and maybe suggest what is wrong? possible recovery from errors?
     def check_interfacing(self):
         """
         Check that the keys in the interface are not NONE and are
@@ -374,26 +344,18 @@ class ExperimentPrototype(object):
         for key, interface_type in self.interface.items():
             if interface_type == "NONE":
                 errmsg = 'Interfacing is still default, must set key {}'.format(key)
-                sys.exit(errmsg)  # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead. REPLY OK
+                sys.exit(errmsg)  # REVIEW 6 Add a TODO for error handling. Perhaps use exceptions instead. REPLY OK
 
-        for num1, num2 in self.interface.iterkeys():  # REPLY: Have to specify keys here because we don't want value
+        for num1, num2 in self.interface.iterkeys():  
             if num1 >= self.num_slices or num2 >= self.num_slices or num1 < 0 or num2 < 0:
-                # REVIEW #15 Should you check ordering? Num 1 always less than num 2 based off
-                # your interfacing comments. - REPLY: this is required for how I have it set up. Avoids any confusion
+                # This is required for how I have it set up. Avoids any confusion
                 #  with keys [0,2] vs [2,0] for example. Because you could add your own keys I check it.
-                errmsg = 'Interfacing key ({}, {}) is not valid, all keys must refer to (slice_id1, slice_id2) where \
-                slice_id1 < slice_id2'.format(num1, num2)
-                # REVIEW #34 Maybe split these into two error checks/messages. One for invalid parameters and then
-                # one for unnecessary keys REPLY: I think all possibilities are invalid - added
-                # more description
-                sys.exit(errmsg)  # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead.
+                errmsg = """Interfacing key ({}, {}) is not valid, all keys must refer to (slice_id1,
+                slice_id2) where slice_id1 < slice_id2""".format(num1, num2)
+                sys.exit(errmsg)  # TODO for error handling. Perhaps use exceptions instead.
             if self.interface[num1, num2] not in interface_types:
                 errmsg = 'Interfacing Not Valid Type between Slice_id {} and Slice_id {}'.format(num1, num2)
-                sys.exit(errmsg)  # REVIEW 6 Add a todo for error handling. Perhaps use exceptions instead.
-
-        # Could also accept NONE at 0,2 in that ^^ example ?? REPLY: sure, although, I have set up the get_scans
-        # to do the check that if 0,1 is pulse and 1,2 is scan that 0,2 must also be scan.
-        return None
+                sys.exit(errmsg)  # TODO for error handling. Perhaps use exceptions instead.
 
     def get_scans(self):
         """
@@ -406,11 +368,11 @@ class ExperimentPrototype(object):
         """
         scan_combos = []
 
-        for num1, num2 in self.interface.iterkeys():  # REPLY: Ok but need to specify keys so we don't get key,value
+        for num1, num2 in self.interface.iterkeys():  # REPLY: Ok but need to specify keys so we don't get key,value TODO: But you can just use k in place of num1, num2 everywhere here
             if self.interface[num1, num2] == "PULSE" or self.interface[num1, num2] == "INT_TIME" or \
                     self.interface[num1, num2] == "INTEGRATION":
                 scan_combos.append([num1, num2])
-                # Save the keys that are scan combos (that != SCAN, as that would mean they are in separate scans)
+                # Save the keys that are scan combos (that != SCAN, as that would mean they are in separate scans) # TODO: Just check self.interface[num1, num2] != "SCAN"
 
         scan_combos = sorted(scan_combos)
         # if [2,4] and [1,4], then also must be [1,2] in the scan_combos
@@ -433,8 +395,7 @@ class ExperimentPrototype(object):
                         # Combine the indices if there are 3+ slices combining in same scan
                         for m in range(0, len(scan_combos[scan_i]) - 1):  # if we have added z to scan_i, such that
                             # scan_i is now [x,y,z], we now have to remove from the scan_combos list [x,z], and [y,z].
-                            # If x,z existed as SCAN but y,z did not, we have an error. REPLY TODO change this
-                            # functionality if we let y,z be None although x,z is set.
+                            # If x,z existed as SCAN but y,z did not, we have an error.
                             # Try all values in scan_combos[i] except the last value, which is = to add_n.
                             """
                             if scan_combos[i][m] > add_n:
@@ -442,17 +403,14 @@ class ExperimentPrototype(object):
                             """
                             try:
                                 scan_combos.remove([scan_combos[scan_i][m], add_n_slice_id])
-                                # REVIEW #0 what happens if the item you try to remove is in the form [n,m] where n > m
-                                # REPLY: that would have shown up in the self checks as an error
                                 # scan_combos[j][1] is the known last value in scan_combos[i]
                             except ValueError:
-                                # REVIEW #3 This error needs to be either more detailed, or explain how it would happen.
-                                # REPLY: This error would occur if you had set [x,y] and [x,z] to PULSE but [y,z] to
+                                # This error would occur if you had set [x,y] and [x,z] to PULSE but [y,z] to
                                 # SCAN. This means that we couldn't remove the scan_combo y,z from the list because it
                                 # was not added to scan_combos because it wasn't a scan type, so the interfacing would
                                 # not make sense (conflict).
-                                errmsg = 'Interfacing not Valid: CPO {} and CPO {} are combined in-scan and do not \
-                                    interface the same with CPO {}'.format(scan_combos[scan_i][m],
+                                errmsg = 'Interfacing not Valid: exp_slice {} and exp_slice {} are combined in-scan and do not \
+                                    interface the same with exp_slice {}'.format(scan_combos[scan_i][m],
                                                                            scan_combos[scan_i][slice_id_k],
                                                                            add_n_slice_id)
                                 sys.exit(errmsg)

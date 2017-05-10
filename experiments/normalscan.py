@@ -6,12 +6,12 @@ from experiment_prototype import ExperimentPrototype
 
 class Normalscan(ExperimentPrototype):
     def __init__(self):
-        super(Normalscan, self).__init__(150, 1)
+        super(Normalscan, self).__init__(150, 1) # TODO: You can place this after everything you can have variables for cpid and number of slices # TODO: Check num_slices in selfcheck because a user could erroneously append something to the slice_list
         # :param cpid : 'control program' ID
         # :param num_slices : number of slice dictionaries to interface in this experiment.
-
-        # If you created this experiment with x number of slice dictionaries, update cpo_list[0] through cpo_list[x-1]
-        self.slice_list[0].update({
+#TODO: Check keys of dictionary in experiment_checker
+        # If you created this experiment with x number of slice dictionaries, update cpo_list[0] through cpo_list[x-1] #TODO: Make things properties of the ExperimentPrototype class?
+        self.slice_list[0].update({ # TODO: Make a method in ExperimentPrototype called update_slice(slice_num, slice_dictionary)
             "txchannels": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             "rxchannels": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             "sequence": [0, 14, 22, 24, 27, 31, 42, 43],
@@ -85,7 +85,7 @@ class Normalscan(ExperimentPrototype):
     #        self.interface.update({
     #            (0,1) : 'PULSE'
     #        })
-
+#TODO : Comment, when is this called? How would we use it to do interesting things? is acfdata a full dmap object (i.e. has freq, time, beam, ...)?
     def update(self, acfdata):
         """
         Use this function to change your experiment based on ACF data
