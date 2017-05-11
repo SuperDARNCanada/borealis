@@ -13,15 +13,11 @@
 The template for an experiment. 
 """
 
-import json
 import sys
 
-# REPLY going to try making the scans into a separate package and then import because this is a relative path to
-# the running directory TODO: Set up python path in scons
+# TODO: Set up python path in scons PYTHONPATH = ....../placeholderOS
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from radar_control.scan_classes import scans
-
-# REPLY question : should all of this be inside the ExperimentPrototype class
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
@@ -80,10 +76,6 @@ def selfcheck_slice(exp_slice, options):
     error_count = 0
     error_dict = {}
 
-    # check none greater than number of transmitting antennas, no duplicates REVIEW #0 Since we decided for now that we would
-    # receive on all antennas, the check for rxchannels should be equal to main+inter count. REPLY: I disagree this
-    # is where you set up which antenna channels you want to include in your data so you can have less channels if you
-    # want to! - but should include interferometer probably separately in another list
     if len(exp_slice['txantennas']) > options.main_antenna_count:
         error_dict[error_count] = "Slice {} Has Too Many Main TX Antenna Channels {} Greater than Config {}" \
             .format(exp_slice['slice_id'], len(exp_slice['txantennas']), options.main_antenna_count)
@@ -228,13 +220,14 @@ class ExperimentPrototype(object):
     :
     """
 
-    def __init__(self, cpid, num_slices):
+    def __init__(self, cpid):
 
-        self.cpid = cpid
-        self.num_slices = num_slices
+        self.__cpid = cpid
+
+        #self._num_slices = num_slices
         slice_list = []
 
-        self.slice_keys = ["slice_id", "cpid", "txantennas", "rx_main_antennas", "rx_int_antennas", "pulse_sequence",
+        self.__slice_keys = ["slice_id", "cpid", "txantennas", "rx_main_antennas", "rx_int_antennas", "pulse_sequence",
                            "pulse_shift", "mpinc", "pulse_len", "nrang", "frang", "intt", "intn", "beamdir", "scan",
                            "scanboundflag", "scanbound", "txfreq", "rxfreq", "clrfrqf", "clrfrqrange", "xcf", "acfint",
                            "wavetype", "seqtimer"]
@@ -247,7 +240,7 @@ class ExperimentPrototype(object):
             exp_slice["cpid"] = self.cpid
             slice_list.append(exp_slice)
 
-        self.slice_list = slice_list
+        self._slice_list = slice_list
 
         # Load the config data
         self.options = ExperimentOptions()
@@ -276,6 +269,23 @@ class ExperimentPrototype(object):
         self.scan_objects = []
         # These are used internally by the radar_control block to build iterable objects out of the slice using the
         # interfacing specified.
+
+    @property
+    def cpid(self):
+        return self.__cpid
+
+    @property
+    def slice_keys(self):
+        return self.__slice_keys
+
+    @property
+    def slice_list(self):
+        return self._slice_list
+
+    @slice_list.setter
+    def slice_list(self, value):
+        self._slice_list = value  # TODO
+
 
     def __repr__(self):
         represent = 'self.cpid = {}\nself.num_slices = {}\nself.slice_keys = {}\nself.slice_list = {}\nself.options = \

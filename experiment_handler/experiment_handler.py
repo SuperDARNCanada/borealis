@@ -68,7 +68,7 @@ def main():
         # WAIT until runradar is ready to receive a changed prog.
         message = ctrl_socket.recv_pyobj()
         if isinstance(message, radar_status.RadarStatus): # REVIEW #6 TODO we need to talk about the design of this loop probably. not sure what each of the cases mean just by looking. there's code duplication
-            if message.status == 'CPNEEDED':
+            if message.status == 'EXPNEEDED':
                 print("received READY {} and starting program as new".format(message.status))
                 # starting anew
                 # TODO: change line to be scheduled

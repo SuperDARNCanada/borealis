@@ -1,5 +1,5 @@
 def statustype():
-    errors = ('CPNEEDED', 'NOERROR', 'WARNING', 'EXITERROR')
+    errors = ('EXPNEEDED', 'NOERROR', 'WARNING', 'EXITERROR')
     return errors
 
 def errortype():
