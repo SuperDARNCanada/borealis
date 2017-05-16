@@ -18,7 +18,7 @@ See LICENSE for details.
 /**
  * @brief      Creates the multiUSRP abstraction with the options from the config file.
  *
- * @param[in]  driver_options  The driver options // REVIEW #1 hmmm... a better comment? "The driver options parsed from config file" 
+ * @param[in]  driver_options  The driver options // REVIEW #1 hmmm... a better comment? "The driver options parsed from config file"
  */
 USRP::USRP(const DriverOptions& driver_options)
 {
@@ -73,7 +73,11 @@ void USRP::set_tx_subdev(std::string tx_subdev)
  */
 void USRP::set_tx_rate(double tx_rate)
 {
-  usrp_->set_tx_rate(tx_rate); // REVIEW #43 set and check channels separately similar to set_tx_freq ? 
+  if (tx_rate <= 0.0) {
+    //todo(keith): handle error
+  }
+
+  usrp_->set_tx_rate(tx_rate); // REVIEW #43 set and check channels separately similar to set_tx_freq ?
 
   double actual_rate = usrp_->get_tx_rate(); // REVIEW #37 default channel to check is channel 0 - should check all channels?
 
@@ -87,9 +91,9 @@ void USRP::set_tx_rate(double tx_rate)
  *
  * @return     The transmit sample rate in Sps.
  */
-double USRP::get_tx_rate() // REVIEW #37 pass the channel to check here 
+double USRP::get_tx_rate() // REVIEW #37 pass the channel to check here
 {
-  return usrp_->get_tx_rate(); 
+  return usrp_->get_tx_rate();
 }
 
 /**
@@ -212,7 +216,7 @@ std::vector<size_t> USRP::get_receive_channels()
  */
 void USRP::set_rx_rate(double rx_rate)
 {
-  usrp_->set_rx_rate(rx_rate); // REVIEW #43 set and check channels separately similar to set_tx_freq ? 
+  usrp_->set_rx_rate(rx_rate); // REVIEW #43 set and check channels separately similar to set_tx_freq ?
 
   double actual_rate = usrp_->get_rx_rate(); // REVIEW #37 default channel to check is channel 0 - should check all channels?
 
