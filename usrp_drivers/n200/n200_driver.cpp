@@ -175,9 +175,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       channels = make_tx_channels(driver_packet);
       stream_args.channels = channels; // REVIEW #15 check that the channels from the driver packet are actually available (a mapping as mentioned in other comment would be handy here)
                                        // REPLY Need to explain this
-      usrp_d.set_tx_rate(driver_packet.txrate());  // ~450us REVIEW #15 check that it's not = 0 (default)
+      usrp_d.set_tx_rate(driver_packet.txrate(),channels);  // ~450us REVIEW #15 check that it's not = 0 (default)
                                                    // REPLY added this check to set_tx_rate
-      tx_stream = usrp_d.get_usrp()->get_tx_stream(stream_args);  // ~44ms REVIEW : idea maybe could we set this up with all channels and then send 0s to any that we don't want to transmit on? then this tx_stream setup could be removed from while loop.
+      tx_stream = usrp_d.get_usrp_tx_stream(stream_args);  // ~44ms REVIEW : idea maybe could we set this up with all channels and then send 0s to any that we don't want to transmit on? then this tx_stream setup could be removed from while loop.
       usrp_channels_set = true;                                   // REPLY Yes. We will have to see what that looks like on the scope.
     }
     auto stream_setup_end = std::chrono::steady_clock::now();
@@ -241,7 +241,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       //The USRP needs about a SET_TIME_COMMAND_DELAY buffer into the future before time
       //commands will correctly work. This was found through testing and may be subject to change
       //with USRP firmware updates.
-      time_zero = usrp_d.get_usrp()->get_time_now() + uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
+      time_zero = usrp_d.get_current_usrp_time() + uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
     }
 
     //convert us to s
@@ -270,7 +270,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
 
     auto begin_send = std::chrono::steady_clock::now();
 
-    auto time_now = usrp_d.get_usrp()->get_time_now();
+    auto time_now = usrp_d.get_current_usrp_time();
     DEBUG_MSG("TRANSMIT time_zero: " << time_zero.get_frac_secs());
     DEBUG_MSG("TRANSMIT time_now " << time_now.get_frac_secs());
     DEBUG_MSG("TRANSMIT timetosendsamples(us) " << driver_packet.timetosendsamples());
@@ -321,7 +321,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
     auto timing_start = std::chrono::steady_clock::now();
 
     //Set high speed IO timing on the USRP now.
-    usrp_d.get_usrp()->clear_command_time(); // REVIEW #0 The GPIO timing setup should be moved to above the samples sending, in case we timeout on sending samples (i.e. we sent half of them) then the RF waveform would be transmitting without timing signals, bad idea. Alternatively, what if there was a 4th thread for timing specifically?
+    usrp_d.clear_command_times(); // REVIEW #0 The GPIO timing setup should be moved to above the samples sending, in case we timeout on sending samples (i.e. we sent half of them) then the RF waveform would be transmitting without timing signals, bad idea. Alternatively, what if there was a 4th thread for timing specifically?
                                              // REPLY I tried this. It doesnt work. If this is a problem then we need a circuit for this.
     if (driver_packet.sob() == true)
     {
@@ -331,27 +331,18 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d,
       scope_sync_low = scope_sync_high + uhd::time_spec_t(sync_time);
 
       DEBUG_MSG("TRANSMIT Scope sync high set");
-      usrp_d.get_usrp()->set_command_time(scope_sync_high);
-      usrp_d.set_scope_sync();
+      usrp_d.set_scope_sync(scope_sync_high);
 
     }
 
-    usrp_d.get_usrp()->set_command_time(atten_time_high);
-    usrp_d.set_atten();
-
-    usrp_d.get_usrp()->set_command_time(x_high);
-    usrp_d.set_tr();
-
-    usrp_d.get_usrp()->set_command_time(x_low);
-    usrp_d.clear_tr();
-
-    usrp_d.get_usrp()->set_command_time(atten_time_low);
-    usrp_d.clear_atten();
+    usrp_d.set_atten(atten_time_high);
+    usrp_d.set_tr(x_high);
+    usrp_d.clear_tr(x_low);
+    usrp_d.clear_atten(atten_time_low);
 
     if (driver_packet.eob() == true)
     {
-      usrp_d.get_usrp()->set_command_time(scope_sync_low);
-      usrp_d.clear_scope_sync();
+      usrp_d.clear_scope_sync(scope_sync_low);
     }
 
 
@@ -441,7 +432,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
   auto receive_channels = usrp_d.get_receive_channels();
   stream_args.channels = receive_channels;
   usrp_d.set_rx_rate(rx_rate_hz);  // ~450us
-  uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp()->get_rx_stream(stream_args);  // ~44ms
+  uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream(stream_args);  // ~44ms
 
   //This loop receives 1 pulse sequence worth of samples.
   while (1) {
