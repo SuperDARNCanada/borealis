@@ -82,7 +82,7 @@ std::vector<double> Filtering::create_normalized_lowpass_filter_bands(double cut
  * for a given stage. The choice in k=3 was used in the book seems to minimize the amount of
  * ripple in filter. The number of taps will always truncate down to an int.
  */
-uint32_t Filtering::calculate_num_filter_taps(double rate, double transition_band) { // REVIEW #26 transition_width and transition_band are both used?
+uint32_t Filtering::calculate_num_filter_taps(double rate, double transition_band) {
   auto k = 3;
   auto num_taps = k * (rate/transition_band);
 
@@ -201,7 +201,7 @@ void Filtering::save_filter_to_file(const std::vector<std::complex<float>> &filt
   std::ofstream filter;
   filter.exceptions(std::ofstream::failbit | std::ofstream::badbit);
   try {
-    filter.open(name); // REVIEW #15 Should check that name isn't null, also - can we use c++ string here?
+    filter.open(name);
   } catch (std::system_error &e) {
     //TODO(keith): handle error
   }

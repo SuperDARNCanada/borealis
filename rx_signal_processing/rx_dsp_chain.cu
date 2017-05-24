@@ -24,6 +24,13 @@
 #include "dsp.hpp"
 #include "filtering.hpp"
 
+#ifdef DEBUG
+#define DEBUG_MSG(x) do {std::cerr << x << std::endl;} while (0)
+#else
+#define DEBUG_MSG(x)
+#endif
+
+#define ERR_CHK_ZMQ(x) try {x;} catch (zmq::error_t& e) {} //TODO(keith): handle error
 
 
 int main(int argc, char **argv){
@@ -31,43 +38,28 @@ int main(int argc, char **argv){
 
   //TODO(keith): verify config options.
   auto driver_options = DriverOptions();
-  auto sig_options = SignalProcessingOptions(); // #26 REVIEW Should the naming be updated along with DSP ?
-  auto rx_rate = driver_options.get_rx_rate(); // #5 REVIEW What units is rx_rate in?
+  auto sig_options = SignalProcessingOptions();
+  auto rx_rate = driver_options.get_rx_rate(); //Hz
 
   zmq::context_t sig_proc_context(1); // 1 is context num. Only need one per program as per examples
 
   zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
-  try {
-    driver_socket.bind("ipc:///tmp/feeds/1"); // REVIEW #29 Should this be in a config file? Sort of a magic string right now
-  }
-  catch (std::exception &e){
-    //TODO(keith): handle error.
-  }
+  ERR_CHK_ZMQ(driver_socket.bind("ipc:///tmp/feeds/1"))
 
-  // REVIEW #1 Need a comment here to explain which blocks these 3 sockets talk to, the driver socket is obvious, but these three may not be
-  zmq::socket_t radarctrl_socket(sig_proc_context, ZMQ_PAIR); // REVIEW #26 Name of radarctrl may need to be updated to be consistent with our discussion on Friday March 10th
-  try {
-    radarctrl_socket.bind("ipc:///tmp/feeds/2");
-  }
-  catch (std::exception &e){
-    //TODO(keith): handle error.
-  }
 
+  //This socket is used to receive metadata about the sequence to process
+  zmq::socket_t radar_control_socket(sig_proc_context, ZMQ_PAIR);
+  ERR_CHK_ZMQ(radar_control_socket.bind("ipc:///tmp/feeds/2"))
+
+  //This socket is used to acknowledge a completed sequence to radar_control
   zmq::socket_t ack_socket(sig_proc_context, ZMQ_PAIR);
-  try {
-    ack_socket.bind("ipc:///tmp/feeds/3");
-  }
-  catch (std::exception &e){
-    //TODO(keith): handle error.
-  }
+  ERR_CHK_ZMQ(ack_socket.bind("ipc:///tmp/feeds/3"))
 
+  //This socket is used to send the GPU kernel timing to radar_control to know if the processing
+  //can be done in real-time.
   zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
-  try {
-    timing_socket.bind("ipc:///tmp/feeds/4");
-  }
-  catch (std::exception &e){
-    //TODO(keith): handle error.
-  }
+  ERR_CHK_ZMQ(timing_socket.bind("ipc:///tmp/feeds/4"))
+
 
   auto gpu_properties = get_gpu_properties();
   print_gpu_properties(gpu_properties);
@@ -103,24 +95,24 @@ int main(int argc, char **argv){
     << "3rd stage dm rate: " << third_stage_dm_rate << std::endl;
 
 
-  std::chrono::steady_clock::time_point timing_start = std::chrono::steady_clock::now();
+  auto filter_timing_start = std::chrono::steady_clock::now();
 
   Filtering filters(rx_rate,sig_options);
 
-  std::cout << "Number of 1st stage taps: " << filters.get_num_first_stage_taps() << std::endl
-    << "Number of 2nd stage taps: " << filters.get_num_second_stage_taps() << std::endl // REVIEW #34 mention that it's the number of taps?
+  DEBUG_MSG("Number of 1st stage taps: " << filters.get_num_first_stage_taps() << std::endl
+    << "Number of 2nd stage taps: " << filters.get_num_second_stage_taps() << std::endl
     << "Number of 3rd stage taps: " << filters.get_num_third_stage_taps() <<std::endl
     << "Number of 1st stage taps after padding: "
     << filters.get_first_stage_lowpass_taps().size() << std::endl
     << "Number of 2nd stage taps after padding: "
     << filters.get_second_stage_lowpass_taps().size() << std::endl
     << "Number of 3rd stage taps after padding: "
-    << filters.get_third_stage_lowpass_taps().size() << std::endl;
+    << filters.get_third_stage_lowpass_taps().size());
 
-  std::chrono::steady_clock::time_point timing_end = std::chrono::steady_clock::now();
-  std::cout << "Time to create 3 filters: "
-    << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
-    << "us" << std::endl;
+  auto filter_timing_end = std::chrono::steady_clock::now();
+  auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(filter_timing_end -
+                                                                       filter_timing_start).count();
+  DEBUG_MSG("Time to create 3 filters: " << time_diff << "us");
 
   //FIXME(Keith): fix saving filter to file
   filters.save_filter_to_file(filters.get_first_stage_lowpass_taps(),"filter1coefficients.dat");
@@ -130,7 +122,7 @@ int main(int argc, char **argv){
   while(1){
     //Receive packet from radar control
     zmq::message_t radctl_request;
-    radarctrl_socket.recv(&radctl_request);
+    radar_control_socket.recv(&radctl_request);
     sigprocpacket::SigProcPacket sp_packet;
     std::string radctrl_str(static_cast<char*>(radctl_request.data()), radctl_request.size());
     if (sp_packet.ParseFromString(radctrl_str) == false){
@@ -146,34 +138,34 @@ int main(int argc, char **argv){
       //TODO(keith): handle error
     }
 
-    std::cout << "Got driver request" << std::endl;
+    DEBUG_MSG("Got driver request");
 
     //Verify driver and radar control packets align
     if (sp_packet.sequence_num() != rx_metadata.sequence_num()) {
       //TODO(keith): handle error
-      std::cout << "SEQUENCE NUMBER mismatch radar_control: " << sp_packet.sequence_num() // REVIEW #34 - debug output 'rctl' should be renamed to radar_control and driver to 'usrp_driver'
-        << " usrp_driver: " << rx_metadata.sequence_num();                                // REPLY this might be removed depending on how we handle errors
+      DEBUG_MSG("SEQUENCE NUMBER mismatch radar_control: " << sp_packet.sequence_num()
+        << " usrp_driver: " << rx_metadata.sequence_num());
     }
 
     //Parse needed packet values now
     if (sp_packet.rxchannel_size() == 0) {
       //TODO(keith): handle error
     }
-    std::vector<double> rx_freqs; // REVIEW #28 Shouldn't this just be a vector of integers? I don't think sub-hz resolution available or necessary? Careful of division elsewhere if it's changed
-                    //REPLY probably. I just used what was in the protobuffer.
+    std::vector<double> rx_freqs;
     for(int i=0; i<sp_packet.rxchannel_size(); i++) {
       rx_freqs.push_back(sp_packet.rxchannel(i).rxfreq());
     }
 
-    timing_start = std::chrono::steady_clock::now();
+    auto mix_timing_start = std::chrono::steady_clock::now();
 
     filters.mix_first_stage_to_bandpass(rx_freqs,rx_rate);
 
-    timing_end = std::chrono::steady_clock::now();
+    auto mix_timing_end = std::chrono::steady_clock::now();
 
-    std::cout << "NCO mix timing: "
-      << std::chrono::duration_cast<std::chrono::microseconds>(timing_end - timing_start).count()
-      << "us" << std::endl;
+    time_diff = std::chrono::duration_cast<std::chrono::microseconds>(mix_timing_end -
+                                                                        mix_timing_start).count();
+
+    DEBUG_MSG("NCO mix timing: " << time_diff<< "us");
 
     if (rx_metadata.shrmemname().empty()){
       //TODO(keith): handle missing name error
@@ -190,8 +182,7 @@ int main(int argc, char **argv){
     }
     auto total_samples = rx_metadata.numberofreceivesamples() * total_antennas;
 
-    std::cout << "Total samples in data message: " << total_samples
-      << std::endl;
+    DEBUG_MSG("Total samples in data message: " << total_samples);
 
     dp->allocate_and_copy_rf_samples(total_samples);
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),

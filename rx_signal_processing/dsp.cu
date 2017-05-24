@@ -83,6 +83,9 @@ std::vector<cudaDeviceProp> get_gpu_properties()
  * @brief      Prints the properties of each cudaDeviceProp in the vector.
  *
  * @param[in]  gpu_properties  A vector of cudaDeviceProp structs.
+ *
+ * More info on properties and calculations here:
+ * https://devblogs.nvidia.com/parallelforall/how-query-device-properties-and-handle-errors-cuda-cc/
  */
 void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
   for(auto i : gpu_properties) {
@@ -103,29 +106,13 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
     std::cout << "  Memory Bus Width (bits): " << i.memoryBusWidth
       << std::endl;
     std::cout << "  Peak Memory Bandwidth (GB/s): " <<
-       2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6 << std::endl; // REVIEW #29 magic calculation with magic numbers?
+       2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6 << std::endl;
     std::cout << "  Max shared memory per block: " << i.sharedMemPerBlock
       << std::endl;
     std::cout << "  Warpsize: " << i.warpSize << std::endl;
   }
 }
 
-
-
-
-
-/**
-  \brief Initializes the parameters needed in order to do asynchronous DSP processing.
-  \param ack_s A pointer to the socket used for acknowledging when the transfer of RF samples
-  to the device is completed.
-  \param timing_s A pointer to the socket used for reporting GPU kernel timing.
-  \param sq_num The pulse sequence number for which will be acknowledged.
-  \param shr_mem_name The char string used to open a section of shared memory with RF samples.
-
-  The constructor creates a new CUDA stream and initializes the timing events. It then opens
-  the shared memory with the received RF samples for a pulse sequence.
-
-*/
 
 /**
  * @brief      Initializes the parameters needed in order to do asynchronous DSP processing.
@@ -148,8 +135,8 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
   ack_socket = ack_s;
   timing_socket = timing_s;
 
-  gpuErrchk(cudaStreamCreate(&stream)); // REVIEW #1 explain what's going on here
-                      // REPLY this can maybe be a link to the programming guide and maybe some explaination in the written document
+  //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
+  gpuErrchk(cudaStreamCreate(&stream));
   gpuErrchk(cudaEventCreate(&initial_start));
   gpuErrchk(cudaEventCreate(&kernel_start));
   gpuErrchk(cudaEventCreate(&stop));
@@ -169,7 +156,8 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples)
 {
   rf_samples_size = total_samples * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&rf_samples_d, rf_samples_size));
-  gpuErrchk(cudaMemcpyAsync(rf_samples_d,shr_mem->get_shrmem_addr(), rf_samples_size, cudaMemcpyHostToDevice, stream));
+  gpuErrchk(cudaMemcpyAsync(rf_samples_d,shr_mem->get_shrmem_addr(), rf_samples_size,
+    cudaMemcpyHostToDevice, stream));
 
 }
 

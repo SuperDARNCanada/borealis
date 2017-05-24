@@ -19,6 +19,7 @@ See LICENSE for details
  */
 class Filtering {
   public:
+    //http://en.cppreference.com/w/cpp/language/explicit
     explicit Filtering(double initial_rx_sample_rate, const SignalProcessingOptions &sig_options);
     void save_filter_to_file(const std::vector<std::complex<float>> &filter_taps,
                               std::string name);

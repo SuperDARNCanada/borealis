@@ -45,8 +45,9 @@ class DSPCore {
                                                 void *processing_data);
     static void CUDART_CB initial_memcpy_callback(cudaStream_t stream, cudaError_t status,
                                                 void *processing_data);
+    //http://en.cppreference.com/w/cpp/language/explicit
     explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
-                                 uint32_t sq_num, const char* shr_mem_name); // REVIEW explain to us why this is explicit
+                                 uint32_t sq_num, const char* shr_mem_name);
     void allocate_and_copy_rf_samples(uint32_t total_samples);
     void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
     void allocate_and_copy_second_stage_filter(void *taps, uint32_t total_taps);
@@ -58,8 +59,9 @@ class DSPCore {
     void copy_output_to_host();
     void clear_device_and_destroy();
     void call_decimate(cuComplex* original_samples,cuComplex* decimated_samples,
-        cuComplex* filter_taps, uint32_t dm_rate,uint32_t samples_per_channel, // REVIEW #26 -Again here channels/freqs/antennas is confused and needs to be consistent, maybe we avoid the word 'channel' altogether
-        uint32_t num_taps_per_filter, uint32_t num_freqs, uint32_t num_channels, const char *output_msg);
+        cuComplex* filter_taps, uint32_t dm_rate,uint32_t samples_per_antenna,
+        uint32_t num_taps_per_filter, uint32_t num_freqs, uint32_t num_antennas,
+        const char *output_msg);
     cuComplex* get_rf_samples_p();
     cuComplex* get_first_stage_bp_filters_p();
     cuComplex* get_second_stage_filter_p();

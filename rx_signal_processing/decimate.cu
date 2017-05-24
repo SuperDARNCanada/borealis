@@ -22,7 +22,7 @@ namespace {
    *
    * @return     New grid dimensions for the kernel.
    */
-  dim3 create_grid(uint32_t num_samples, uint32_t dm_rate, uint32_t num_antennas) // REVIEW #26 no more antennas
+  dim3 create_grid(uint32_t num_samples, uint32_t dm_rate, uint32_t num_antennas)
   {
     auto num_blocks_x = num_samples/dm_rate;
     auto num_blocks_y = num_antennas;
@@ -216,8 +216,7 @@ __global__ void decimate1024(cuComplex* original_samples,
   // grouped by frequency with all samples for each antenna following each other
   // before samples of another frequency start.
   if (threadIdx.x == 0) {
-    antenna_offset = antenna_num * samples_per_antenna/dm_rate; // REVIEW #13 gridDimx is already samples_per_antenna/dm_rate, use it instead
-                                  // REPLY it is, yet I've been trying to avoid direct use of CUDA builtin types since it not obvious what they mean
+    antenna_offset = antenna_num * samples_per_antenna/dm_rate;
     auto total_antennas = gridDim.y;
     auto freq_offset = threadIdx.y * gridDim.x * total_antennas;
     auto total_offset = freq_offset + antenna_offset + dec_sample_num;
@@ -314,8 +313,7 @@ __global__ void decimate2048(cuComplex* original_samples,
   // grouped by frequency with all samples for each antenna following each other
   // before samples of another frequency start.
   if (threadIdx.x == 0) {
-    antenna_offset = antenna_num * samples_per_antenna/dm_rate; // REVIEW #13 gridDimx is already samples_per_antenna/dm_rate, use it instead
-                                  // REPLY it is, yet I've been trying to avoid direct use of CUDA builtin types since it not obvious what they mean
+    antenna_offset = antenna_num * samples_per_antenna/dm_rate;
     auto total_antennas = gridDim.y;
     auto freq_offset = threadIdx.y * gridDim.x * total_antennas;
     auto total_offset = freq_offset + antenna_offset + dec_sample_num;
