@@ -13,6 +13,7 @@ sys.path.append('../radar_control')
 sys.path.append('../experiments')
 # TODO: dynamic import ??
 
+# NOTE: Have to edit PYTHONPATH='..../placeholderOS/' in the environment for this to work.
 from experiments import normalscan
 # importlib.import_module('normalscan')
 

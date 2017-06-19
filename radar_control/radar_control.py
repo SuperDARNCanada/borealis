@@ -426,14 +426,14 @@ def radar():
                                 beam_phase_dict[slice_id] = []
                                 if type(beamdir[slice_id]) != list:  # REVIEW #33 why check if this is a list? why not just have a list of one element and build up from there for more beam directions? then you can get rid of half this code and just keep the code under the else clause.
                                     phase_array = []
-                                    for channel in range(0, 16):  # REVIEW #26 #29 channel /antenna magic 16 number
+                                    for channel in range(0, options.main_antenna_count):  # REVIEW #26 #29 channel /antenna magic 16 number
                                         # Get phase shifts for all channels
                                         phase_array.append(get_phshift(
                                             beamdir[slice_id],
                                             experiment.slice_list[slice_id]['txfreq'], channel,
                                             0, options.main_antenna_count, options.main_antenna_spacing))
-                                    for channel in range(6, 9):  # interferometer # REVIEW #0 #1, #29 #35 should be 6,10 to get 6,7,8,9, also explain why you are going for channels 6 through 9, also magic numbers - also make a function to phase main array as well a function for phasing int array, decouple them. Potentially means you need a second set of variables for the interferometer such as beamdir - alternatively you could have the beamdir and other variables 20 long for both int and main antennas..
-                                        # Get phase shifts for all channels
+                                    for channel in range(0, options.interferometer_antenna_count):  # interferometer # REVIEW #0 #1, #29 #35 should be 6,10 to get 6,7,8,9, also explain why you are going for channels 6 through 9, also magic numbers - also make a function to phase main array as well a function for phasing int array, decouple them. Potentially means you need a second set of variables for the interferometer such as beamdir - alternatively you could have the beamdir and other variables 20 long for both int and main antennas..
+                                        # Get phase shifts for all channels # TODO : add interferometer offset to phase (previously range(6,9)
                                         phase_array.append(get_phshift(
                                             beamdir[slice_id],
                                             experiment.slice_list[slice_id]['txfreq'], channel,
@@ -442,13 +442,13 @@ def radar():
                                 else:
                                     for beam in beamdir[slice_id]:
                                         phase_array = []
-                                        for channel in range(0, 16):
+                                        for channel in range(0, options.main_antenna_count):
                                             # Get phase shifts for all channels
                                             phase_array.append(get_phshift(
                                                 beam,
                                                 experiment.slice_list[slice_id]['txfreq'], channel,
                                                 0, options.main_antenna_count, options.main_antenna_spacing))
-                                        for channel in range(6, 9):  # interferometer
+                                        for channel in range(0, options.interferometer_antenna_count):  # interferometer TODO interferometer offset
                                             # Get phase shifts for all channels
                                             phase_array.append(get_phshift(
                                                 beam,

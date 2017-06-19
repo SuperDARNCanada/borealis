@@ -4,11 +4,11 @@
 from experiment_prototype import ExperimentPrototype
 
 
-class Normalscan(ExperimentPrototype):
+class Interleavedscan(ExperimentPrototype):
 
     def __init__(self):
-        cpid = 150
-        super(Normalscan, self).__init__(cpid)
+        cpid = 191
+        super(Interleavedscan, self).__init__(cpid)
 
         self.add_slice({  # slice_id = 0, there is only one slice.
             "txantennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
@@ -20,11 +20,11 @@ class Normalscan(ExperimentPrototype):
             "pulse_len": 300,  # us
             "nrang": 75,  # range gates
             "frang": 180,  # first range gate, in km
-            "intt": 3000,  # duration of an integration, in ms
+            "intt": 3500,  # duration of an integration, in ms
             "intn": 21,  # number of averages if intt is None.
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75, 26.25],
-            "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+            "beam_order": [0, 4, 8, 12, 2, 6, 10, 14, 1, 5, 9, 13, 3, 7, 11, 15],
             "scanboundflag": True,  # there is a scan boundary
             "scanbound": 60000,  # ms
             "clrfrqflag": True,  # search for clear frequency before transmitting
