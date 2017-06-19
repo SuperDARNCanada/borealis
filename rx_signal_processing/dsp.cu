@@ -22,7 +22,7 @@ See LICENSE for details
 //TODO(keith): potentially add multigpu support
 
 //This keep postprocess local to this file.
-namespace {
+//namespace {
   /**
    * @brief      Performs the host side postprocessing after data is transfered back from device.
    *
@@ -32,18 +32,17 @@ namespace {
   {
 
     dp->stop_timing();
-    dp->send_timing();
+    dp->send_ack();
     std::cout << "Cuda kernel timing: " << dp->get_decimate_timing()
       << "ms" <<std::endl;
     std::cout << "Complete process timing: " << dp->get_total_timing()
       << "ms" <<std::endl;
 
-    dp->clear_device_and_destroy();
     //TODO(keith): add copy to host and final process details
 
     delete dp;
   }
-}
+//}
 
 extern void decimate1024_wrapper(cuComplex* original_samples,
   cuComplex* decimated_samples,
@@ -140,10 +139,34 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
   gpuErrchk(cudaEventCreate(&initial_start));
   gpuErrchk(cudaEventCreate(&kernel_start));
   gpuErrchk(cudaEventCreate(&stop));
+  gpuErrchk(cudaEventCreate(&mem_transfer_end));
   gpuErrchk(cudaEventRecord(initial_start, stream));
 
-  shr_mem = new SharedMemoryHandler(shr_mem_name);
-  shr_mem->open_shr_mem();
+  shr_mem = SharedMemoryHandler(shr_mem_name);
+  shr_mem.open_shr_mem();
+
+}
+
+/**
+ * @brief      Frees all associated pointers, events, and streams. Removes and deletes shared
+ *             memory.
+ */
+DSPCore::~DSPCore()
+{
+  gpuErrchk(cudaFree(rf_samples_d));
+  gpuErrchk(cudaFree(first_stage_bp_filters_d));
+  gpuErrchk(cudaFree(second_stage_filter_d));
+  gpuErrchk(cudaFree(third_stage_filter_d));
+  gpuErrchk(cudaFree(first_stage_output_d));
+  gpuErrchk(cudaFree(second_stage_output_d));
+  gpuErrchk(cudaFree(third_stage_output_d));
+  gpuErrchk(cudaFreeHost(host_output_h));
+  gpuErrchk(cudaEventDestroy(initial_start));
+  gpuErrchk(cudaEventDestroy(kernel_start));
+  gpuErrchk(cudaEventDestroy(stop));
+  gpuErrchk(cudaStreamDestroy(stream));
+
+  shr_mem.remove_shr_mem();
 
 }
 
@@ -156,7 +179,7 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples)
 {
   rf_samples_size = total_samples * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&rf_samples_d, rf_samples_size));
-  gpuErrchk(cudaMemcpyAsync(rf_samples_d,shr_mem->get_shrmem_addr(), rf_samples_size,
+  gpuErrchk(cudaMemcpyAsync(rf_samples_d,shr_mem.get_shrmem_addr(), rf_samples_size,
     cudaMemcpyHostToDevice, stream));
 
 }
@@ -262,29 +285,7 @@ void DSPCore::copy_output_to_host()
          host_output_size, cudaMemcpyDeviceToHost));
 }
 
-/**
- * @brief      Frees all associated pointers, events, and streams. Removes and deletes shared
- *             memory.
- */
-void DSPCore::clear_device_and_destroy() //TODO(keith): rework into destructor?
-{
-  gpuErrchk(cudaFree(rf_samples_d));
-  gpuErrchk(cudaFree(first_stage_bp_filters_d));
-  gpuErrchk(cudaFree(second_stage_filter_d));
-  gpuErrchk(cudaFree(third_stage_filter_d));
-  gpuErrchk(cudaFree(first_stage_output_d));
-  gpuErrchk(cudaFree(second_stage_output_d));
-  gpuErrchk(cudaFree(third_stage_output_d));
-  gpuErrchk(cudaFreeHost(host_output_h));
-  gpuErrchk(cudaEventDestroy(initial_start));
-  gpuErrchk(cudaEventDestroy(kernel_start));
-  gpuErrchk(cudaEventDestroy(stop));
-  gpuErrchk(cudaStreamDestroy(stream));
 
-  shr_mem->remove_shr_mem();
-  delete shr_mem;
-
-}
 
 /**
  * @brief      Stops the timers that the constructor starts.
@@ -296,6 +297,10 @@ void DSPCore::stop_timing()
 
   gpuErrchk(cudaEventElapsedTime(&total_process_timing_ms, initial_start, stop));
   gpuErrchk(cudaEventElapsedTime(&decimate_kernel_timing_ms, kernel_start, stop));
+  gpuErrchk(cudaEventElapsedTime(&mem_time_ms, initial_start, mem_transfer_end));
+    std::cout << "Cuda memcpy time: " << mem_time_ms
+      << "ms" <<std::endl;
+
 
 }
 
@@ -367,6 +372,7 @@ void DSPCore::send_ack()
 void DSPCore::start_decimate_timing()
 {
   gpuErrchk(cudaEventRecord(kernel_start, stream));
+  gpuErrchk(cudaEventRecord(mem_transfer_end,stream));
 }
 
 /**

@@ -10,7 +10,7 @@
 #include "utils/shared_memory/shared_memory.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 #include "utils/driver_options/driveroptions.hpp"
-
+#include <time.h>
 std::string random_string( size_t length )
 {
   auto randchar = []() -> char
@@ -69,6 +69,7 @@ void send_data(rxsamplesmetadata::RxSamplesMetadata& samples_metadata,
 
 int main(int argc, char** argv){
 
+  srand(time(NULL));
   zmq::context_t context(1);
   zmq::socket_t driver_socket(context, ZMQ_PAIR);
   driver_socket.connect("ipc:///tmp/feeds/1");
@@ -111,7 +112,7 @@ int main(int argc, char** argv){
 
   rxsamplesmetadata::RxSamplesMetadata samples_metadata;
 
-  auto num_samples = int(rx_rate * 0.1);
+  auto num_samples = uint32_t(rx_rate* 0.1);
   samples_metadata.set_numberofreceivesamples(num_samples);
 
   auto default_v = std::complex<float>(0.0,0.0);
@@ -140,17 +141,17 @@ int main(int argc, char** argv){
   std::chrono::steady_clock::time_point timing_ack_start, timing_ack_end, timing_timing_start,
                       timing_timing_end;
 
-  send_data(samples_metadata,sp, samples,driver_socket, radctrl_socket, timing_ack_start);
+  send_data(samples_metadata, sp, samples,driver_socket, radctrl_socket, timing_ack_start);
 
 
   while(1) {
     zmq::poll(&sockets[0],2,-1);
 
+    sigprocpacket::SigProcPacket ack_from_dsp;
     if (sockets[0].revents & ZMQ_POLLIN)
     {
       zmq::message_t ack;
       ack_socket.recv(&ack);
-      sigprocpacket::SigProcPacket ack_from_dsp;
       std::string s_msg_str1(static_cast<char*>(ack.data()), ack.size());
       ack_from_dsp.ParseFromString(s_msg_str1);
 
@@ -173,18 +174,21 @@ int main(int argc, char** argv){
 
     if (sockets[1].revents & ZMQ_POLLIN)
     {
+
       zmq::message_t timing;
       timing_socket.recv(&timing);
       std::string s_msg_str2(static_cast<char*>(timing.data()), timing.size());
-      sp.ParseFromString(s_msg_str2);
+      ack_from_dsp.ParseFromString(s_msg_str2);
 
       timing_timing_end = std::chrono::steady_clock::now();
 
-      std::cout << "Received timing for sequence_num " << sp.sequence_num()
+      std::cout << "Received timing for sequence #" << ack_from_dsp.sequence_num()
         << " after "
         << std::chrono::duration_cast<std::chrono::milliseconds>(timing_timing_end -
                                   timing_timing_start).count()
-        << "ms with decimation timing of " << sp.kerneltime() << "ms" <<  std::endl;
+        << "ms with decimation timing of " << ack_from_dsp.kerneltime() << "ms" <<  std::endl;
+
+      timing_timing_start = std::chrono::steady_clock::now();
 
     }
 

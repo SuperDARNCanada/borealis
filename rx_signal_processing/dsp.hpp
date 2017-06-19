@@ -36,6 +36,7 @@ inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
 std::vector<cudaDeviceProp> get_gpu_properties();
 void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties);
 
+
 /**
  * @brief      Contains the core DSP work done on the GPU.
  */
@@ -48,6 +49,7 @@ class DSPCore {
     //http://en.cppreference.com/w/cpp/language/explicit
     explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
                                  uint32_t sq_num, const char* shr_mem_name);
+    ~DSPCore(); //destructor
     void allocate_and_copy_rf_samples(uint32_t total_samples);
     void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
     void allocate_and_copy_second_stage_filter(void *taps, uint32_t total_taps);
@@ -95,6 +97,8 @@ class DSPCore {
     //! Stores the total GPU process timing once all the work is done.
     float total_process_timing_ms;
 
+
+
     //! Stores the decimation timing.
     float decimate_kernel_timing_ms;
 
@@ -139,10 +143,17 @@ class DSPCore {
     //! CUDA event to timestamp when the GPU processing stops.
     cudaEvent_t stop;
 
-    //! A pointer to a shared memory handler that contains RF samples from the USRP driver.
-    SharedMemoryHandler *shr_mem;
+    //! Cuda event to timestamp the transfer of RF samples to the GPU.
+    cudaEvent_t mem_transfer_end;
+
+    //! Stores the memory transfer timing.
+    float mem_time_ms;
+
+    //! A shared memory handler object that contains RF samples from the USRP driver.
+    SharedMemoryHandler shr_mem;
 
 
 };
 
+void postprocess(DSPCore *dp);
 #endif

@@ -242,7 +242,6 @@ int main(int argc, char **argv){
     gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
                       DSPCore::cuda_postprocessing_callback, dp, 0));
 
-
   }
 
 
