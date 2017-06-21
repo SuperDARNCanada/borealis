@@ -5,7 +5,7 @@ Copyright 2017 SuperDARN Canada
 See LICENSE for details
 
   \file dsp.cu
-  This file contains the implemenation for the all the needed GPU DSP work.
+  This file contains the implementation for the all the needed GPU DSP work.
 */
 
 #include "dsp.hpp"
@@ -32,7 +32,7 @@ See LICENSE for details
   {
 
     dp->stop_timing();
-    dp->send_ack();
+    dp->send_timing();
     std::cout << "Cuda kernel timing: " << dp->get_decimate_timing()
       << "ms" <<std::endl;
     std::cout << "Complete process timing: " << dp->get_total_timing()
@@ -43,18 +43,6 @@ See LICENSE for details
     delete dp;
   }
 //}
-
-extern void decimate1024_wrapper(cuComplex* original_samples,
-  cuComplex* decimated_samples,
-  cuComplex* filter_taps, uint32_t dm_rate,
-  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
-  uint32_t num_antennas, cudaStream_t stream);
-
-extern void decimate2048_wrapper(cuComplex* original_samples,
-  cuComplex* decimated_samples,
-  cuComplex* filter_taps, uint32_t dm_rate,
-  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
-  uint32_t num_antennas, cudaStream_t stream);
 
 
 /**
@@ -127,7 +115,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * the shared memory with the received RF samples for a pulse sequence.
  */
 DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
-                    uint32_t sq_num, const char* shr_mem_name) //TODO(Keith): revisit str
+                    uint32_t sq_num, std::string shr_mem_name) //TODO(Keith): revisit str
 {
 
   sequence_num = sq_num;
@@ -177,7 +165,7 @@ DSPCore::~DSPCore()
  */
 void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples)
 {
-  rf_samples_size = total_samples * sizeof(cuComplex);
+  size_t rf_samples_size = total_samples * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&rf_samples_d, rf_samples_size));
   gpuErrchk(cudaMemcpyAsync(rf_samples_d,shr_mem.get_shrmem_addr(), rf_samples_size,
     cudaMemcpyHostToDevice, stream));
@@ -193,14 +181,14 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples)
  */
 void DSPCore::allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps)
 {
-  first_stage_bp_filters_size = total_taps * sizeof(cuComplex);
+  size_t first_stage_bp_filters_size = total_taps * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&first_stage_bp_filters_d, first_stage_bp_filters_size));
   gpuErrchk(cudaMemcpyAsync(first_stage_bp_filters_d, taps,
         first_stage_bp_filters_size, cudaMemcpyHostToDevice, stream));
 }
 
 /**
- * @brief      Allocates device memory for the second stage filters and then copies them to the
+ * @brief      Allocates device memory for the second stage filter and then copies it to the
  *             device.
  *
  * @param[in]  taps        A pointer to the second stage filter taps.
@@ -208,14 +196,14 @@ void DSPCore::allocate_and_copy_first_stage_filters(void *taps, uint32_t total_t
  */
 void DSPCore::allocate_and_copy_second_stage_filter(void *taps, uint32_t total_taps)
 {
-  second_stage_filter_size = total_taps * sizeof(cuComplex);
+  size_t second_stage_filter_size = total_taps * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&second_stage_filter_d, second_stage_filter_size));
   gpuErrchk(cudaMemcpyAsync(second_stage_filter_d, taps,
          second_stage_filter_size, cudaMemcpyHostToDevice, stream));
 }
 
 /**
- * @brief      Allocates device memory for the third stage filters and then copies them to the
+ * @brief      Allocates device memory for the third stage filter and then copies it to the
  *             device.
  *
  * @param[in]  taps        A pointer to the third stage filters.
@@ -223,7 +211,7 @@ void DSPCore::allocate_and_copy_second_stage_filter(void *taps, uint32_t total_t
  */
 void DSPCore::allocate_and_copy_third_stage_filter(void *taps, uint32_t total_taps)
 {
-  third_stage_filter_size = total_taps * sizeof(cuComplex);
+  size_t third_stage_filter_size = total_taps * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&third_stage_filter_d, third_stage_filter_size));
   gpuErrchk(cudaMemcpyAsync(third_stage_filter_d, taps,
         third_stage_filter_size, cudaMemcpyHostToDevice, stream));
@@ -237,7 +225,7 @@ void DSPCore::allocate_and_copy_third_stage_filter(void *taps, uint32_t total_ta
  */
 void DSPCore::allocate_first_stage_output(uint32_t num_first_stage_output_samples)
 {
-  first_stage_output_size = num_first_stage_output_samples * sizeof(cuComplex);
+  size_t first_stage_output_size = num_first_stage_output_samples * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&first_stage_output_d, first_stage_output_size));
 }
 
@@ -249,7 +237,7 @@ void DSPCore::allocate_first_stage_output(uint32_t num_first_stage_output_sample
  */
 void DSPCore::allocate_second_stage_output(uint32_t num_second_stage_output_samples)
 {
-  second_stage_output_size = num_second_stage_output_samples * sizeof(cuComplex);
+  size_t second_stage_output_size = num_second_stage_output_samples * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&second_stage_output_d, second_stage_output_size));
 }
 
@@ -261,7 +249,7 @@ void DSPCore::allocate_second_stage_output(uint32_t num_second_stage_output_samp
  */
 void DSPCore::allocate_third_stage_output(uint32_t num_third_stage_output_samples)
 {
-  third_stage_output_size = num_third_stage_output_samples * sizeof(cuComplex);
+  size_t third_stage_output_size = num_third_stage_output_samples * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&third_stage_output_d, third_stage_output_size));
 }
 
@@ -272,20 +260,11 @@ void DSPCore::allocate_third_stage_output(uint32_t num_third_stage_output_sample
  */
 void DSPCore::allocate_and_copy_host_output(uint32_t num_host_samples)
 {
-  host_output_size = num_host_samples * sizeof(cuComplex);
+  size_t host_output_size = num_host_samples * sizeof(cuComplex);
   gpuErrchk(cudaHostAlloc(&host_output_h, host_output_size, cudaHostAllocDefault));
   gpuErrchk(cudaMemcpyAsync(host_output_h, third_stage_output_d,
         host_output_size, cudaMemcpyDeviceToHost,stream));
 }
-
-//TODO(keith): dont think this is needed
-void DSPCore::copy_output_to_host()
-{
-  gpuErrchk(cudaMemcpy(host_output_h, third_stage_output_d,
-         host_output_size, cudaMemcpyDeviceToHost));
-}
-
-
 
 /**
  * @brief      Stops the timers that the constructor starts.
@@ -300,7 +279,6 @@ void DSPCore::stop_timing()
   gpuErrchk(cudaEventElapsedTime(&mem_time_ms, initial_start, mem_transfer_end));
     std::cout << "Cuda memcpy time: " << mem_time_ms
       << "ms" <<std::endl;
-
 
 }
 
@@ -345,10 +323,10 @@ void CUDART_CB DSPCore::cuda_postprocessing_callback(cudaStream_t stream, cudaEr
 }
 
 /**
- * @brief      Sends the acknowledgement to the radar control that the RF samples have been
+ * @brief      Sends the acknowledgment to the radar control that the RF samples have been
  *             transfered.
  *
- * RF samples of one pulse sequence can be transfered asynchonously while samples of another are
+ * RF samples of one pulse sequence can be transfered asynchronously while samples of another are
  * being processed. This means that it is possible to start running a new pulse sequence in the
  * driver as soon as the samples are copied. The asynchronous nature means only timing constraint
  * is the time needed to run the GPU kernels for decimation.
@@ -376,7 +354,7 @@ void DSPCore::start_decimate_timing()
 }
 
 /**
- * @brief      Sends an acknowledgement to the radar control and starts the timing after the
+ * @brief      Sends an acknowledgment to the radar control and starts the timing after the
  *             RF samples have been copied.
  *
  * @param[in]  dp    A pointer to a DSPCore object.
@@ -404,53 +382,7 @@ void CUDART_CB DSPCore::initial_memcpy_callback(cudaStream_t stream, cudaError_t
 
 }
 
-/**
- * @brief      Selects which decimate kernel to run.
- *
- * @param[in]  original_samples     A pointer to original input samples from each antenna to
- *                                  decimate.
- * @param[in]  decimated_samples    A pointer to a buffer to place output samples for each
- *                                  frequency after decimation.
- * @param[in]  filter_taps          A pointer to one or more filters needed for each frequency.
- * @param[in]  dm_rate              Decimation rate.
- * @param[in]  samples_per_antenna  The number of samples per antenna in the original set of
- *                                  samples.
- * @param[in]  num_taps_per_filter  Number of taps per filter.
- * @param[in]  num_freqs            Number of receive frequencies.
- * @param[in]  num_antennas         Number of antennas for which there are samples.
- * @param[in]  output_msg           A simple character string that can be used to debug or
- *                                  distiguish different stages.
- *
- * Based off the total number of filter taps, this function will choose what decimate kernel to
- * use.
- */
-void DSPCore::call_decimate(cuComplex* original_samples,
-  cuComplex* decimated_samples,
-  cuComplex* filter_taps, uint32_t dm_rate,
-  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
-  uint32_t num_antennas, const char *output_msg) {
 
-  std::cout << output_msg << std::endl;
-
-  auto gpu_properties = get_gpu_properties();
-
-
-  //For now we have a kernel that will process 2 samples per thread if need be
-  if (num_taps_per_filter * num_freqs > 2 * gpu_properties[0].maxThreadsPerBlock) {
-    //TODO(Keith) : handle error
-  }
-  else if (num_taps_per_filter * num_freqs > gpu_properties[0].maxThreadsPerBlock) {
-    decimate2048_wrapper(original_samples, decimated_samples, filter_taps,  dm_rate,
-      samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
-  }
-  else {
-    decimate1024_wrapper(original_samples, decimated_samples, filter_taps,  dm_rate,
-      samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
-  }
-  // This is to detect invalid launch parameters.
-  gpuErrchk(cudaPeekAtLastError());
-
-}
 
 /**
  * @brief      Gets the device pointer to the RF samples.

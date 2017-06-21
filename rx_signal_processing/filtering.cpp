@@ -177,13 +177,14 @@ std::vector<std::complex<float>> Filtering::create_filter(uint32_t num_taps, dou
  */
 void Filtering::mix_first_stage_to_bandpass(const std::vector<double> &rx_freqs,
                                               double initial_rx_sample_rate) {
+    first_stage_bandpass_taps_h.clear(); //clear any previously mixed filter taps.
     for (uint32_t i=0; i<rx_freqs.size(); i++) { // TODO(keith): comment the protobuf with what rx freqs are. Offset or center.
       auto sampling_freq = 2 * M_PI * rx_freqs[i]/initial_rx_sample_rate; //radians per sample
 
       //TODO(keith): verify that this is okay.
       for(int j=0;j < first_stage_lowpass_taps.size(); j++) {
         auto radians = fmod(sampling_freq * j,2 * M_PI);
-        auto amplitude = first_stage_lowpass_taps[j].real();
+        auto amplitude = std::abs(first_stage_lowpass_taps[j]);
         auto I = amplitude * cos(radians);
         auto Q = amplitude * sin(radians);
         first_stage_bandpass_taps_h.push_back(std::complex<float>(I,Q));
@@ -214,6 +215,7 @@ void Filtering::save_filter_to_file(const std::vector<std::complex<float>> &filt
   }
   filter.close();
 }
+
 
 /**
  * @brief      Gets the number of first stage taps.

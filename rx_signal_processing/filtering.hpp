@@ -2,7 +2,7 @@
 Copyright 2017 SuperDARN Canada
 
 See LICENSE for details
-  \file filtering.h
+  \file filtering.hpp
 */
 
 #ifndef FILTERING_H
@@ -52,7 +52,7 @@ class Filtering {
     //! A vector of taps for the third stage lowpass filter.
     std::vector<std::complex<float>> third_stage_lowpass_taps;
 
-    //! A host side vector that holds the taps all first stage bandpass filters.
+    //! A host side vector that holds the taps for all first stage bandpass filters.
     std::vector<std::complex<float>> first_stage_bandpass_taps_h;
 
     uint32_t calculate_num_filter_taps(double rate, double transition_width);
@@ -61,7 +61,6 @@ class Filtering {
                                                                 double Fs);
     std::vector<std::complex<float>> create_filter(uint32_t num_taps, double filter_cutoff,
                                                     double transition_band, double rate);
-
 
 };
 

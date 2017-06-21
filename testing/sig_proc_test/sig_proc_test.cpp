@@ -45,7 +45,7 @@ void send_data(rxsamplesmetadata::RxSamplesMetadata& samples_metadata,
   shrmem.create_shr_mem(size);
   memcpy(shrmem.get_shrmem_addr(), samples.data(), size);
   auto shr_end = std::chrono::steady_clock::now();
-  std::cout << "shrmem + memcpy for " << sp.sequence_num()
+  std::cout << "shrmem + memcpy for #" << sp.sequence_num()
     << " after "
     << std::chrono::duration_cast<std::chrono::milliseconds>(shr_end - shr_start).count()
     << "ms" << std::endl;
@@ -142,7 +142,7 @@ int main(int argc, char** argv){
                       timing_timing_end;
 
   send_data(samples_metadata, sp, samples,driver_socket, radctrl_socket, timing_ack_start);
-
+  sqn_num += 1;
 
   while(1) {
     zmq::poll(&sockets[0],2,-1);
