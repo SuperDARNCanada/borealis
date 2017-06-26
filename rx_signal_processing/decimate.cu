@@ -201,7 +201,7 @@ __device__ cuComplex parallel_reduce(cuComplex* data, uint32_t tap_offset) {
  * process data in realtime. This algorithm will use 1 GPU thread per filter tap if there are less
  * than 1024 taps for all filters combined. Only works with power of two length filters, or a
  * filter that is zero padded to a power of two in length. This algorithm takes
- * a single set of wide band samples from the USRP driver, and produces a output data set for each 
+ * a single set of wide band samples from the USRP driver, and produces an output data set for each 
  * RX frequency
  *
  *   gridDim.x - Total number of output samples there will be after decimation.
@@ -210,7 +210,7 @@ __device__ cuComplex parallel_reduce(cuComplex* data, uint32_t tap_offset) {
  *   blockIdx.x - Decimated output sample index.
  *   blockIdx.y - Antenna index.
  *
- *   blockDim.x - Number of filter taps in each filter.
+ *   blockDim.x - Number of filter taps in the lowpass filter.
  *   blockDim.y - Total number of filters. Corresponds to total receive frequencies.
  *
  *   threadIdx.x - Filter tap index.
@@ -467,7 +467,7 @@ void bandpass_decimate2048_wrapper(cuComplex* original_samples,
  *   blockIdx.y - Antenna index.
  *   blockIdx.z - Frequency dataset index.
  *
- *   blockDim.x - Number of filter taps in each filter.
+ *   blockDim.x - Number of filter taps in the lowpass filter.
 
  *   threadIdx.x - Filter tap indices.
  */
@@ -554,7 +554,7 @@ __global__ void lowpass_decimate1024(cuComplex* original_samples,
  *   blockIdx.y - Antenna index.
  *   blockIdx.z - Frequency dataset index.
  *
- *   blockDim.x - Number of filter taps in each filter / 2.
+ *   blockDim.x - Number of filter taps in the lowpass filter / 2.
 
  *   threadIdx.x - Every second filter tap index.
  */

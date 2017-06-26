@@ -190,7 +190,7 @@ int main(int argc, char **argv){
                                                 filters.get_first_stage_bandpass_taps_h().size());
 
     auto num_output_samples_1 = rx_freqs.size() *
-                                  rx_metadata.numberofreceivesamples()/first_stage_dm_rate *
+                                  (rx_metadata.numberofreceivesamples()/first_stage_dm_rate) *
                                   total_antennas;
 
     dp->allocate_first_stage_output(num_output_samples_1);
@@ -208,18 +208,17 @@ int main(int argc, char **argv){
     // When decimating, we go from one set of samples for each antenna in the first stage
     // to multiple sets of reduced samples for each frequency in further stages. Output samples are
     // grouped by frequency with all samples for each antenna following each other
-    // before samples of another frequency start. In the first stage need a filter for each frequency,
-    // but in the next stages we only need one filter for all data sets.
+    // before samples of another frequency start. In the first stage need a filter for each 
+    // frequency, but in the next stages we only need one filter for all data sets.
     dp->allocate_and_copy_second_stage_filter(filters.get_second_stage_lowpass_taps().data(),
                                                 filters.get_second_stage_lowpass_taps().size());
 
-    auto num_output_samples_2 = rx_freqs.size() * num_output_samples_1 / second_stage_dm_rate;
+    auto num_output_samples_2 = num_output_samples_1 / second_stage_dm_rate;
 
     dp->allocate_second_stage_output(num_output_samples_2);
 
     // each antenna has a data set for each frequency after filtering.
-    auto samples_per_antenna_2 = rx_freqs.size() *
-                                  rx_metadata.numberofreceivesamples()/first_stage_dm_rate;
+    auto samples_per_antenna_2 = num_output_samples_1/total_antennas;
     call_decimate<DecimationType::lowpass>(dp->get_first_stage_output_p(),
       dp->get_second_stage_output_p(),
       dp->get_second_stage_filter_p(), second_stage_dm_rate,

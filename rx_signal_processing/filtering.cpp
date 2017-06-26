@@ -178,7 +178,8 @@ std::vector<std::complex<float>> Filtering::create_filter(uint32_t num_taps, dou
 void Filtering::mix_first_stage_to_bandpass(const std::vector<double> &rx_freqs,
                                               double initial_rx_sample_rate) {
     first_stage_bandpass_taps_h.clear(); //clear any previously mixed filter taps.
-    for (uint32_t i=0; i<rx_freqs.size(); i++) { // TODO(keith): comment the protobuf with what rx freqs are. Offset or center.
+    for (uint32_t i=0; i<rx_freqs.size(); i++) { 
+    // TODO(keith): comment the protobuf with what rx freqs are. Offset or center.
       auto sampling_freq = 2 * M_PI * rx_freqs[i]/initial_rx_sample_rate; //radians per sample
 
       //TODO(keith): verify that this is okay.
@@ -198,7 +199,9 @@ void Filtering::mix_first_stage_to_bandpass(const std::vector<double> &rx_freqs,
  * @param[in]  filter_taps  A reference to a vector of filter taps.
  * @param[in]  name         A output file name.
  */
-void Filtering::save_filter_to_file(const std::vector<std::complex<float>> &filter_taps, std::string name) {
+void Filtering::save_filter_to_file(const std::vector<std::complex<float>> &filter_taps, 
+                                     std::string name) 
+{
   std::ofstream filter;
   filter.exceptions(std::ofstream::failbit | std::ofstream::badbit);
   try {
@@ -272,9 +275,11 @@ std::vector<std::complex<float>> Filtering::get_third_stage_lowpass_taps() {
 }
 
 /**
- * @brief      Gets the vector containing bandpass filter taps for each RX frequency.
+ * @brief      Gets the vector containing bandpass filter taps for all RX frequencies.
  *
  * @return     The first stage bandpass taps.
+ * 
+ * As an example, if there are 3 Rx frequency filters with 32 taps each, this vector will be 96 taps in size.
  */
 std::vector<std::complex<float>> Filtering::get_first_stage_bandpass_taps_h() {
   //TODO(keith): maybe rename this?
