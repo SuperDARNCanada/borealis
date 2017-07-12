@@ -105,7 +105,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * @brief      Initializes the parameters needed in order to do asynchronous DSP processing.
  *
  * @param      ack_s         A pointer to the socket used for acknowledging when the transfer of RF
- *                           samples.
+ *                           samples has completed.
  * @param[in]  timing_s      A pointer to the socket used for reporting GPU kernel timing.
  * @param[in]  sq_num        The pulse sequence number for which will be acknowledged.
  * @param[in]  shr_mem_name  The char string used to open a section of shared memory with RF

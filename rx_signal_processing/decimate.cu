@@ -237,7 +237,8 @@ __global__ void bandpass_decimate1024(cuComplex* original_samples,
 
   // If an offset should extend past the length of samples per antenna
   // then zeroes are used as to not segfault or run into the next buffer.
-  // output samples using these will be discarded as to not introduce edge effects
+  // output samples convolved with these zeroes will be discarded after
+  // the complete process as to not introduce edge effects.
   cuComplex sample;
   if ((dec_sample_offset + threadIdx.x) >= samples_per_antenna) {
     sample = make_cuComplex(0.0f,0.0f);
@@ -260,7 +261,7 @@ __global__ void bandpass_decimate1024(cuComplex* original_samples,
   // grouped by frequency with all samples for each antenna following each other
   // before samples of another frequency start.
   if (threadIdx.x == 0) {
-    antenna_offset = antenna_num * samples_per_antenna/dm_rate;
+    antenna_offset = antenna_num * gridDim.x;
     auto total_antennas = gridDim.y;
     auto freq_offset = threadIdx.y * gridDim.x * total_antennas;
     auto total_offset = freq_offset + antenna_offset + dec_sample_num;
@@ -323,9 +324,11 @@ __global__ void bandpass_decimate2048(cuComplex* original_samples,
 
   cuComplex sample_1;
   cuComplex sample_2;
+
   // If an offset should extend past the length of samples per antenna
   // then zeroes are used as to not segfault or run into the next buffer.
-  // output samples using these will be discarded as to not introduce edge effects
+  // output samples convolved with these zeroes will be discarded after
+  // the complete process as to not introduce edge effects.
   if ((dec_sample_offset + 2 * threadIdx.x) >= samples_per_antenna) {
     // the case both samples are out of bounds
     sample_1 = make_cuComplex(0.0,0.0);
@@ -359,7 +362,7 @@ __global__ void bandpass_decimate2048(cuComplex* original_samples,
   // grouped by frequency with all samples for each antenna following each other
   // before samples of another frequency start.
   if (threadIdx.x == 0) {
-    antenna_offset = antenna_num * samples_per_antenna/dm_rate;
+    antenna_offset = antenna_num * gridDim.x;
     auto total_antennas = gridDim.y;
     auto freq_offset = threadIdx.y * gridDim.x * total_antennas;
     auto total_offset = freq_offset + antenna_offset + dec_sample_num;
@@ -459,7 +462,7 @@ void bandpass_decimate2048_wrapper(cuComplex* original_samples,
  * baseband datasets corresponding to each RX frequency and filters each one using a single lowpass
  * filter before downsampling.
  * 
- *   gridDim.x - The number of decimated output samples for one frequency set.
+ *   gridDim.x - The number of decimated output samples for one antenna in one frequency data set.
  *   gridDim.y - Total number of antennas.
  *   gridDim.z - Total number of frequency data sets.
  *
@@ -482,7 +485,11 @@ __global__ void lowpass_decimate1024(cuComplex* original_samples,
 
   extern __shared__ cuComplex filter_products[];
 
-  auto frequency_dataset_offset = blockIdx.z * (gridDim.x * dm_rate);
+  auto total_antennas = gridDim.y;
+  
+  auto data_set_idx = blockIdx.z;
+
+  auto frequency_dataset_offset = data_set_idx * samples_per_antenna * total_antennas;
   
   auto antenna_num = blockIdx.y;
   auto antenna_offset = antenna_num * samples_per_antenna;
@@ -494,13 +501,14 @@ __global__ void lowpass_decimate1024(cuComplex* original_samples,
 
   // If an offset should extend past the length of samples per antenna
   // then zeroes are used as to not segfault or run into the next buffer.
-  // output samples using these will be discarded as to not introduce edge effects
+  // output samples convolved with these zeroes will be discarded after
+  // the complete process as to not introduce edge effects.
   cuComplex sample;
-  if ((dec_sample_offset + threadIdx.x) >= samples_per_antenna) {
+  if ((dec_sample_offset + tap_offset) >= samples_per_antenna) {
     sample = make_cuComplex(0.0f,0.0f);
   }
   else {
-    auto final_offset = frequency_dataset_offset + antenna_offset + dec_sample_offset + threadIdx.x;
+    auto final_offset = frequency_dataset_offset + antenna_offset + dec_sample_offset + tap_offset;
     sample = original_samples[final_offset];
   }
 
@@ -517,11 +525,10 @@ __global__ void lowpass_decimate1024(cuComplex* original_samples,
   // grouped by frequency with all samples for each antenna following each other
   // before samples of another frequency start.
   if (threadIdx.x == 0) {
-    frequency_dataset_offset = blockIdx.z * gridDim.x;
-    antenna_offset = antenna_num * samples_per_antenna/dm_rate;
-    auto total_antennas = gridDim.y;
-    auto freq_offset = threadIdx.y * gridDim.x * total_antennas;
-    auto total_offset = frequency_dataset_offset + antenna_offset + freq_offset + dec_sample_num;
+    auto num_output_samples_per_antenna = gridDim.x;
+    frequency_dataset_offset = data_set_idx * num_output_samples_per_antenna * total_antennas;
+    antenna_offset = antenna_num * num_output_samples_per_antenna;
+    auto total_offset = frequency_dataset_offset + antenna_offset + dec_sample_num;
     decimated_samples[total_offset] = calculated_output_sample;
   }
 }
@@ -546,7 +553,7 @@ __global__ void lowpass_decimate1024(cuComplex* original_samples,
  * one or more baseband datasets corresponding to each RX frequency and filters each one using a 
  * single lowpass filter before downsampling.
  * 
- *   gridDim.x - The number of decimated output samples for one frequency set.
+ *   gridDim.x - The number of decimated output samples for one antenna in one frequency data set.
  *   gridDim.y - Total number of antennas.
  *   gridDim.z - Total number of frequency data sets.
  *
@@ -570,7 +577,11 @@ __global__ void lowpass_decimate2048(cuComplex* original_samples,
 
   extern __shared__ cuComplex filter_products[];
 
-  auto frequency_dataset_offset = blockIdx.z * (gridDim.x * dm_rate);
+  auto total_antennas = gridDim.y;
+  
+  auto data_set_idx = blockIdx.z;
+
+  auto frequency_dataset_offset = data_set_idx * samples_per_antenna * total_antennas;
   
   auto antenna_num = blockIdx.y;
   auto antenna_offset = antenna_num * samples_per_antenna;
@@ -582,23 +593,24 @@ __global__ void lowpass_decimate2048(cuComplex* original_samples,
 
   cuComplex sample_1;
   cuComplex sample_2;
+
   // If an offset should extend past the length of samples per antenna
   // then zeroes are used as to not segfault or run into the next buffer.
-  // output samples using these will be discarded as to not introduce edge effects
+  // output samples convolved with these zeroes will be discarded after
+  // the complete process as to not introduce edge effects.
   if ((dec_sample_offset + 2 * threadIdx.x) >= samples_per_antenna) {
     // the case both samples are out of bounds
     sample_1 = make_cuComplex(0.0,0.0);
     sample_2 = make_cuComplex(0.0,0.0);
   }
-  else if ((dec_sample_offset + 2 * threadIdx.x) >= samples_per_antenna - 1) {
+  else if ((dec_sample_offset + tap_offset) >= samples_per_antenna - 1) {
     // the case only one sample would be out of bounds
-    auto final_offset = antenna_offset + dec_sample_offset + 2*threadIdx.x;
+    auto final_offset = antenna_offset + dec_sample_offset + tap_offset;
     sample_1 = original_samples[final_offset];
     sample_2 = make_cuComplex(0.0,0.0);
   }
   else {
-    auto final_offset = frequency_dataset_offset + antenna_offset + dec_sample_offset + 
-                          2*threadIdx.x;
+    auto final_offset = frequency_dataset_offset + antenna_offset + dec_sample_offset + tap_offset;
     sample_1 = original_samples[final_offset];
     sample_2 = original_samples[final_offset+1];
   }
@@ -619,11 +631,10 @@ __global__ void lowpass_decimate2048(cuComplex* original_samples,
   // grouped by frequency with all samples for each antenna following each other
   // before samples of another frequency start.
   if (threadIdx.x == 0) {
-    frequency_dataset_offset = blockIdx.z * gridDim.x;
-    antenna_offset = antenna_num * samples_per_antenna/dm_rate;
-    auto total_antennas = gridDim.y;
-    auto freq_offset = threadIdx.y * gridDim.x * total_antennas;
-    auto total_offset = freq_offset + antenna_offset + dec_sample_num;
+    auto num_output_samples_per_antenna = gridDim.x;
+    frequency_dataset_offset = data_set_idx * num_output_samples_per_antenna * total_antennas;
+    antenna_offset = antenna_num * num_output_samples_per_antenna;
+    auto total_offset = frequency_dataset_offset + antenna_offset + dec_sample_num;
     decimated_samples[total_offset] = calculated_output_sample;
   }
 }

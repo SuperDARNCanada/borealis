@@ -218,7 +218,7 @@ int main(int argc, char **argv){
     dp->allocate_second_stage_output(num_output_samples_2);
 
     // each antenna has a data set for each frequency after filtering.
-    auto samples_per_antenna_2 = num_output_samples_1/total_antennas;
+    auto samples_per_antenna_2 = num_output_samples_1/total_antennas/rx_freqs.size();
     call_decimate<DecimationType::lowpass>(dp->get_first_stage_output_p(),
       dp->get_second_stage_output_p(),
       dp->get_second_stage_filter_p(), second_stage_dm_rate,
@@ -242,7 +242,6 @@ int main(int argc, char **argv){
     gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
                       DSPCore::cuda_postprocessing_callback, dp, 0));
 
-    cudaDeviceSynchronize();
 
   }
 
