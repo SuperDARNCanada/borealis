@@ -21,6 +21,10 @@ class SignalProcessingOptions: public Options {
     double get_third_stage_filter_transition();
     uint32_t get_main_antenna_count();
     uint32_t get_interferometer_antenna_count();
+    std::string get_driver_socket_address();
+    std::string get_radar_control_socket_address();
+    std::string get_ack_socket_address();
+    std::string get_timimg_socket_address();
 
  private:
     uint32_t main_antenna_count;
@@ -34,6 +38,10 @@ class SignalProcessingOptions: public Options {
     double second_stage_filter_transition;
     double third_stage_filter_cutoff;
     double third_stage_filter_transition;
+    std::string driver_socket_address;
+    std::string radar_control_socket_address;
+    std::string ack_socket_address;
+    std::string timing_socket_address;
 
 
 };
