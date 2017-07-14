@@ -28,6 +28,8 @@ class DriverOptions: public Options {
         double get_tr_window_time();
         uint32_t get_main_antenna_count();
         uint32_t get_interferometer_antenna_count();
+        std::string get_radar_control_socket_address();
+        std::string get_rx_dsp_socket_address();
 
  private:
         std::string devices;
@@ -49,6 +51,10 @@ class DriverOptions: public Options {
         double tr_window_time;
         uint32_t main_antenna_count;
         uint32_t interferometer_antenna_count;
+        std::string radar_control_socket_address;
+        std::string rx_dsp_socket_address;
+        
+
 };
 
 #endif
