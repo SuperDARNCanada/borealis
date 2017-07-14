@@ -189,20 +189,20 @@ int main(int argc, char **argv){
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),
                                                 filters.get_first_stage_bandpass_taps_h().size());
 
-    auto num_output_samples_1 = rx_freqs.size() *
-                                  (rx_metadata.numberofreceivesamples()/first_stage_dm_rate) *
-                                  total_antennas;
+    auto num_output_samples_per_antenna_1 = rx_metadata.numberofreceivesamples()/
+                                              first_stage_dm_rate;
+    auto total_output_samples_1 = rx_freqs.size() * num_output_samples_per_antenna_1 *
+                                   total_antennas;
 
-    dp->allocate_first_stage_output(num_output_samples_1);
+    dp->allocate_first_stage_output(total_output_samples_1);
 
     gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
                   DSPCore::initial_memcpy_callback, dp, 0));
 
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
-      dp->get_first_stage_output_p(),
-      dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
-      rx_metadata.numberofreceivesamples(), filters.get_first_stage_lowpass_taps().size(), rx_freqs.size(),
-      total_antennas, "First stage of decimation", dp->get_cuda_stream());
+      dp->get_first_stage_output_p(),dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
+      rx_metadata.numberofreceivesamples(), filters.get_first_stage_lowpass_taps().size(), 
+      rx_freqs.size(), total_antennas, "First stage of decimation", dp->get_cuda_stream());
 
 
     // When decimating, we go from one set of samples for each antenna in the first stage
@@ -213,31 +213,35 @@ int main(int argc, char **argv){
     dp->allocate_and_copy_second_stage_filter(filters.get_second_stage_lowpass_taps().data(),
                                                 filters.get_second_stage_lowpass_taps().size());
 
-    auto num_output_samples_2 = num_output_samples_1 / second_stage_dm_rate;
+    auto num_output_samples_per_antenna_2 = num_output_samples_per_antenna_1 / second_stage_dm_rate;
+    auto total_output_samples_2 = rx_freqs.size() * num_output_samples_per_antenna_2 * 
+                                    total_antennas;
 
-    dp->allocate_second_stage_output(num_output_samples_2);
+    dp->allocate_second_stage_output(total_output_samples_2);
 
     // each antenna has a data set for each frequency after filtering.
-    auto samples_per_antenna_2 = num_output_samples_1/total_antennas/rx_freqs.size();
+    auto samples_per_antenna_2 = total_output_samples_1/total_antennas/rx_freqs.size();
     call_decimate<DecimationType::lowpass>(dp->get_first_stage_output_p(),
-      dp->get_second_stage_output_p(),
-      dp->get_second_stage_filter_p(), second_stage_dm_rate,
+      dp->get_second_stage_output_p(), dp->get_second_stage_filter_p(), second_stage_dm_rate,
       samples_per_antenna_2, filters.get_second_stage_lowpass_taps().size(), rx_freqs.size(),
       total_antennas, "Second stage of decimation", dp->get_cuda_stream());
 
 
     dp->allocate_and_copy_third_stage_filter(filters.get_third_stage_lowpass_taps().data(),
                                                filters.get_third_stage_lowpass_taps().size());
-    auto num_output_samples_3 = num_output_samples_2 / third_stage_dm_rate;
-    dp->allocate_third_stage_output(num_output_samples_3);
+
+    auto num_output_samples_per_antenna_3 = num_output_samples_per_antenna_2 / third_stage_dm_rate;
+    auto total_output_samples_3 = rx_freqs.size() * num_output_samples_per_antenna_3 * 
+                                    total_antennas;
+
+    dp->allocate_third_stage_output(total_output_samples_3);
     auto samples_per_antenna_3 = samples_per_antenna_2/second_stage_dm_rate;
     call_decimate<DecimationType::lowpass>(dp->get_second_stage_output_p(),
-      dp->get_third_stage_output_p(),
-      dp->get_third_stage_filter_p(), third_stage_dm_rate,
+      dp->get_third_stage_output_p(), dp->get_third_stage_filter_p(), third_stage_dm_rate,
       samples_per_antenna_3, filters.get_third_stage_lowpass_taps().size(), rx_freqs.size(),
       total_antennas, "Third stage of decimation", dp->get_cuda_stream());
 
-    dp->allocate_and_copy_host_output(num_output_samples_3);
+    dp->allocate_and_copy_host_output(total_output_samples_3);
 
     gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
                       DSPCore::cuda_postprocessing_callback, dp, 0));
