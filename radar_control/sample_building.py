@@ -41,8 +41,10 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
     if isinstance(beamdir, list):
         # TODO handle imaging/multiple beam directions
         beamdir = 0  # directly ahead for now
+        imaging_amplitude = 1  # TODO change
     else:  # is a float
         beamdir = float(beamdir)
+        imaging_amplitude = 1
 
     beamrad = math.pi * float(beamdir) / 180.0
     # Pointing to right of boresight, use point in middle (hypothetically antenna 7.5) as phshift=0
@@ -55,7 +57,7 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
 
     phshift = math.fmod(phshift, 2 * math.pi)
 
-    return phshift
+    return phshift, imaging_amplitude
 
 
 def get_wavetables(wavetype):
@@ -177,17 +179,23 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
 
     else:
         errmsg = "Error: only one wavetable passed"
-        sys.exit(errmsg)  # REVIEW #6 TODO Handle gracefully or something
+        raise ExperimentException(errmsg)  # REVIEW #6 TODO Handle gracefully or something
 
     # Samples is an array of complex samples
     # NOTE: phasing will be done in shift_samples function
     return samples, actual_wave_freq
 
 
-def shift_samples(basic_samples, phshift):
-    """Take the samples and shift by given phase shift in rads."""
+def shape_samples(basic_samples, phshift, amplitude):
+    """Take the samples and shift by given phase shift in rads and adjust amplitude as required
+    for imaging.
+    :param basic_samples : samples for this pulse
+    :param phshift : phase for this antenna to offset by
+    :param amplitude : amplitude for this antenna (= 1 if not imaging)
+    :return samples, shaped for the antenna for the desired beam.
+    """
 
-    samples = basic_samples * np.exp(1j * phshift)
+    samples = basic_samples * amplitude * np.exp(1j * phshift)
     return samples
 
 
@@ -240,26 +248,112 @@ def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power
                        qwavetable=None):
     """
     Make and phase shift samples, and combine them if there are multiple pulse types to send within this pulse.
+    :param pulse_list: a list of dictionaries, each dict is a pulse. The list only contains pulses
+    that will be sent as a single pulse (ie. have the same combined_pulse_index).
+    :param exp_slices: 
+    :param beamdir: 
+    :param txctrfreq: 
+    :param txrate: 
+    :param options: 
+    :param iwavetable: 
+    :param qwavetable: 
+    :return: 
+    
     """
+
+    for pulse in pulse_list:
+        try:
+            assert pulse['combined_pulse_index'] == pulse_list[0]['combined_pulse_index']
+            assert pulse['pulse_timing_us'] == pulse_list[0]['pulse_timing_us']
+        except AssertionError:
+            errmsg = 'Error building samples from pulse dictionaries'
+            raise ExperimentException(errmsg, pulse, pulse_list[0])
 
     txrate = float(txrate)
     txctrfreq = float(txctrfreq)
-    samples_dict = {}
 
-    for pulse in pulse_list:  # REVIEW #35 This loop is good candidate to make into function called create_samples or something TODO
-        wave_freq = float(exp_slices[pulse[1]]['txfreq']) - txctrfreq
-        samples_dict[tuple(pulse)] = []
+    # make the uncombined pulses
+    create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate,
+                             options, iwavetable, qwavetable)
+    # all pulse dictionaries in the pulse_list now have a 'samples' key which is a list of numpy
+    # complex arrays (one for each tx antenna).
+
+    # determine how long the combined pulse will be in number of samples, and add the key
+    # 'sample_start_number' for all pulses in the pulse_list.
+    combined_pulse_length = calculated_combined_pulse_samples_length(pulse_list, txrate)
+
+    # Now we have total length so make all pulse samples same length
+    #   before combining them sample by sample.
+    for pulse in pulse_list:
+        # print start_samples
+        for antenna in range(0, options.main_antenna_count):
+            pulse_array = pulse['samples'][antenna]
+            zeros_prepend = np.zeros(pulse['sample_number_start'], dtype=np.complex64)
+            zeros_append = np.zeros((combined_pulse_length - len(pulse_array) - pulse['sample_number_start']), dtype=np.complex64)
+
+            corrected_pulse_array = np.concatenate((zeros_prepend, pulse_array, zeros_append))
+
+            pulse['samples'][antenna] = corrected_pulse_array
+            # Sub in new array of right length for old array.
+
+    combined_samples = np.zeros(combined_pulse_length, dtype=np.complex64)
+    # This is a list of arrays (one for each channel) with the combined
+    #   samples in it (which will be transmitted).
+    for antenna in range(0, options.main_antenna_count):
+        for pulse in pulse_list:
+            try:
+                combined_samples[antenna] += pulse['samples'][antenna] / power_divider
+            except RuntimeWarning:  # REVIEW #3 What would cause this exception?  REPLY: I cannot remember actually....
+                print("RUNTIMEWARNING {} {}".format(combined_samples[antenna], power_divider))
+
+    # Now get what channels we need to transmit on for this combined
+    #   pulse.
+    # TODO : figure out - why did I do this I thought we were transmitting zeros on any channels not wanted
+    pulse_channels = []
+    for pulse in pulse_list:
+        for ant in exp_slices[pulse['slice_id']]['txantennas']:
+            if ant not in pulse_channels:
+                pulse_channels.append(ant)
+    pulse_channels.sort()
+
+    return combined_samples, pulse_channels
+
+
+def create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate, options,
+                             iwavetable=None, qwavetable=None):
+    """
+    Creates a sample dictionary where the pulse is the key and the samples (in a list from 0th to 
+    max antenna) are the value.
+    :param pulse_list: a list of dictionaries, each dict is a pulse
+    :param exp_slices: 
+    :param beamdir: 
+    :param txctrfreq: 
+    :param txrate: 
+    :param options: 
+    :param iwavetable: 
+    :param qwavetable: 
+    :return: 
+    """
+
+    for pulse in pulse_list:
+        wave_freq = float(exp_slices[pulse['slice_id']]['txfreq']) - txctrfreq
         phase_array = []
+        pulse['samples'] = []
+        amplitude_array = []
         for antenna in range(0, options.main_antenna_count):
             # Get phase shifts for all channels
-            phase_array.append(get_phshift(
-                beamdir[pulse[1]],
-                exp_slices[pulse[1]]['txfreq'], antenna,
-                exp_slices[pulse[1]]['pulse_shift'][pulse[2]]))
+            phase_for_antenna, amplitude_for_antenna = get_phshift(
+                beamdir[pulse['slice_id']],
+                exp_slices[pulse['slice_id']]['txfreq'], antenna,
+                exp_slices[pulse['slice_id']]['pulse_shift'][pulse['slice_pulse_index']], options.main_antenna_count,
+                options.main_antenna_spacing)
+            phase_array.append(phase_for_antenna)
+            amplitude_array.append(amplitude_for_antenna)
 
         # Create samples for this frequency at this rate. Convert pulse_len to seconds and wave_freq to Hz.
-        basic_samples, real_freq = get_samples(txrate, wave_freq * 1000, float(exp_slices[pulse[1]]['pulse_len']) / 1000000,
-                                    options.pulse_ramp_time, iwavetable, qwavetable)
+        basic_samples, real_freq = get_samples(txrate, wave_freq * 1000,
+                                               float(pulse['pulse_len']) / 1000000,
+                                               options.pulse_ramp_time, iwavetable, qwavetable)
 
         if real_freq != wave_freq:
             errmsg = 'Actual Frequency {} is Not Equal to Intended Wave Freq {}'.format(real_freq,
@@ -267,85 +361,36 @@ def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power
             raise ExperimentException(errmsg)  # TODO change to warning? only happens on non-SINE
 
         for antenna in range(0, options.main_antenna_count):
-            # REVIEW #6 TODO: Handle different amplitudes necessary for imaging. Something like pulse_samples = shape_samples(basic_samples, amplitude_array[antenna]) and that function could just be a numpy array multiply
-            if antenna in exp_slices[pulse[1]]['txantennas']:
-                pulse_samples = shift_samples(basic_samples, phase_array[antenna])
-                samples_dict[tuple(pulse)].append(pulse_samples)
-                # Samples_dict[pulse] is a list of numpy arrays now.
+            if antenna in exp_slices[pulse['slice_id']]['txantennas']:
+                pulse_samples = shape_samples(basic_samples, phase_array[antenna],
+                                              amplitude_array[antenna])
+                pulse['samples'].append(pulse_samples)
+                # pulse_dict['samples'] is a list of numpy arrays now.
             else:
                 pulse_samples = np.zeros([len(basic_samples)], dtype=np.complex64)
-                samples_dict[tuple(pulse)].append(pulse_samples)
+                pulse['samples'].append(pulse_samples)
                 # Will be an empty array for that channel.
 
-    # Combine samples given pulse timing in 'pulse' list.
-    # Find timing of where the pulses start in comparison to the first
-    #   pulse, and find out the total number of samples for this
-    #   combined pulse.
-    samples_begin = []
-    total_length = len(samples_dict[tuple(pulse_list[0])][
-                           0])  # REVIEW #26 This is difficult to debug, so maybe break this up into several lines - make variable for tuple(pulse_list[0]) and give meaningful name to key into samples_dict. Then you can do the same for samples_dict[key] [0] perhaps.
-    for pulse in pulse_list:  # REVIEW #35 This for loop is good candidate to make into function called calculate_true_sample_length or similar
-        # pulse_list is in order of timing
-        start_samples = int(txrate * float(pulse[0] - pulse_list[0][
-            0]) * 1e-6)  # REVIEW #26 #29 #1 same here difficult to debug, also magic number of 1e-6. Also, why do you use pulse_list[0][0] instead of just '0'? isn't the first pulse's timing always set to 0? pls explain
-        # First value in samples_begin should be zero.
-        samples_begin.append(start_samples)
-        if start_samples + len(samples_dict[tuple(pulse)][0]) > total_length:
-            total_length = start_samples + len(samples_dict[tuple(
-                pulse)])  # REVIEW #26 - we think total_lenght should be called max_length_of_pulse or max_length or overlap_length or similar since it's actually the maximum length of any overlapping pulses or long pulse in the pulse_list
-            # Timing from first sample + length of this pulse is max
-    # print "Total Length : {}".format(total_length)
 
-    # Now we have total length so make all pulse samples same length
-    #   before combining them sample by sample.
-    for pulse in pulse_list:  # REVIEW #35 can be refactored into a zero-pad function that creates a zero_pad prepend array, a zero-pad postpend array and the 'array' in the middle of actual samples. Continued below at the for i in range(0,total_length) : line
-        start_samples = samples_begin[pulse_list.index(pulse)]  # REVIEW #39 Can also do 'for i, pulse in enumerate(pulse_list)' and use i as the index. OR use 'for start_sample, pulse in zip(start_samples, pulse_list)' which will give you the start sample, as well as the tuple from pulse_list that coincide
-        # print start_samples
-        for antenna in range(0,
-                             16):  # REVIEW #29 Magic number 16 - is this equal to main antennas? should be a config option now
-            array = samples_dict[tuple(pulse)][
-                antenna]  # REVIEW #26 - array and new_array can be named something meaningful
-            new_array = np.empty([total_length],
-                                 dtype=np.complex_)  # REVIEW #28 We believe that the dtype for samples array should be complex float ( np.complex64 ) instead of complex (which seems to default to complex128  - or a double complex value) Also - what is the reason for np.complex_ ?
-            for i in range(0,
-                           total_length):  # REVIEW #39, continued from above: an example of how to do this: zero_prepend = np.zeros(start_sample,dtype=np.complex64); zero_append = np.zeros(max_length - len_samples_array - start_sample, dtype=np.complex64); pulse = samples_dict[tuple(pulse)][channel]; complete_new_array = np.concatenate((zero_prepend, pulse, zero_append))
-                if i < start_samples:
-                    new_array[i] = 0.0
-                if i >= start_samples and i < (start_samples + len(array)):
-                    new_array[i] = array[i - samples_begin[pulse_list.index(pulse)]]
-                if i > start_samples + len(array):
-                    new_array[i] = 0.0
-            samples_dict[tuple(pulse)][antenna] = new_array
-            # Sub in new array of right length for old array.
+def calculated_combined_pulse_samples_length(pulse_list, txrate):
+    """
+    Determine the length of the combined pulse in number of samples before combining the samples, 
+    and the starting sample number for each pulse to combine. (ie not all pulse frequencies may start
+    at sample zero due to differing intra_pulse_start_times.)
+    :param pulse_list list of pulse dictionaries that must be combined to one pulse.
+    :param txrate - sampling rate of transmission going to DAC
+    :return: 
+    """
 
-    total_samples = []  # REVIEW #26 maybe combined_samples instead of total_samples?
-    # This is a list of arrays (one for each channel) with the combined
-    #   samples in it (which will be transmitted).
-    for antenna in range(0,
-                         16):  # REVIEW #29 Magic number 16 - is this equal to main antennas? should be a config option now
-        total_samples.append(samples_dict[tuple(pulse_list[0])][antenna])
-        for samplen in range(0, total_length):
-            try:
-                total_samples[antenna][samplen] = (total_samples[antenna][
-                                                       samplen] / power_divider)  # REVIEW #39 Can use np.array division. Don't need the for samplen loop, just do 'total_samples[channel] = total_samples[channel] / power_divider'
-            except RuntimeWarning:  # REVIEW #3 What would cause this exception?
-                print "RUNTIMEWARNING {} {}".format(total_samples[antenna][samplen], power_divider)
-            for pulse in pulse_list:
-                if pulse == pulse_list[0]:
-                    continue
-                total_samples[antenna][samplen] += (samples_dict[tuple(pulse)]
-                                                        # REVIEW #39 if you take this out of the for samplen loop, can do 'total_samples[channel] +=  samples_dict[tuple(pulse)][channel]/power_divider'
-                                                    [antenna][samplen]  # REVIEW #1 why do you have parenthesis around this? Is it a tuple?
-                                                    / power_divider)  # REVIEW #0 are you dividing by power_divider twice?
-
-    # Now get what channels we need to transmit on for this combined
-    #   pulse.
-    # print("First cpo: {}".format(pulse_list[0][1]))
-    pulse_channels = exp_slices[pulse_list[0][1]]['txantennas']  # REVIEW #35 can make this a function
+    combined_pulse_length = 0
     for pulse in pulse_list:
-        for chan in exp_slices[pulse[1]]['txantennas']:
-            if chan not in pulse_channels:
-                pulse_channels.append(chan)
-    pulse_channels.sort()
+        # sample number to begin this pulse in the combined pulse. Must convert
+        # intra_pulse_start_time to seconds from us.
+        pulse['sample_number_start'] = int(txrate * float(pulse['intra_pulse_start_time']) * 1e-6)
 
-    return total_samples, pulse_channels
+        if (pulse['sample_number_start'] + len(pulse['samples'][0])) > combined_pulse_length:
+            combined_pulse_length = pulse['sample_number_start'] + len(pulse['samples'][0])
+            # Timing from first sample + length of this pulse is max
+            # print "Total Length : {}".format(total_length)
+
+    return combined_pulse_length
