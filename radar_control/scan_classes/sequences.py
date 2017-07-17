@@ -11,7 +11,7 @@ any), freq, pulse length, beamdir, and wavetype.
 import sys
 import operator 
 
-#class RadarPulse():
+#class RadarPulse(): # REVIEW #33 Can remove this commented code
 #
 #    def __init__(self, cp_object, phase): #pulsen, **kwargs): 
 #        'Pulse data, incl timing and channel data but not including phasing data'
@@ -38,9 +38,9 @@ import operator
 #      #      sys.exit(errmsg)
 
 
-class Sequence():
-
-    def __init__(self, aveperiod, seqn_keys): 
+class Sequence(): # REVIEW #41 We think this should be refactored - there are member variables scattered throughout, it's all one function (init) there are no getters/setters. It's quite long and difficult to debug. There are a few generalized pythonic ways to do some of these things that would reduce code length and complexity. Possibly while loops can be changed from current method with boolean flag to while(True) with breaks when you currently set the boolean to False.
+# REVIEW #41 aveperiod appears to be an object of type AveragingPeriod, which logically contains Sequences, this creates too much coupling between the two object types - it looks like Sequence only needs a couple pieces of information (rxrate, cpos) these could be passed in individually instead of the entire Aveperiod object.
+    def __init__(self, aveperiod, seqn_keys): # REVIEW #1 We're not sure what seqn_keys is from the name and most of the code. It appears to be an index into the cpos.
         # TODO: pass clear frequencies to pass to pulses
         #args=locals()
 
@@ -48,7 +48,7 @@ class Sequence():
         self.keys=seqn_keys
         self.cpos={}
         for i in seqn_keys:
-            self.cpos[i]=aveperiod.cpos[i]
+            self.cpos[i]=aveperiod.cpos[i] # REVIEW #41 Should use 'getters' and 'setters' when accessing member variables of a class instead of using the dot notation (example - aveperiod.get_cpos(i))
         # All interfacing at this point is PULSE.
         
         # TODO: use number of frequencies to determine power output of
@@ -58,7 +58,13 @@ class Sequence():
         index=0
         pulse_time=[] 
         # List of lists formatted [timing, cpo, pulse_n],...
-        while (pulse_remaining):
+        while (pulse_remaining): # REVIEW #39 We think this can be replaced by for(cpoid in #seqn_keys):
+        #for pulse_index, pulse in enumerate(self.cpos[cpoid]['sequence']):
+         #       inter_pulse_time = pulse*mpinc
+          #      pulse_time.append([inter_pulse_time, cpoid, pulse_index)
+
+#pulse_time.sort()
+#self.pulse_time = pulse_time
             cpos_done=0
             for cpoid in seqn_keys:
                 try:
@@ -81,8 +87,8 @@ class Sequence():
         self.combined_pulse_list=[]
         fpulse_index=0
         while (fpulse_index<len(self.pulse_time)):
-            pulse=self.pulse_time[fpulse_index][:]
-            # Pulse is just a list of repeat, timing (us), cpoid, pulse number
+            pulse=self.pulse_time[fpulse_index][:] # REVIEW #28 We think that pulse would be well suited to being a dictionary
+            # Pulse is just a list of repeat, timing (us), cpoid, pulse number # REVIEW #1 pulse is actually (timing, cpoid, pulse number)
 
             # Determine if we are combining samples based on timing of
             #   pulses
@@ -118,7 +124,7 @@ class Sequence():
 
         # Find repeats now and replace that spot in list with just
         # [True,timing]
-        for pulse_index in range(0,len(self.combined_pulse_list)):
+        for pulse_index in range(0,len(self.combined_pulse_list)): # REVIEW #33 We can get rid of the 'if pulse-index==0' code by starting pulse_index from 1 (range(1,len...)) and keeping the comment
             if pulse_index==0:
                 continue 
                 # First pulse, can't be a repeat.
@@ -141,7 +147,7 @@ class Sequence():
                 #1st index in pulse is the start time
                 if (pulse[pulse_part_index][0] != 
                     last_pulse[pulse_part_index][0]):
-                    # Timing off the start of the pulse is the not same.
+                    # Timing off the start of the pulse is the not same. 
                     break
                 pulse_cpoid=pulse[pulse_part_index][1]
                 last_pulse_cpoid=last_pulse[pulse_part_index][1]
@@ -166,24 +172,24 @@ class Sequence():
         # FIND THE max length of the last pulse 
         last_pulse_len = 0
         last_pulse_type = -1
-        for i in range(len(self.combined_pulse_list)):
+        for i in range(len(self.combined_pulse_list)): # REVIEW #39 Might be a pythonic way to find max value in list (lambda functions?)
             if self.combined_pulse_list[last_pulse_type][0]==True:
                last_pulse_type -= 1
             else:
                 break 
         for element in self.combined_pulse_list[last_pulse_type]:
-            if type(element) == list:
+            if type(element) == list: # REVIEW #28 Won't it always be at index 2 or higher? dictionary might help...
                 # get cpo
                 if self.cpos[element[1]]['pulse_len'] > last_pulse_len:
                     last_pulse_len = self.cpos[element[1]]['pulse_len']
         self.last_pulse_len = last_pulse_len
         
         # FIND the max scope sync time
-        # 19 is the sample delay below; how do we calculate this?
-        self.ssdelay=((self.cpos[seqn_keys[0]]['nrang']+19+10)
+        # 19 is the sample delay below; how do we calculate this? # REVIEW #6 TODO find out the reason for these magic numbers
+        self.ssdelay=((self.cpos[seqn_keys[0]]['nrang']+19+10)# REVIEW #33 You can get rid of this line and just set ssdelay to 0, as you did above when finding the max last pulse len
                         * self.cpos[seqn_keys[0]]['pulse_len'])
         for cpoid in seqn_keys:
-            newdelay=(self.cpos[cpoid]['nrang']+29)*self.cpos[cpoid]['pulse_len']
+            newdelay=(self.cpos[cpoid]['nrang']+29)*self.cpos[cpoid]['pulse_len'] 
             if newdelay>self.ssdelay:
                 self.ssdelay=newdelay
         # The delay is long enough for any CPO pulse length and nrang
@@ -193,8 +199,8 @@ class Sequence():
         # Time before the first pulse is 70 us when RX and TR set up
         #    for the first pulse. The timing to the last pulse is
         #    added, as well as its pulse length and the ssdelay.n 
-        self.seqtime=(70 + self.combined_pulse_list[-1][1] 
-            + self.last_pulse_len)
+        self.seqtime=(70 + self.combined_pulse_list[-1][1] # REVIEW #29 Hard coded number here for RX/TR setup, consider using value from config file
+            + self.last_pulse_len) # REVIEW #0 If we calculate the sequence time and include the 70us at the beginning, then we may be sampling for an extra 70us when we don't really need to. Just check to be consisten with the driver
 
         # FIND the total scope sync time and number of samples to receive.
         self.sstime=self.seqtime + self.ssdelay

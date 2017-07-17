@@ -1,7 +1,6 @@
 /*Copyright 2016 SuperDARN*/
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/range/algorithm_ext/erase.hpp>
-#include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include <string>
 #include "utils/options/options.hpp"
@@ -33,6 +32,10 @@ SignalProcessingOptions::SignalProcessingOptions() {
                                 config_pt.get<std::string>("main_antenna_count"));
     interferometer_antenna_count = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("interferometer_antenna_count"));
+    driver_socket_address = config_pt.get<std::string>("driver_to_rx_dsp_address");
+    radar_control_socket_address =  config_pt.get<std::string>("radar_control_to_rx_dsp_address");
+    ack_socket_address = config_pt.get<std::string>("rx_dsp_to_radar_control_ack_address");
+    timing_socket_address = config_pt.get<std::string>("rx_dsp_to_radar_control_timing_address");
 }
 
 uint32_t SignalProcessingOptions::get_main_antenna_count() const{
@@ -76,4 +79,20 @@ double SignalProcessingOptions::get_third_stage_filter_cutoff() const{
 
 double SignalProcessingOptions::get_third_stage_filter_transition() const{
     return third_stage_filter_transition;
+}
+
+std::string SignalProcessingOptions::get_driver_socket_address(){
+    return driver_socket_address;
+}
+
+std::string SignalProcessingOptions::get_radar_control_socket_address(){
+    return radar_control_socket_address;
+}
+
+std::string SignalProcessingOptions::get_ack_socket_address(){
+    return ack_socket_address;
+}
+
+std::string SignalProcessingOptions::get_timimg_socket_address(){
+    return timing_socket_address;
 }
