@@ -38,47 +38,46 @@ SignalProcessingOptions::SignalProcessingOptions() {
     timing_socket_address = config_pt.get<std::string>("rx_dsp_to_radar_control_timing_address");
 }
 
-
-uint32_t SignalProcessingOptions::get_main_antenna_count() {
+uint32_t SignalProcessingOptions::get_main_antenna_count() const{
     return main_antenna_count;
 }
 
-uint32_t SignalProcessingOptions::get_interferometer_antenna_count() {
+uint32_t SignalProcessingOptions::get_interferometer_antenna_count() const{
     return interferometer_antenna_count;
 }
-double SignalProcessingOptions::get_first_stage_sample_rate(){
+double SignalProcessingOptions::get_first_stage_sample_rate() const{
     return first_stage_sample_rate;
 }
 
-double SignalProcessingOptions::get_second_stage_sample_rate(){
+double SignalProcessingOptions::get_second_stage_sample_rate() const{
     return second_stage_sample_rate;
 }
 
-double SignalProcessingOptions::get_third_stage_sample_rate(){
+double SignalProcessingOptions::get_third_stage_sample_rate() const{
     return third_stage_sample_rate;
 }
 
-double SignalProcessingOptions::get_first_stage_filter_cutoff(){
+double SignalProcessingOptions::get_first_stage_filter_cutoff() const{
     return first_stage_filter_cutoff;
 }
 
-double SignalProcessingOptions::get_first_stage_filter_transition(){
+double SignalProcessingOptions::get_first_stage_filter_transition() const{
     return first_stage_filter_transition;
 }
 
-double SignalProcessingOptions::get_second_stage_filter_cutoff(){
+double SignalProcessingOptions::get_second_stage_filter_cutoff() const{
     return second_stage_filter_cutoff;
 }
 
-double SignalProcessingOptions::get_second_stage_filter_transition(){
+double SignalProcessingOptions::get_second_stage_filter_transition() const{
     return second_stage_filter_transition;
 }
 
-double SignalProcessingOptions::get_third_stage_filter_cutoff(){
+double SignalProcessingOptions::get_third_stage_filter_cutoff() const{
     return third_stage_filter_cutoff;
 }
 
-double SignalProcessingOptions::get_third_stage_filter_transition(){
+double SignalProcessingOptions::get_third_stage_filter_transition() const{
     return third_stage_filter_transition;
 }
 

@@ -9,18 +9,17 @@
 class SignalProcessingOptions: public Options {
  public:
     explicit SignalProcessingOptions();
-
-    double get_first_stage_sample_rate();
-    double get_second_stage_sample_rate();
-    double get_third_stage_sample_rate();
-    double get_first_stage_filter_cutoff();
-    double get_first_stage_filter_transition();
-    double get_second_stage_filter_cutoff();
-    double get_second_stage_filter_transition();
-    double get_third_stage_filter_cutoff();
-    double get_third_stage_filter_transition();
-    uint32_t get_main_antenna_count();
-    uint32_t get_interferometer_antenna_count();
+    double get_first_stage_sample_rate() const;
+    double get_second_stage_sample_rate() const;
+    double get_third_stage_sample_rate() const;
+    double get_first_stage_filter_cutoff() const;
+    double get_first_stage_filter_transition() const;
+    double get_second_stage_filter_cutoff() const;
+    double get_second_stage_filter_transition() const;
+    double get_third_stage_filter_cutoff() const;
+    double get_third_stage_filter_transition() const;
+    uint32_t get_main_antenna_count() const;
+    uint32_t get_interferometer_antenna_count() const;
     std::string get_driver_socket_address();
     std::string get_radar_control_socket_address();
     std::string get_ack_socket_address();

@@ -24,7 +24,7 @@
 #include "utils/driver_options/driveroptions.hpp"
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/protobuf/driverpacket.pb.h"
-#include "utils/protobuf/computationpacket.pb.h"
+#include "utils/protobuf/rxsamplesmetadata.pb.h"
 #include "utils/shared_memory/shared_memory.hpp"
 
 
@@ -413,7 +413,6 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
   auto receive_channels = usrp_d->get_receive_channels();
 
-  computationpacket::ComputationPacket cp;
   while (1) {
     packet_socket.recv(&request);
     std::cout << "Received in RECEIVE\n";
@@ -434,8 +433,7 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
     }
     std::chrono::steady_clock::time_point stream_end = std::chrono::steady_clock::now();
     std::cout << "RECEIVE stream set up time: "
-      << std::chrono::duration_cast<std::chrono::microseconds>
-                                                  (stream_end - stream_begin).count()
+      << std::chrono::duration_cast<std::chrono::microseconds>(stream_end - stream_begin).count()
       << "us" << std::endl;
 
 
@@ -530,16 +528,18 @@ void receive(zmq::context_t* driver_c, std::shared_ptr<USRP> usrp_d,
 
     std::chrono::steady_clock::time_point send_begin = std::chrono::steady_clock::now();
 
-    cp.set_numberofreceivesamples(dp.numberofreceivesamples());
-    cp.set_name(shr_mem_name);
-    cp.set_sequence_num(dp.sequence_num());
-    std::string cp_str;
-    cp.SerializeToString(&cp_str);
+    rxsamplesmetadata::RxSamplesMetadata samples_metadata;
+    samples_metadata.set_numberofreceivesamples(dp.numberofreceivesamples());
+    samples_metadata.set_shrmemname(shr_mem_name);
+    samples_metadata.set_sequence_num(dp.sequence_num());
+    std::string samples_metadata_str;
+    samples_metadata.SerializeToString(&samples_metadata_str);
 
-    zmq::message_t cp_size_message(cp_str.size());
-    memcpy ((void *) cp_size_message.data (), cp_str.c_str(), cp_str.size());
+    zmq::message_t samples_metadata_size_message(samples_metadata_str.size());
+    memcpy ((void *) samples_metadata_size_message.data (), samples_metadata_str.c_str(),
+            samples_metadata_str.size());
 
-    data_socket.send(cp_size_message);
+    data_socket.send(samples_metadata_size_message);
     //data_socket.send(cp_data_message);
 
     std::chrono::steady_clock::time_point send_end = std::chrono::steady_clock::now();
