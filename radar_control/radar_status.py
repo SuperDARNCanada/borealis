@@ -12,5 +12,5 @@ class RadarStatus():  # REVIEW #6 TODO to finish the class?
     """
 
     def __init__(self):
-        self.status = 'CPNEEDED'# needs a control program.
+        self.status = 'EXPNEEDED'# needs a control program.
         self.errorcode = None

@@ -15,6 +15,7 @@ import math
 import cmath
 import sys
 import matplotlib.pyplot as plt
+from experiments.experiment_exception import ExperimentException
 
 
 def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spacing):
@@ -119,8 +120,7 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
     if iwave_table is None and qwave_table is None:
         sampling_freq = 2 * math.pi * wave_freq / rate
         rampsampleslen = int(rate * ramp_time)  # number of samples for ramp-up and ramp-down of pulse.
-        sampleslen = int(rate * pulse_len) + 2 * rampsampleslen  # REVIEW #28 We believe that the dtype for samples array should be complex float ( np.complex64 ) instead of complex (which seems to default to complex128  - or a double complex value)
-        # samples = np.empty([sampleslen], dtype=complex)  # REVIEW #39 Don't really need to pass first argument as list, can just pass as int so np.empty(sampleslen,dtype=complex). zeros is also a potential since empty will have all random values but is marginally faster - maybe it is safer to use zeros.
+        sampleslen = int(rate * pulse_len) + 2 * rampsampleslen
 
         rads = sampling_freq * np.arange(0, sampleslen)
         wave_form = np.exp(rads * 1j)
@@ -131,21 +131,7 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
         all_amps = np.concatenate((amplitude_ramp_up, amplitude, amplitude_ramp_down))
 
         samples = [x * y for x, y in zip(wave_form, all_amps)]
-
-        # for i in range(0, rampsampleslen):  # REVIEW #1 Explain how you're indexing for amplitude in the rampup, in this code it will start at non-zero and hit max amplitude at the last index in the rampup REPLY: Yes I thought there was no point in sending a zero sample.
-        #     amp = max_amplitude * float(i + 1) / float(rampsampleslen)
-        #     rads = math.fmod(sampling_freq * i, 2 * math.pi)  # REVIEW #33 Don't think that sin/cos need to be bounded by 2pi, so this math.fmod is unnecessary we think
-        #     samples[i] = amp * math.cos(rads) + amp * math.sin(rads) * 1j
-        # for i in range(rampsampleslen, sampleslen - rampsampleslen):
-        #     amp = max_amplitude
-        #     rads = math.fmod(sampling_freq * i, 2 * math.pi)
-        #     samples[i] = amp * math.cos(rads) + amp * math.sin(rads) * 1j
-        # for i in range(sampleslen - rampsampleslen, sampleslen):
-        #     amp = max_amplitude * float(sampleslen - i) / float(rampsampleslen)
-        #     rads = math.fmod(sampling_freq * i, 2 * math.pi)
-        #     samples[i] = amp * math.cos(rads) + amp * math.sin(rads) * 1j
-            # we are using a sine wave and will use the sampling freq.
-        # REVIEW #39 There is another possible way to build these samples without for loops, see samplebuild.py. It may or may not be faster
+        actual_wave_freq = wave_freq
 
     elif iwave_table is not None and qwave_table is not None:
         wave_table_len = len(iwave_table)
@@ -162,7 +148,7 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
         #   this int defines the frequency resolution of our generated
         #   waveform
 
-        actual_wave_freq = (float(sample_skip) / float(wave_table_len)) * rate  # TODO - should return this value.
+        actual_wave_freq = (float(sample_skip) / float(wave_table_len)) * rate
         # This is the actual frequency given the sample_skip
         for i in range(0, rampsampleslen):
             amp = max_amplitude * float(i + 1) / float(rampsampleslen)  # rampup is linear
@@ -195,7 +181,7 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
 
     # Samples is an array of complex samples
     # NOTE: phasing will be done in shift_samples function
-    return samples
+    return samples, actual_wave_freq
 
 
 def shift_samples(basic_samples, phshift):
@@ -272,8 +258,13 @@ def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power
                 exp_slices[pulse[1]]['pulse_shift'][pulse[2]]))
 
         # Create samples for this frequency at this rate. Convert pulse_len to seconds and wave_freq to Hz.
-        basic_samples = get_samples(txrate, wave_freq * 1000, float(exp_slices[pulse[1]]['pulse_len']) / 1000000,
+        basic_samples, real_freq = get_samples(txrate, wave_freq * 1000, float(exp_slices[pulse[1]]['pulse_len']) / 1000000,
                                     options.pulse_ramp_time, iwavetable, qwavetable)
+
+        if real_freq != wave_freq:
+            errmsg = 'Actual Frequency {} is Not Equal to Intended Wave Freq {}'.format(real_freq,
+                                                                                        wave_freq)
+            raise ExperimentException(errmsg)  # TODO change to warning? only happens on non-SINE
 
         for antenna in range(0, options.main_antenna_count):
             # REVIEW #6 TODO: Handle different amplitudes necessary for imaging. Something like pulse_samples = shape_samples(basic_samples, amplitude_array[antenna]) and that function could just be a numpy array multiply

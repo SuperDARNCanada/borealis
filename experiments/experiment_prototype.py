@@ -25,7 +25,9 @@ import list_tests
 
 # TODO: Set up python path in scons PYTHONPATH = ....../placeholderOS
 from utils.experiment_options.experimentoptions import ExperimentOptions
-from radar_control.scan_classes import scans
+from radar_control.scan_classes.scan_class_base import ScanClassBase
+from radar_control.scan_classes.scans import Scan
+
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
@@ -63,7 +65,7 @@ PULSE : Simultaneous pulse_sequence interfacing, pulse by pulse
 """
 
 
-debug_flag = True # TODO move this somewhere central. config?
+debug_flag = True  # TODO move this somewhere central. config?
 
 class ExperimentPrototype(object):
     """A prototype experiment class composed of metadata, including experiment slices (exp_slice) 
@@ -147,14 +149,9 @@ scanboundt : time past the hour to start a scan at ?
 
         self.__cpid = cpid
 
-        self._num_slices = 0
-        # slice_list = []
-
-        self.__slice_list = []
-        # self._slice_list = slice_list
+        self.__slice_dict = {}
 
         self.__new_slice_id = 0
-        self.__slice_ids = []
 
         # Load the config data
         self.__options = ExperimentOptions()
@@ -172,6 +169,7 @@ scanboundt : time past the hour to start a scan at ?
         # Get cross-correlation data in processing block.
 
         self._acfint = True
+        # TODO fix this - should it be a slice key also, if so then have it inherit from experiment
         # Determine lag-zero interferometer power in fitacf.
 
         self._interface = {}  # setup_interfacing(self.num_slices)
@@ -203,19 +201,7 @@ scanboundt : time past the hour to start a scan at ?
         The number of slices in the experiment. May change with updates.
         :return: 
         """
-        return self._num_slices
-
-    @num_slices.setter
-    def num_slices(self, value):
-        """
-        The number of slices in the experiment. May change with updates.
-        :param: value: to set the number of slices to. 
-        :return:
-        """
-        if isinstance(value, int):
-            self._num_slices = value
-        else:
-            pass  # TODO error
+        return len(self.__slice_dict)
 
     @property
     def slice_keys(self):
@@ -227,13 +213,13 @@ scanboundt : time past the hour to start a scan at ?
         return self.__slice_keys
 
     @property
-    def slice_list(self):
+    def slice_dict(self):
         """
         Get the list of slices. The slice list can be updated in add_slice, edit_slice, and 
         del_slice.
         :return: the list of slice dictionaries in this experiment.
         """
-        return self.__slice_list
+        return self.__slice_dict
 
     @property
     def new_slice_id(self):
@@ -252,7 +238,7 @@ scanboundt : time past the hour to start a scan at ?
         regularly through add_slice, edit_slice, and del_slice.
         :return: the list of slice ids in the experiment.
         """
-        return self.__slice_ids
+        return self.__slice_dict.keys()
 
     @property
     def options(self):
@@ -392,10 +378,7 @@ scanboundt : time past the hour to start a scan at ?
         # check for any errors after defaults have been filled.
         print('Requested Add {}'.format(exp_slice))
         print('Adding (with Defaults) {}'.format(new_exp_slice))
-        self.__slice_list.append(new_exp_slice)
-        self.__slice_ids.append(exp_slice['slice_id'])
-        self.check_slice_ids()  # This is critical
-        self.num_slices = len(self.__slice_list)
+        self.__slice_dict[new_exp_slice['slice_id']] = new_exp_slice
         for ind in self.slice_ids:
             if ind == new_exp_slice['slice_id']:
                 continue
@@ -411,25 +394,19 @@ scanboundt : time past the hour to start a scan at ?
         return new_exp_slice['slice_id']
 
     def del_slice(self, remove_slice_id):
-        self.check_slice_ids()
         if isinstance(remove_slice_id, int) and remove_slice_id in self.slice_ids:
-            for slc in self.slice_list:
-                if slc['slice_id'] == remove_slice_id:
-                    remove_me = self.__slice_list.pop(slc)
-            self.num_slices = len(self.slice_list)
-            self.__slice_ids.remove(remove_slice_id)
+            del(self.slice_dict[remove_slice_id])
             for key1, key2 in self._interface.keys():
                 if key1 == remove_slice_id or key2 == remove_slice_id:
                     del self._interface[(key1, key2)]
-            self.check_slice_ids()  # Do this again for testing
         else:
-            print('Slice ID does not exist in Slice_IDs list.')
-            # TODO log error
+            errmsg = 'Cannot remove slice id {} : it does not exist'.format(remove_slice_id)
+            raise ExperimentException(errmsg)
 
     def edit_slice(self, edit_slice_id, param, value):
         if isinstance(edit_slice_id, int) and edit_slice_id in self.slice_ids:
             if isinstance(param, str) and param in self.slice_keys:
-                edited_slice = self.slice_list[edit_slice_id].copy()
+                edited_slice = self.slice_dict[edit_slice_id].copy()
                 edited_slice[param] = value
                 new_interface_values = {}
                 for ifkey, ifvalue in self._interface:
@@ -455,7 +432,7 @@ scanboundt : time past the hour to start a scan at ?
                     'self.acfint = {}\nself.slice_list = {}\nself.interface = {}\n'.format(
             self.cpid, self.num_slices, self.slice_ids, self.slice_keys, self.options.__repr__(),
             self.txctrfreq, self.txrate, self.rxctrfreq, self.xcf, self.acfint,
-            self.slice_list, self.interface)
+            self.slice_dict, self.interface)
         return represent
 
     def build_scans(self):
@@ -469,13 +446,36 @@ scanboundt : time past the hour to start a scan at ?
         # Check interfacing
         self.self_check()
         self.check_interfacing()
+
+        # investigating how I might go about using this base class - TODO maybe make a new IterableExperiment class to inherit
+        # from ScanClassBase ? Then could have the slice_combos_sorter function as a method of scanclassbase
+        # iterable_experiment = ScanClassBase(self.slice_keys, self.slice_dict, self.interface, self.options)
+
         self.__slice_id_scan_lists = self.get_scans()
         # Returns list of scan lists. Each scan list is a list of the slice_ids for the slices
         # included in that scan.
-        if self.__slice_id_scan_lists:  # if list is not empty, can make scans
-            self.__scan_objects = [scans.Scan(self, scan_list) for scan_list in
-                                    self.__slice_id_scan_lists]
-        # Append a scan instance, passing in the list of slice ids to include in scan.
+        for scan_list in self.__slice_id_scan_lists:
+            slices_for_scan = {}
+            for slice_id in scan_list:
+                try:
+                    slices_for_scan[slice_id] = self.slice_dict[slice_id]
+                except KeyError:
+                    errmsg = 'Error with slice list - slice id {} cannot be found.'.format(slice_id)
+                    raise ExperimentException(errmsg)
+
+            # Create smaller interfacing dictionary for this scan specifically.
+            # This dictionary will only include the slices in this scan, therefore it will not include any SCAN interfacing.
+            scan_interface_keys = []
+            for m in range(len(scan_list)):
+                for n in range(m + 1, len(scan_list)):
+                    scan_interface_keys.append([scan_list[m], scan_list[n]])
+            scan_interface = {}
+            for k in scan_interface_keys:
+                scan_interface[k] = self.interface[k]
+
+            self.__scan_objects.append(Scan(scan_list, slices_for_scan, scan_interface,
+                                            self.options))
+            # Append a scan instance, passing in the list of slice ids to include in scan.
 
         if debug_flag:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
@@ -485,9 +485,6 @@ scanboundt : time past the hour to start a scan at ?
                 len(self.__scan_objects[0].aveperiods[0].integrations)))
             print("Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1:"
                   " {}".format(len(self.__scan_objects[0].aveperiods[0].integrations[0].cpos)))
-
-        else:
-            pass  # TODO error
 
     def get_scans(self):
         """
@@ -504,76 +501,9 @@ scanboundt : time past the hour to start a scan at ?
             if self.interface[k] != "SCAN":
                 scan_combos.append([k])
 
-        scan_combos = sorted(scan_combos)
-        # if [2,4] and [1,4], then also must be [1,2] in the scan_combos
-        # Now we are going to modify the list of lists of length = 2 to be a list of length x so that if [1,2] and [2,4]
-        # and [1,4] are in scan_combos, we want only one list element for this scan : [1,2,4] .
-        scan_i = 0  # REVIEW #3 This needs a detailed explaination with examples. REPLY OK TODO
-        while scan_i < len(scan_combos):  # i: element in scan_combos (representing one scan)
-            slice_id_k = 0
-            while slice_id_k < len(
-                    scan_combos[scan_i]):  # k: element in scan (representing a slice)
-                scan_j = scan_i + 1  # j: iterates through the other elements of scan_combos, to combine them into
-                # the first, i, if they are in fact part of the same scan.
-                while scan_j < len(scan_combos):
-                    if scan_combos[scan_i][slice_id_k] == scan_combos[scan_j][
-                        0]:  # if an element (slice_id) inside
-                        # the i scan is the same as a slice_id in the j scan (somewhere further in the scan_combos),
-                        # then we need to combine that j scan into the i scan. We only need to check the first element
-                        # of the j scan because scan_combos has been sorted and we know the first slice_id in the scan
-                        # is less than the second slice id.
-                        add_n_slice_id = scan_combos[scan_j][
-                            1]  # the slice_id to add to the i scan from the j scan.
-                        scan_combos[scan_i].append(add_n_slice_id)
-                        # Combine the indices if there are 3+ slices combining in same scan
-                        for m in range(0, len(scan_combos[
-                                                  scan_i]) - 1):  # if we have added z to scan_i, such that
-                            # scan_i is now [x,y,z], we now have to remove from the scan_combos list [x,z], and [y,z].
-                            # If x,z existed as SCAN but y,z did not, we have an error.
-                            # Try all values in scan_combos[i] except the last value, which is = to add_n.
-                            """
-                            if scan_combos[i][m] > add_n:
-                                .......
-                            """
-                            try:
-                                scan_combos.remove([scan_combos[scan_i][m], add_n_slice_id])
-                                # scan_combos[j][1] is the known last value in scan_combos[i]
-                            except ValueError:
-                                # This error would occur if you had set [x,y] and [x,z] to PULSE but [y,z] to
-                                # SCAN. This means that we couldn't remove the scan_combo y,z from the list because it
-                                # was not added to scan_combos because it wasn't a scan type, so the interfacing would
-                                # not make sense (conflict).
-                                errmsg = 'Interfacing not Valid: exp_slice {} and exp_slice {} are combined in-scan and do not \
-                                    interface the same with exp_slice {}'.format(
-                                    scan_combos[scan_i][m],
-                                    scan_combos[scan_i][slice_id_k],
-                                    add_n_slice_id)
-                                sys.exit(errmsg)
-                        scan_j = scan_j - 1
-                        # This means that the former scan_combos[j] has been deleted and there are new values at
-                        #   index j, so decrement before incrementing in while.
-                        # The above for loop will delete more than one element of scan_combos (min 2) but the
-                        # while scan_j < len(scan_combos) will reevaluate the length of scan_combos.
-                    scan_j = scan_j + 1
-                slice_id_k = slice_id_k + 1  # if interfacing has been properly set up, the loop will only ever find
-                # elements to add to scan_i when slice_id_k = 0. If there were errors though (ex. x,y and y,z = PULSE
-                # but x,z did not) then iterating through the slice_id elements will allow us to find the
-                # error.
-            scan_i = scan_i + 1  # At this point, all elements in the just-finished scan_i will not be found anywhere
-            #  else in scan_combos.
+        combos = list_tests.slice_combos_sorter(scan_combos, self.keys)
 
-        # now scan_combos is a list of lists, where a slice_id occurs only once, within the nested list.
-
-        for slice_id in range(self.num_slices):
-            for sc in scan_combos:
-                if slice_id in sc:
-                    break
-            else:  # no break
-                scan_combos.append([slice_id])
-                # Append the slice_id on its own, is not combined within scan.
-
-        scan_combos = sorted(scan_combos)
-        return scan_combos
+        return combos
 
     def check_slice_minimum_requirements(self, exp_slice):
         """
@@ -934,16 +864,10 @@ scanboundt : time past the hour to start a scan at ?
             errmsg = "Error: Invalid num_slices less than 1"
             raise ExperimentException(errmsg)
 
-        if self._num_slices != len(self.slice_list):
-            errmsg = """Error: slice_list length {} doesn't equal num_slices {}. You may have not updated your slice 
-                        list or have added too many slices.""".format(len(self.slice_list),
-                                                                      self._num_slices)
-            raise ExperimentException(errmsg)
-
         # TODO: somehow check if self.cpid is not unique - incorporate known cpids from git repo?
 
-        for a_slice in range(self.num_slices):
-            selferrs = self.check_slice(self.slice_list[a_slice])
+        for a_slice in self.slice_ids:
+            selferrs = self.check_slice(self.slice_dict[a_slice])
             if not selferrs:
                 # If returned error dictionary is empty
                 continue
@@ -1174,11 +1098,3 @@ scanboundt : time past the hour to start a scan at ?
                 errmsg = 'Interfacing Not Valid Type between Slice_id {} and Slice_id {}'.format(
                     num1, num2)
                 sys.exit(errmsg)  # TODO for error handling. Perhaps use exceptions instead.
-
-    def check_slice_ids(self):
-        checker_list = []
-        for slc in self.slice_list:
-            checker_list.append(slc['slice_id'])
-        if self.slice_ids != checker_list:
-            print('ERROR Slice List and Slice IDs Are Inconsistent - Fatal Error')
-            # TODO error handling.

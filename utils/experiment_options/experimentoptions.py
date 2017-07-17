@@ -42,6 +42,12 @@ class ExperimentOptions:
             self.min_freq = float(config['min_freq'])  # Hz
             self.minimum_pulse_length = float(config['minimum_pulse_length'])  # us
             self.minimum_mpinc_length = float(config['minimum_mpinc_length'])  # us
+            # Minimum pulse separation is the minimum before the experiment treats it as a single pulse (transmitting zeroes or no receiving between the pulses)
+            # 125 us is approx two TX/RX times
+            self.minimum_pulse_separation = float(config['minimum_pulse_separation'])  # us
+            self.tr_window_time = float(config['tr_window_time'])  # s
+            self.atten_window_time_start = float(config['atten_window_time_start'])  # s
+            self.atten_window_time_end = float(config['atten_window_time_end'])  # s
             self.experiment_to_control_socket = config['experiment_to_control_socket']
             self.data_to_experiment_socket = config['data_to_experiment_socket']
             # TODO add appropriate timing here after timing is changed - can use to check for pulse spacing minimums
@@ -157,6 +163,10 @@ class ExperimentOptions:
                     \n    min_freq = {} \
                     \n    minimum_pulse_length = {} \
                     \n    minimum_mpinc_length = {} \
+                    \n    minimum_pulse_separation = {} \
+                    \n    tr_window_time = {} \
+                    \n    atten_window_time_start = {} \
+                    \n    atten_window_time_end = {} \
                     \n    default_freq = {} \
                     \n    restricted_ranges = {} \
                     \n    experiment_to_control_socket = {} \
@@ -172,6 +182,8 @@ class ExperimentOptions:
                                 self.intf_offset, self.analog_rx_rise, self.analog_atten_stages,
                                 self.max_range_gates, self.max_beams, self.max_freq, self.min_freq,
                                 self. minimum_pulse_length, self.minimum_mpinc_length,
+                                self.minimum_pulse_separation, self.tr_window_time,
+                                self.atten_window_time_start, self.atten_window_time_end,
                                 self.default_freq, self.restricted_ranges,
                                 self.experiment_to_control_socket, self.data_to_experiment_socket)
         return return_str

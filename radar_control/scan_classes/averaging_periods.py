@@ -12,10 +12,12 @@ any), freq, pulse length, beamdir, and wavetype.
 import sys
 import operator
 
-import sequences
+from sequences import Sequence
+from experiments.list_tests import slice_combos_sorter
+from scan_class_base import ScanClassBase
+from experiments.experiment_exception import ExperimentException
 
-
-class AveragingPeriod:
+class AveragingPeriod(ScanClassBase):
     """ Made up of multiple pulse sequences (integrations) for one
     integration time.
 
@@ -23,125 +25,60 @@ class AveragingPeriod:
     clear.
     """
 
-    def __init__(self, scan, ave_keys):
+    def __init__(self, ave_keys, ave_slice_dict, ave_interface, options):
         # make a list of the cpos in this AveragingPeriod.
-        self.rxrate = scan.rxrate  # REVIEW #5 units
-        self.keys = ave_keys  # REVIEW #26 Why is this called a key REPLY it is the identifier for which slices are in
-        # this aveperiod?
-        self.cpos = {}  # REVIEW #6 just a TODO to rename this.
-        for i in ave_keys:
-            self.cpos[i] = scan.cpos[i]
 
-        # Create a smaller interfacing dictionary for this to pass on.
-        # INTT or SCAN types have been already removed, so this dict
-        #   will only include the interfacing between CP objects in
-        #   this AveragingPeriod, so only include INTEGRATION and PULSE
-        interface_keys = []
-        for m in range(len(ave_keys)):
-            for n in range(m + 1, len(ave_keys)):
-                interface_keys.append([ave_keys[m], ave_keys[n]])
-        self.interface = {}
-        for p, q in interface_keys:  # REVIEW #26 is there a particular reason for m,n,p,q as index names? REPLY : they
-            # are just iterators 0 to length of list ?
-            self.interface[p, q] = scan.interface[p, q]
+        ScanClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, options)
 
-        # Metadata for this AveragingPeriod: clear frequency search, integration time, number of averages goal
-        self.clrfrqf = []  # REVIEW #41 Can "CPO" have a clrfreq flag contained within it instead? REPLY: It does but
-        # that gets moved to the aveperiod.
-        # List of cpos in this Averaging Period that have a clrfrq search requirement.
+        # Metadata for an AveragingPeriod: clear frequency search, integration time, number of averages goal
+        self.clrfrqf = False
+        # there may be multiple slices in this averaging period at different frequencies so
+        # we may have to search multiple ranges.
         self.clrfrqrange = []
-        # List of ranges needing to be searched.
+        for slice_id in self.keys:
+            if self.slice_dict[slice_id]['clrfrqflag']:
+                self.clrfrqf = True
+                self.clrfrqrange.append(self.slice_dict[slice_id]['clrfrqrange'])
 
         # TODO: SET UP CLEAR FREQUENCY SEARCH CAPABILITY
-        for cpo in self.keys:
-            if self.cpos[cpo]['clrfrqf'] == 1:
-                self.clrfrqf.append(cpo)
-                if self.cpos[cpo]['clrfrqrange'] not in self.clrfrqrange:
-                    self.clrfrqrange.append(self.cpos[cpo]['clrfrqrange'])
+        # also note for when setting this up clrfrqranges may overlap
 
-        self.intt = self.cpos[self.keys[0]]['intt']
-        for cpo in self.keys:
-            if self.cpos[cpo]['intt'] != self.intt:
-                errmsg = """CPO %d and %d are INTTIME mixed and do not have the
-                    same Averaging Period duration intt""" % (self.keys[0],
-                                                              self.keys[cpo])
-                sys.exit(errmsg)
-        self.intn = self.cpos[self.keys[0]]['intn']
-        for cpo in self.keys:
-            if self.cpos[cpo]['intn'] != self.intn:
-                errmsg = """CPO %d and %d are INTTIME mixed and do not have the
-                    same NAVE goal intn""" % (self.keys[0], self.keys[cpo])
-                sys.exit(errmsg)
+        self.intt = self.slice_dict[self.keys[0]]['intt']
+        self.intn = self.slice_dict[self.keys[0]]['intn']
+        if self.intt is not None:  # intt has priority over intn
+            for slice_id in self.keys:
+                if self.slice_dict[slice_id]['intt'] != self.intt:
+                    errmsg = """Slice {} and {} are INTTIME mixed and do not have the
+                        same Averaging Period duration intt""".format(self.keys[0], slice_id)
+                    raise ExperimentException(errmsg)
+        elif self.intn is not None:
+            for slice_id in self.keys:
+                if self.slice_dict[slice_id]['intn'] != self.intn:
+                    errmsg = """Slice {} and {} are INTTIME mixed and do not have the
+                        same NAVE goal intn""".format(self.keys[0], slice_id)
+                    raise ExperimentException(errmsg)
 
-        # NOTE: Do not need beam information inside the AveragingPeriod
-        # will change this when iterating through the aveperiods in a scan.
+        # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 
         # Determine how this averaging period is made by separating out
         #   the INTEGRATION mixed.
-        self.cpo_integrations = self.get_integrations()  # REVIEW #26 names could use a bit more distinction or clarity between cpo_integrations and integrations. REPLY OK TODO
-        self.integrations = []
-        for integration_cpo_list in self.cpo_integrations:
-            self.integrations.append(sequences.Sequence(self, integration_cpo_list))
 
-    def get_integrations(self):
+        # NOTE: There is duplicate code here between scans, averagingperiods and sequences.
+        self.slice_sequence_list = self.get_sequences()
+        self.sequences = []
+        self.nested_slice_list = self.slice_sequence_list
+
+        for params in self.prep_for_nested_scan_class():
+            self.sequences.append(Sequence(*params))
+
+    def get_sequences(self):
         integ_combos = []
 
         # Remove INTEGRATION combos as we are trying to separate those.
-        for num1, num2 in self.interface.iterkeys():  # REVIEW #39 Use iteritems to iterate over dictionary. REPLY:
-            # that would cause a problem though of key, value instead of just getting key
-            if self.interface[num1, num2] == "PULSE":
-                integ_combos.append([num1, num2])
+        for k in self.interface.keys():
+            if self.interface[k] == "PULSE":
+                integ_combos.append([k])
 
-        integ_combos = sorted(integ_combos)
-        # if [2,4] and [1,4], then also must be [1,2] in the combos list
-        i = 0
-        while (i < len(
-                integ_combos)):  # REVIEW #22 This is duplicate code from experiment prototype. Can make a new fn or library for this?
-            k = 0 # REPLY: OK
-            while k < len(integ_combos[i]):
-                j = i + 1
-                while j < len(integ_combos):
-                    if integ_combos[i][k] == integ_combos[j][0]:
-                        add_n = integ_combos[j][1]
-                        integ_combos[i].append(add_n)
-                        # Combine the indices if there are 3+ CPObjects
-                        #   combining in same seq.
-                        for m in range(0, len(integ_combos[i]) - 1):
-                            # Try all values in seq_combos[i] except
-                            #   the last value, which is = to add_n.
-                            try:
-                                integ_combos.remove([integ_combos[i][m], add_n])
-                                # seq_combos[j][1] is the known last
-                                #   value in seq_combos[i]
-                            except ValueError:
-                                errmsg = """Interfacing not Valid: CPO %d and CPO 
-                                    %d are combined in-integration period and
-                                    do not interface the same with CPO %d""" % (
-                                    integ_combos[i][m], integ_combos[i][k],
-                                    add_n)
-                                sys.exit(errmsg)
-                        j = j - 1
-                        # this means that the former scan_combos[j]
-                        #   has been deleted and there are new values
-                        #   at index j, so decrement before
-                        #   incrementing.
-                    j = j + 1
-                k = k + 1
-            i = i + 1
-        # Now combos is a list of lists, where a cpobject occurs only
-        #   once in the nested list.
-        for i in range(len(self.keys)):  # REVIEW #22 Also duplicate from experiment_prototype?
-            found = False
-            for k in range(len(integ_combos)):
-                for j in range(len(integ_combos[k])):
-                    if self.keys[i] == integ_combos[k][j]:
-                        found = True
-                        break
-                if found == False:
-                    continue
-                break
-            else:  # no break
-                integ_combos.append([self.keys[i]])
-                # append the cpo on its own, is not scan combined.
-        integ_combos = sorted(integ_combos)
-        return integ_combos
+        combos = slice_combos_sorter(integ_combos, self.keys)
+
+        return combos

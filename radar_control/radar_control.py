@@ -291,7 +291,7 @@ def radar():
         #   use a sampling freq in rads/sample
         wavetable_dict = {}
         for slice_id in range(experiment.num_slices):
-            wavetable_dict[slice_id] = get_wavetables(experiment.slice_list[slice_id][
+            wavetable_dict[slice_id] = get_wavetables(experiment.slice_dict[slice_id][
                                                      'wavetype'])  # REVIEW #6 #33 Is this not needed anymore or is there a TODO to implement type of wave somewhere? We noticed it wasn't used in this file and it is a local dictionary variable REPLY: I think we should get rid of it?
 
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
@@ -393,7 +393,7 @@ def radar():
                                 power_divider = len(pulse_list)  # REVIEW #6 We should make a test of the hardware (transmitter input level limits)
                                 print "POWER DIVIDER: {}".format(power_divider)
                                 pulse_samples, pulse_channels = (
-                                    make_pulse_samples(pulse_list, experiment.slice_list,
+                                    make_pulse_samples(pulse_list, experiment.slice_dict,
                                                        beamdir, experiment.txctrfreq,
                                                        experiment.txrate, power_divider, options))
                                 # Can plot for testing here
@@ -430,13 +430,13 @@ def radar():
                                         # Get phase shifts for all channels
                                         phase_array.append(get_phshift(
                                             beamdir[slice_id],
-                                            experiment.slice_list[slice_id]['txfreq'], channel,
+                                            experiment.slice_dict[slice_id]['txfreq'], channel,
                                             0, options.main_antenna_count, options.main_antenna_spacing))
                                     for channel in range(0, options.interferometer_antenna_count):  # interferometer # REVIEW #0 #1, #29 #35 should be 6,10 to get 6,7,8,9, also explain why you are going for channels 6 through 9, also magic numbers - also make a function to phase main array as well a function for phasing int array, decouple them. Potentially means you need a second set of variables for the interferometer such as beamdir - alternatively you could have the beamdir and other variables 20 long for both int and main antennas..
                                         # Get phase shifts for all channels # TODO : add interferometer offset to phase (previously range(6,9)
                                         phase_array.append(get_phshift(
                                             beamdir[slice_id],
-                                            experiment.slice_list[slice_id]['txfreq'], channel,
+                                            experiment.slice_dict[slice_id]['txfreq'], channel,
                                             0, options.interferometer_antenna_count, options.interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
                                     beam_phase_dict[slice_id].append(phase_array)
                                 else:
@@ -446,17 +446,17 @@ def radar():
                                             # Get phase shifts for all channels
                                             phase_array.append(get_phshift(
                                                 beam,
-                                                experiment.slice_list[slice_id]['txfreq'], channel,
+                                                experiment.slice_dict[slice_id]['txfreq'], channel,
                                                 0, options.main_antenna_count, options.main_antenna_spacing))
                                         for channel in range(0, options.interferometer_antenna_count):  # interferometer TODO interferometer offset
                                             # Get phase shifts for all channels
                                             phase_array.append(get_phshift(
                                                 beam,
-                                                experiment.slice_list[slice_id]['txfreq'], channel,
+                                                experiment.slice_dict[slice_id]['txfreq'], channel,
                                                 0, options.interferometer_antenna_count, options.interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
                                         beam_phase_dict[slice_id].append(phase_array)
                             data_to_processing(sigprocpacket, procsocket, seqnum_start + nave, sequence.cpos,
-                                               experiment.slice_list, beam_phase_dict)  # beamdir is dictionary
+                                               experiment.slice_dict, beam_phase_dict)  # beamdir is dictionary
                             # Just alternating sequences
                             # print sequence.pulse_time
                             print sequence.combined_pulse_list
