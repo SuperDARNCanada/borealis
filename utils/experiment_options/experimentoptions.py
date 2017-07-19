@@ -50,6 +50,11 @@ class ExperimentOptions:
             self.atten_window_time_end = float(config['atten_window_time_end'])  # s
             self.experiment_to_control_socket = config['experiment_to_control_socket']
             self.data_to_experiment_socket = config['data_to_experiment_socket']
+            self.radar_control_to_driver_address = config['radar_control_to_driver_address']
+            self.radar_control_to_rx_dsp_address = config['radar_control_to_rx_dsp_address']
+            self.rx_dsp_to_radar_control_ack_address = config['rx_dsp_to_radar_control_ack_address']
+            self.rx_dsp_to_radar_control_timing_address = \
+                config['rx_dsp_to_radar_control_timing_address']
             # TODO add appropriate timing here after timing is changed - can use to check for pulse spacing minimums
         except ValueError:
             # TODO: error
@@ -171,6 +176,10 @@ class ExperimentOptions:
                     \n    restricted_ranges = {} \
                     \n    experiment_to_control_socket = {} \
                     \n    data_to_experiment_socket = {} \
+                    \n    radar_control_to_rx_dsp_address = {} \
+                    \n    radar_control_to_driver_address = {} \
+                    \n    rx_dsp_to_radar_control_ack_address = {} \
+                    \n    rx_dsp_to_radar_control_timing_address = {} \
                      """.format(self.main_antenna_count, self.interferometer_antenna_count,
                                 self.main_antenna_spacing, self.interferometer_antenna_spacing,
                                 self.tx_sample_rate, self.rx_sample_rate,
@@ -185,5 +194,9 @@ class ExperimentOptions:
                                 self.minimum_pulse_separation, self.tr_window_time,
                                 self.atten_window_time_start, self.atten_window_time_end,
                                 self.default_freq, self.restricted_ranges,
-                                self.experiment_to_control_socket, self.data_to_experiment_socket)
+                                self.experiment_to_control_socket, self.data_to_experiment_socket,
+                                self.radar_control_to_rx_dsp_address,
+                                self.radar_control_to_driver_address,
+                                self.rx_dsp_to_radar_control_ack_address,
+                                self.rx_dsp_to_radar_control_timing_address)
         return return_str

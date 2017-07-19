@@ -6,14 +6,15 @@
 #
 
 import zmq
-import importlib
 
 # TODO: dynamic import
 # NOTE: Have to edit PYTHONPATH='..../placeholderOS/' in the environment for this to work.
 from experiments import normalscan
+from radar_status.radar_status import RadarStatus
 # importlib.import_module('normalscan')
 from utils.experiment_options.experimentoptions import ExperimentOptions
-from radar_control import radar_status
+
+
 # importlib.import_module('radar_status') TODO
 
 
@@ -60,7 +61,7 @@ def experiment_handler():
 
         # WAIT until runradar is ready to receive a changed prog.
         message = ctrl_socket.recv_pyobj()
-        if isinstance(message, radar_status.RadarStatus):
+        if isinstance(message, RadarStatus):
             if message.status == 'EXPNEEDED':
                 print("received READY {} and starting program as new".format(message.status))
                 # starting anew

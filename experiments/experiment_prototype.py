@@ -17,7 +17,6 @@ The template for an experiment.
 
 import sys
 import copy
-import traceback  # probably useful for logging when I get there
 
 from experiment_exception import ExperimentException
 
@@ -25,8 +24,8 @@ import list_tests
 
 # TODO: Set up python path in scons PYTHONPATH = ....../placeholderOS
 from utils.experiment_options.experimentoptions import ExperimentOptions
-from radar_control.scan_classes.scan_class_base import ScanClassBase
-from radar_control.scan_classes.scans import Scan
+# from radar_control.scan_classes.scan_class_base import ScanClassBase
+from experiments.scan_classes.scans import Scan
 
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
@@ -360,6 +359,14 @@ scanboundt : time past the hour to start a scan at ?
         """
         return self._interface
 
+    @property
+    def scan_objects(self):
+        """
+        To get the list of scan_objects for use in radar_control. 
+        :return: 
+        """
+        return self.__scan_objects
+
     def add_slice(self, exp_slice, interfacing_dict=None):
         """
         Add slices to the experiment.
@@ -452,6 +459,8 @@ scanboundt : time past the hour to start a scan at ?
         # iterable_experiment = ScanClassBase(self.slice_keys, self.slice_dict, self.interface, self.options)
 
         self.__slice_id_scan_lists = self.get_scans()
+        print("All experiment slice ids: {}".format(self.slice_ids))
+        print("Scan Slice Id list : {}".format(self.__slice_id_scan_lists))
         # Returns list of scan lists. Each scan list is a list of the slice_ids for the slices
         # included in that scan.
         for scan_list in self.__slice_id_scan_lists:
@@ -460,7 +469,7 @@ scanboundt : time past the hour to start a scan at ?
                 try:
                     slices_for_scan[slice_id] = self.slice_dict[slice_id]
                 except KeyError:
-                    errmsg = 'Error with slice list - slice id {} cannot be found.'.format(slice_id)
+                    errmsg = 'Error with slice list - slice {} cannot be found.'.format(slice_id)
                     raise ExperimentException(errmsg)
 
             # Create smaller interfacing dictionary for this scan specifically.
@@ -468,7 +477,7 @@ scanboundt : time past the hour to start a scan at ?
             scan_interface_keys = []
             for m in range(len(scan_list)):
                 for n in range(m + 1, len(scan_list)):
-                    scan_interface_keys.append([scan_list[m], scan_list[n]])
+                    scan_interface_keys.append(tuple([scan_list[m], scan_list[n]]))
             scan_interface = {}
             for k in scan_interface_keys:
                 scan_interface[k] = self.interface[k]
@@ -482,9 +491,9 @@ scanboundt : time past the hour to start a scan at ?
             print("Number of AveragingPeriods in Scan #1: {}".format(len(self.__scan_objects[
                                                                              0].aveperiods)))
             print("Number of Sequences in Scan #1, Averaging Period #1: {}".format(
-                len(self.__scan_objects[0].aveperiods[0].integrations)))
+                len(self.__scan_objects[0].aveperiods[0].sequences)))
             print("Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1:"
-                  " {}".format(len(self.__scan_objects[0].aveperiods[0].integrations[0].cpos)))
+                  " {}".format(len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)))
 
     def get_scans(self):
         """
@@ -499,9 +508,11 @@ scanboundt : time past the hour to start a scan at ?
 
         for k in self.interface.keys():
             if self.interface[k] != "SCAN":
-                scan_combos.append([k])
+                scan_combos.append(list(k))
 
-        combos = list_tests.slice_combos_sorter(scan_combos, self.keys)
+        print(scan_combos)
+
+        combos = list_tests.slice_combos_sorter(scan_combos, self.slice_ids)
 
         return combos
 

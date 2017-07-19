@@ -244,8 +244,7 @@ def plot_fft(filename, samplesa, rate):
     return None
 
 
-def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power_divider, options, iwavetable=None,
-                       qwavetable=None):
+def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power_divider, options):
     """
     Make and phase shift samples, and combine them if there are multiple pulse types to send within this pulse.
     :param pulse_list: a list of dictionaries, each dict is a pulse. The list only contains pulses
@@ -255,8 +254,6 @@ def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power
     :param txctrfreq: 
     :param txrate: 
     :param options: 
-    :param iwavetable: 
-    :param qwavetable: 
     :return: 
     
     """
@@ -274,7 +271,7 @@ def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power
 
     # make the uncombined pulses
     create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate,
-                             options, iwavetable, qwavetable)
+                             options)
     # all pulse dictionaries in the pulse_list now have a 'samples' key which is a list of numpy
     # complex arrays (one for each tx antenna).
 
@@ -319,8 +316,7 @@ def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power
     return combined_samples, pulse_channels
 
 
-def create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate, options,
-                             iwavetable=None, qwavetable=None):
+def create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate, options):
     """
     Creates a sample dictionary where the pulse is the key and the samples (in a list from 0th to 
     max antenna) are the value.
@@ -330,13 +326,11 @@ def create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate,
     :param txctrfreq: 
     :param txrate: 
     :param options: 
-    :param iwavetable: 
-    :param qwavetable: 
     :return: 
     """
 
     for pulse in pulse_list:
-        wave_freq = float(exp_slices[pulse['slice_id']]['txfreq']) - txctrfreq
+        wave_freq = float(exp_slices[pulse['slice_id']]['txfreq']) - txctrfreq  # TODO error will occur here if clrfrqrange because clrfrq search isn't completed yet.
         phase_array = []
         pulse['samples'] = []
         amplitude_array = []
@@ -353,7 +347,9 @@ def create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate,
         # Create samples for this frequency at this rate. Convert pulse_len to seconds and wave_freq to Hz.
         basic_samples, real_freq = get_samples(txrate, wave_freq * 1000,
                                                float(pulse['pulse_len']) / 1000000,
-                                               options.pulse_ramp_time, iwavetable, qwavetable)
+                                               options.pulse_ramp_time,
+                                               exp_slices[pulse['slice_id']]['iwavetable'],
+                                               exp_slices[pulse['slice_id']]['qwavetable'])
 
         if real_freq != wave_freq:
             errmsg = 'Actual Frequency {} is Not Equal to Intended Wave Freq {}'.format(real_freq,
