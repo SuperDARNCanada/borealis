@@ -49,7 +49,7 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
     beamrad = math.pi * float(beamdir) / 180.0
     # Pointing to right of boresight, use point in middle (hypothetically antenna 7.5) as phshift=0
     #   so all channels have a non-zero phase shift
-    phshift = 2 * math.pi * freq * ((num_antennas-1)/2 - antenna) * antenna_spacing * math.cos(
+    phshift = 2 * math.pi * freq * ((num_antennas-1)/2.0 - antenna) * antenna_spacing * math.cos(
         math.pi / 2 - beamrad) / speed_of_light
 
     # Add an extra phase shift if there is any specified
@@ -128,7 +128,7 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
         wave_form = np.exp(rads * 1j)
 
         amplitude_ramp_up = [ind * max_amplitude / rampsampleslen for ind in np.arange(0, rampsampleslen)]
-        amplitude_ramp_down = np.fliplr(amplitude_ramp_up)  # flip left to right.
+        amplitude_ramp_down = np.flipud(amplitude_ramp_up)  # reverse
         amplitude = [max_amplitude for ind in np.arange(rampsampleslen, sampleslen - rampsampleslen)]
         all_amps = np.concatenate((amplitude_ramp_up, amplitude, amplitude_ramp_down))
 
@@ -195,7 +195,7 @@ def shape_samples(basic_samples, phshift, amplitude):
     :return samples, shaped for the antenna for the desired beam.
     """
 
-    samples = basic_samples * amplitude * np.exp(1j * phshift)
+    samples = [sample * amplitude * np.exp(1j * phshift) for sample in basic_samples]
     return samples
 
 
@@ -285,6 +285,7 @@ def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power
         # print start_samples
         for antenna in range(0, options.main_antenna_count):
             pulse_array = pulse['samples'][antenna]
+            # print(combined_pulse_length, len(pulse_array), pulse['sample_number_start'])
             zeros_prepend = np.zeros(pulse['sample_number_start'], dtype=np.complex64)
             zeros_append = np.zeros((combined_pulse_length - len(pulse_array) - pulse['sample_number_start']), dtype=np.complex64)
 
@@ -293,13 +294,14 @@ def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power
             pulse['samples'][antenna] = corrected_pulse_array
             # Sub in new array of right length for old array.
 
-    combined_samples = np.zeros(combined_pulse_length, dtype=np.complex64)
+    # initialize to correct length
+    combined_samples = [np.zeros(combined_pulse_length, dtype=np.complex64) for ant in range(0, options.main_antenna_count)]
     # This is a list of arrays (one for each channel) with the combined
     #   samples in it (which will be transmitted).
     for antenna in range(0, options.main_antenna_count):
         for pulse in pulse_list:
             try:
-                combined_samples[antenna] += pulse['samples'][antenna] / power_divider
+                combined_samples[antenna] += [sample / power_divider for sample in pulse['samples'][antenna]]
             except RuntimeWarning:  # REVIEW #3 What would cause this exception?  REPLY: I cannot remember actually....
                 print("RUNTIMEWARNING {} {}".format(combined_samples[antenna], power_divider))
 
@@ -330,6 +332,7 @@ def create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate,
     """
 
     for pulse in pulse_list:
+        # print exp_slices[pulse['slice_id']]
         wave_freq = float(exp_slices[pulse['slice_id']]['txfreq']) - txctrfreq  # TODO error will occur here if clrfrqrange because clrfrq search isn't completed yet.
         phase_array = []
         pulse['samples'] = []
@@ -344,16 +347,19 @@ def create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate,
             phase_array.append(phase_for_antenna)
             amplitude_array.append(amplitude_for_antenna)
 
+        wave_freq_hz = wave_freq * 1000
+
         # Create samples for this frequency at this rate. Convert pulse_len to seconds and wave_freq to Hz.
-        basic_samples, real_freq = get_samples(txrate, wave_freq * 1000,
+        basic_samples, real_freq = get_samples(txrate, wave_freq_hz,
                                                float(pulse['pulse_len']) / 1000000,
                                                options.pulse_ramp_time,
+                                               options.max_usrp_dac_amplitude,
                                                exp_slices[pulse['slice_id']]['iwavetable'],
                                                exp_slices[pulse['slice_id']]['qwavetable'])
 
-        if real_freq != wave_freq:
+        if real_freq != wave_freq_hz:
             errmsg = 'Actual Frequency {} is Not Equal to Intended Wave Freq {}'.format(real_freq,
-                                                                                        wave_freq)
+                                                                                        wave_freq_hz)
             raise ExperimentException(errmsg)  # TODO change to warning? only happens on non-SINE
 
         for antenna in range(0, options.main_antenna_count):
@@ -382,6 +388,7 @@ def calculated_combined_pulse_samples_length(pulse_list, txrate):
     for pulse in pulse_list:
         # sample number to begin this pulse in the combined pulse. Must convert
         # intra_pulse_start_time to seconds from us.
+
         pulse['sample_number_start'] = int(txrate * float(pulse['intra_pulse_start_time']) * 1e-6)
 
         if (pulse['sample_number_start'] + len(pulse['samples'][0])) > combined_pulse_length:

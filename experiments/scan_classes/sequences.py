@@ -20,7 +20,7 @@ class Sequence(ScanClassBase):
         dictionaries where one dictionary = one pulse. The dictionary keys are : isarepeat, 
         pulse_timing_us, slice_id, slice_pulse_index, pulse_len, intra_pulse_start_time, 
         combined_pulse_index, pulse_shift, iscombined, combine_total, and combine_index.
-        :param seqn_keys
+        :param seqn_keys - slice ids in this sequence
         :param sequence_slice_dict
         :param sequence_interface
         :param options
@@ -38,7 +38,7 @@ class Sequence(ScanClassBase):
 
         pulses = []
         # Getting a list of pulses, where pulse is a dictionary
-        for slice_id in seqn_keys:
+        for slice_id in self.slice_ids:
             for slice_pulse_index, pulse_time in enumerate(self.slice_dict[slice_id]['pulse_sequence']):
                 pulse_timing_us = pulse_time*self.slice_dict[slice_id]['mpinc']
                 pulses.append({'pulse_timing_us': pulse_timing_us, 'slice_id': slice_id,
@@ -172,7 +172,7 @@ class Sequence(ScanClassBase):
         # FIND the max scope sync time
         # 19 is the sample delay below; how do we calculate this? # REVIEW #6 TODO find out the reason for these magic numbers
         self.ssdelay = 0  # ssdelay is time required to wait after last pulse.
-        for slice_id in seqn_keys:
+        for slice_id in self.slice_ids:
             newdelay = (self.slice_dict[slice_id]['nrang'] + 19 + 10) * self.slice_dict[slice_id]['pulse_len']
             if newdelay > self.ssdelay:
                 self.ssdelay = newdelay

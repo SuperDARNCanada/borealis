@@ -25,17 +25,20 @@ class AveragingPeriod(ScanClassBase):
     clear.
     """
 
-    def __init__(self, ave_keys, ave_slice_dict, ave_interface, options):
+    def __init__(self, ave_keys, ave_slice_dict, ave_interface, options, slice_to_beamorder_dict, slice_to_beamdir_dict):
         # make a list of the cpos in this AveragingPeriod.
 
         ScanClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, options)
+
+        self.slice_to_beamorder = slice_to_beamorder_dict
+        self.slice_to_beamdir = slice_to_beamdir_dict
 
         # Metadata for an AveragingPeriod: clear frequency search, integration time, number of averages goal
         self.clrfrqf = False
         # there may be multiple slices in this averaging period at different frequencies so
         # we may have to search multiple ranges.
         self.clrfrqrange = []
-        for slice_id in self.keys:
+        for slice_id in self.slice_ids:
             if self.slice_dict[slice_id]['clrfrqflag']:
                 self.clrfrqf = True
                 self.clrfrqrange.append(self.slice_dict[slice_id]['clrfrqrange'])
@@ -43,26 +46,26 @@ class AveragingPeriod(ScanClassBase):
         # TODO: SET UP CLEAR FREQUENCY SEARCH CAPABILITY
         # also note for when setting this up clrfrqranges may overlap
 
-        self.intt = self.slice_dict[self.keys[0]]['intt']
-        self.intn = self.slice_dict[self.keys[0]]['intn']
+        self.intt = self.slice_dict[self.slice_ids[0]]['intt']
+        self.intn = self.slice_dict[self.slice_ids[0]]['intn']
         if self.intt is not None:  # intt has priority over intn
-            for slice_id in self.keys:
+            for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intt'] != self.intt:
                     errmsg = """Slice {} and {} are INTTIME mixed and do not have the
-                        same Averaging Period duration intt""".format(self.keys[0], slice_id)
+                        same Averaging Period duration intt""".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
         elif self.intn is not None:
-            for slice_id in self.keys:
+            for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intn'] != self.intn:
                     errmsg = """Slice {} and {} are INTTIME mixed and do not have the
-                        same NAVE goal intn""".format(self.keys[0], slice_id)
+                        same NAVE goal intn""".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
 
-        for slice_id in self.keys:
-                if len(self.slice_dict[slice_id]['beam_order']) != len(self.slice_dict[self.keys[0]]['beam_order']):
+        for slice_id in self.slice_ids:
+                if len(self.slice_dict[slice_id]['beam_order']) != len(self.slice_dict[self.slice_ids[0]]['beam_order']):
                     errmsg = """Slice {} and {} are INTTIME mixed and do not have the
                         same length of beam_order (number of integration periods)
-                        """.format(self.keys[0], slice_id)
+                        """.format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
@@ -70,7 +73,6 @@ class AveragingPeriod(ScanClassBase):
         # Determine how this averaging period is made by separating out
         #   the INTEGRATION mixed.
 
-        # NOTE: There is duplicate code here between scans, averagingperiods and sequences.
         self.slice_sequence_list = self.get_sequences()
         self.sequences = []
         self.nested_slice_list = self.slice_sequence_list
@@ -86,8 +88,30 @@ class AveragingPeriod(ScanClassBase):
             if self.interface[k] == "PULSE":
                 integ_combos.append(list(k))
 
-        combos = slice_combos_sorter(integ_combos, self.keys)
+        combos = slice_combos_sorter(integ_combos, self.slice_ids)
 
         print("sequences slice id combos: {}".format(combos))
 
         return combos
+
+    def set_beamdirdict(self, beamiter):
+        """
+        Get a dictionary of 'slice_id' : 'beamdir(s)' for this averaging period at a given beam iteration.
+        :param beamiter: 
+        :return: 
+        """
+        slice_to_beamdir_dict = {}
+        try:
+            for slice_id in self.slice_ids:
+                beam_number = self.slice_to_beamorder[slice_id][beamiter]
+                if isinstance(beam_number, int):
+                    beamdir = [self.slice_to_beamdir[slice_id][beam_number]]
+                else:  # is a list
+                    beamdir = [self.slice_to_beamdir[slice_id][bmnum] for bmnum in beam_number]
+                slice_to_beamdir_dict[slice_id] = beamdir
+        except IndexError:
+            errmsg = 'Looking for BeamNumber or Beamdir that does not Exist at BeamIter' \
+                     ' {}'.format(beamiter)
+            raise ExperimentException(errmsg)
+
+        return slice_to_beamdir_dict

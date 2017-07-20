@@ -20,7 +20,7 @@ class ScanClassBase(object):
     """
 
     def __init__(self, object_keys, object_slice_dict, object_interface, options):
-        self.keys = object_keys  # slice ids included in this object.
+        self.slice_ids = object_keys  # slice ids included in this object.
         self.slice_dict = object_slice_dict
         self.interface = object_interface
         self.nested_slice_list = []

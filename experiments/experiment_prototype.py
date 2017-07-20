@@ -64,7 +64,7 @@ PULSE : Simultaneous pulse_sequence interfacing, pulse by pulse
 """
 
 
-debug_flag = True  # TODO move this somewhere central. config?
+debug_flag = True  # TODO move this somewhere central. config? - then all files could use it
 
 class ExperimentPrototype(object):
     """A prototype experiment class composed of metadata, including experiment slices (exp_slice) 
@@ -911,7 +911,7 @@ scanboundt : time past the hour to start a scan at ?
                     pass
                 elif param == 'rxfreq' and not exp_slice['rxonly']:
                     pass
-                elif param == 'clrfrqrange' and not exp_slice['clrfrqrange']:
+                elif param == 'clrfrqrange' and not exp_slice['clrfrqflag']:
                     pass
                 else:
                     errmsg = "Slice {} is missing Necessary Parameter {}".format(
