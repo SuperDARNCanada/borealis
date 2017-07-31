@@ -10,7 +10,9 @@ See LICENSE for details
 
 #include "dsp.hpp"
 #include "utils/protobuf/sigprocpacket.pb.h"
+#include "utils/protobuf/processeddata.pb.h"
 #include <iostream>
+#include <cstdlib>
 #include <fstream>
 #include <string>
 #include <sstream>
@@ -22,27 +24,111 @@ See LICENSE for details
 //TODO(keith): potentially add multigpu support
 
 //This keep postprocess local to this file.
-//namespace {
+namespace {
   /**
-   * @brief      Performs the host side postprocessing after data is transfered back from device.
-   *
-   * @param[in]      dp    A pointer to a DSPCore object that has completed its GPU work.
+   * @brief      Sends an acknowledgment to the radar control and starts the timing after the
+   *             RF samples have been copied.
+   *             
+   * @param[in]  stream           CUDA stream this callback is associated with.
+   * @param[in]  status           Error status of CUDA work in the stream.
+   * @param[in]  processing_data  A pointer to the DSPCore associated with this CUDA stream.
    */
-  void postprocess(DSPCore *dp)
+  void CUDART_CB initial_memcpy_callback_handler(cudaStream_t stream, cudaError_t status,
+                          void *processing_data)
+  {
+    gpuErrchk(status);
+
+    auto imc = [processing_data]() 
+    {
+      auto dp = static_cast<DSPCore*>(processing_data);
+      dp->send_ack();
+      dp->start_decimate_timing();
+    };
+
+    std::thread start_imc(imc);
+    start_imc.join();
+  }
+
+  void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCore* dp) 
   {
 
-    dp->stop_timing();
-    dp->send_timing();
-    std::cout << "Cuda kernel timing: " << dp->get_decimate_timing()
-      << "ms" <<std::endl;
-    std::cout << "Complete process timing: " << dp->get_total_timing()
-      << "ms" <<std::endl;
+    for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
+      auto dataset = pd.add_outputdataset();
+      #ifdef DEBUG
+        auto add_debug_data = [dataset,i](cuComplex *output_p, uint32_t num_antennas, 
+                                            uint32_t num_samps_per_antenna)
+        {
+          auto debug_samples = dataset->add_debugsamples();
+
+          auto stage_output = output_p;
+          auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
+
+          for (uint32_t j=0; j<num_antennas; j++){
+            auto antenna_data = debug_samples->add_antennadata();
+            for(uint32_t k=0; k<num_samps_per_antenna; k++) {
+              auto idx = i * stage_samps_per_set + j * num_samps_per_antenna + k;
+              auto antenna_samps = antenna_data->add_antennasamples();
+              antenna_samps->add_real(stage_output[idx].x);
+              antenna_samps->add_imag(stage_output[idx].y);
+            }
+          }
+        };
+
+        add_debug_data(dp->get_first_stage_output_h(),dp->get_num_antennas(),
+                    dp->get_num_first_stage_samples_per_antenna());
+        add_debug_data(dp->get_second_stage_output_h(),dp->get_num_antennas(),
+                    dp->get_num_second_stage_samples_per_antenna());
+        add_debug_data(dp->get_third_stage_output_h(),dp->get_num_antennas(),
+                    dp->get_num_third_stage_samples_per_antenna());
+        
+      #endif
+    }
+
+  }
+
+  /**
+   * @brief      Spawns the postprocessing work after all work in the CUDA stream is completed.
+   *
+   * @param[in]  stream           CUDA stream this callback is associated with.
+   * @param[in]  status           Error status of CUDA work in the stream.
+   * @param[in]  processing_data  A pointer to the DSPCore associated with this CUDA stream.
+   *
+   * The callback itself cannot call anything CUDA related as it may deadlock. It can, however
+   * spawn a new thread and then exit gracefully, allowing the thread to do the work.
+   */
+  void CUDART_CB postprocess(cudaStream_t stream, cudaError_t status, void *processing_data)
+  {
+    gpuErrchk(status);
+
+    auto pp = [processing_data]() 
+    {
+      auto dp = static_cast<DSPCore*>(processing_data);
+      dp->stop_timing();
+      dp->send_timing();
+
+      processeddata::ProcessedData pd;
+
+      auto pd_start = std::chrono::steady_clock::now();
+      create_processed_data_packet(pd,dp);
+      auto pd_end = std::chrono::steady_clock::now();
+
+      auto time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(pd_end -
+                                                                        pd_start).count();
+      std::cout << "Fill pd time " << time_diff << std::endl;
+      std::cout << "Cuda kernel timing: " << dp->get_decimate_timing()
+        << "ms" <<std::endl;
+      std::cout << "Complete process timing: " << dp->get_total_timing()
+        << "ms" <<std::endl;
+      delete dp;
+    };
+
+    std::thread start_pp(pp);
+    start_pp.detach();
 
     //TODO(keith): add copy to host and final process details
-
-    delete dp;
   }
-//}
+
+}
 
 
 /**
@@ -115,13 +201,13 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * the shared memory with the received RF samples for a pulse sequence.
  */
 DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
-                    uint32_t sq_num, std::string shr_mem_name) //TODO(Keith): revisit str
+                    uint32_t sq_num, std::string shr_mem_name, std::vector<double> freqs)
 {
 
   sequence_num = sq_num;
   ack_socket = ack_s;
   timing_socket = timing_s;
-
+  rx_freqs = freqs;
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));
   gpuErrchk(cudaEventCreate(&initial_start));
@@ -149,6 +235,11 @@ DSPCore::~DSPCore()
   gpuErrchk(cudaFree(second_stage_output_d));
   gpuErrchk(cudaFree(third_stage_output_d));
   gpuErrchk(cudaFreeHost(host_output_h));
+  #ifdef DEBUG
+    gpuErrchk(cudaFreeHost(first_stage_output_h));
+    gpuErrchk(cudaFreeHost(second_stage_output_h));
+    gpuErrchk(cudaFreeHost(third_stage_output_h));
+  #endif
   gpuErrchk(cudaEventDestroy(initial_start));
   gpuErrchk(cudaEventDestroy(kernel_start));
   gpuErrchk(cudaEventDestroy(stop));
@@ -266,6 +357,31 @@ void DSPCore::allocate_and_copy_host_output(uint32_t num_host_samples)
         host_output_size, cudaMemcpyDeviceToHost,stream));
 }
 
+ 
+void DSPCore::allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples)
+{
+  size_t host_output_size = num_first_stage_output_samples * sizeof(cuComplex);
+  gpuErrchk(cudaHostAlloc(&first_stage_output_h, host_output_size, cudaHostAllocDefault));
+  gpuErrchk(cudaMemcpyAsync(first_stage_output_h, first_stage_output_d,
+        host_output_size, cudaMemcpyDeviceToHost,stream));
+}
+
+void DSPCore::allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples)
+{
+  size_t host_output_size = num_second_stage_output_samples * sizeof(cuComplex);
+  gpuErrchk(cudaHostAlloc(&second_stage_output_h, host_output_size, cudaHostAllocDefault));
+  gpuErrchk(cudaMemcpyAsync(second_stage_output_h, second_stage_output_d,
+        host_output_size, cudaMemcpyDeviceToHost,stream));
+}
+
+void DSPCore::allocate_and_copy_third_stage_host(uint32_t num_third_stage_output_samples)
+{
+  size_t host_output_size = num_third_stage_output_samples * sizeof(cuComplex);
+  gpuErrchk(cudaHostAlloc(&third_stage_output_h, host_output_size, cudaHostAllocDefault));
+  gpuErrchk(cudaMemcpyAsync(third_stage_output_h, third_stage_output_d,
+        host_output_size, cudaMemcpyDeviceToHost,stream));
+}
+
 /**
  * @brief      Stops the timers that the constructor starts.
  */
@@ -304,22 +420,37 @@ void DSPCore::send_timing()
 
 }
 
+
 /**
- * @brief      Spawns the postprocessing work after all work in the CUDA stream is completed.
- *
- * @param[in]  stream           CUDA stream this callback is associated with.
- * @param[in]  status           Error status of CUDA work in the stream.
- * @param[in]  processing_data  A pointer to the DSPCore associated with this CUDA stream.
- *
- * The callback itself cannot call anything CUDA related as it may deadlock. It can, however
- * spawn a new thread and then exit gracefully, allowing the thread to do the work.
+ * @brief      Add the postprocessing callback to the stream.
+ * 
  */
-void CUDART_CB DSPCore::cuda_postprocessing_callback(cudaStream_t stream, cudaError_t status,
-                            void *processing_data)
+void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas, 
+                                            uint32_t num_output_samples_per_antenna_1, 
+                                            uint32_t num_output_samples_per_antenna_2,
+                                            uint32_t num_output_samples_per_antenna_3)
 {
-  gpuErrchk(status);
-  std::thread start_pp(postprocess,static_cast<DSPCore*>(processing_data));
-  start_pp.detach();
+    #ifdef DEBUG
+      auto total_output_samples_1 = num_output_samples_per_antenna_1 * rx_freqs.size() * 
+                                      total_antennas; 
+      auto total_output_samples_2 = num_output_samples_per_antenna_2 * rx_freqs.size() * 
+                                      total_antennas;
+      auto total_output_samples_3 = num_output_samples_per_antenna_3 * rx_freqs.size() * 
+                                      total_antennas;                                  
+
+      allocate_and_copy_first_stage_host(total_output_samples_1);
+      allocate_and_copy_second_stage_host(total_output_samples_2);
+      allocate_and_copy_third_stage_host(total_output_samples_3);
+
+      num_first_stage_samples_per_antenna = num_output_samples_per_antenna_1;
+      num_second_stage_samples_per_antenna = num_output_samples_per_antenna_2;
+    #endif
+
+    rx_freqs = freqs;
+    num_antennas = total_antennas;
+    num_third_stage_samples_per_antenna = num_output_samples_per_antenna_3;
+
+    gpuErrchk(cudaStreamAddCallback(stream, postprocess, this, 0));
 }
 
 /**
@@ -346,6 +477,7 @@ void DSPCore::send_ack()
 
 /**
  * @brief      Starts the timing before the GPU kernels execute.
+ * 
  */
 void DSPCore::start_decimate_timing()
 {
@@ -354,34 +486,13 @@ void DSPCore::start_decimate_timing()
 }
 
 /**
- * @brief      Sends an acknowledgment to the radar control and starts the timing after the
- *             RF samples have been copied.
+ * @brief      Adds the callback to the CUDA stream to acknowledge the RF samples have been copied.
  *
- * @param[in]  dp    A pointer to a DSPCore object.
  */
-void initial_memcpy_callback_handler(DSPCore *dp)
+void DSPCore::initial_memcpy_callback()
 {
-  dp->send_ack();
-  dp->start_decimate_timing();
+  gpuErrchk(cudaStreamAddCallback(stream, initial_memcpy_callback_handler, this, 0));
 }
-
-/**
- * @brief      Spawns the thread to handle the work after the RF samples have been copied.
- *
- * @param[in]  stream           CUDA stream this callback is associated with.
- * @param[in]  status           Error status of CUDA work in the stream.
- * @param[in]  processing_data  A pointer to the DSPCore associated with this CUDA stream.
- */
-void CUDART_CB DSPCore::initial_memcpy_callback(cudaStream_t stream, cudaError_t status,
-                        void *processing_data)
-{
-  gpuErrchk(status);
-  std::thread start_imc(initial_memcpy_callback_handler,
-              static_cast<DSPCore*>(processing_data));
-  start_imc.join();
-
-}
-
 
 
 /**
@@ -447,6 +558,10 @@ cuComplex* DSPCore::get_third_stage_output_p(){
   return third_stage_output_d;
 }
 
+std::vector<double> DSPCore::get_rx_freqs()
+{
+  return rx_freqs;
+}
 /**
  * @brief      Gets the CUDA stream this DSPCore's work is associated to.
  *
@@ -475,5 +590,42 @@ float DSPCore::get_decimate_timing()
 {
   return decimate_kernel_timing_ms;
 }
+
+cuComplex* DSPCore::get_first_stage_output_h()
+{
+  return first_stage_output_h;
+}
+
+cuComplex* DSPCore::get_second_stage_output_h()
+{
+  return second_stage_output_h;
+}
+
+cuComplex* DSPCore::get_third_stage_output_h()
+{
+  return third_stage_output_h;
+}
+
+uint32_t DSPCore::get_num_antennas()
+{
+  return num_antennas;
+}
+
+uint32_t DSPCore::get_num_first_stage_samples_per_antenna()
+{
+  return num_first_stage_samples_per_antenna;
+}
+
+uint32_t DSPCore::get_num_second_stage_samples_per_antenna()
+{
+  return num_second_stage_samples_per_antenna;
+}
+
+uint32_t DSPCore::get_num_third_stage_samples_per_antenna()
+{
+  return num_third_stage_samples_per_antenna;
+}
+
+
 
 

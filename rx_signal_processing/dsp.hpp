@@ -43,13 +43,14 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties);
  */
 class DSPCore {
  public:
-    static void CUDART_CB cuda_postprocessing_callback(cudaStream_t stream, cudaError_t status,
-                                                void *processing_data);
-    static void CUDART_CB initial_memcpy_callback(cudaStream_t stream, cudaError_t status,
-                                                void *processing_data);
+    void cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas, 
+                                            uint32_t num_output_samples_per_antenna_1, 
+                                            uint32_t num_output_samples_per_antenna_2,
+                                            uint32_t num_output_samples_per_antenna_3);
+    void initial_memcpy_callback();
     //http://en.cppreference.com/w/cpp/language/explicit
     explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
-                                 uint32_t sq_num, std::string shr_mem_name);
+                        uint32_t sq_num, std::string shr_mem_name,std::vector<double> freqs);
     ~DSPCore(); //destructor
     void allocate_and_copy_rf_samples(uint32_t total_samples);
     void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
@@ -67,8 +68,16 @@ class DSPCore {
     cuComplex* get_first_stage_output_p();
     cuComplex* get_second_stage_output_p();
     cuComplex* get_third_stage_output_p();
+    cuComplex* get_first_stage_output_h();
+    cuComplex* get_second_stage_output_h();
+    cuComplex* get_third_stage_output_h();
+    std::vector<double> get_rx_freqs();
     float get_total_timing();
     float get_decimate_timing();
+    uint32_t get_num_antennas();
+    uint32_t get_num_first_stage_samples_per_antenna();
+    uint32_t get_num_second_stage_samples_per_antenna();
+    uint32_t get_num_third_stage_samples_per_antenna();
     cudaStream_t get_cuda_stream();
     void start_decimate_timing();
     void stop_timing();
@@ -117,7 +126,7 @@ class DSPCore {
 
     //! Pointer to the output of the third stage decimation on device.
     cuComplex *third_stage_output_d;
-
+ 
     //! Pointer to the host output samples.
     cuComplex *host_output_h;
 
@@ -139,7 +148,18 @@ class DSPCore {
     //! A shared memory handler object that contains RF samples from the USRP driver.
     SharedMemoryHandler shr_mem;
 
+    cuComplex *first_stage_output_h;
+    cuComplex *second_stage_output_h;
+    cuComplex *third_stage_output_h;
 
+    std::vector<double> rx_freqs;
+    uint32_t num_antennas;
+    uint32_t num_first_stage_samples_per_antenna;
+    uint32_t num_second_stage_samples_per_antenna;
+    uint32_t num_third_stage_samples_per_antenna;
+    void allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples);
+    void allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples);
+    void allocate_and_copy_third_stage_host(uint32_t num_third_stage_output_samples);
 };
 
 void postprocess(DSPCore *dp);

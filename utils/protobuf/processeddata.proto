@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package processeddata;
+
+message ProcessedData {
+    uint32 sequence_num = 1;
+    repeated OutputDataSet outputdataset = 2; 
+
+    message OutputDataSet {
+        repeated ComplexData mainacf = 1;
+        repeated ComplexData intacf = 2;
+        repeated ComplexData xcf = 3;
+        repeated ComplexData beamformediqsamples = 4;
+        repeated DebugData debugsamples = 5;
+
+        message DebugData {
+            repeated AntennaData antennadata = 1;
+            message AntennaData {
+                repeated ComplexData antennasamples = 1;
+            }
+        }
+        
+        message ComplexData {
+            repeated float real = 1;
+            repeated float imag = 2;
+        }
+    }
+}
