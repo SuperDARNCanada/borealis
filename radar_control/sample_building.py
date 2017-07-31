@@ -397,3 +397,46 @@ def calculated_combined_pulse_samples_length(pulse_list, txrate):
             # print "Total Length : {}".format(total_length)
 
     return combined_pulse_length
+
+def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenna_count, main_antenna_spacing, interferometer_antenna_spacing, txfreq):
+
+    beams_antenna_phases = []
+    if type(beamdir) != list:  # REVIEW #33 why check if this is a list? why not just have a list of one element and build up from there for more beam directions? then you can get rid of half this code and just keep the code under the else clause.
+        phase_array = []
+        for channel in range(0, main_antenna_count):
+            # Get phase shifts for all channels
+            phase_array.append(get_phshift(
+                beamdir,
+                txfreq, channel,
+                0, main_antenna_count,
+                main_antenna_spacing))
+        for channel in range(0, interferometer_antenna_count):
+            # interferometer # REVIEW #0 #1, #29 #35 should be 6,10 to get 6,7,8,9, also explain why you are going for channels 6 through 9, also magic numbers - also make a function to phase main array as well a function for phasing int array, decouple them. Potentially means you need a second set of variables for the interferometer such as beamdir - alternatively you could have the beamdir and other variables 20 long for both int and main antennas..
+            # Get phase shifts for all channels # TODO : add interferometer offset to phase (previously range(6,10)
+            phase_array.append(get_phshift(
+                beamdir,
+                txfreq, channel,
+                0, interferometer_antenna_count,
+                interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
+        beams_antenna_phases.append(phase_array)
+    else:
+        for beam in beamdir:
+            phase_array = []
+            for channel in range(0, main_antenna_count):
+                # Get phase shifts for all channels
+                phase_array.append(get_phshift(
+                    beam,
+                    txfreq, channel,
+                    0, main_antenna_count,
+                    main_antenna_spacing))
+            for channel in range(0,
+                                 interferometer_antenna_count):  # interferometer TODO interferometer offset
+                # Get phase shifts for all channels
+                phase_array.append(get_phshift(
+                    beam,
+                    txfreq, channel,
+                    0, interferometer_antenna_count,
+                    interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
+            beams_antenna_phases.append(phase_array)
+
+    return beams_antenna_phases

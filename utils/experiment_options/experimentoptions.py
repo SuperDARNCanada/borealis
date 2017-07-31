@@ -48,7 +48,7 @@ class ExperimentOptions:
             self.tr_window_time = float(config['tr_window_time'])  # s
             self.atten_window_time_start = float(config['atten_window_time_start'])  # s
             self.atten_window_time_end = float(config['atten_window_time_end'])  # s
-            self.experiment_to_control_socket = config['experiment_to_control_socket']
+            self.experiment_handler_to_radar_control_address = config['experiment_handler_to_radar_control_address']
             self.data_to_experiment_socket = config['data_to_experiment_socket']
             self.radar_control_to_driver_address = config['radar_control_to_driver_address']
             self.radar_control_to_rx_dsp_address = config['radar_control_to_rx_dsp_address']

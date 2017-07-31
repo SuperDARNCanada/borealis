@@ -17,6 +17,7 @@ from experiments.list_tests import slice_combos_sorter
 from scan_class_base import ScanClassBase
 from experiments.experiment_exception import ExperimentException
 
+
 class AveragingPeriod(ScanClassBase):
     """ Made up of multiple pulse sequences (integrations) for one
     integration time.
@@ -98,7 +99,8 @@ class AveragingPeriod(ScanClassBase):
         """
         Get a dictionary of 'slice_id' : 'beamdir(s)' for this averaging period at a given beam iteration.
         :param beamiter: 
-        :return: 
+        :return: dictionary of slice to beamdir where beamdir is always a list (may be of length one though).
+        Beamdir is azimuth angle.
         """
         slice_to_beamdir_dict = {}
         try:
@@ -115,3 +117,26 @@ class AveragingPeriod(ScanClassBase):
             raise ExperimentException(errmsg)
 
         return slice_to_beamdir_dict
+
+    def build_sequences(self, slice_to_beamdir_dict, txctrfreq, txrate, options):  # TODO fix and input only options used or get from init
+        """
+        Build a list of sequences (lists of pulse dictionaries) containing all pulse samples data to iterate 
+        through when
+        transmitting. 
+        :return: sequence_dict_list
+        """
+        # Create a pulse dictionary before running through the
+        #   averaging period.
+        sequence_dict_list = []
+        # a list of sequence data.
+        # a sequence data is a list of pulses in the sequence in order.
+        # a pulse data is a dictionary of the required data for the pulse.
+        for sequence in self.sequences:
+            # create pulse dictionary.
+            sequence_dict = sequence.build_pulse_transmit_data(slice_to_beamdir_dict, txctrfreq, txrate, options)
+
+            # Just alternating sequences
+
+            sequence_dict_list.append(sequence_dict)
+
+            return sequence_dict_list

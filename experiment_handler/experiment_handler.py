@@ -53,7 +53,7 @@ def experiment_handler():
     options = ExperimentOptions()
     context = zmq.Context()
     data_socket = setup_data_socket(options.data_to_experiment_socket, context)
-    ctrl_socket = setup_control_socket(options.experiment_to_control_socket, context)
+    ctrl_socket = setup_control_socket(options.experiment_handler_to_radar_control_address, context)
 
 
     change_flag = False

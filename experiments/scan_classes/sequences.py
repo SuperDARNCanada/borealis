@@ -8,9 +8,10 @@ timing, CPObject, and pulsenumber. CPObject provides channels, pulseshift (if
 any), freq, pulse length, beamdir, and wavetype. 
 """
 
-import sys
 from operator import itemgetter
 from scan_class_base import ScanClassBase
+from radar_control.sample_building import make_pulse_samples
+
 
 class Sequence(ScanClassBase):
 
@@ -187,3 +188,68 @@ class Sequence(ScanClassBase):
         # FIND the total scope sync time and number of samples to receive.
         self.sstime = self.seqtime + self.ssdelay
         self.numberofreceivesamples = int(self.options.rx_sample_rate * self.sstime * 1e-6)
+
+    def build_pulse_transmit_data(self, slice_to_beamdir_dict, txctrfreq, txrate, options):  #TODO only take in things you need or add needed params from options in the init function.
+        """
+        Build a list of pulse dictionaries including samples data to send to driver.
+        :return: sequence_list: list of pulse dictionaries.
+        """
+
+        sequence_list = []
+
+        for pulse_index in range(0, self.total_combined_pulses):
+            pulse_transmit_data = {}
+            # Pulses are in order
+
+            one_pulse_list = [pulse for pulse in self.pulses if
+                              pulse['combined_pulse_index'] == pulse_index]
+
+            if pulse_index == 0:
+                startofburst = True
+            else:
+                startofburst = False
+            if pulse_index == self.total_combined_pulses - 1:
+                endofburst = True
+            else:
+                endofburst = False
+
+            repeat = one_pulse_list[0]['isarepeat']
+            timing = one_pulse_list[0]['pulse_timing_us']
+            isamples_list = []
+            qsamples_list = []
+            if repeat:
+                pulse_antennas = []
+            else:
+                # Initialize a list of lists for
+                #   samples on all channels.
+                # TODO:need to determine what power
+                #   to use - should determine using
+                #   number of frequencies in
+                #   sequence, but for now use # of
+                #   pulses combined here.
+                power_divider = len(one_pulse_list)
+                print("POWER DIVIDER: {}".format(power_divider))
+                pulse_samples, pulse_antennas = (
+                    make_pulse_samples(one_pulse_list, self.slice_dict,
+                                       slice_to_beamdir_dict, txctrfreq,
+                                       txrate, power_divider, options))
+                # Can plot for testing here
+                # plot_samples('channel0.png', pulse_samples[0])
+                # plot_fft('fftplot.png', pulse_samples[0], prog.txrate)
+                for channel in pulse_antennas:  # REVIEW #1 explain why you need to make these into python lists (protobuf reasons?) Can you just leave it as .real and .imag?
+                    isamples_list.append((pulse_samples
+                                          [channel].real))  # testing without .tolist())
+                    qsamples_list.append((pulse_samples
+                                          [channel].imag))  # testing without .tolist())
+
+            # Add to dictionary at last place in list (which is
+            #   the current sequence location in the list)
+            # This the the pulse_data.
+            pulse_transmit_data['startofburst'] = startofburst
+            pulse_transmit_data['endofburst'] = endofburst
+            pulse_transmit_data['pulse_antennas'] = pulse_antennas
+            pulse_transmit_data['isamples_list'] = isamples_list
+            pulse_transmit_data['qsamples_list'] = qsamples_list
+            pulse_transmit_data['timing'] = timing
+            sequence_list.append(
+                pulse_transmit_data)  # list of dictionaries in order where each dictionary is for a pulse

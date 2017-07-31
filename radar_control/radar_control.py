@@ -10,12 +10,14 @@
 # Communicate with the n200_driver to control the radar.
 # Communicate with the rx_dsp_chain to process the data.
 
-import sys
 import cmath
-from datetime import datetime, timedelta
+import sys
 import time
+from datetime import datetime, timedelta
+
 import zmq
 
+from experiments.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 sys.path.append('../build/release/utils/protobuf')  # REVIEW #6 TODO need to make this a dynamic import since
@@ -24,93 +26,32 @@ sys.path.append('../build/release/utils/protobuf')  # REVIEW #6 TODO need to mak
 import driverpacket_pb2
 import sigprocpacket_pb2
 
-from sample_building import get_phshift, get_wavetables, make_pulse_samples
+from sample_building import get_wavetables, \
+    azimuth_to_antenna_offset
 from experiments.experiment_prototype import ExperimentPrototype
 
-from experiments.normalscan import Normalscan  # TODO - have it setup by scheduler
-
-import radar_status
+from radar_status.radar_status import RadarStatus
 
 
-def setup_driver_socket(context):
+def setup_socket(context, address):
     """
-    Setup a zmq socket to communicate with the driver.
+    Setup a paired zmq socket and return it.
     :param context: zmq context
     :return: zmq socket
     """
     socket = context.socket(zmq.PAIR)
-    socket.connect("ipc:///tmp/feeds/0")
+    socket.connect(address)
     return socket
 
 
-def setup_sigproc_params_socket(context):
-    """
-    Setup a zmq socket to communicate with rx_signal_processing.
-    :param context: zmq context
-    :return: zmq socket
-    """
-    socket = context.socket(zmq.PAIR)
-    socket.connect("ipc:///tmp/feeds/2")
-    return socket
-
-
-def setup_sigproc_cpack_socket(context):
-    """
-    Setup a zmq socket to get acks from rx_signal_processing.
-    :param context: zmq context
-    :return: zmq socket
-    """
-    socket = context.socket(zmq.PAIR)
-    socket.connect("ipc:///tmp/feeds/3")
-    return socket
-
-
-def setup_sigproc_timing_ack_socket(context):
-    """
-    Setup a zmq socket to get timing information from rx_signal_processing.
-    :param context: zmq context
-    :return: zmq socket
-    """
-    socket = context.socket(zmq.PAIR)
-    socket.connect("ipc:///tmp/feeds/4")
-    return socket
-
-
-def setup_cp_socket(context):
-    """
-    Setup a zmq socket to get updated experiment parameters from the experiment.
-    :param context: zmq context
-    :return: zmq socket
-    """
-    socket = context.socket(zmq.PAIR)
-    socket.connect("ipc:///tmp/feeds/5")
-    return socket
-
-
-def get_prog(socket):
-    """
-    Receive pickled python object of the experiment class.
-    :param socket: 
-    :return: 
-    """
-
-    prog = socket.recv_pyobj()
-
-    return prog
-
-
-# REVIEW #39 Could make default arguments for repeat?
-def data_to_driver(driverpacket, txsocket, channels, isamples_list,  # REVIEW #26 change channels to antennas
+def data_to_driver(driverpacket, txsocket, antennas, isamples_list,
                    qsamples_list, txctrfreq, rxctrfreq, txrate,
                    numberofreceivesamples, SOB, EOB, timing, seqnum,
-                   repeat=False):  # REVIEW #5 Add description of params with units in docstring. Maybe find a 
-    # docstring generator for vim. 
+                   repeat=False):
     """ Place data in the driver packet and send it via zeromq to the driver.
-        Then receive the acknowledgement.
-        :rtype: object
         :param driverpacket: 
         :param txsocket: 
-        :param channels: 
+        :param antennas: 
         :param isamples_list: 
         :param qsamples_list: 
         :param txctrfreq: 
@@ -121,69 +62,59 @@ def data_to_driver(driverpacket, txsocket, channels, isamples_list,  # REVIEW #2
         :param EOB: 
         :param timing: 
         :param seqnum: 
-        :param repeat: 
-        :return: 
+        :param repeat: a boolean indicating whether the pulse is the exact same as the last pulse
+        in the sequence, in which case we will save the time and not send the samples list and other
+        params that will be the same.
     """
+    driverpacket.Clear()
+    driverpacket.timetosendsamples = timing  # us, past time zero which is start of the sequence.
+    driverpacket.SOB = SOB
+    driverpacket.EOB = EOB
+    driverpacket.sequence_num = seqnum
 
-    if repeat:  # REVIEW #1 Add detailed description to docstring on how the repeat functionality works. REPLY OK to all
-        driverpacket.Clear()  # REVIEW #22 duplicated code can be moved above and below if/else
-        # channels empty
+    if repeat:
+        # antennas empty
         # samples empty
         # ctrfreq empty
         # rxrate and txrate empty
-        driverpacket.timetosendsamples = timing  # REVIEW #22
-        driverpacket.SOB = SOB  # REVIEW #22
-        driverpacket.EOB = EOB  # REVIEW #22
-        driverpacket.sequence_num = seqnum  # REVIEW #22
-        print "EMPTY {0} {1} {2} {3}".format(timing, SOB, EOB, channels)
-        # timetoio empty
-    else:
+        print("EMPTY {0} {1} {2} {3}".format(timing, SOB, EOB, antennas)) # TODO add debug to print statements
+    else:  # TODO add check to make sure we don't have blanks when we shouldn't
         # SETUP data to send to driver for transmit.
-        driverpacket.Clear()  # REVIEW #22
-        for chan in channels:
-            driverpacket.channels.append(chan)
-        for chi in range(len(isamples_list)):  # REVIEW #26 Chi? Perhaps better name?
+        for ant in antennas:
+            driverpacket.channels.append(ant)
+        for sample_index in range(len(isamples_list)):
             sample_add = driverpacket.samples.add()
             # Add one Samples message for each channel.
-            sample_add.real.extend(isamples_list[chi])
-            sample_add.imag.extend(qsamples_list[chi])
-        driverpacket.txcenterfreq = txctrfreq * 1000  # REVIEW #5 comment on unit conversion?
-        driverpacket.rxcenterfreq = rxctrfreq * 1000  # REVIEW #5 comment on unit conversion?
+            sample_add.real.extend(isamples_list[sample_index])
+            sample_add.imag.extend(qsamples_list[sample_index])
+        driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
+        driverpacket.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
         driverpacket.txrate = txrate
         driverpacket.numberofreceivesamples = numberofreceivesamples
-        driverpacket.timetosendsamples = timing  # REVIEW #22
-        driverpacket.sequence_num = seqnum  # REVIEW #22
-        # Past time zero which is start of the sequence.
-        print "New samples {0} {1} {2} {3}".format(timing, SOB, EOB, channels)
-        driverpacket.SOB = SOB  # REVIEW #22
-        driverpacket.EOB = EOB  # REVIEW #22
+        print("New samples {0} {1} {2} {3}".format(timing, SOB, EOB, antennas))
 
     txsocket.send(driverpacket.SerializeToString())
-    # get response:
-    # tx_ack = socket.recv() #REVIEW #6 Add todo for the response
-    tx_ack = 1
 
-    del driverpacket.samples[:]  # REVIEW #33 Is this needed in conjunction with .Clear()? REPLY Not sure, had problems at one point so was playing around with this, will have to find out.
-
-    return tx_ack
+    del driverpacket.samples[:]  # TODO find out - Is this needed in conjunction with .Clear()?
 
 
-def data_to_processing(packet, procsocket, seqnum, cpos, cpo_list,
-                       beam_dict):  # REVIEW #26 Perhaps better name now that dsp naming convention is figured out - send_data_to_rx_dsp?
+def data_to_rx_dsp(packet, socket, seqnum, slice_ids, slice_dict,
+                   beam_dict):
     """ Place data in the receiver packet and send it via zeromq to the
         receiver unit.
     """
 
     packet.Clear()
     packet.sequence_num = seqnum
-    for num, cpo in enumerate(cpos):
+    for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
-        chan_add.rxfreq = cpo_list[cpo]['rxfreq']
-        chan_add.nrang = cpo_list[cpo]['nrang']
-        chan_add.frang = cpo_list[cpo]['frang']
-        for bnum, beamdir in enumerate(beam_dict[cpo]):
+        chan_add.rxfreq = slice_dict[slice_id]['rxfreq']
+        chan_add.nrang = slice_dict[slice_id]['nrang']
+        chan_add.frang = slice_dict[slice_id]['frang']
+        for bnum, beamdir in enumerate(beam_dict[slice_id]):
             beam_add = packet.rxchannel[num].beam_directions.add()
-            # beamdir is a list 20-long with phase for each antenna for that beam direction. #REVIEW 1 This doesn't have to 20. Its just total antennas.
+            # beamdir is a list (len = total antennas, main and interferometer) with phase for each
+            # antenna for that beam direction
             for pnum, phi in enumerate(beamdir):
                 # print phi
                 phase = cmath.exp(phi * 1j)
@@ -191,25 +122,28 @@ def data_to_processing(packet, procsocket, seqnum, cpos, cpo_list,
                 phase_add.real_phase = phase.real
                 phase_add.imag_phase = phase.imag
 
-    # Don't need channel numbers, always send 20 beam directions #REVIEW 1 This doesn't have to 20. Its just total antennas.
-    # Beam directions will be formated e^i*phi so that a 0 will indicate not
-    # to receive on that channel.
+    # Don't need to send channel numbers, will always send with length = total antennas.
+    # TODO : Beam directions will be formated e^i*phi so that a 0 will indicate not
+    # to receive on that channel. ** make this update phase = 0 on channels not included.
 
-    procsocket.send(packet.SerializeToString())
+    socket.send(packet.SerializeToString())
     return
 
 
-def get_ack(xsocket, procpacket):  # REVIEW #26 what does the 'x' mean in xsocket? Could be more clear
+def get_ack(socket, procpacket):
     """
-# REVIEW #1 Add docstring
+    
     """
     try:
-        x = xsocket.recv(flags=zmq.NOBLOCK)
-        procpacket.ParseFromString(x)  # REVIEW #37 error check this - it might not throw a zmq.Again exception. You can use multiple except blocks after 1 try block
+        msg = socket.recv(flags=zmq.NOBLOCK)
+        procpacket.ParseFromString(msg)  # REVIEW #37 error check this - it might not throw a zmq.Again exception. You can use multiple except blocks after 1 try block
         return procpacket.sequence_num
     except zmq.Again:
-        print "ACK ERROR"
-        return  # REVIEW #6 Here we return None implicity, can type "return None" to be more explicit, or do something else with the error, TODO?
+        errmsg = "No Message Available"
+        raise ExperimentException(errmsg)  # TODO what to do in this case
+    except zmq.ZMQBaseError as e:
+        errmsg = "ZMQ ERROR"
+        raise [ExperimentException(errmsg), e]
 
 
 def search_for_experiment(socket, status):
@@ -219,28 +153,126 @@ def search_for_experiment(socket, status):
     :param status: status of type RadarStatus.
     :return: boolean (True for new experiment received), and the experiment (or None if there is no new experiment)
     """
-    socket.send_pyobj(status)
+
+    try:
+        socket.send_pyobj(status)
+    except zmq.ZMQBaseError as e:
+        errmsg = "ZMQ ERROR"
+        raise [ExperimentException(errmsg), e]
     poller = zmq.Poller()
     poller.register(socket, zmq.POLLIN)
     while True:
-        socks = dict(poller.poll(10))  # polls for 10 ms, NOTE this is before inttime timer starts.
+        try:
+            socks = dict(poller.poll(10))  # polls for 10 ms, before inttime timer starts.
+        except zmq.NotDone:
+            experiment = None
+            new_experiment_received = False
+            print("NO NEW EXPERIMENT. CONTINUING.")
+            break  # TODO log
+        except zmq.ZMQBaseError as e:
+            errmsg = "ZMQ ERROR"
+            raise [ExperimentException(errmsg), e]
+
         if socket in socks:  #
-            if socks[socket] == zmq.POLLIN:  # REVIEW #3 Why do you need to check if this is a zmq.POLLIN? REPLY: Not sure, was in an example, will investigate.
-                new_exp = get_prog(socket)
+            if socks[socket] == zmq.POLLIN:
+                try:
+                    new_exp = socket.recv_pyobj()  # message should be waiting
+                except zmq.ZMQBaseError as e:
+                    errmsg = "ZMQ ERROR"
+                    raise [ExperimentException(errmsg), e]
                 if isinstance(new_exp, ExperimentPrototype):
                     experiment = new_exp
                     new_experiment_received = True
-                    print "NEW CP!!"
+                    print("NEW EXPERIMENT FOUND")
                     break
                 else:
                     experiment = None
                     new_experiment_received = False
-                    print "NO NEW CP"
+                    print("NO NEW EXPERIMENT. CONTINUING.")
                     break
         else:
-            print "No CP - keep polling"
+            print("No Experiment Provided - Continuing to Poll")
 
     return new_experiment_received, experiment
+
+
+def verify_completed_sequence(tx_poller, tx_rx_poller, tx_socket, rx_ack_socket, rx_time_socket,
+                              sigprocpacket, driverpacket, poll_timeout, seqnum, ):
+    """
+    
+    :param tx_poller: 
+    :param tx_rx_poller: 
+    :param tx_socket: 
+    :param rx_ack_socket: 
+    :param rx_time_socket: 
+    :param sigprocpacket: 
+    :param driverpacket: 
+    :param poll_timeout: currently equal to scope sync time.
+    :param seqnum: 
+    :return: 
+    """
+    if seqnum != 0:
+        while True:
+            try:
+                socks = dict(tx_rx_poller.poll(poll_timeout))
+            except zmq.NotDone:
+                pass  # TODO can use this
+            except zmq.ZMQBaseError as e:
+                errmsg = "ZMQ ERROR"
+                raise [ExperimentException(errmsg), e]
+
+            if rx_ack_socket in socks and tx_socket in socks:  # need one message from both.
+                if socks[rx_ack_socket] == zmq.POLLIN:
+                    rxseqnum = get_ack(rx_ack_socket, sigprocpacket)
+                    # rx processing block is working on the pulse sequence before the one we just
+                    # transmitted, therefore should = seqnum - 1.
+                    if rxseqnum != seqnum - 1:
+                        errmsg = "WRONG RXSEQNUM received from rx_signal_processing {} ; "\
+                              "Expected {}".format(rxseqnum, seqnum - 1)
+                        raise ExperimentException(errmsg)
+                    else:  # TODO add if debug
+                        print("RXSEQNUM {}".format(rxseqnum))
+                if socks[tx_socket] == zmq.POLLIN:
+                    txseqnum = get_ack(tx_socket, driverpacket)
+                    # driver should have received and sent the current seqnum.
+                    if txseqnum != seqnum:
+                        errmsg = "WRONG TXSEQNUM received from driver {} ; Expected {}".format(
+                            txseqnum, seqnum)
+                        raise ExperimentException(errmsg)
+                    else:
+                        print("TXSEQNUM {}".format(txseqnum))
+                break
+            else:
+                errmsg = "Did not receive both acks from driver and signal processing"
+                raise ExperimentException(errmsg)
+    else:  # on the very first sequence since starting the radar.
+        print("Polling for {}".format(poll_timeout))
+        try:
+            sock = tx_poller.poll(poll_timeout)
+        except zmq.NotDone:
+            # TODO start a timer and trying sending again on the first sequence. - in case you start experiment handler second ***
+            pass
+        except zmq.ZMQBaseError as e:
+            errmsg = "ZMQ ERROR"
+            raise [ExperimentException(errmsg), e]
+
+        try:
+            tx_socket.recv(flags=zmq.NOBLOCK)
+            print("FIRST ACK RECEIVED")
+        except zmq.Again:
+            errmsg = "No first ack from driver - This shouldn't happen"
+            raise ExperimentException(errmsg)
+        except zmq.ZMQBaseError as e:
+            errmsg = "ZMQ ERROR"
+            raise [ExperimentException(errmsg), e]
+    # Now, check how long the kernel is taking to process (non-blocking)
+    try:
+        kernel_time_ack = rx_time_socket.recv(flags=zmq.NOBLOCK)  # TODO units of the ack (ms?) TODO: use this ack value in error checking
+    except zmq.Again:
+        pass  # TODO: Should do something if don't receive kernel_time_ack for many sequences.
+    except zmq.ZMQBaseError as e:
+        errmsg = "ZMQ ERROR"
+        raise [ExperimentException(errmsg), e]
 
 
 def radar():
@@ -261,48 +293,64 @@ def radar():
     options = ExperimentOptions()
 
     context = zmq.Context()  # single context for all sockets involved in this process.
-    # Setup socket to send pulse samples over.
-    txsocket = setup_driver_socket(context)
+    # Setup sockets.
+    # Socket to send pulse samples over.
+    try:
+        tx_socket = setup_socket(context, options.radar_control_to_driver_address)
+        rx_socket = setup_socket(context, options.radar_control_to_rx_dsp_address)
+        rx_ack_socket = setup_socket(context, options.rx_dsp_to_radar_control_ack_address)
+        rx_time_socket = setup_socket(context, options.rx_dsp_to_radar_control_timing_address)
+        experiment_socket = setup_socket(context, options.experiment_handler_to_radar_control_address)
+    except zmq.ZMQBaseError as e:
+        errmsg = "ZMQ ERROR Setting up sockets"
+        raise [ExperimentException(errmsg), e]
 
-    procsocket = setup_sigproc_params_socket(context)
+
+    poller = zmq.Poller()
+    poller.register(tx_socket, zmq.POLLIN)
+
+    poller2 = zmq.Poller()
+    poller2.register(tx_socket, zmq.POLLIN)
+    poller2.register(rx_ack_socket, zmq.POLLIN)
+
     sigprocpacket = sigprocpacket_pb2.SigProcPacket()
-    proctimesocket = setup_sigproc_timing_ack_socket(context)
-    proccpsocket = setup_sigproc_cpack_socket(context)
-    cpsocket = setup_cp_socket(context)
     # seqnum is used as a identifier in all packets while
     # radar is running so set it up here.
-    # seqnum will get increased by nave (number of averages or sequences in the integration period) at the end of every integration time.
-    # REVIEW #1 The wording here makes it sound like seqnum is increased once at the end of every integration time, not once every pulse sequence # REPLY that's true here, by nave.
+    # seqnum will get increased by nave (number of averages or sequences in the integration period)
+    # at the end of every integration time.
+    # REVIEW #1 The wording here makes it sound like seqnum is increased once at the end of every integration time, not once every pulse sequence # REPLY that's true here, increased by nave.
     seqnum_start = 0
 
-    status = radar_status.RadarStatus()
+    status = RadarStatus()
 
     new_experiment_flag = False
 
     while not new_experiment_flag:  # poll the socket at the start until we have an experiment to run.
-        new_experiment_flag, experiment = search_for_experiment(cpsocket, status)
+        new_experiment_flag, experiment = search_for_experiment(experiment_socket, status)
 
     new_experiment_flag = False
 
-    while True:  # REVIEW #35 This is > 250 lines, should be refactored into smaller chunks REPLY agreed.
+    while True:
         # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.
 
         # Wavetables are currently None for sine waves, instead just
-        #   use a sampling freq in rads/sample
-        wavetable_dict = {}
-        for slice_id in range(experiment.num_slices):
-            wavetable_dict[slice_id] = get_wavetables(experiment.slice_dict[slice_id][
-                                                     'wavetype'])  # REVIEW #6 #33 Is this not needed anymore or is there a TODO to implement type of wave somewhere? We noticed it wasn't used in this file and it is a local dictionary variable REPLY: I think we should get rid of it?
+        #   use a sampling freq in rads/sample.
+        # TODO move this to experiment handler before experiment is transferred ?
+        for slice_id, expslice in experiment.slice_dict.items():
+            # print("Slice ID {}, slice {}".format(slice_id, expslice))
+            expslice['iwavetable'], expslice['qwavetable'] = \
+                get_wavetables(expslice['wavetype'])
 
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         for scan in experiment.scan_objects:
-            if new_experiment_flag:  # start anew on first scan if we have a new experiment. REPLY: question - should this be how we handle a new experiment that's received at the start of a new integration period - end scan after that inttime and start the new experiment?
+            if new_experiment_flag:  # start anew on first scan if we have a new experiment. Question - should this be how we handle a new experiment that's received at the start of a new integration period - end scan after that inttime and start the new experiment?
                 try:
                     experiment = new_experiment
                 except NameError:
-                    # new_experiment does not exist, should never happen as flag only gets set when there is a new
-                    # experiment.
-                    pass  # TODO error
+                    # new_experiment does not exist, should never happen as flag only gets set when
+                    # there is a new experiment.
+                    errmsg = 'Experiment could not be found'
+                    raise ExperimentException(errmsg)
                 new_experiment_flag = False
                 break
             beam_remaining = True  # started a new scan, therefore this must be True.
@@ -320,236 +368,103 @@ def radar():
                     # poll for new experiment here, before starting a new integration.
                     # if new_experiment_flag is set here, we will implement the new_experiment after this integration
                     # period.
-                    new_experiment_flag, new_experiment = search_for_experiment(cpsocket, status)
+                    new_experiment_flag, new_experiment = search_for_experiment(experiment_socket,
+                                                                                status)
 
                     # Check if there are beams remaining in this aveperiod, or in any aveperiods.
                     if aveperiod in aveperiods_done_list:
-                        continue  # beam_iter is past the end of the beam_orders list for this aveperiod.
+                        continue  # beam_iter index is past the end of the beam_order list for this aveperiod, but other aveperiods must still contain a beam at index beam_iter in the beam_order list.
                     else:
                         if beam_iter == len(scan.scan_beams[aveperiod.keys[0]]):  # REVIEW #3 We just don't understand this. REPLY: fixed up, tried to make more clear
-                            # Check if we are at the end of the scan for this aveperiod instance.
+                            # All slices in the aveperiod have the same length beam_order.
+                            # Check if we are at the end of the beam_order list (scan) for this aveperiod instance.
                             # If we are, we still might not be done all of the beams in another aveperiod,
                             # so we should just record that we are done with this one for this scan and
-                            # keep going to check the next aveperiod. All sequences inside aveperiods must have
-                            # same length of scan beam, but not all aveperiods in scan as they are just alternated.
+                            # keep going to check the next aveperiod type.
                             aveperiods_done_list.append(aveperiod)
                             if len(aveperiods_done_list) == len(scan.aveperiods):
-                                beam_remaining = False  # all aveperiods are at the end of their beam_order list.
+                                beam_remaining = False  # all aveperiods are at the end of their beam_order list - must restart scan of alternating aveperiod types.
                                 break
                             continue
-                    print "New AveragingPeriod"
-                    int_start_time = datetime.utcnow()
+                    print("New AveragingPeriod")
+                    integration_period_start_time = datetime.utcnow()  # ms
+
+                    slice_to_beamdir_dict = aveperiod.set_beamdirdict(beam_iter)
+
+                    # Build an ordered list of sequences
+                    # A sequence is a list of pulses in order
+                    # A pulse is a dictionary with all required information for that pulse.
+                    sequence_dict_list = aveperiod.build_sequences(slice_to_beamdir_dict,
+                                                                   experiment.txctrfreq,
+                                                                   experiment.txrate, options)  # TODO pass in only options needed.
+
+                    beam_phase_dict_list = []
+
+                    for sequence_index, sequence in enumerate(aveperiod.sequences):
+                        beam_phase_dict = {}
+                        for slice_id in sequence.slice_ids:
+
+                            beamdir = slice_to_beamdir_dict[slice_id]
+                            beam_phase_dict[slice_id] = \
+                                azimuth_to_antenna_offset(beamdir, options.main_antenna_count,
+                                                          options.interferometer_antenna_count,
+                                                          options.main_antenna_spacing,
+                                                          options.interferometer_antenna_spacing,
+                                                          experiment.slice_dict[slice_id]['txfreq'])
+
+                        beam_phase_dict_list.append(beam_phase_dict)
+
+                    nave = 0
                     time_remains = True
-                    int_done_time = int_start_time + timedelta(0, float(aveperiod.intt) / 1000)  # REVIEW #1 comment on unit conversion
-                    nave = 0  # REVIEW #32 Put the initialization of nave right before it's used, i.e. right above the below while time_remains loop
-                    beamdir = {}
-                    # Create a dictionary of beam directions with the keys being the slice_ids in this averaging period.
-                    for slice_id in aveperiod.keys:
-                        bmnums = scan.scan_beams[slice_id][beam_iter]  # REVIEW #3 Do not understand how this could be an iterable??? # REPLY having multiple beam numbers for one integration period, like in imaging.
-                        beamdir[slice_id] = []
-                        if type(bmnums) == int:  # REVIEW #39 should use isinstance instead http://stackoverflow.com/questions/707674/how-to-compare-type-of-an-object-in-python
-                            beamdir[slice_id] = scan.beamdir[slice_id][bmnums]  # REVIEW #33 why not just always have bmnums a list and then you can get rid of half this code, just keeping the for loop under the else clause.
-                        else:  # is a list
-                            for bmnum in bmnums:
-                                beamdir[slice_id].append(scan.beamdir[slice_id][bmnum])
-                                # Get the beamdir from the beamnumber for this
-                                #    CP-object at this iteration.
-
-                    # Create a pulse dictionary before running through the
-                    #   averaging period.
-                    sequence_dict_list = []
-                    for sequence in aveperiod.integrations:
-                        # create pulse dictionary.
-                        # use pulse_list as dictionary keys.
-                        sequence_dict_list.append({})
-                        # Just alternating sequences
-                        # print sequence.pulse_time
-                        for pulse_index in range(0, len(sequence.combined_pulse_list)):
-                            # Pulses are in order
-                            pulse_list = sequence.combined_pulse_list[pulse_index][:]
-                            if pulse_index == 0:
-                                startofburst = True
-                            else:
-                                startofburst = False
-                            if pulse_index == len(sequence.combined_pulse_list) - 1:
-                                endofburst = True
-                            else:
-                                endofburst = False
-                            repeat = sequence.combined_pulse_list[pulse_index][0]
-                            isamples_list = []
-                            qsamples_list = []
-                            if repeat:
-                                pulse_channels = []  # REVIEW #26 channel vs antenna name
-                            else:
-                                # Initialize a list of lists for
-                                #   samples on all channels.
-                                pulse_list.pop(0)  # remove boolean repeat value
-                                timing = pulse_list.pop(0)
-                                # TODO:need to determine what power
-                                #   to use - should determine using
-                                #   number of frequencies in
-                                #   sequence, but for now use # of
-                                #   pulses combined here.
-                                power_divider = len(pulse_list)  # REVIEW #6 We should make a test of the hardware (transmitter input level limits)
-                                print "POWER DIVIDER: {}".format(power_divider)
-                                pulse_samples, pulse_channels = (
-                                    make_pulse_samples(pulse_list, experiment.slice_dict,
-                                                       beamdir, experiment.txctrfreq,
-                                                       experiment.txrate, power_divider, options))
-                                # Can plot for testing here
-                                # plot_samples('channel0.png',
-                                #    pulse_samples[0])
-                                # plot_fft('fftplot.png', pulse_samples[0],
-                                #    prog.txrate)
-                                for channel in pulse_channels:  # REVIEW #1 explain why you need to make these into python lists (protobuf reasons?) Can you just leave it as .real and .imag?
-                                    isamples_list.append((pulse_samples
-                                                          [channel].real).tolist())
-                                    qsamples_list.append((pulse_samples
-                                                          [channel].imag).tolist())
-
-                            # Add to dictionary at last place in list (which is
-                            #   the current sequence location in the list)
-                            # This the the pulse_data.
-                            sequence_dict_list[-1][pulse_index] = [startofburst,
-                                                                   # REVIEW #39 to make this more understandable: remove the sequence_dict_list.append({}) at the top of the outer for loop, create a blank dictionary 'sequence_dict' there instead, then here do: 'sequence_dict[pulse_index] = [...]' then after the for loop, do 'sequence_dict_list.append(sequence_dict)'
-                                                                   endofburst, pulse_channels,
-                                                                   isamples_list, qsamples_list]
-                    while time_remains:  # REVIEW #32 Put the initialization of 'time_remains = True' right before it's used, i.e. right above this while loop
-                        for sequence in aveperiod.integrations:  # REVIEW #39 is it possible to refactor this to use zip or enumerate because we noticed you're using aveperiod.integrations.index(sequence) down below. Then you would have 'for sequence_index, sequence in enumerate(aveperiod.integrations)'
-                            poll_timeout = int(
-                                sequence.seqtime / 1000) + 1  # seqtime is in us, need ms # REVIEW #1 explain why you need to add 1 to this (int rounds down?)
-                            if datetime.utcnow() >= int_done_time:  # REVIEW #32 Put the initialization of done_time right before it's used, i.e. right above this while loop
+                    integration_period_done_time = integration_period_start_time + \
+                                                   timedelta(0, float(aveperiod.intt) / 1000)  # ms
+                    while time_remains:
+                        for sequence_index, sequence in enumerate(aveperiod.sequences):
+                            if datetime.utcnow() >= integration_period_done_time:
                                 time_remains = False
                                 break
-                            beam_phase_dict = {}
-                            for slice_id in sequence.cpos:
-                                beam_phase_dict[slice_id] = []
-                                if type(beamdir[slice_id]) != list:  # REVIEW #33 why check if this is a list? why not just have a list of one element and build up from there for more beam directions? then you can get rid of half this code and just keep the code under the else clause.
-                                    phase_array = []
-                                    for channel in range(0, options.main_antenna_count):  # REVIEW #26 #29 channel /antenna magic 16 number
-                                        # Get phase shifts for all channels
-                                        phase_array.append(get_phshift(
-                                            beamdir[slice_id],
-                                            experiment.slice_dict[slice_id]['txfreq'], channel,
-                                            0, options.main_antenna_count, options.main_antenna_spacing))
-                                    for channel in range(0, options.interferometer_antenna_count):  # interferometer # REVIEW #0 #1, #29 #35 should be 6,10 to get 6,7,8,9, also explain why you are going for channels 6 through 9, also magic numbers - also make a function to phase main array as well a function for phasing int array, decouple them. Potentially means you need a second set of variables for the interferometer such as beamdir - alternatively you could have the beamdir and other variables 20 long for both int and main antennas..
-                                        # Get phase shifts for all channels # TODO : add interferometer offset to phase (previously range(6,9)
-                                        phase_array.append(get_phshift(
-                                            beamdir[slice_id],
-                                            experiment.slice_dict[slice_id]['txfreq'], channel,
-                                            0, options.interferometer_antenna_count, options.interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
-                                    beam_phase_dict[slice_id].append(phase_array)
-                                else:
-                                    for beam in beamdir[slice_id]:
-                                        phase_array = []
-                                        for channel in range(0, options.main_antenna_count):
-                                            # Get phase shifts for all channels
-                                            phase_array.append(get_phshift(
-                                                beam,
-                                                experiment.slice_dict[slice_id]['txfreq'], channel,
-                                                0, options.main_antenna_count, options.main_antenna_spacing))
-                                        for channel in range(0, options.interferometer_antenna_count):  # interferometer TODO interferometer offset
-                                            # Get phase shifts for all channels
-                                            phase_array.append(get_phshift(
-                                                beam,
-                                                experiment.slice_dict[slice_id]['txfreq'], channel,
-                                                0, options.interferometer_antenna_count, options.interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
-                                        beam_phase_dict[slice_id].append(phase_array)
-                            data_to_processing(sigprocpacket, procsocket, seqnum_start + nave, sequence.cpos,
-                                               experiment.slice_dict, beam_phase_dict)  # beamdir is dictionary
+                            beam_phase_dict = beam_phase_dict_list[sequence_index]
+                            data_to_rx_dsp(sigprocpacket, rx_socket, seqnum_start + nave,
+                                           sequence.slice_ids, experiment.slice_dict,
+                                           beam_phase_dict)
+                            # beam_phase_dict is slice_id : list of beamdirs, where beamdir = list
+                            # of antenna phase offsets for all antennas for that direction ordered
+                            # [0 ... main_antenna_count, 0 ... interferometer_antenna_count]
+
+
                             # Just alternating sequences
-                            # print sequence.pulse_time
-                            print sequence.combined_pulse_list
+                            # print(sequence.combined_pulse_list)
 
-                            #
-                            #
                             # SEND ALL PULSES IN SEQUENCE.
-                            #
-                            for pulse_index in range(0, len(sequence.combined_pulse_list)):  # REVIEW #35 maybe this for loop can be refactored into a send_data_to_driver function along with the data_to_driver code
-                                pulse_list = sequence.combined_pulse_list[pulse_index]
-                                repeat = pulse_list[0]
-                                pulse_data = sequence_dict_list[
-                                    aveperiod.integrations.index(sequence)][
-                                    # REVIEW #39 Here is where you could use sequence_index as discussed above
-                                    pulse_index]
-                                if repeat:  # REVIEW #33 don't really need the if/else here since the data_to_driver function will ignore the empty and none data. this goes along with the comment above about refactoring both this loop and data_to_driver into one function
-                                    ack = data_to_driver(
-                                        driverpacket, txsocket, [], [], [], 0,
-                                        0, 0, 0, pulse_data[0],
-                                        pulse_data[1],
-                                        pulse_list[1], seqnum_start + nave,
-                                        repeat=True)  # REVIEW #33 can just put 'repeat' instead of 'repeat=...' REPLY: repeat is an optional param the way I have it written.
-                                else:
-                                    ack = data_to_driver(
-                                        driverpacket, txsocket,
-                                        pulse_data[2],  # pulse_channels
-                                        pulse_data[3],  # isamples_list
-                                        pulse_data[4],  # qsamples_list
-                                        experiment.txctrfreq, experiment.rxctrfreq,
-                                        experiment.txrate, sequence.numberofreceivesamples,
-                                        pulse_data[0],  # startofburst
-                                        pulse_data[1],  # endofburst,
-                                        pulse_list[1], seqnum_start + nave)
-                                    # Pulse is done.
+                            for pulse_index, pulse_dict in \
+                                    enumerate(sequence_dict_list[sequence_index]):
+                                data_to_driver(driverpacket, tx_socket,
+                                               pulse_dict['pulse_antennas'],
+                                               pulse_dict['isamples_list'],
+                                               pulse_dict['qsamples_list'], experiment.txctrfreq,
+                                               experiment.rxctrfreq, experiment.txrate,
+                                               sequence.numberofreceivesamples,
+                                               pulse_dict['startofburst'], pulse_dict['endofburst'],
+                                               pulse_dict['timing'], seqnum_start + nave,
+                                               repeat=pulse_dict['isarepeat'])
+                                # Pulse is done.
+                            poll_timeout = int(sequence.sstime / 1000)  # ms
+                            # Get sequence acknowledgements and log synchronization and
+                            # communication errors between the n200_driver, rx_sig_proc, and
+                            # radar_control.
 
-                            # Get sequence acknowledgements and log synchronization and communication errors between
-                            # the n200_driver, rx_sig_proc, and radar_control.
-                            if seqnum_start + nave != 0:  # REVIEW #35 make this if/else a function - call it something like acknowledge_completed_sequence/ verify_completed_sequence/ verify_something
-                                poller2 = zmq.Poller()  # REVIEW #33 can these three lines be done only once or do they need to be repeated every sequence (and every time through the while(time_remains) loop)?
-                                poller2.register(txsocket, zmq.POLLIN)
-                                poller2.register(proccpsocket, zmq.POLLIN)
-                                should_poll = True
-                                while should_poll:  # REVIEW #33 could be while True with a break when should_poll is set to False
-                                    # print "Polling for {} - why is it not polling this long?".format(poll_timeout)  # REVIEW #32 Put the initialization of poll_timeout right above where it is used (right above the if seqnum_start + nave != 0: statement)
-                                    socks = dict(poller2.poll(
-                                        poll_timeout + 23000))  # get two messages with timeout of 100 ms # REVIEW #29 23000, is this to get your correct timeout of 100ms or what is happening?
-                                    if proccpsocket in socks and txsocket in socks:  # need one message from both.
-                                        if socks[proccpsocket] == zmq.POLLIN:
-                                            rxseqnum = get_ack(proccpsocket, sigprocpacket)
-                                            if rxseqnum != seqnum_start + nave - 1:  # REVIEW #1 a comment should be added to explain the proper rxseqnum and txseqnum values (one has -1 one doesn't)
-                                                print "**********************ERROR: Wrong rxseqnum {} != {}".format(
-                                                    rxseqnum,
-                                                    seqnum_start + nave - 1)  # REVIEW #6 TODO for handling error and breaking as required
-                                            else:
-                                                print "RXSEQNUM {}".format(rxseqnum)
-                                        if socks[txsocket] == zmq.POLLIN:
-                                            txseqnum = get_ack(txsocket, driverpacket)
-                                            if txseqnum != seqnum_start + nave:
-                                                print "*********************ERROR: wrong txseqnum {} != {}".format(
-                                                    txseqnum, seqnum_start + nave)
-                                                # TODO: LOG ERRORS,break as required
-                                            else:
-                                                print "TXSEQNUM {}".format(txseqnum)
-                                        should_poll = False
-                                    else:
-                                        pass
-                                        # print "******************ERROR: Have not received both ACKS"
-                            else:  # on the very first sequence since starting the radar. # REVIEW #1 what does this comment imply? REPLY: ?
-                                poller = zmq.Poller()
-                                poller.register(txsocket, zmq.POLLIN)
-                                print "Polling for {}".format(poll_timeout)
-                                sock = poller.poll(poll_timeout + 23000)
-                                try:
-                                    txsocket.recv(flags=zmq.NOBLOCK)
-                                    print "FIRST ACK RECEIVED"
-                                except zmq.Again:
-                                    print "No first ack from driver - This shouldn't happen"
-                                    # TODO: Log error because no ack returned from driver on first send.
-                            # Now, check how long the kernel is taking to process (non-blocking)
-                            try:
-                                kernel_time_ack = proctimesocket.recv(flags=zmq.NOBLOCK)  # REVIEW #5 units of the ack (ms?) TODO: use this ack value in error checking
-                            except zmq.Again:
-                                pass  # TODO: Should do something if don't receive kernel_time_ack for many sequences.
+                            verify_completed_sequence(poller, poller2, tx_socket, rx_ack_socket,
+                                                      rx_time_socket, sigprocpacket, driverpacket,
+                                                      poll_timeout, seqnum_start + nave)
 
-                            # TODO: Make sure you can have a CPO that doesn't transmit, only receives on a frequency. # REVIEW #1 what do you mean, what is this TODO for?
-                            time.sleep(1)  # REVIEW #33 this can be removed for release version
+                            # TODO: Make sure you can have a CPO that doesn't transmit, only receives on a frequency. # REVIEW #1 what do you mean, what is this TODO for? REPLY : driver acks wouldn't be required etc need to make sure this is possible
+                            time.sleep(1)  # TODO add if debug
                             # Sequence is done
                             nave = nave + 1
-                            # print "updating time"
-                            # int_time=datetime.utcnow()
-                    print "Number of integrations: {}".format(nave)
+                    print("Number of integrations: {}".format(nave))
                     seqnum_start += nave
                 beam_iter = beam_iter + 1
 
 
-radar()  # REVIEW #39 this should be in a 'if __name__ == "__main__":' block otherwise it will run if you import this file
+if __name__ == "__main__":
+    radar()
