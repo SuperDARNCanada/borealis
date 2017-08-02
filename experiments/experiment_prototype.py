@@ -344,7 +344,7 @@ Explanation of beam_order and beam_angle:
         :return: the maximum tx frequency possible in this experiment (either maximum in our license
          or maximum given by the centre frequency and sampling rate).
         """
-        max_freq = self.txctrfreq + (self.txrate/2.0)
+        max_freq = self.txctrfreq * 1000 + (self.txrate/2.0)
         if max_freq < self.options.max_freq:
             return max_freq
         else:
@@ -356,7 +356,7 @@ Explanation of beam_order and beam_angle:
         :return: the minimum tx frequency possible in this experiment (either minimum in our license
          or minimum given by the centre frequency and sampling rate).
         """
-        min_freq = self.txctrfreq - (self.txrate/2.0)
+        min_freq = self.txctrfreq * 1000 - (self.txrate/2.0)
         if min_freq > self.options.min_freq:
             return min_freq
         else:
@@ -396,7 +396,7 @@ Explanation of beam_order and beam_angle:
         :return: the maximum tx frequency possible in this experiment (either maximum in our license
          or maximum given by the centre frequency and sampling rate).
         """
-        max_freq = self.rxctrfreq + (self.rxrate/2.0)
+        max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0)
         if max_freq < self.options.max_freq:
             return max_freq
         else:
@@ -408,7 +408,7 @@ Explanation of beam_order and beam_angle:
         :return: the minimum tx frequency possible in this experiment (either minimum in our license
          or minimum given by the centre frequency and sampling rate).
         """
-        min_freq = self.rxctrfreq - (self.rxrate/2.0)
+        min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0)
         if min_freq > self.options.min_freq:
             return min_freq
         else:
@@ -700,8 +700,12 @@ Explanation of beam_order and beam_angle:
                 if isinstance(element, list):
                     for angle in element:
                         assert isinstance(angle, float) or isinstance(angle, int)
+                        angle = float(angle)
+                if isinstance(element, int):
+                    element = float(element)
         except AssertionError:
-            errmsg = "Slice must specify beam_angle that must be a list of floats or lists (of floats)"
+            errmsg = """Slice must specify beam_angle that must be a list of numbers or lists 
+                     (of numbers)"""
             raise ExperimentException(errmsg, exp_slice)
 
         try:

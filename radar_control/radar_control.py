@@ -372,7 +372,7 @@ def radar():
                     if aveperiod in aveperiods_done_list:
                         continue  # beam_iter index is past the end of the beam_order list for this aveperiod, but other aveperiods must still contain a beam at index beam_iter in the beam_order list.
                     else:
-                        if beam_iter == len(scan.scan_beams[aveperiod.keys[0]]):  # REVIEW #3 We just don't understand this. REPLY: fixed up, tried to make more clear
+                        if beam_iter == len(scan.scan_beams[aveperiod.slice_ids[0]]):  # REVIEW #3 We just don't understand this. REPLY: fixed up, tried to make more clear
                             # All slices in the aveperiod have the same length beam_order.
                             # Check if we are at the end of the beam_order list (scan) for this aveperiod instance.
                             # If we are, we still might not be done all of the beams in another aveperiod,

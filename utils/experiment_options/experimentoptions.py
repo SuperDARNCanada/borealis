@@ -69,7 +69,7 @@ class ExperimentOptions:
         lines[:] = [line for line in lines if line[0] != "#"]  # remove comments
         lines[:] = [line for line in lines if len(line.split()) != 0]  # remove blanks
         lines[:] = [line for line in lines if int(line.split()[1]) > today.year or
-                    (int(line.split()[1]) == today.year and int(line.split()[2]) >
+                    (int(line.split()[1]) == today.year and float(line.split()[2]) >
                      year_timedelta.total_seconds())]  # only take present & future hdw data
 
         # there should only be one line left, however if there are more we will take the
@@ -194,7 +194,8 @@ class ExperimentOptions:
                                 self.minimum_pulse_separation, self.tr_window_time,
                                 self.atten_window_time_start, self.atten_window_time_end,
                                 self.default_freq, self.restricted_ranges,
-                                self.experiment_to_control_socket, self.data_to_experiment_socket,
+                                self.experiment_handler_to_radar_control_address,
+                                self.data_to_experiment_socket,
                                 self.radar_control_to_rx_dsp_address,
                                 self.radar_control_to_driver_address,
                                 self.rx_dsp_to_radar_control_ack_address,

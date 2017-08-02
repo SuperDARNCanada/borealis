@@ -77,7 +77,7 @@ class Scan(ScanClassBase):
         Override to give more information about beamorder and beamdir
         :return: 
         """
-        params_list = ScanClassBase.prep_for_nested_scan_class()
+        params_list = ScanClassBase.prep_for_nested_scan_class(self)
 
         for params, inttime_list in zip(params_list, self.slice_id_inttime_lists):
             # Make sure the number of inttimes (as determined by length of slice['scan'] is the same
@@ -92,7 +92,8 @@ class Scan(ScanClassBase):
                 else:
                     self.nested_beamorder[slice_id] = self.scan_beams[slice_id]
                     self.nested_beamdir[slice_id] = self.beamdir[slice_id]
-            params.append(self.nested_beamorder, self.nested_beamdir)
+            params.append(self.nested_beamorder)
+            params.append(self.nested_beamdir)
 
         print(params_list)
         return params_list
