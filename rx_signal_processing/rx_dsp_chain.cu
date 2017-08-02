@@ -41,7 +41,7 @@ int main(int argc, char **argv){
   auto driver_options = DriverOptions();
   auto sig_options = SignalProcessingOptions();
   auto rx_rate = driver_options.get_rx_rate(); //Hz
-                                            
+
 
   zmq::context_t sig_proc_context(1); // 1 is context num. Only need one per program as per examples
 
@@ -60,8 +60,10 @@ int main(int argc, char **argv){
   //This socket is used to send the GPU kernel timing to radar_control to know if the processing
   //can be done in real-time.
   zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(timing_socket.bind(sig_options.get_timimg_socket_address()))
+  ERR_CHK_ZMQ(timing_socket.bind(sig_options.get_timing_socket_address()))
 
+  zmq::socket_t data_write_socket(sig_proc_context,ZMQ_PAIR);
+  ERR_CHK_ZMQ(data_write_socket.connect(sig_options.get_data_write_address()))
 
   auto gpu_properties = get_gpu_properties();
   print_gpu_properties(gpu_properties);
@@ -173,7 +175,7 @@ int main(int argc, char **argv){
       //TODO(keith): handle missing name error
     }
 
-    DSPCore *dp = new DSPCore(&ack_socket, &timing_socket,
+    DSPCore *dp = new DSPCore(&ack_socket, &timing_socket, &data_write_socket,
                              sp_packet.sequence_num(), rx_metadata.shrmemname(), rx_freqs);
 
     if (rx_metadata.numberofreceivesamples() == 0){
@@ -202,21 +204,21 @@ int main(int argc, char **argv){
 
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
       dp->get_first_stage_output_p(),dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
-      rx_metadata.numberofreceivesamples(), filters.get_first_stage_lowpass_taps().size(), 
+      rx_metadata.numberofreceivesamples(), filters.get_first_stage_lowpass_taps().size(),
       rx_freqs.size(), total_antennas, "First stage of decimation", dp->get_cuda_stream());
 
-    
+
 
     // When decimating, we go from one set of samples for each antenna in the first stage
     // to multiple sets of reduced samples for each frequency in further stages. Output samples are
     // grouped by frequency with all samples for each antenna following each other
-    // before samples of another frequency start. In the first stage need a filter for each 
+    // before samples of another frequency start. In the first stage need a filter for each
     // frequency, but in the next stages we only need one filter for all data sets.
     dp->allocate_and_copy_second_stage_filter(filters.get_second_stage_lowpass_taps().data(),
                                                 filters.get_second_stage_lowpass_taps().size());
 
     auto num_output_samples_per_antenna_2 = num_output_samples_per_antenna_1 / second_stage_dm_rate;
-    auto total_output_samples_2 = rx_freqs.size() * num_output_samples_per_antenna_2 * 
+    auto total_output_samples_2 = rx_freqs.size() * num_output_samples_per_antenna_2 *
                                     total_antennas;
 
     dp->allocate_second_stage_output(total_output_samples_2);
@@ -228,12 +230,12 @@ int main(int argc, char **argv){
       samples_per_antenna_2, filters.get_second_stage_lowpass_taps().size(), rx_freqs.size(),
       total_antennas, "Second stage of decimation", dp->get_cuda_stream());
 
-  
+
     dp->allocate_and_copy_third_stage_filter(filters.get_third_stage_lowpass_taps().data(),
                                                filters.get_third_stage_lowpass_taps().size());
 
     auto num_output_samples_per_antenna_3 = num_output_samples_per_antenna_2 / third_stage_dm_rate;
-    auto total_output_samples_3 = rx_freqs.size() * num_output_samples_per_antenna_3 * 
+    auto total_output_samples_3 = rx_freqs.size() * num_output_samples_per_antenna_3 *
                                     total_antennas;
 
     dp->allocate_third_stage_output(total_output_samples_3);
@@ -246,8 +248,8 @@ int main(int argc, char **argv){
 
     dp->allocate_and_copy_host_output(total_output_samples_3);
 
-    dp->cuda_postprocessing_callback(rx_freqs, total_antennas, 
-                                      num_output_samples_per_antenna_1, 
+    dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
+                                      num_output_samples_per_antenna_1,
                                       num_output_samples_per_antenna_2,
                                       num_output_samples_per_antenna_3);
 
