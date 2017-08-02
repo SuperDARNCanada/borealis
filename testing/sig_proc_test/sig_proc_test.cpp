@@ -65,11 +65,11 @@ void send_data(rxsamplesmetadata::RxSamplesMetadata& samples_metadata,
   driver_socket.send(samples_metadata_msg);
 }
 
-void timing(zmq::context_t &context) 
+void timing(zmq::context_t &context)
 {
   auto sig_options = SignalProcessingOptions();
   zmq::socket_t timing_socket(context, ZMQ_PAIR);
-  timing_socket.connect(sig_options.get_timimg_socket_address());
+  timing_socket.connect(sig_options.get_timing_socket_address());
 
   auto timing_timing_end = std::chrono::steady_clock::now();
   auto timing_timing_start = std::chrono::steady_clock::now();
@@ -154,7 +154,7 @@ void signals(zmq::context_t &context)
   samples_metadata.set_sequence_num(sqn_num);
 
   std::chrono::steady_clock::time_point timing_ack_start, timing_ack_end;
-  std::chrono::milliseconds accum_time(0); 
+  std::chrono::milliseconds accum_time(0);
 
   send_data(samples_metadata, sp, samples,driver_socket, radctrl_socket, timing_ack_start);
   sqn_num += 1;
@@ -176,7 +176,7 @@ void signals(zmq::context_t &context)
       << "ms" << std::endl;
 
     accum_time +=  std::chrono::duration_cast<std::chrono::milliseconds>(seq_time);
-    std::cout << "ACCUM_TIME " <<accum_time.count() << std::endl; 
+    std::cout << "ACCUM_TIME " <<accum_time.count() << std::endl;
     if (accum_time > std::chrono::milliseconds(3000)){
         std::cout << "GETTING " << seq_counter << " SEQUENCES IN 3 SECONDS" << std::endl;
         seq_counter = 0;
@@ -190,7 +190,7 @@ void signals(zmq::context_t &context)
 
     send_data(samples_metadata,sp, samples,driver_socket, radctrl_socket, timing_ack_start);
     #ifdef DEBUG
-      sleep(3);
+      sleep(30);
     #endif
     sqn_num += 1;
   }

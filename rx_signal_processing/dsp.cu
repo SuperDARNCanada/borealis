@@ -28,7 +28,7 @@ namespace {
   /**
    * @brief      Sends an acknowledgment to the radar control and starts the timing after the
    *             RF samples have been copied.
-   *             
+   *
    * @param[in]  stream           CUDA stream this callback is associated with.
    * @param[in]  status           Error status of CUDA work in the stream.
    * @param[in]  processing_data  A pointer to the DSPCore associated with this CUDA stream.
@@ -38,7 +38,7 @@ namespace {
   {
     gpuErrchk(status);
 
-    auto imc = [processing_data]() 
+    auto imc = [processing_data]()
     {
       auto dp = static_cast<DSPCore*>(processing_data);
       dp->send_ack();
@@ -49,13 +49,13 @@ namespace {
     start_imc.join();
   }
 
-  void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCore* dp) 
+  void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCore* dp)
   {
 
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
       auto dataset = pd.add_outputdataset();
       #ifdef DEBUG
-        auto add_debug_data = [dataset,i](cuComplex *output_p, uint32_t num_antennas, 
+        auto add_debug_data = [dataset,i](cuComplex *output_p, uint32_t num_antennas,
                                             uint32_t num_samps_per_antenna)
         {
           auto debug_samples = dataset->add_debugsamples();
@@ -67,9 +67,9 @@ namespace {
             auto antenna_data = debug_samples->add_antennadata();
             for(uint32_t k=0; k<num_samps_per_antenna; k++) {
               auto idx = i * stage_samps_per_set + j * num_samps_per_antenna + k;
-              auto antenna_samps = antenna_data->add_antennasamples();
-              antenna_samps->add_real(stage_output[idx].x);
-              antenna_samps->add_imag(stage_output[idx].y);
+              auto antenna_samp = antenna_data->add_antennasamples();
+              antenna_samp->set_real(stage_output[idx].x);
+              antenna_samp->set_imag(stage_output[idx].y);
             }
           }
         };
@@ -80,7 +80,7 @@ namespace {
                     dp->get_num_second_stage_samples_per_antenna());
         add_debug_data(dp->get_third_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_third_stage_samples_per_antenna());
-        
+
       #endif
     }
 
@@ -100,7 +100,7 @@ namespace {
   {
     gpuErrchk(status);
 
-    auto pp = [processing_data]() 
+    auto pp = [processing_data]()
     {
       auto dp = static_cast<DSPCore*>(processing_data);
       dp->stop_timing();
@@ -111,10 +111,10 @@ namespace {
       auto pd_start = std::chrono::steady_clock::now();
       create_processed_data_packet(pd,dp);
       auto pd_end = std::chrono::steady_clock::now();
-
+      dp->send_processed_data(pd);
       auto time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(pd_end -
                                                                         pd_start).count();
-      std::cout << "Fill pd time " << time_diff << std::endl;
+      std::cout << "Fill + send processed data time " << time_diff << " ms"<< std::endl;
       std::cout << "Cuda kernel timing: " << dp->get_decimate_timing()
         << "ms" <<std::endl;
       std::cout << "Complete process timing: " << dp->get_total_timing()
@@ -200,13 +200,14 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * The constructor creates a new CUDA stream and initializes the timing events. It then opens
  * the shared memory with the received RF samples for a pulse sequence.
  */
-DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s,
+DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_s,
                     uint32_t sq_num, std::string shr_mem_name, std::vector<double> freqs)
 {
 
   sequence_num = sq_num;
   ack_socket = ack_s;
   timing_socket = timing_s;
+  data_write_socket = data_s;
   rx_freqs = freqs;
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));
@@ -357,7 +358,7 @@ void DSPCore::allocate_and_copy_host_output(uint32_t num_host_samples)
         host_output_size, cudaMemcpyDeviceToHost,stream));
 }
 
- 
+
 void DSPCore::allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples)
 {
   size_t host_output_size = num_first_stage_output_samples * sizeof(cuComplex);
@@ -423,20 +424,20 @@ void DSPCore::send_timing()
 
 /**
  * @brief      Add the postprocessing callback to the stream.
- * 
+ *
  */
-void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas, 
-                                            uint32_t num_output_samples_per_antenna_1, 
+void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
+                                            uint32_t num_output_samples_per_antenna_1,
                                             uint32_t num_output_samples_per_antenna_2,
                                             uint32_t num_output_samples_per_antenna_3)
 {
     #ifdef DEBUG
-      auto total_output_samples_1 = num_output_samples_per_antenna_1 * rx_freqs.size() * 
-                                      total_antennas; 
-      auto total_output_samples_2 = num_output_samples_per_antenna_2 * rx_freqs.size() * 
+      auto total_output_samples_1 = num_output_samples_per_antenna_1 * rx_freqs.size() *
                                       total_antennas;
-      auto total_output_samples_3 = num_output_samples_per_antenna_3 * rx_freqs.size() * 
-                                      total_antennas;                                  
+      auto total_output_samples_2 = num_output_samples_per_antenna_2 * rx_freqs.size() *
+                                      total_antennas;
+      auto total_output_samples_3 = num_output_samples_per_antenna_3 * rx_freqs.size() *
+                                      total_antennas;
 
       allocate_and_copy_first_stage_host(total_output_samples_1);
       allocate_and_copy_second_stage_host(total_output_samples_2);
@@ -470,14 +471,24 @@ void DSPCore::send_ack()
   std::string s_msg_str;
   sp.SerializeToString(&s_msg_str);
   zmq::message_t s_msg(s_msg_str.size());
-  memcpy ((void *) s_msg.data (), s_msg_str.c_str(), s_msg_str.size());
+  memcpy ((void *) s_msg.data(), s_msg_str.c_str(), s_msg_str.size());
   ack_socket->send(s_msg);
   std::cout << "Sent ack after copy" << std::endl;
 }
 
+void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
+{
+  std::string p_msg_str;
+  pd.SerializeToString(&p_msg_str);
+  zmq::message_t p_msg(p_msg_str.size());
+  memcpy ((void *) p_msg.data(), p_msg_str.c_str(), p_msg_str.size());
+  data_write_socket->send(p_msg);
+  std::cout << "Send processed data to data_write" << std::endl;
+}
+
 /**
  * @brief      Starts the timing before the GPU kernels execute.
- * 
+ *
  */
 void DSPCore::start_decimate_timing()
 {
