@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 
-# Copyright 2017 SuperDARN Canada
+# Copyright 2017 SuperDARN Canada  #TODO check this is standardized across all files.
 #
 # Marci Detwiller
 #
-# REVIEW #37 Best way to call interpreter? there's also "/usr/bin/env python" that allows you to
-# have python installed anywhere REPLY sure
-# REVIEW #7 We need some kind of license at top of all files - or a referral to the
-# license/copyright/etc REPLY agreed we should discuss and standardize this for all our files
 
 from __future__ import print_function
 
 """
-The template for an experiment. 
+The base class for an experiment. 
 """
 
 import sys
@@ -22,11 +18,10 @@ from experiment_exception import ExperimentException
 
 import list_tests
 
-# TODO: Set up python path in scons PYTHONPATH = ....../placeholderOS
+# TODO: Set up python path in scons sys.path.append(BOREALIS_PATH)
 from utils.experiment_options.experimentoptions import ExperimentOptions
 # from radar_control.scan_classes.scan_class_base import ScanClassBase
 from experiments.scan_classes.scans import Scan
-
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
@@ -64,22 +59,18 @@ PULSE : Simultaneous pulse_sequence interfacing, pulse by pulse
 """
 
 
-debug_flag = True  # TODO move this somewhere central. config? - then all files could use it
-
 class ExperimentPrototype(object):
-    """A prototype experiment class composed of metadata, including experiment slices (exp_slice) 
+    """ A prototype experiment class composed of metadata, including experiment slices (exp_slice) 
     which are dictionaries of radar parameters. Basic, traditional experiments will be composed 
     of a single slice. More complicated experiments will be composed of multiple slices that 
-    interface in one of four pre-determined ways, as described in more detail below. 
+    interface in one of four pre-determined ways, as described under interface_types.
     
     This class is used via inheritance to create experiments.
     
-    Some variables shouldn't be changed after init, and their properties do not have setters. 
-    Some variables in this class are given property setters and can be modified with a class 
-    method entitled 'update' in your experiment class. 
-
-    :param cpid: unique id necessary for each control program (experiment)
-    :
+    Some variables shouldn't be changed by the experiment, and their properties do not have setters. 
+    Some variables can be changed in the init of your experiment, and can also be modified 
+    in-experiment by the class method 'update' in your experiment class. These variables have been
+    given property setters.
     """
 
     __slice_keys = ["slice_id", "cpid", "txantennas", "rx_main_antennas",
@@ -96,52 +87,61 @@ class ExperimentPrototype(object):
 
 slice_id : The ID of this object. An experiment can have multiple objects.
 cpid: The ID of the experiment, consistent with existing radar control programs.
-txantennas: The antennas to transmit on, default is all antennas given max number from config.
-rx_main_antennas: The antennas to receive on in main array, default = all antennas given max number from config.
-rx_int_antennas : The antennas to receive on in interferometer array, default is all antennas given max number from config.
-pulse_sequence: The pulse sequence timing, given in quantities of mpinc, for example normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
+txantennas: The antennas to transmit on, default is all main antennas given max number from config.
+rx_main_antennas: The antennas to receive on in main array, default = all antennas given max number 
+    from config.
+rx_int_antennas : The antennas to receive on in interferometer array, default is all antennas given 
+    max number from config.
+pulse_sequence: The pulse sequence timing, given in quantities of mpinc, for example 
+    normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
 mpinc: multi-pulse increment in us, Defines minimum space between pulses.
-pulse_shift: Allows phase shifting between pulses. Built in for a capability Ashton would like to use within a pulse sequence. Default all zeros for all pulses in pulse_sequence.
+pulse_shift: Allows phase shifting between pulses, enabling encoding of pulses. Default all zeros 
+    for all pulses in pulse_sequence.
 pulse_len: length of pulse in us. Range gate size is also determined by this.
 nrang: Number of range gates.
 frang: first range gate, in km
 intt: duration of an integration, in ms. (maximum)
 intn: number of averages to make a single integration, if intt = None.
-beam_angle: list of beam directions, in degrees off azimuth. Positive is E of N. Array length = number of beams.
-beam_order: beamnumbers written in order of preference, one element in this list corresponds to one integration period. Can have list within lists. a beamnubmer of 0 in this list gives us beam_angle[0] as a direction.
+beam_angle: list of beam directions, in degrees off azimuth. Positive is E of N. Array 
+    length = number of beams.
+beam_order: beam numbers written in order of preference, one element in this list corresponds to 
+    one integration period. Can have list within lists. a beam number of 0 in this list gives us 
+    beam_angle[0] as a direction.
 scanboundflag: flag for whether there is a scan boundary to wait for in order to start a new scan.
-scanbound: time that is alloted for a scan before a new scan boundary occurs (ms).
-clrfrqrange: range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] in kHz.
+scanbound: time that is allotted for a scan before a new scan boundary occurs (ms).
+clrfrqrange: range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] 
+    in kHz.
 txfreq: transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
-rxfreq: receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only necessary to specify if you want a receive-only slice.
+rxfreq: receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only 
+    necessary to specify if you want a receive-only slice.
 acf: flag for rawacf and generation. Default True.
 xcf: flag for cross-correlation data. Default True
 acfint: flag for interferometer autocorrelation data. Default True.
 wavetype: default SINE. Any others not currently supported but possible to add in at later date.
 seqtimer: timing in us that this object's sequence will begin at, after the start of the sequence.
 
-Should add:
+Should add: 
 
-scanboundt : time past the hour to start a scan at ?
-    
-        Traditionally beams have been 3.75 degrees separated but we don't refer to them as beam 
-        -22.75 degrees, we refer as beam 1, beam 2. This is like a mapping of beam number
-        to beam direction off azimuth . Then you can use the beam numbers in the beam_order list so you 
-        can reuse beams within one scan, or use multiple beamnumbers in a single integration time, which 
-        would trigger an imaging integration. When we do imaging we will still have to quantize the directions
-        we are looking in to certain beam directions, and if you wanted to add directions you could 
-        do so in experiment modification functions.
+scanboundt : time past the hour to start a scan at ?  
 
-        exp_slice['beam_angle'] is going to be a list of possible beam directions for this
-        experiment slice in degrees off azimuth. It doesn't mean that these are the beam 
-        directions that will be used in the scan, those beams are in the beam_order list given by beamnumber. 
+Explanation of beam_order and beam_angle:
+    Traditionally beams have been 3.24 degrees separated but we don't refer to them as beam 
+    -19.64 degrees, we refer as beam 1, beam 2. This is like a mapping of beam number
+    to beam direction off orthogonal to array. Then you can use the beam numbers in the beam_order 
+    list so you can reuse beams within one scan, or use multiple beam numbers in a single 
+    integration time, which would trigger an imaging integration. When we do imaging we will still 
+    have to quantize the directions we are looking in to certain beam directions.
 
-    """  # TODO describe these
+    """  # TODO add scanboundt?
 
     def __init__(self, cpid):
+        """
+        Base initialization for your experiment.
+        :param cpid: unique id necessary for each control program (experiment)
+        """
 
         try:
-            assert isinstance(cpid, int)
+            assert isinstance(cpid, int)  # TODO add check for uniqueness
         except AssertionError:
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
@@ -152,39 +152,39 @@ scanboundt : time past the hour to start a scan at ?
 
         self.__new_slice_id = 0
 
-        # Load the config data
+        # Centre frequencies can be specified in your experiment class using the setter. TODO: make modifiable (with warning that it takes time. Get time estimate for this.
+        self.__txctrfreq = 13000  # in kHz.
+        self.__rxctrfreq = 13000  # in kHz.
+
+        # Load the config, hardware, and restricted frequency data
         self.__options = ExperimentOptions()
+        self.__txrate = self.__options.tx_sample_rate  # sampling rate, samples per sec.
+        self.__rxrate = self.__options.rx_sample_rate  # sampling rate for rx in samples per sec
+        # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
+        # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
 
-        # Next some metadata that you can change, with defaults.
-
-        self.__txctrfreq = 12000  # in kHz.
-        self._txrate = 12000000  # sampling rate, samples per sec.
-        # Based on above settings, you can transmit from 6 - 18 MHz.
-
-        self.__rxctrfreq = 12000  # in kHz.
-        # NOTE: rx sampling rate is set in config.
-
-        self._xcf = True
-        # Get cross-correlation data in processing block.
-
-        self._acfint = True
-        # TODO fix this - should it be a slice key also, if so then have it inherit from experiment
-        # Determine lag-zero interferometer power in fitacf.
+        # The following are processing defaults. These can be set by the experiment using the setter
+        #   upon instantiation. These are defaults for all slices, but these values are
+        #   slice-specific so if the slice is added with these flags specified, that will override
+        #   these values for the specific slice.
+        self._xcf = True  # cross-correlation
+        self._acf = True  # auto-correlation
+        self._acfint = True  # interferometer auto-correlation.
 
         self._interface = {}  # setup_interfacing(self.num_slices)
         # Dictionary of how each exp_slice interacts with the other slices. Default is "NONE" for
         #  all, but must be modified in experiment. NOTE keys are as such: (0,1), (0,2), (1,2),
-        # NEVER includes (2,0) etc. The only interface options are: interface_types = frozenset([
-        # 'SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
+        # NEVER includes (2,0) etc. The only interface options are those specified in
+        # interface_types.
 
         # The following are for internal use only, and should not be modified in the experimental
-        #  class, but will be modified by the class methods to build_scans. For this reason they
-        # are private with setters.
+        #  class, but will be modified by the class method build_scans. For this reason they
+        #  are private, with getters only, in case they are used for reference by the user.
+        # These are used internally to build iterable objects out of the slice using the
+        # interfacing specified.
 
         self.__slice_id_scan_lists = None
         self.__scan_objects = []
-        # These are used internally by the radar_control block to build iterable objects out of
-        # the slice using the interfacing specified.
 
     @property
     def cpid(self):
@@ -250,7 +250,8 @@ scanboundt : time past the hour to start a scan at ?
     @property
     def xcf(self):
         """
-        Get the cross-correlation flag status.
+        Get the cross-correlation flag status - note it's only a default for slices without 
+        specification.
         :return: cross-correlation flag boolean.
         """
         return self._xcf
@@ -258,19 +259,40 @@ scanboundt : time past the hour to start a scan at ?
     @xcf.setter
     def xcf(self, value):
         """
-        To set the cross-correlation flag.
+        To set the cross-correlation flag default for new slices.
         :param value: boolean for cross-correlation processing flag.
         :return: 
         """
         if isinstance(value, bool):
             self._xcf = value
         else:
-            pass  # TODO errors
+            pass  # TODO log no change
+
+    @property
+    def acf(self):
+        """
+        Get the auto-correlation flag status - note it's only a default for slices without 
+        specification.
+        :return: auto-correlation flag boolean.
+        """
+        return self._acf
+
+    @acf.setter
+    def acf(self, value):
+        """
+        To set the auto-correlation flag default for new slices.
+        :param value: boolean for auto-correlation processing flag.
+        :return: 
+        """
+        if isinstance(value, bool):
+            self._acf = value
+        else:
+            pass  # TODO log no change
 
     @property
     def acfint(self):
         """
-        To get the interferometer autocorrelation flag
+        To get the interferometer autocorrelation flag - note it's only a default for slices.
         :return: interferometer autocorrelation flag boolean.
         """
         return self._acfint
@@ -278,14 +300,14 @@ scanboundt : time past the hour to start a scan at ?
     @acfint.setter
     def acfint(self, value):
         """
-        To set the interferometer autocorrelation flag
+        To set the interferometer autocorrelation flag default for new slices.
         :param value: boolean for interferometer autocorrelation processing flag.
         :return: 
         """
         if isinstance(value, bool):
             self._acfint = value
         else:
-            pass  # TODO errors
+            pass  # TODO log no change
 
     @property
     def txrate(self):
@@ -293,20 +315,7 @@ scanboundt : time past the hour to start a scan at ?
         To get the transmission sample rate to the DAC.
         :return: the transmission sample rate to the DAC (Hz).
         """
-        return self._txrate
-
-    @txrate.setter
-    def txrate(self, value):
-        """
-        To set the transmission sample rate to the DAC (Hz)
-        :param value: int for transmission sample rate to the DAC (Hz)
-        :return: 
-        """
-        # TODO review if this should be modifiable in-experiment. Probably takes resetting of USRPs.
-        if isinstance(value, int):
-            self._txrate = value
-        else:
-            pass  # TODO errors
+        return self.__txrate
 
     @property
     def txctrfreq(self):
@@ -327,7 +336,31 @@ scanboundt : time past the hour to start a scan at ?
         if isinstance(value, int):
             self.__txctrfreq = value
         else:
-            pass  # TODO errors
+            pass  # TODO errors / log no change
+
+    @property
+    def tx_maxfreq(self):
+        """
+        :return: the maximum tx frequency possible in this experiment (either maximum in our license
+         or maximum given by the centre frequency and sampling rate).
+        """
+        max_freq = self.txctrfreq + (self.txrate/2.0)
+        if max_freq < self.options.max_freq:
+            return max_freq
+        else:
+            return self.options.max_freq
+
+    @property
+    def tx_minfreq(self):
+        """
+        :return: the minimum tx frequency possible in this experiment (either minimum in our license
+         or minimum given by the centre frequency and sampling rate).
+        """
+        min_freq = self.txctrfreq - (self.txrate/2.0)
+        if min_freq > self.options.min_freq:
+            return min_freq
+        else:
+            return self.options.min_freq
 
     @property
     def rxctrfreq(self):
@@ -351,28 +384,67 @@ scanboundt : time past the hour to start a scan at ?
             pass  # TODO errors
 
     @property
+    def rxrate(self):
+        """
+        :return: rx sampling rate in samples per sec. Comes from config file.
+        """
+        return self.__rxrate
+
+    @property
+    def rx_maxfreq(self):
+        """
+        :return: the maximum tx frequency possible in this experiment (either maximum in our license
+         or maximum given by the centre frequency and sampling rate).
+        """
+        max_freq = self.rxctrfreq + (self.rxrate/2.0)
+        if max_freq < self.options.max_freq:
+            return max_freq
+        else:
+            return self.options.max_freq
+
+    @property
+    def rx_minfreq(self):
+        """
+        :return: the minimum tx frequency possible in this experiment (either minimum in our license
+         or minimum given by the centre frequency and sampling rate).
+        """
+        min_freq = self.rxctrfreq - (self.rxrate/2.0)
+        if min_freq > self.options.min_freq:
+            return min_freq
+        else:
+            return self.options.min_freq
+
+    @property
     def interface(self):
         """
-        To get the list of interfacing for the experiment slices.
+        To get the list of interfacing for the experiment slices.  Interfacing should be set up 
+        for any slice when it gets added, ie. in add_slice.
         :return:the list of interfacing defined as [(slice_id1, slice_id2) : INTERFACING_TYPE] for
                 all current slice_ids. 
         """
         return self._interface
 
     @property
+    def slice_id_scan_lists(self):
+        """
+        :return: the list of scan slice ids (a list of lists of slice_ids, organized by scan).
+        """
+        return self.__slice_id_scan_lists
+
+    @property
     def scan_objects(self):
         """
         To get the list of scan_objects for use in radar_control. 
-        :return: 
+        :return: scan_objects, the list of instances of the Scan class.
         """
         return self.__scan_objects
 
     def add_slice(self, exp_slice, interfacing_dict=None):
         """
-        Add slices to the experiment.
-        :param exp_slice: 
+        Add a slice to the experiment.
+        :param exp_slice: a slice (dictionary of slice_keys) to add to the experiment.
         :param interfacing_dict: dictionary of type {slice_id : INTERFACING , ... } that defines how
-         this slice interacts with all the other slices.
+         this slice interacts with all the other slices currently in the experiment.
         :return: the slice_id of the new slice that was just added.
         """
         if not isinstance(exp_slice, dict):
@@ -401,20 +473,46 @@ scanboundt : time past the hour to start a scan at ?
         return new_exp_slice['slice_id']
 
     def del_slice(self, remove_slice_id):
+        """
+        Remove a slice from the experiment.
+        :param remove_slice_id: the id of the slice you'd like to remove.
+        :return: boolean True if successful
+        """
         if isinstance(remove_slice_id, int) and remove_slice_id in self.slice_ids:
             del(self.slice_dict[remove_slice_id])
             for key1, key2 in self._interface.keys():
                 if key1 == remove_slice_id or key2 == remove_slice_id:
                     del self._interface[(key1, key2)]
+            return True
         else:
-            errmsg = 'Cannot remove slice id {} : it does not exist'.format(remove_slice_id)
-            raise ExperimentException(errmsg)
+            return False
+            # TODO log that it cannot be removed
+            # errmsg = 'Cannot remove slice id {} : it does not exist'.format(remove_slice_id)
+            # raise ExperimentException(errmsg)
 
-    def edit_slice(self, edit_slice_id, param, value):
+    def edit_slice(self, edit_slice_id, param1, value1, param2=None, value2=None, param3=None,
+                   value3=None):
+        """
+        A quick way to edit a slice. In reality this is actually adding a new slice and deleting 
+        the old one. Useful for quick changes - if you have to change more than three parameters 
+        then should do your own copy / add / delete.
+        :param edit_slice_id: the slice id of the slice to be edited.
+        :param param1: the slice_key that is wished to be changed.
+        :param value1: the new value of the slice_key
+        :param param2: the 2nd slice_key that is wished to be changed.
+        :param value2: the new value of the 2nd slice_key
+        :param param3: the 3rd slice_key that is wished to be changed.
+        :param value3: the new value of the 3rd slice_key
+        :return: the new slice id of the edited slice.
+        """
         if isinstance(edit_slice_id, int) and edit_slice_id in self.slice_ids:
-            if isinstance(param, str) and param in self.slice_keys:
+            if isinstance(param1, str) and param1 in self.slice_keys:
                 edited_slice = self.slice_dict[edit_slice_id].copy()
-                edited_slice[param] = value
+                edited_slice[param1] = value1
+                if param2 is not None:
+                    edited_slice[param2] = value2
+                if param3 is not None:
+                    edited_slice[param3] = value3
                 new_interface_values = {}
                 for ifkey, ifvalue in self._interface:
                     if edit_slice_id == ifkey[0]:
@@ -445,9 +543,8 @@ scanboundt : time past the hour to start a scan at ?
     def build_scans(self):
         """ 
         Will be run by experiment handler, to build iterable objects for radar_control to use. 
-        Creates scan_objects in the instance and the slice_id_scan_lists for identifying which 
+        Creates scan_objects and slice_id_scan_lists in the experiment for identifying which 
         slices are in the scans.
-        :return:
         """
 
         # Check interfacing
@@ -486,7 +583,7 @@ scanboundt : time past the hour to start a scan at ?
                                             self.options))
             # Append a scan instance, passing in the list of slice ids to include in scan.
 
-        if debug_flag:
+        if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
             print("Number of AveragingPeriods in Scan #1: {}".format(len(self.__scan_objects[
                                                                              0].aveperiods)))
@@ -519,10 +616,10 @@ scanboundt : time past the hour to start a scan at ?
     def check_slice_minimum_requirements(self, exp_slice):
         """
         Check for the minimum requirements of the slice. The following keys are always required:
-        "pulse_sequence", "mpinc", "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
-        and "beam_order". This function may modify these keys. Ensure the values make sense.
-        :param exp_slice: 
-        :return: 
+        "pulse_sequence", "mpinc", "pulse_len", "nrang", "frang", (one of "intt" or "intn"), 
+        "beam_angle", and "beam_order". This function may modify these keys. Ensure the values 
+        make sense.
+        :param exp_slice: slice to check.
         """
 
         # TODO: add checks for values that make sense, not just check for types
@@ -580,9 +677,10 @@ scanboundt : time past the hour to start a scan at ?
                     raise ExperimentException(errmsg, exp_slice)
         else:
             try:
-                assert isinstance(exp_slice['intt'], int)
+                assert isinstance(exp_slice['intt'], float) or isinstance(exp_slice['intt'], int)
+                exp_slice['intt'] = float(exp_slice['intt'])
             except AssertionError:
-                errmsg = "intt must be an integer"
+                errmsg = "intt must be an number"
                 raise ExperimentException(errmsg, exp_slice)
             else:
                 try:
@@ -624,8 +722,7 @@ scanboundt : time past the hour to start a scan at ?
         that we know how to properly set up the slice and know which keys in the slice must be 
         specified and which are unnecessary. If these keys are ever written by the user, they will 
         be rewritten here.
-        :param exp_slice: 
-        :return: 
+        :param exp_slice: slice in which to set identifiers
         """
 
         if 'clrfrqrange' in exp_slice.keys():
@@ -660,8 +757,7 @@ scanboundt : time past the hour to start a scan at ?
         Check the requirements for the specific slice type as identified by the identifiers
         rxonly and clrfrqflag. The keys that need to be checked depending on these identifiers 
         are "txfreq", "rxfreq", and "clrfrqrange". This function may modify these keys.
-        :param exp_slice: 
-        :return: 
+        :param exp_slice: the slice to check, before adding to the experiment.
         """
         if exp_slice['clrfrqflag']:  # TX and RX mode with clear frequency search.
             # In this mode, clrfrqrange is required along with the other requirements.
@@ -675,14 +771,17 @@ scanboundt : time past the hour to start a scan at ?
                 raise ExperimentException(errmsg)
             try:
                 assert exp_slice['clrfrqrange'][0] < exp_slice['clrfrqrange'][1]
-                assert (exp_slice['clrfrqrange'][1] * 1000) < self.options.max_freq
-                assert (exp_slice['clrfrqrange'][0] * 1000) > self.options.min_freq
+                assert (exp_slice['clrfrqrange'][1] * 1000) < self.tx_maxfreq
+                assert (exp_slice['clrfrqrange'][0] * 1000) > self.tx_minfreq
+                assert (exp_slice['clrfrqrange'][1] * 1000) < self.rx_maxfreq
+                assert (exp_slice['clrfrqrange'][0] * 1000) > self.rx_minfreq
             except AssertionError:
-                errmsg = """clrfrqrange must be between min and max frequencies for the radar
-                            and must have lower frequency first.
-                            """
+                errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx 
+                            frequencies {} according to license and/or centre frequencies / sampling 
+                            rates, and must have lower frequency first.
+                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                                       (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
-
             still_checking = True
             while still_checking:
                 for freq_range in self.options.restricted_ranges:
@@ -700,8 +799,8 @@ scanboundt : time past the hour to start a scan at ?
                         else:
                             # TODO Log warning, changing clrfrqrange because lower portion is in a
                             # restricted frequency range.
-                            exp_slice['clrfrqrange'][0] = freq_range[
-                                                              1] + 1  # outside of restricted range.
+                            exp_slice['clrfrqrange'][0] = freq_range[1] + 1
+                            # outside of restricted range now.
                             break  # we have changed the 'clrfrqrange' - must restart the
                             # check in case it's in another range.
                     else:
@@ -712,8 +811,8 @@ scanboundt : time past the hour to start a scan at ?
                         except AssertionError:
                             # TODO Log warning, changing clrfrqrange because upper portion is in a
                             # restricted frequency range.
-                            exp_slice['clrfrqrange'][1] = freq_range[
-                                                              0] - 1  # outside of restricted range.
+                            exp_slice['clrfrqrange'][1] = freq_range[0] - 1
+                            # outside of restricted range now.
                             break  # we have changed the 'clrfrqrange' - must restart the for loop
                             # checking in case it's in another range.
                         else:  # neither end of clrfrqrange is inside the restricted range but
@@ -735,11 +834,12 @@ scanboundt : time past the hour to start a scan at ?
             try:
                 assert isinstance(exp_slice['rxfreq'], int) or isinstance(exp_slice['rxfreq'],
                                                                           float)
-                assert (exp_slice['rxfreq'] * 1000) < self.options.max_freq
-                assert (exp_slice['rxfreq'] * 1000) > self.options.min_freq
+                assert (exp_slice['rxfreq'] * 1000) < self.rx_maxfreq
+                assert (exp_slice['rxfreq'] * 1000) > self.rx_minfreq
             except AssertionError:
-                errmsg = """rxfreq must be a number (kHz) between min and max frequencies for the 
-                            radar"""
+                errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
+                            the radar license and be within range given centre frequency and 
+                            sampling rate.""".format((self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
 
         else:  # TX-specific mode , without a clear frequency search.
@@ -747,20 +847,24 @@ scanboundt : time past the hour to start a scan at ?
             try:
                 assert isinstance(exp_slice['txfreq'], int) or isinstance(exp_slice['txfreq'],
                                                                           float)
-                assert (exp_slice['txfreq'] * 1000) < self.options.max_freq
-                assert (exp_slice['txfreq'] * 1000) > self.options.min_freq
+                assert (exp_slice['txfreq'] * 1000) < self.tx_maxfreq
+                assert (exp_slice['txfreq'] * 1000) > self.tx_minfreq
+                assert (exp_slice['txfreq'] * 1000) < self.rx_maxfreq
+                assert (exp_slice['txfreq'] * 1000) > self.rx_minfreq
             except AssertionError:
-                errmsg = """txfreq must be a number (kHz) between min and max frequencies for the 
-                                            radar"""
+                errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
+                            rx min and max frequencies {} for the radar license and be within range
+                            given centre frequencies and sampling rates.
+                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                                       (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             for freq_range in self.options.restricted_ranges:
                 try:
                     assert exp_slice['txfreq'] not in range(freq_range[0], freq_range[1])
                 except AssertionError:
-                    errmsg = """txfreq is within a restricted frequency range"""
+                    errmsg = """txfreq is within a restricted frequency range {}
+                             """.format(freq_range)
                     raise ExperimentException(errmsg)
-                    # TODO or could just log this and set to default frequency, or the closest
-                    # frequency that is available. Do we want to remove default frequency?
 
     def set_slice_defaults(self, exp_slice):
         """
@@ -804,11 +908,11 @@ scanboundt : time past the hour to start a scan at ?
             slice_with_defaults['intt'] = None
 
         if 'acf' not in exp_slice:
-            slice_with_defaults['acf'] = True
+            slice_with_defaults['acf'] = self.acf
         if 'xcf' not in exp_slice:
-            slice_with_defaults['xcf'] = True
+            slice_with_defaults['xcf'] = self.xcf
         if 'acfint' not in exp_slice:
-            slice_with_defaults['acfint'] = True
+            slice_with_defaults['acfint'] = self.acfint
         if 'wavetype' not in exp_slice:
             slice_with_defaults['wavetype'] = 'SINE'
         if 'seqtimer' not in exp_slice:
@@ -846,10 +950,10 @@ scanboundt : time past the hour to start a scan at ?
                 complete_slice.pop(key)
 
         try:
-            assert 'rxfreq' or 'txfreq' or 'clrfrqrange' in complete_slice.keys()
+            assert 'rxfreq' in complete_slice.keys() or 'txfreq' in complete_slice.keys() \
+                   or 'clrfrqrange' in complete_slice.keys()
         except AssertionError:
-            errmsg = 'An rxfreq, txfreq, or clrfrqrange must be Specified in a Slice'
-            # TODO log
+            errmsg = 'An rxfreq, txfreq, or clrfrqrange must be specified in a slice'
             raise ExperimentException(errmsg, exp_slice)
 
         self.set_slice_identifiers(complete_slice)

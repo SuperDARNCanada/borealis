@@ -9,8 +9,9 @@ any), freq, pulse length, beamdir, and wavetype.
 """
 
 from operator import itemgetter
+
+from sample_building.sample_building import make_pulse_samples
 from scan_class_base import ScanClassBase
-from radar_control.sample_building import make_pulse_samples
 
 
 class Sequence(ScanClassBase):

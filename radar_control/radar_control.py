@@ -20,14 +20,11 @@ import zmq
 from experiments.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
-sys.path.append('../build/release/utils/protobuf')  # REVIEW #6 TODO need to make this a dynamic import since
-# 'release' may be 'debug'
-# REPLY agreed will do
+sys.path.append('/home/marci/code/USRP/placeholderOS/build/release/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
 import driverpacket_pb2
 import sigprocpacket_pb2
 
-from sample_building import get_wavetables, \
-    azimuth_to_antenna_offset
+from sample_building.sample_building import get_wavetables, azimuth_to_antenna_offset
 from experiments.experiment_prototype import ExperimentPrototype
 
 from radar_status.radar_status import RadarStatus
@@ -282,8 +279,8 @@ def radar():
     For every pulse, samples and other control information are sent to the n200_driver.
     For every pulse sequence, processing information is sent to the signal processing block.
     After every integration time (AveragingPeriod), the experiment block is given the opportunity
-    to change the control program (if it sends a new one, runradar will halt the old one and begin with
-    the new ControlProg.
+    to change the control program (if it sends a new one, runradar will halt the old one and begin 
+    with the new experiment).
     """
 
     # Initialize driverpacket.
@@ -417,7 +414,7 @@ def radar():
                     nave = 0
                     time_remains = True
                     integration_period_done_time = integration_period_start_time + \
-                                                   timedelta(0, float(aveperiod.intt) / 1000)  # ms
+                        timedelta(milliseconds=(float(aveperiod.intt)))  # ms
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
                             if datetime.utcnow() >= integration_period_done_time:

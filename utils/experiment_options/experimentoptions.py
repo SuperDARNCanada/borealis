@@ -26,8 +26,8 @@ class ExperimentOptions:
         try:
             self.main_antenna_count = int(config['main_antenna_count'])
             self.interferometer_antenna_count = int(config['interferometer_antenna_count'])
-            self.main_antenna_spacing = int(config['main_antenna_spacing'])
-            self.interferometer_antenna_spacing = int(config['interferometer_antenna_spacing'])
+            self.main_antenna_spacing = float(config['main_antenna_spacing'])
+            self.interferometer_antenna_spacing = float(config['interferometer_antenna_spacing'])
             self.tx_sample_rate = float(config['tx_sample_rate'])
             self.rx_sample_rate = float(config['rx_sample_rate'])
             self.max_usrp_dac_amplitude = float(config['max_usrp_dac_amplitude'])
@@ -56,9 +56,9 @@ class ExperimentOptions:
             self.rx_dsp_to_radar_control_timing_address = \
                 config['rx_dsp_to_radar_control_timing_address']
             # TODO add appropriate timing here after timing is changed - can use to check for pulse spacing minimums
-        except ValueError:
+        except ValueError as e:
             # TODO: error
-            raise ValueError
+            raise e
 
         today = datetime.datetime.today()
         year_start = datetime.datetime(today.year,1,1,0,0,0,0) # start of the year
