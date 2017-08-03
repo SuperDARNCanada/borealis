@@ -30,7 +30,9 @@ def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
     """
     # TODO. Note that we could make this a user-writeable function specific to an experiment
     # because you may want more power in certain directions, etc. ??
-    return [beamdirs_list[ant % len(beamdirs_list)] for ant in range(0, num_antennas)]  # TODO fix
+    beamdirs = [beamdirs_list[ant % len(beamdirs_list)] for ant in range(0, num_antennas)]  # TODO fix
+    amplitudes = [1.0 for ant in range(0, num_antennas)]  # TODO fix
+    return beamdirs, amplitudes
 
 
 def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spacing):
@@ -39,8 +41,8 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
     a specified extra phase shift if there is any, the number of antennas in the array, and the spacing 
     between antennas.
     
-    :param beamdir: the direction of the beam off azimuth, in degrees, positive beamdir being to the right of 
-        azimuth if looking down the azimuth. Will be a list of length 1 or more!
+    :param beamdir: the direction of the beam off boresight, in degrees, positive beamdir being to 
+        the right of the boresight. This is for this antenna.
     :param freq: transmit frequency in kHz
     :param antenna: antenna number, INDEXED FROM ZERO, zero being the leftmost antenna if looking down the azimuth 
         and positive beamdir right of azimuth
@@ -253,12 +255,15 @@ def plot_fft(filename, samplesa, rate):
     return None
 
 
-def make_pulse_samples(pulse_list, exp_slices, slice_to_beamdir_dict, txctrfreq, txrate, power_divider, options):
+def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_dict, txctrfreq,
+                       txrate, options):
     """
     Make and phase shift samples, and combine them if there are multiple pulse types to send within this pulse.
     :param pulse_list: a list of dictionaries, each dict is a pulse. The list only contains pulses
     that will be sent as a single pulse (ie. have the same combined_pulse_index).
-    :param exp_slices: 
+    :param power_divider: an integer for number of pulses combined (max) in the whole sequence, 
+        so we can adjust the amplitude of each uncombined pulse accordingly. 
+    :param exp_slices:
     :param slice_to_beamdir_dict: 
     :param txctrfreq: 
     :param txrate: 
@@ -279,8 +284,8 @@ def make_pulse_samples(pulse_list, exp_slices, slice_to_beamdir_dict, txctrfreq,
     txctrfreq = float(txctrfreq)
 
     # make the uncombined pulses
-    create_uncombined_pulses(pulse_list, exp_slices, slice_to_beamdir_dict, txctrfreq, txrate,
-                             options)
+    create_uncombined_pulses(pulse_list, power_divider, exp_slices, slice_to_beamdir_dict,
+                             txctrfreq, txrate, options)
     # all pulse dictionaries in the pulse_list now have a 'samples' key which is a list of numpy
     # complex arrays (one for each tx antenna).
 
@@ -305,14 +310,15 @@ def make_pulse_samples(pulse_list, exp_slices, slice_to_beamdir_dict, txctrfreq,
 
     # initialize to correct length
     combined_samples = [np.zeros(combined_pulse_length, dtype=np.complex64) for ant in range(0, options.main_antenna_count)]
-    # This is a list of arrays (one for each channel) with the combined
-    #   samples in it (which will be transmitted).
+    # This is a list of arrays (one for each antenna) with the combined
+    #   samples in it (which will be transmitted). Need to add together multiple pulses if there
+    #   are multiple frequencies, for example.
     for antenna in range(0, options.main_antenna_count):
         for pulse in pulse_list:
             try:
-                combined_samples[antenna] += [sample / power_divider for sample in pulse['samples'][antenna]]
+                combined_samples[antenna] += pulse['samples'][antenna]
             except RuntimeWarning:  # REVIEW #3 What would cause this exception?  REPLY: I cannot remember actually....
-                print("RUNTIMEWARNING {} {}".format(combined_samples[antenna], power_divider))
+                print("RUNTIMEWARNING {} {}".format(combined_samples[antenna]))
 
     # Now get what channels we need to transmit on for this combined
     #   pulse.
@@ -327,11 +333,14 @@ def make_pulse_samples(pulse_list, exp_slices, slice_to_beamdir_dict, txctrfreq,
     return combined_samples, pulse_channels
 
 
-def create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate, options):
+def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir, txctrfreq, txrate,
+                             options):
     """
     Creates a sample dictionary where the pulse is the key and the samples (in a list from 0th to 
     max antenna) are the value.
     :param pulse_list: a list of dictionaries, each dict is a pulse
+    :param power_divider: an integer for number of pulses combined (max) in the whole sequence, 
+        so we can adjust the amplitude of each uncombined pulse accordingly. 
     :param exp_slices: 
     :param beamdir: 
     :param txctrfreq: 
@@ -346,16 +355,19 @@ def create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate,
         phase_array = []
         pulse['samples'] = []
 
-        if len(beamdir[pulse['slice_id']]) > 1:  # todo move this somwhere for each slice_id, not pulse as there will be duplicated code
+        if len(beamdir[pulse['slice_id']]) > 1:  # todo move this somwhere for each slice_id, not pulse as unnecessary repetition
             # we have imaging. We need to figure out the direction and amplitude to give
             # each antenna
-            beamdirs_for_antennas, amplitude_array = \
+            beamdirs_for_antennas, amps_for_antennas = \
                 resolve_imaging_directions(beamdir[pulse['slice_id']], options.main_antenna_count,
                                            options.main_antenna_spacing)
         else:  # not imaging, all antennas transmitting same direction.
             beamdirs_for_antennas = [beamdir[pulse['slice_id']][0] for ant in
                                      range(0, options.main_antenna_count)]
-            amplitude_array = [1.0 for ant in range(0, options.main_antenna_count)]
+            amps_for_antennas = [1.0 for ant in range(0, options.main_antenna_count)]
+
+        amplitude_array = [amplitude / float(power_divider) for amplitude in amps_for_antennas]
+        # also adjust amplitudes for number of pulses transmitted at once. # TODO : review this as
         for antenna in range(0, options.main_antenna_count):
             # Get phase shifts for all channels off centre of array being phase = 0.
             phase_for_antenna = \

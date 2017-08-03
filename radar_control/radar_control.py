@@ -41,16 +41,15 @@ def setup_socket(context, address):
     return socket
 
 
-def data_to_driver(driverpacket, txsocket, antennas, isamples_list,
-                   qsamples_list, txctrfreq, rxctrfreq, txrate,
+def data_to_driver(driverpacket, txsocket, antennas, samples_array,
+                   txctrfreq, rxctrfreq, txrate,
                    numberofreceivesamples, SOB, EOB, timing, seqnum,
                    repeat=False):
     """ Place data in the driver packet and send it via zeromq to the driver.
         :param driverpacket: 
         :param txsocket: 
         :param antennas: 
-        :param isamples_list: 
-        :param qsamples_list: 
+        :param samples_array: 
         :param txctrfreq: 
         :param rxctrfreq: 
         :param txrate: 
@@ -79,11 +78,13 @@ def data_to_driver(driverpacket, txsocket, antennas, isamples_list,
         # SETUP data to send to driver for transmit.
         for ant in antennas:
             driverpacket.channels.append(ant)
-        for sample_index in range(len(isamples_list)):
+        for sample_index in range(len(samples_array)):
             sample_add = driverpacket.samples.add()
             # Add one Samples message for each channel.
-            sample_add.real.extend(isamples_list[sample_index])
-            sample_add.imag.extend(qsamples_list[sample_index])
+            # Protobuf expects types: int, long, or float, will reject numpy types and throw a
+            # TypeError so we must convert the numpy arrays to lists
+            sample_add.real.extend(samples_array[sample_index].real.tolist())
+            sample_add.imag.extend(samples_array[sample_index].imag.tolist())
         driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
         driverpacket.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
         driverpacket.txrate = txrate
@@ -442,8 +443,7 @@ def radar():
                                     enumerate(sequence_dict_list[sequence_index]):
                                 data_to_driver(driverpacket, tx_socket,
                                                pulse_dict['pulse_antennas'],
-                                               pulse_dict['isamples_list'],
-                                               pulse_dict['qsamples_list'], experiment.txctrfreq,
+                                               pulse_dict['samples_array'], experiment.txctrfreq,
                                                experiment.rxctrfreq, experiment.txrate,
                                                sequence.numberofreceivesamples,
                                                pulse_dict['startofburst'], pulse_dict['endofburst'],

@@ -118,6 +118,15 @@ class Sequence(ScanClassBase):
 
         self.total_combined_pulses = total_combined_pulses
 
+        # max combine_total is = power_divider for this sequence.
+        power_divider = 1
+        for pulse in self.pulses:
+            if 'combine_total' in pulse:
+                if pulse['combine_total'] > power_divider:
+                    power_divider = pulse['combine_total']
+        self.power_divider = power_divider  # TODO: is this best option. Should powers be adjusted
+        # by frequency, other factors outside of the specific sequence.
+
         # Find repeats
         for pulse_index in range(1, len(self.pulses)):
             pulse = self.pulses[pulse_index]
@@ -216,10 +225,10 @@ class Sequence(ScanClassBase):
 
             repeat = one_pulse_list[0]['isarepeat']
             timing = one_pulse_list[0]['pulse_timing_us']
-            isamples_list = []
-            qsamples_list = []
+            pulse_samples = []
             if repeat:
                 pulse_antennas = []
+
             else:
                 # Initialize a list of lists for
                 #   samples on all channels.
@@ -228,21 +237,14 @@ class Sequence(ScanClassBase):
                 #   number of frequencies in
                 #   sequence, but for now use # of
                 #   pulses combined here.
-                power_divider = len(one_pulse_list)
-                print("POWER DIVIDER: {}".format(power_divider))
+
                 pulse_samples, pulse_antennas = (
-                    make_pulse_samples(one_pulse_list, self.slice_dict,
+                    make_pulse_samples(one_pulse_list, self.power_divider, self.slice_dict,
                                        slice_to_beamdir_dict, txctrfreq,
-                                       txrate, power_divider, options))
+                                       txrate, options))
                 # Can plot for testing here
                 # plot_samples('channel0.png', pulse_samples[0])
                 # plot_fft('fftplot.png', pulse_samples[0], prog.txrate)
-
-                # Protobuf expects types: int, long, or float, will reject numpy types and throw a
-                # TypeError so we must convert the numpy arrays to lists.
-                for channel in pulse_antennas:
-                    isamples_list.append(pulse_samples[channel].real.tolist())
-                    qsamples_list.append(pulse_samples[channel].imag.tolist())
 
             # Add to dictionary at last place in list (which is
             #   the current sequence location in the list)
@@ -250,8 +252,8 @@ class Sequence(ScanClassBase):
             pulse_transmit_data['startofburst'] = startofburst
             pulse_transmit_data['endofburst'] = endofburst
             pulse_transmit_data['pulse_antennas'] = pulse_antennas
-            pulse_transmit_data['isamples_list'] = isamples_list
-            pulse_transmit_data['qsamples_list'] = qsamples_list
+            pulse_transmit_data['samples_array'] = pulse_samples
+            # pulse_transmit_data['qsamples_list'] = qsamples_list
             pulse_transmit_data['timing'] = timing
             pulse_transmit_data['isarepeat'] = repeat
             sequence_list.append(pulse_transmit_data)
