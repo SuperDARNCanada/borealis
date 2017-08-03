@@ -439,6 +439,21 @@ Explanation of beam_order and beam_angle:
         """
         return self.__scan_objects
 
+    def slice_beam_directions_mapping(self, slice_id):
+        """
+        return a mapping of the beam directions in the given slice id.
+        :param slice_id: id of the slice to get beam directions for.
+        :return: enumeration mapping dictionary of beam number : beam direction(s) in degrees off 
+        orthogonal.
+        """
+        if slice_id not in self.slice_ids:
+            return {}
+        beam_directions = self.slice_dict[slice_id]['beam_angle']
+        mapping = {}
+        for beam_num, beam_dir in enumerate(beam_directions):
+            mapping[beam_num] = beam_dir
+        return mapping
+
     def add_slice(self, exp_slice, interfacing_dict=None):
         """
         Add a slice to the experiment.
@@ -695,28 +710,28 @@ Explanation of beam_order and beam_angle:
             assert 'beam_angle' in exp_slice.keys()
             assert isinstance(exp_slice['beam_angle'], list)
             for element in exp_slice['beam_angle']:
-                assert isinstance(element, float) or isinstance(element, int) or isinstance(element,
-                                                                                            list)
-                if isinstance(element, list):
-                    for angle in element:
-                        assert isinstance(angle, float) or isinstance(angle, int)
-                        angle = float(angle)
+                assert isinstance(element, float) or isinstance(element, int)
                 if isinstance(element, int):
                     element = float(element)
         except AssertionError:
-            errmsg = """Slice must specify beam_angle that must be a list of numbers or lists 
-                     (of numbers)"""
+            errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or 
+                floats) which are angles of degrees off orthogonal (positive E of N)"""
             raise ExperimentException(errmsg, exp_slice)
 
         try:
             assert 'beam_order' in exp_slice.keys()
             assert isinstance(exp_slice['beam_order'], list)
             for element in exp_slice['beam_order']:
-                assert isinstance(element, int)
-                assert element < len(exp_slice['beam_angle'])
+                assert isinstance(element, int) or isinstance(element, list)
+                if isinstance(element, list):
+                    for beamnum in element:
+                        assert isinstance(beamnum, int)
+                        assert beamnum < len(exp_slice['beam_angle'])
+                else:
+                    assert element < len(exp_slice['beam_angle'])
         except AssertionError:
-            errmsg = "Slice must specify beam_order that must be a list of ints corresponding to " \
-                     "the order of the angles in the beam_angle list."
+            errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints) 
+                     corresponding to the order of the angles in the beam_angle list."""
             raise ExperimentException(errmsg, exp_slice)
 
     @staticmethod
@@ -1155,7 +1170,7 @@ Explanation of beam_order and beam_angle:
                 error_count = error_count + 1
 
         if list_tests.isduplicates(exp_slice['beam_angle']):
-            error_dict[error_count] = "Slice {} Beam Angles Has Duplicate Antennas".format(
+            error_dict[error_count] = "Slice {} Beam Angles Has Duplicate Directions".format(
                 exp_slice['slice_id'])
             error_count = error_count + 1
 
@@ -1172,10 +1187,17 @@ Explanation of beam_order and beam_angle:
 
         # Check that the beam numbers in the beam_order exist
         for bmnum in exp_slice['beam_order']:
-            if bmnum >= len(exp_slice['beam_angle']):
-                error_dict[error_count] = "Slice {} Scan Beam Number {} DNE".format(
-                    exp_slice['slice_id'], bmnum)
-                error_count = error_count + 1
+            if isinstance(bmnum, int):
+                if bmnum >= len(exp_slice['beam_angle']):
+                    error_dict[error_count] = "Slice {} Scan Beam Number {} DNE".format(
+                        exp_slice['slice_id'], bmnum)
+                    error_count = error_count + 1
+            elif isinstance(bmnum, list):
+                for imaging_bmnum in bmnum:
+                    if imaging_bmnum >= len(exp_slice['beam_angle']):
+                        error_dict[error_count] = "Slice {} Scan Beam Number {} DNE".format(
+                            exp_slice['slice_id'], bmnum)
+                        error_count = error_count + 1
 
         # check scan boundary not less than minimum required scan time.
         if exp_slice['scanboundflag']:

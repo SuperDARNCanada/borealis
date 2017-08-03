@@ -107,7 +107,8 @@ class AveragingPeriod(ScanClassBase):
             for slice_id in self.slice_ids:
                 beam_number = self.slice_to_beamorder[slice_id][beamiter]
                 if isinstance(beam_number, int):
-                    beamdir = [self.slice_to_beamdir[slice_id][beam_number]]
+                    beamdir = []
+                    beamdir.append(self.slice_to_beamdir[slice_id][beam_number])
                 else:  # is a list
                     beamdir = [self.slice_to_beamdir[slice_id][bmnum] for bmnum in beam_number]
                 slice_to_beamdir_dict[slice_id] = beamdir

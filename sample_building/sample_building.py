@@ -18,6 +18,21 @@ import matplotlib.pyplot as plt
 from experiments.experiment_exception import ExperimentException
 
 
+def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
+    """
+    This function will take in a list of directions and resolve that to a direction for each
+    antenna. It will return a list of length num_antenna where each element is a direction off 
+    orthogonal for that antenna.
+    :param beamdirs_list: 
+    :param num_antennas: 
+    :param antenna_spacing: 
+    :return: list of beam directions for each antenna.
+    """
+    # TODO. Note that we could make this a user-writeable function specific to an experiment
+    # because you may want more power in certain directions, etc. ??
+    return [beamdirs_list[ant % len(beamdirs_list)] for ant in range(0, num_antennas)]  # TODO fix
+
+
 def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spacing):
     """
     Form the beam given the beam direction (degrees off boresite), the tx frequency, the antenna number,
@@ -25,7 +40,7 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
     between antennas.
     
     :param beamdir: the direction of the beam off azimuth, in degrees, positive beamdir being to the right of 
-        azimuth if looking down the azimuth
+        azimuth if looking down the azimuth. Will be a list of length 1 or more!
     :param freq: transmit frequency in kHz
     :param antenna: antenna number, INDEXED FROM ZERO, zero being the leftmost antenna if looking down the azimuth 
         and positive beamdir right of azimuth
@@ -38,13 +53,7 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
 
     freq = freq * 1000.0  # convert to Hz.
 
-    if isinstance(beamdir, list):
-        # TODO handle imaging/multiple beam directions
-        beamdir = 0  # directly ahead for now
-        imaging_amplitude = 1  # TODO change
-    else:  # is a float
-        beamdir = float(beamdir)
-        imaging_amplitude = 1
+    beamdir = float(beamdir)
 
     beamrad = math.pi * float(beamdir) / 180.0
     # Pointing to right of boresight, use point in middle (hypothetically antenna 7.5) as phshift=0
@@ -57,7 +66,7 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
 
     phshift = math.fmod(phshift, 2 * math.pi)
 
-    return phshift, imaging_amplitude
+    return phshift
 
 
 def get_wavetables(wavetype):
@@ -244,13 +253,13 @@ def plot_fft(filename, samplesa, rate):
     return None
 
 
-def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power_divider, options):
+def make_pulse_samples(pulse_list, exp_slices, slice_to_beamdir_dict, txctrfreq, txrate, power_divider, options):
     """
     Make and phase shift samples, and combine them if there are multiple pulse types to send within this pulse.
     :param pulse_list: a list of dictionaries, each dict is a pulse. The list only contains pulses
     that will be sent as a single pulse (ie. have the same combined_pulse_index).
     :param exp_slices: 
-    :param beamdir: 
+    :param slice_to_beamdir_dict: 
     :param txctrfreq: 
     :param txrate: 
     :param options: 
@@ -270,7 +279,7 @@ def make_pulse_samples(pulse_list, exp_slices, beamdir, txctrfreq, txrate, power
     txctrfreq = float(txctrfreq)
 
     # make the uncombined pulses
-    create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate,
+    create_uncombined_pulses(pulse_list, exp_slices, slice_to_beamdir_dict, txctrfreq, txrate,
                              options)
     # all pulse dictionaries in the pulse_list now have a 'samples' key which is a list of numpy
     # complex arrays (one for each tx antenna).
@@ -336,20 +345,30 @@ def create_uncombined_pulses(pulse_list, exp_slices, beamdir, txctrfreq, txrate,
         wave_freq = float(exp_slices[pulse['slice_id']]['txfreq']) - txctrfreq  # TODO error will occur here if clrfrqrange because clrfrq search isn't completed yet.
         phase_array = []
         pulse['samples'] = []
-        amplitude_array = []
+
+        if len(beamdir[pulse['slice_id']]) > 1:  # todo move this somwhere for each slice_id, not pulse as there will be duplicated code
+            # we have imaging. We need to figure out the direction and amplitude to give
+            # each antenna
+            beamdirs_for_antennas, amplitude_array = \
+                resolve_imaging_directions(beamdir[pulse['slice_id']], options.main_antenna_count,
+                                           options.main_antenna_spacing)
+        else:  # not imaging, all antennas transmitting same direction.
+            beamdirs_for_antennas = [beamdir[pulse['slice_id']][0] for ant in
+                                     range(0, options.main_antenna_count)]
+            amplitude_array = [1.0 for ant in range(0, options.main_antenna_count)]
         for antenna in range(0, options.main_antenna_count):
-            # Get phase shifts for all channels
-            phase_for_antenna, amplitude_for_antenna = get_phshift(
-                beamdir[pulse['slice_id']],
-                exp_slices[pulse['slice_id']]['txfreq'], antenna,
-                exp_slices[pulse['slice_id']]['pulse_shift'][pulse['slice_pulse_index']], options.main_antenna_count,
-                options.main_antenna_spacing)
+            # Get phase shifts for all channels off centre of array being phase = 0.
+            phase_for_antenna = \
+                get_phshift(beamdirs_for_antennas[antenna], exp_slices[pulse['slice_id']]['txfreq'],
+                            antenna,
+                            exp_slices[pulse['slice_id']]['pulse_shift'][pulse['slice_pulse_index']],
+                            options.main_antenna_count, options.main_antenna_spacing)
             phase_array.append(phase_for_antenna)
-            amplitude_array.append(amplitude_for_antenna)
 
         wave_freq_hz = wave_freq * 1000
 
-        # Create samples for this frequency at this rate. Convert pulse_len to seconds and wave_freq to Hz.
+        # Create samples for this frequency at this rate. Convert pulse_len to seconds and
+        # wave_freq to Hz.
         basic_samples, real_freq = get_samples(txrate, wave_freq_hz,
                                                float(pulse['pulse_len']) / 1000000,
                                                options.pulse_ramp_time,
@@ -398,45 +417,31 @@ def calculated_combined_pulse_samples_length(pulse_list, txrate):
 
     return combined_pulse_length
 
-def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenna_count, main_antenna_spacing, interferometer_antenna_spacing, txfreq):
+
+def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenna_count,
+                              main_antenna_spacing, interferometer_antenna_spacing, txfreq):
+    """
+    
+    :param beamdir: list of length 1 or more.
+    :param main_antenna_count: 
+    :param interferometer_antenna_count: 
+    :param main_antenna_spacing: 
+    :param interferometer_antenna_spacing: 
+    :param txfreq: 
+    :return: 
+    """
 
     beams_antenna_phases = []
-    if type(beamdir) != list:  # REVIEW #33 why check if this is a list? why not just have a list of one element and build up from there for more beam directions? then you can get rid of half this code and just keep the code under the else clause.
+    for beam in beamdir:
         phase_array = []
         for channel in range(0, main_antenna_count):
             # Get phase shifts for all channels
-            phase_array.append(get_phshift(
-                beamdir,
-                txfreq, channel,
-                0, main_antenna_count,
+            phase_array.append(get_phshift(beam, txfreq, channel, 0, main_antenna_count,
                 main_antenna_spacing))
-        for channel in range(0, interferometer_antenna_count):
-            # interferometer # REVIEW #0 #1, #29 #35 should be 6,10 to get 6,7,8,9, also explain why you are going for channels 6 through 9, also magic numbers - also make a function to phase main array as well a function for phasing int array, decouple them. Potentially means you need a second set of variables for the interferometer such as beamdir - alternatively you could have the beamdir and other variables 20 long for both int and main antennas..
-            # Get phase shifts for all channels # TODO : add interferometer offset to phase (previously range(6,10)
-            phase_array.append(get_phshift(
-                beamdir,
-                txfreq, channel,
-                0, interferometer_antenna_count,
+        for channel in range(0, interferometer_antenna_count):  # interferometer TODO interferometer offset ***
+            # Get phase shifts for all channels
+            phase_array.append(get_phshift(beam, txfreq, channel, 0, interferometer_antenna_count,
                 interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
         beams_antenna_phases.append(phase_array)
-    else:
-        for beam in beamdir:
-            phase_array = []
-            for channel in range(0, main_antenna_count):
-                # Get phase shifts for all channels
-                phase_array.append(get_phshift(
-                    beam,
-                    txfreq, channel,
-                    0, main_antenna_count,
-                    main_antenna_spacing))
-            for channel in range(0,
-                                 interferometer_antenna_count):  # interferometer TODO interferometer offset
-                # Get phase shifts for all channels
-                phase_array.append(get_phshift(
-                    beam,
-                    txfreq, channel,
-                    0, interferometer_antenna_count,
-                    interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
-            beams_antenna_phases.append(phase_array)
 
     return beams_antenna_phases

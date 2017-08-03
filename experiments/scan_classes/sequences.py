@@ -52,7 +52,8 @@ class Sequence(ScanClassBase):
         # Will sort by timing first and then by cpo if timing =. This is all pulses in the sequence,
         # in a list of dictionaries.
 
-        print self.pulses  # check the sort
+        if __debug__:
+            print(self.pulses)
 
         # Set up the combined pulse list
         this_pulse_index = 0
@@ -193,11 +194,10 @@ class Sequence(ScanClassBase):
     def build_pulse_transmit_data(self, slice_to_beamdir_dict, txctrfreq, txrate, options):  #TODO only take in things you need or add needed params from options in the init function.
         """
         Build a list of pulse dictionaries including samples data to send to driver.
-        :return: sequence_list: list of pulse dictionaries.
+        :return: sequence_list: list of pulse dictionaries in correct order.
         """
 
         sequence_list = []
-
         for pulse_index in range(0, self.total_combined_pulses):
             pulse_transmit_data = {}
             # Pulses are in order
@@ -237,11 +237,12 @@ class Sequence(ScanClassBase):
                 # Can plot for testing here
                 # plot_samples('channel0.png', pulse_samples[0])
                 # plot_fft('fftplot.png', pulse_samples[0], prog.txrate)
-                for channel in pulse_antennas:  # REVIEW #1 explain why you need to make these into python lists (protobuf reasons?) Can you just leave it as .real and .imag?
-                    isamples_list.append((pulse_samples
-                                          [channel].real))  # testing without .tolist())
-                    qsamples_list.append((pulse_samples
-                                          [channel].imag))  # testing without .tolist())
+
+                # Protobuf expects types: int, long, or float, will reject numpy types and throw a
+                # TypeError so we must convert the numpy arrays to lists.
+                for channel in pulse_antennas:
+                    isamples_list.append(pulse_samples[channel].real.tolist())
+                    qsamples_list.append(pulse_samples[channel].imag.tolist())
 
             # Add to dictionary at last place in list (which is
             #   the current sequence location in the list)
@@ -252,5 +253,7 @@ class Sequence(ScanClassBase):
             pulse_transmit_data['isamples_list'] = isamples_list
             pulse_transmit_data['qsamples_list'] = qsamples_list
             pulse_transmit_data['timing'] = timing
-            sequence_list.append(
-                pulse_transmit_data)  # list of dictionaries in order where each dictionary is for a pulse
+            pulse_transmit_data['isarepeat'] = repeat
+            sequence_list.append(pulse_transmit_data)
+
+        return sequence_list

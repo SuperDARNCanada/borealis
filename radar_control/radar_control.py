@@ -105,7 +105,12 @@ def data_to_rx_dsp(packet, socket, seqnum, slice_ids, slice_dict,
     packet.sequence_num = seqnum
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
-        chan_add.rxfreq = slice_dict[slice_id]['rxfreq']
+        if slice_dict[slice_id]['rxonly']:
+            chan_add.rxfreq = slice_dict[slice_id]['rxfreq']
+        elif slice_dict[slice_id]['clrfrqflag']:
+            pass  # TODO - get freq from clear frequency search.
+        else:
+            chan_add.rxfreq = slice_dict[slice_id]['txfreq']
         chan_add.nrang = slice_dict[slice_id]['nrang']
         chan_add.frang = slice_dict[slice_id]['frang']
         for bnum, beamdir in enumerate(beam_dict[slice_id]):
@@ -113,7 +118,7 @@ def data_to_rx_dsp(packet, socket, seqnum, slice_ids, slice_dict,
             # beamdir is a list (len = total antennas, main and interferometer) with phase for each
             # antenna for that beam direction
             for pnum, phi in enumerate(beamdir):
-                # print phi
+                # print(phi)
                 phase = cmath.exp(phi * 1j)
                 phase_add = beam_add.phase.add()
                 phase_add.real_phase = phase.real
@@ -430,7 +435,7 @@ def radar():
 
 
                             # Just alternating sequences
-                            # print(sequence.combined_pulse_list)
+                            # print(sequence_dict_list)
 
                             # SEND ALL PULSES IN SEQUENCE.
                             for pulse_index, pulse_dict in \
