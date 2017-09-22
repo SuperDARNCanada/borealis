@@ -2,13 +2,18 @@ import zmq
 import sys
 import datetime
 import json
+import os
+
+if not os.environ["BOREALISPATH"]:
+    raise ValueError("BOREALISPATH env variable not set")
+
 if __debug__:
-    sys.path.append('build/debug/utils/protobuf')
+    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')
 else:
-    sys.path.append('build/release/utils/protobuf')
+    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
 import processeddata_pb2
 
-sys.path.append('utils/data_write_options')
+sys.path.append(os.environ["BOREALISPATH"] + '/utils/data_write_options')
 import data_write_options
 
 
@@ -17,9 +22,9 @@ class DataWrite(object):
 
     """
 
-    def __init__(self, processed_data):
+    def __init__(self, processed_data, options):
         super(DataWrite, self).__init__()
-        self.debug_file = "debug_data.json"
+        self.debug_file = options.debug_file
         self.processed_data = processed_data
 
     def output_debug_data(self):
@@ -34,7 +39,7 @@ class DataWrite(object):
             for stage_num,debug_samples in enumerate(data_set.debugsamples):
                 real = []
                 imag = []
-                stage_str = "stage_{0}".format(stage_num)
+                stage_str = debug_samples.stagename
                 debug_data[set_str][stage_str] = {}
                 for antenna_num,antenna_data in enumerate(debug_samples.antennadata):
                     ant_str = "antenna_{0}".format(antenna_num)

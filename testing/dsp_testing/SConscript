@@ -29,5 +29,7 @@ import os
 
 Import('*')
 
-Prog('dsp_input_sim', Glob("./dsp_input_sim.cpp"), with_libs='utils::utils',
-     LIBS=['protobuf','pthread','zmq', 'boost_system', 'rt'])
+Prog('decimate_single_core', Glob("./decimate_single_core.cpp"), with_libs='utils::utils',
+     LIBS=['protobuf','pthread','zmq'])
+
+Prog('cuda_kernel_timing', Glob("./cuda_kernel_timing.cu"), with_libs='utils::utils')

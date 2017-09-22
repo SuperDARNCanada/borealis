@@ -1,16 +1,19 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <complex>
 #include <thread>
 #include <unistd.h>
 #include <stdint.h>
 #include <zmq.hpp>
+#include <random>
 #include "utils/protobuf/rxsamplesmetadata.pb.h"
 #include "utils/protobuf/sigprocpacket.pb.h"
 #include "utils/shared_memory/shared_memory.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 #include <time.h>
+
 std::string random_string( size_t length )
 {
   auto randchar = []() -> char
@@ -91,6 +94,48 @@ void timing(zmq::context_t &context)
     }
 }
 
+std::vector<std::complex<float>> simulate_samples(uint32_t num_antennas,
+                                                    uint32_t num_samps_per_antenna,
+                                                    std::vector<double> rx_freqs,double rx_rate,
+                                                    bool use_noise)
+{
+    auto default_v = std::complex<float>(0.0,0.0);
+    auto total_samps = num_antennas * num_samps_per_antenna;
+    std::vector<std::complex<float>> samples(total_samps,default_v);
+
+    auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator (seed);
+
+    std::normal_distribution<double> distribution (0.0,1.0);
+
+    auto amp = 1;
+    for (auto i=0; i<num_antennas; i++) {
+      for (auto j=0; j< num_samps_per_antenna; j++) {
+        auto nco_point = std::complex<float>(0.0,0.0);
+        for (auto freq : rx_freqs) {
+          auto sampling_freq = 2 * M_PI * freq/rx_rate;
+
+          auto radians = fmod(sampling_freq * j, 2 * M_PI);
+          auto noise = 0.0;
+          if (use_noise == true) {
+            noise = 0.1 * distribution(generator);
+          }
+          auto I = (amp + noise) * cos(radians);
+          auto Q = (amp + noise) * sin(radians);
+
+          nco_point += std::complex<float>(I,Q);
+        }
+        samples[(i * num_samps_per_antenna) + j] = nco_point;
+      }
+    }
+    //std::ostringstream file_name;
+/*    file_name << "simulated_samples_" << num_antennas << "_antennas_"
+              << num_samps_per_antenna << "_samples.dat";*/
+    std::ofstream samples_file("simulated_samples.dat", std::ios::out | std::ios::binary);
+    samples_file.write((char*)samples.data(), samples.size()*sizeof(std::complex<float>));
+
+    return samples;
+}
 void signals(zmq::context_t &context)
 {
   auto sig_options = SignalProcessingOptions();
@@ -110,12 +155,10 @@ void signals(zmq::context_t &context)
   auto rx_rate = driver_options.get_rx_rate();
 
 
-  std::vector<float> sample_buffer;
-
-  std::vector<double> rxfreqs = {12.0e6,10.0e6,14.0e6};
-  for (int i=0; i<rxfreqs.size(); i++) {
+  std::vector<double> rx_freqs = {12.0e6,10.0e6,14.0e6};
+  for (int i=0; i<rx_freqs.size(); i++) {
     auto rxchan = sp.add_rxchannel();
-    rxchan->set_rxfreq(rxfreqs[i]);
+    rxchan->set_rxfreq(rx_freqs[i]);
     rxchan->set_nrang(75);
     rxchan->set_frang(180);
 
@@ -130,23 +173,7 @@ void signals(zmq::context_t &context)
   auto num_samples = uint32_t(rx_rate* 0.1);
   samples_metadata.set_numberofreceivesamples(num_samples);
 
-  auto default_v = std::complex<float>(0.0,0.0);
-  std::vector<std::complex<float>> samples(num_samples*num_antennas,default_v);
-
-
-  for (int i=0; i<samples.size(); i++) {
-    auto nco_point = std::complex<float>(0.0,0.0);
-    for (auto freq : rxfreqs) {
-      auto sampling_freq = 2 * M_PI * freq/rx_rate;
-
-      auto radians = fmod(sampling_freq * i, 2 * M_PI);
-      auto I = cos(radians);
-      auto Q = sin(radians);
-
-      nco_point += std::complex<float>(I,Q);
-    }
-    samples[i] = nco_point;
-  }
+  auto samples = simulate_samples(num_antennas, num_samples, rx_freqs, rx_rate, true);
 
   auto sqn_num = 0;
 
@@ -156,7 +183,7 @@ void signals(zmq::context_t &context)
   std::chrono::steady_clock::time_point timing_ack_start, timing_ack_end;
   std::chrono::milliseconds accum_time(0);
 
-  send_data(samples_metadata, sp, samples,driver_socket, radctrl_socket, timing_ack_start);
+  send_data(samples_metadata, sp, samples, driver_socket, radctrl_socket, timing_ack_start);
   sqn_num += 1;
 
   auto seq_counter = 0;

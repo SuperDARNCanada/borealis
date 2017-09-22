@@ -4,7 +4,7 @@ package processeddata;
 
 message ProcessedData {
     uint32 sequence_num = 1;
-    repeated OutputDataSet outputdataset = 2; 
+    repeated OutputDataSet outputdataset = 2;
 
     message OutputDataSet {
         repeated ComplexData mainacf = 1;
@@ -14,15 +14,16 @@ message ProcessedData {
         repeated DebugData debugsamples = 5;
 
         message DebugData {
-            repeated AntennaData antennadata = 1;
+            string stagename = 1;
+            repeated AntennaData antennadata = 2;
             message AntennaData {
                 repeated ComplexData antennasamples = 1;
             }
         }
-        
+
         message ComplexData {
-            repeated float real = 1;
-            repeated float imag = 2;
+            float real = 1;
+            float imag = 2;
         }
     }
 }

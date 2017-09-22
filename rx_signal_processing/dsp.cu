@@ -55,11 +55,12 @@ namespace {
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
       auto dataset = pd.add_outputdataset();
       #ifdef DEBUG
-        auto add_debug_data = [dataset,i](cuComplex *output_p, uint32_t num_antennas,
-                                            uint32_t num_samps_per_antenna)
+        auto add_debug_data = [dataset,i](std::string stage_name, cuComplex *output_p,
+                                            uint32_t num_antennas, uint32_t num_samps_per_antenna)
         {
           auto debug_samples = dataset->add_debugsamples();
 
+          debug_samples->set_stagename(stage_name);
           auto stage_output = output_p;
           auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
 
@@ -74,11 +75,11 @@ namespace {
           }
         };
 
-        add_debug_data(dp->get_first_stage_output_h(),dp->get_num_antennas(),
+        add_debug_data("stage_1",dp->get_first_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_first_stage_samples_per_antenna());
-        add_debug_data(dp->get_second_stage_output_h(),dp->get_num_antennas(),
+        add_debug_data("stage_2",dp->get_second_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_second_stage_samples_per_antenna());
-        add_debug_data(dp->get_third_stage_output_h(),dp->get_num_antennas(),
+        add_debug_data("stage_3",dp->get_third_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_third_stage_samples_per_antenna());
 
       #endif
@@ -485,6 +486,7 @@ void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
   data_write_socket->send(p_msg);
   std::cout << "Send processed data to data_write" << std::endl;
 }
+
 
 /**
  * @brief      Starts the timing before the GPU kernels execute.
