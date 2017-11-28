@@ -28,8 +28,9 @@ def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
     :param antenna_spacing: 
     :return: list of beam directions for each antenna.
     """
-    # TODO. Note that we could make this a user-writeable function specific to an experiment
+    # TODO. Note that we could make this a user-writeable custom function specific to an experiment
     # because you may want more power in certain directions, etc. ??
+    # Or may prefer changing input params to a single beam direction and perhaps beamwidth?
     beamdirs = [beamdirs_list[ant % len(beamdirs_list)] for ant in range(0, num_antennas)]  # TODO fix
     amplitudes = [1.0 for ant in range(0, num_antennas)]  # TODO fix
     return beamdirs, amplitudes

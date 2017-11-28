@@ -8,7 +8,7 @@
 from experiments.experiment_exception import ExperimentException
 
 
-def isincreasing(list_to_check):
+def is_increasing(list_to_check):
 
     if not all(x < y for x, y in zip(list_to_check, list_to_check[1:])):
         return False
@@ -16,7 +16,7 @@ def isincreasing(list_to_check):
         return True
 
 
-def isduplicates(list_to_check):
+def has_duplicates(list_to_check):
 
     no_duplicates = set()
     for element in list_to_check:

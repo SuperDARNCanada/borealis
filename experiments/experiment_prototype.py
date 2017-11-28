@@ -1086,7 +1086,7 @@ Explanation of beam_order and beam_angle:
                                                     options.main_antenna_count)
                 error_count = error_count + 1
 
-        if list_tests.isduplicates(exp_slice['txantennas']):
+        if list_tests.has_duplicates(exp_slice['txantennas']):
             error_dict[error_count] = "Slice {} TX Main Antennas Has Duplicate Antennas".format(
                 exp_slice['slice_id'])
             error_count = error_count + 1
@@ -1099,7 +1099,7 @@ Explanation of beam_order and beam_angle:
                                                     options.main_antenna_count)
                 error_count = error_count + 1
 
-        if list_tests.isduplicates(exp_slice['rx_main_antennas']):
+        if list_tests.has_duplicates(exp_slice['rx_main_antennas']):
             error_dict[error_count] = "Slice {} RX Main Antennas Has Duplicate Antennas".format(
                 exp_slice['slice_id'])
             error_count = error_count + 1
@@ -1112,14 +1112,14 @@ Explanation of beam_order and beam_angle:
                                                           options.interferometer_antenna_count)
                 error_count = error_count + 1
 
-        if list_tests.isduplicates(exp_slice['rx_int_antennas']):
+        if list_tests.has_duplicates(exp_slice['rx_int_antennas']):
             error_dict[
                 error_count] = "Slice {} RX Interferometer Antennas Has Duplicate Antennas".format(
                 exp_slice['slice_id'])
             error_count = error_count + 1
 
         # Check if the pulse_sequence is not increasing, which would be an error
-        if not list_tests.isincreasing(exp_slice['pulse_sequence']):
+        if not list_tests.is_increasing(exp_slice['pulse_sequence']):
             error_dict[error_count] = "Slice {} pulse_sequence Not Increasing".format(
                 exp_slice['slice_id'])
             error_count = error_count + 1
@@ -1169,12 +1169,12 @@ Explanation of beam_order and beam_angle:
                     exp_slice['slice_id'])
                 error_count = error_count + 1
 
-        if list_tests.isduplicates(exp_slice['beam_angle']):
+        if list_tests.has_duplicates(exp_slice['beam_angle']):
             error_dict[error_count] = "Slice {} Beam Angles Has Duplicate Directions".format(
                 exp_slice['slice_id'])
             error_count = error_count + 1
 
-        if not list_tests.isincreasing(exp_slice['beam_angle']):
+        if not list_tests.is_increasing(exp_slice['beam_angle']):
             error_dict[error_count] = "Slice {} beam_angle Not Increasing Clockwise (E of N " \
                                       "is positive)".format(exp_slice['slice_id'])
             error_count = error_count + 1
