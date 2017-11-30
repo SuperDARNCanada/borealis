@@ -118,7 +118,10 @@ acf: flag for rawacf and generation. Default True.
 xcf: flag for cross-correlation data. Default True
 acfint: flag for interferometer autocorrelation data. Default True.
 wavetype: default SINE. Any others not currently supported but possible to add in at later date.
-seqtimer: timing in us that this object's sequence will begin at, after the start of the sequence.
+seqtimer: timing in us that this slice's sequence will begin at, after the start of the sequence. 
+    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence 
+    you can offset one slice's sequence from the other by a certain time value so as to not run both
+    frequencies in the same pulse, etc.
 
 Should add: 
 
@@ -328,7 +331,8 @@ Explanation of beam_order and beam_angle:
     @txctrfreq.setter
     def txctrfreq(self, value):
         """
-        To set the transmission centre frequency that USRP is tuned to.
+        To set the transmission centre frequency that USRP is tuned to. Will take tuning time,
+        use with caution.         
         :param value: int for transmission centre frequency to tune USRP to (Hz).
         :return: 
         """
@@ -373,7 +377,8 @@ Explanation of beam_order and beam_angle:
     @rxctrfreq.setter
     def rxctrfreq(self, value):
         """
-        To set the receive centre frequency that USRP is tuned to.
+        To set the receive centre frequency that USRP is tuned to. Will take tuning time,
+        use with caution.  
         :param value: int for receive centre frequency to tune USRP to (Hz).
         :return: 
         """
@@ -753,20 +758,23 @@ Explanation of beam_order and beam_angle:
             if txfreq is not None and txfreq not in \
                     range(exp_slice['clrfrqrange'][0],
                           exp_slice['clrfrqrange'][1]):
-                pass  # TODO log a warning. Txfreq is removed but we may not be doing as you intended.
+                pass  # TODO log a warning. Txfreq is removed as clrfrqrange takes precedence but
+                # we may not be doing as you intended.
 
             rxfreq = exp_slice.pop('rxfreq', None)
             if rxfreq is not None and rxfreq not in \
                     range(exp_slice['clrfrqrange'][0],
                           exp_slice['clrfrqrange'][1]):
-                pass  # TODO log a warning. Rxfreq is removed but we may not be doing as you intended.
+                pass  # TODO log a warning. Rxfreq is removed as clrfrqrange takes precedence
+                # but we may not be doing as you intended.
 
         elif 'txfreq' in exp_slice.keys():
             exp_slice['clrfrqflag'] = False
             exp_slice['rxonly'] = False
             rxfreq = exp_slice.pop('rxfreq', None)
             if rxfreq is not None and rxfreq != exp_slice['txfreq']:
-                pass  # TODO log a warning. Rxfreq is removed but we may not be doing as you intended.
+                pass  # TODO log a warning. Rxfreq is removed as txfreq takes precedence but we may
+                # not be doing as you intended.
         else:
             exp_slice['rxonly'] = True
             exp_slice['clrfrqflag'] = False
@@ -907,8 +915,8 @@ Explanation of beam_order and beam_angle:
         if 'pulse_shift' not in exp_slice:
             slice_with_defaults['pulse_shift'] = [0 for i in range(0, len(
                 slice_with_defaults['pulse_sequence']))]
-        if 'scanboundflag' and 'scanbound' not in exp_slice:
-            slice_with_defaults['scanboundflag'] = False
+        if 'scanboundflag' not in exp_slice and 'scanbound' not in exp_slice:
+            slice_with_defaults['scanboundflag'] = False  # TODO discuss defaults, discuss whether scanboundflag is necessary
             slice_with_defaults['scanbound'] = None
         elif 'scanboundflag' not in exp_slice:  # but scanbound is
             slice_with_defaults['scanboundflag'] = True
@@ -1020,6 +1028,7 @@ Explanation of beam_order and beam_angle:
         antennas) are appropriate. All fields should be full at this time (whether filled by the 
         user or given default values in set_slice_defaults).
         :param: exp_slice: a slice to check
+        :raise: ExperimentException: When 
         """
         error_count = 0
         error_dict = {}
@@ -1045,9 +1054,6 @@ Explanation of beam_order and beam_angle:
                 assert param is not None
             except AssertionError:
                 pass  # TODO may want to check certain params are not None
-
-        if error_dict:  # if not empty
-            return error_dict  # cannot check all params because they don't exist
 
         for param in exp_slice.keys():
             if param not in self.slice_keys and param not in self.__hidden_slice_keys:
@@ -1078,13 +1084,12 @@ Explanation of beam_order and beam_angle:
         # Check if the antenna identifier number is greater than the config file's
         # maximum antennas for all three of tx antennas, rx antennas and rx int antennas
         # Also check for duplicates
-        for i in range(len(exp_slice['txantennas'])):
-            if exp_slice['txantennas'][i] >= options.main_antenna_count:
-                error_dict[
-                    error_count] = "Slice {} Specifies Main Array Antenna Numbers Over Config " \
-                                   "Max {}" .format(exp_slice['slice_id'],
-                                                    options.main_antenna_count)
-                error_count = error_count + 1
+        if max(exp_slice['txantennas']) >= options.main_antenna_count:
+            error_dict[
+                error_count] = "Slice {} Specifies Main Array Antenna Numbers Over Config " \
+                               "Max {}" .format(exp_slice['slice_id'],
+                                                options.main_antenna_count)
+            error_count = error_count + 1
 
         if list_tests.has_duplicates(exp_slice['txantennas']):
             error_dict[error_count] = "Slice {} TX Main Antennas Has Duplicate Antennas".format(
