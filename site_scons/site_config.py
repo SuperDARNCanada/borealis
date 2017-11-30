@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # Copyright 2015 The Ostrich / by Itamar O
 # Copyright 2016 SuperDARN
 
