@@ -23,7 +23,7 @@
 namespace po = boost::program_options;            // Options on command line or config file
 
 float speed_of_light = 299792458.0; // meters per second
-static const std::string  DEVICE_DEFAULT_MULTI_USRP_CLOCK_ARGS          = "addr0=192.168.10.130,addr1=192.168.10.131,addr2=192.168.132";
+static const std::string  DEVICE_DEFAULT_MULTI_USRP_CLOCK_ARGS          = "addr0=192.168.10.130,addr1=192.168.10.131,addr2=192.168.10.132";
 static const uint32_t UPDATE_PERIOD_IN_S				= 10;
 
 
@@ -74,20 +74,42 @@ int main(int argc, char *argv[]) {
     std::cout << "Failed to get usrp clock device" << std::endl;
     return -1;
   }
-
   if(vm.count("print_diagnostic_info")) {
-    
-    return 0;
-  } 
+    std::cout << "Octoclock number of boards: " << clock->get_num_boards() << std::endl;
+    std::cout << clock->get_pp_string() << std::endl;
+    for ( size_t boardnumber = 0; boardnumber < clock->get_num_boards(); boardnumber++) {
+      std::cout << "Octoclock board: " << boardnumber << std::endl;
+      std::cout << "  gps detected: " << clock->get_sensor("gps_detected", boardnumber).value << std::endl;
+      std::cout << "  reference: " << clock->get_sensor("using_ref",boardnumber).value << std::endl;
+      std::cout << "  external reference detected: " << clock->get_sensor("ext_ref_detected",boardnumber).value << std::endl;
+      std::cout << "  switch position: " << clock->get_sensor("switch_pos",boardnumber).value << std::endl;
+      if(clock->get_sensor("gps_detected", boardnumber).value == "true") {
+	std::cout << std::endl << "GPS sentences" << std::endl;
+        std::cout << clock->get_sensor("gps_gpgga", boardnumber).value << std::endl;
+        std::cout << clock->get_sensor("gps_gprmc", boardnumber).value << std::endl;
+        std::cout << "GPS Time: " << clock->get_sensor("gps_time", boardnumber).value << std::endl;
+        std::cout << "GPS locked: " << clock->get_sensor("gps_locked", boardnumber).value << std::endl;
+        std::cout << "GPS servo status: " << clock->get_sensor("gps_servo", boardnumber).value << std::endl;
+	std::cout << std::endl;
+      }
+    }
+  }
 
   while (not stop_signal_called) {
     // If user asked for updates, then print out every x seconds, otherwise just sleep
     if (vm.count("print_time")) {
-      std::cout << "Octoclock 0 time: " << clock->get_time(0) << std::endl;
-      std::cout << "Octoclock 1 time: " << clock->get_time(1) << std::endl;
-      std::cout << "Octoclock 2 time: " << clock->get_time(2) << std::endl;
-	
+    	for ( size_t boardnumber = 0; boardnumber < clock->get_num_boards(); boardnumber++) {
+        if(clock->get_sensor("gps_detected", boardnumber).value == "true") {
+	std::cout << std::endl << "GPS sentences" << std::endl;
+        std::cout << clock->get_sensor("gps_gpgga", boardnumber).value << std::endl;
+        std::cout << clock->get_sensor("gps_gprmc", boardnumber).value << std::endl;
+        std::cout << "GPS Time: " << clock->get_sensor("gps_time", boardnumber).value << std::endl;
+        std::cout << "GPS locked: " << clock->get_sensor("gps_locked", boardnumber).value << std::endl;
+        std::cout << "GPS servo status: " << clock->get_sensor("gps_servo", boardnumber).value << std::endl;
+	std::cout << std::endl;
+        }
       sleep(update_period_in_s);
+    }
     } else {
       sleep(1);
     }
@@ -95,7 +117,6 @@ int main(int argc, char *argv[]) {
   std::cout << "Stop signal called, exiting" << std::endl;
   return 0;
 }
-
 
   
 
