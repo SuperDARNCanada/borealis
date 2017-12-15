@@ -23,7 +23,9 @@
 namespace po = boost::program_options;            // Options on command line or config file
 
 float speed_of_light = 299792458.0; // meters per second
-static const std::string  DEVICE_DEFAULT_MULTI_USRP_ARGS          = "addr0=192.168.10.130,addr1=192.168.10.131,addr2=192.168.132";
+static const std::string  DEVICE_DEFAULT_MULTI_USRP_CLOCK_ARGS          = "addr0=192.168.10.130,addr1=192.168.10.131,addr2=192.168.132";
+static const uint32_t UPDATE_PERIOD_IN_S				= 10;
+
 
 // Signal handling (CTRL-C)
 static bool stop_signal_called = false;
@@ -36,6 +38,8 @@ int main(int argc, char *argv[]) {
 
   // Variables for program options
   std::string multi_usrp_clock_args;
+
+  uint32_t update_period_in_s;
 
   // Set up program options
   po::options_description config("Configuration");
@@ -79,9 +83,9 @@ int main(int argc, char *argv[]) {
   while (not stop_signal_called) {
     // If user asked for updates, then print out every x seconds, otherwise just sleep
     if (vm.count("print_time")) {
-      printf("Octoclock 0 time: %d\n",uhd::usrp_clock::multi_usrp_clock::get_time(0));
-      printf("Octoclock 1 time: %d\n",uhd::usrp_clock::multi_usrp_clock::get_time(1));
-      printf("Octoclock 2 time: %d\n",uhd::usrp_clock::multi_usrp_clock::get_time(2));
+      std::cout << "Octoclock 0 time: " << clock->get_time(0) << std::endl;
+      std::cout << "Octoclock 1 time: " << clock->get_time(1) << std::endl;
+      std::cout << "Octoclock 2 time: " << clock->get_time(2) << std::endl;
 	
       sleep(update_period_in_s);
     } else {
