@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package rxsamplesmetadata;
+
+message RxSamplesMetadata {
+  uint32 sequence_num = 1;
+  uint32 numberofreceivesamples = 2;
+  uint32 size = 3;
+  string shrmemname = 4; // REVIEW #26 this should indicate that it's the location of shared memory?
+}

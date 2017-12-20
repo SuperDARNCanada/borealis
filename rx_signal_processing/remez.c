@@ -563,7 +563,7 @@ int isDone(int r, int Ext[], double E[])
  * OUTPUT:
  * -------
  * double h[]      - Impulse response of final filter [numtaps]
- * returns         - true on success, false on failure to converge
+ * returns         - 0 on success, -1 on failure to converge
  ********************/
 
 int remez(double h[], int numtaps,

@@ -24,19 +24,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-"""AddressBook proto-based library SConscript script"""
-
-Import('*')
+""""""
 import os
 
-RadarProtos = []
-#for root, dirnames, filenames in os.walk(os.getcwd()):
-#	for filename in filenames:
-#		if ".proto" in filename:
-#			RadarProtos.append(filename)
+Import('*')
 
-RadarProtos = ['driverpacket.proto','rxsamplesmetadata.proto',
-                'sigprocpacket.proto']
-#print(RadarProtos)
-Proto(RadarProtos)
-
+Prog('octoclock_test', Glob("./*.c*"),
+     LIBS=['uhd','boost_system', 'boost_program_options'])
