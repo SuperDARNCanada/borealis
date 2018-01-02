@@ -108,10 +108,11 @@ std::vector<std::complex<float>> simulate_samples(uint32_t num_antennas,
 
     std::normal_distribution<double> distribution (0.0,1.0);
 
-    auto amp = 1;
+    auto amp = 1.0/sqrt(2.0);
     for (auto i=0; i<num_antennas; i++) {
       for (auto j=0; j< num_samps_per_antenna; j++) {
         auto nco_point = std::complex<float>(0.0,0.0);
+
         for (auto freq : rx_freqs) {
           auto sampling_freq = 2 * M_PI * freq/rx_rate;
 
@@ -120,17 +121,41 @@ std::vector<std::complex<float>> simulate_samples(uint32_t num_antennas,
           if (use_noise == true) {
             noise = 0.1 * distribution(generator);
           }
-          auto I = (amp + noise) * cos(radians);
-          auto Q = (amp + noise) * sin(radians);
+          auto I = amp * cos(radians) + noise;
+          auto Q = amp * sin(radians) + noise;
 
           nco_point += std::complex<float>(I,Q);
         }
         samples[(i * num_samps_per_antenna) + j] = nco_point;
       }
     }
-    //std::ostringstream file_name;
-/*    file_name << "simulated_samples_" << num_antennas << "_antennas_"
-              << num_samps_per_antenna << "_samples.dat";*/
+
+
+    for(auto i=0; i<num_antennas; i++) {
+      auto start = int(0.3 * num_samps_per_antenna);
+      auto end = int(0.6 * num_samps_per_antenna);
+      auto ramp_size = int(0.1 * num_samps_per_antenna);
+
+      for (auto j=0; j<start; j++){
+        samples[(i * num_samps_per_antenna) + j] = std::complex<float>(0.0,0.0);
+      }
+
+      for (auto j=start; j<start+ramp_size; j++){
+        auto a = ((j-start+1)*1.0)/ramp_size;
+        samples[(i * num_samps_per_antenna) + j] *= std::complex<float>(a,0);
+      }
+
+      for (auto j=end-ramp_size;j<end;j++){
+        auto a = (1 - (((j-end+1)+ramp_size)*1.0)/ramp_size);
+        samples[(i * num_samps_per_antenna) + j] *= std::complex<float>(a,0);
+      }
+
+      for (auto j=end; j<num_samps_per_antenna;j++){
+        samples[(i * num_samps_per_antenna) + j] = std::complex<float>(0.0,0.0);
+      }
+
+    }
+
     std::ofstream samples_file("simulated_samples.dat", std::ios::out | std::ios::binary);
     samples_file.write((char*)samples.data(), samples.size()*sizeof(std::complex<float>));
 
@@ -155,7 +180,7 @@ void signals(zmq::context_t &context)
   auto rx_rate = driver_options.get_rx_rate();
 
 
-  std::vector<double> rx_freqs = {12.0e6,10.0e6,14.0e6};
+  std::vector<double> rx_freqs = {3.0e6, 2.0e6, 1.0e6};
   for (int i=0; i<rx_freqs.size(); i++) {
     auto rxchan = sp.add_rxchannel();
     rxchan->set_rxfreq(rx_freqs[i]);
