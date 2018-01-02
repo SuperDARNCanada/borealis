@@ -40,9 +40,12 @@ To see the various build flavours available (typically debug and release):
 ** NOTE ** You need to execute the script exactly as above (no 'python' in front), or the output won't show up.
 This means the script must be executable.
 
+Add an environment variable to the .profile or .\*rc file for the path to Borealis. This environment variable is used by the python modules to correctly import Borealis files:
+`export BOREALISPATH=*install path*` 
+
 ## Installation
 
-Now to build borealis (after 'source mode release/debug'):
+Now to build Borealis (after 'source mode release/debug'):
 scons -n  (for dry run)
 scons
 
