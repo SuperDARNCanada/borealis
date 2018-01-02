@@ -74,7 +74,7 @@ if __name__== '__main__':
 
 
 
-        dw = DataWrite(pd)
+        dw = DataWrite(pd,options)
 
         if __debug__:
             dw.output_debug_data()
