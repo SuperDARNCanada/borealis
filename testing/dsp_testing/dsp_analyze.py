@@ -23,9 +23,11 @@ class AnalysisUtils(object):
 
         fig, smpplt = plt.subplots(1,1)
 
-        fft_to_plot = np.empty([num_samps],dtype=complex)
+        fft_to_plot = np.empty([num_samps],dtype=np.complex64)
         halfway = int(math.ceil(float(num_samps)/2))
         fft_to_plot = np.concatenate([fft_samps[halfway:], fft_samps[:halfway]])
+        xf = xf[699900:700100]
+        fft_to_plot = fft_to_plot[699900:700100]
         smpplt.plot(xf, 1.0/num_samps * np.abs(fft_to_plot))
         return fig
 
@@ -61,15 +63,15 @@ class PlotData(object):
         if not os.path.exists('debug_plots'):
             os.makedirs('debug_plots')
 
-        # rf_freqs = [10.0e6,12.0e6,14.0e6]
         rx_rate = float(self.config["rx_sample_rate"])
-        # num_samps = int(0.1 * rx_rate)
 
         for i in range(rf_samples.shape[0]):
             ant_samps = rf_samples[i]
             x = np.arange(len(ant_samps))
             fig, smpplt = plt.subplots(1,1)
-            smpplt.plot(x,np.abs(ant_samps))
+            smpplt.plot(x,ant_samps.real)
+            #smpplt.plot(x,ant_samps.imag)
+            plt.show()
             fig.savefig("debug_plots/antenna_{0}_rf.png".format(i))
             plt.close(fig)
             fig = AnalysisUtils.fft_and_plot(ant_samps,rx_rate)
