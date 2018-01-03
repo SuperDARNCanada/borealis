@@ -203,6 +203,10 @@ class Sequence(ScanClassBase):
     def build_pulse_transmit_data(self, slice_to_beamdir_dict, txctrfreq, txrate, options):  #TODO only take in things you need or add needed params from options in the init function.
         """
         Build a list of pulse dictionaries including samples data to send to driver.
+        :param: slice_to_beamdir_dict:
+        :param: txctrfreq:
+        :param: txrate:
+        :param: options:
         :return: sequence_list: list of pulse dictionaries in correct order.
         """
 

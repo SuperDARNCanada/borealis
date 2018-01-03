@@ -319,7 +319,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
             try:
                 combined_samples[antenna] += pulse['samples'][antenna]
             except RuntimeWarning:  # REVIEW #3 What would cause this exception?  REPLY: I cannot remember actually....
-                print("RUNTIMEWARNING {} {}".format(combined_samples[antenna]))
+                print("RUNTIMEWARNING {}".format(len(combined_samples[antenna])))
 
     # Now get what channels we need to transmit on for this combined
     #   pulse.

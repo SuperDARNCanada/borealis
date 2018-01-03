@@ -15,6 +15,7 @@ import sys
 import copy
 
 from experiment_exception import ExperimentException
+from sample_building.sample_building import get_wavetables
 
 import list_tests
 
@@ -118,6 +119,8 @@ acf: flag for rawacf and generation. Default True.
 xcf: flag for cross-correlation data. Default True
 acfint: flag for interferometer autocorrelation data. Default True.
 wavetype: default SINE. Any others not currently supported but possible to add in at later date.
+iwavetable: default None. Not currently supported but could be set up (with caution) for non-SINE.
+qwavetable: default None. Not currently supported but could be set up (with caution) for non-SINE.
 seqtimer: timing in us that this slice's sequence will begin at, after the start of the sequence. 
     This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence 
     you can offset one slice's sequence from the other by a certain time value so as to not run both
@@ -470,6 +473,8 @@ Explanation of beam_order and beam_angle:
         if not isinstance(exp_slice, dict):
             # TODO error log
             return
+
+
         exp_slice['slice_id'] = self.new_slice_id
         # each added slice has a unique id, even if previous slices have been deleted.
         exp_slice['cpid'] = self.cpid
@@ -987,6 +992,9 @@ Explanation of beam_order and beam_angle:
         self.check_slice_specific_requirements(complete_slice)
         self.check_slice_minimum_requirements(complete_slice)
         complete_slice = self.set_slice_defaults(complete_slice)
+        # Wavetables are currently None for sine waves, instead just use a sampling freq in rads/sample.
+        # wavetype = 'SINE' is set in set_slice_defaults if not given.
+        complete_slice['iwavetable'], complete_slice['qwavetable'] = get_wavetables(complete_slice['wavetype'])
         # set_slice_defaults will check for any missing values that should be given a default and
         # fill them.
 
