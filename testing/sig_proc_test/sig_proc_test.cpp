@@ -67,7 +67,12 @@ void send_data(rxsamplesmetadata::RxSamplesMetadata& samples_metadata,
   driver_socket.send(samples_metadata_msg);
 }
 
-int main(int argc, char** argv){
+    std::vector<double> rxfreqs = {12.0e6,10.0e6,14.0e6};
+    for (int i=0; i<rxfreqs.size(); i++) {
+        auto rxchan = sp.add_rxchannel();
+        rxchan->set_rxfreq(rxfreqs[i]);
+        rxchan->set_nrang(75);
+        rxchan->set_frang(180);
 
   srand(time(NULL));
   zmq::context_t context(1);
@@ -80,10 +85,10 @@ int main(int argc, char** argv){
   zmq::socket_t ack_socket(context, ZMQ_PAIR);
   ack_socket.connect("ipc:///tmp/feeds/3");
 
-  zmq::socket_t timing_socket(context, ZMQ_PAIR);
-  timing_socket.connect("ipc:///tmp/feeds/4");
+    rxsamplesmetadata::RxSamplesMetadata samples_metadata;
 
-  sigprocpacket::SigProcPacket sp;
+    auto num_samples = int(rx_rate * 0.1);
+    samples_metadata.set_numberofreceivesamples(num_samples);
 
   zmq::pollitem_t sockets[] = {
     {ack_socket,0,ZMQ_POLLIN,0},
@@ -93,6 +98,10 @@ int main(int argc, char** argv){
   auto driver_options = DriverOptions();
   auto rx_rate = driver_options.get_rx_rate();
 
+    for (int i=0; i<samples.size(); i++) {
+        auto nco_point = std::complex<float>(0.0,0.0);
+        for (auto freq : rxfreqs) {
+            auto sampling_freq = 2 * M_PI * freq/rx_rate;
 
   std::vector<float> sample_buffer;
   enum shr_mem_switcher {FIRST, SECOND};
@@ -118,6 +127,8 @@ int main(int argc, char** argv){
   auto default_v = std::complex<float>(0.0,0.0);
   std::vector<std::complex<float>> samples(num_samples*num_antennas,default_v);
 
+        sp.set_sequence_num(sqn_num);
+        samples_metadata.set_sequence_num(sqn_num);
 
   for (int i=0; i<samples.size(); i++) {
     auto nco_point = std::complex<float>(0.0,0.0);
@@ -141,19 +152,15 @@ int main(int argc, char** argv){
   std::chrono::steady_clock::time_point timing_ack_start, timing_ack_end, timing_timing_start,
                       timing_timing_end;
 
-  send_data(samples_metadata, sp, samples,driver_socket, radctrl_socket, timing_ack_start);
-  sqn_num += 1;
+        samples_metadata.set_shrmemname(name_str.c_str());
 
-  while(1) {
-    zmq::poll(&sockets[0],2,-1);
+        std::string samples_metadata_str;
+        samples_metadata.SerializeToString(&samples_metadata_str);
+        zmq::message_t samples_metadata_msg (samples_metadata_str.size());
+        memcpy ((void *) samples_metadata_msg.data (), samples_metadata_str.c_str(),
+                samples_metadata_str.size());
 
-    sigprocpacket::SigProcPacket ack_from_dsp;
-    if (sockets[0].revents & ZMQ_POLLIN)
-    {
-      zmq::message_t ack;
-      ack_socket.recv(&ack);
-      std::string s_msg_str1(static_cast<char*>(ack.data()), ack.size());
-      ack_from_dsp.ParseFromString(s_msg_str1);
+        driver_socket.send(samples_metadata_msg);
 
       timing_ack_end = std::chrono::steady_clock::now();
 

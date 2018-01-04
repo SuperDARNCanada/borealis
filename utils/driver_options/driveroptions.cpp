@@ -13,12 +13,12 @@ DriverOptions::DriverOptions() {
 
     devices = config_pt.get<std::string>("devices");
     /*Remove whitespace/new lines from device list*/
-    boost::remove_erase_if (devices, boost::is_any_of(" \n"));
+    boost::remove_erase_if (devices, boost::is_any_of(" \n"));// REVIEW #0 Do you need to also remove \r \f \t \v for example?
 
     tx_subdev = config_pt.get<std::string>("tx_subdev");
-    main_rx_subdev = config_pt.get<std::string>("main_rx_subdev");
+    main_rx_subdev = config_pt.get<std::string>("main_rx_subdev");// REVIEW #7 Talk about the subdevs/ etc in documentation since the USRP documentation is not very straightforward.
     interferometer_rx_subdev = config_pt.get<std::string>("interferometer_rx_subdev");
-    pps = config_pt.get<std::string>("pps");
+    pps = config_pt.get<std::string>("pps");// REVIEW #7 Document all the options available to user in config.ini file - with examples
     ref = config_pt.get<std::string>("ref");
     cpu = config_pt.get<std::string>("cpu");
     otw = config_pt.get<std::string>("overthewire");
@@ -49,85 +49,97 @@ DriverOptions::DriverOptions() {
 
 }
 
-double DriverOptions::get_tx_rate() {
+double DriverOptions::get_tx_rate() const
+{
     return tx_sample_rate;
 }
 
-double DriverOptions::get_rx_rate() {
+double DriverOptions::get_rx_rate() const
+{
     return rx_sample_rate;
 }
 
-std::string DriverOptions::get_device_args() {
+std::string DriverOptions::get_device_args() const
+{
     return devices;
 }
 
-std::string DriverOptions::get_tx_subdev() {
+std::string DriverOptions::get_tx_subdev() const
+{
     return tx_subdev;
 }
 
-std::string DriverOptions::get_main_rx_subdev() {
+std::string DriverOptions::get_main_rx_subdev() const
+{
     return main_rx_subdev;
 }
 
-std::string DriverOptions::get_interferometer_rx_subdev() {
+std::string DriverOptions::get_interferometer_rx_subdev() const
+{
     return interferometer_rx_subdev;
 }
 
-std::string DriverOptions::get_pps() {
+std::string DriverOptions::get_pps() const
+{
     return pps;
 }
 
-std::string DriverOptions::get_ref() {
+std::string DriverOptions::get_ref() const
+{
     return ref;
 }
 
-std::string DriverOptions::get_cpu() {
+std::string DriverOptions::get_cpu() const
+{
     return cpu;
 }
 
-std::string DriverOptions::get_otw() {
+std::string DriverOptions::get_otw() const
+{
     return otw;
 }
 
-std::string DriverOptions::get_gpio_bank() {
+std::string DriverOptions::get_gpio_bank() const
+{
     return gpio_bank;
 }
 
-uint32_t DriverOptions::get_scope_sync_mask() {
+uint32_t DriverOptions::get_scope_sync_mask() const
+{
     return scope_sync_mask;
 }
 
-uint32_t DriverOptions::get_atten_mask() {
+uint32_t DriverOptions::get_atten_mask() const
+{
     return atten_mask;
 }
 
-uint32_t DriverOptions::get_tr_mask() {
+uint32_t DriverOptions::get_tr_mask() const
+{
     return tr_mask;
 }
 
-double DriverOptions::get_atten_window_time_start() {
+double DriverOptions::get_atten_window_time_start() const
+{
     return atten_window_time_start;
 }
 
-double DriverOptions::get_atten_window_time_end() {
+double DriverOptions::get_atten_window_time_end() const
+{
     return atten_window_time_end;
 }
 
-double DriverOptions::get_tr_window_time() {
+double DriverOptions::get_tr_window_time() const
+{
     return tr_window_time;
 }
 
-uint32_t DriverOptions::get_main_antenna_count() {
+uint32_t DriverOptions::get_main_antenna_count() const
+{
     return main_antenna_count;
 }
 
-uint32_t DriverOptions::get_interferometer_antenna_count() {
+uint32_t DriverOptions::get_interferometer_antenna_count() const
+{
     return interferometer_antenna_count;
-}
-
-std::string DriverOptions::get_radar_control_socket_address() {
-    return radar_control_socket_address;
-}
-std::string DriverOptions::get_rx_dsp_socket_address() {
-    return rx_dsp_socket_address;
 }
