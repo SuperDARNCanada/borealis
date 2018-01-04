@@ -49,6 +49,10 @@ class DriverOptions: public Options {
         double tr_window_time;
         uint32_t main_antenna_count;
         uint32_t interferometer_antenna_count;
+        std::string radar_control_socket_address;
+        std::string rx_dsp_socket_address;
+        
+
 };
 
 #endif

@@ -1,5 +1,5 @@
 cp_objects combine to create one RCP
-
+# REVIEW #7 update this README
 NOTE: protoc is in /usr/local/lib/protobuf......../src/
 
 use the line protoc -I=$SRC_DIR --python_out=$DST_DIR $SRC_DIR/driverpacket.proto

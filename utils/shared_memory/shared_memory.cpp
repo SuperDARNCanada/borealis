@@ -31,6 +31,8 @@ boost::interprocess::mapped_region shr_mem_open(std::string name) {
   return region;
 }
 
+SharedMemoryHandler::SharedMemoryHandler() {}
+
 SharedMemoryHandler::SharedMemoryHandler(std::string name)
 {
   region_name = name;

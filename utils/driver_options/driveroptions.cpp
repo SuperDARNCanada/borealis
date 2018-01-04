@@ -43,6 +43,10 @@ DriverOptions::DriverOptions() {
                                 config_pt.get<std::string>("main_antenna_count"));
     interferometer_antenna_count = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("interferometer_antenna_count"));
+    radar_control_socket_address = config_pt.get<std::string>("radar_control_to_driver_address");
+    rx_dsp_socket_address = config_pt.get<std::string>("driver_to_rx_dsp_address");
+
+
 }
 
 double DriverOptions::get_tx_rate() const

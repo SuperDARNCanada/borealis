@@ -552,7 +552,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
                                                   (recv_end - recv_begin).count();
     DEBUG_MSG("RECEIVE receive timing: " << time_diff << "us");
 
-
     auto send_begin = std::chrono::steady_clock::now();
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
@@ -565,7 +564,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d,
     zmq::message_t samples_metadata_size_message(samples_metadata_str.size());
     memcpy ((void *) samples_metadata_size_message.data (), samples_metadata_str.c_str(),
             samples_metadata_str.size());
-
 
     data_socket.send(samples_metadata_size_message);
 
