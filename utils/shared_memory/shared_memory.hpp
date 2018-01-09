@@ -7,13 +7,12 @@
 #include <string>
 
 
-enum shr_mem_switcher {FIRST, SECOND};
-
 class SharedMemoryHandler {
 
 
     public:
         explicit SharedMemoryHandler(std::string name);
+        explicit SharedMemoryHandler();
         void create_shr_mem(size_t mem_size);
         void open_shr_mem();
         void* get_shrmem_addr();

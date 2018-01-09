@@ -15,7 +15,7 @@ DriverOptions::DriverOptions() {
 
     devices_ = config_pt.get<std::string>("devices");
     /*Remove whitespace/new lines from device list*/
-    boost::remove_erase_if (devices_, boost::is_any_of(" \n"));// REVIEW #0 Do you need to also remove \r \f \t \v for example?
+    boost::remove_erase_if (devices_, boost::is_any_of(" \n\f\t\v"));
 
     tx_subdev_ = config_pt.get<std::string>("tx_subdev");
     main_rx_subdev_ = config_pt.get<std::string>("main_rx_subdev");
@@ -66,6 +66,7 @@ DriverOptions::DriverOptions() {
     radar_control_to_driver_address_ = config_pt.get<std::string>
                                             ("radar_control_to_driver_address");
     driver_to_rx_dsp_address_ = config_pt.get<std::string>("driver_to_rx_dsp_address");
+
 }
 
 double DriverOptions::get_tx_rate() const

@@ -33,6 +33,7 @@ class DriverOptions: public Options {
         std::string get_driver_to_rx_dsp_address() const;
 
  private:
+
         std::string devices_;
         std::string tx_subdev_;
         std::vector<size_t> receive_channels_;
@@ -56,8 +57,6 @@ class DriverOptions: public Options {
 
         std::string radar_control_to_driver_address_;
         std::string driver_to_rx_dsp_address_;
-
-
 
 
 };
