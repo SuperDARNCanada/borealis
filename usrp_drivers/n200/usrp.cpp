@@ -27,18 +27,16 @@ USRP::USRP(const DriverOptions& driver_options)
   scope_sync_mask_ = driver_options.get_scope_sync_mask();
   atten_mask_ = driver_options.get_atten_mask();
   tr_mask_ = driver_options.get_tr_mask();
-// REVIEW #37 The make function can raise uhd::key_error and index_error, should we check this? or should it be a separate 'check config' program that does it?
-// REPLY This is a pretty useful spot for a hard fail. Perhaps having a config checker.
   usrp_ = uhd::usrp::multi_usrp::make(driver_options.get_device_args());
   // Set first four GPIO on gpio_bank_ to output, the rest are input
-  usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x000F, 0xFFFF); // REVIEW #33 Do you actually need the mask since it's a default 0xffffffff? Also not sure how 16 bits gets expanded to 32, would it be 0x0000FFFF or 0xFFFFFFFF since the function takes 32 bit number?
-  set_usrp_clock_source(driver_options.get_ref());         // REPLY Kevin wrote this code. What is the mask supposed to be.
+  usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x000F, 0xFFFF);
+  set_usrp_clock_source(driver_options.get_ref());
   set_tx_subdev(driver_options.get_tx_subdev());
   set_main_rx_subdev(driver_options.get_main_rx_subdev());
   set_interferometer_rx_subdev(driver_options.get_interferometer_rx_subdev(),
                                 driver_options.get_interferometer_antenna_count());
-  receive_channels = create_receive_channels(driver_options.get_main_antenna_count(),
-                                              driver_options.get_interferometer_antenna_count());
+/*  receive_channels = create_receive_channels(driver_options.get_main_antenna_count(),
+                                              driver_options.get_interferometer_antenna_count());*/
   set_time_source(driver_options.get_pps());
   check_ref_locked();
 
@@ -71,23 +69,28 @@ void USRP::set_tx_subdev(std::string tx_subdev)
  * @brief      Sets the transmit sample rate.
  *
  * @param[in]  tx_rate  The transmit sample rate in Sps.
+ *
+ * @return     Actual set tx rate.
  */
-void USRP::set_tx_rate(double tx_rate, std::vector<size_t> chs)
+double USRP::set_tx_rate(double tx_rate, std::vector<size_t> chs)
 {
   if (tx_rate <= 0.0) {
     //todo(keith): handle error
   }
 
-  usrp_->set_tx_rate(tx_rate); // REVIEW #43 set and check channels separately similar to set_tx_freq ?
-                                // REPLY need to figure out channel stuff.
+  usrp_->set_tx_rate(tx_rate);
   for (auto& ch : chs)
   {
     double actual_rate = usrp_->get_tx_rate(ch);
+    double rate_1 = usrp_->get_tx_rate(chs[0]);
 
-    if (actual_rate != tx_rate) {
-      /*TODO: something*/
+    if (actual_rate != rate_1) {
+      /*TODO(keith): error*/
     }
   }
+
+  return usrp_->get_tx_rate(chs[0]);
+
 }
 
 /**
@@ -106,24 +109,38 @@ double USRP::get_tx_rate(uint32_t channel)
  * @param[in]  freq  The frequency in Hz.
  * @param[in]  chs   A vector of which USRP channels to set a center frequency.
  *
+ * @return     The actual set tx center frequency for the USRPs
+ *
  * The USRP uses a numbered channel mapping system to identify which data streams come from which
  * USRP and its daughterboard frontends. With the daughtboard frontends connected to the
  * transmitters, controlling what USRP channels are selected will control what antennas are
  * used and what order they are in.
  */
-void USRP::set_tx_center_freq(double freq, std::vector<size_t> chs) // REVIEW #28 could return the actual frequency here, could be used to adjust wave frequencies if necessary
-{                                                                   // REPLY I dont think we should allow this fn to change the freq. We dont want to have it change to a restricted freq or smth
+double USRP::set_tx_center_freq(double freq, std::vector<size_t> chs)
+{
   uhd::tune_request_t tune_request(freq);
 
   for(auto &channel : chs) {
-    usrp_->set_tx_freq(tune_request, channel); // REVIEW #22 use the return value from this (of type tune_result_t) to find actual RF frequency, might be faster and provide more information
-                                               // REPLY I'm not sure speed is an issue here, but what else can we use from the tune_request?
+    usrp_->set_tx_freq(tune_request, channel); //TODO(keith): test tune request.
+
     double actual_freq = usrp_->get_tx_freq(channel);
     if (actual_freq != freq) {
       /*TODO(Keith): something*/
     }
 
   }
+
+  //check for varying USRPs
+  for (auto &channel : chs) {
+    auto actual_freq = usrp_->get_tx_freq(channel);
+    auto freq_1 = usrp_->get_tx_freq(chs[0]);
+
+    if (actual_freq != freq_1) {
+        //TODO(keith): throw error.
+    }
+  }
+
+  return usrp_->get_tx_freq(chs[0]);
 }
 
 /**
@@ -174,8 +191,8 @@ void USRP::set_interferometer_rx_subdev(std::string interferometer_subdev,
  * so that the main array buffers are in order, followed by the interferometers buffers. This
  * ordering is easiest to work with and is what most people would assume the data layout looks like.
  */
-std::vector<size_t> USRP::create_receive_channels(uint32_t main_antenna_count,
-                        uint32_t interferometer_antenna_count)
+/*std::vector<size_t> USRP::create_receive_channels(uint32_t main_antenna_count,
+                        uint32_t interferometer_antenna_count) //TODO(keith): add channel mapping
 {
 
   std::vector<size_t> channels;
@@ -203,34 +220,37 @@ std::vector<size_t> USRP::create_receive_channels(uint32_t main_antenna_count,
   return channels;
 
 }
-
+*/
 /**
  * @brief      Gets the receive channels.
  *
  * @return     A vector of the receive channel ordering.
  */
-std::vector<size_t> USRP::get_receive_channels()
+/*std::vector<size_t> USRP::get_receive_channels()
 {
   return receive_channels;
 }
-
+*/
 /**
  * @brief      Sets the receive sample rate.
  *
  * @param[in]  rx_rate  The receive rate in Sps.
  */
-void USRP::set_rx_rate(double rx_rate)
+double USRP::set_rx_rate(double rx_rate, std::vector<size_t> rx_chs)
 {
   usrp_->set_rx_rate(rx_rate);
 
-  for (auto& ch : receive_channels)
-  {
-    double actual_rate = usrp_->get_rx_rate(ch);
+  //check for varying USRPs
+  for (auto &channel : rx_chs) {
+    auto actual_freq = usrp_->get_rx_freq(channel);
+    auto freq_1 = usrp_->get_rx_freq(rx_chs[0]);
 
-    if (actual_rate != rx_rate) {
-      /*TODO: something*/
+    if (actual_freq != freq_1) {
+        //TODO(keith): throw error.
     }
   }
+
+  return usrp_->get_rx_freq(rx_chs[0]);
 }
 
 /**
@@ -239,18 +259,20 @@ void USRP::set_rx_rate(double rx_rate)
  * @param[in]  freq  The frequency in Hz.
  * @param[in]  chs   A vector of which USRP channels to set a center frequency.
  *
+ * @return     The actual center frequency that the USRPs are tuned to.
+ *
  * The USRP uses a numbered channel mapping system to identify which data streams come from which
  * USRP and its daughterboard frontends. With the daughtboard frontends connected to the
  * transmitters, controlling what USRP channels are selected will control what antennas are
- * used and what order they are in. To simplify data processing, all receive channels are used. // REVIEW #1 does this statement mean all channels availabe (ie all 32) or all channels set up in the USRP class (returned from create_receive_channels) - clarify
+ * used and what order they are in. To simplify data processing, all antenna mapped channels are
+ * used.
  */
-void USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
+double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
 {
   uhd::tune_request_t tune_request(freq);
 
   for(auto &channel : chs) {
-    usrp_->set_rx_freq(tune_request, channel); // REVIEW #22 use the return value from this (of type tune_result_t) to find actual RF frequency, might be faster and provide more information
-                                               // REPLY What else is valuable in the tune_request
+    usrp_->set_rx_freq(tune_request, channel);
     double actual_freq = usrp_->get_rx_freq(channel);
     if (actual_freq != freq) {
       /*TODO: something*/
@@ -258,6 +280,8 @@ void USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
 
   }
 
+  //return will assume that the set frequency of one USRP is the same as all of them.
+  return usrp_->get_rx_freq(chs[0]);
 }
 
 /**
@@ -272,6 +296,7 @@ void USRP::set_time_source(std::string source)
     usrp_->set_time_unknown_pps(uhd::time_spec_t(0.0));
   }
   else {
+    //TODO(keith): throw error
     usrp_->set_time_now(0.0);
   }
 }
@@ -302,6 +327,8 @@ void USRP::check_ref_locked()
 
 /**
  * @brief      Sets the scope sync GPIO to high.
+ *
+ * @param[in]  scope_high  The timespec for when in the future to set the scope sync pin.
  */
 void USRP::set_scope_sync(uhd::time_spec_t scope_high)
 {
@@ -311,6 +338,8 @@ void USRP::set_scope_sync(uhd::time_spec_t scope_high)
 
 /**
  * @brief      Sets the attenuator GPIO to high.
+ *
+ * @param[in]  atten_high  The timespec for when in the future to set the attenuator pin.
  */
 void USRP::set_atten(uhd::time_spec_t atten_high)
 {
@@ -320,6 +349,8 @@ void USRP::set_atten(uhd::time_spec_t atten_high)
 
 /**
  * @brief      Sets the t/r GPIO to high.
+ *
+ * @param[in]  tr_high  The timespec for when in the future to set the TR pin.
  */
 void USRP::set_tr(uhd::time_spec_t tr_high)
 {
@@ -329,6 +360,8 @@ void USRP::set_tr(uhd::time_spec_t tr_high)
 
 /**
  * @brief      Clears the scope sync GPIO to low.
+ *
+ * @param[in]  scope_low  The timespec for when in the future to clear the scope sync pin.
  */
 void USRP::clear_scope_sync(uhd::time_spec_t scope_low)
 {
@@ -338,6 +371,8 @@ void USRP::clear_scope_sync(uhd::time_spec_t scope_low)
 
 /**
  * @brief      Clears the attenuator GPIO to low.
+ *
+ * @param[in]  atten_low  The timespec for when in the future to clear the attenuator pin.
  */
 void USRP::clear_atten(uhd::time_spec_t atten_low)
 {
@@ -347,6 +382,8 @@ void USRP::clear_atten(uhd::time_spec_t atten_low)
 
 /**
  * @brief      Clears the t/r GPIO to low.
+ *
+ * @param[in]  tr_low  The timespec for when in the future to clear the TR pin.
  */
 void USRP::clear_tr(uhd::time_spec_t tr_low)
 {
@@ -412,11 +449,12 @@ uhd::usrp::multi_usrp::sptr USRP::get_usrp()
 /**
  * @brief      Returns a string representation of the USRP parameters.
  *
- * @param[in]  chs   USRP channels of which to generate info for.
+ * @param[in]  tx_chs  USRP TX channels for which to generate info for.
+ * @param[in]  rx_chs  USRP RX channels for which to generate info for.
  *
  * @return     String representation of the USRP parameters.
  */
-std::string USRP::to_string(std::vector<size_t> chs)
+std::string USRP::to_string(std::vector<size_t> tx_chs, std::vector<size_t> rx_chs)
 {
   std::stringstream device_str;
 
@@ -426,12 +464,12 @@ std::string USRP::to_string(std::vector<size_t> chs)
          << "RX rate " << usrp_->get_rx_rate()/1e6 << " Msps" << std::endl;
 
 
-  for(auto &channel : chs) {
+  for(auto &channel : tx_chs) {
     device_str << "TX channel " << channel << " freq "
            << usrp_->get_tx_freq(channel) << " MHz" << std::endl;
   }
 
-  for(auto &channel : receive_channels) {
+  for(auto &channel : rx_chs) {
     device_str << "RX channel " << channel << " freq "
            << usrp_->get_rx_freq(channel) << " MHz" << std::endl;
   }
@@ -571,8 +609,6 @@ bool RXMetadata::get_out_of_sequence()
 bool RXMetadata::get_start_of_burst()
 {
   return md_.start_of_burst;
-
-
 }
 
 /**

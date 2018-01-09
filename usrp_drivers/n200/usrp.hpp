@@ -22,14 +22,14 @@ class USRP{
     explicit USRP(const DriverOptions& driver_options);
     void set_usrp_clock_source(std::string source);
     void set_tx_subdev(std::string tx_subdev);
-    void set_tx_rate(double tx_rate, std::vector<size_t> chs);
+    double set_tx_rate(double tx_rate, std::vector<size_t> chs);
     double get_tx_rate(uint32_t channel=0);
-    void set_tx_center_freq(double freq, std::vector<size_t> chs);
+    double set_tx_center_freq(double freq, std::vector<size_t> chs);
     void set_main_rx_subdev(std::string main_subdev);
     void set_interferometer_rx_subdev(std::string interferometer_subdev,
                                         uint32_t interferometer_antenna_count);
-    void set_rx_rate(double rx_rate);
-    void set_rx_center_freq(double freq, std::vector<size_t> chs);
+    double set_rx_rate(double rx_rate, std::vector<size_t> rx_chs);
+    double set_rx_center_freq(double freq, std::vector<size_t> chs);
     void set_time_source(std::string source);
     void check_ref_locked();
     void set_scope_sync(uhd::time_spec_t scope_high);
@@ -42,9 +42,9 @@ class USRP{
     uhd::time_spec_t get_current_usrp_time();
     uhd::rx_streamer::sptr get_usrp_rx_stream(uhd::stream_args_t stream_args);
     uhd::tx_streamer::sptr get_usrp_tx_stream(uhd::stream_args_t stream_args);
-    std::vector<size_t> get_receive_channels();
+    //std::vector<size_t> get_receive_channels();
     uhd::usrp::multi_usrp::sptr get_usrp();
-    std::string to_string(std::vector<size_t> chs);
+    std::string to_string(std::vector<size_t> tx_chs, std::vector<size_t> rx_chs);
 
   private:
     //! A shared pointer to a new multi-USRP device.
@@ -66,10 +66,10 @@ class USRP{
     uint32_t tr_mask_;
 
     //! This is the reordered USRP receive channels.
-    std::vector<size_t> receive_channels;
+/*    std::vector<size_t> receive_channels;
 
     std::vector<size_t> create_receive_channels(uint32_t main_antenna_count,
-                uint32_t interferometer_antenna_count);
+                uint32_t interferometer_antenna_count);*/
 
 };
 
