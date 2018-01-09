@@ -86,12 +86,11 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(const driverpacket
   for (int channel=0; channel<driver_packet.channel_samples_size(); channel++) {
     auto num_samps = driver_packet.channel_samples(channel).real_size();
     std::vector<std::complex<float>> v(num_samps);
-    samples[channel] = v;
-
+    auto smp = driver_packet.channel_samples(channel);
     for (int smp_num = 0; smp_num < num_samps; smp_num++) {
-      auto smp = driver_packet.channel_samples(channel);
-      samples[channel][smp_num] = std::complex<float>(smp.real(smp_num),smp.imag(smp_num));
+      v[smp_num] = std::complex<float>(smp.real(smp_num),smp.imag(smp_num));
     }
+    samples[channel] = v;
   }
 
   for (auto &s : samples)
@@ -219,6 +218,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             {  // ~700us to unpack 4x1600 samples
               samples = make_tx_samples(driver_packet);
               samples_per_buff = samples[0].size();
+	      std::cout << "samples per buff" << samples_per_buff<<std::endl;
               samples_set = true;
             }
           }()
@@ -476,14 +476,13 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
     std::vector<std::complex<float> *> buffer_ptrs;
     size_t mem_size;
-    std::string shr_mem_name;
+    //Use a random string to make a unique set of named shared memory
+    auto shr_mem_name = random_string(25);
+    SharedMemoryHandler shrmem(shr_mem_name);
     TIMEIT_IF_DEBUG("RECEIVE shared memory unpack timing: ",
       [&]() {
         mem_size = receive_channels.size() * driver_packet.numberofreceivesamples()
                             * sizeof(std::complex<float>);
-        shr_mem_name = random_string(25);
-        //Use a random string to make a unique set of named shared memory
-        SharedMemoryHandler shrmem(shr_mem_name);
         shrmem.create_shr_mem(mem_size);
 
         //create a vector of pointers to where each channel's data gets received.
