@@ -5,13 +5,13 @@
 #include <complex>
 #include "utils/protobuf/driverpacket.pb.h"
 #include "utils/driver_options/driveroptions.hpp"
-
+#include <cmath>
 
 std::vector<std::complex<float>> make_pulse(DriverOptions &driver_options){
     auto amp = 1.0/sqrt(2.0);
-    auto pulse_len = 300.0 * 10e-6;
+    auto pulse_len = 300.0 * 1e-6;
     auto tx_rate = driver_options.get_tx_rate();
-    auto num_samps_per_antenna = tx_rate * pulse_len;
+    int num_samps_per_antenna = std::ceil(pulse_len * tx_rate);
     std::vector<double> tx_freqs = {1e6};
 
     auto default_v = std::complex<float>(0.0,0.0);
@@ -36,12 +36,12 @@ std::vector<std::complex<float>> make_pulse(DriverOptions &driver_options){
       auto ramp_size = int(10e-6 * tx_rate);
 
       for (auto j=0; j<ramp_size; j++){
-        auto a = ((j+1)*1.0)/ramp_size;
+        auto a = ((j)*1.0)/ramp_size;
         samples[j] *= std::complex<float>(a,0);
       }
 
-      for (auto j=num_samps_per_antenna-1;j>num_samps_per_antenna-1-ramp_size;j--){
-        auto a = ((j+1)*1.0)/ramp_size;
+      for (auto j=num_samps_per_antenna-1, k=0;j>num_samps_per_antenna-1-ramp_size;j--,k++){
+        auto a = ((k)*1.0)/ramp_size;
         samples[j] *= std::complex<float>(a,0);
       }
 
@@ -60,18 +60,21 @@ int main(int argc, char *argv[]){
 
 
     auto pulse_samples = make_pulse(driver_options);
+    auto sizeee = pulse_samples.size();
     for (int j=0; j<driver_options.get_main_antenna_count(); j++){
         dp.add_channels(j);
         auto samples = dp.add_channel_samples();
-
+	
+	int count=0;
         for (auto &sm : pulse_samples){
             samples->add_real(sm.real());
             samples->add_imag(sm.imag());
+	    count++;
         }
     }
 
     bool SOB, EOB = false;
-    std::vector<int> pulse_seq = {0,9,12,20,22,26,27};
+ std::vector<int> pulse_seq ={0,9,12,20,22,26,27};//{0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553};//{0,1,4,11,26,32,56,68,76,115,117,134,150,163,168,177};//,{0,9,12,20,22,26,10000};
 
     auto first_time = true;
     while (1){
@@ -98,7 +101,10 @@ int main(int argc, char *argv[]){
             dp.set_timetosendsamples(pulse * 1500);
             dp.set_txcenterfreq(12e6);
             dp.set_rxcenterfreq(14e6);
-            dp.set_numberofreceivesamples(1000000);
+            
+  	    auto mpinc = 1500 * 1e-6;
+            auto num_recv_samps = pulse_seq.back() * mpinc * driver_options.get_rx_rate();
+            dp.set_numberofreceivesamples(num_recv_samps);
 
             std::string msg_str;
             dp.SerializeToString(&msg_str);
@@ -116,12 +122,13 @@ int main(int argc, char *argv[]){
             std::cout << "send time(ns) = " << std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin).count() <<std::endl;
 
             if (first_time == true) {
-                dp.clear_channel_samples();
+                dp.clear_channels();
+		dp.clear_channel_samples();
                 first_time = false;
             }
 
         }
-        sleep(1);
+        usleep(1500 * pulse_seq.back() + 1000e3);
 
     }
 

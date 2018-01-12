@@ -149,7 +149,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 //TODO(keith): If there are large periods of time between pulses, this while loop might be too speedy,
 //resulting in overflows to the usrp - may have seen this in testing? - can we calculate an amount of
 // time to sleep if that's the case? Discuss
-
+//we tested very large spaces in pulses. upwards of 10-20 seconds using a a single USRP. It appears that all rf/IO/and recv all seem to work.
 
   /*This loop accepts pulse by pulse from the radar_control. It parses the samples, configures the
    *USRP, sets up the timing, and then sends samples/timing to the USRPs.
@@ -204,8 +204,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             //If there is new center frequency data, set TX center frequency for each USRP TX channel.
             if (driver_packet.txcenterfreq() > 0.0)
             {
-              DEBUG_MSG("TRANSMIT center freq " << driver_packet.txcenterfreq());
-
+              DEBUG_MSG("TRANSMIT setting tx center freq to " << driver_packet.txcenterfreq());
+	      usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(),channels);
               center_freq_set = true;
             }
           }()
@@ -235,10 +235,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
 
 
+    DEBUG_MSG(std::endl <<std::endl);
 
-
-
-
+    auto signal_start = std::chrono::steady_clock::now();
     //High speed IO and pulse times are calculated. These are the timings generated for the GPIO
     //pins that connect to the protection circuits. When these pins go high is relative to the times
     //the pulses go out.
@@ -275,7 +274,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
 
     DEBUG_MSG("TRANSMIT time_zero: " << time_zero.get_frac_secs());
-    DEBUG_MSG("TRANSMIT time_now " << usrp_d.get_current_usrp_time().get_frac_secs());
+    //DEBUG_MSG("TRANSMIT time_now " << usrp_d.get_current_usrp_time().get_frac_secs());
     DEBUG_MSG("TRANSMIT timetosendsamples(us) " << driver_packet.timetosendsamples());
     DEBUG_MSG("TRANSMIT time_to_send_pulse " << time_to_send_pulse.get_frac_secs());
     DEBUG_MSG("TRANSMIT atten_time_high " << atten_time_high.get_frac_secs());
@@ -284,12 +283,17 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     DEBUG_MSG("TRANSMIT tr_time_low " << tr_time_low.get_frac_secs());
     DEBUG_MSG("TRANSMIT atten_time_low " << atten_time_low.get_frac_secs());
     DEBUG_MSG("TRANSMIT scope_sync_low " << scope_sync_low.get_frac_secs());
+    
+    auto signal_end = std::chrono::steady_clock::now();
 
+    auto signal_time_diff = std::chrono::duration_cast<std::chrono::microseconds>(signal_end - signal_start).count();
+    
+    DEBUG_MSG("TRANSMIT signal creation time "<<signal_time_diff <<"us");
 
+    DEBUG_MSG(std::endl <<std::endl);
 
-
-
-
+    
+    TIMEIT_IF_DEBUG("TRANSMIT full usrp time stuff ", [&]() {
     //We send the start time and samples to the USRP. This is done before IO signals are set
     //since those commands create a blocking buffer which causes the transfer of samples to be
     //late. This leads to no waveform output on the USRP.
@@ -345,7 +349,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
           DEBUG_MSG("TRANSMIT Scope sync high set");
           usrp_d.set_scope_sync(scope_sync_high);
-
         }
 
         usrp_d.set_atten(atten_time_high);
@@ -360,11 +363,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       }()
     );
 
+   }());
 
+   DEBUG_MSG(std::endl << std::endl);
 
-
-
-
+    auto eob_start = std::chrono::steady_clock::now();
     //Final end of sequence work to acknowledge seq num.
     if (driver_packet.eob() == true) {
       driverpacket::DriverPacket ack;
@@ -379,8 +382,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       memcpy((void*)ack_msg.data(), ack_str.c_str(),ack_str.size());
       ack_socket.send(ack_msg); // TODO(keith): Potentially add other return statuses to ack.
     }
-
-
+    auto eob_end = std::chrono::steady_clock::now();
+    auto eob_diff = std::chrono::duration_cast<std::chrono::microseconds>(eob_end - eob_start).count();
+    DEBUG_MSG("TRANSMIT eob stuff time " <<eob_diff<<"us");
+    DEBUG_MSG(std::endl << std::endl);
   }
 }
 
@@ -524,10 +529,17 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
           switch(error_code) {
             case uhd::rx_metadata_t::ERROR_CODE_NONE :
               break;
-            case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT :
+            case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT : {
               DEBUG_MSG("Timeout while streaming");
+	      auto time_noww = usrp_d.get_current_usrp_time();
               //TODO(keith): handle timeout situation.
+	      //With late time zero(we think), this recv throws a timeout and has zero samples. 
+              //infinitely loops. To fix, we are thinking best action would be to abandon loop 
+              //and send error code along with stuff to rx_SIG_proc. This way the signal processing
+              // can know to just abandon info. Our error handler can keep track of how many times 
+              //this is happening and respond to that. 
               break;
+	     }
               // TODO(keith): throw error
             case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW :
               break;
@@ -559,6 +571,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
                 samples_metadata_str.size());
 
         data_socket.send(samples_metadata_size_message);
+       	
       }();
     );
 
