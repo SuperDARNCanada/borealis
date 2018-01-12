@@ -81,6 +81,7 @@ for FLAVOR in $FLAVORS; do
         path_prepend "$FLAV_BIN"
         # Update prompt with colored flavor decoration
         export PS1="\[\e[0;36m\]($FLAVOR)\[\e[m\] $CLEAN_PS"
+	export BOREALISPATH="$BASE_DIR"
     else
         # Not requested flavor - remove from PATH
         path_remove "$FLAV_BIN"
