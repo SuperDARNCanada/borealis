@@ -4,6 +4,8 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include <string>
+#include <iostream>
+#include <sstream>
 #include "utils/options/options.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
@@ -11,135 +13,168 @@
 DriverOptions::DriverOptions() {
     Options::parse_config_file();
 
-    devices = config_pt.get<std::string>("devices");
+    devices_ = config_pt.get<std::string>("devices");
     /*Remove whitespace/new lines from device list*/
-    boost::remove_erase_if (devices, boost::is_any_of(" \n"));// REVIEW #0 Do you need to also remove \r \f \t \v for example?
+    boost::remove_erase_if (devices_, boost::is_any_of(" \n\f\t\v"));
 
-    tx_subdev = config_pt.get<std::string>("tx_subdev");
-    main_rx_subdev = config_pt.get<std::string>("main_rx_subdev");// REVIEW #7 Talk about the subdevs/ etc in documentation since the USRP documentation is not very straightforward.
-    interferometer_rx_subdev = config_pt.get<std::string>("interferometer_rx_subdev");
-    pps = config_pt.get<std::string>("pps");// REVIEW #7 Document all the options available to user in config.ini file - with examples
-    ref = config_pt.get<std::string>("ref");
-    cpu = config_pt.get<std::string>("cpu");
-    otw = config_pt.get<std::string>("overthewire");
-    gpio_bank = config_pt.get<std::string>("gpio_bank");
-    rx_sample_rate = boost::lexical_cast<double>(
+    tx_subdev_ = config_pt.get<std::string>("tx_subdev");
+    main_rx_subdev_ = config_pt.get<std::string>("main_rx_subdev");
+    interferometer_rx_subdev_ = config_pt.get<std::string>("interferometer_rx_subdev");
+    pps_ = config_pt.get<std::string>("pps");
+    ref_ = config_pt.get<std::string>("ref");
+    cpu_ = config_pt.get<std::string>("cpu");
+    otw_ = config_pt.get<std::string>("overthewire");
+    gpio_bank_ = config_pt.get<std::string>("gpio_bank");
+    rx_sample_rate_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("rx_sample_rate"));
-    tx_sample_rate = boost::lexical_cast<double>(
+    tx_sample_rate_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("tx_sample_rate"));
-    scope_sync_mask = boost::lexical_cast<uint32_t>(
+    scope_sync_mask_ = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("scope_sync_mask"));
-    atten_mask = boost::lexical_cast<uint32_t>(
+    atten_mask_ = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("atten_mask"));
-    tr_mask = boost::lexical_cast<uint32_t>(
+    tr_mask_ = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("tr_mask"));
-    atten_window_time_start = boost::lexical_cast<double>(
+    atten_window_time_start_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("atten_window_time_start"));
-    atten_window_time_end = boost::lexical_cast<double>(
+    atten_window_time_end_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("atten_window_time_end"));
-    tr_window_time = boost::lexical_cast<double>(
+    tr_window_time_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("tr_window_time"));
-    main_antenna_count = boost::lexical_cast<uint32_t>(
+    main_antenna_count_ = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("main_antenna_count"));
-    interferometer_antenna_count = boost::lexical_cast<uint32_t>(
+    interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("interferometer_antenna_count"));
-    radar_control_socket_address = config_pt.get<std::string>("radar_control_to_driver_address");
-    rx_dsp_socket_address = config_pt.get<std::string>("driver_to_rx_dsp_address");
 
+    receive_channels_ = [&](){
+        auto ma_str = config_pt.get<std::string>("main_antenna_usrp_channels");
+        auto ia_str = config_pt.get<std::string>("interferometer_antenna_usrp_channels");
+        auto total_chs_str = ma_str + ia_str;
+
+        std::stringstream ss(total_chs_str);
+
+        std::vector<size_t> receive_channels;
+        while (ss.good()) {
+            std::string s;
+            std::getline(ss, s, ',');
+            receive_channels.push_back(boost::lexical_cast<size_t>(s));
+        }
+
+        return receive_channels;
+    }();
+
+    radar_control_to_driver_address_ = config_pt.get<std::string>
+                                            ("radar_control_to_driver_address");
+    driver_to_rx_dsp_address_ = config_pt.get<std::string>("driver_to_rx_dsp_address");
 
 }
 
 double DriverOptions::get_tx_rate() const
 {
-    return tx_sample_rate;
+    return tx_sample_rate_;
 }
 
 double DriverOptions::get_rx_rate() const
 {
-    return rx_sample_rate;
+    return rx_sample_rate_;
 }
 
 std::string DriverOptions::get_device_args() const
 {
-    return devices;
+    return devices_;
 }
 
 std::string DriverOptions::get_tx_subdev() const
 {
-    return tx_subdev;
+    return tx_subdev_;
 }
 
 std::string DriverOptions::get_main_rx_subdev() const
 {
-    return main_rx_subdev;
+    return main_rx_subdev_;
 }
 
 std::string DriverOptions::get_interferometer_rx_subdev() const
 {
-    return interferometer_rx_subdev;
+    return interferometer_rx_subdev_;
 }
 
 std::string DriverOptions::get_pps() const
 {
-    return pps;
+    return pps_;
 }
 
 std::string DriverOptions::get_ref() const
 {
-    return ref;
+    return ref_;
 }
 
 std::string DriverOptions::get_cpu() const
 {
-    return cpu;
+    return cpu_;
 }
 
 std::string DriverOptions::get_otw() const
 {
-    return otw;
+    return otw_;
 }
 
 std::string DriverOptions::get_gpio_bank() const
 {
-    return gpio_bank;
+    return gpio_bank_;
 }
 
 uint32_t DriverOptions::get_scope_sync_mask() const
 {
-    return scope_sync_mask;
+    return scope_sync_mask_;
 }
 
 uint32_t DriverOptions::get_atten_mask() const
 {
-    return atten_mask;
+    return atten_mask_;
 }
 
 uint32_t DriverOptions::get_tr_mask() const
 {
-    return tr_mask;
+    return tr_mask_;
 }
 
 double DriverOptions::get_atten_window_time_start() const
 {
-    return atten_window_time_start;
+    return atten_window_time_start_;
 }
 
 double DriverOptions::get_atten_window_time_end() const
 {
-    return atten_window_time_end;
+    return atten_window_time_end_;
 }
 
 double DriverOptions::get_tr_window_time() const
 {
-    return tr_window_time;
+    return tr_window_time_;
 }
 
 uint32_t DriverOptions::get_main_antenna_count() const
 {
-    return main_antenna_count;
+    return main_antenna_count_;
 }
 
 uint32_t DriverOptions::get_interferometer_antenna_count() const
 {
-    return interferometer_antenna_count;
+    return interferometer_antenna_count_;
+}
+
+std::vector<size_t> DriverOptions::get_receive_channels() const
+{
+    return receive_channels_;
+}
+
+std::string DriverOptions::get_radar_control_to_driver_address() const
+{
+    return radar_control_to_driver_address_;
+}
+
+std::string DriverOptions::get_driver_to_rx_dsp_address() const
+{
+    return driver_to_rx_dsp_address_;
 }
