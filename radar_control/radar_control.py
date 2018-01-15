@@ -13,6 +13,7 @@
 import cmath
 import sys
 import time
+import os
 from datetime import datetime, timedelta
 
 import zmq
@@ -20,8 +21,8 @@ import zmq
 from experiments.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
-BOREALIS_PROJECT_PATH = '/home/marci/code/USRP/placeholderOS/build/release/' # TODO get this from scons environment variable - release may be debug
-sys.path.append(BOREALIS_PROJECT_PATH + 'utils/protobuf')
+BOREALISPATH = os.environ['BOREALISPATH'] # provided in mode script when making.
+sys.path.append(BOREALISPATH + 'utils/protobuf')
 import driverpacket_pb2
 import sigprocpacket_pb2
 

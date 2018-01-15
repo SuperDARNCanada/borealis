@@ -1,11 +1,11 @@
 #!/usr/bin/python
-# REVIEW 1 documentation needs to be updated. Also, can be very verbose and descriptive of these classes. TODO
-# Add the detailed description of each class into the docstring of the class instead of top of file.
+# TODO be very descriptive of these classes in explanations
+
 """ Scans are made up of AveragingPeriods, these are typically a 3sec time of
 the same pulse sequence pointing in one direction.  AveragingPeriods are made
-up of Sequences, typically the same sequence run ave. 21 times after a clear
+up of Sequences, typically the same sequence run ave. 20-30 times after a clear
 frequency search.  Sequences are made up of pulse_time lists, which give
-timing, CPObject, and pulsenumber. CPObject provides channels, pulseshift (if
+timing, slice, and pulsenumber. CPObject provides channels, pulseshift (if
 any), freq, pulse length, beamdir, and wavetype.
 """
 
@@ -13,21 +13,24 @@ import sys
 import operator
 
 from sequences import Sequence
-from experiments.list_tests import slice_combos_sorter
 from scan_class_base import ScanClassBase
 from experiments.experiment_exception import ExperimentException
 
 
 class AveragingPeriod(ScanClassBase):
-    """ Made up of multiple pulse sequences (integrations) for one
-    integration time.
-
-    #REVIEW #1 "Integrates multiple pulse sequences together in a given time frame." sounds a bit more
-    clear.
+    """ 
+    Scans are made up of AveragingPeriods, these are typically a 3sec time of
+    the same pulse sequence pointing in one direction.  AveragingPeriods are made
+    up of Sequences, typically the same sequence run ave. 20-30 times after a clear
+    frequency search.  Sequences are made up of pulses, which is a list of dictionaries 
+    where each dictionary describes a pulse. 
+    
+    Integrates multiple pulse sequences together in a given time frame or in a given number
+    of averages, if that is the preferred limiter.
     """
 
-    def __init__(self, ave_keys, ave_slice_dict, ave_interface, options, slice_to_beamorder_dict, slice_to_beamdir_dict):
-        # make a list of the cpos in this AveragingPeriod.
+    def __init__(self, ave_keys, ave_slice_dict, ave_interface, options, slice_to_beamorder_dict,
+                 slice_to_beamdir_dict):
 
         ScanClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, options)
 
@@ -35,13 +38,13 @@ class AveragingPeriod(ScanClassBase):
         self.slice_to_beamdir = slice_to_beamdir_dict
 
         # Metadata for an AveragingPeriod: clear frequency search, integration time, number of averages goal
-        self.clrfrqf = False
+        self.clrfrqflag = False
         # there may be multiple slices in this averaging period at different frequencies so
         # we may have to search multiple ranges.
         self.clrfrqrange = []
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id]['clrfrqflag']:
-                self.clrfrqf = True
+                self.clrfrqflag = True
                 self.clrfrqrange.append(self.slice_dict[slice_id]['clrfrqrange'])
 
         # TODO: SET UP CLEAR FREQUENCY SEARCH CAPABILITY
@@ -52,46 +55,45 @@ class AveragingPeriod(ScanClassBase):
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intt'] != self.intt:
-                    errmsg = """Slice {} and {} are INTTIME mixed and do not have the
+                    errmsg = """Slice {} and {} are INTTIME interfaced and do not have the
                         same Averaging Period duration intt""".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
         elif self.intn is not None:
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intn'] != self.intn:
-                    errmsg = """Slice {} and {} are INTTIME mixed and do not have the
+                    errmsg = """Slice {} and {} are INTTIME interfaced and do not have the
                         same NAVE goal intn""".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
 
         for slice_id in self.slice_ids:
                 if len(self.slice_dict[slice_id]['beam_order']) != len(self.slice_dict[self.slice_ids[0]]['beam_order']):
-                    errmsg = """Slice {} and {} are INTTIME mixed and do not have the
+                    errmsg = """Slice {} and {} are INTTIME interfaced and do not have the
                         same length of beam_order (number of integration periods)
                         """.format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 
-        # Determine how this averaging period is made by separating out
-        #   the INTEGRATION mixed.
-
-        self.slice_sequence_list = self.get_sequences()
+        # Determine how this averaging period is made by separating out the INTEGRATION interfaced.
+        # TODO removed slice_sequence_list here ; didn't break anything? (was = nested_slice_list)
+        self.nested_slice_list = self.get_sequence_slice_ids()
         self.sequences = []
-        self.nested_slice_list = self.slice_sequence_list
 
         for params in self.prep_for_nested_scan_class():
             self.sequences.append(Sequence(*params))
 
-    def get_sequences(self):
+    def get_sequence_slice_ids(self):
         integ_combos = []
 
         # Remove INTEGRATION combos as we are trying to separate those.
-        for k in self.interface.keys():
-            if self.interface[k] == "PULSE":
+        for k, interface_type in self.interface.items():  # TODO make example
+            if interface_type == "PULSE":
                 integ_combos.append(list(k))
 
-        combos = slice_combos_sorter(integ_combos, self.slice_ids)
+        combos = self.slice_combos_sorter(integ_combos, self.slice_ids)
 
-        print("sequences slice id combos: {}".format(combos))
+        if __debug__:
+            print("sequences slice id combos: {}".format(combos))
 
         return combos
 

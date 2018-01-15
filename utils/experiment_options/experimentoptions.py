@@ -11,10 +11,10 @@ import json
 import datetime
 import os
 
-python_path = os.environ['PYTHONPATH']
-config_file = python_path + 'config.ini'
-hdw_dat_file = python_path + 'hdw.dat.'
-restricted_freq_file = python_path + 'restrict.dat.'
+borealis_path = os.environ['BOREALISPATH']
+config_file = borealis_path + 'config.ini'
+hdw_dat_file = borealis_path + 'hdw.dat.'
+restricted_freq_file = borealis_path + 'restrict.dat.'
 
 class ExperimentOptions:
     def __init__(self):
@@ -49,7 +49,7 @@ class ExperimentOptions:
             self.atten_window_time_start = float(config['atten_window_time_start'])  # s
             self.atten_window_time_end = float(config['atten_window_time_end'])  # s
             self.experiment_handler_to_radar_control_address = config['experiment_handler_to_radar_control_address']
-            self.data_to_experiment_socket = config['data_to_experiment_socket']
+            self.data_to_experiment_address = config['data_to_experiment_address']
             self.radar_control_to_driver_address = config['radar_control_to_driver_address']
             self.radar_control_to_rx_dsp_address = config['radar_control_to_rx_dsp_address']
             self.rx_dsp_to_radar_control_ack_address = config['rx_dsp_to_radar_control_ack_address']

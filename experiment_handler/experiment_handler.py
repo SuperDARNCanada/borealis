@@ -8,7 +8,6 @@
 import zmq
 
 # TODO: dynamic import
-# NOTE: Have to edit PYTHONPATH='..../placeholderOS/' in the environment for this to work.
 from experiments import normalscan
 from radar_status.radar_status import RadarStatus
 # importlib.import_module('normalscan')
@@ -52,8 +51,9 @@ def experiment_handler():
     # another to talk to runradar.
     options = ExperimentOptions()
     context = zmq.Context()
-    data_socket = setup_data_socket(options.data_to_experiment_socket, context)
+    data_socket = setup_data_socket(options.data_to_experiment_address, context)
     ctrl_socket = setup_control_socket(options.experiment_handler_to_radar_control_address, context)
+
 
 
     change_flag = False
@@ -63,12 +63,15 @@ def experiment_handler():
         message = ctrl_socket.recv_pyobj()
         if isinstance(message, RadarStatus):
             if message.status == 'EXPNEEDED':
-                print("received READY {} and starting program as new".format(message.status))
+                print("received READY message {} so starting new experiment from beginning".format(message.status))
                 # starting anew
                 # TODO: change line to be scheduled
                 prog = normalscan.Normalscan()
                 prog.build_scans() # REVIEW #30 we should talk about where best to put this call REPLY: Ok - has to be after the experiment is made or changed, so in experiment_handler is really the only place I think would make sense
-                ctrl_socket.send_pyobj(prog) # REVIEW #0 Can block if ctrl_socket not valid, can specify NOBLOCK, not sure if this is useful REPLY: ? Not sure what you mean here of it being invalid and how we would handle that at this point?
+                try:
+                    ctrl_socket.send_pyobj(prog, flags=zmq.NOBLOCK)
+                except zmq.ZMQError: # the queue was full - radarcontrol not receiving.
+                    pass  #TODO handle this. Shutdown and restart all modules.
             elif message.status == 'NOERROR':
                 # no errors 
                 if change_flag:

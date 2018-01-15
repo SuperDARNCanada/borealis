@@ -326,7 +326,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
     # TODO : figure out - why did I do this I thought we were transmitting zeros on any channels not wanted
     pulse_channels = []
     for pulse in pulse_list:
-        for ant in exp_slices[pulse['slice_id']]['txantennas']:
+        for ant in exp_slices[pulse['slice_id']]['tx_antennas']:
             if ant not in pulse_channels:
                 pulse_channels.append(ant)
     pulse_channels.sort()
@@ -395,7 +395,7 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir, txc
             raise ExperimentException(errmsg)  # TODO change to warning? only happens on non-SINE
 
         for antenna in range(0, options.main_antenna_count):
-            if antenna in exp_slices[pulse['slice_id']]['txantennas']:
+            if antenna in exp_slices[pulse['slice_id']]['tx_antennas']:
                 pulse_samples = shape_samples(basic_samples, phase_array[antenna],
                                               amplitude_array[antenna])
                 pulse['samples'].append(pulse_samples)

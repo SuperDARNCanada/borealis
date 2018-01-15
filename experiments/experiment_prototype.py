@@ -13,16 +13,18 @@ The base class for an experiment.
 
 import sys
 import copy
+import os
+import itertools
 
 from experiment_exception import ExperimentException
 from sample_building.sample_building import get_wavetables
 
 import list_tests
 
-# TODO: Set up python path in scons sys.path.append(BOREALIS_PATH)
+BOREALISPATH=os.environ['BOREALISPATH']
+sys.path.append(BOREALISPATH)
 from utils.experiment_options.experimentoptions import ExperimentOptions
-# from radar_control.scan_classes.scan_class_base import ScanClassBase
-from experiments.scan_classes.scans import Scan
+from experiments.scan_classes.scans import Scan, ScanClassBase
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
@@ -74,11 +76,11 @@ class ExperimentPrototype(object):
     given property setters.
     """
 
-    __slice_keys = ["slice_id", "cpid", "txantennas", "rx_main_antennas",
+    __slice_keys = ["slice_id", "cpid", "tx_antennas", "rx_main_antennas",
                     "rx_int_antennas", "pulse_sequence", "pulse_shift", "mpinc",
                     "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
                     "beam_order", "scanboundflag", "scanbound", "txfreq", "rxfreq",
-                    "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqtimer"]
+                    "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset"]
 
     __hidden_slice_keys = ['rxonly', 'clrfrqflag']
 
@@ -86,9 +88,9 @@ class ExperimentPrototype(object):
     
     DESCRIPTION OF SLICE KEYS
 
-slice_id : The ID of this object. An experiment can have multiple objects.
+slice_id : The ID of this slice object. An experiment can have multiple slices.
 cpid: The ID of the experiment, consistent with existing radar control programs.
-txantennas: The antennas to transmit on, default is all main antennas given max number from config.
+tx_antennas: The antennas to transmit on, default is all main antennas given max number from config.
 rx_main_antennas: The antennas to receive on in main array, default = all antennas given max number 
     from config.
 rx_int_antennas : The antennas to receive on in interferometer array, default is all antennas given 
@@ -106,8 +108,9 @@ intn: number of averages to make a single integration, if intt = None.
 beam_angle: list of beam directions, in degrees off azimuth. Positive is E of N. Array 
     length = number of beams.
 beam_order: beam numbers written in order of preference, one element in this list corresponds to 
-    one integration period. Can have list within lists. a beam number of 0 in this list gives us 
-    beam_angle[0] as a direction.
+    one integration period. Can have lists within the list, resulting in multiple beams running
+    simultaneously in the averaging period, so imaging. A beam number of 0 in this list gives us 
+    beam_angle[0] as a direction. It is up to the writer to ensure their beam pattern makes sense.
 scanboundflag: flag for whether there is a scan boundary to wait for in order to start a new scan.
 scanbound: time that is allotted for a scan before a new scan boundary occurs (ms).
 clrfrqrange: range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] 
@@ -115,13 +118,16 @@ clrfrqrange: range for clear frequency search, should be a list of length = 2, [
 txfreq: transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
 rxfreq: receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only 
     necessary to specify if you want a receive-only slice.
-acf: flag for rawacf and generation. Default True.
-xcf: flag for cross-correlation data. Default True
-acfint: flag for interferometer autocorrelation data. Default True.
-wavetype: default SINE. Any others not currently supported but possible to add in at later date.
-iwavetable: default None. Not currently supported but could be set up (with caution) for non-SINE.
-qwavetable: default None. Not currently supported but could be set up (with caution) for non-SINE.
-seqtimer: timing in us that this slice's sequence will begin at, after the start of the sequence. 
+acf: flag for rawacf and generation. The default is True.
+xcf: flag for cross-correlation data. The default is True.
+acfint: flag for interferometer autocorrelation data. The default is True.
+wavetype: string for wavetype. The default is SINE. Any other wavetypes not currently supported but 
+    possible to add in at later date.
+iwavetable: a list of numeric values to sample from. The default is None. Not currently supported 
+    but could be set up (with caution) for non-SINE.
+qwavetable: a list of numeric values to sample from. The default is None. Not currently supported 
+    but could be set up (with caution) for non-SINE.
+seqoffset: offset in us that this slice's sequence will begin at, after the start of the sequence. 
     This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence 
     you can offset one slice's sequence from the other by a certain time value so as to not run both
     frequencies in the same pulse, etc.
@@ -133,7 +139,7 @@ scanboundt : time past the hour to start a scan at ?
 Explanation of beam_order and beam_angle:
     Traditionally beams have been 3.24 degrees separated but we don't refer to them as beam 
     -19.64 degrees, we refer as beam 1, beam 2. This is like a mapping of beam number
-    to beam direction off orthogonal to array. Then you can use the beam numbers in the beam_order 
+    to beam direction off boresight. Then you can use the beam numbers in the beam_order 
     list so you can reuse beams within one scan, or use multiple beam numbers in a single 
     integration time, which would trigger an imaging integration. When we do imaging we will still 
     have to quantize the directions we are looking in to certain beam directions.
@@ -178,6 +184,7 @@ Explanation of beam_order and beam_angle:
         self._acfint = True  # interferometer auto-correlation.
 
         self._interface = {}  # setup_interfacing(self.num_slices)
+        # TODO discuss rephrasing the description of _interface as a graph with defined rules
         # Dictionary of how each exp_slice interacts with the other slices. Default is "NONE" for
         #  all, but must be modified in experiment. NOTE keys are as such: (0,1), (0,2), (1,2),
         # NEVER includes (2,0) etc. The only interface options are those specified in
@@ -191,6 +198,10 @@ Explanation of beam_order and beam_angle:
 
         self.__slice_id_scan_lists = None
         self.__scan_objects = []
+
+        # TODO Remove above two variables after adding this type below
+        self.__running_experiment = None # this will be of ScanClassBase type
+
 
     @property
     def cpid(self):
@@ -220,9 +231,9 @@ Explanation of beam_order and beam_angle:
     @property
     def slice_dict(self):
         """
-        Get the list of slices. The slice list can be updated in add_slice, edit_slice, and 
-        del_slice.
-        :return: the list of slice dictionaries in this experiment.
+        Get the dictionary of slices. The slice dictionary can be updated in add_slice, edit_slice, 
+        and del_slice.
+        :return: the dictionary of slice dictionaries in this experiment.
         """
         return self.__slice_dict
 
@@ -272,7 +283,7 @@ Explanation of beam_order and beam_angle:
         if isinstance(value, bool):
             self._xcf = value
         else:
-            pass  # TODO log no change
+            pass  # TODO log no change - throw an exception perhaps
 
     @property
     def acf(self):
@@ -452,7 +463,7 @@ Explanation of beam_order and beam_angle:
         return a mapping of the beam directions in the given slice id.
         :param slice_id: id of the slice to get beam directions for.
         :return: enumeration mapping dictionary of beam number : beam direction(s) in degrees off 
-        orthogonal.
+        boresight.
         """
         if slice_id not in self.slice_ids:
             return {}
@@ -471,17 +482,20 @@ Explanation of beam_order and beam_angle:
         :return: the slice_id of the new slice that was just added.
         """
         if not isinstance(exp_slice, dict):
-            # TODO error log
-            return
-
+            # TODO discuss raising exceptions vs returning None, and leaving the handling to the
+            # experiment. - similarly in del_slice, returning boolean or raising exception.
+            errmsg = 'Attempt to add a slice failed - {} is not a dictionary of slice' \
+                     'parameters'.format(exp_slice)
+            raise ExperimentException(errmsg)
 
         exp_slice['slice_id'] = self.new_slice_id
-        # each added slice has a unique id, even if previous slices have been deleted.
+        # each added slice has a unique slice id, even if previous slices have been deleted.
         exp_slice['cpid'] = self.cpid
         new_exp_slice = self.setup_slice(exp_slice)
         # check for any errors after defaults have been filled.
-        print('Requested Add {}'.format(exp_slice))
-        print('Adding (with Defaults) {}'.format(new_exp_slice))
+        if __debug__:
+            print('Requested Add {}'.format(exp_slice))
+            print('Adding (with Defaults) {}'.format(new_exp_slice))
         self.__slice_dict[new_exp_slice['slice_id']] = new_exp_slice
         for ind in self.slice_ids:
             if ind == new_exp_slice['slice_id']:
@@ -491,6 +505,10 @@ Explanation of beam_order and beam_angle:
                 # update to add interfacing. new slice_id will be greater than all others so
                 # we can add with ind first and maintain interfacing list rule of key1 < key2.
             except TypeError or IndexError:
+                # if interfacing dictionary was not passed we will have TypeError
+                # if interfacing dictionary was passed but did not include all interfacing
+                # necessary (i.e. ind does not exist in interfacing dictionary), we will have
+                # IndexError
                 self._interface[(ind, new_exp_slice['slice_id'])] = None
                 print('Interfacing not Fully Updated - Will Cause Errors so Please Update.')
                 # TODO return a warning if interfacing dictionary not updated at this time.
@@ -511,50 +529,63 @@ Explanation of beam_order and beam_angle:
             return True
         else:
             return False
-            # TODO log that it cannot be removed
+            # TODO log that it cannot be removed - discuss this vs raising exception.
             # errmsg = 'Cannot remove slice id {} : it does not exist'.format(remove_slice_id)
             # raise ExperimentException(errmsg)
 
-    def edit_slice(self, edit_slice_id, param1, value1, param2=None, value2=None, param3=None,
-                   value3=None):
+    def edit_slice(self, edit_slice_id, **kwargs):
         """
         A quick way to edit a slice. In reality this is actually adding a new slice and deleting 
         the old one. Useful for quick changes - if you have to change more than three parameters 
         then should do your own copy / add / delete.
         :param edit_slice_id: the slice id of the slice to be edited.
-        :param param1: the slice_key that is wished to be changed.
-        :param value1: the new value of the slice_key
-        :param param2: the 2nd slice_key that is wished to be changed.
-        :param value2: the new value of the 2nd slice_key
-        :param param3: the 3rd slice_key that is wished to be changed.
-        :param value3: the new value of the 3rd slice_key
-        :return: the new slice id of the edited slice.
+        :param kwargs: dictionary of slice parameter to slice value that you want to change.
+        :return new_slice_id: the new slice id of the edited slice.
+        :return params_not_editable: any parameters passed in kwargs that were not valid slice
+            parameters and therefore were not used to edit the slice.
         """
-        if isinstance(edit_slice_id, int) and edit_slice_id in self.slice_ids:
-            if isinstance(param1, str) and param1 in self.slice_keys:
-                edited_slice = self.slice_dict[edit_slice_id].copy()
-                edited_slice[param1] = value1
-                if param2 is not None:
-                    edited_slice[param2] = value2
-                if param3 is not None:
-                    edited_slice[param3] = value3
-                new_interface_values = {}
-                for ifkey, ifvalue in self._interface:
-                    if edit_slice_id == ifkey[0]:
-                        new_interface_values[ifkey[1]] = ifvalue
-                    elif edit_slice_id == ifkey[1]:
-                        new_interface_values[ifkey[0]] = ifvalue
-                new_slice_id = self.add_slice(edited_slice, new_interface_values)
-                # checks done when slice is added.
-                self.del_slice(edit_slice_id)
-                # slice ids are checked after slice is removed.
-                return new_slice_id
+
+        slice_params_to_edit = dict(kwargs)
+        params_not_editable = {}
+        for k, v in slice_params_to_edit.items():
+            if isinstance(k, str) and k in self.slice_keys:
+                continue
             else:
-                print('Parameter for Edit is Not a Valid Parameter')
-                # TODO log error
-        else:
-            print('Slice ID does not exist in Slice_IDs list.')
-            # TODO log error
+                params_not_editable[k] = v
+                del slice_params_to_edit[k]
+
+        if not slice_params_to_edit:  # if empty dictionary, none of given kwargs are valid.
+            return edit_slice_id, params_not_editable
+            # TODO or raise an Experiment Exception - no slice edited and edit_slice_id remains.
+
+        try:
+            edited_slice = self.slice_dict[edit_slice_id].copy()
+        except IndexError:
+            # the edit_slice_id is not an index in the slice_dict
+            errmsg = 'Trying to edit {} but it does not exist in Slice_IDs' \
+                     ' list.'.format(edit_slice_id)
+            # TODO log error or raise exception
+            return None, dict(kwargs) # no slice edited, edit_slice_id does not exist
+
+        for edit_slice_param, edit_slice_value in slice_params_to_edit.items():
+            edited_slice[edit_slice_param] = edit_slice_value
+
+        # Move the interface values from old slice to new slice.
+        new_interface_values = {}
+        for ifkey, ifvalue in self._interface.items():
+            if edit_slice_id == ifkey[0]:
+                new_interface_values[ifkey[1]] = ifvalue
+            elif edit_slice_id == ifkey[1]:
+                new_interface_values[ifkey[0]] = ifvalue
+
+        # checks are done when slice is added.
+        new_slice_id = self.add_slice(edited_slice, new_interface_values)
+
+        # slice ids are checked after slice is removed, and interface values are removed.
+        self.del_slice(edit_slice_id)
+
+        return new_slice_id, params_not_editable
+
 
     def __repr__(self):
         represent = 'self.cpid = {}\nself.num_slices = {}\nself.slice_ids = {}\nself.slice_keys = {}\nself.options = \
@@ -577,36 +608,50 @@ Explanation of beam_order and beam_angle:
         self.check_interfacing()
 
         # investigating how I might go about using this base class - TODO maybe make a new IterableExperiment class to inherit
-        # from ScanClassBase ? Then could have the slice_combos_sorter function as a method of scanclassbase
-        # iterable_experiment = ScanClassBase(self.slice_keys, self.slice_dict, self.interface, self.options)
 
-        self.__slice_id_scan_lists = self.get_scans()
-        print("All experiment slice ids: {}".format(self.slice_ids))
-        print("Scan Slice Id list : {}".format(self.__slice_id_scan_lists))
-        # Returns list of scan lists. Each scan list is a list of the slice_ids for the slices
-        # included in that scan.
-        for scan_list in self.__slice_id_scan_lists:
-            slices_for_scan = {}
-            for slice_id in scan_list:
-                try:
-                    slices_for_scan[slice_id] = self.slice_dict[slice_id]
-                except KeyError:
-                    errmsg = 'Error with slice list - slice {} cannot be found.'.format(slice_id)
-                    raise ExperimentException(errmsg)
+        if __debug__:
+            print("All experiment slice ids: {}".format(self.slice_ids))
+            print("Scan Slice Id list : {}".format(self.__slice_id_scan_lists))
 
-            # Create smaller interfacing dictionary for this scan specifically.
-            # This dictionary will only include the slices in this scan, therefore it will not include any SCAN interfacing.
-            scan_interface_keys = []
-            for m in range(len(scan_list)):
-                for n in range(m + 1, len(scan_list)):
-                    scan_interface_keys.append(tuple([scan_list[m], scan_list[n]]))
-            scan_interface = {}
-            for k in scan_interface_keys:
-                scan_interface[k] = self.interface[k]
 
-            self.__scan_objects.append(Scan(scan_list, slices_for_scan, scan_interface,
-                                            self.options))
-            # Append a scan instance, passing in the list of slice ids to include in scan.
+        # TODO check that the following 7 lines work, remove self.__slice_id_scan_lists from init,
+        # consider removing scan_objects from init and adding necessary params to running experiment
+        # class type
+        self.__running_experiment = ScanClassBase(self.slice_ids, self.slice_dict, self.interface,
+                                                  self.options)
+
+        self.__running_experiment.nested_slice_list = self.get_scan_slice_ids()
+
+        for params in self.__running_experiment.prep_for_nested_scan_class():
+            self.scan_objects.append(Scan(*params))
+
+        # self.__slice_id_scan_lists = self.get_scan_slice_ids()
+        # # Returns list of scan lists. Each scan list is a list of the slice_ids for the slices
+        # # included in that scan.
+
+
+        # for slice_list in self.__slice_id_scan_lists:
+        #     slices_for_scan = {}
+        #     for slice_id in slice_list:
+        #         try:
+        #             slices_for_scan[slice_id] = self.slice_dict[slice_id]
+        #         except KeyError:
+        #             errmsg = 'Error with slice list - slice {} cannot be found.'.format(slice_id)
+        #             raise ExperimentException(errmsg)
+        #
+        #     # Create smaller interfacing dictionary for this scan specifically.
+        #     # This dictionary will only include the slices in this scan, therefore it will not include any SCAN interfacing.
+        #     scan_interface_keys = []
+        #
+        #     nested_class_interface = {}
+        #     for i in itertools.combinations(slice_list, 2):
+        #         # slice_list is sorted so we should have the following effect:
+        #         # combinations([1, 3, 5], 2) --> [1,3], [1,5], [3,5]
+        #         nested_class_interface[tuple(i)] = self.interface[tuple(i)]
+        #
+        #     self.__scan_objects.append(Scan(slice_list, slices_for_scan, nested_class_interface,
+        #                                     self.options))
+        #     # Append a scan instance, passing in the list of slice ids to include in scan.
 
         if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
@@ -617,7 +662,9 @@ Explanation of beam_order and beam_angle:
             print("Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1:"
                   " {}".format(len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)))
 
-    def get_scans(self):
+    def get_scan_slice_ids(self):
+        # TODO add this to ScanClassBase method by just passing in the current type (Experiment, Scan, AvePeriod)
+        # which would allow you to determine which interfacing to pull out.
         """
         Take my own interfacing and get info on how many scans and which slices make which scans.
         :rtype list
@@ -634,7 +681,7 @@ Explanation of beam_order and beam_angle:
 
         print(scan_combos)
 
-        combos = list_tests.slice_combos_sorter(scan_combos, self.slice_ids)
+        combos = self.__running_experiment.slice_combos_sorter(scan_combos, self.slice_ids)
 
         return combos
 
@@ -725,7 +772,7 @@ Explanation of beam_order and beam_angle:
                     element = float(element)
         except AssertionError:
             errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or 
-                floats) which are angles of degrees off orthogonal (positive E of N)"""
+                floats) which are angles of degrees off boresight (positive E of N)"""
             raise ExperimentException(errmsg, exp_slice)
 
         try:
@@ -907,8 +954,8 @@ Explanation of beam_order and beam_angle:
 
         slice_with_defaults = copy.deepcopy(exp_slice)
 
-        if 'txantennas' not in exp_slice:
-            slice_with_defaults['txantennas'] = [i for i in range(0,
+        if 'tx_antennas' not in exp_slice:
+            slice_with_defaults['tx_antennas'] = [i for i in range(0,
                                                                   self.options.main_antenna_count)]
             # all possible antennas.
         if 'rx_main_antennas' not in exp_slice:
@@ -947,8 +994,8 @@ Explanation of beam_order and beam_angle:
             slice_with_defaults['acfint'] = self.acfint
         if 'wavetype' not in exp_slice:
             slice_with_defaults['wavetype'] = 'SINE'
-        if 'seqtimer' not in exp_slice:
-            slice_with_defaults['seqtimer'] = 0
+        if 'seqoffset' not in exp_slice:
+            slice_with_defaults['seqoffset'] = 0
 
         return slice_with_defaults
 
@@ -958,8 +1005,8 @@ Explanation of beam_order and beam_angle:
         keys and check values of keys that are needed, and set defaults of keys that are optional.
         
         The following are always able to be defaulted, so are optional:
-        "txantennas", "rx_main_antennas", "rx_int_antennas", "pulse_shift", "scanboundflag", 
-        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqtimer"
+        "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_shift", "scanboundflag", 
+        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset"
 
 
         The following are always required for processing acf, xcf, and acfint which we will assume
@@ -1069,10 +1116,10 @@ Explanation of beam_order and beam_angle:
                     format(exp_slice['slice_id'], param, exp_slice[param])
                 error_count += 1
 
-        if len(exp_slice['txantennas']) > options.main_antenna_count:
+        if len(exp_slice['tx_antennas']) > options.main_antenna_count:
             error_dict[
                 error_count] = "Slice {} Has Too Many Main TX Antenna Channels {} Greater than Config {}" \
-                .format(exp_slice['slice_id'], len(exp_slice['txantennas']),
+                .format(exp_slice['slice_id'], len(exp_slice['tx_antennas']),
                         options.main_antenna_count)
         if len(exp_slice['rx_main_antennas']) > options.main_antenna_count:
             error_dict[
@@ -1092,14 +1139,14 @@ Explanation of beam_order and beam_angle:
         # Check if the antenna identifier number is greater than the config file's
         # maximum antennas for all three of tx antennas, rx antennas and rx int antennas
         # Also check for duplicates
-        if max(exp_slice['txantennas']) >= options.main_antenna_count:
+        if max(exp_slice['tx_antennas']) >= options.main_antenna_count:
             error_dict[
                 error_count] = "Slice {} Specifies Main Array Antenna Numbers Over Config " \
                                "Max {}" .format(exp_slice['slice_id'],
                                                 options.main_antenna_count)
             error_count = error_count + 1
 
-        if list_tests.has_duplicates(exp_slice['txantennas']):
+        if list_tests.has_duplicates(exp_slice['tx_antennas']):
             error_dict[error_count] = "Slice {} TX Main Antennas Has Duplicate Antennas".format(
                 exp_slice['slice_id'])
             error_count = error_count + 1

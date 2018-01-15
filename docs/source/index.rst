@@ -6,23 +6,22 @@
 Welcome to Borealis's documentation!
 ====================================
 
-Contents:
+Contents - THIS NEEDS WORK:
 
 .. toctree::
    :maxdepth: 2
 
    /config
 
-.. automodule:: experiments.experiment_exception
+.. automodule:: experiment_exception
 
 .. autoclass:: ExperimentException
     :members:
 
 
-.. automodule:: experiments.experiment_prototype
-
-.. autoclass:: ExperimentPrototype
+.. automodule:: scan_classes
     :members:
+
 Indices and tables
 ==================
 
