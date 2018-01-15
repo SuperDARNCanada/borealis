@@ -24,11 +24,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-
-Import('*')
+""""""
 import os
 
-RadarProtos = ['driverpacket.proto','rxsamplesmetadata.proto',
-                'sigprocpacket.proto','processeddata.proto']
-Proto(RadarProtos)
+Import('*')
 
+Prog('decimate_single_core', Glob("./decimate_single_core.cpp"), with_libs='utils::utils',
+     LIBS=['protobuf','pthread','zmq'])
+
+Prog('cuda_kernel_timing', Glob("./cuda_kernel_timing.cu"), with_libs='utils::utils')
