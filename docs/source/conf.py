@@ -23,6 +23,10 @@ import sphinx_rtd_theme
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
+BOREALIS_PROJECT_PATH = '../..'
+sys.path.append(BOREALIS_PROJECT_PATH)
+sys.path.append(BOREALIS_PROJECT_PATH + '/experiments')
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -114,9 +118,6 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
-BOREALIS_PROJECT_PATH = '/home/marci/code/USRP/borealis'
-sys.path.append(BOREALIS_PROJECT_PATH)
-sys.path.append(BOREALIS_PROJECT_PATH + '/experiments')
 
 # -- Options for HTML output ----------------------------------------------
 
