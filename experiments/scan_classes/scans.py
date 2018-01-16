@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 import sys
-from averaging_periods import AveragingPeriod
-from scan_class_base import ScanClassBase
+from experiments.scan_classes.averaging_periods import AveragingPeriod
+from experiments.scan_classes.scan_class_base import ScanClassBase
 from experiments.experiment_exception import ExperimentException
 
 

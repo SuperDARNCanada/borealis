@@ -3,7 +3,7 @@
 from operator import itemgetter
 
 from sample_building.sample_building import make_pulse_samples
-from scan_class_base import ScanClassBase
+from experiments.scan_classes.scan_class_base import ScanClassBase
 
 
 class Sequence(ScanClassBase):

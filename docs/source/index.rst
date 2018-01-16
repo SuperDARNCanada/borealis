@@ -12,12 +12,13 @@ Contents - THIS NEEDS WORK:
    :maxdepth: 2
 
    /config
+   /experiment_prototype
+   /example_experiment
 
 .. automodule:: experiment_exception
 
-.. autoclass:: ExperimentException
-    :members:
-
+    .. autoclass:: ExperimentException
+        :members:
 
 .. automodule:: scan_classes
     :members:

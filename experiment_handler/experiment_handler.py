@@ -67,7 +67,7 @@ def experiment_handler():
                 # starting anew
                 # TODO: change line to be scheduled
                 prog = normalscan.Normalscan()
-                prog.build_scans() # REVIEW #30 we should talk about where best to put this call REPLY: Ok - has to be after the experiment is made or changed, so in experiment_handler is really the only place I think would make sense
+                prog.build_scans()
                 try:
                     ctrl_socket.send_pyobj(prog, flags=zmq.NOBLOCK)
                 except zmq.ZMQError: # the queue was full - radarcontrol not receiving.
@@ -77,7 +77,7 @@ def experiment_handler():
                 if change_flag:
                     ctrl_socket.send_pyobj(prog)
                 else:
-                    ctrl_socket.send_pyobj(None) # REVIEW #1 Does the control socket expect a response from every message? Is this send_pyobj necessary? REPLY: Yes, may have modified the experiment every time so it needs to know if there is a new one.
+                    ctrl_socket.send_pyobj(None)
             elif message.status == 'WARNING':
                 #TODO: log the warning
                 if change_flag:

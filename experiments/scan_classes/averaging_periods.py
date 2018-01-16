@@ -12,8 +12,8 @@ any), freq, pulse length, beamdir, and wavetype.
 import sys
 import operator
 
-from sequences import Sequence
-from scan_class_base import ScanClassBase
+from experiments.scan_classes.sequences import Sequence
+from experiments.scan_classes.scan_class_base import ScanClassBase
 from experiments.experiment_exception import ExperimentException
 
 

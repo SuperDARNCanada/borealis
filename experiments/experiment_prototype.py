@@ -224,7 +224,7 @@ Explanation of beam_order and beam_angle:
         """
         Get the list of slice keys available. This cannot be updated.
         :return: the keys in the current ExperimentPrototype slice_keys dictionary (parameters 
-         available for slices)
+        available for slices)
         """
         return self.__slice_keys
 
@@ -413,7 +413,7 @@ Explanation of beam_order and beam_angle:
     def rx_maxfreq(self):
         """
         :return: the maximum tx frequency possible in this experiment (maximum given by the centre 
-        frequency and sampling rate), as license doesn't matter for receiving.
+         frequency and sampling rate), as license doesn't matter for receiving.
         """
         max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0)
         return max_freq
@@ -422,7 +422,7 @@ Explanation of beam_order and beam_angle:
     def rx_minfreq(self):
         """
         :return: the minimum tx frequency possible in this experiment (minimum given by the centre 
-        frequency and sampling rate) - license doesn't restrict receiving.
+         frequency and sampling rate) - license doesn't restrict receiving.
         """
         min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0)
         if min_freq > 1000: #Hz
@@ -436,7 +436,8 @@ Explanation of beam_order and beam_angle:
         To get the list of interfacing for the experiment slices.  Interfacing should be set up 
         for any slice when it gets added, ie. in add_slice.
         :return:the list of interfacing defined as [(slice_id1, slice_id2) : INTERFACING_TYPE] for
-                all current slice_ids. 
+        all current slice_ids. 
+        
         """
         return self._interface
 
@@ -475,8 +476,9 @@ Explanation of beam_order and beam_angle:
         Add a slice to the experiment.
         :param exp_slice: a slice (dictionary of slice_keys) to add to the experiment.
         :param interfacing_dict: dictionary of type {slice_id : INTERFACING , ... } that defines how
-         this slice interacts with all the other slices currently in the experiment.
+        this slice interacts with all the other slices currently in the experiment.
         :return: the slice_id of the new slice that was just added.
+        
         """
         if not isinstance(exp_slice, dict):
             # TODO discuss raising exceptions vs returning None, and leaving the handling to the
@@ -539,7 +541,7 @@ Explanation of beam_order and beam_angle:
         :param kwargs: dictionary of slice parameter to slice value that you want to change.
         :return new_slice_id: the new slice id of the edited slice.
         :return params_not_editable: any parameters passed in kwargs that were not valid slice
-            parameters and therefore were not used to edit the slice.
+        parameters and therefore were not used to edit the slice.
         """
 
         slice_params_to_edit = dict(kwargs)
@@ -1091,7 +1093,7 @@ Explanation of beam_order and beam_angle:
         any time after setup. If things are changed un
         :param: exp_slice: a slice to check
         :raise: ExperimentException: When necessary parameters do not exist or = None (would have
-            to have been overridden by the user for this, as defaults all set when this runs).
+        to have been overridden by the user for this, as defaults all set when this runs).
         """
         error_list = []
 
