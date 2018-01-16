@@ -5,7 +5,7 @@ ExperimentPrototype
 ..  toctree::
     :maxdepth: 2
 
-..  automodule:: experiments.experiment_prototype
+..  automodule:: experiment_prototype
 
     ..  autoclass:: ExperimentPrototype
         :members:
