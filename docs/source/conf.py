@@ -58,8 +58,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'Borealis'
-copyright = '2018, Keith Kotyk, Marci Detwiller, Kevin Krieger'
-author = 'Keith Kotyk, Marci Detwiller, Kevin Krieger'
+copyright = '2018, SuperDARN Canada'
+author = 'SuperDARN Canada' #Keith Kotyk, Marci Detwiller, Kevin Krieger
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
