@@ -412,26 +412,23 @@ Explanation of beam_order and beam_angle:
     @property
     def rx_maxfreq(self):
         """
-        :return: the maximum tx frequency possible in this experiment (either maximum in our license
-         or maximum given by the centre frequency and sampling rate).
+        :return: the maximum tx frequency possible in this experiment (maximum given by the centre 
+        frequency and sampling rate), as license doesn't matter for receiving.
         """
         max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0)
-        if max_freq < self.options.max_freq:
-            return max_freq
-        else:
-            return self.options.max_freq
+        return max_freq
 
     @property
     def rx_minfreq(self):
         """
-        :return: the minimum tx frequency possible in this experiment (either minimum in our license
-         or minimum given by the centre frequency and sampling rate).
+        :return: the minimum tx frequency possible in this experiment (minimum given by the centre 
+        frequency and sampling rate) - license doesn't restrict receiving.
         """
         min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0)
-        if min_freq > self.options.min_freq:
+        if min_freq > 1000: #Hz
             return min_freq
         else:
-            return self.options.min_freq
+            return 1000 # Hz
 
     @property
     def interface(self):
@@ -605,7 +602,6 @@ Explanation of beam_order and beam_angle:
 
         # Check interfacing
         self.self_check()
-        self.check_interfacing()
 
         # investigating how I might go about using this base class - TODO maybe make a new IterableExperiment class to inherit
 
@@ -615,8 +611,9 @@ Explanation of beam_order and beam_angle:
 
 
         # TODO check that the following 7 lines work, remove self.__slice_id_scan_lists from init,
-        # consider removing scan_objects from init and adding necessary params to running experiment
-        # class type
+        # consider removing scan_objects from init and making a new Experiment class to inherit
+        # from ScanClassBase and having all of this included in there. Then would only need to
+        # pass the running experiment to the radar control (would be returned from build_scans)
         self.__running_experiment = ScanClassBase(self.slice_ids, self.slice_dict, self.interface,
                                                   self.options)
 
@@ -675,11 +672,12 @@ Explanation of beam_order and beam_angle:
         """
         scan_combos = []
 
-        for k in self.interface.keys():
-            if self.interface[k] != "SCAN":
+        for k, interface_value in self.interface.items():
+            if interface_value != "SCAN":
                 scan_combos.append(list(k))
 
-        print(scan_combos)
+        if __debug__:
+            print(scan_combos)
 
         combos = self.__running_experiment.slice_combos_sorter(scan_combos, self.slice_ids)
 
@@ -689,19 +687,18 @@ Explanation of beam_order and beam_angle:
         """
         Check for the minimum requirements of the slice. The following keys are always required:
         "pulse_sequence", "mpinc", "pulse_len", "nrang", "frang", (one of "intt" or "intn"), 
-        "beam_angle", and "beam_order". This function may modify these keys. Ensure the values 
-        make sense.
+        "beam_angle", and "beam_order". This function may modify the values in this slice dictionary
+        to ensure that it is able to be run and that the values make sense.
         :param exp_slice: slice to check.
         """
 
         # TODO: add checks for values that make sense, not just check for types
-
+        # TODO: discuss how to do error checking as this may not be the best use of asserts.
         try:
-            assert 'pulse_sequence' in exp_slice.keys()
             assert isinstance(exp_slice['pulse_sequence'], list)
             for element in exp_slice['pulse_sequence']:
                 assert isinstance(element, int)
-        except AssertionError:
+        except AssertionError or KeyError:
             errmsg = "Slice must specify pulse_sequence that must be a list of integers"
             raise ExperimentException(errmsg, exp_slice)
 
@@ -827,9 +824,12 @@ Explanation of beam_order and beam_angle:
             if rxfreq is not None and rxfreq != exp_slice['txfreq']:
                 pass  # TODO log a warning. Rxfreq is removed as txfreq takes precedence but we may
                 # not be doing as you intended.
-        else:
+        elif 'rxfreq' in exp_slice.keys():
             exp_slice['rxonly'] = True
             exp_slice['clrfrqflag'] = False
+        else:
+            errmsg = 'An rxfreq, txfreq, or clrfrqrange must be specified in a slice'
+            raise ExperimentException(errmsg, exp_slice)
 
     def check_slice_specific_requirements(self, exp_slice):
         """
@@ -954,6 +954,7 @@ Explanation of beam_order and beam_angle:
 
         slice_with_defaults = copy.deepcopy(exp_slice)
 
+        # TODO future proof this by specifying tx_main and tx_int ?? or give spatial information in config
         if 'tx_antennas' not in exp_slice:
             slice_with_defaults['tx_antennas'] = [i for i in range(0,
                                                                   self.options.main_antenna_count)]
@@ -980,7 +981,8 @@ Explanation of beam_order and beam_angle:
                 errmsg = 'ScanboundFlag is set without a Scanbound specified.'
                 raise ExperimentException(errmsg)
 
-        # we only have one because of slice checks already completed.
+        # we only have one of intn or intt because of slice checks already completed in
+        # check_slice_minimum_requirements.
         if 'intt' in exp_slice:
             slice_with_defaults['intn'] = None
         elif 'intn' in exp_slice:
@@ -1028,12 +1030,7 @@ Explanation of beam_order and beam_angle:
             if value is None:
                 complete_slice.pop(key)
 
-        try:
-            assert 'rxfreq' in complete_slice.keys() or 'txfreq' in complete_slice.keys() \
-                   or 'clrfrqrange' in complete_slice.keys()
-        except AssertionError:
-            errmsg = 'An rxfreq, txfreq, or clrfrqrange must be specified in a slice'
-            raise ExperimentException(errmsg, exp_slice)
+
 
         self.set_slice_identifiers(complete_slice)
         self.check_slice_specific_requirements(complete_slice)
@@ -1062,7 +1059,15 @@ Explanation of beam_order and beam_angle:
             raise ExperimentException(errmsg)
 
         # TODO: somehow check if self.cpid is not unique - incorporate known cpids from git repo?
+        # TODO: use pygit2 for this
 
+        # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
+        # any time after setup. We run it now in case the user has changed something
+        # inappropriately (ie, any way other than using edit_slice, add_slice, or del_slice).
+        # "Private" instance variables with leading underscores are not actually private in
+        # python they just have a bit of a mangled name so they are not readily availabe but give
+        # the user notice that they should be left alone. If the __slice_dict has been changed
+        # improperly, we should check it for problems here.
         for a_slice in self.slice_ids:
             selferrs = self.check_slice(self.slice_dict[a_slice])
             if not selferrs:
@@ -1072,21 +1077,23 @@ Explanation of beam_order and beam_angle:
                 Check Errors are : {}".format(a_slice, selferrs)
             raise ExperimentException(errmsg)
 
-        print("No Self Check Errors. Continuing...")
+        if __debug__:
+            print("No Self Check Errors. Continuing...")
 
-        return None
+        self.check_interfacing()
 
     def check_slice(self, exp_slice):
         """
         This is the first test of the dictionary in the experiment done to ensure values in this 
         slice make sense. This is a self-check to ensure the parameters (for example, txfreq, 
         antennas) are appropriate. All fields should be full at this time (whether filled by the 
-        user or given default values in set_slice_defaults).
+        user or given default values in set_slice_defaults). This was built to be useable at 
+        any time after setup. If things are changed un
         :param: exp_slice: a slice to check
-        :raise: ExperimentException: When 
+        :raise: ExperimentException: When necessary parameters do not exist or = None (would have
+            to have been overridden by the user for this, as defaults all set when this runs).
         """
-        error_count = 0
-        error_dict = {}
+        error_list = []
 
         options = self.options
 
@@ -1104,7 +1111,6 @@ Explanation of beam_order and beam_angle:
                     errmsg = "Slice {} is missing Necessary Parameter {}".format(
                         exp_slice['slice_id'], param)
                     raise ExperimentException(errmsg)
-                    # set defaults if possible
             try:
                 assert param is not None
             except AssertionError:
@@ -1112,91 +1118,76 @@ Explanation of beam_order and beam_angle:
 
         for param in exp_slice.keys():
             if param not in self.slice_keys and param not in self.__hidden_slice_keys:
-                error_dict[error_count] = "Slice {} has A Parameter that is not Used: {} = {}". \
-                    format(exp_slice['slice_id'], param, exp_slice[param])
-                error_count += 1
+                error_list.append("Slice {} has A Parameter that is not Used: {} = {}". \
+                    format(exp_slice['slice_id'], param, exp_slice[param]))
+
+        # TODO : mpinc needs to be an integer multiple of pulse_len in ros - is there a max ratio
+        # allowed for pulse_len/mpinc ? Add this check and add check for each slice's tx duty-cycle
+        # and make sure we aren't transmitting the entire time after combination with all slices
 
         if len(exp_slice['tx_antennas']) > options.main_antenna_count:
-            error_dict[
-                error_count] = "Slice {} Has Too Many Main TX Antenna Channels {} Greater than Config {}" \
+            error_list.append("Slice {} Has Too Many Main TX Antenna Channels {} Greater than Config {}" \
                 .format(exp_slice['slice_id'], len(exp_slice['tx_antennas']),
-                        options.main_antenna_count)
+                        options.main_antenna_count))
         if len(exp_slice['rx_main_antennas']) > options.main_antenna_count:
-            error_dict[
-                error_count] = "Slice {} Has Too Many Main RX Antenna Channels {} Greater than Config {}" \
+            error_list.append("Slice {} Has Too Many Main RX Antenna Channels {} Greater than Config {}" \
                 .format(exp_slice['slice_id'], len(exp_slice['rx_main_antennas']),
-                        options.main_antenna_count)
-            error_count = error_count + 1
+                        options.main_antenna_count))
         if len(exp_slice['rx_int_antennas']) > options.interferometer_antenna_count:
-            error_dict[
-                error_count] = "Slice {} Has Too Many RX Interferometer Antenna Channels {} " \
+            error_list.append("Slice {} Has Too Many RX Interferometer Antenna Channels {} " \
                                "Greater than Config {}".format(
                                     exp_slice['slice_id'],
                                     len(exp_slice['rx_int_antennas']),
-                                    options.interferometer_antenna_count)
-            error_count = error_count + 1
+                                    options.interferometer_antenna_count))
 
         # Check if the antenna identifier number is greater than the config file's
         # maximum antennas for all three of tx antennas, rx antennas and rx int antennas
         # Also check for duplicates
         if max(exp_slice['tx_antennas']) >= options.main_antenna_count:
-            error_dict[
-                error_count] = "Slice {} Specifies Main Array Antenna Numbers Over Config " \
+            error_list.append("Slice {} Specifies Main Array Antenna Numbers Over Config " \
                                "Max {}" .format(exp_slice['slice_id'],
-                                                options.main_antenna_count)
-            error_count = error_count + 1
+                                                options.main_antenna_count))
 
         if list_tests.has_duplicates(exp_slice['tx_antennas']):
-            error_dict[error_count] = "Slice {} TX Main Antennas Has Duplicate Antennas".format(
-                exp_slice['slice_id'])
-            error_count = error_count + 1
+            error_list.append("Slice {} TX Main Antennas Has Duplicate Antennas".format(
+                exp_slice['slice_id']))
 
         for i in range(len(exp_slice['rx_main_antennas'])):
             if exp_slice['rx_main_antennas'][i] >= options.main_antenna_count:
-                error_dict[
-                    error_count] = "Slice {} Specifies Main Array Antenna Numbers Over Config " \
+                error_list.append("Slice {} Specifies Main Array Antenna Numbers Over Config " \
                                    "Max {}" .format(exp_slice['slice_id'],
-                                                    options.main_antenna_count)
-                error_count = error_count + 1
+                                                    options.main_antenna_count))
 
         if list_tests.has_duplicates(exp_slice['rx_main_antennas']):
-            error_dict[error_count] = "Slice {} RX Main Antennas Has Duplicate Antennas".format(
-                exp_slice['slice_id'])
-            error_count = error_count + 1
+            error_list.append("Slice {} RX Main Antennas Has Duplicate Antennas".format(
+                exp_slice['slice_id']))
 
         for i in range(len(exp_slice['rx_int_antennas'])):
             if exp_slice['rx_int_antennas'][i] >= options.interferometer_antenna_count:
-                error_dict[
-                    error_count] = "Slice {} Specifies Interferometer Array Antenna Numbers Over " \
+                error_list.append("Slice {} Specifies Interferometer Array Antenna Numbers Over " \
                                    "Config Max {}".format(exp_slice['slice_id'],
-                                                          options.interferometer_antenna_count)
-                error_count = error_count + 1
+                                                          options.interferometer_antenna_count))
 
         if list_tests.has_duplicates(exp_slice['rx_int_antennas']):
-            error_dict[
-                error_count] = "Slice {} RX Interferometer Antennas Has Duplicate Antennas".format(
-                exp_slice['slice_id'])
-            error_count = error_count + 1
+            error_list.append("Slice {} RX Interferometer Antennas Has Duplicate Antennas".format(
+                exp_slice['slice_id']))
 
         # Check if the pulse_sequence is not increasing, which would be an error
         if not list_tests.is_increasing(exp_slice['pulse_sequence']):
-            error_dict[error_count] = "Slice {} pulse_sequence Not Increasing".format(
-                exp_slice['slice_id'])
-            error_count = error_count + 1
+            error_list.append("Slice {} pulse_sequence Not Increasing".format(
+                exp_slice['slice_id']))
 
         # Check that pulse_len and mpinc make sense (values in us)
         if exp_slice['pulse_len'] > exp_slice['mpinc']:
-            error_dict['error_count'] = "Slice {} Pulse Length Greater than MPINC".format(
-                exp_slice['slice_id'])
-            error_count = error_count + 1
-        if exp_slice['pulse_len'] < self.options.minimum_pulse_length:
-            error_dict[error_count] = "Slice {} Pulse Length Too Small".format(
-                exp_slice['slice_id'])
-            error_count = error_count + 1
+            error_list.append("Slice {} Pulse Length Greater than MPINC".format(
+                exp_slice['slice_id']))
+        if exp_slice['pulse_len'] < self.options.minimum_pulse_length and \
+                        exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * 10^6:
+            error_list.append("Slice {} Pulse Length Too Small".format(
+                exp_slice['slice_id']))
         if exp_slice['mpinc'] < self.options.minimum_mpinc_length:
-            error_dict[error_count] = "Slice {} Multi-Pulse Increment Too Small".format(
-                exp_slice['slice_id'])
-            error_count = error_count + 1
+            error_list.append("Slice {} Multi-Pulse Increment Too Small".format(
+                exp_slice['slice_id']))
 
         # check intn and intt make sense given mpinc, and pulse_sequence.
         if exp_slice['pulse_sequence']:  # if not empty
@@ -1206,75 +1197,65 @@ Explanation of beam_order and beam_angle:
 
             if exp_slice['intt'] is None and exp_slice['intn'] is None:
                 # both are None and we are not rx - only
-                error_dict['error_count'] = "Slice {} Has Transmission but no Intt or IntN".format(
-                    exp_slice['slice_id'])
-                error_count = error_count + 1
+                error_list.append("Slice {} Has Transmission but no Intt or IntN".format(
+                    exp_slice['slice_id']))
 
             if exp_slice['intt'] is not None and exp_slice['intn'] is not None:
-                error_dict['error_count'] = "Slice {} Choose Either Intn or Intt to be the Limit " \
+                error_list.append("Slice {} Choose Either Intn or Intt to be the Limit " \
                                             "for Number of Integrations in an Integration Period.".\
-                    format(exp_slice['slice_id'])
-                error_count = error_count + 1
+                    format(exp_slice['slice_id']))
 
             if exp_slice['intt'] is not None:
-                if seq_len > (exp_slice['intt'] * 1000):  # in us
-                    error_dict[error_count] = "Slice {} : Pulse Sequence is Too Long for Integration " \
-                                         "Time Given".format(exp_slice['slice_id'])
-                    error_count = error_count + 1
+                if seq_len > (exp_slice['intt'] * 1000):  # seq_len in us, so multiply intt
+                                                          # (ms) by 1000 to compare in us
+                    error_list.append("Slice {} : Pulse Sequence is Too Long for Integration " \
+                                         "Time Given".format(exp_slice['slice_id']))
 
         if not exp_slice['pulse_sequence']:
             if exp_slice['txfreq']:
-                error_dict[error_count] = "Slice {} Has Transmission Frequency but no" \
+                error_list.append("Slice {} Has Transmission Frequency but no" \
                                             "Pulse Sequence defined".format(
-                    exp_slice['slice_id'])
-                error_count = error_count + 1
+                    exp_slice['slice_id']))
 
         if list_tests.has_duplicates(exp_slice['beam_angle']):
-            error_dict[error_count] = "Slice {} Beam Angles Has Duplicate Directions".format(
-                exp_slice['slice_id'])
-            error_count = error_count + 1
+            error_list.append("Slice {} Beam Angles Has Duplicate Directions".format(
+                exp_slice['slice_id']))
 
         if not list_tests.is_increasing(exp_slice['beam_angle']):
-            error_dict[error_count] = "Slice {} beam_angle Not Increasing Clockwise (E of N " \
-                                      "is positive)".format(exp_slice['slice_id'])
-            error_count = error_count + 1
+            error_list.append("Slice {} beam_angle Not Increasing Clockwise (E of N " \
+                                      "is positive)".format(exp_slice['slice_id']))
 
         # Check if the list of beams to transmit on is empty
         if not exp_slice['beam_order']:
-            error_dict[error_count] = "Slice {} Beam Order Scan Empty".format(
-                exp_slice['slice_id'])
-            error_count = error_count + 1
+            error_list.append("Slice {} Beam Order Scan Empty".format(
+                exp_slice['slice_id']))
 
         # Check that the beam numbers in the beam_order exist
         for bmnum in exp_slice['beam_order']:
             if isinstance(bmnum, int):
                 if bmnum >= len(exp_slice['beam_angle']):
-                    error_dict[error_count] = "Slice {} Scan Beam Number {} DNE".format(
-                        exp_slice['slice_id'], bmnum)
-                    error_count = error_count + 1
+                    error_list.append("Slice {} Scan Beam Number {} DNE".format(
+                        exp_slice['slice_id'], bmnum))
             elif isinstance(bmnum, list):
                 for imaging_bmnum in bmnum:
                     if imaging_bmnum >= len(exp_slice['beam_angle']):
-                        error_dict[error_count] = "Slice {} Scan Beam Number {} DNE".format(
-                            exp_slice['slice_id'], bmnum)
-                        error_count = error_count + 1
+                        error_list.append("Slice {} Scan Beam Number {} DNE".format(
+                            exp_slice['slice_id'], bmnum))
 
         # check scan boundary not less than minimum required scan time.
         if exp_slice['scanboundflag']:
             if exp_slice['scanbound'] < (
                         len(exp_slice['beam_order']) * exp_slice['intt']):
-                error_dict[error_count] = "Slice {} Beam Order Too Long for ScanBoundary".format(
-                    exp_slice['slice_id'])
-                error_count = error_count + 1
+                error_list.append("Slice {} Beam Order Too Long for ScanBoundary".format(
+                    exp_slice['slice_id']))
 
         # TODO other checks
 
         if exp_slice['wavetype'] != 'SINE':
-            error_dict[error_count] = "Slice {} wavetype of {} currently not supported".format(
-                exp_slice['slice_id'], exp_slice['wavetype'])
-            error_count = error_count + 1
+            error_list.append("Slice {} wavetype of {} currently not supported".format(
+                exp_slice['slice_id'], exp_slice['wavetype']))
 
-        return error_dict
+        return error_list
 
     def check_interfacing(self):
         """

@@ -22,6 +22,7 @@ from experiments.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 BOREALISPATH = os.environ['BOREALISPATH'] # provided in mode script when making.
+sys.path.append(BOREALISPATH)
 sys.path.append(BOREALISPATH + 'utils/protobuf')
 import driverpacket_pb2
 import sigprocpacket_pb2
