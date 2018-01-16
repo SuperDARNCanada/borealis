@@ -23,9 +23,10 @@ import sphinx_rtd_theme
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
-BOREALIS_PROJECT_PATH = '..'
-sys.path.append(BOREALIS_PROJECT_PATH)
-sys.path.append(BOREALIS_PROJECT_PATH + '/experiments')
+BOREALISPATH = os.path.abspath('..')
+
+sys.path.insert(0, BOREALISPATH)
+sys.path.append(BOREALISPATH + '/experiments')
 
 # -- General configuration ------------------------------------------------
 
