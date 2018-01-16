@@ -12,7 +12,7 @@ Contents - THIS NEEDS WORK:
     :maxdepth: 2
 
     /config
-    /experiment_prototype
+    /experiment_prototype_doc
     /example_experiment
 
 ..  automodule:: experiment_exception
