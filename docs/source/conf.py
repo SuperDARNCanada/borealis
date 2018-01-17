@@ -24,6 +24,7 @@ import sphinx_rtd_theme
 #sys.path.insert(0, os.path.abspath('.'))
 
 BOREALISPATH = os.path.abspath('../..')
+os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
 sys.path.insert(1, BOREALISPATH + '/experiments')
 
