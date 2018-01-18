@@ -31,6 +31,7 @@
 
 # Python
 *.pyc
+*.pyo
 
 # Scons
 .sconsign*
