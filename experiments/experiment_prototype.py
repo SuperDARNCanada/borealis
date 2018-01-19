@@ -366,6 +366,7 @@ Explanation of beam_order and beam_angle:
         if max_freq < self.options.max_freq:
             return max_freq
         else:
+            # TODO log warning that wave_freq should not exceed options.max_freq - ctrfreq (possible to transmit above licensed band)
             return self.options.max_freq
 
     @property
@@ -378,6 +379,7 @@ Explanation of beam_order and beam_angle:
         if min_freq > self.options.min_freq:
             return min_freq
         else:
+            # TODO log warning that wave_freq should not go below ctrfreq - options.minfreq (possible to transmit below licensed band)
             return self.options.min_freq
 
     @property
@@ -481,21 +483,27 @@ Explanation of beam_order and beam_angle:
         
         """
         if not isinstance(exp_slice, dict):
-            # TODO discuss raising exceptions vs returning None, and leaving the handling to the
-            # experiment. - similarly in del_slice, returning boolean or raising exception.
             errmsg = 'Attempt to add a slice failed - {} is not a dictionary of slice' \
                      'parameters'.format(exp_slice)
             raise ExperimentException(errmsg)
+            # TODO multiple types of Exceptions so they can be caught by the experiment in these
+            # add_slice, edit_slice, del_slice functions (and handled specifically)
 
         exp_slice['slice_id'] = self.new_slice_id
         # each added slice has a unique slice id, even if previous slices have been deleted.
         exp_slice['cpid'] = self.cpid
+
+        # Now we setup the slice which will check minimum requirements and set defaults, and then
+        # will complete a check_slice and raise any errors found.
         new_exp_slice = self.setup_slice(exp_slice)
-        # check for any errors after defaults have been filled.
+
         if __debug__:
             print('Requested Add {}'.format(exp_slice))
             print('Adding (with Defaults) {}'.format(new_exp_slice))
+
+        # if there were no errors raised in setup_slice, we will add the slice to the slice_dict.
         self.__slice_dict[new_exp_slice['slice_id']] = new_exp_slice
+
         for ind in self.slice_ids:
             if ind == new_exp_slice['slice_id']:
                 continue
@@ -507,12 +515,16 @@ Explanation of beam_order and beam_angle:
                 # if interfacing dictionary was not passed we will have TypeError
                 # if interfacing dictionary was passed but did not include all interfacing
                 # necessary (i.e. ind does not exist in interfacing dictionary), we will have
-                # IndexError
+                # IndexError - IndexError will always occur if called from  edit_slice because we
+                # have not removed the old slice_id yet and did not provide an interface for the
+                # new slice id with the old slice id TODO change this? (send an interface value of
+                # None for that key from edit_slice to add_slice?
                 self._interface[(ind, new_exp_slice['slice_id'])] = None
                 print('Interfacing not Fully Updated - Will Cause Errors so Please Update.')
-                # TODO return a warning if interfacing dictionary not updated at this time.
+                # TODO log a warning if interfacing dictionary not updated at this time.
 
         return new_exp_slice['slice_id']
+
 
     def del_slice(self, remove_slice_id):
         """
@@ -520,17 +532,16 @@ Explanation of beam_order and beam_angle:
         :param remove_slice_id: the id of the slice you'd like to remove.
         :return: boolean True if successful
         """
-        if isinstance(remove_slice_id, int) and remove_slice_id in self.slice_ids:
+        try:
             del(self.slice_dict[remove_slice_id])
-            for key1, key2 in self._interface.keys():
-                if key1 == remove_slice_id or key2 == remove_slice_id:
-                    del self._interface[(key1, key2)]
-            return True
-        else:
-            return False
-            # TODO log that it cannot be removed - discuss this vs raising exception.
-            # errmsg = 'Cannot remove slice id {} : it does not exist'.format(remove_slice_id)
-            # raise ExperimentException(errmsg)
+        except IndexError or TypeError:
+            errmsg = 'Cannot remove slice id {} : it does not exist in slice dictionary'.format(remove_slice_id)
+            raise ExperimentException(errmsg)
+
+        for key1, key2 in self._interface.keys():
+            if key1 == remove_slice_id or key2 == remove_slice_id:
+                del self._interface[(key1, key2)]
+
 
     def edit_slice(self, edit_slice_id, **kwargs):
         """
@@ -540,34 +551,26 @@ Explanation of beam_order and beam_angle:
         :param edit_slice_id: the slice id of the slice to be edited.
         :param kwargs: dictionary of slice parameter to slice value that you want to change.
         :return new_slice_id: the new slice id of the edited slice.
-        :return params_not_editable: any parameters passed in kwargs that were not valid slice
-        parameters and therefore were not used to edit the slice.
+        :raises ...
         """
 
         slice_params_to_edit = dict(kwargs)
-        params_not_editable = {}
-        for k, v in slice_params_to_edit.items():
-            if isinstance(k, str) and k in self.slice_keys:
-                continue
-            else:
-                params_not_editable[k] = v
-                del slice_params_to_edit[k]
-
-        if not slice_params_to_edit:  # if empty dictionary, none of given kwargs are valid.
-            return edit_slice_id, params_not_editable
-            # TODO or raise an Experiment Exception - no slice edited and edit_slice_id remains.
 
         try:
             edited_slice = self.slice_dict[edit_slice_id].copy()
-        except IndexError:
+        except IndexError or TypeError:
             # the edit_slice_id is not an index in the slice_dict
             errmsg = 'Trying to edit {} but it does not exist in Slice_IDs' \
                      ' list.'.format(edit_slice_id)
-            # TODO log error or raise exception
-            return None, dict(kwargs) # no slice edited, edit_slice_id does not exist
+            raise ExperimentException(errmsg)
 
         for edit_slice_param, edit_slice_value in slice_params_to_edit.items():
-            edited_slice[edit_slice_param] = edit_slice_value
+            try:
+                assert edit_slice_param in self.slice_keys
+                edited_slice[edit_slice_param] = edit_slice_value
+            except AssertionError:
+                errmsg = 'Cannot edit slice: {} not a valid slice parameter'.format(edit_slice_param)
+                raise ExperimentException(errmsg)
 
         # Move the interface values from old slice to new slice.
         new_interface_values = {}
@@ -583,7 +586,7 @@ Explanation of beam_order and beam_angle:
         # slice ids are checked after slice is removed, and interface values are removed.
         self.del_slice(edit_slice_id)
 
-        return new_slice_id, params_not_editable
+        return new_slice_id
 
 
     def __repr__(self):
@@ -1032,17 +1035,17 @@ Explanation of beam_order and beam_angle:
             if value is None:
                 complete_slice.pop(key)
 
-
-
         self.set_slice_identifiers(complete_slice)
         self.check_slice_specific_requirements(complete_slice)
         self.check_slice_minimum_requirements(complete_slice)
+
+        # set_slice_defaults will check for any missing values that should be given a default and
+        # fill them.
         complete_slice = self.set_slice_defaults(complete_slice)
+
         # Wavetables are currently None for sine waves, instead just use a sampling freq in rads/sample.
         # wavetype = 'SINE' is set in set_slice_defaults if not given.
         complete_slice['iwavetable'], complete_slice['qwavetable'] = get_wavetables(complete_slice['wavetype'])
-        # set_slice_defaults will check for any missing values that should be given a default and
-        # fill them.
 
         errors = self.check_slice(complete_slice)
 

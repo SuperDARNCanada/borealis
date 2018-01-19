@@ -11,7 +11,6 @@ from scipy.fftpack import fft
 from scipy.constants import speed_of_light
 import numpy as np
 import math
-import sys
 import matplotlib.pyplot as plt
 from experiments.experiment_exception import ExperimentException
 

@@ -229,8 +229,8 @@ class Sequence(ScanClassBase):
 
 
         last_pulse = self.pulses[-1]
-        self.last_pulse_len = max([p['pulse_len'] + p['intra_pulse_start_time'] for p in
-                              self.pulses[-(last_pulse['combine_total']):]])
+        self.last_pulse_len = max([(p['pulse_len'] + p['intra_pulse_start_time']) for p in
+                              self.pulses[-(last_pulse['combine_total']):]])  # TODO does this work? pycharm saying max() will return a list
 
         # FIND the max scope sync time
         # The gc214 receiver card in the old system required 19 us for sample delay and another 10 us
