@@ -49,7 +49,7 @@ DriverOptions::DriverOptions() {
     receive_channels_ = [&](){
         auto ma_str = config_pt.get<std::string>("main_antenna_usrp_channels");
         auto ia_str = config_pt.get<std::string>("interferometer_antenna_usrp_channels");
-        auto total_chs_str = ma_str + ia_str;
+        auto total_chs_str = ma_str + "," + ia_str;
 
         std::stringstream ss(total_chs_str);
 
