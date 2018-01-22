@@ -13,14 +13,16 @@ std::vector<std::complex<float>> make_pulse(DriverOptions &driver_options){
   auto amp = 1.0/sqrt(2.0);
   auto pulse_len = 300.0 * 1e-6;
   auto tx_rate = driver_options.get_tx_rate();
-  int num_samps_per_antenna = std::ceil(pulse_len * tx_rate);
+  int tr_start_pad = std::ceil(tx_rate * (driver_options.get_atten_window_time_start() + driver_options.get_tr_window_time()));
+  int tr_end_pad = std::ceil(tx_rate * (driver_options.get_atten_window_time_end() + driver_options.get_tr_window_time()));
+  int num_samps_per_antenna = std::ceil(pulse_len * tx_rate) + tr_start_pad + tr_end_pad;
   std::vector<double> tx_freqs = {1e6};
 
   auto default_v = std::complex<float>(0.0,0.0);
   std::vector<std::complex<float>> samples(num_samps_per_antenna,default_v);
 
 
-  for (auto j=0; j< num_samps_per_antenna; j++) {
+  for (auto j=tr_start_pad; j< num_samps_per_antenna - tr_end_pad; j++) {
     auto nco_point = std::complex<float>(0.0,0.0);
 
     for (auto freq : tx_freqs) {
@@ -37,12 +39,12 @@ std::vector<std::complex<float>> make_pulse(DriverOptions &driver_options){
 
     auto ramp_size = int(10e-6 * tx_rate);
 
-    for (auto j=0; j<ramp_size; j++){
-      auto a = ((j)*1.0)/ramp_size;
+    for (auto j=tr_start_pad,k=0; j<tr_start_pad+ramp_size; j++,k++){
+      auto a = ((k)*1.0)/ramp_size;
       samples[j] *= std::complex<float>(a,0);
     }
 
-    for (auto j=num_samps_per_antenna-1, k=0;j>num_samps_per_antenna-1-ramp_size;j--,k++){
+    for (auto j=num_samps_per_antenna-tr_end_pad - 1, k=0;j>num_samps_per_antenna-tr_end_pad-1-ramp_size;j--,k++){
       auto a = ((k)*1.0)/ramp_size;
       samples[j] *= std::complex<float>(a,0);
     }
@@ -60,7 +62,7 @@ int main(int argc, char *argv[]){
   zmq::socket_t rad_socket(context, ZMQ_PAIR);
   zmq::socket_t dsp_socket(context, ZMQ_PAIR);
   rad_socket.connect(driver_options.get_radar_control_to_driver_address());
-  dsp_socket.connect(driver_options.get_driver_to_rx_dsp_address());
+  dsp_socket.bind(driver_options.get_driver_to_rx_dsp_address());
 
 
   auto pulse_samples = make_pulse(driver_options);
@@ -76,8 +78,11 @@ int main(int argc, char *argv[]){
     }
   }
 
+  dp.set_txcenterfreq(12e6);
+  dp.set_rxcenterfreq(14e6);
+
   bool SOB, EOB = false;
-  std::vector<int> pulse_seq ={0,9,12,20,22,26,27};//{0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553};//{0,1,4,11,26,32,56,68,76,115,117,134,150,163,168,177};//,{0,9,12,20,22,26,10000};
+  std::vector<int> pulse_seq ={0};//{0,9,12,20,22,26,27};//{0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553};//{0,1,4,11,26,32,56,68,76,115,117,134,150,163,168,177};//,{0,9,12,20,22,26,10000};
 
   auto first_time = true;
   auto seq_num = 0;
@@ -103,12 +108,10 @@ int main(int argc, char *argv[]){
       dp.set_eob(EOB);
       dp.set_txrate(driver_options.get_tx_rate());
       dp.set_timetosendsamples(pulse * 1500);
-      dp.set_txcenterfreq(12e6);
-      dp.set_rxcenterfreq(14e6);
-      dp.set_sequence_num(seq_num++);
+      dp.set_sequence_num(seq_num);
 
       auto mpinc = 1500 * 1e-6;
-      auto num_recv_samps = pulse_seq.back() * mpinc * driver_options.get_rx_rate();
+      auto num_recv_samps = (pulse_seq.back() * mpinc + 23.5e-3) * driver_options.get_rx_rate();
       dp.set_numberofreceivesamples(num_recv_samps);
 
       std::string msg_str;
@@ -129,8 +132,11 @@ int main(int argc, char *argv[]){
       if (first_time == true) {
           dp.clear_channels();
           dp.clear_channel_samples();
+          dp.clear_txcenterfreq();
+          dp.clear_rxcenterfreq();
           first_time = false;
       }
+      std::cout << dp.txcenterfreq() <<std::endl;
 
     }
 
@@ -154,6 +160,8 @@ int main(int argc, char *argv[]){
 
     std::cout << std::endl << std::endl<<"Got ack #" <<ack.sequence_num()<< " for seq #"
       << dp.sequence_num() <<std::endl << std::endl;
+
+    seq_num++;
 
   }
 
