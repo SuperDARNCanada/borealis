@@ -180,7 +180,7 @@ void signals(zmq::context_t &context)
   auto rx_rate = driver_options.get_rx_rate();
 
 
-  std::vector<double> rx_freqs = {3.0e6, 2.0e6, 1.0e6};
+  std::vector<double> rx_freqs = {1.0e6};
   for (int i=0; i<rx_freqs.size(); i++) {
     auto rxchan = sp.add_rxchannel();
     rxchan->set_rxfreq(rx_freqs[i]);
@@ -195,7 +195,7 @@ void signals(zmq::context_t &context)
 
   rxsamplesmetadata::RxSamplesMetadata samples_metadata;
 
-  auto num_samples = uint32_t(rx_rate* 0.1);
+  auto num_samples = uint32_t(rx_rate* 0.096);
   samples_metadata.set_numberofreceivesamples(num_samples);
 
   auto samples = simulate_samples(num_antennas, num_samples, rx_freqs, rx_rate, true);
@@ -242,7 +242,7 @@ void signals(zmq::context_t &context)
 
     send_data(samples_metadata,sp, samples,driver_socket, radctrl_socket, timing_ack_start);
     #ifdef DEBUG
-      sleep(30);
+      usleep(0.1e6);
     #endif
     sqn_num += 1;
   }
