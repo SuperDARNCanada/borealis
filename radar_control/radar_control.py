@@ -14,13 +14,16 @@ import cmath
 import sys
 import time
 from datetime import datetime, timedelta
-
+import os
 import zmq
-
+sys.path.append(os.environ["BOREALISPATH"])
 from experiments.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
-sys.path.append('/home/marci/code/USRP/placeholderOS/build/release/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
+if __debug__:
+	sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
+else:
+	sys.path.append(os.environ["BOREALISPATH"]+ '/build/release/utils/protobuf')
 import driverpacket_pb2
 import sigprocpacket_pb2
 
@@ -79,7 +82,7 @@ def data_to_driver(driverpacket, txsocket, antennas, samples_array,
         for ant in antennas:
             driverpacket.channels.append(ant)
         for sample_index in range(len(samples_array)):
-            sample_add = driverpacket.samples.add()
+            sample_add = driverpacket.channel_samples.add()
             # Add one Samples message for each channel.
             # Protobuf expects types: int, long, or float, will reject numpy types and throw a
             # TypeError so we must convert the numpy arrays to lists
@@ -93,7 +96,7 @@ def data_to_driver(driverpacket, txsocket, antennas, samples_array,
 
     txsocket.send(driverpacket.SerializeToString())
 
-    del driverpacket.samples[:]  # TODO find out - Is this needed in conjunction with .Clear()?
+    del driverpacket.channel_samples[:]  # TODO find out - Is this needed in conjunction with .Clear()?
 
 
 def data_to_rx_dsp(packet, socket, seqnum, slice_ids, slice_dict,
@@ -215,16 +218,19 @@ def verify_completed_sequence(tx_poller, tx_rx_poller, tx_socket, rx_ack_socket,
     :return: 
     """
     if seqnum != 0:
-        while True:
+        rx_seq_ack = False
+        tx_seq_ack = False
+        while not rx_seq_ack or not tx_seq_ack:
             try:
                 socks = dict(tx_rx_poller.poll(poll_timeout))
+                #socks, wlist, xlist = zmq.select([tx_socket, rx_ack_socket], [], [])
             except zmq.NotDone:
                 pass  # TODO can use this
             except zmq.ZMQBaseError as e:
                 errmsg = "ZMQ ERROR"
                 raise [ExperimentException(errmsg), e]
 
-            if rx_ack_socket in socks and tx_socket in socks:  # need one message from both.
+            if rx_ack_socket in socks:  # need one message from both.
                 if socks[rx_ack_socket] == zmq.POLLIN:
                     rxseqnum = get_ack(rx_ack_socket, sigprocpacket)
                     # rx processing block is working on the pulse sequence before the one we just
@@ -234,7 +240,9 @@ def verify_completed_sequence(tx_poller, tx_rx_poller, tx_socket, rx_ack_socket,
                               "Expected {}".format(rxseqnum, seqnum - 1)
                         raise ExperimentException(errmsg)
                     else:  # TODO add if debug
+                        rx_seq_ack = True
                         print("RXSEQNUM {}".format(rxseqnum))
+            elif tx_socket in socks:
                 if socks[tx_socket] == zmq.POLLIN:
                     txseqnum = get_ack(tx_socket, driverpacket)
                     # driver should have received and sent the current seqnum.
@@ -243,15 +251,18 @@ def verify_completed_sequence(tx_poller, tx_rx_poller, tx_socket, rx_ack_socket,
                             txseqnum, seqnum)
                         raise ExperimentException(errmsg)
                     else:
+                        tx_seq_ack = True
                         print("TXSEQNUM {}".format(txseqnum))
-                break
             else:
-                errmsg = "Did not receive both acks from driver and signal processing"
+                errmsg = "Did not receive ack from either rx_ack_socket or tx_socket"
                 raise ExperimentException(errmsg)
+                # TODO what to do here - some lag or something is not running
     else:  # on the very first sequence since starting the radar.
-        print("Polling for {}".format(poll_timeout))
+        # extra poll time on first sequence as found required 
+        first_sequence_poll_timeout = 2000
+        print("Polling for first sequence for {} ms".format(first_sequence_poll_timeout))
         try:
-            sock = tx_poller.poll(poll_timeout)
+            sock = tx_poller.poll(first_sequence_poll_timeout)
         except zmq.NotDone:
             # TODO start a timer and trying sending again on the first sequence. - in case you start experiment handler second ***
             pass
@@ -307,7 +318,6 @@ def radar():
     except zmq.ZMQBaseError as e:
         errmsg = "ZMQ ERROR Setting up sockets"
         raise [ExperimentException(errmsg), e]
-
 
     poller = zmq.Poller()
     poller.register(tx_socket, zmq.POLLIN)
@@ -450,7 +460,7 @@ def radar():
                                                pulse_dict['timing'], seqnum_start + nave,
                                                repeat=pulse_dict['isarepeat'])
                                 # Pulse is done.
-                            poll_timeout = int(sequence.sstime / 1000)  # ms
+                            poll_timeout = int(sequence.sstime / 1000 + 20)  # ms
                             # Get sequence acknowledgements and log synchronization and
                             # communication errors between the n200_driver, rx_sig_proc, and
                             # radar_control.
@@ -460,7 +470,7 @@ def radar():
                                                       poll_timeout, seqnum_start + nave)
 
                             # TODO: Make sure you can have a CPO that doesn't transmit, only receives on a frequency. # REVIEW #1 what do you mean, what is this TODO for? REPLY : driver acks wouldn't be required etc need to make sure this is possible
-                            time.sleep(1)  # TODO add if debug
+                            #time.sleep(1)  # TODO add if debug
                             # Sequence is done
                             nave = nave + 1
                     print("Number of integrations: {}".format(nave))
