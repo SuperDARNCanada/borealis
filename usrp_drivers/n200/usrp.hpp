@@ -70,6 +70,7 @@ class USRP{
 
     std::vector<size_t> create_receive_channels(uint32_t main_antenna_count,
                 uint32_t interferometer_antenna_count);*/
+    void set_atr_gpios();
 
 };
 
