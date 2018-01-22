@@ -30,4 +30,4 @@ import os
 Import('*')
 
 Prog('n200_test_packet', Glob("./*.c*"), with_libs='utils::utils',
-     LIBS=['protobuf','pthread','zmq'])
+     LIBS=['protobuf','pthread','zmq','rt'])
