@@ -82,7 +82,7 @@ def data_to_driver(driverpacket, txsocket, antennas, samples_array,
         for ant in antennas:
             driverpacket.channels.append(ant)
         for sample_index in range(len(samples_array)):
-            sample_add = driverpacket.channel_samples.add()
+            sample_add = driverpacket.samples.add()
             # Add one Samples message for each channel.
             # Protobuf expects types: int, long, or float, will reject numpy types and throw a
             # TypeError so we must convert the numpy arrays to lists
@@ -96,7 +96,7 @@ def data_to_driver(driverpacket, txsocket, antennas, samples_array,
 
     txsocket.send(driverpacket.SerializeToString())
 
-    del driverpacket.channel_samples[:]  # TODO find out - Is this needed in conjunction with .Clear()?
+    del driverpacket.samples[:]  # TODO find out - Is this needed in conjunction with .Clear()?
 
 
 def data_to_rx_dsp(packet, socket, seqnum, slice_ids, slice_dict,
