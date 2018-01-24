@@ -6,15 +6,14 @@
 #
 
 import zmq
+import os
+import sys
 
-# TODO: dynamic import
-from experiments import normalscan
+sys.path.append(os.environ['BOREALISPATH'])
+
+from experiments import one_box_test_experiment
 from radar_status.radar_status import RadarStatus
-# importlib.import_module('normalscan')
 from utils.experiment_options.experimentoptions import ExperimentOptions
-
-
-# importlib.import_module('radar_status') TODO
 
 
 def setup_data_socket(addr, context):
@@ -66,7 +65,7 @@ def experiment_handler():
                 print("received READY message {} so starting new experiment from beginning".format(message.status))
                 # starting anew
                 # TODO: change line to be scheduled
-                prog = normalscan.Normalscan()
+                prog = one_box_test_experiment.OneBox()
                 prog.build_scans()
                 try:
                     ctrl_socket.send_pyobj(prog, flags=zmq.NOBLOCK)

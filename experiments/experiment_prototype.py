@@ -80,7 +80,8 @@ class ExperimentPrototype(object):
                     "rx_int_antennas", "pulse_sequence", "pulse_shift", "mpinc",
                     "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
                     "beam_order", "scanboundflag", "scanbound", "txfreq", "rxfreq",
-                    "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset"]
+                    "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
+		    "iwavetable", "qwavetable"]
 
     __hidden_slice_keys = ['rxonly', 'clrfrqflag']
 

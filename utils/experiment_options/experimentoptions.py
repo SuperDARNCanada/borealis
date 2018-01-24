@@ -14,9 +14,9 @@ import os
 from experiments.experiment_exception import ExperimentException
 
 borealis_path = os.environ['BOREALISPATH']
-config_file = borealis_path + 'config.ini'
-hdw_dat_file = borealis_path + 'hdw.dat.'
-restricted_freq_file = borealis_path + 'restrict.dat.'
+config_file = borealis_path + '/config.ini'
+hdw_dat_file = borealis_path + '/hdw.dat.'
+restricted_freq_file = borealis_path + '/restrict.dat.'
 
 class ExperimentOptions:
     # TODO long init file, consider using multiple functions
@@ -205,8 +205,8 @@ class ExperimentOptions:
                     \n    atten_window_time_end = {} \
                     \n    default_freq = {} \
                     \n    restricted_ranges = {} \
-                    \n    experiment_to_control_socket = {} \
-                    \n    data_to_experiment_socket = {} \
+                    \n    experiment_handler_to_radar_control_address = {} \
+                    \n    data_to_experiment_address = {} \
                     \n    radar_control_to_rx_dsp_address = {} \
                     \n    radar_control_to_driver_address = {} \
                     \n    rx_dsp_to_radar_control_ack_address = {} \
@@ -226,7 +226,7 @@ class ExperimentOptions:
                                 self.atten_window_time_start, self.atten_window_time_end,
                                 self.default_freq, self.restricted_ranges,
                                 self.experiment_handler_to_radar_control_address,
-                                self.data_to_experiment_socket,
+                                self.data_to_experiment_address,
                                 self.radar_control_to_rx_dsp_address,
                                 self.radar_control_to_driver_address,
                                 self.rx_dsp_to_radar_control_ack_address,

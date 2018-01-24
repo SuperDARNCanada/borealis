@@ -24,7 +24,7 @@ Config Parameters
 +---------------------------------------------+--------------------------------+--------------------------------------+
 | max_freq                                    | 20.0e6                         | Maximum frequency we can run (Hz)    |
 +---------------------------------------------+--------------------------------+--------------------------------------+
-| minimum_pulse_length                        | 0.01                           | Minimum pulse length (us)            |
+| minimum_pulse_length                        | 100                            | Minimum pulse length (us) dependent upon AGC feedback sample and hold           |
 +---------------------------------------------+--------------------------------+--------------------------------------+
 | minimum_mpinc_length                        | 1                              | Minimum length of multi-pulse        |
 |                                             |                                | increment (us)                       |
