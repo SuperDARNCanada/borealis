@@ -11,7 +11,7 @@ class Normalscan(ExperimentPrototype):
         super(Normalscan, self).__init__(cpid)
 
         self.add_slice({  # slice_id = 0, there is only one slice.
-            "txantennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+            "tx_antennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             "rx_main_antennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             "rx_int_antennas": [0, 1, 2, 3],
             "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
@@ -39,7 +39,7 @@ class Normalscan(ExperimentPrototype):
         # USED THE FOLLOWING FOR TESTING SECOND SLICE
 
         # self.add_slice({  # slice_id = 0, there is only one slice.
-        #     "txantennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+        #     "tx_antennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         #     "rx_main_antennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         #     "rx_int_antennas": [0, 1, 2, 3],
         #     "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
@@ -105,7 +105,7 @@ class Normalscan(ExperimentPrototype):
         existing conditions. Talk to us if you have something specific in mind that you're not sure if you can 
         implement here. 
 
-        :param acfdata ??? TBD
+        :param acfdata ??? TODO
         :rtype boolean
         :return change_flag, indicating whether the experiment has changed or not. True = change has occurred.
         """  # TODO update with how acfdata will be passed in
