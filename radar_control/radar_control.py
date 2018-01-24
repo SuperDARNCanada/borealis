@@ -15,15 +15,16 @@ import sys
 import time
 import os
 from datetime import datetime, timedelta
-
+import os
 import zmq
-
+sys.path.append(os.environ["BOREALISPATH"])
 from experiments.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
-BOREALISPATH = os.environ['BOREALISPATH'] # provided in mode script when making.
-sys.path.append(BOREALISPATH)
-sys.path.append(BOREALISPATH + 'utils/protobuf')
+if __debug__:
+	sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
+else:
+	sys.path.append(os.environ["BOREALISPATH"]+ '/build/release/utils/protobuf')
 import driverpacket_pb2
 import sigprocpacket_pb2
 
@@ -245,9 +246,12 @@ def verify_completed_sequence(tx_poller, tx_rx_poller, tx_socket, rx_ack_socket,
         last pulse sequence concurrently.
     """
     if seqnum != 0:
-        while True:
+        rx_seq_ack = False
+        tx_seq_ack = False
+        while not rx_seq_ack or not tx_seq_ack:
             try:
                 socks = dict(tx_rx_poller.poll(poll_timeout))
+                #socks, wlist, xlist = zmq.select([tx_socket, rx_ack_socket], [], [])
             except zmq.NotDone:
                 pass  # TODO can use this
                 # TODO test using this case for the first sequence, that is we have tx_socket in socks but not rx_ack_socket ***
@@ -255,37 +259,40 @@ def verify_completed_sequence(tx_poller, tx_rx_poller, tx_socket, rx_ack_socket,
                 errmsg = "ZMQ ERROR"
                 raise [ExperimentException(errmsg), e]
 
-            if rx_ack_socket in socks and tx_socket in socks:  # need one message from both.
-                assert socks[rx_ack_socket] == zmq.POLLIN
-                assert socks[tx_socket] == zmq.POLLIN
-                rxseqnum = get_ack(rx_ack_socket, sigprocpacket)
-                # rx processing block is working on the pulse sequence before the one we just
-                # transmitted, therefore should = seqnum - 1.
-                if rxseqnum != seqnum - 1:
-                    errmsg = "WRONG RXSEQNUM received from rx_signal_processing {} ; "\
-                          "Expected {}".format(rxseqnum, seqnum - 1)
-                    raise ExperimentException(errmsg)
-                else:
-                    if __debug__:
+            if rx_ack_socket in socks:  # need one message from both.
+                if socks[rx_ack_socket] == zmq.POLLIN:
+                    rxseqnum = get_ack(rx_ack_socket, sigprocpacket)
+                    # rx processing block is working on the pulse sequence before the one we just
+                    # transmitted, therefore should = seqnum - 1.
+                    if rxseqnum != seqnum - 1:
+                        errmsg = "WRONG RXSEQNUM received from rx_signal_processing {} ; "\
+                              "Expected {}".format(rxseqnum, seqnum - 1)
+                        raise ExperimentException(errmsg)
+                    else:  # TODO add if debug
+                        rx_seq_ack = True
                         print("RXSEQNUM {}".format(rxseqnum))
-                txseqnum = get_ack(tx_socket, driverpacket)
-                # driver should have received and sent the current seqnum.
-                if txseqnum != seqnum:
-                    errmsg = "WRONG TXSEQNUM received from driver {} ; Expected {}".format(
-                        txseqnum, seqnum)
-                    raise ExperimentException(errmsg)
-                else:
-                    if __debug__:
+            elif tx_socket in socks:
+                if socks[tx_socket] == zmq.POLLIN:
+                    txseqnum = get_ack(tx_socket, driverpacket)
+                    # driver should have received and sent the current seqnum.
+                    if txseqnum != seqnum:
+                        errmsg = "WRONG TXSEQNUM received from driver {} ; Expected {}".format(
+                            txseqnum, seqnum)
+                        raise ExperimentException(errmsg)
+                    else:
+                        tx_seq_ack = True
                         print("TXSEQNUM {}".format(txseqnum))
-                break
             else:
-                errmsg = "Did not receive both acks from driver and signal processing"
+                errmsg = "Did not receive ack from either rx_ack_socket or tx_socket"
                 raise ExperimentException(errmsg)
+                # TODO what to do here - some lag or something is not running
     else:  # on the very first sequence since starting the radar.
+        # extra poll time on first sequence as found required 
+        first_sequence_poll_timeout = 2000
         if __debug__:
-            print("Polling for {} ms".format(poll_timeout))
+            print("Polling for first sequence for {} ms".format(first_sequence_poll_timeout))
         try:
-            sock = tx_poller.poll(poll_timeout)
+            sock = tx_poller.poll(first_sequence_poll_timeout)
         except zmq.NotDone:
             # TODO start a timer and trying sending again on the first sequence. - in case you start experiment handler second ***
             pass
@@ -344,7 +351,6 @@ def radar():
     except zmq.ZMQBaseError as e:
         errmsg = "ZMQ ERROR Setting up sockets"
         raise [ExperimentException(errmsg), e]
-
 
     poller_for_first_completed_sequence = zmq.Poller()
     poller_for_first_completed_sequence.register(tx_socket, zmq.POLLIN)
@@ -484,7 +490,7 @@ def radar():
                                                pulse_dict['timing'], seqnum_start + nave,
                                                repeat=pulse_dict['isarepeat'])
                                 # Pulse is done.
-                            poll_timeout = int(sequence.sstime / 1000)  # ms
+                            poll_timeout = int(sequence.sstime / 1000 + 20)  # ms TODO change based on pulse time into the future once timing info exchange is set up
                             # Get sequence acknowledgements and log synchronization and
                             # communication errors between the n200_driver, rx_sig_proc, and
                             # radar_control.

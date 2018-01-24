@@ -14,42 +14,25 @@
 #include <complex>
 #include <limits>       // std::numeric_limits
 #include <iostream>
+#include <sstream>
 #include <utility>
 #include <fstream>
 #include <memory>
 #include <vector>
 #include <string>
 #include <thread>
+#include <cstdlib>
 
 #include "utils/driver_options/driveroptions.hpp"
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/protobuf/driverpacket.pb.h"
 #include "utils/protobuf/rxsamplesmetadata.pb.h"
 #include "utils/shared_memory/shared_memory.hpp"
+#include "utils/shared_macros/shared_macros.hpp"
 
-#ifdef DEBUG
-#define DEBUG_MSG(x) do {std::cerr << x << std::endl;} while (0)
-#else
-#define DEBUG_MSG(x)
-#endif
-
-#ifdef DEBUG
-#define TIMEIT_IF_DEBUG(msg,x) do { auto time_start = std::chrono::steady_clock::now();            \
-                                    x;                                                             \
-                                    auto time_end = std::chrono::steady_clock::now();              \
-                                    auto time_diff = std::chrono::duration_cast                    \
-                                                                        <std::chrono::microseconds>\
-                                                    (time_end - time_start).count();               \
-                                    DEBUG_MSG(msg << time_diff << "us"); } while (0)
-#else
-#define TIMEIT_IF_DEBUG(msg,x) do {x;} while(0)
-#endif
-
-
-#define ERR_CHK_ZMQ(x) try {x;} catch (zmq::error_t& e) {} //TODO(keith): handle error
 
 //Delay needed for before any set_time_commands will work.
-#define SET_TIME_COMMAND_DELAY 10.0e-3 // seconds
+#define SET_TIME_COMMAND_DELAY 3e-3 // seconds
 /**
  * @brief      Makes a vector of USRP TX channels from a driver packet.
  *
@@ -113,7 +96,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   zmq::socket_t driver_packet_pub_socket(driver_c, ZMQ_SUB);
   ERR_CHK_ZMQ(driver_packet_pub_socket.connect("inproc://threads"))
   ERR_CHK_ZMQ(driver_packet_pub_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0))
-  DEBUG_MSG("TRANSMIT: Creating and connected to thread socket in control");
+  DEBUG_MSG("\033[34m\033[34mTRANSMIT\033[0m\033[0m Creating and connected to thread socket in control");
 
   zmq::socket_t receive_side_timing_socket(driver_c, ZMQ_PAIR);
   receive_side_timing_socket.connect("inproc://timing");
@@ -158,13 +141,13 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   {
     zmq::message_t request;
     ERR_CHK_ZMQ(driver_packet_pub_socket.recv(&request)) //TODO(keith): change to poll
-    DEBUG_MSG("Received in TRANSMIT");
+    DEBUG_MSG("Received in " << COLOR_BLUE("TRANSMIT"));
     driverpacket::DriverPacket driver_packet;
 
 
     //Here we accept our driver_packet from the radar_control. We use that info in order to
     //configure the USRP devices based on experiment requirements.
-    TIMEIT_IF_DEBUG("TRANSMIT total setup time: ",
+    TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " total setup time: ",
       [&]() {
 
         std::string packet_msg_str(static_cast<char*>(request.data()), request.size());
@@ -180,16 +163,16 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
           //TODO(keith): handle error
         }
 
-        DEBUG_MSG("TRANSMIT burst flags: SOB "  << driver_packet.sob() << " EOB "
+        DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " burst flags: SOB "  << driver_packet.sob() << " EOB "
           << driver_packet.eob());
 
-        TIMEIT_IF_DEBUG("TRANSMIT stream set up time: ",
+        TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " stream set up time: ",
           [&]() {
             //On start of new sequence, check if there are new USRP channels and if so
             //set what USRP TX channels and rate(Hz) to use.
             if (driver_packet.channels_size() > 0 && driver_packet.sob() == true)
             {
-              DEBUG_MSG("TRANSMIT starting something new");
+              DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " starting something new");
               channels = make_tx_channels(driver_packet);
               stream_args.channels = channels;
               auto actual_tx_rate = usrp_d.set_tx_rate(driver_packet.txrate(),channels); // TODO(keith): Test that USRPs exist to match channels in config.
@@ -199,26 +182,25 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
           }()
         );
 
-        TIMEIT_IF_DEBUG("TRANSMIT center freq ",
+        TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " center freq ",
           [&]() {
             //If there is new center frequency data, set TX center frequency for each USRP TX channel.
             if (driver_packet.txcenterfreq() > 0.0)
             {
-              DEBUG_MSG("TRANSMIT setting tx center freq to " << driver_packet.txcenterfreq());
-	      usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(),channels);
+              DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx center freq to " << driver_packet.txcenterfreq());
+              usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(),channels);
               center_freq_set = true;
             }
           }()
         );
 
-        TIMEIT_IF_DEBUG("TRANSMIT sample unpack time: ",
+        TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " sample unpack time: ",
           [&]() {
             //Parse new samples from driver packet if they exist.
             if (driver_packet.channel_samples_size() > 0)
             {  // ~700us to unpack 4x1600 samples
               samples = make_tx_samples(driver_packet);
               samples_per_buff = samples[0].size();
-	      std::cout << "samples per buff" << samples_per_buff<<std::endl;
               samples_set = true;
             }
           }()
@@ -273,36 +255,36 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       receive_side_timing_socket.send(start_receive_timing);
     }
 
-    DEBUG_MSG("TRANSMIT time_zero: " << time_zero.get_frac_secs());
-    //DEBUG_MSG("TRANSMIT time_now " << usrp_d.get_current_usrp_time().get_frac_secs());
-    DEBUG_MSG("TRANSMIT timetosendsamples(us) " << driver_packet.timetosendsamples());
-    DEBUG_MSG("TRANSMIT time_to_send_pulse " << time_to_send_pulse.get_frac_secs());
-    DEBUG_MSG("TRANSMIT atten_time_high " << atten_time_high.get_frac_secs());
-    DEBUG_MSG("TRANSMIT tr_time_high " << tr_time_high.get_frac_secs());
-    DEBUG_MSG("TRANSMIT pulse_start_time " << pulse_start_time.get_frac_secs());
-    DEBUG_MSG("TRANSMIT tr_time_low " << tr_time_low.get_frac_secs());
-    DEBUG_MSG("TRANSMIT atten_time_low " << atten_time_low.get_frac_secs());
-    DEBUG_MSG("TRANSMIT scope_sync_low " << scope_sync_low.get_frac_secs());
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " time_zero: " << time_zero.get_real_secs());
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " time_now " << usrp_d.get_current_usrp_time().get_real_secs());
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " timetosendsamples(us) " << driver_packet.timetosendsamples());
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " time_to_send_pulse " << time_to_send_pulse.get_real_secs());
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " atten_time_high " << atten_time_high.get_real_secs());
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " tr_time_high " << tr_time_high.get_real_secs());
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " pulse_start_time " << pulse_start_time.get_real_secs());
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " tr_time_low " << tr_time_low.get_real_secs());
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " atten_time_low " << atten_time_low.get_real_secs());
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " scope_sync_low " << scope_sync_low.get_real_secs());
     
     auto signal_end = std::chrono::steady_clock::now();
 
     auto signal_time_diff = std::chrono::duration_cast<std::chrono::microseconds>(signal_end - signal_start).count();
     
-    DEBUG_MSG("TRANSMIT signal creation time "<<signal_time_diff <<"us");
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " signal creation time "<<signal_time_diff <<"us");
 
     DEBUG_MSG(std::endl <<std::endl);
 
     
-    TIMEIT_IF_DEBUG("TRANSMIT full usrp time stuff ", [&]() {
+    TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " full usrp time stuff ", [&]() {
     //We send the start time and samples to the USRP. This is done before IO signals are set
     //since those commands create a blocking buffer which causes the transfer of samples to be
     //late. This leads to no waveform output on the USRP.
-    TIMEIT_IF_DEBUG("TRANSMIT time to send samples to USRP: ",
+    TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " time to send samples to USRP: ",
       [&]() {
 
         auto md = TXMetadata();
         md.set_has_time_spec(true);
-        md.set_time_spec(pulse_start_time);
+        md.set_time_spec(atten_time_high);
         //The USRP tx_metadata start_of_burst and end_of_burst describe start and end of the pulse
         //samples.
         md.set_start_of_burst(true);
@@ -315,51 +297,18 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
         while (num_samps_sent < samples_per_buff)
         {
           auto num_samps_to_send = samples_per_buff - num_samps_sent;
-          DEBUG_MSG("TRANSMIT Samples to send " << num_samps_to_send);
+          DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples to send " << num_samps_to_send);
 
           //Send behaviour can be found in UHD docs
           num_samps_sent = tx_stream->send(samples, num_samps_to_send, md.get_md()); //TODO(keith): Determine timeout properties.
-          DEBUG_MSG("TRANSMIT Samples sent " << num_samps_sent);
+          DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples sent " << num_samps_sent);
 
           md.set_start_of_burst(false);
           md.set_has_time_spec(false);
         }
 
         md.set_end_of_burst(true);
-        tx_stream->send("", 0, md.get_md()); //TODO(keith): test sob/eob in same call. REVIEW #43 If we know that we are under the max num samps value, then we could send start of burst and end of burst in the same send(...) call
-      }()
-    );
-
-
-
-
-
-
-    //Configure high speed IO on USRPs for pulses.
-    TIMEIT_IF_DEBUG("TRANSMIT Time to set up timing signals: ",
-      [&]() {
-        //Set high speed IO timing on the USRP now.
-        usrp_d.clear_command_times();
-        if (driver_packet.sob() == true)
-        {
-          auto sync_time = driver_packet.numberofreceivesamples()/driver_options.get_rx_rate();
-          DEBUG_MSG("SYNC TIME " << sync_time);
-
-          scope_sync_low = scope_sync_high + uhd::time_spec_t(sync_time);
-
-          DEBUG_MSG("TRANSMIT Scope sync high set");
-          usrp_d.set_scope_sync(scope_sync_high);
-        }
-
-        usrp_d.set_atten(atten_time_high);
-        usrp_d.set_tr(x_high);
-        usrp_d.clear_tr(x_low);
-        usrp_d.clear_atten(atten_time_low);
-
-        if (driver_packet.eob() == true)
-        {
-          usrp_d.clear_scope_sync(scope_sync_low);
-        }
+        tx_stream->send("", 0, md.get_md());
       }()
     );
 
@@ -384,7 +333,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
     auto eob_end = std::chrono::steady_clock::now();
     auto eob_diff = std::chrono::duration_cast<std::chrono::microseconds>(eob_end - eob_start).count();
-    DEBUG_MSG("TRANSMIT eob stuff time " <<eob_diff<<"us");
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " eob stuff time " <<eob_diff<<"us");
     DEBUG_MSG(std::endl << std::endl);
   }
 }
@@ -429,7 +378,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   ERR_CHK_ZMQ(driver_packet_pub_socket.connect("inproc://threads"))
   ERR_CHK_ZMQ(driver_packet_pub_socket.setsockopt(ZMQ_SUBSCRIBE, "", 0))
   zmq::message_t request;
-  DEBUG_MSG("RECEIVE: Creating and connected to thread socket in control");
+  DEBUG_MSG("\033[33;40;1mRECEIVE\033[0m: Creating and connected to thread socket in control");
 
   zmq::socket_t receive_side_timing_socket(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(receive_side_timing_socket.bind("inproc://timing"))
@@ -453,23 +402,23 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   //This loop receives 1 pulse sequence worth of samples.
   while (1) {
     driver_packet_pub_socket.recv(&request);
-    DEBUG_MSG( "RECEIVE recv new request");
+    DEBUG_MSG( "\033[33;40mRECEIVE\033[0m recv new request");
     driverpacket::DriverPacket driver_packet;
     std::string packet_msg_str(static_cast<char*>(request.data()), request.size());
     driver_packet.ParseFromString(packet_msg_str);
 
-    DEBUG_MSG("RECEIVE burst flags SOB " << driver_packet.sob() << " EOB " << driver_packet.eob());
+    DEBUG_MSG("\033[33;40mRECEIVE\033[0m burst flags SOB " << driver_packet.sob() << " EOB " << driver_packet.eob());
 
     //We only begin receiving if its the start of a pulse sequence. The rest of the pulses can be
     //ignored.
     if ( driver_packet.sob() == false ) continue;
 
 
-    TIMEIT_IF_DEBUG("RECEIVE center frq tuning time: ",
+    TIMEIT_IF_DEBUG("\033[33;40mRECEIVE\033[0m center frq tuning time: ",
       [&]() {
         if (driver_packet.rxcenterfreq() > 0) {
           auto set_freq = usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), receive_channels);
-          DEBUG_MSG("RECEIVE center freq " << set_freq);
+          DEBUG_MSG("\033[33;40mRECEIVE\033[0m center freq " << set_freq);
           center_freq_set  = true;
         }
       }()
@@ -484,7 +433,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
     //Use a random string to make a unique set of named shared memory
     auto shr_mem_name = random_string(25);
     SharedMemoryHandler shrmem(shr_mem_name);
-    TIMEIT_IF_DEBUG("RECEIVE shared memory unpack timing: ",
+    TIMEIT_IF_DEBUG("\033[33;40mRECEIVE\033[0m shared memory unpack timing: ",
       [&]() {
         mem_size = receive_channels.size() * driver_packet.numberofreceivesamples()
                             * sizeof(std::complex<float>);
@@ -499,47 +448,93 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
       }()
     );
 
-    DEBUG_MSG("Got to RECEIVE timing");
-    receive_side_timing_socket.recv(&start_receive_timing);
-    DEBUG_MSG("RECEIVED timing data");
-    auto time_zero = *(reinterpret_cast<uhd::time_spec_t*>(start_receive_timing.data())); //s
-
-    DEBUG_MSG("RECEIVE time_zero " << time_zero.get_frac_secs() << " s");
-
-    TIMEIT_IF_DEBUG("RECEIVE time to recv from USRP: ",
+    uhd::time_spec_t time_zero;
+    TIMEIT_IF_DEBUG("\033[33;40mRECEIVE\033[0m time taken to recv timing info: ",
       [&]() {
+        DEBUG_MSG("Got to \033[33;40mRECEIVE\033[0m timing");
+        receive_side_timing_socket.recv(&start_receive_timing);
+        time_zero = *(reinterpret_cast<uhd::time_spec_t*>(start_receive_timing.data())); //s
+
+        auto time_now = usrp_d.get_current_usrp_time();
+        auto time_diff = time_zero - time_now;
+        std::ostringstream time_diff_str;
+        if (time_diff.get_real_secs() > 0) {
+          time_diff_str << "\033[32m" << time_diff.get_real_secs() << "\033[0m";
+        }
+        else {
+          time_diff_str << "\033[31m" << time_diff.get_real_secs() << "\033[0m";
+        }
+        DEBUG_MSG("\033[33;40mRECEIVE\033[0m time_zero " <<time_zero.get_real_secs() 
+                    << " time_now: " << time_now.get_real_secs() << " time_diff " 
+                    << time_diff_str.str());
+      }()
+    );
+
+    TIMEIT_IF_DEBUG("\033[33;40mRECEIVE\033[0m time to recv from USRP: ",
+      [&]() {
+        TIMEIT_IF_DEBUG("\033[33;40mRECEIVE\033[0m USRP stream cmd setup time: ",
+        [&]() {
         //Documentation is unclear, but num samps is per channel
         stream_cmd.num_samps = size_t(driver_packet.numberofreceivesamples());
         stream_cmd.stream_now = false;
-        stream_cmd.time_spec = time_zero; //TODO(keith): test late time zero, perhaps check against current time(either here or at creation)
+        stream_cmd.time_spec = time_zero;
         rx_stream->issue_stream_cmd(stream_cmd);
 
-        auto md = RXMetadata();
+        
 
-        DEBUG_MSG("RECEIVE total samples to receive: "
+        DEBUG_MSG("\033[33;40mRECEIVE\033[0m total samples to receive: "
                   << receive_channels.size() * driver_packet.numberofreceivesamples()
                   << " mem size " << mem_size);
 
+        auto time_now = usrp_d.get_current_usrp_time();
+        auto time_diff = time_zero - time_now;
+
+        std::ostringstream time_diff_str;
+        if (time_diff.get_real_secs() > 0) {
+          time_diff_str << "\033[32m" << time_diff.get_real_secs() << "\033[0m";
+        }
+        else {
+          time_diff_str << "\033[31m" << time_diff.get_real_secs() << "\033[0m";
+        }
+        DEBUG_MSG("\033[33;40mRECEIVE\033[0m Time before streaming: time_zero " 
+                << time_zero.get_real_secs() << " time_now " << time_now.get_real_secs() 
+                << " time_diff " << time_diff_str.str());
+      }()
+      );
+    
         size_t accumulated_received_samples = 0;
+        auto md = RXMetadata();
         while (accumulated_received_samples < driver_packet.numberofreceivesamples()) {
           size_t num_rx_samps = rx_stream->recv(buffer_ptrs,
-            (size_t)driver_packet.numberofreceivesamples(), md.get_md());
+            (size_t)driver_packet.numberofreceivesamples(), md.get_md(),0.1,false);
 
           auto error_code = md.get_error_code();
           switch(error_code) {
             case uhd::rx_metadata_t::ERROR_CODE_NONE :
               break;
             case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT : {
-              DEBUG_MSG("Timeout while streaming");
-	      auto time_noww = usrp_d.get_current_usrp_time();
+              auto time_now = usrp_d.get_current_usrp_time();
+              auto time_diff = time_zero - time_now;
+
+              std::ostringstream time_diff_str;
+              if (time_diff.get_real_secs() > 0) {
+                time_diff_str << "\033[32m" << time_diff.get_real_secs() << "\033[0m";
+              }
+              else {
+                time_diff_str << "\033[31m" << time_diff.get_real_secs() << "\033[0m";
+              }
+              DEBUG_MSG("\033[33;40mRECEIVE\033[0m Timeout while streaming -> time_zero " 
+                << time_zero.get_real_secs() << " time_now " << time_now.get_real_secs() 
+                << " time_diff " << time_diff_str.str());
               //TODO(keith): handle timeout situation.
-	      //With late time zero(we think), this recv throws a timeout and has zero samples. 
+              //With late time zero(we think), this recv throws a timeout and has zero samples
               //infinitely loops. To fix, we are thinking best action would be to abandon loop 
               //and send error code along with stuff to rx_SIG_proc. This way the signal processing
               // can know to just abandon info. Our error handler can keep track of how many times 
               //this is happening and respond to that. 
+              exit(1);
               break;
-	     }
+       }
               // TODO(keith): throw error
             case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW :
               break;
@@ -551,13 +546,13 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
           accumulated_received_samples += num_rx_samps;
           DEBUG_MSG("Accumulated received samples " << accumulated_received_samples);
         }
-        DEBUG_MSG("RECEIVE received samples per channel " << accumulated_received_samples);
+        DEBUG_MSG("\033[33;40mRECEIVE\033[0m received samples per channel " << accumulated_received_samples);
       }()
     );
 
 
 
-    TIMEIT_IF_DEBUG("RECEIVE package samples and send timing: ",
+    TIMEIT_IF_DEBUG("\033[33;40mRECEIVE\033[0m package samples and send timing: ",
       [&]() {
         rxsamplesmetadata::RxSamplesMetadata samples_metadata;
         samples_metadata.set_numberofreceivesamples(driver_packet.numberofreceivesamples());
@@ -571,7 +566,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
                 samples_metadata_str.size());
 
         data_socket.send(samples_metadata_size_message);
-       	
+        
       }();
     );
 

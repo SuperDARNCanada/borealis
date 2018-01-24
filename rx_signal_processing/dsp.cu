@@ -11,6 +11,7 @@ See LICENSE for details
 #include "dsp.hpp"
 #include "utils/protobuf/sigprocpacket.pb.h"
 #include "utils/protobuf/processeddata.pb.h"
+#include "utils/shared_macros/shared_macros.hpp"
 #include <iostream>
 #include <cstdlib>
 #include <fstream>
@@ -43,6 +44,8 @@ namespace {
       auto dp = static_cast<DSPCore*>(processing_data);
       dp->send_ack();
       dp->start_decimate_timing();
+      DEBUG_MSG(COLOR_RED("Finished initial memcpy handler for sequence #" 
+                 << dp->get_sequence_num() << ". Thread should exit here"));
     };
 
     std::thread start_imc(imc);
@@ -83,6 +86,7 @@ namespace {
                     dp->get_num_third_stage_samples_per_antenna());
 
       #endif
+      DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     }
 
   }
@@ -109,18 +113,19 @@ namespace {
 
       processeddata::ProcessedData pd;
 
-      auto pd_start = std::chrono::steady_clock::now();
-      create_processed_data_packet(pd,dp);
-      auto pd_end = std::chrono::steady_clock::now();
-      dp->send_processed_data(pd);
-      auto time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(pd_end -
-                                                                        pd_start).count();
-      std::cout << "Fill + send processed data time " << time_diff << " ms"<< std::endl;
-      std::cout << "Cuda kernel timing: " << dp->get_decimate_timing()
-        << "ms" <<std::endl;
-      std::cout << "Complete process timing: " << dp->get_total_timing()
-        << "ms" <<std::endl;
+      TIMEIT_IF_DEBUG("Fill + send processed data time ",
+        [&]() {
+          create_processed_data_packet(pd,dp);
+          //dp->send_processed_data(pd);
+        }
+      );
+      DEBUG_MSG("Cuda kernel timing: " << COLOR_GREEN(dp->get_decimate_timing()) << "ms");
+      DEBUG_MSG("Complete process timing: " << COLOR_GREEN(dp->get_total_timing()) << "ms");
+      auto sq_num = dp->get_sequence_num();
       delete dp;
+
+      DEBUG_MSG(COLOR_RED("Deleted DP in postprocess for sequence #" << sq_num
+                  << ". Thread should terminate here."));
     };
 
     std::thread start_pp(pp);
@@ -248,6 +253,8 @@ DSPCore::~DSPCore()
   gpuErrchk(cudaStreamDestroy(stream));
 
   shr_mem.remove_shr_mem();
+
+  DEBUG_MSG(COLOR_RED("Running deconstructor for sequence #" << sequence_num));
 
 }
 
@@ -395,8 +402,7 @@ void DSPCore::stop_timing()
   gpuErrchk(cudaEventElapsedTime(&total_process_timing_ms, initial_start, stop));
   gpuErrchk(cudaEventElapsedTime(&decimate_kernel_timing_ms, kernel_start, stop));
   gpuErrchk(cudaEventElapsedTime(&mem_time_ms, initial_start, mem_transfer_end));
-    std::cout << "Cuda memcpy time: " << mem_time_ms
-      << "ms" <<std::endl;
+  DEBUG_MSG("Cuda memcpy time: " << COLOR_GREEN(mem_time_ms) << "ms");
 
 }
 
@@ -418,7 +424,7 @@ void DSPCore::send_timing()
   memcpy ((void *) s_msg.data (), s_msg_str.c_str(), s_msg_str.size());
 
   timing_socket->send(s_msg);
-  std::cout << "Sent timing after processing" << std::endl;
+  DEBUG_MSG(COLOR_RED("Sent timing after processing with sequence #" << sequence_num));
 
 }
 
@@ -453,6 +459,8 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
     num_third_stage_samples_per_antenna = num_output_samples_per_antenna_3;
 
     gpuErrchk(cudaStreamAddCallback(stream, postprocess, this, 0));
+
+    DEBUG_MSG(COLOR_RED("Added stream callback for sequence #" << sequence_num));
 }
 
 /**
@@ -474,7 +482,7 @@ void DSPCore::send_ack()
   zmq::message_t s_msg(s_msg_str.size());
   memcpy ((void *) s_msg.data(), s_msg_str.c_str(), s_msg_str.size());
   ack_socket->send(s_msg);
-  std::cout << "Sent ack after copy" << std::endl;
+  DEBUG_MSG(COLOR_RED("Sent ack after copy for sequence_num #" << sequence_num));
 }
 
 void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
@@ -484,7 +492,7 @@ void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
   zmq::message_t p_msg(p_msg_str.size());
   memcpy ((void *) p_msg.data(), p_msg_str.c_str(), p_msg_str.size());
   data_write_socket->send(p_msg);
-  std::cout << "Send processed data to data_write" << std::endl;
+  DEBUG_MSG(COLOR_RED("Send processed data to data_write for sequence #" << sequence_num));
 }
 
 
@@ -639,6 +647,10 @@ uint32_t DSPCore::get_num_third_stage_samples_per_antenna()
   return num_third_stage_samples_per_antenna;
 }
 
+uint32_t DSPCore::get_sequence_num()
+{
+  return sequence_num;
+}
 
 
 

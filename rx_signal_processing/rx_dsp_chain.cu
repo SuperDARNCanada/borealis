@@ -20,18 +20,11 @@
 #include "utils/driver_options/driveroptions.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 #include "utils/shared_memory/shared_memory.hpp"
+#include "utils/shared_macros/shared_macros.hpp"
 
 #include "dsp.hpp"
 #include "filtering.hpp"
 #include "decimate.hpp"
-
-#ifdef DEBUG
-#define DEBUG_MSG(x) do {std::cerr << x << std::endl;} while (0)
-#else
-#define DEBUG_MSG(x)
-#endif
-
-#define ERR_CHK_ZMQ(x) try {x;} catch (zmq::error_t& e) {} //TODO(keith): handle error
 
 
 int main(int argc, char **argv){
@@ -94,29 +87,30 @@ int main(int argc, char **argv){
     third_stage_dm_rate = static_cast<uint32_t>(float_dm_rate);
   }
 
-  std::cout << "1st stage dm rate: " << first_stage_dm_rate << std::endl
-    << "2nd stage dm rate: " << second_stage_dm_rate << std::endl
-    << "3rd stage dm rate: " << third_stage_dm_rate << std::endl;
+  RUNTIME_MSG("1st stage dm rate: " << COLOR_YELLOW(first_stage_dm_rate));
+  RUNTIME_MSG("2nd stage dm rate: " << COLOR_YELLOW(second_stage_dm_rate));
+  RUNTIME_MSG("3rd stage dm rate: " << COLOR_YELLOW(third_stage_dm_rate));
 
 
   auto filter_timing_start = std::chrono::steady_clock::now();
 
   Filtering filters(rx_rate,sig_options);
 
-  DEBUG_MSG("Number of 1st stage taps: " << filters.get_num_first_stage_taps() << std::endl
-    << "Number of 2nd stage taps: " << filters.get_num_second_stage_taps() << std::endl
-    << "Number of 3rd stage taps: " << filters.get_num_third_stage_taps() <<std::endl
-    << "Number of 1st stage taps after padding: "
-    << filters.get_first_stage_lowpass_taps().size() << std::endl
-    << "Number of 2nd stage taps after padding: "
-    << filters.get_second_stage_lowpass_taps().size() << std::endl
-    << "Number of 3rd stage taps after padding: "
-    << filters.get_third_stage_lowpass_taps().size());
+  RUNTIME_MSG("Number of 1st stage taps: " << COLOR_YELLOW(filters.get_num_first_stage_taps()));
+  RUNTIME_MSG("Number of 2nd stage taps: " << COLOR_YELLOW(filters.get_num_second_stage_taps()));
+  RUNTIME_MSG("Number of 3rd stage taps: " << COLOR_YELLOW(filters.get_num_third_stage_taps()));
+
+  RUNTIME_MSG("Number of 1st stage taps after padding: "
+              << COLOR_YELLOW(filters.get_first_stage_lowpass_taps().size()));
+  RUNTIME_MSG("Number of 2nd stage taps after padding: "
+              << COLOR_YELLOW(filters.get_second_stage_lowpass_taps().size()));
+  RUNTIME_MSG("Number of 3rd stage taps after padding: " 
+              << COLOR_YELLOW(filters.get_third_stage_lowpass_taps().size()));
 
   auto filter_timing_end = std::chrono::steady_clock::now();
   auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(filter_timing_end -
                                                                        filter_timing_start).count();
-  DEBUG_MSG("Time to create 3 filters: " << time_diff << "us");
+  RUNTIME_MSG("Time to create 3 filters: " << COLOR_MAGENTA(time_diff) << "us");
 
   //FIXME(Keith): fix saving filter to file
   filters.save_filter_to_file(filters.get_first_stage_lowpass_taps(),"filter1coefficients.dat");
@@ -142,13 +136,13 @@ int main(int argc, char **argv){
       //TODO(keith): handle error
     }
 
-    DEBUG_MSG("Got driver request");
+    RUNTIME_MSG("Got driver request for sequence #" << COLOR_RED(rx_metadata.sequence_num()));
 
     //Verify driver and radar control packets align
     if (sp_packet.sequence_num() != rx_metadata.sequence_num()) {
       //TODO(keith): handle error
-      DEBUG_MSG("SEQUENCE NUMBER mismatch radar_control: " << sp_packet.sequence_num()
-        << " usrp_driver: " << rx_metadata.sequence_num());
+      RUNTIME_MSG("SEQUENCE NUMBER mismatch radar_control: " << COLOR_RED(sp_packet.sequence_num())
+        << " usrp_driver: " << COLOR_RED(rx_metadata.sequence_num()));
     }
 
     //Parse needed packet values now
@@ -160,16 +154,11 @@ int main(int argc, char **argv){
       rx_freqs.push_back(sp_packet.rxchannel(i).rxfreq());
     }
 
-    auto mix_timing_start = std::chrono::steady_clock::now();
-
-    filters.mix_first_stage_to_bandpass(rx_freqs,rx_rate);
-
-    auto mix_timing_end = std::chrono::steady_clock::now();
-
-    time_diff = std::chrono::duration_cast<std::chrono::microseconds>(mix_timing_end -
-                                                                        mix_timing_start).count();
-
-    DEBUG_MSG("NCO mix timing: " << time_diff<< "us");
+    TIMEIT_IF_DEBUG("   NCO mix timing: ",
+      [&]() {
+        filters.mix_first_stage_to_bandpass(rx_freqs,rx_rate);
+      }()
+    );
 
     if (rx_metadata.shrmemname().empty()){
       //TODO(keith): handle missing name error
@@ -187,7 +176,7 @@ int main(int argc, char **argv){
 
     auto total_samples = rx_metadata.numberofreceivesamples() * total_antennas;
 
-    DEBUG_MSG("Total samples in data message: " << total_samples);
+    DEBUG_MSG("   Total samples in data message: " << total_samples);
 
     dp->allocate_and_copy_rf_samples(total_samples);
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),

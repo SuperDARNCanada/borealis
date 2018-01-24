@@ -30,4 +30,4 @@ import os
 Import('*')
 
 Prog('signal_processing', Glob("./*.c*"), with_libs='utils::utils',
-     LIBS=['protobuf','m','zmq','cublas','curand'])
+     LIBS=['protobuf','m','zmq','cublas','curand','rt'])

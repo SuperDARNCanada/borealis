@@ -39,6 +39,7 @@ USRP::USRP(const DriverOptions& driver_options)
                                               driver_options.get_interferometer_antenna_count());*/
   set_time_source(driver_options.get_pps());
   check_ref_locked();
+  set_atr_gpios();
 
 }
 
@@ -397,6 +398,29 @@ void USRP::clear_tr(uhd::time_spec_t tr_low)
 void USRP::clear_command_times()
 {
   usrp_->clear_command_time();
+}
+
+void USRP::set_atr_gpios()
+{
+  usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0xFFFF, 0b11111111, mboard_);
+  usrp_->set_gpio_attr(gpio_bank_, "DDR", 0xFFFF, 0b11111111, mboard_);
+
+  //Mirror pins along bank for easier scoping.
+  usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, 0b00000001, mboard_);
+  usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, 0b00000010, mboard_);
+
+  usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, 0b00000100, mboard_);
+  usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, 0b00001000, mboard_);
+
+  //XX is the actual TR signal
+  usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, 0b00010000, mboard_);
+  usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, 0b00100000, mboard_);
+
+  //0X acts as 'scope sync'
+  usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, 0b01000000, mboard_);
+  usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, 0b10000000, mboard_);
+
+
 }
 
 /**

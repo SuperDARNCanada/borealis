@@ -79,6 +79,7 @@ class DSPCore {
   uint32_t get_num_first_stage_samples_per_antenna();
   uint32_t get_num_second_stage_samples_per_antenna();
   uint32_t get_num_third_stage_samples_per_antenna();
+  uint32_t get_sequence_num();
   cudaStream_t get_cuda_stream();
   void start_decimate_timing();
   void stop_timing();
