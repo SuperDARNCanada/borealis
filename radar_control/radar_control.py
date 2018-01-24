@@ -460,7 +460,7 @@ def radar():
                                                pulse_dict['timing'], seqnum_start + nave,
                                                repeat=pulse_dict['isarepeat'])
                                 # Pulse is done.
-                            poll_timeout = int(sequence.sstime / 1000 + 20)  # ms
+                            poll_timeout = int(sequence.sstime / 1000 + 20)  # ms TODO change based on pulse time into the future once timing info exchange is set up
                             # Get sequence acknowledgements and log synchronization and
                             # communication errors between the n200_driver, rx_sig_proc, and
                             # radar_control.
