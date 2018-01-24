@@ -320,8 +320,8 @@ def radar():
     For every pulse, samples and other control information are sent to the n200_driver.
     For every pulse sequence, processing information is sent to the signal processing block.
     After every integration time (AveragingPeriod), the experiment block is given the opportunity
-    to change the control program (if it sends a new one, runradar will halt the old one and begin 
-    with the new experiment).
+    to change the control program. If a new program is sent, radar will halt the old one and begin 
+    with the new experiment.
     """
 
     # Initialize driverpacket.

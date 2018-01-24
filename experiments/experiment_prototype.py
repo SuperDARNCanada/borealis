@@ -158,6 +158,8 @@ Explanation of beam_order and beam_angle:
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
 
+        self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
+
         self.__cpid = cpid
 
         self.__slice_dict = {}
@@ -1063,7 +1065,7 @@ Explanation of beam_order and beam_angle:
             errmsg = "Error: Invalid num_slices less than 1"
             raise ExperimentException(errmsg)
 
-        # TODO: somehow check if self.cpid is not unique - incorporate known cpids from git repo?
+        # TODO: check if self.cpid is not unique - incorporate known cpids from git repo
         # TODO: use pygit2 for this
 
         # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
