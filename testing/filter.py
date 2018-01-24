@@ -47,9 +47,10 @@ def get_samples(rate,wave_freq,filter_len):
         samples[i]=amp*math.cos(rads)+amp*math.sin(rads)*1j
     return samples
 
-filter_len=175
-lpass = signal.remez(filter_len, [0, 5800, 6000, 8000, 8200, 11025], [0, 1, 0], Hz=22050, maxiter=50000000)
-shift_wave = get_samples(22050,-4000,filter_len)
+filter_len=60
+lpass = signal.remez(filter_len, [x * 10000 for x in [0, .1, .15, .5]], [1,0], Hz=10000, maxiter=50000000)
+lpass = np.concatenate((lpass,np.array([0,0,0,0])))
+shift_wave = get_samples(10000,-1000,filter_len)
 bpass = np.array([l*i for l,i in zip(lpass,shift_wave)])
 
 

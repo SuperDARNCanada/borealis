@@ -5,6 +5,6 @@ package rxsamplesmetadata;
 message RxSamplesMetadata {
   uint32 sequence_num = 1;
   uint32 numberofreceivesamples = 2;
-  uint32 size = 3;
+  uint32 size = 3; // REVIEW #1 what is size for? we didn't see it being used in the receive loop of driver
   string shrmemname = 4; // REVIEW #26 this should indicate that it's the location of shared memory?
 }

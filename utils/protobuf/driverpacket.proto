@@ -4,7 +4,7 @@ package driverpacket;
 
 message DriverPacket {
   repeated uint32 channels = 1;
-  repeated Samples samples = 2;
+  repeated SamplesBuffer channel_samples = 2;
   uint32 sequence_num = 4;
   double txrate = 5;
   double txcenterfreq = 3;
@@ -14,7 +14,7 @@ message DriverPacket {
   bool SOB = 8;
   bool EOB = 9;
 
-  message Samples {
+  message SamplesBuffer {
     repeated double real = 1;
     repeated double imag = 2;
   }

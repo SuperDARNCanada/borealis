@@ -42,25 +42,28 @@ int main(int argc, char **argv){
   auto sig_options = SignalProcessingOptions();
   auto rx_rate = driver_options.get_rx_rate(); //Hz
 
+
   zmq::context_t sig_proc_context(1); // 1 is context num. Only need one per program as per examples
 
   zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(driver_socket.bind("ipc:///tmp/feeds/1"))
+  ERR_CHK_ZMQ(driver_socket.bind(sig_options.get_driver_socket_address()))
 
 
   //This socket is used to receive metadata about the sequence to process
   zmq::socket_t radar_control_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(radar_control_socket.bind("ipc:///tmp/feeds/2"))
+  ERR_CHK_ZMQ(radar_control_socket.bind(sig_options.get_radar_control_socket_address()))
 
   //This socket is used to acknowledge a completed sequence to radar_control
   zmq::socket_t ack_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(ack_socket.bind("ipc:///tmp/feeds/3"))
+  ERR_CHK_ZMQ(ack_socket.bind(sig_options.get_ack_socket_address()))
 
   //This socket is used to send the GPU kernel timing to radar_control to know if the processing
   //can be done in real-time.
   zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(timing_socket.bind("ipc:///tmp/feeds/4"))
+  ERR_CHK_ZMQ(timing_socket.bind(sig_options.get_timing_socket_address()))
 
+  zmq::socket_t data_write_socket(sig_proc_context,ZMQ_PAIR);
+  ERR_CHK_ZMQ(data_write_socket.connect(sig_options.get_data_write_address()))
 
   auto gpu_properties = get_gpu_properties();
   print_gpu_properties(gpu_properties);
@@ -120,7 +123,7 @@ int main(int argc, char **argv){
   filters.save_filter_to_file(filters.get_second_stage_lowpass_taps(),"filter2coefficients.dat");
   filters.save_filter_to_file(filters.get_third_stage_lowpass_taps(),"filter3coefficients.dat");
 
-  while(1){
+  for(;;){
     //Receive packet from radar control
     zmq::message_t radctl_request;
     radar_control_socket.recv(&radctl_request);
@@ -171,16 +174,17 @@ int main(int argc, char **argv){
     if (rx_metadata.shrmemname().empty()){
       //TODO(keith): handle missing name error
     }
-    DSPCore *dp = new DSPCore(&ack_socket, &timing_socket,
-                             sp_packet.sequence_num(), rx_metadata.shrmemname());
 
-
-    auto total_antennas = sig_options.get_main_antenna_count() +
-                sig_options.get_interferometer_antenna_count();
+    DSPCore *dp = new DSPCore(&ack_socket, &timing_socket, &data_write_socket,
+                             sp_packet.sequence_num(), rx_metadata.shrmemname(), rx_freqs);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
     }
+
+    auto total_antennas = sig_options.get_main_antenna_count() +
+                sig_options.get_interferometer_antenna_count();
+
     auto total_samples = rx_metadata.numberofreceivesamples() * total_antennas;
 
     DEBUG_MSG("Total samples in data message: " << total_samples);
@@ -196,25 +200,25 @@ int main(int argc, char **argv){
 
     dp->allocate_first_stage_output(total_output_samples_1);
 
-    gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
-                  DSPCore::initial_memcpy_callback, dp, 0));
+    dp->initial_memcpy_callback();
 
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
       dp->get_first_stage_output_p(),dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
-      rx_metadata.numberofreceivesamples(), filters.get_first_stage_lowpass_taps().size(), 
+      rx_metadata.numberofreceivesamples(), filters.get_first_stage_lowpass_taps().size(),
       rx_freqs.size(), total_antennas, "First stage of decimation", dp->get_cuda_stream());
+
 
 
     // When decimating, we go from one set of samples for each antenna in the first stage
     // to multiple sets of reduced samples for each frequency in further stages. Output samples are
     // grouped by frequency with all samples for each antenna following each other
-    // before samples of another frequency start. In the first stage need a filter for each 
+    // before samples of another frequency start. In the first stage need a filter for each
     // frequency, but in the next stages we only need one filter for all data sets.
     dp->allocate_and_copy_second_stage_filter(filters.get_second_stage_lowpass_taps().data(),
                                                 filters.get_second_stage_lowpass_taps().size());
 
     auto num_output_samples_per_antenna_2 = num_output_samples_per_antenna_1 / second_stage_dm_rate;
-    auto total_output_samples_2 = rx_freqs.size() * num_output_samples_per_antenna_2 * 
+    auto total_output_samples_2 = rx_freqs.size() * num_output_samples_per_antenna_2 *
                                     total_antennas;
 
     dp->allocate_second_stage_output(total_output_samples_2);
@@ -231,10 +235,11 @@ int main(int argc, char **argv){
                                                filters.get_third_stage_lowpass_taps().size());
 
     auto num_output_samples_per_antenna_3 = num_output_samples_per_antenna_2 / third_stage_dm_rate;
-    auto total_output_samples_3 = rx_freqs.size() * num_output_samples_per_antenna_3 * 
+    auto total_output_samples_3 = rx_freqs.size() * num_output_samples_per_antenna_3 *
                                     total_antennas;
 
     dp->allocate_third_stage_output(total_output_samples_3);
+
     auto samples_per_antenna_3 = samples_per_antenna_2/second_stage_dm_rate;
     call_decimate<DecimationType::lowpass>(dp->get_second_stage_output_p(),
       dp->get_third_stage_output_p(), dp->get_third_stage_filter_p(), third_stage_dm_rate,
@@ -243,11 +248,15 @@ int main(int argc, char **argv){
 
     dp->allocate_and_copy_host_output(total_output_samples_3);
 
-    gpuErrchk(cudaStreamAddCallback(dp->get_cuda_stream(),
-                      DSPCore::cuda_postprocessing_callback, dp, 0));
+    dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
+                                      num_output_samples_per_antenna_1,
+                                      num_output_samples_per_antenna_2,
+                                      num_output_samples_per_antenna_3);
+
 
 
   }
+
 
 
 

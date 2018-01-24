@@ -21,7 +21,8 @@ And for release:
 
 source mode release
 
-This will add the proper directory to your environment PATH variable for the built binaries. 
+This adds the environment variable BOREALISPATH to your login, it's used by some python scripts to import files, among other places.
+This will also add the proper directory to your environment PATH variable for the built binaries, so they can be executed by typing just the name.
 It also adds specific flags for the C++ compiler for either debug or release. See the python
 script at site_scons/site_config.py for all details.
 
@@ -40,9 +41,10 @@ To see the various build flavours available (typically debug and release):
 ** NOTE ** You need to execute the script exactly as above (no 'python' in front), or the output won't show up.
 This means the script must be executable.
 
+
 ## Installation
 
-Now to build borealis (after 'source mode release/debug'):
+Now to build Borealis (after 'source mode release/debug'):
 scons -n  (for dry run)
 scons
 
