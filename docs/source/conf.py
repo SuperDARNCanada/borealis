@@ -28,6 +28,13 @@ os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
 sys.path.insert(1, BOREALISPATH + '/experiments')
 
+# hack for readthedocs to cause it to run doxygen first
+# https://github.com/rtfd/readthedocs.org/issues/388
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:
+  from subprocess import call 
+  call('doxygen')
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -45,8 +52,11 @@ extensions = [
     'sphinx.ext.pngmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'breathe'
 ]
 
+breathe_projects = {"borealis" : "xml/"}
+breathe_default_project = "borealis"
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
