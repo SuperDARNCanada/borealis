@@ -1,0 +1,4 @@
+Class DSPCore
+=============
+
+.. doxygenclass:: DSPCore

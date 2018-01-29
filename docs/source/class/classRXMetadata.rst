@@ -1,0 +1,4 @@
+Class RXMetadata
+================
+
+.. doxygenclass:: RXMetadata

@@ -1,0 +1,4 @@
+Class Filtering
+===============
+
+.. doxygenclass:: Filtering

@@ -10,12 +10,13 @@ Contents - THIS NEEDS WORK:
 
 ..  toctree::
     :maxdepth: 2
+    :glob:
 
     /config
     /experiment_prototype_doc
     /example_experiment
     /starting_the_radar
-
+    /classlist
 ..  automodule:: experiment_exception
 
     ..  autoclass:: ExperimentException
@@ -24,8 +25,7 @@ Contents - THIS NEEDS WORK:
 ..  automodule:: scan_classes
     :members:
 
-..  doxygenclass:: USRP
-    :members:
+
 Indices and tables
 ==================
 

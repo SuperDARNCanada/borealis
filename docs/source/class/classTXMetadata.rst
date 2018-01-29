@@ -1,0 +1,4 @@
+Class TXMetadata
+================
+
+.. doxygenclass:: TXMetadata
