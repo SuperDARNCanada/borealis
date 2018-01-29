@@ -22,11 +22,11 @@ from experiments.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 if __debug__:
-	sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
+	sys.path.append(os.environ["BOREALISPATH"] + '/build/debug')  # TODO need to get this from scons environment, 'release' may be 'debug'
 else:
-	sys.path.append(os.environ["BOREALISPATH"]+ '/build/release/utils/protobuf')
-import driverpacket_pb2
-import sigprocpacket_pb2
+	sys.path.append(os.environ["BOREALISPATH"]+ '/build/release')
+from utils.protobuf.driverpacket_pb2 import DriverPacket
+from utils.protobuf.sigprocpacket_pb2 import SigProcPacket
 
 from sample_building.sample_building import azimuth_to_antenna_offset
 from experiments.experiment_prototype import ExperimentPrototype
@@ -332,7 +332,7 @@ def radar():
     """
 
     # Initialize driverpacket.
-    driverpacket = driverpacket_pb2.DriverPacket()
+    driverpacket = DriverPacket()
 
     # Get config options.
     options = ExperimentOptions()
@@ -359,7 +359,7 @@ def radar():
     poller_for_completed_sequence.register(tx_socket, zmq.POLLIN)
     poller_for_completed_sequence.register(rx_ack_socket, zmq.POLLIN)
 
-    sigprocpacket = sigprocpacket_pb2.SigProcPacket()
+    sigprocpacket = SigProcPacket()
     # seqnum is used as a identifier in all packets while
     # radar is running so set it up here.
     # seqnum will get increased by nave (number of averages or sequences in the integration period)
