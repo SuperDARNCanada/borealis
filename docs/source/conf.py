@@ -35,8 +35,13 @@ if on_rtd:
   from subprocess import call 
   call('doxygen')
   cur_dir = os.path.abspath(os.path.dirname(__file__))
-  call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'xml/']) #use apidoc to regen these files on update
+  call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
 
+#from subprocess import call 
+#call('doxygen')
+#cur_dir = os.path.abspath(os.path.dirname(__file__))
+#print cur_dir
+#call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) 
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
