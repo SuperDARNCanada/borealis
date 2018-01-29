@@ -34,7 +34,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
   from subprocess import call 
   call('doxygen')
-  call(['breathe-apidoc','-o .', 'xml/']) #use apidoc to regen these files on update
+  call(['breathe-apidoc','-f','-o .', 'xml/']) #use apidoc to regen these files on update
 
 # -- General configuration ------------------------------------------------
 
