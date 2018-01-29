@@ -11,8 +11,6 @@ Contents - THIS NEEDS WORK:
 ..  toctree::
     :maxdepth: 2
 
-    borealis
-
     /config
     /experiment_prototype_doc
     /example_experiment
@@ -26,6 +24,8 @@ Contents - THIS NEEDS WORK:
 ..  automodule:: scan_classes
     :members:
 
+..  doxygenclass:: USRP
+    :members:
 Indices and tables
 ==================
 
