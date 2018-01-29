@@ -16,7 +16,9 @@ Contents - THIS NEEDS WORK:
     /experiment_prototype_doc
     /example_experiment
     /starting_the_radar
-    /classlist
+    /usrp_n200_driver
+    /rx_signal_processing
+    /utils
 ..  automodule:: experiment_exception
 
     ..  autoclass:: ExperimentException

@@ -34,6 +34,7 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
   from subprocess import call 
   call('doxygen')
+  call(['breathe-apidoc','-o .', 'xml/']) #use apidoc to regen these files on update
 
 # -- General configuration ------------------------------------------------
 
@@ -49,7 +50,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
-    'sphinx.ext.pngmath',
+    'sphinx.ext.imgmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'breathe'

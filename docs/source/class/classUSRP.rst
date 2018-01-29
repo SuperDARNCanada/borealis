@@ -1,4 +1,0 @@
-Class USRP
-==========
-
-.. doxygenclass:: USRP
