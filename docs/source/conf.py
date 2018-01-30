@@ -28,7 +28,7 @@ BOREALISPATH = os.path.abspath('../..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
 sys.path.insert(1, BOREALISPATH + '/experiments')
-sys.path.insert(2, BOREALISPATH + '/build/release/utils')
+sys.path.insert(2, BOREALISPATH + '/utils')
 sys.path.insert(3, os.environ['PATH'])
 
 proto_directory = BOREALISPATH + "/utils/protobuf/"
