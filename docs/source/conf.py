@@ -37,8 +37,9 @@ sigprocproto = proto_directory + "/sigprocpacket.proto"
 driverproto = proto_directory + "/driverpacket.proto"
 
 # need to set up protobuf
-call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, sigprocproto])
-call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, driverproto])
+# just placed them in the proto directory so they can be found by radar_control.
+#call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, sigprocproto])
+#call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, driverproto])
 
 
 # -- General configuration ------------------------------------------------
