@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 # Borealis documentation build configuration file, created by
@@ -16,6 +16,7 @@
 import sys
 import os
 import shlex
+from subprocess import call
 import sphinx_rtd_theme
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -27,6 +28,18 @@ BOREALISPATH = os.path.abspath('../..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
 sys.path.insert(1, BOREALISPATH + '/experiments')
+sys.path.insert(2, BOREALISPATH + '/build/release/utils')
+sys.path.insert(3, os.environ['PATH'])
+
+proto_directory = BOREALISPATH + "/utils/protobuf/"
+pb2_directory = BOREALISPATH + "/build/release/utils/protobuf/"
+sigprocproto = proto_directory + "/sigprocpacket.proto"
+driverproto = proto_directory + "/driverpacket.proto"
+
+# need to set up protobuf
+call(["protoc", "-I=" + proto_directory, "--python_out=" + pb2_directory, sigprocproto])
+call(["protoc", "-I=" + proto_directory, "--python_out=" + pb2_directory, driverproto])
+
 
 # -- General configuration ------------------------------------------------
 

@@ -33,32 +33,33 @@ INTERFACING TYPES:
 
 NONE : Only the default, must be changed.
 SCAN : Scan by scan interfacing. exp_slice #1 will scan first
-    followed by exp_slice #2 and subsequent exp_slice's.
+followed by exp_slice #2 and subsequent exp_slice's.
 INTTIME : nave by nave interfacing (full integration time of
-     one pulse_sequence, then the next). Time/number of pulse_sequences
-    dependent on intt and intn in exp_slice. Effectively
-    simultaneous scan interfacing, interleaving each
-    integration time in the scans. exp_slice #1 first inttime or
-    beam direction will run followed by exp_slice #2's first inttime,
-    etc. if exp_slice #1's len(scan) is greater than exp_slice #2's, exp_slice
-    #2's last integration will run and then all the rest of exp_slice
-    #1's will continue until the full scan is over. exp_slice 1
-    and 2 must have the same scan boundary, if any boundary.
-    All other may differ.
+one pulse_sequence, then the next). Time/number of pulse_sequences
+dependent on intt and intn in exp_slice. Effectively
+simultaneous scan interfacing, interleaving each
+integration time in the scans. exp_slice #1 first inttime or
+beam direction will run followed by exp_slice #2's first inttime,
+etc. if exp_slice #1's len(scan) is greater than exp_slice #2's, exp_slice
+#2's last integration will run and then all the rest of exp_slice
+#1's will continue until the full scan is over. exp_slice 1
+and 2 must have the same scan boundary, if any boundary.
+All other may differ.
 INTEGRATION : integration by integration interfacing (one
-    #pulse_sequence of one exp_slice, then the next). exp_slice #1 and
-    exp_slice #2 must have same intt and intn. Integrations will
-    switch between one and the other until time is up/nave is
-    reached.
+#pulse_sequence of one exp_slice, then the next). exp_slice #1 and
+exp_slice #2 must have same intt and intn. Integrations will
+switch between one and the other until time is up/nave is
+reached.
 PULSE : Simultaneous pulse_sequence interfacing, pulse by pulse
-    creates a single pulse_sequence. exp_slice A and B might have different
-    frequencies (stereo) and/or may have different pulse
-    length, mpinc, pulse_sequence, but must have the same integration
-    time. They must also have same len(scan), although they may
-    use different directions in scan. They must have the same
-    scan boundary if any. A time offset between the pulses
-    starting may be set (seq_timer in exp_slice). exp_slice A
-    and B will have integrations that run at the same time.
+creates a single pulse_sequence. exp_slice A and B might have different
+frequencies (stereo) and/or may have different pulse
+length, mpinc, pulse_sequence, but must have the same integration
+time. They must also have same len(scan), although they may
+use different directions in scan. They must have the same
+scan boundary if any. A time offset between the pulses
+starting may be set (seq_timer in exp_slice). exp_slice A
+and B will have integrations that run at the same time.
+
 """
 
 
@@ -80,7 +81,8 @@ class ExperimentPrototype(object):
                     "rx_int_antennas", "pulse_sequence", "pulse_shift", "mpinc",
                     "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
                     "beam_order", "scanboundflag", "scanbound", "txfreq", "rxfreq",
-                    "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset"]
+                    "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
+                    "iwavetable", "qwavetable"]
 
     __hidden_slice_keys = ['rxonly', 'clrfrqflag']
 

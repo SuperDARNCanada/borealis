@@ -93,7 +93,7 @@ class ScanClassBase(object):
         :param list_of_combos: list of lists of length two associating two slices together. 
         :param all_keys: list of all keys included in this object (scan, ave_period, or sequence).
         :return: list of combos that is sorted so that each key only appears once and the lists within
-         the list are of however long necessary
+        the list are of however long necessary
         """
 
         list_of_combos = sorted(list_of_combos)
