@@ -31,7 +31,7 @@ sys.path.insert(1, BOREALISPATH + '/experiments')
 sys.path.insert(2, BOREALISPATH + '/utils')
 sys.path.insert(3, os.environ['PATH'])
 
-proto_directory = BOREALISPATH + "/utils/protobuf/"
+proto_directory = BOREALISPATH + "/utils/protobuf"
 #pb2_directory = BOREALISPATH + "/build/release/utils/protobuf/"
 sigprocproto = proto_directory + "/sigprocpacket.proto"
 driverproto = proto_directory + "/driverpacket.proto"
