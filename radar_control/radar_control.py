@@ -25,8 +25,8 @@ if __debug__:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils')
 else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils')
-from protobuf.driverpacket.driverpacket_pb2 import DriverPacket
-from protobuf.sigprocpacket.sigprocpacket_pb2 import SigProcPacket
+from protobuf.driverpacket_pb2 import DriverPacket
+from protobuf.sigprocpacket_pb2 import SigProcPacket
 
 from sample_building.sample_building import azimuth_to_antenna_offset
 from experiments.experiment_prototype import ExperimentPrototype

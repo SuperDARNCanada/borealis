@@ -32,13 +32,13 @@ sys.path.insert(2, BOREALISPATH + '/build/release/utils')
 sys.path.insert(3, os.environ['PATH'])
 
 proto_directory = BOREALISPATH + "/utils/protobuf/"
-pb2_directory = BOREALISPATH + "/build/release/utils/protobuf/"
+#pb2_directory = BOREALISPATH + "/build/release/utils/protobuf/"
 sigprocproto = proto_directory + "/sigprocpacket.proto"
 driverproto = proto_directory + "/driverpacket.proto"
 
 # need to set up protobuf
-call(["protoc", "-I=" + proto_directory, "--python_out=" + pb2_directory, sigprocproto])
-call(["protoc", "-I=" + proto_directory, "--python_out=" + pb2_directory, driverproto])
+call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, sigprocproto])
+call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, driverproto])
 
 
 # -- General configuration ------------------------------------------------
