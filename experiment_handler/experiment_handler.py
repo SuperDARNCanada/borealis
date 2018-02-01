@@ -6,22 +6,54 @@
 #
 
 import zmq
+import os
+import sys
+import argparse
+import inspect
+import importlib
 
-# TODO: dynamic import
-from experiments import normalscan
+BOREALISPATH = os.environ['BOREALISPATH']
+sys.path.append(BOREALISPATH)
+
 from radar_status.radar_status import RadarStatus
-# importlib.import_module('normalscan')
 from utils.experiment_options.experimentoptions import ExperimentOptions
+from experiments.experiment_exception import ExperimentException
 
+parser = argparse.ArgumentParser()
+parser.add_argument("experiment")
+args = parser.parse_args()
+if __debug__:
+    print(args.experiment)
+experiment = args.experiment
+experiment_mod = importlib.import_module("." + experiment, package="experiments")
 
-# importlib.import_module('radar_status') TODO
+experiment_classes = {}
+for class_name, obj in inspect.getmembers(experiment_mod, inspect.isclass):
+    experiment_classes[class_name] = obj
+
+# need to have one ExperimentPrototype and one user-specified class.
+try:
+    del experiment_classes['ExperimentPrototype']
+except KeyError:
+    errmsg = "Your experiment is not built from parent class ExperimentPrototype - exiting"
+    raise KeyError(errmsg)
+
+num_classes = 0
+for experiment_name, experiment_obj in experiment_classes.items():
+    num_classes += 1
+    if num_classes != 1:
+        errmsg = "You have more than one experiment class in your experiment file - exiting"
+        raise ExperimentException(errmsg)
+    Experiment = experiment_obj
+
+# TODO add help -h and --help arguments
 
 
 def setup_data_socket(addr, context):
     """
     To setup the socket for communication with the 
     signal processing block. 
-    :return: 
+    :return:
     """
     cpsocket = context.socket(zmq.PAIR)
     try:
@@ -56,6 +88,7 @@ def experiment_handler():
 
 
 
+
     change_flag = False
     while True:
 
@@ -66,7 +99,9 @@ def experiment_handler():
                 print("received READY message {} so starting new experiment from beginning".format(message.status))
                 # starting anew
                 # TODO: change line to be scheduled
-                prog = normalscan.Normalscan()
+                prog = Experiment()
+                if __debug__:
+                    print prog
                 prog.build_scans()
                 try:
                     ctrl_socket.send_pyobj(prog, flags=zmq.NOBLOCK)
