@@ -1,6 +1,11 @@
 radar_control package
 =====================
 
+.. automodule:: radar_control
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -13,10 +18,3 @@ radar_control.radar_control module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: radar_control
-    :members:
-    :undoc-members:
-    :show-inheritance:

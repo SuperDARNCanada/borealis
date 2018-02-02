@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 import os
 import zmq
 sys.path.append(os.environ["BOREALISPATH"])
-from experiments.experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 if __debug__:
@@ -29,7 +29,7 @@ from protobuf.driverpacket_pb2 import DriverPacket
 from protobuf.sigprocpacket_pb2 import SigProcPacket
 
 from sample_building.sample_building import azimuth_to_antenna_offset
-from experiments.experiment_prototype import ExperimentPrototype
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from radar_status.radar_status import RadarStatus
 
@@ -179,7 +179,7 @@ def get_ack(socket, procpacket):
 
 def search_for_experiment(socket, status):
     """
-    Check for new experiments from the experiment handler
+    Check for new experiment_prototype from the experiment handler
     :param socket: socket to experiment handler
     :param status: status of type RadarStatus.
     :return: boolean (True for new experiment received), and the experiment (or None if there is no new experiment)
@@ -387,7 +387,7 @@ def radar():
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         for scan in experiment.scan_objects:
             # if a new experiment was received during the last scan, it finished the integration period it was on and
-            # returned here with new_experiment_flag set to True. Now change experiments if necessary.
+            # returned here with new_experiment_flag set to True. Now change experiment_prototype if necessary.
             if new_experiment_flag:  # start anew on first scan if we have a new experiment.
                 try:
                     experiment = new_experiment

@@ -16,14 +16,6 @@ Contents - THIS NEEDS WORK:
     /starting_the_radar
     /modules
 
-..  automodule:: experiment_exception
-
-    ..  autoclass:: ExperimentException
-        :members:
-
-..  automodule:: scan_classes
-    :members:
-
 Indices and tables
 ==================
 

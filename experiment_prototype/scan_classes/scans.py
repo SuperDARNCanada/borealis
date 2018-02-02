@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
 import sys
-from experiments.scan_classes.averaging_periods import AveragingPeriod
-from experiments.scan_classes.scan_class_base import ScanClassBase
-from experiments.experiment_exception import ExperimentException
+from experiment_prototype.scan_classes.averaging_periods import AveragingPeriod
+from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.experiment_exception import ExperimentException
 
 
 class Scan(ScanClassBase):

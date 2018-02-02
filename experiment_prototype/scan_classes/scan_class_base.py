@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from experiments.experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 import itertools
 
 

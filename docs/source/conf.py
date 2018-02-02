@@ -27,7 +27,7 @@ import sphinx_rtd_theme
 BOREALISPATH = os.path.abspath('../..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
-sys.path.insert(1, BOREALISPATH + '/experiments')
+sys.path.insert(1, BOREALISPATH + '/experiment_prototype')
 sys.path.insert(2, BOREALISPATH + '/utils')
 sys.path.insert(3, os.environ['PATH'])
 
@@ -59,6 +59,7 @@ extensions = [
     'sphinx.ext.pngmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'sphinxcontrib.programoutput'
 ]
 
 # Add any paths that contain templates here, relative to this directory.

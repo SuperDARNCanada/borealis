@@ -1,8 +1,8 @@
 experiment_handler package
 ==========================
 
-Submodules
-----------
+The experiment_handler package contains a single module, experiment_handler, that is a standalone
+program.
 
 experiment_handler.experiment_handler module
 --------------------------------------------
@@ -12,11 +12,8 @@ experiment_handler.experiment_handler module
     :undoc-members:
     :show-inheritance:
 
+Usage
+-----
 
-Module contents
----------------
+.. program-output:: python ../../experiment_handler/experiment_handler.py -h
 
-.. automodule:: experiment_handler
-    :members:
-    :undoc-members:
-    :show-inheritance:

@@ -12,9 +12,9 @@ any), freq, pulse length, beamdir, and wavetype.
 import sys
 import operator
 
-from experiments.scan_classes.sequences import Sequence
-from experiments.scan_classes.scan_class_base import ScanClassBase
-from experiments.experiment_exception import ExperimentException
+from experiment_prototype.scan_classes.sequences import Sequence
+from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.experiment_exception import ExperimentException
 
 
 class AveragingPeriod(ScanClassBase):

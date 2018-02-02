@@ -1,5 +1,10 @@
-experiments.scan_classes package
-================================
+experiment_prototype.scan_classes package
+=========================================
+
+.. automodule:: experiments.scan_classes
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 Submodules
 ----------
@@ -37,10 +42,3 @@ experiments.scan_classes.sequences module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: experiments.scan_classes
-    :members:
-    :undoc-members:
-    :show-inheritance:

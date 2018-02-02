@@ -5,7 +5,7 @@
 #
 # Basic tests for use in checking slices.
 
-from experiments.experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 
 
 def is_increasing(list_to_check):

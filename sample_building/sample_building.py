@@ -13,7 +13,7 @@ from scipy.signal import gaussian
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from experiments.experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 
 
 def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
@@ -305,9 +305,9 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
     samples for all antennas, and combine pulse dictionaries into one pulse if there are multiple 
     waveforms to combine (e.g., multiple frequencies). 
     :param pulse_list: a list of dictionaries, each dict is a pulse. The list only contains pulses
-    that will be sent as a single pulse (ie. have the same combined_pulse_index).
+     that will be sent as a single pulse (ie. have the same combined_pulse_index).
     :param power_divider: an integer for number of pulses combined (max) in the whole sequence, 
-    so we can adjust the amplitude of each uncombined pulse accordingly. 
+     so we can adjust the amplitude of each uncombined pulse accordingly. 
     :param exp_slices: this is the slice dictionary containing the slices necessary for the sequence.
     :param slice_to_beamdir_dict: a dictionary describing the beam directions for the slice_ids.
     :param txctrfreq: the txctrfreq  which determines the wave_freq to build our pulses at.

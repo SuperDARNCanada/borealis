@@ -1,6 +1,11 @@
 radar_status package
 ====================
 
+.. automodule:: radar_status
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 Submodules
 ----------
 
@@ -13,10 +18,3 @@ radar_status.radar_status module
     :show-inheritance:
 
 
-Module contents
----------------
-
-.. automodule:: radar_status
-    :members:
-    :undoc-members:
-    :show-inheritance:

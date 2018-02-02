@@ -24,7 +24,7 @@ import list_tests
 BOREALISPATH=os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 from utils.experiment_options.experimentoptions import ExperimentOptions
-from experiments.scan_classes.scans import Scan, ScanClassBase
+from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
@@ -65,11 +65,11 @@ and B will have integrations that run at the same time.
 
 class ExperimentPrototype(object):
     """ A prototype experiment class composed of metadata, including experiment slices (exp_slice) 
-    which are dictionaries of radar parameters. Basic, traditional experiments will be composed 
-    of a single slice. More complicated experiments will be composed of multiple slices that 
+    which are dictionaries of radar parameters. Basic, traditional experiment_prototype will be composed 
+    of a single slice. More complicated experiment_prototype will be composed of multiple slices that 
     interface in one of four pre-determined ways, as described under interface_types.
     
-    This class is used via inheritance to create experiments.
+    This class is used via inheritance to create experiment_prototype.
     
     Some variables shouldn't be changed by the experiment, and their properties do not have setters. 
     Some variables can be changed in the init of your experiment, and can also be modified 
