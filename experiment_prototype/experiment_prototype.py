@@ -1,39 +1,40 @@
 #!/usr/bin/env python
 
-# Copyright 2017 SuperDARN Canada  #TODO check this is standardized across all files.
-#
-# Marci Detwiller
-#
+"""
+    experiment_prototype
+    ~~~~~~~~~~~~~~~~~~~~
+    This is the base module for all experiments. An experiment will only run if it 
+    inherits from this class.
+
+    :copyright: 2018 SuperDARN Canada
+    :author: Marci Detwiller
+"""
 
 from __future__ import print_function
-
-"""
-The base class for an experiment. 
-"""
-
 import sys
 import copy
 import os
-import itertools
+import pygit2
+
+BOREALISPATH = os.environ['BOREALISPATH']
+sys.path.append(BOREALISPATH)
 
 from experiment_exception import ExperimentException
 from sample_building.sample_building import get_wavetables
-
 import list_tests
-
-BOREALISPATH=os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
 from utils.experiment_options.experimentoptions import ExperimentOptions
-from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
+from scan_classes.scans import Scan, ScanClassBase
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
+""" The types of interfacing available for slices in the experiment.
 
-"""
 INTERFACING TYPES:
 
 NONE : Only the default, must be changed.
+
 SCAN : Scan by scan interfacing. exp_slice #1 will scan first
 followed by exp_slice #2 and subsequent exp_slice's.
+
 INTTIME : nave by nave interfacing (full integration time of
 one pulse_sequence, then the next). Time/number of pulse_sequences
 dependent on intt and intn in exp_slice. Effectively
@@ -45,11 +46,13 @@ etc. if exp_slice #1's len(scan) is greater than exp_slice #2's, exp_slice
 #1's will continue until the full scan is over. exp_slice 1
 and 2 must have the same scan boundary, if any boundary.
 All other may differ.
+
 INTEGRATION : integration by integration interfacing (one
 #pulse_sequence of one exp_slice, then the next). exp_slice #1 and
 exp_slice #2 must have same intt and intn. Integrations will
 switch between one and the other until time is up/nave is
 reached.
+
 PULSE : Simultaneous pulse_sequence interfacing, pulse by pulse
 creates a single pulse_sequence. exp_slice A and B might have different
 frequencies (stereo) and/or may have different pulse
@@ -64,17 +67,91 @@ and B will have integrations that run at the same time.
 
 
 class ExperimentPrototype(object):
-    """ A prototype experiment class composed of metadata, including experiment slices (exp_slice) 
-    which are dictionaries of radar parameters. Basic, traditional experiment_prototype will be composed 
-    of a single slice. More complicated experiment_prototype will be composed of multiple slices that 
+    """ 
+    The base class for all experiments.
+    
+    A prototype experiment class composed of metadata, including experiment slices (exp_slice) 
+    which are dictionaries of radar parameters. Basic, traditional experiments will be composed of 
+    a single slice. More complicated experiments will be composed of multiple slices that 
     interface in one of four pre-determined ways, as described under interface_types.
     
-    This class is used via inheritance to create experiment_prototype.
+    This class is used via inheritance to create experiments.
     
     Some variables shouldn't be changed by the experiment, and their properties do not have setters. 
     Some variables can be changed in the init of your experiment, and can also be modified 
     in-experiment by the class method 'update' in your experiment class. These variables have been
     given property setters.
+    
+    The following are the user-modifiable attributes of the ExperimentPrototype that are 
+    used to make an experiment:
+    
+    xcf
+    acf
+    acfint
+    txctrfreq
+    rxctrfreq
+    
+    slice_dict, interface: modifiable using the add_slice, edit_slice, and del_slice 
+    methods.
+    
+    DESCRIPTION OF SLICE KEYS
+    
+    slice_id : The ID of this slice object. An experiment can have multiple slices.
+    cpid: The ID of the experiment, consistent with existing radar control programs.
+    tx_antennas: The antennas to transmit on, default is all main antennas given max number from config.
+    rx_main_antennas: The antennas to receive on in main array, default = all antennas given max number 
+        from config.
+    rx_int_antennas : The antennas to receive on in interferometer array, default is all antennas given 
+        max number from config.
+    pulse_sequence: The pulse sequence timing, given in quantities of mpinc, for example 
+        normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
+    mpinc: multi-pulse increment in us, Defines minimum space between pulses.
+    pulse_shift: Allows phase shifting between pulses, enabling encoding of pulses. Default all zeros 
+        for all pulses in pulse_sequence.
+    pulse_len: length of pulse in us. Range gate size is also determined by this.
+    nrang: Number of range gates.
+    frang: first range gate, in km
+    intt: duration of an integration, in ms. (maximum)
+    intn: number of averages to make a single integration, if intt = None.
+    beam_angle: list of beam directions, in degrees off azimuth. Positive is E of N. Array 
+        length = number of beams.
+    beam_order: beam numbers written in order of preference, one element in this list corresponds to 
+        one integration period. Can have lists within the list, resulting in multiple beams running
+        simultaneously in the averaging period, so imaging. A beam number of 0 in this list gives us 
+        beam_angle[0] as a direction. It is up to the writer to ensure their beam pattern makes sense.
+    scanboundflag: flag for whether there is a scan boundary to wait for in order to start a new scan.
+    scanbound: time that is allotted for a scan before a new scan boundary occurs (ms).
+    clrfrqrange: range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] 
+        in kHz.
+    txfreq: transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
+    rxfreq: receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only 
+        necessary to specify if you want a receive-only slice.
+    acf: flag for rawacf and generation. The default is True.
+    xcf: flag for cross-correlation data. The default is True.
+    acfint: flag for interferometer autocorrelation data. The default is True.
+    wavetype: string for wavetype. The default is SINE. Any other wavetypes not currently supported but 
+        possible to add in at later date.
+    iwavetable: a list of numeric values to sample from. The default is None. Not currently supported 
+        but could be set up (with caution) for non-SINE.
+    qwavetable: a list of numeric values to sample from. The default is None. Not currently supported 
+        but could be set up (with caution) for non-SINE.
+    seqoffset: offset in us that this slice's sequence will begin at, after the start of the sequence. 
+        This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence 
+        you can offset one slice's sequence from the other by a certain time value so as to not run both
+        frequencies in the same pulse, etc.
+    
+    Should add: 
+    
+    scanboundt : time past the hour to start a scan at ?  
+    
+    Explanation of beam_order and beam_angle:
+        Traditionally beams have been 3.24 degrees separated but we don't refer to them as beam 
+        -19.64 degrees, we refer as beam 1, beam 2. This is like a mapping of beam number
+        to beam direction off boresight. Then you can use the beam numbers in the beam_order 
+        list so you can reuse beams within one scan, or use multiple beam numbers in a single 
+        integration time, which would trigger an imaging integration. When we do imaging we will still 
+        have to quantize the directions we are looking in to certain beam directions.
+    
     """
 
     __slice_keys = ["slice_id", "cpid", "tx_antennas", "rx_main_antennas",
@@ -84,69 +161,9 @@ class ExperimentPrototype(object):
                     "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
                     "iwavetable", "qwavetable"]
 
+    # TODO add scanboundt?
+
     __hidden_slice_keys = ['rxonly', 'clrfrqflag']
-
-    """ The slice keys are described as follows: 
-    
-    DESCRIPTION OF SLICE KEYS
-
-slice_id : The ID of this slice object. An experiment can have multiple slices.
-cpid: The ID of the experiment, consistent with existing radar control programs.
-tx_antennas: The antennas to transmit on, default is all main antennas given max number from config.
-rx_main_antennas: The antennas to receive on in main array, default = all antennas given max number 
-    from config.
-rx_int_antennas : The antennas to receive on in interferometer array, default is all antennas given 
-    max number from config.
-pulse_sequence: The pulse sequence timing, given in quantities of mpinc, for example 
-    normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
-mpinc: multi-pulse increment in us, Defines minimum space between pulses.
-pulse_shift: Allows phase shifting between pulses, enabling encoding of pulses. Default all zeros 
-    for all pulses in pulse_sequence.
-pulse_len: length of pulse in us. Range gate size is also determined by this.
-nrang: Number of range gates.
-frang: first range gate, in km
-intt: duration of an integration, in ms. (maximum)
-intn: number of averages to make a single integration, if intt = None.
-beam_angle: list of beam directions, in degrees off azimuth. Positive is E of N. Array 
-    length = number of beams.
-beam_order: beam numbers written in order of preference, one element in this list corresponds to 
-    one integration period. Can have lists within the list, resulting in multiple beams running
-    simultaneously in the averaging period, so imaging. A beam number of 0 in this list gives us 
-    beam_angle[0] as a direction. It is up to the writer to ensure their beam pattern makes sense.
-scanboundflag: flag for whether there is a scan boundary to wait for in order to start a new scan.
-scanbound: time that is allotted for a scan before a new scan boundary occurs (ms).
-clrfrqrange: range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] 
-    in kHz.
-txfreq: transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
-rxfreq: receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only 
-    necessary to specify if you want a receive-only slice.
-acf: flag for rawacf and generation. The default is True.
-xcf: flag for cross-correlation data. The default is True.
-acfint: flag for interferometer autocorrelation data. The default is True.
-wavetype: string for wavetype. The default is SINE. Any other wavetypes not currently supported but 
-    possible to add in at later date.
-iwavetable: a list of numeric values to sample from. The default is None. Not currently supported 
-    but could be set up (with caution) for non-SINE.
-qwavetable: a list of numeric values to sample from. The default is None. Not currently supported 
-    but could be set up (with caution) for non-SINE.
-seqoffset: offset in us that this slice's sequence will begin at, after the start of the sequence. 
-    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence 
-    you can offset one slice's sequence from the other by a certain time value so as to not run both
-    frequencies in the same pulse, etc.
-
-Should add: 
-
-scanboundt : time past the hour to start a scan at ?  
-
-Explanation of beam_order and beam_angle:
-    Traditionally beams have been 3.24 degrees separated but we don't refer to them as beam 
-    -19.64 degrees, we refer as beam 1, beam 2. This is like a mapping of beam number
-    to beam direction off boresight. Then you can use the beam numbers in the beam_order 
-    list so you can reuse beams within one scan, or use multiple beam numbers in a single 
-    integration time, which would trigger an imaging integration. When we do imaging we will still 
-    have to quantize the directions we are looking in to certain beam directions.
-
-    """  # TODO add scanboundt?
 
     def __init__(self, cpid):
         """
@@ -210,80 +227,100 @@ Explanation of beam_order and beam_angle:
     @property
     def cpid(self):
         """
+        This experiment's CPID (control program ID, a term that comes from ROS).
+        
         The CPID is read-only once established in instantiation.
-        :return: This experiment's CPID (control program ID, a term that comes from ROS).
         """
+
         return self.__cpid
 
     @property
     def num_slices(self):
         """
-        The number of slices in the experiment. May change with updates.
-        :return: 
+        The number of slices currently in the experiment. 
+        
+        Will change after methods add_slice or del_slice are called.
         """
+
         return len(self.__slice_dict)
 
     @property
     def slice_keys(self):
         """
-        Get the list of slice keys available. This cannot be updated.
-        :return: the keys in the current ExperimentPrototype slice_keys dictionary (parameters 
-        available for slices)
+        The list of slice keys available. 
+        
+        This cannot be updated. These are the keys in the current ExperimentPrototype 
+        slice_keys dictionary (the parameters available for slices).
         """
+
         return self.__slice_keys
 
     @property
     def slice_dict(self):
         """
-        Get the dictionary of slices. The slice dictionary can be updated in add_slice, edit_slice, 
-        and del_slice.
-        :return: the dictionary of slice dictionaries in this experiment.
+        The dictionary of slices. 
+        
+        The slice dictionary can be updated in add_slice, edit_slice, and del_slice. The slice 
+        dictionary is a dictionary of dictionaries that looks like:
+        
+        { slice_id1 : {slice_key1 : x, slice_key2 : y, ...}, 
+          slice_id2 : {slice_key1 : x, slice_key2 : y, ...}, 
+          ...}
         """
+
         return self.__slice_dict
 
     @property
     def new_slice_id(self):
         """
-        Get the next unique slice id available to this instance of the experiment. Increment 
-        because this is accessed to ensure it is unique each time.
-        :return: the next unique slice id.
+        The next unique slice id that is available to this instance of the experiment.
+        
+        This gets incremented after each time it is called to ensure it returns
+         a unique ID each time.
         """
+
         self.__new_slice_id += 1
         return self.__new_slice_id - 1
 
     @property
     def slice_ids(self):
         """
-        Get the slice ids that are currently available in this experiment. This is updated
-        regularly through add_slice, edit_slice, and del_slice.
-        :return: the list of slice ids in the experiment.
+        The list of slice ids that are currently available in this experiment. 
+        
+        This can change when add_slice, edit_slice, and del_slice are called.
         """
+
         return self.__slice_dict.keys()
 
     @property
     def options(self):
         """
-        Get the config options for running this experiment. These cannot be set or removed.
-        :return: the config options.
+        The config options for running this experiment. 
+        
+        These cannot be set or removed, but are specified in the config.ini, hdw.dat, and 
+        restrict.dat files.
         """
+
         return self.__options
 
     @property
     def xcf(self):
         """
-        Get the cross-correlation flag status - note it's only a default for slices without 
-        specification.
-        :return: cross-correlation flag boolean.
+        The default cross-correlation flag boolean.
+        
+        This provides the default for slices where this key isn't specified.
         """
+
         return self._xcf
 
     @xcf.setter
     def xcf(self, value):
         """
-        To set the cross-correlation flag default for new slices.
+        Set the cross-correlation flag default for new slices.
+        
         :param value: boolean for cross-correlation processing flag.
-        :return: 
         """
+
         if isinstance(value, bool):
             self._xcf = value
         else:
@@ -292,19 +329,21 @@ Explanation of beam_order and beam_angle:
     @property
     def acf(self):
         """
-        Get the auto-correlation flag status - note it's only a default for slices without 
-        specification.
-        :return: auto-correlation flag boolean.
+        The default auto-correlation flag boolean. 
+        
+        This provides the default for slices where this key isn't specified.
         """
+
         return self._acf
 
     @acf.setter
     def acf(self, value):
         """
-        To set the auto-correlation flag default for new slices.
+        Set the auto-correlation flag default for new slices.
+        
         :param value: boolean for auto-correlation processing flag.
-        :return: 
         """
+
         if isinstance(value, bool):
             self._acf = value
         else:
@@ -313,18 +352,21 @@ Explanation of beam_order and beam_angle:
     @property
     def acfint(self):
         """
-        To get the interferometer autocorrelation flag - note it's only a default for slices.
-        :return: interferometer autocorrelation flag boolean.
+        The default interferometer autocorrelation boolean.
+        
+        This provides the default for slices where this key isn't specified.
         """
+
         return self._acfint
 
     @acfint.setter
     def acfint(self, value):
         """
-        To set the interferometer autocorrelation flag default for new slices.
+        Set the interferometer autocorrelation flag default for new slices.
+        
         :param value: boolean for interferometer autocorrelation processing flag.
-        :return: 
         """
+
         if isinstance(value, bool):
             self._acfint = value
         else:
@@ -333,38 +375,44 @@ Explanation of beam_order and beam_angle:
     @property
     def txrate(self):
         """
-        To get the transmission sample rate to the DAC.
-        :return: the transmission sample rate to the DAC (Hz).
+        The transmission sample rate to the DAC (Hz).
+        
+        This is not modifiable and comes from the config options.
         """
+
         return self.__txrate
 
     @property
     def txctrfreq(self):
         """
-        To get the transmission centre frequency that USRP is tuned to.
-        :return: the transmission centre frequency that USRP is tuned to (Hz).
+        The transmission centre frequency that USRP is tuned to (Hz).
+        
+        If you would like to change this value, note that it will take tuning time.
         """
         return self.__txctrfreq
 
     @txctrfreq.setter
     def txctrfreq(self, value):
         """
-        To set the transmission centre frequency that USRP is tuned to. Will take tuning time,
-        use with caution.         
+        Set the transmission centre frequency that USRP is tuned to. 
+        
+        This will take tuning time, use with caution.     
+            
         :param value: int for transmission centre frequency to tune USRP to (Hz).
-        :return: 
         """
         # TODO review if this should be modifiable, definitely takes tuning time.
         if isinstance(value, int):
-            self.__txctrfreq = value
+            self.__txctrfreq = value # TODO return actual value tuned to.
         else:
             pass  # TODO errors / log no change
 
     @property
     def tx_maxfreq(self):
         """
-        :return: the maximum tx frequency possible in this experiment (either maximum in our license
-         or maximum given by the centre frequency and sampling rate).
+        The maximum transmit frequency.
+        
+        This is the maximum tx frequency possible in this experiment (either maximum in our license
+        or maximum given by the centre frequency and sampling rate).
         """
         max_freq = self.txctrfreq * 1000 + (self.txrate/2.0)
         if max_freq < self.options.max_freq:
@@ -376,8 +424,10 @@ Explanation of beam_order and beam_angle:
     @property
     def tx_minfreq(self):
         """
-        :return: the minimum tx frequency possible in this experiment (either minimum in our license
-         or minimum given by the centre frequency and sampling rate).
+        The minimum transmit frequency.
+        
+        This is the minimum tx frequency possible in this experiment (either minimum in our license
+        or minimum given by the centre frequency and sampling rate).
         """
         min_freq = self.txctrfreq * 1000 - (self.txrate/2.0)
         if min_freq > self.options.min_freq:
@@ -389,36 +439,42 @@ Explanation of beam_order and beam_angle:
     @property
     def rxctrfreq(self):
         """
-        To get the receive centre frequency that USRP is tuned to.
-        :return: the receive centre frequency that USRP is tuned to (Hz).
+        The receive centre frequency that USRP is tuned to (Hz).
+        
+        If you would like to change this, note that it will take tuning time.
         """
         return self.__rxctrfreq
 
     @rxctrfreq.setter
     def rxctrfreq(self, value):
         """
-        To set the receive centre frequency that USRP is tuned to. Will take tuning time,
-        use with caution.  
+        Set the receive centre frequency that USRP is tuned to (Hz). 
+        
+        This will take tuning time, use with caution.  
+        
         :param value: int for receive centre frequency to tune USRP to (Hz).
-        :return: 
         """
         # TODO review if this should be modifiable, definitely takes tuning time.
         if isinstance(value, int):
-            self.__rxctrfreq = value
+            self.__rxctrfreq = value  # TODO return actual tuned freq.
         else:
             pass  # TODO errors
 
     @property
     def rxrate(self):
         """
-        :return: rx sampling rate in samples per sec. Comes from config file.
+        The receive sampling rate in samples per sec. 
+        
+        This comes from the config file and cannot be changed in the experiment.
         """
         return self.__rxrate
 
     @property
     def rx_maxfreq(self):
         """
-        :return: the maximum tx frequency possible in this experiment (maximum given by the centre 
+        The maximum receive frequency.
+        
+        This is the maximum tx frequency possible in this experiment (maximum given by the centre 
          frequency and sampling rate), as license doesn't matter for receiving.
         """
         max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0)
@@ -427,8 +483,10 @@ Explanation of beam_order and beam_angle:
     @property
     def rx_minfreq(self):
         """
-        :return: the minimum tx frequency possible in this experiment (minimum given by the centre 
-         frequency and sampling rate) - license doesn't restrict receiving.
+        The minimum receive frequency. 
+        
+        This is the minimum rx frequency possible in this experiment (minimum given by the centre 
+        frequency and sampling rate) - license doesn't restrict receiving.
         """
         min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0)
         if min_freq > 1000: #Hz
@@ -439,10 +497,16 @@ Explanation of beam_order and beam_angle:
     @property
     def interface(self):
         """
-        To get the list of interfacing for the experiment slices.  Interfacing should be set up 
-        for any slice when it gets added, ie. in add_slice.
-        :return:the list of interfacing defined as [(slice_id1, slice_id2) : INTERFACING_TYPE] for
-        all current slice_ids. 
+        The dictionary of interfacing for the experiment slices.  
+        
+        Interfacing should be set up for any slice when it gets added, ie. in add_slice, 
+        except for the first slice added. The dictionary of interfacing is setup as:
+        
+        [(slice_id1, slice_id2) : INTERFACING_TYPE, 
+         (slice_id1, slice_id3) : INTERFACING_TYPE, 
+         ...] 
+        
+        for all current slice_ids. 
         
         """
         return self._interface
@@ -450,24 +514,29 @@ Explanation of beam_order and beam_angle:
     @property
     def slice_id_scan_lists(self):
         """
-        :return: the list of scan slice ids (a list of lists of slice_ids, organized by scan).
+        The list of scan slice ids (a list of lists of slice_ids, organized by scan).
+        
+        This cannot be modified by the user.
         """
         return self.__slice_id_scan_lists
 
     @property
     def scan_objects(self):
         """
-        To get the list of scan_objects for use in radar_control. 
-        :return: scan_objects, the list of instances of the Scan class.
+        The list of instances of class Scan for use in radar_control. 
+        
+        These cannot be modified by the user, but are created using the slice dictionary.
         """
         return self.__scan_objects
 
     def slice_beam_directions_mapping(self, slice_id):
         """
-        return a mapping of the beam directions in the given slice id.
+        A mapping of the beam directions in the given slice id.
+        
         :param slice_id: id of the slice to get beam directions for.
-        :return: enumeration mapping dictionary of beam number : beam direction(s) in degrees off 
-        boresight.
+        
+        :returns: enumeration mapping dictionary of beam number to beam direction(s) in 
+        degrees off boresight.
         """
         if slice_id not in self.slice_ids:
             return {}
@@ -529,7 +598,6 @@ Explanation of beam_order and beam_angle:
 
         return new_exp_slice['slice_id']
 
-
     def del_slice(self, remove_slice_id):
         """
         Remove a slice from the experiment.
@@ -545,7 +613,6 @@ Explanation of beam_order and beam_angle:
         for key1, key2 in self._interface.keys():
             if key1 == remove_slice_id or key2 == remove_slice_id:
                 del self._interface[(key1, key2)]
-
 
     def edit_slice(self, edit_slice_id, **kwargs):
         """
@@ -591,7 +658,6 @@ Explanation of beam_order and beam_angle:
         self.del_slice(edit_slice_id)
 
         return new_slice_id
-
 
     def __repr__(self):
         represent = 'self.cpid = {}\nself.num_slices = {}\nself.slice_ids = {}\nself.slice_keys = {}\nself.options = \

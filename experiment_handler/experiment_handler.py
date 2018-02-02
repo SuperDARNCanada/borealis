@@ -24,7 +24,7 @@ import importlib
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
-
+print(BOREALISPATH)
 from radar_status.radar_status import RadarStatus
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.experiment_exception import ExperimentException
@@ -39,22 +39,38 @@ def usage_msg():
     :returns: the usage message
     """
 
-    usage_message = """experiment_handler.py [-h] experiment_module
+    usage_message = """ experiment_handler.py [-h] experiment_module
     
-    Pass the module containing the experiment to the experiment handler as the a required 
-    argument. It will search for the module in the BOREALISPATH/experiment_prototype package. It will 
-    retrieve the class from within the module (your experiment). 
+    Pass the module containing the experiment to the experiment handler as a required 
+    argument. It will search for the module in the BOREALISPATH/experiment_prototype 
+    package. It will retrieve the class from within the module (your experiment). 
     
-    It will use the experiment's build_scans method to create the iterable ScanClassBase objects
-    that will be used by the radar_control block, then it will pass the experiment to the 
-    radar_control block to run. 
+    It will use the experiment's build_scans method to create the iterable ScanClassBase 
+    objects that will be used by the radar_control block, then it will pass the 
+    experiment to the radar_control block to run. 
 
-    It will be passed some data to use in its .update() method at the end of every integration time. 
-    This has yet to be implemented but will allow experiment_prototype to modify themselves based on 
-    received data as feedback. This is not a necessary method for all experiment_prototype and if there is 
-    no update method experiment updates will not occur."""
+    It will be passed some data to use in its .update() method at the end of every 
+    integration time. This has yet to be implemented but will allow experiments to 
+    modify themselves based on received data as feedback. This is not a necessary method 
+    for all experiments and if there is no update method experiment updates will not 
+    occur."""
 
     return usage_message
+
+
+def experiment_parser():
+    """
+    Creates the parser to retrieve the experiment module.
+    
+    :returns: parser, the argument parser for the experiment_handler. 
+    """
+
+    parser = argparse.ArgumentParser(usage=usage_msg())
+    parser.add_argument("experiment_module", help="The name of the module in the experiment_prototype "
+                                                  "package that contains your Experiment class, "
+                                                  "e.g. normalscan")
+
+    return parser
 
 
 def retrieve_experiment():
@@ -66,20 +82,18 @@ def retrieve_experiment():
     :returns: Experiment, the experiment class, inherited from ExperimentPrototype.
     """
 
-    parser = argparse.ArgumentParser(usage=usage_msg())
-    parser.add_argument("experiment_module", help="The name of the module in the experiment_prototype "
-                                                  "package that contains your Experiment class, "
-                                                  "e.g. normalscan")
+    parser = experiment_parser()
     args = parser.parse_args()
 
     if __debug__:
         print("Running the experiment: " + args.experiment_module)
     experiment = args.experiment_module
-    experiment_mod = importlib.import_module("." + experiment, package="experiment_prototype")
+    experiment_mod = importlib.import_module("." + experiment, package="experiments")
 
     experiment_classes = {}
     for class_name, obj in inspect.getmembers(experiment_mod, inspect.isclass):
         experiment_classes[class_name] = obj
+
 
     # need to have one ExperimentPrototype and one user-specified class.
     try:
@@ -163,6 +177,12 @@ def experiment_handler():
     ctrl_socket = setup_control_socket(options.experiment_handler_to_radar_control_address, context)
 
     Experiment = retrieve_experiment()
+    experiment_update = False
+    for method_name, obj in inspect.getmembers(Experiment, inspect.ismethod):
+        if method_name == 'update':
+            experiment_update = True
+    if __debug__:
+        print("Experiment has update method: " + str(experiment_update))
 
     change_flag = False
     while True:
@@ -186,12 +206,14 @@ def experiment_handler():
                 # no errors 
                 if change_flag:
                     ctrl_socket.send_pyobj(prog)
+                    change_flag = False
                 else:
                     ctrl_socket.send_pyobj(None)
             elif message.status == 'WARNING':
                 #TODO: log the warning
                 if change_flag:
                     ctrl_socket.send_pyobj(prog)
+                    change_flag = False
                 else:
                     ctrl_socket.send_pyobj(None)
             elif message.status == 'EXITERROR':
@@ -199,13 +221,15 @@ def experiment_handler():
                 #TODO: determine what to do here, may want to revert experiment back to original (could reload to original by calling new instance)
                 if change_flag:
                     ctrl_socket.send_pyobj(prog)
+                    change_flag = False
                 else:
                     ctrl_socket.send_pyobj(None)
 
-        some_data = None  # TODO get the data from data socket and pass to update
-        change_flag = prog.update(some_data)
-        if change_flag:
-            prog.build_scans()
+        if experiment_update:
+            some_data = None  # TODO get the data from data socket and pass to update
+            change_flag = prog.update(some_data)
+            if change_flag:
+                prog.build_scans()
 
 if __name__ == '__main__':
     experiment_handler()

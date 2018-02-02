@@ -15,5 +15,5 @@ experiment_handler.experiment_handler module
 Usage
 -----
 
-.. program-output:: python ../../experiment_handler/experiment_handler.py -h
-
+.. autoprogram:: experiment_handler.experiment_handler:experiment_parser()
+    :prog: experiment_handler.py

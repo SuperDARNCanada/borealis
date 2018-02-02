@@ -1,7 +1,7 @@
 experiment_prototype.scan_classes package
 =========================================
 
-.. automodule:: experiments.scan_classes
+.. automodule:: experiment_prototype.scan_classes
     :members:
     :undoc-members:
     :show-inheritance:
@@ -9,34 +9,34 @@ experiment_prototype.scan_classes package
 Submodules
 ----------
 
-experiments.scan_classes.averaging_periods module
--------------------------------------------------
+experiment_prototype.scan_classes.averaging_periods module
+----------------------------------------------------------
 
-.. automodule:: experiments.scan_classes.averaging_periods
+.. automodule:: experiment_prototype.scan_classes.averaging_periods
     :members:
     :undoc-members:
     :show-inheritance:
 
-experiments.scan_classes.scan_class_base module
------------------------------------------------
+experiment_prototype.scan_classes.scan_class_base module
+--------------------------------------------------------
 
-.. automodule:: experiments.scan_classes.scan_class_base
+.. automodule:: experiment_prototype.scan_classes.scan_class_base
     :members:
     :undoc-members:
     :show-inheritance:
 
-experiments.scan_classes.scans module
--------------------------------------
+experiment_prototype.scan_classes.scans module
+----------------------------------------------
 
-.. automodule:: experiments.scan_classes.scans
+.. automodule:: experiment_prototype.scan_classes.scans
     :members:
     :undoc-members:
     :show-inheritance:
 
-experiments.scan_classes.sequences module
------------------------------------------
+experiment_prototype.scan_classes.sequences module
+--------------------------------------------------
 
-.. automodule:: experiments.scan_classes.sequences
+.. automodule:: experiment_prototype.scan_classes.sequences
     :members:
     :undoc-members:
     :show-inheritance:

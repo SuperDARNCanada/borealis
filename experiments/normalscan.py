@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # write an experiment that creates a new control program.
-from experiment_prototype import ExperimentPrototype
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
 class Normalscan(ExperimentPrototype):
@@ -28,10 +28,6 @@ class Normalscan(ExperimentPrototype):
             "scanboundflag": True,  # there is a scan boundary
             "scanbound": 60000,  # ms
             "txfreq": 13300,
-            #"clrfrqflag": True,  # search for clear frequency before transmitting
-            #"clrfrqrange": [13200, 13500],  # frequency range for clear frequency search, kHz
-            # including a clrfrqrange overrides rxfreq and txfreq so these are no longer necessary
-            # as they will be set by the frequency chosen from the range.
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         })
@@ -62,6 +58,8 @@ class Normalscan(ExperimentPrototype):
         #     "xcf": True,  # cross-correlation processing
         #     "acfint": True,  # interferometer acfs
         # }, interfacing_dict={0: 'PULSE'})
+
+
         # Other things you can change if you wish. You may want to discuss with us about it beforehand.
         # These apply to the experiment and all slices as a whole.
         # self.txctrfreq = 12000 # kHz, oscillator mixer frequency on the USRP for TX
@@ -97,20 +95,3 @@ class Normalscan(ExperimentPrototype):
     #        self.interface.update({
     #            (0,1) : 'PULSE'
     #        })
-
-    def update(self, acfdata):
-        """
-        Use this function to change your experiment based on ACF data retrieved from the rx_signal_processing block. 
-        This function is called after every integration period so that your experiment can be changed to adjust to 
-        existing conditions. Talk to us if you have something specific in mind that you're not sure if you can 
-        implement here. 
-
-        :param acfdata ??? TODO
-        :rtype boolean
-        :return change_flag, indicating whether the experiment has changed or not. True = change has occurred.
-        """  # TODO update with how acfdata will be passed in
-
-        # TODO : docs about what can and cannot be changed. Warning about changing centre frequencies.
-
-        change_flag = False
-        return change_flag

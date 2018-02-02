@@ -2,3 +2,6 @@ numpy
 scipy
 protobuf
 sphinxcontrib-programoutput
+sphinxcontrib-autoprogram
+pyzmq
+pygit2

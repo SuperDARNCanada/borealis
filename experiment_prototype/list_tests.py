@@ -1,18 +1,21 @@
 #!/usr/bin/env python
-# Copyright 2017 SuperDARN Canada
-#
-# Marci Detwiller
-#
-# Basic tests for use in checking slices.
 
-from experiment_prototype.experiment_exception import ExperimentException
+"""
+    list_tests
+    ~~~~~~~~~~
+    Basic tests for use in checking slices.
+    
+    :copyright: 2018 SuperDARN Canada
+    :author: Marci Detwiller
+"""
 
 
 def is_increasing(list_to_check):
     """
-    Return True if list is increasing, False if it is not.
+    Check if list is increasing.
+    
     :param list_to_check: a list of numbers
-    :return: boolean
+    :returns: boolean True if is increasing, False if not.
     """
     if not all(x < y for x, y in zip(list_to_check, list_to_check[1:])):
         return False
@@ -22,9 +25,10 @@ def is_increasing(list_to_check):
 
 def has_duplicates(list_to_check):
     """
-    Return True if there are duplicates in the list, False if not.
+    Check if the list has duplicate values.
+    
     :param list_to_check: A list to check.
-    :return: boolean. 
+    :returns: boolean True if duplicates exist, False if not.
     """
     no_duplicates = set()
     for element in list_to_check:
@@ -32,7 +36,7 @@ def has_duplicates(list_to_check):
             no_duplicates.add(element)
         else:
             return True
-    else: # no return yet
+    else:  # no return yet
         return False
 
 
