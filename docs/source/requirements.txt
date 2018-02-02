@@ -4,4 +4,4 @@ protobuf
 sphinxcontrib-programoutput
 sphinxcontrib-autoprogram
 pyzmq
-pygit2
+venvgit2
