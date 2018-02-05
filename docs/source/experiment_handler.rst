@@ -15,5 +15,6 @@ experiment_handler.experiment_handler module
 Usage
 -----
 
-..  autoprogram:: experiment_handler.experiment_handler:experiment_parser()
+..  ..  autoprogram:: experiment_handler.experiment_handler:experiment_parser()
     :prog: experiment_handler.py
+    Can't figure out why this doesn't work on readthedocs ... needs python3 maybe?
