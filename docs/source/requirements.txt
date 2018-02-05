@@ -5,4 +5,5 @@ sphinxcontrib-programoutput
 sphinxcontrib-autoprogram
 pyzmq
 cmake
+pycparser
 venvgit2
