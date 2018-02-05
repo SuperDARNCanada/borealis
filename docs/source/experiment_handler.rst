@@ -7,7 +7,7 @@ program.
 experiment_handler.experiment_handler module
 --------------------------------------------
 
-.. automodule:: experiment_handler.experiment_handler
+..  automodule:: experiment_handler.experiment_handler
     :members:
     :undoc-members:
     :show-inheritance:
@@ -15,5 +15,5 @@ experiment_handler.experiment_handler module
 Usage
 -----
 
-.. autoprogram:: experiment_handler.experiment_handler:experiment_parser()
+..  autoprogram:: experiment_handler.experiment_handler:experiment_parser()
     :prog: experiment_handler.py

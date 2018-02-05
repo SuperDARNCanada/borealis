@@ -14,7 +14,7 @@ from __future__ import print_function
 import sys
 import copy
 import os
-import pygit2
+#import pygit2
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
