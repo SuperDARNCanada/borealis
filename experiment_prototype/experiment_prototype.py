@@ -30,41 +30,174 @@ interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 
 INTERFACING TYPES:
 
-NONE : Only the default, must be changed.
+NONE
+    Only the default, must be changed.
 
-SCAN : Scan by scan interfacing. exp_slice #1 will scan first
-followed by exp_slice #2 and subsequent exp_slice's.
+SCAN
+    Scan by scan interfacing. exp_slice #1 will scan first
+    followed by exp_slice #2 and subsequent exp_slice's.
 
-INTTIME : nave by nave interfacing (full integration time of
-one pulse_sequence, then the next). Time/number of pulse_sequences
-dependent on intt and intn in exp_slice. Effectively
-simultaneous scan interfacing, interleaving each
-integration time in the scans. exp_slice #1 first inttime or
-beam direction will run followed by exp_slice #2's first inttime,
-etc. if exp_slice #1's len(scan) is greater than exp_slice #2's, exp_slice
-#2's last integration will run and then all the rest of exp_slice
-#1's will continue until the full scan is over. exp_slice 1
-and 2 must have the same scan boundary, if any boundary.
-All other may differ.
+INTTIME 
+    nave by nave interfacing (full integration time of
+    one pulse_sequence, then the next). Time/number of pulse_sequences
+    dependent on intt and intn in exp_slice. Effectively
+    simultaneous scan interfacing, interleaving each
+    integration time in the scans. exp_slice #1 first inttime or
+    beam direction will run followed by exp_slice #2's first inttime,
+    etc. if exp_slice #1's len(scan) is greater than exp_slice #2's, exp_slice
+    #2's last integration will run and then all the rest of exp_slice
+    #1's will continue until the full scan is over. exp_slice 1
+    and 2 must have the same scan boundary, if any boundary.
+    All other may differ.
 
-INTEGRATION : integration by integration interfacing (one
-#pulse_sequence of one exp_slice, then the next). exp_slice #1 and
-exp_slice #2 must have same intt and intn. Integrations will
-switch between one and the other until time is up/nave is
-reached.
+INTEGRATION
+    integration by integration interfacing (one
+    #pulse_sequence of one exp_slice, then the next). exp_slice #1 and
+    exp_slice #2 must have same intt and intn. Integrations will
+    switch between one and the other until time is up/nave is
+    reached.
 
-PULSE : Simultaneous pulse_sequence interfacing, pulse by pulse
-creates a single pulse_sequence. exp_slice A and B might have different
-frequencies (stereo) and/or may have different pulse
-length, mpinc, pulse_sequence, but must have the same integration
-time. They must also have same len(scan), although they may
-use different directions in scan. They must have the same
-scan boundary if any. A time offset between the pulses
-starting may be set (seq_timer in exp_slice). exp_slice A
-and B will have integrations that run at the same time.
+PULSE
+    Simultaneous pulse_sequence interfacing, pulse by pulse
+    creates a single pulse_sequence. exp_slice A and B might have different
+    frequencies (stereo) and/or may have different pulse
+    length, mpinc, pulse_sequence, but must have the same integration
+    time. They must also have same len(scan), although they may
+    use different directions in scan. They must have the same
+    scan boundary if any. A time offset between the pulses
+    starting may be set (seq_timer in exp_slice). exp_slice A
+    and B will have integrations that run at the same time.
 
 """
 
+slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas",
+                    "rx_int_antennas", "pulse_sequence", "pulse_shift", "mpinc",
+                    "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
+                    "beam_order", "scanboundflag", "scanbound", "txfreq", "rxfreq",
+                    "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
+                    "iwavetable", "qwavetable"])
+# TODO add scanboundt?
+"""   
+Description of Slice Key 
+    
+slice_id
+    The ID of this slice object. An experiment can have multiple slices.
+
+cpid
+    The ID of the experiment, consistent with existing radar control programs.
+
+tx_antennas
+    The antennas to transmit on, default is all main antennas given max 
+    number from config.
+
+rx_main_antennas
+    The antennas to receive on in main array, default = all antennas 
+    given max number from config.
+
+rx_int_antennas
+    The antennas to receive on in interferometer array, default is all 
+    antennas given max number from config.
+    
+pulse_sequence
+    The pulse sequence timing, given in quantities of mpinc, for example 
+    normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
+    
+mpinc
+    multi-pulse increment in us, Defines minimum space between pulses.
+    
+pulse_shift
+    Allows phase shifting between pulses, enabling encoding of pulses. Default all 
+    zeros for all pulses in pulse_sequence.
+    
+pulse_len
+    length of pulse in us. Range gate size is also determined by this.
+
+nrang
+    Number of range gates.
+
+frang
+    first range gate, in km
+
+intt
+    duration of an integration, in ms. (maximum)
+
+intn
+    number of averages to make a single integration, if intt = None.
+
+beam_angle
+    list of beam directions, in degrees off azimuth. Positive is E of N. Array 
+    length = number of beams. Traditionally beams have been 3.24 degrees separated but we 
+    don't refer to them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will
+    be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
+    needed to write the beam_order list. This is like a mapping of beam number (list 
+    index) to beam direction off boresight.
+
+beam_order
+    beam numbers written in order of preference, one element in this list corresponds to 
+    one integration period. Can have lists within the list, resulting in multiple beams 
+    running simultaneously in the averaging period, so imaging. A beam number of 0 in 
+    this list gives us the direction of the 0th element in the beam_angle list. It is 
+    up to the writer to ensure their beam pattern makes sense. Typically beam_order is 
+    just in order (scanning W to E or E to W, ie. [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 
+    11, 12, 13, 14, 15]. You can list numbers multiple times in the beam_order list, 
+    for example [0, 1, 1, 2, 1] or use multiple beam numbers in a single 
+    integration time (example [[0, 1], [3, 4]], which would trigger an imaging 
+    integration. When we do imaging we will still have to quantize the directions we 
+    are looking in to certain beam directions.
+
+scanboundflag
+    flag for whether there is a scan boundary to wait for in order to start a new scan.
+
+scanbound
+    time that is allotted for a scan before a new scan boundary occurs (ms).
+
+clrfrqrange
+    range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] 
+    in kHz.
+
+txfreq
+    transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
+
+rxfreq
+    receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only 
+    necessary to specify if you want a receive-only slice.
+
+acf
+    flag for rawacf and generation. The default is True.
+
+xcf
+    flag for cross-correlation data. The default is True.
+
+acfint
+    flag for interferometer autocorrelation data. The default is True.
+
+wavetype
+    string for wavetype. The default is SINE. Any other wavetypes not currently supported but 
+    possible to add in at later date.
+
+iwavetable
+    a list of numeric values to sample from. The default is None. Not currently supported 
+    but could be set up (with caution) for non-SINE.
+
+qwavetable
+    a list of numeric values to sample from. The default is None. Not currently supported 
+    but could be set up (with caution) for non-SINE.
+
+seqoffset
+    offset in us that this slice's sequence will begin at, after the start of the sequence. 
+    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence 
+    you can offset one slice's sequence from the other by a certain time value so as to not run both
+    frequencies in the same pulse, etc.
+
+Should add: 
+
+scanboundt : time past the hour to start a scan at ?  
+"""
+
+hidden_key_set = frozenset(['rxonly', 'clrfrqflag'])
+"""
+These are used by radar_
+"""
 
 class ExperimentPrototype(object):
     """ 
@@ -85,85 +218,22 @@ class ExperimentPrototype(object):
     The following are the user-modifiable attributes of the ExperimentPrototype that are 
     used to make an experiment:
     
-    xcf
-    acf
-    acfint
-    txctrfreq
-    rxctrfreq
-    
-    slice_dict, interface: modifiable using the add_slice, edit_slice, and del_slice 
-    methods.
-    
-    DESCRIPTION OF SLICE KEYS
-    
-    slice_id : The ID of this slice object. An experiment can have multiple slices.
-    cpid: The ID of the experiment, consistent with existing radar control programs.
-    tx_antennas: The antennas to transmit on, default is all main antennas given max number from config.
-    rx_main_antennas: The antennas to receive on in main array, default = all antennas given max number 
-        from config.
-    rx_int_antennas : The antennas to receive on in interferometer array, default is all antennas given 
-        max number from config.
-    pulse_sequence: The pulse sequence timing, given in quantities of mpinc, for example 
-        normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
-    mpinc: multi-pulse increment in us, Defines minimum space between pulses.
-    pulse_shift: Allows phase shifting between pulses, enabling encoding of pulses. Default all zeros 
-        for all pulses in pulse_sequence.
-    pulse_len: length of pulse in us. Range gate size is also determined by this.
-    nrang: Number of range gates.
-    frang: first range gate, in km
-    intt: duration of an integration, in ms. (maximum)
-    intn: number of averages to make a single integration, if intt = None.
-    beam_angle: list of beam directions, in degrees off azimuth. Positive is E of N. Array 
-        length = number of beams.
-    beam_order: beam numbers written in order of preference, one element in this list corresponds to 
-        one integration period. Can have lists within the list, resulting in multiple beams running
-        simultaneously in the averaging period, so imaging. A beam number of 0 in this list gives us 
-        beam_angle[0] as a direction. It is up to the writer to ensure their beam pattern makes sense.
-    scanboundflag: flag for whether there is a scan boundary to wait for in order to start a new scan.
-    scanbound: time that is allotted for a scan before a new scan boundary occurs (ms).
-    clrfrqrange: range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] 
-        in kHz.
-    txfreq: transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
-    rxfreq: receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only 
-        necessary to specify if you want a receive-only slice.
-    acf: flag for rawacf and generation. The default is True.
-    xcf: flag for cross-correlation data. The default is True.
-    acfint: flag for interferometer autocorrelation data. The default is True.
-    wavetype: string for wavetype. The default is SINE. Any other wavetypes not currently supported but 
-        possible to add in at later date.
-    iwavetable: a list of numeric values to sample from. The default is None. Not currently supported 
-        but could be set up (with caution) for non-SINE.
-    qwavetable: a list of numeric values to sample from. The default is None. Not currently supported 
-        but could be set up (with caution) for non-SINE.
-    seqoffset: offset in us that this slice's sequence will begin at, after the start of the sequence. 
-        This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence 
-        you can offset one slice's sequence from the other by a certain time value so as to not run both
-        frequencies in the same pulse, etc.
-    
-    Should add: 
-    
-    scanboundt : time past the hour to start a scan at ?  
-    
-    Explanation of beam_order and beam_angle:
-        Traditionally beams have been 3.24 degrees separated but we don't refer to them as beam 
-        -19.64 degrees, we refer as beam 1, beam 2. This is like a mapping of beam number
-        to beam direction off boresight. Then you can use the beam numbers in the beam_order 
-        list so you can reuse beams within one scan, or use multiple beam numbers in a single 
-        integration time, which would trigger an imaging integration. When we do imaging we will still 
-        have to quantize the directions we are looking in to certain beam directions.
-    
+    * xcf: boolean for cross-correlation data
+    * acf: boolean for auto-correlation data on main array
+    * acfint: boolean for auto-correlation data on interferometer array
+    * txctrfreq: transmit centre frequency (that RF chain is tuned to) - modifying 
+      requires tuning time.
+    * rxctrfreq: receive centre frequency - modifying requires tuning time.
+    * slice_dict: modifiable only using the add_slice, edit_slice, and del_slice 
+      methods.
+    * interface: modifiable only using the add_slice, edit_slice, and del_slice 
+      methods.
+      
     """
 
-    __slice_keys = ["slice_id", "cpid", "tx_antennas", "rx_main_antennas",
-                    "rx_int_antennas", "pulse_sequence", "pulse_shift", "mpinc",
-                    "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
-                    "beam_order", "scanboundflag", "scanbound", "txfreq", "rxfreq",
-                    "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
-                    "iwavetable", "qwavetable"]
+    __slice_keys = slice_key_set
 
-    # TODO add scanboundt?
-
-    __hidden_slice_keys = ['rxonly', 'clrfrqflag']
+    __hidden_slice_keys = hidden_key_set
 
     def __init__(self, cpid):
         """
@@ -223,7 +293,6 @@ class ExperimentPrototype(object):
         # TODO Remove above two variables after adding this type below
         self.__running_experiment = None # this will be of ScanClassBase type
 
-
     @property
     def cpid(self):
         """
@@ -264,8 +333,8 @@ class ExperimentPrototype(object):
         dictionary is a dictionary of dictionaries that looks like:
         
         { slice_id1 : {slice_key1 : x, slice_key2 : y, ...}, 
-          slice_id2 : {slice_key1 : x, slice_key2 : y, ...}, 
-          ...}
+        slice_id2 : {slice_key1 : x, slice_key2 : y, ...}, 
+        ...}
         """
 
         return self.__slice_dict
