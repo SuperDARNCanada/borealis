@@ -78,7 +78,7 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
                     "iwavetable", "qwavetable"])
 # TODO add scanboundt?
 """   
-Description of Slice Key 
+**Description of Slice Keys**
     
 slice_id
     The ID of this slice object. An experiment can have multiple slices.
@@ -196,7 +196,9 @@ scanboundt : time past the hour to start a scan at ?
 
 hidden_key_set = frozenset(['rxonly', 'clrfrqflag'])
 """
-These are used by radar_
+These are used by the build_scans method (called from the experiment_handler every 
+time the experiment is run). If set by the user, the values will be overwritten and 
+therefore ignored. 
 """
 
 class ExperimentPrototype(object):
@@ -345,7 +347,7 @@ class ExperimentPrototype(object):
         The next unique slice id that is available to this instance of the experiment.
         
         This gets incremented after each time it is called to ensure it returns
-         a unique ID each time.
+        a unique ID each time.
         """
 
         self.__new_slice_id += 1
@@ -544,7 +546,7 @@ class ExperimentPrototype(object):
         The maximum receive frequency.
         
         This is the maximum tx frequency possible in this experiment (maximum given by the centre 
-         frequency and sampling rate), as license doesn't matter for receiving.
+        frequency and sampling rate), as license doesn't matter for receiving.
         """
         max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0)
         return max_freq
@@ -572,8 +574,8 @@ class ExperimentPrototype(object):
         except for the first slice added. The dictionary of interfacing is setup as:
         
         [(slice_id1, slice_id2) : INTERFACING_TYPE, 
-         (slice_id1, slice_id3) : INTERFACING_TYPE, 
-         ...] 
+        (slice_id1, slice_id3) : INTERFACING_TYPE, 
+        ...] 
         
         for all current slice_ids. 
         
@@ -603,9 +605,8 @@ class ExperimentPrototype(object):
         A mapping of the beam directions in the given slice id.
         
         :param slice_id: id of the slice to get beam directions for.
-        
-        :returns: enumeration mapping dictionary of beam number to beam direction(s) in 
-        degrees off boresight.
+        :returns mapping: enumeration mapping dictionary of beam number to beam 
+         direction(s) in degrees off boresight.
         """
         if slice_id not in self.slice_ids:
             return {}
@@ -618,12 +619,16 @@ class ExperimentPrototype(object):
     def add_slice(self, exp_slice, interfacing_dict=None):
         """
         Add a slice to the experiment.
-        :param exp_slice: a slice (dictionary of slice_keys) to add to the experiment.
-        :param interfacing_dict: dictionary of type {slice_id : INTERFACING , ... } that defines how
-        this slice interacts with all the other slices currently in the experiment.
-        :return: the slice_id of the new slice that was just added.
         
+        :param exp_slice: a slice (dictionary of slice_keys) to add to the experiment.
+        :param interfacing_dict: dictionary of type {slice_id : INTERFACING , ... } that 
+         defines how this slice interacts with all the other slices currently in the 
+         experiment.
+        :raises: ExperimentException if slice is not a dictionary or if there are 
+         errors in setup_slice.
+        :return: the slice_id of the new slice that was just added.
         """
+
         if not isinstance(exp_slice, dict):
             errmsg = 'Attempt to add a slice failed - {} is not a dictionary of slice' \
                      'parameters'.format(exp_slice)
@@ -670,9 +675,11 @@ class ExperimentPrototype(object):
     def del_slice(self, remove_slice_id):
         """
         Remove a slice from the experiment.
+        
         :param remove_slice_id: the id of the slice you'd like to remove.
-        :return: boolean True if successful
+        :raises: exception if remove_slice_id does not exist in the slice dictionary.
         """
+
         try:
             del(self.slice_dict[remove_slice_id])
         except IndexError or TypeError:
@@ -685,13 +692,19 @@ class ExperimentPrototype(object):
 
     def edit_slice(self, edit_slice_id, **kwargs):
         """
-        A quick way to edit a slice. In reality this is actually adding a new slice and deleting 
-        the old one. Useful for quick changes - if you have to change more than three parameters 
-        then should do your own copy / add / delete.
+        Edit a slice. 
+        
+        A quick way to edit a slice. In reality this is actually adding a new slice and 
+        deleting the old one. Useful for quick changes. Note that using this function
+        will remove the slice_id that you are changing and will give it a new id. It will
+        account for this in the interfacing dictionary though. 
+        
         :param edit_slice_id: the slice id of the slice to be edited.
-        :param kwargs: dictionary of slice parameter to slice value that you want to change.
-        :return new_slice_id: the new slice id of the edited slice.
-        :raises ...
+        :param kwargs: dictionary of slice parameter to slice value that you want to 
+         change.
+        :returns new_slice_id: the new slice id of the edited slice.
+        :raises: exceptions if the edit_slice_id does not exist in slice dictionary or 
+         the params or values do not make sense.
         """
 
         slice_params_to_edit = dict(kwargs)
@@ -739,9 +752,12 @@ class ExperimentPrototype(object):
 
     def build_scans(self):
         """ 
-        Will be run by experiment handler, to build iterable objects for radar_control to use. 
-        Creates scan_objects and slice_id_scan_lists in the experiment for identifying which 
-        slices are in the scans.
+        Build the scan information, which means creating the Scan, AveragingPeriod, and 
+        Sequence instances needed to run this experiment.
+        
+        Will be run by experiment handler, to build iterable objects for radar_control to 
+        use. Creates scan_objects and slice_id_scan_lists in the experiment for 
+        identifying which slices are in the scans.
         """
 
         # Check interfacing
@@ -807,12 +823,17 @@ class ExperimentPrototype(object):
         # TODO add this to ScanClassBase method by just passing in the current type (Experiment, Scan, AvePeriod)
         # which would allow you to determine which interfacing to pull out.
         """
-        Take my own interfacing and get info on how many scans and which slices make which scans.
-        :rtype list
-        :return list of lists. The list has one element per scan. Each element is a list of 
-        slice_id's signifying which slices are combined inside that scan. The element could be a 
-        list of length 1, meaning only one slice_id is included in that scan. The list returned 
-        could be of length 1, meaning only one scan is present in the experiment.
+        Organize the slice_ids by scan.
+        
+        Take my own interfacing and get info on how many scans and which slices make which 
+        scans. Return a list of lists where each inner list contains the slices that 
+        are in an averagingperiod that is inside this scan. ie. len(nested_slice_list) 
+        = # of averagingperiods in this scan, len(nested_slice_list[0]) = # of slices 
+        in the first averagingperiod, etc.
+        
+        :return list of lists. The list has one element per scan. Each element is a list 
+        of slice_ids signifying which slices are combined inside that scan. The list 
+        returned could be of length 1, meaning only one scan is present in the experiment.
         """
         scan_combos = []
 
@@ -829,15 +850,19 @@ class ExperimentPrototype(object):
 
     def check_slice_minimum_requirements(self, exp_slice):
         """
+        Check the required slice keys.
+        
         Check for the minimum requirements of the slice. The following keys are always required:
         "pulse_sequence", "mpinc", "pulse_len", "nrang", "frang", (one of "intt" or "intn"), 
         "beam_angle", and "beam_order". This function may modify the values in this slice dictionary
         to ensure that it is able to be run and that the values make sense.
-        :param exp_slice: slice to check.
+        
+        :param exp_slice: slice to check. 
         """
 
         # TODO: add checks for values that make sense, not just check for types
-        # TODO: discuss how to do error checking as this may not be the best use of asserts.
+        # TODO: move asserts to if, make lists of operations to run and use
+        # ... TODO: if any() to shorten up this code!
         try:
             assert isinstance(exp_slice['pulse_sequence'], list)
             for element in exp_slice['pulse_sequence']:
@@ -905,7 +930,7 @@ class ExperimentPrototype(object):
                     exp_slice.pop('intn')
 
         try:
-            assert 'beam_angle' in exp_slice.keys()
+            assert 'beam_angle' in exp_slice.keys(), "beam_angle is a required key"
             assert isinstance(exp_slice['beam_angle'], list)
             for element in exp_slice['beam_angle']:
                 assert isinstance(element, float) or isinstance(element, int)
@@ -935,10 +960,13 @@ class ExperimentPrototype(object):
     @staticmethod
     def set_slice_identifiers(exp_slice):
         """
+        Set the hidden slice keys to determine how to run the slice.
+        
         This function sets up internal identifier flags 'clrfrqflag' and 'rxonly' in the slice so 
         that we know how to properly set up the slice and know which keys in the slice must be 
         specified and which are unnecessary. If these keys are ever written by the user, they will 
         be rewritten here.
+        
         :param exp_slice: slice in which to set identifiers
         """
 
@@ -977,9 +1005,13 @@ class ExperimentPrototype(object):
 
     def check_slice_specific_requirements(self, exp_slice):
         """
-        Check the requirements for the specific slice type as identified by the identifiers
-        rxonly and clrfrqflag. The keys that need to be checked depending on these identifiers 
-        are "txfreq", "rxfreq", and "clrfrqrange". This function may modify these keys.
+        Set the specific slice requirements depending. 
+        
+        Check the requirements for the specific slice type as identified by the 
+        identifiers rxonly and clrfrqflag. The keys that need to be checked depending 
+        on these identifiers are "txfreq", "rxfreq", and "clrfrqrange". This function 
+        may modify these keys.
+        
         :param exp_slice: the slice to check, before adding to the experiment.
         """
         if exp_slice['clrfrqflag']:  # TX and RX mode with clear frequency search.
@@ -1092,8 +1124,9 @@ class ExperimentPrototype(object):
     def set_slice_defaults(self, exp_slice):
         """
         Set up defaults in case of some parameters being left blank.
-        :param exp_slice: 
-        :return: slice_with_defaults: updated slice
+        
+        :param exp_slice: slice to set defaults of
+        :returns slice_with_defaults: updated slice
         """
 
         slice_with_defaults = copy.deepcopy(exp_slice)
@@ -1147,6 +1180,8 @@ class ExperimentPrototype(object):
 
     def setup_slice(self, exp_slice):
         """
+        Check slice for errors and set defaults of optional keys.
+        
         Before adding the slice, ensure that the internal parameters are set, remove unnecessary
         keys and check values of keys that are needed, and set defaults of keys that are optional.
         
@@ -1195,7 +1230,9 @@ class ExperimentPrototype(object):
 
     def self_check(self):
         """
-        Check that the values in this experiment are valid
+        Check that the values in this experiment are valid.
+        
+        Checks all slices.
         """
 
         if self.num_slices < 1:
@@ -1228,11 +1265,13 @@ class ExperimentPrototype(object):
 
     def check_slice(self, exp_slice):
         """
+        Check the slice for errors.
+        
         This is the first test of the dictionary in the experiment done to ensure values in this 
         slice make sense. This is a self-check to ensure the parameters (for example, txfreq, 
         antennas) are appropriate. All fields should be full at this time (whether filled by the 
         user or given default values in set_slice_defaults). This was built to be useable at 
-        any time after setup. If things are changed un
+        any time after setup.
         :param: exp_slice: a slice to check
         :raise: ExperimentException: When necessary parameters do not exist or = None (would have
         to have been overridden by the user for this, as defaults all set when this runs).
@@ -1326,7 +1365,8 @@ class ExperimentPrototype(object):
             error_list.append("Slice {} Pulse Length Greater than MPINC".format(
                 exp_slice['slice_id']))
         if exp_slice['pulse_len'] < self.options.minimum_pulse_length and \
-                        exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * 10^6:
+                        exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * \
+                        10.0e6:
             error_list.append("Slice {} Pulse Length Too Small".format(
                 exp_slice['slice_id']))
         if exp_slice['mpinc'] < self.options.minimum_mpinc_length:
@@ -1403,8 +1443,7 @@ class ExperimentPrototype(object):
 
     def check_interfacing(self):
         """
-        Check that the keys in the interface are not NONE and are
-        valid.
+        Check that the keys in the interface are not NONE and are valid.
         """
 
         for key, interface_type in self.interface.items():

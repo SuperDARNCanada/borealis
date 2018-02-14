@@ -1,20 +1,12 @@
 radar_control package
 =====================
 
-.. automodule:: radar_control
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-Submodules
-----------
-
-radar_control.radar_control module
-----------------------------------
+The radar_control package contains a single module, radar_control, that is a
+standalone program.
 
 .. automodule:: radar_control.radar_control
     :members:
     :undoc-members:
     :show-inheritance:
 
-
+..   Usage??

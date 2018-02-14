@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 """
-    experiment_handler
-    ~~~~~~~~~~~~~~~~~~
+    experiment_handler process
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
     This program runs a given experiment. It will use the experiment's build_scans method to 
     create the iterable ScanClassBase objects that will be used by the radar_control block, 
     then it will pass the experiment to the radar_control block to run. 

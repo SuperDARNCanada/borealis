@@ -11,8 +11,6 @@ Contents - THIS NEEDS WORK:
 ..  toctree::
     :maxdepth: 2
 
-    /config
-    /example_experiment
     /starting_the_radar
     /modules
 

@@ -1,14 +1,17 @@
 #!/usr/bin/python
 
-# Copyright 2017 SuperDARN Canada
-#
-# Marci Detwiller
-#
-# radar_control.py
-# 2017-03-13
-# Get a radar control program made of objects (scans, averaging periods, and sequences).
-# Communicate with the n200_driver to control the radar.
-# Communicate with the rx_dsp_chain to process the data.
+"""
+    radar_control process
+    ~~~~~~~~~~~~~~~~~~~~~
+    
+    Radar_control is the process that runs the radar (sends pulses to the driver with
+    timing information and sends processing information to the signal processing process).
+    Experiment_handler provides the experiment for radar_control to run. It iterates
+    through the scan_class_base objects to control the radar. 
+
+    :copyright: 2018 SuperDARN Canada
+    :author: Marci Detwiller
+"""
 
 import cmath
 import sys
@@ -37,8 +40,9 @@ from radar_status.radar_status import RadarStatus
 def setup_socket(context, address):
     """
     Setup a paired zmq socket and return it.
+    
     :param context: zmq context
-    :return zmq socket
+    :returns socket: zmq socket requested
     """
     socket = context.socket(zmq.PAIR)
     socket.connect(address)
@@ -51,29 +55,33 @@ def data_to_driver(driverpacket, txsocket, antennas, samples_array,
                    repeat=False):
     """ 
     Place data in the driver packet and send it via zeromq to the driver.
+    
     :param driverpacket: the protobuf packet to fill and pass over zmq
     :param txsocket: the zmq socket connected to the driver
     :param antennas: the antennas to transmit on.
-    :param samples_array: this is a list of length main_antenna_count from the config file. It contains one
-    numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
-    numpy array of zeros of the same length as the rest. All arrays will have the same length according to
-    the pulse length.
+    :param samples_array: this is a list of length main_antenna_count from the config 
+     file. It contains one numpy array of complex values per antenna. If the antenna 
+     will not be transmitted on, it contains a numpy array of zeros of the same length 
+     as the rest. All arrays will have the same length according to the pulse length.
     :param txctrfreq: the transmit centre frequency to tune to.
-    :param rxctrfreq: the receive centre frequency to tune to. With rx_sample_rate from config.ini file, this
-    determines the received signal band.
+    :param rxctrfreq: the receive centre frequency to tune to. With rx_sample_rate from 
+     config.ini file, this determines the received signal band.
     :param txrate: the tx sampling rate.
-    :param numberofreceivesamples: number of samples to receive at the rx_sample_rate from config.ini file. This
-    determines length of Scope Sync GPIO being high for this sequence.
+    :param numberofreceivesamples: number of samples to receive at the rx_sample_rate 
+     from config.ini file. This determines length of Scope Sync GPIO being high for 
+     this sequence.
     :param SOB: start of burst boolean, true for first pulse in sequence.
     :param EOB: end of burst boolean, true for last pulse in sequence.
-    :param timing: in us, the time past timezero to send this pulse. Timezero is the start of the sequence.
-    :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
-    with increasing sequences while radar_control is running. It is only reset when program restarts.
-    :param repeat: a boolean indicating whether the pulse is the exact same as the last pulse
-    in the sequence, in which case we will save the time and not send the samples list and other
-    params that will be the same.
-        
+    :param timing: in us, the time past timezero to send this pulse. Timezero is the 
+     start of the sequence.
+    :param seqnum: the sequence number. This is a unique identifier for the sequence 
+     that is always increasing with increasing sequences while radar_control is 
+     running. It is only reset when program restarts.
+    :param repeat: a boolean indicating whether the pulse is the exact same as the last
+     pulse in the sequence, in which case we will save the time and not send the 
+     samples list and other params that will be the same.
     """
+
     driverpacket.Clear()
     driverpacket.timetosendsamples = timing
     driverpacket.SOB = SOB
@@ -86,7 +94,8 @@ def data_to_driver(driverpacket, txsocket, antennas, samples_array,
         # ctrfreq empty
         # rxrate and txrate empty
         if __debug__:
-            print("REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3};".format(timing, SOB, EOB, antennas))
+            print("REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3}"
+                  ";".format(timing, SOB, EOB, antennas))
     else:
         # SETUP data to send to driver for transmit.
         for ant in antennas:
@@ -94,8 +103,8 @@ def data_to_driver(driverpacket, txsocket, antennas, samples_array,
         for samples in samples_array:
             sample_add = driverpacket.channel_samples.add()
             # Add one Samples message for each channel.
-            # Protobuf expects types: int, long, or float, will reject numpy types and throw a
-            # TypeError so we must convert the numpy arrays to lists
+            # Protobuf expects types: int, long, or float, will reject numpy types and
+            # throw a TypeError so we must convert the numpy arrays to lists
             sample_add.real.extend(samples.real.tolist())
             sample_add.imag.extend(samples.imag.tolist())
         driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
@@ -103,7 +112,8 @@ def data_to_driver(driverpacket, txsocket, antennas, samples_array,
         driverpacket.txrate = txrate
         driverpacket.numberofreceivesamples = numberofreceivesamples
         if __debug__:
-            print("NOT A REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3};".format(timing, SOB, EOB, antennas))
+            print("NOT A REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3}"
+                  ";".format(timing, SOB, EOB, antennas))
 
     txsocket.send(driverpacket.SerializeToString())
 
@@ -112,17 +122,22 @@ def data_to_driver(driverpacket, txsocket, antennas, samples_array,
 
 def data_to_rx_dsp(packet, socket, seqnum, slice_ids, slice_dict, beam_dict):
     """ 
-    Place data in the receiver packet and send it via zeromq to the signal processing unit.
+    Place data in the receiver packet and send it via zeromq to the signal processing 
+    unit.
+    
     :param packet: the signal processing packet of the protobuf sigprocpacket type.
     :param socket: the zmq socket to connect to the rx dsp process
-    :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
-    with increasing sequences while radar_control is running. It is only reset when program restarts.
-    :param slice_ids: The identifiers of the slices that are combined in this sequence. These IDs tell us where to
-    look in the beam dictionary and slice dictionary for frequency information and beam direction information
-    about this sequence to give to the signal processing unit.
-    :param slice_dict: The slice dictionary, which contains information about all slices and will be referenced for
-    information about the slices in this sequence. Namely, we get the frequency we want to receive at, the
-    number of ranges and the first range information.
+    :param seqnum: the sequence number. This is a unique identifier for the sequence 
+     that is always increasing with increasing sequences while radar_control is 
+     running. It is only reset when program restarts.
+    :param slice_ids: The identifiers of the slices that are combined in this sequence.
+     These IDs tell us where to look in the beam dictionary and slice dictionary for 
+     frequency information and beam direction information about this sequence to give 
+     to the signal processing unit.
+    :param slice_dict: The slice dictionary, which contains information about all 
+     slices and will be referenced for information about the slices in this sequence. 
+     Namely, we get the frequency we want to receive at, the number of ranges and the 
+     first range information.
     :param beam_dict: The dictionary containing beam directions for each slice.
     """
 
@@ -158,11 +173,15 @@ def data_to_rx_dsp(packet, socket, seqnum, slice_ids, slice_dict, beam_dict):
 
 def get_ack(socket, procpacket):
     """ 
-    Get the acknowledgement from the process. This works with both the driver and the signal processing sockets
-    as both packets have the field for sequence number.
-    :param socket: The socket to get the acknowledgement packet from. Either the driver packet socket or the
-    sigprocpacket socket.
-    :param procpacket: The packet type that we have. Either driverpacket or sigprocpacket.
+    Receive an acknowledgement.
+    
+    Get the acknowledgement from the process. This works with both the driver and the 
+    signal processing sockets as both packets have the field for sequence number.
+    
+    :param socket: The socket to get the acknowledgement packet from. Either the driver
+     packet socket or the sigprocpacket socket.
+    :param procpacket: The packet type that we have. Either driverpacket or 
+     sigprocpacket.
     """
 
     try:
@@ -179,10 +198,12 @@ def get_ack(socket, procpacket):
 
 def search_for_experiment(socket, status):
     """
-    Check for new experiment_prototype from the experiment handler
+    Check for new experiment from the experiment handler.
+    
     :param socket: socket to experiment handler
     :param status: status of type RadarStatus.
-    :return: boolean (True for new experiment received), and the experiment (or None if there is no new experiment)
+    :returns new_experiment_received: boolean (True for new experiment received)
+    :returns new_experiment: experiment instance (or None if there is no new experiment)
     """
 
     try:
@@ -236,19 +257,29 @@ def search_for_experiment(socket, status):
 def verify_completed_sequence(tx_poller, tx_rx_poller, tx_socket, rx_ack_socket, rx_time_socket,
                               sigprocpacket, driverpacket, poll_timeout, seqnum, ):
     """ 
-    Check the sequence was successfully transmitted by the driver, and the previous sequence was successfully
-    processed by the signal processing unit.
-    :param tx_poller: The poller set up on the socket to the driver only, used on the first pulse sequence.
-    :param tx_rx_poller: The poller set up on both the sockets to the driver and to the signal processing unit.
+    Verify a completed sequence by receiving acks and checking.
+    
+    Check the sequence was successfully transmitted by the driver, and the previous 
+    sequence was successfully processed by the signal processing unit.
+    
+    :param tx_poller: The poller set up on the socket to the driver only, used on the 
+     first pulse sequence.
+    :param tx_rx_poller: The poller set up on both the sockets to the driver and to the 
+     signal processing unit.
     :param tx_socket: The socket set up for communication both to and from the driver.
-    :param rx_ack_socket: The socket set up for getting the acknowledgement from the signal processing unit.
-    :param rx_time_socket: The socket set up for getting the kernel time for processing from the signal processing unit.
-    :param sigprocpacket: The protobuf signal processing packet, used on the rx_ack_socket and the rx_time_socket.
+    :param rx_ack_socket: The socket set up for getting the acknowledgement from the 
+     signal processing unit.
+    :param rx_time_socket: The socket set up for getting the kernel time for processing 
+     from the signal processing unit.
+    :param sigprocpacket: The protobuf signal processing packet, used on the 
+     rx_ack_socket and the rx_time_socket.
     :param driverpacket: The protobuf driver packet, used on the tx_socket.
-    :param poll_timeout: the timeout time for the pollers, currently passed in as scope sync time.
-    :param seqnum: The unique identifier for the sequence just sent to the driver. The driver should return this same
-    sequence number. The signal processing unit should return this number - 1 as it was working on data from the
-    last pulse sequence concurrently.
+    :param poll_timeout: the timeout time for the pollers, currently passed in as 
+     scope sync time.
+    :param seqnum: The unique identifier for the sequence just sent to the driver. The 
+     driver should return this same sequence number. The signal processing unit should 
+     return this number - 1 as it was working on data from the last pulse sequence 
+     concurrently.
     """
 
     if seqnum != 0:
@@ -328,13 +359,19 @@ def verify_completed_sequence(tx_poller, tx_rx_poller, tx_socket, rx_ack_socket,
 
 def radar():
     """
-    Receives an instance of an experiment. Iterates through
-    the Scans, AveragingPeriods, Sequences, and pulses of the experiment.
+    Run the radar with the experiment supplied by experiment_handler.
+    
+    Receives an instance of an experiment. Iterates through the Scans, 
+    AveragingPeriods, Sequences, and pulses of the experiment.
+    
     For every pulse, samples and other control information are sent to the n200_driver.
-    For every pulse sequence, processing information is sent to the signal processing block.
-    After every integration time (AveragingPeriod), the experiment block is given the opportunity
-    to change the control program. If a new program is sent, radar will halt the old one and begin 
-    with the new experiment.
+    
+    For every pulse sequence, processing information is sent to the signal processing 
+    block.
+    
+    After every integration time (AveragingPeriod), the experiment block is given the 
+    opportunity to change the experiment (not currently implemented). If a new 
+    experiment is sent, radar will halt the old one and begin with the new experiment.
     """
 
     # Initialize driverpacket.

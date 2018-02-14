@@ -10,8 +10,11 @@ class RadarStatus():  # TODO finish the class when we determine how to log and w
     # from the driver that we would like to pass back to the experiment / user.
     # Suggested information: confirmed ctrfreq's and sampling rate's from the driver
     # third-stage sampling rate (rate of result data)
-    """Class to define transmit specifications of a certain frequency, 
-    beam, and pulse sequence.
+    """Class to define transmit specifications of a certain frequency, beam, and pulse sequence.
+    
+    errors = ('EXPNEEDED', 'NOERROR', 'WARNING', 'EXITERROR')
+    
+    Probably will be phased out once administrator is working
     """
 
     def __init__(self):

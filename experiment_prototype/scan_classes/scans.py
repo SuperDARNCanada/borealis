@@ -1,5 +1,18 @@
 #!/usr/bin/python
 
+"""
+    scans
+    ~~~~~
+    This is the module containing the Scan class. The Scan class contains the 
+    ScanClassBase members, as well as a scanbound (to be implemented), a beamdir 
+    dictionary and scan_beams dictionary which specify beam direction angle and beam 
+    order in scan, respectively, for individual slices that are to be combined in this 
+    scan. Beam direction information gets passed on to the AveragingPeriod. 
+
+    :copyright: 2018 SuperDARN Canada
+    :author: Marci Detwiller
+"""
+
 import sys
 from experiment_prototype.scan_classes.averaging_periods import AveragingPeriod
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
@@ -8,13 +21,17 @@ from experiment_prototype.experiment_exception import ExperimentException
 
 class Scan(ScanClassBase):
     """ 
-    Made up of AveragingPeriods at defined beam directions, and some other metadata for the scan itself.
+    Set up the scans.
     
-    Scans are made up of AveragingPeriods, these are typically a 3sec time of
-    the same pulse sequence pointing in one direction.  AveragingPeriods are made
-    up of Sequences, typically the same sequence run ave. 20-30 times after a clear
-    frequency search.  Sequences are made up of pulses, which is a list of dictionaries 
-    where each dictionary describes a pulse. 
+    A scan is made up of AveragingPeriods at defined beam directions, and some other 
+    metadata for the scan itself.
+    
+    **The unique members of the scan are (not a member of the scanclassbase):**
+    
+    scanboundflag
+        Boolean, True if there is a scanboundary to start the scan at.
+    scanbound
+        The time (not implemented) at which to start scans. To be implemented.
     """
 
     def __init__(self, scan_keys, scan_slice_dict, scan_interface, options):
@@ -36,6 +53,8 @@ class Scan(ScanClassBase):
                          combined in Scan""".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
 
+        # TODO implement scanbound!!
+
         # NOTE: for now we assume that when INTTIME combined, the AveragingPeriods of the various slices in the scan are
         #   just interleaved 1 then the other.
 
@@ -56,10 +75,16 @@ class Scan(ScanClassBase):
 
     def get_inttime_slice_ids(self):
         """
-        Take the interface keys inside this scan and return a list of lists where each inner list 
-        contains the slices that are in an inttime that is inside this scan. ie. len(combos) = 
-        # of inttimes in this list, len(combos[0]) = # of slices in the first inttime, etc.
-        :return: 
+        Return the slice_ids that are within the AveragingPeriods in this Scan instance.
+        
+        Take the interface keys inside this scan and return a list of lists 
+        where each inner list contains the slices that are in an averagingperiod that is 
+        inside this scan. ie. len(nested_slice_list) = # of averagingperiods in this 
+        scan, len(nested_slice_list[0]) = # of slices in the first averagingperiod, 
+        etc.
+        
+        :returns: the nested_slice_list which is used when creating the 
+         AveragingPeriods for this scan.
         """
         intt_combos = []
 
@@ -83,20 +108,25 @@ class Scan(ScanClassBase):
 
     def prep_for_nested_scan_class(self):
         """
-        Override to give more information about beamorder and beamdir
-        :return: a list of lists of parameters that can be directly passed into the nested 
-        ScanClassBase type, AveragingPeriod. the params_list is of length = # of AveragingPeriods
-        in this scan. 
+        Override of base method to give more information about beamorder and beamdir.
+        
+        Beam order and beamdir are required for instantiation of the nested class 
+        AveragingPeriod so we need to extract this information as well to fill 
+        self.aveperiods.
+        
+        :returns: a list of lists of parameters that can be directly passed into the 
+         nested ScanClassBase type, AveragingPeriod. the params_list is of length = # of 
+         AveragingPeriods in this scan. 
         """
 
         # Get the basic parameters for a ScanClassBase type
         params_list = ScanClassBase.prep_for_nested_scan_class(self)
 
-        # Add the beam order and beam direction information that is necessary for AveragingPeriods
-        # specifically.
+        # Add the beam order and beam direction information that is necessary for
+        # AveragingPeriods specifically.
         for params, inttime_list in zip(params_list, self.nested_slice_list):
-            # Make sure the number of inttimes (as determined by length of slice['scan'] is the same
-            # for slices combined in the averaging period.
+            # Make sure the number of inttimes (as determined by length of slice['scan']
+            # is the same for slices combined in the averaging period.
             self.nested_beamorder = {}
             self.nested_beamdir = {}
             for slice_id in inttime_list:
