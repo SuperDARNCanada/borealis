@@ -228,8 +228,8 @@ class ExperimentPrototype(object):
     * rxctrfreq: receive centre frequency - modifying requires tuning time.
     * slice_dict: modifiable only using the add_slice, edit_slice, and del_slice 
       methods.
-    * interface: modifiable only using the add_slice, edit_slice, and del_slice 
-      methods.
+    * interface: modifiable using the add_slice, edit_slice, and del_slice 
+      methods, or by updating the interface dict directly.
       
     """
 
