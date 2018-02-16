@@ -172,7 +172,8 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
         #samples = [x * y for x, y in zip(wave_form, linear_amps)]
 
         gaussian_amps = max_amplitude * np.ones([sampleslen]) * gaussian(sampleslen, math.ceil(pulse_len/6.0))
-
+        # TODO modify ramp_time input to this function because going Gaussian (after
+        # ... TODO: testing this)
         samples = [x * y for x, y in zip(wave_form, gaussian_amps)]
         actual_wave_freq = wave_freq
 
