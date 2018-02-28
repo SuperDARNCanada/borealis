@@ -32,6 +32,7 @@ RADCTRL_BRIAN_IDEN = b"RADCTRL_BRIAN_IDEN"
 
 DRIVER_RADCTRL_IDEN = b"DRIVER_RADCTRL_IDEN"
 DRIVER_DSP_IDEN = b"DRIVER_DSP_IDEN"
+DRIVER_BRIAN_IDEN = b"DRIVER_BRIAN_IDEN"
 
 EXPHAN_RADCTRL_IDEN = b"EXPHAN_RADCTRL_IDEN"
 EXPHAN_DSP_IDEN = b"EXPHAN_DSP_IDEN"
@@ -40,10 +41,13 @@ DSP_RADCTRL_IDEN = b"DSP_RADCTRL_IDEN"
 DSP_DRIVER_IDEN = b"DSP_DRIVER_IDEN"
 DSP_EXPHAN_IDEN = b"DSP_EXPHAN_IDEN"
 DSP_DW_IDEN = b"DSP_DW_IDEN"
+DSP_BRIAN_IDEN = b"DSP_BRIAN_IDEN"
 
 DW_DSP_IDEN = b"DW_DSP_IDEN"
 
 BRIAN_RADCTRL_IDEN = b"BRIAN_RADCTRL_IDEN"
+BRIAN_DRIVER_IDEN = b"BRIAN_DRIVER_IDEN"
+BRIAN_DSP_IDEN = b"BRIAN_DSP_IDEN"
 
 
 ROUTER_ADDRESS="tcp://127.0.0.1:7878"
@@ -152,28 +156,12 @@ def radar_control(context=None):
 
             send_pulse(radar_control_to_driver, DRIVER_RADCTRL_IDEN, pulse)
 
+        # Request ack to start new sequence
+        send_request(radar_control_to_brian, BRIAN_RADCTRL_IDEN, "Requesting ack")
 
-        # request ack from driver
-        send_request(radar_control_to_driver, DRIVER_RADCTRL_IDEN, "Requesting ack for sequence")
-
-        data = recv_data(radar_control_to_driver, DRIVER_RADCTRL_IDEN, printing)
-        data_output = "Driver sent -> {}".format(data)
+        data = recv_data(radar_control_to_brian, BRIAN_RADCTRL_IDEN, printing)
+        data_output = "Brian sent -> {}".format(data)
         printing(data_output)
-
-        # request copy ack from dsp
-        send_request(radar_control_to_dsp, DSP_RADCTRL_IDEN, "Requesting start of work ack")
-
-        data = recv_data(radar_control_to_dsp, DSP_RADCTRL_IDEN, printing)
-        data_output = "Dsp sent -> {}".format(data)
-        printing(data_output)
-
-        # Get completed processing ack from dsp
-        send_request(radar_control_to_dsp, DSP_RADCTRL_IDEN, "Requesting end of work ack")
-
-        data = recv_data(radar_control_to_dsp, DSP_RADCTRL_IDEN, printing)
-        data_output = "Dsp sent -> {}".format(data)
-        printing(data_output)
-
 
 def experiment_handler(context=None):
     """
@@ -224,11 +212,12 @@ def driver(context=None):
     # Reply socket to dsp (acks/timing info)
     # Pull socket from radar_control (pulses)
 
-    ids = [DRIVER_DSP_IDEN, DRIVER_RADCTRL_IDEN]
+    ids = [DRIVER_DSP_IDEN, DRIVER_RADCTRL_IDEN, DRIVER_BRIAN_IDEN]
     sockets_list = create_sockets(ids)
 
     driver_to_dsp = sockets_list[0]
     driver_to_radar_control = sockets_list[1]
+    driver_to_brian = sockets_list[2]
 
     def printing(msg):
         DRIVER = "\033[34m" + "DRIVER: " + "\033[0m"
@@ -246,19 +235,20 @@ def driver(context=None):
 
         time.sleep(1)
 
-        #sending collected data to dsp
+        #sending sequence data to dsp
         request = recv_request(driver_to_dsp, DSP_DRIVER_IDEN, printing)
         request_output = "Dsp sent -> {}".format(request)
         printing(request_output)
 
         send_reply(driver_to_dsp, DSP_DRIVER_IDEN, "Completed sequence data")
 
-        # send ack to radar control
-        request = recv_request(driver_to_radar_control, RADCTRL_DRIVER_IDEN, printing)
-        request_output = "Radar control sent -> {}".format(request)
+        #sending collected data to brian
+        request = recv_request(driver_to_brian, BRIAN_DRIVER_IDEN, printing)
+        request_output = "Brian sent -> {}".format(request)
         printing(request_output)
 
-        send_reply(driver_to_radar_control, RADCTRL_DRIVER_IDEN, "Ack completed sequence")
+        send_reply(driver_to_brian, BRIAN_DRIVER_IDEN, "Completed sequence data")
+
 
 
 def dsp(context=None):
@@ -275,13 +265,14 @@ def dsp(context=None):
     # Reply socket to experiment handler (processed samples)
     # Reply socket to data_write (processed samples)
 
-    ids = [DSP_RADCTRL_IDEN, DSP_DRIVER_IDEN, DSP_EXPHAN_IDEN, DSP_DW_IDEN]
+    ids = [DSP_RADCTRL_IDEN, DSP_DRIVER_IDEN, DSP_EXPHAN_IDEN, DSP_DW_IDEN, DSP_BRIAN_IDEN]
     sockets_list = create_sockets(ids)
 
     dsp_to_radar_control = sockets_list[0]
     dsp_to_driver = sockets_list[1]
     dsp_to_experiment_handler = sockets_list[2]
     dsp_to_data_write = sockets_list[3]
+    dsp_to_brian = sockets_list[4]
 
 
     def printing(msg):
@@ -312,29 +303,29 @@ def dsp(context=None):
         time.sleep(0.1)
 
         # acknowledge start of work
-        request = recv_request(dsp_to_radar_control, RADCTRL_DSP_IDEN, printing)
-        request_output = "Radar control sent -> {}".format(request)
+        request = recv_request(dsp_to_brian, BRIAN_DSP_IDEN, printing)
+        request_output = "Brian sent -> {}".format(request)
         printing(request_output)
-        send_data(dsp_to_radar_control, RADCTRL_DSP_IDEN, "Ack start of work")
+        send_data(dsp_to_brian, BRIAN_DSP_IDEN, "Ack start of work")
 
         # doing work!
         time.sleep(1)
 
         # acknowledge end of work
-        request = recv_request(dsp_to_radar_control, RADCTRL_DSP_IDEN, printing)
-        request_output = "Radar control sent -> {}".format(request)
+        request = recv_request(dsp_to_brian, BRIAN_DSP_IDEN, printing)
+        request_output = "Brian sent -> {}".format(request)
         printing(request_output)
-        send_reply(dsp_to_radar_control, RADCTRL_DSP_IDEN, "Ack end of work")
+        send_data(dsp_to_brian, BRIAN_DSP_IDEN, "Ack end of work")
 
         # send data to experiment handler
-        request = recv_request(dsp_to_experiment_handler, RADCTRL_EXPHAN_IDEN, printing)
+        request = recv_request(dsp_to_experiment_handler, EXPHAN_DSP_IDEN, printing)
         request_output = "Experiment handler sent -> {}".format(request)
         printing(request_output)
 
         send_data(dsp_to_experiment_handler, EXPHAN_DSP_IDEN, "All the datas")
 
         # send data to data write
-        request = recv_request(dsp_to_data_write, DSP_DW_IDEN, printing)
+        request = recv_request(dsp_to_data_write, DW_DSP_IDEN, printing)
         request_output = "Data write sent -> {}".format(request)
         printing(request_output)
 
@@ -372,31 +363,60 @@ def data_write(context=None):
 
 def sequence_timing():
 
-    ids = [BRIAN_RADCTRL_IDEN]
+    ids = [BRIAN_RADCTRL_IDEN, BRIAN_DRIVER_IDEN, BRIAN_DSP_IDEN]
     sockets_list = create_sockets(ids)
 
     brian_to_radar_control = sockets_list[0]
+    brian_to_driver = sockets_list[1]
+    brian_to_dsp = sockets_list[2]
 
     def printing(msg):
-        SEQUENCE_TIMEOUT = "\033[31m" + "SEQUENCE TIMEOUT: " + "\033[0m"
-        sys.stdout.write(SEQUENCE_TIMEOUT + msg + "\n")
+        SEQUENCE_TIMING = "\033[31m" + "SEQUENCE TIMING: " + "\033[0m"
+        sys.stdout.write(SEQUENCE_TIMING + msg + "\n")
 
     time.sleep(1)
 
-    prev_sqn_time = 0
-    current_sqn_time = 0
     while True:
 
         #Request new sequence metadata
-        printing("Requesting metadata")
+        printing("Requesting metadata from Radar control")
         send_request(brian_to_radar_control, RADCTRL_BRIAN_IDEN, "Requesting metadata")
 
         reply = recv_reply(brian_to_radar_control, RADCTRL_BRIAN_IDEN, printing)
         reply_output = "Radar control sent -> {}".format(reply)
         printing(reply_output)
 
-        current_sqn_time += 1
+        #Request acknowledgement of sequence from driver
+        printing("Requesting ack from driver")
+        send_request(brian_to_driver, DRIVER_BRIAN_IDEN, "Requesting ack")
 
+        reply = recv_reply(brian_to_driver, DRIVER_BRIAN_IDEN, printing)
+        reply_output = "Driver sent -> {}".format(reply)
+        printing(reply_output)
+
+        #Requesting acknowledgement of work begins from DSP
+        printing("Requesting work begins from DSP")
+        send_request(brian_to_dsp, DSP_BRIAN_IDEN, "Requesting work begins")
+
+        reply = recv_reply(brian_to_dsp, DSP_BRIAN_IDEN, printing)
+        reply_output = "Dsp sent -> {}".format(reply)
+        printing(reply_output)
+
+        #Requesting acknowledgement of work ends from DSP
+        printing("Requesting work end from DSP")
+        send_request(brian_to_dsp, DSP_BRIAN_IDEN, "Requesting work ends")
+
+        reply = recv_reply(brian_to_dsp, DSP_BRIAN_IDEN, printing)
+        reply_output = "Dsp sent -> {}".format(reply)
+        printing(reply_output)
+
+
+        #Acknowledge new sequence can begin to Radar Control
+        request = recv_request(brian_to_radar_control, RADCTRL_BRIAN_IDEN, printing)
+        request_output = "Radar control sent -> {}".format(request)
+        printing(request_output)
+
+        send_reply(brian_to_radar_control, RADCTRL_BRIAN_IDEN, "Begin new sequence")
 
 
 
@@ -405,25 +425,23 @@ def router():
     router = context.socket(zmq.ROUTER)
     router.bind(ROUTER_ADDRESS)
 
-    sys.stdout.write("Starting router!")
+    sys.stdout.write("Starting router!\n")
     while True:
         dd = router.recv_multipart()
         #sys.stdout.write(dd)
         sender, receiver, empty, data = dd
-        #sys.stdout.write(sender, receiver, empty, data)
+        output = "Router input/// Sender -> {}: Receiver -> {}: empty: Data -> {}\n".format(*dd)
+        #sys.stdout.write(output)
         frames = [receiver,sender,empty,data]
-        #sys.stdout.write(frames)
+        output = "Router output/// Receiver -> {}: Sender -> {}: empty: Data -> {}\n".format(*frames)
+        #sys.stdout.write(output)
         router.send_multipart(frames)
 
 
 if __name__ == "__main__":
     import threading
 
-    sys.stdout.write("BRIAN_TESTER: Main")
-
-    # context = zmq.Context().instance()
-    # router = context.socket(zmq.ROUTER)
-    # router.bind(ROUTER_ADDRESS)
+    sys.stdout.write("BRIAN_TESTER: Main\n")
 
     threads = []
 
@@ -441,13 +459,6 @@ if __name__ == "__main__":
         thread.daemon = True
         thread.start()
 
-    sys.stdout.write("BRIAN_TESTER: Threads all set up")
+    sys.stdout.write("BRIAN_TESTER: Threads all set up\n")
     while True:
         time.sleep(1)
-        # dd = router.recv_multipart()
-        # #sys.stdout.write(dd)
-        # sender, receiver, empty, data = dd
-        # sys.stdout.write(sender, receiver, empty, data)
-        # frames = [receiver,sender,empty,data]
-        # sys.stdout.write(frames)
-        # router.send_multipart(frames)
