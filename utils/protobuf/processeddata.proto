@@ -5,6 +5,7 @@ package processeddata;
 message ProcessedData {
     uint32 sequence_num = 1;
     repeated OutputDataSet outputdataset = 2;
+    float processing_time = 3;
 
     message OutputDataSet {
         repeated ComplexData mainacf = 1;

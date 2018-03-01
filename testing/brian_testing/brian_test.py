@@ -19,8 +19,11 @@ if __debug__:  # TODO need to get build flavour from scons environment, 'release
 else:
         sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
 
-# import driverpacket_pb2
-# import sigprocpacket_pb2
+import driverpacket_pb2
+import sigprocpacket_pb2
+import rxsamplesmetadata_pb2
+import processeddata_pb2
+
 # TODO: Socket options to look at: IDENTITY, AFFINITY, LINGER
 # TODO: USE send_multipart, with human-readable identities, then the router knows how to handle the
 # response to the request, see chapter 3, figures 29/30
@@ -52,6 +55,7 @@ BRIAN_DSP_IDEN = b"BRIAN_DSP_IDEN"
 
 ROUTER_ADDRESS="tcp://127.0.0.1:7878"
 
+TIME = 1
 def create_sockets(identities, router_addr=ROUTER_ADDRESS):
     """Gives a unique identity to a socket and then connects to the router
 
@@ -116,6 +120,7 @@ def radar_control(context=None):
         sys.stdout.write(RADAR_CONTROL + msg + "\n")
 
     time.sleep(1)
+    count = 0
     while True:
         #time.sleep(1)
         #radar_control sends a request for an experiment to experiment_handler
@@ -128,19 +133,24 @@ def radar_control(context=None):
         reply_output = "Experiment handler sent -> {}".format(reply)
         printing(reply_output)
 
+        sigp = sigprocpacket_pb2.SigProcPacket()
+        sigp.sequence_time = TIME
+        sigp.sequence_num = count
+        count += 1
+
         #Brian requests sequence metadata for timeouts
         request = recv_request(radar_control_to_brian, BRIAN_RADCTRL_IDEN, printing)
         request_output = "Brian requested -> {}".format(request)
         printing(request_output)
 
-        send_reply(radar_control_to_brian, BRIAN_RADCTRL_IDEN, "Giving sequence metadata")
+        send_reply(radar_control_to_brian, BRIAN_RADCTRL_IDEN, sigp.SerializeToString())
 
         #Radar control receives request for metadata from DSP
         request = recv_request(radar_control_to_dsp, DSP_RADCTRL_IDEN, printing)
         request_output = "DSP requested -> {}".format(request)
         printing(request_output)
 
-        send_reply(radar_control_to_dsp, DSP_RADCTRL_IDEN, "Giving sequence metadata")
+        send_reply(radar_control_to_dsp, DSP_RADCTRL_IDEN, sigp.SerializeToString())
 
 
         # sending pulses to driver
@@ -233,21 +243,26 @@ def driver(context=None):
             if pulse == "eob_pulse":
                 break
 
-        time.sleep(1)
+        start = time.time()
+        time.sleep(TIME)
+        end = time.time()
+
+        samps_meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
+        samps_meta.sequence_time = end - start
 
         #sending sequence data to dsp
         request = recv_request(driver_to_dsp, DSP_DRIVER_IDEN, printing)
         request_output = "Dsp sent -> {}".format(request)
         printing(request_output)
 
-        send_reply(driver_to_dsp, DSP_DRIVER_IDEN, "Completed sequence data")
+        send_reply(driver_to_dsp, DSP_DRIVER_IDEN, samps_meta.SerializeToString())
 
         #sending collected data to brian
         request = recv_request(driver_to_brian, BRIAN_DRIVER_IDEN, printing)
         request_output = "Brian sent -> {}".format(request)
         printing(request_output)
 
-        send_reply(driver_to_brian, BRIAN_DRIVER_IDEN, "Completed sequence data")
+        send_reply(driver_to_brian, BRIAN_DRIVER_IDEN, samps_meta.SerializeToString())
 
 
 
@@ -309,13 +324,19 @@ def dsp(context=None):
         send_data(dsp_to_brian, BRIAN_DSP_IDEN, "Ack start of work")
 
         # doing work!
-        time.sleep(1)
+        start = time.time()
+        time.sleep(TIME)
+        end = time.time()
+
+        proc_data = processeddata_pb2.ProcessedData()
+        proc_data.processing_time = end - start
+
 
         # acknowledge end of work
         request = recv_request(dsp_to_brian, BRIAN_DSP_IDEN, printing)
         request_output = "Brian sent -> {}".format(request)
         printing(request_output)
-        send_data(dsp_to_brian, BRIAN_DSP_IDEN, "Ack end of work")
+        send_data(dsp_to_brian, BRIAN_DSP_IDEN, proc_data.SerializeToString())
 
         # send data to experiment handler
         request = recv_request(dsp_to_experiment_handler, EXPHAN_DSP_IDEN, printing)
