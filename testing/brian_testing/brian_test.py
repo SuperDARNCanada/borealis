@@ -56,7 +56,7 @@ BRIAN_DSPEND_IDEN = b"BRIAN_DSPEND_IDEN"
 
 ROUTER_ADDRESS="tcp://127.0.0.1:7878"
 
-TIME = 0.069
+TIME = 1.0 #0.069
 def create_sockets(identities, router_addr=ROUTER_ADDRESS):
     """Creates a DEALER socket for each identity in the list argument. Each socket is then connected
     to the router
@@ -205,6 +205,18 @@ def experiment_handler(context=None):
         EXPERIMENT_HANDLER = "\033[34m" + "EXPERIMENT HANDLER: " + "\033[0m"
         sys.stdout.write(EXPERIMENT_HANDLER + msg + "\n")
 
+    def update_experiment():
+        # Recv complete processed data from DSP
+        send_request(exp_handler_to_dsp, DSP_EXPHAN_IDEN, "Need completed data")
+
+        data = recv_data(exp_handler_to_dsp, DSP_EXPHAN_IDEN, printing)
+        data_output = "Dsp sent -> {}".format(data)
+        printing(data_output)
+
+    thread = threading.Thread(target=update_experiment)
+    thread.daemon = True
+    thread.start()
+
     time.sleep(1)
     while True:
         # experiment_handler replies with an experiment to radar_control
@@ -216,12 +228,6 @@ def experiment_handler(context=None):
         printing("Sending experiment")
         send_reply(exp_handler_to_radar_control, RADCTRL_EXPHAN_IDEN, "Giving experiment")
 
-        # Recv complete processed data from DSP
-        send_request(exp_handler_to_dsp, DSP_EXPHAN_IDEN, "Need completed data")
-
-        data = recv_data(exp_handler_to_dsp, DSP_EXPHAN_IDEN, printing)
-        data_output = "Dsp sent -> {}".format(data)
-        printing(data_output)
 
 
 def driver(context=None):
@@ -338,18 +344,20 @@ def dsp(context=None):
         request = recv_request(dsp_to_brian_begin, BRIAN_DSPBEGIN_IDEN, printing)
         request_output = "Brian sent -> {}".format(request)
         printing(request_output)
-        send_data(dsp_to_brian_begin, BRIAN_DSPBEGIN_IDEN, "Ack start of work")
+        send_data(dsp_to_brian_begin, BRIAN_DSPBEGIN_IDEN, "Ack start of work, "
+                                                           "sqnum {}".format(sigp.sequence_num))
 
         # doing work!
         def do_work():
+            sequence_num = sigp.sequence_num
+
             start = time.time()
             time.sleep(TIME * 0.9)
             end = time.time()
 
             proc_data = processeddata_pb2.ProcessedData()
             proc_data.processing_time = end - start
-            proc_data.sequence_num = sigp.sequence_num
-
+            proc_data.sequence_num = sequence_num
 
             # acknowledge end of work
             request = recv_request(dsp_to_brian_end, BRIAN_DSPEND_IDEN, printing)
@@ -374,8 +382,6 @@ def dsp(context=None):
         thread = threading.Thread(target=do_work)
         thread.daemon = True
         thread.start()
-
-
 
 
 def data_write(context=None):
@@ -448,7 +454,7 @@ def sequence_timing():
         start_new.connect("inproc://start_new")
 
         want_to_start = False
-        good_to_start = False
+        good_to_start = True
         while True:
 
             if want_to_start and good_to_start:
@@ -511,7 +517,7 @@ def sequence_timing():
             reply = recv_reply(brian_to_driver, DRIVER_BRIAN_IDEN, printing)
             meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
             meta.ParseFromString(reply)
-            reply_output = "Driver sent -> time {}".format(meta.sequence_time)
+            reply_output = "Driver sent -> time {}, sqnum {}".format(meta.sequence_time, meta.sequence_num)
             printing(reply_output)
 
             driver_times[meta.sequence_num] = meta.sequence_time
@@ -542,7 +548,7 @@ def sequence_timing():
 
             proc_d = processeddata_pb2.ProcessedData()
             proc_d.ParseFromString(reply)
-            reply_output = "Dsp sent -> time {}".format(proc_d.processing_time)
+            reply_output = "Dsp sent -> time {}, sqnum {}".format(proc_d.processing_time, proc_d.sequence_num)
             printing(reply_output)
 
 
