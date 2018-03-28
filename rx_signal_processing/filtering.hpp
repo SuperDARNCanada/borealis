@@ -11,6 +11,7 @@ See LICENSE for details
 #include <vector>
 #include <complex>
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
+#include "utils/signal_processing_options/signalprocessingoptions.hpp"
 #include <string>
 
 

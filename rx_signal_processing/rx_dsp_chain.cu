@@ -21,7 +21,7 @@
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 #include "utils/shared_memory/shared_memory.hpp"
 #include "utils/shared_macros/shared_macros.hpp"
-
+#include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
 #include "dsp.hpp"
 #include "filtering.hpp"
 #include "decimate.hpp"
@@ -36,11 +36,9 @@ int main(int argc, char **argv){
   auto rx_rate = driver_options.get_rx_rate(); //Hz
 
 
-  zmq::context_t sig_proc_context(1); // 1 is context num. Only need one per program as per examples
 
-  zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
+/*  zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
   ERR_CHK_ZMQ(driver_socket.bind(sig_options.get_driver_socket_address()))
-
 
   //This socket is used to receive metadata about the sequence to process
   zmq::socket_t radar_control_socket(sig_proc_context, ZMQ_PAIR);
@@ -49,14 +47,31 @@ int main(int argc, char **argv){
   //This socket is used to acknowledge a completed sequence to radar_control
   zmq::socket_t ack_socket(sig_proc_context, ZMQ_PAIR);
   ERR_CHK_ZMQ(ack_socket.bind(sig_options.get_ack_socket_address()))
-
+*/
   //This socket is used to send the GPU kernel timing to radar_control to know if the processing
   //can be done in real-time.
-  zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
+/*  zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
   ERR_CHK_ZMQ(timing_socket.bind(sig_options.get_timing_socket_address()))
 
   zmq::socket_t data_write_socket(sig_proc_context,ZMQ_PAIR);
   ERR_CHK_ZMQ(data_write_socket.connect(sig_options.get_data_write_address()))
+*/
+  zmq::context_t context(1); // 1 is context num. Only need one per program as per examples
+  auto identities = {sig_options.get_dsp_radctrl_identity(),
+                   sig_options.get_dsp_driver_identity(),
+                   sig_options.get_dsp_exphan_identity(),
+                   sig_options.get_dsp_dw_identity(),
+                   sig_options.get_dspbegin_brian_identity(),
+                   sig_options.get_dspend_brian_identity()};
+
+  auto sockets_vector = create_sockets(context, identities, sig_options.get_router_address());
+
+  zmq::socket_t &dsp_to_radar_control = sockets_vector[0];
+  zmq::socket_t &dsp_to_driver = sockets_vector[1];
+  zmq::socket_t &dsp_to_experiment_handler = sockets_vector[2];
+  zmq::socket_t &dsp_to_data_write = sockets_vector[3];
+  zmq::socket_t &dsp_to_brian_begin = sockets_vector[4];
+  zmq::socket_t &dsp_to_brian_end = sockets_vector[5];
 
   auto gpu_properties = get_gpu_properties();
   print_gpu_properties(gpu_properties);
@@ -104,7 +119,7 @@ int main(int argc, char **argv){
               << COLOR_YELLOW(filters.get_first_stage_lowpass_taps().size()));
   RUNTIME_MSG("Number of 2nd stage taps after padding: "
               << COLOR_YELLOW(filters.get_second_stage_lowpass_taps().size()));
-  RUNTIME_MSG("Number of 3rd stage taps after padding: " 
+  RUNTIME_MSG("Number of 3rd stage taps after padding: "
               << COLOR_YELLOW(filters.get_third_stage_lowpass_taps().size()));
 
   auto filter_timing_end = std::chrono::steady_clock::now();
@@ -119,20 +134,38 @@ int main(int argc, char **argv){
 
   for(;;){
     //Receive packet from radar control
-    zmq::message_t radctl_request;
+/*    zmq::message_t radctl_request;
     radar_control_socket.recv(&radctl_request);
     sigprocpacket::SigProcPacket sp_packet;
     std::string radctrl_str(static_cast<char*>(radctl_request.data()), radctl_request.size());
     if (sp_packet.ParseFromString(radctrl_str) == false){
       //TODO(keith): handle error
+    }*/
+
+    auto message =  std::string("Need metadata");
+    SEND_REQUEST(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity(), message);
+    auto reply = RECV_REPLY(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity());
+
+    sigprocpacket::SigProcPacket sp_packet;
+    if (sp_packet.ParseFromString(reply) == false){
+      //TODO(keith): handle error
     }
 
     //Then receive packet from driver
-    zmq::message_t driver_request;
-    driver_socket.recv(&driver_request);
+/*    zmq::message_t driver_request;
+    drive_socket.recv(&driver_request);
     rxsamplesmetadata::RxSamplesMetadata rx_metadata;
     std::string driver_str(static_cast<char*>(driver_request.data()), driver_request.size());
     if (rx_metadata.ParseFromString(driver_str) == false) {
+      //TODO(keith): handle error
+    }*/
+
+    message = std::string("Need data to process");
+    SEND_REQUEST(dsp_to_driver, sig_options.get_driver_dsp_identity(), message);
+    reply = RECV_REPLY(dsp_to_driver, sig_options.get_driver_dsp_identity());
+
+    rxsamplesmetadata::RxSamplesMetadata rx_metadata;
+    if (rx_metadata.ParseFromString(reply) == false) {
       //TODO(keith): handle error
     }
 
@@ -164,8 +197,9 @@ int main(int argc, char **argv){
       //TODO(keith): handle missing name error
     }
 
-    DSPCore *dp = new DSPCore(&ack_socket, &timing_socket, &data_write_socket,
-                             sp_packet.sequence_num(), rx_metadata.shrmemname(), rx_freqs);
+    DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
+                             sig_options, sp_packet.sequence_num(), rx_metadata.shrmemname(),
+                             rx_freqs);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
