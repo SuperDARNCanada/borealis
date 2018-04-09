@@ -40,3 +40,28 @@ void send_data(zmq::socket_t &socket, std::string recv_iden, std::string &data_m
   sender.addstr(data_msg);
   ERR_CHK_ZMQ(sender.send(socket))
 }
+
+void router(zmq::context_t &context, std::string router_address)
+{
+  zmq::socket_t router(context, ZMQ_ROUTER);
+  router.setsockopt(ZMQ_ROUTER_MANDATORY, 1);
+  router.bind(router_address);
+
+  while(1) {
+    zmq::multipart_t input;
+    ERR_CHK_ZMQ(input.recv(router));
+    auto sender = input.popstr();
+    auto receiver = input.popstr();
+    auto empty = input.popstr();
+    auto data_msg = input.popstr();
+
+    zmq::multipart_t output;
+    output.addstr(receiver);
+    output.addstr(sender);
+    output.addstr("");
+    output.addstr(data_msg);
+    ERR_CHK_ZMQ(output.send(router))
+
+  }
+
+}

@@ -16,32 +16,6 @@
 #include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
 #include <time.h>
 
-void router(zmq::context_t &context)
-{
-  auto sig_options = SignalProcessingOptions();
-  zmq::socket_t router(context, ZMQ_ROUTER);
-  router.setsockopt(ZMQ_ROUTER_MANDATORY, 1);
-  router.bind(sig_options.get_router_address());
-
-  while(1) {
-    zmq::multipart_t input;
-    ERR_CHK_ZMQ(input.recv(router));
-    auto sender = input.popstr();
-    auto receiver = input.popstr();
-    auto empty = input.popstr();
-    auto data_msg = input.popstr();
-
-    zmq::multipart_t output;
-    output.addstr(receiver);
-    output.addstr(sender);
-    output.addstr("");
-    output.addstr(data_msg);
-    ERR_CHK_ZMQ(output.send(router))
-
-  }
-
-}
-
 std::string random_string( size_t length )
 {
   auto randchar = []() -> char
@@ -277,9 +251,10 @@ int main(int argc, char** argv){
 
   srand(time(NULL));
   zmq::context_t context(1);
+  auto sig_options = SignalProcessingOptions();
 
   std::vector<std::thread> threads;
-  std::thread router_t(router,std::ref(context));
+  std::thread router_t(router,std::ref(context), sig_options.get_router_address());
   std::thread signals_t(signals, std::ref(context));
 
   threads.push_back(std::move(router_t));

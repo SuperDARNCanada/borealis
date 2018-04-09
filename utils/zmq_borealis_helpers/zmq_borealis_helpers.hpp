@@ -21,4 +21,5 @@ std::vector<zmq::socket_t> create_sockets(zmq::context_t &context,
 
 void send_data(zmq::socket_t &socket, std::string recv_iden, std::string &data_msg);
 std::string recv_data(zmq::socket_t &socket, std::string sender_iden);
+void router(zmq::context_t &context, std::string router_address);
 #endif

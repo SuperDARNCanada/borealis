@@ -7,6 +7,7 @@
 #include "utils/driver_options/driveroptions.hpp"
 #include "utils/shared_memory/shared_memory.hpp"
 #include "utils/protobuf/rxsamplesmetadata.pb.h"
+#include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
 #include <cmath>
 
 std::vector<std::complex<float>> make_pulse(DriverOptions &driver_options){
@@ -59,10 +60,20 @@ int main(int argc, char *argv[]){
 
   driverpacket::DriverPacket dp;
   zmq::context_t context(1);
-  zmq::socket_t rad_socket(context, ZMQ_PAIR);
+/*  zmq::socket_t rad_socket(context, ZMQ_PAIR);
   zmq::socket_t dsp_socket(context, ZMQ_PAIR);
   rad_socket.connect(driver_options.get_radar_control_to_driver_address());
   dsp_socket.bind(driver_options.get_driver_to_rx_dsp_address());
+*/
+  auto identities = {driver_options.get_radctrl_to_driver_identity(),
+                      driver_options.get_dsp_to_driver_identity(),
+                      driver_options.get_brian_to_driver_identity()};
+
+  auto sockets_vector = create_sockets(context, identities, driver_options.get_router_address());
+
+  auto &radctrl_to_driver = sockets_vector[0];
+  auto &dsp_to_driver = sockets_vector[1];
+  auto &brian_to_driver = sockets_vector[2];
 
 
   auto pulse_samples = make_pulse(driver_options);
@@ -116,14 +127,15 @@ int main(int argc, char *argv[]){
 
       std::string msg_str;
       dp.SerializeToString(&msg_str);
-      zmq::message_t request (msg_str.size());
-      memcpy ((void *) request.data (), msg_str.c_str(), msg_str.size());
+/*      zmq::message_t request (msg_str.size());
+      memcpy ((void *) request.data (), msg_str.c_str(), msg_str.size());*/
       std::chrono::steady_clock::time_point end= std::chrono::steady_clock::now();
       std::cout << "Time difference to serialize(us) = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() <<std::endl;
       std::cout << "Time difference to serialize(ns) = " << std::chrono::duration_cast<std::chrono::nanoseconds> (end - begin).count() <<std::endl;
 
       begin = std::chrono::steady_clock::now();
-      rad_socket.send (request);
+      //rad_socket.send (request);
+      send_data(radctrl_to_driver, driver_options.get_radctrl_to_driver_identity(), msg_str);
       end= std::chrono::steady_clock::now();
 
       std::cout << "send time(us) = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() <<std::endl;
@@ -140,25 +152,32 @@ int main(int argc, char *argv[]){
 
     }
 
-    zmq::message_t dsp_msg;
-    dsp_socket.recv(&dsp_msg);
-    std::string dsp_msg_str(static_cast<char*>(dsp_msg.data()), dsp_msg.size());
+    //zmq::message_t dsp_msg;
+    //dsp_socket.recv(&dsp_msg);
+    //std::string dsp_msg_str(static_cast<char*>(dsp_msg.data()), dsp_msg.size());
+
+    auto message = std::string("Need metadata");
+    SEND_REQUEST(dsp_to_driver, driver_options.get_driver_to_dsp_identity(), message);
+    auto reply = RECV_REPLY(dsp_to_driver, driver_options.get_dsp_to_driver_identity());
 
     rxsamplesmetadata::RxSamplesMetadata rx_metadata;
-    rx_metadata.ParseFromString(dsp_msg_str);
+    rx_metadata.ParseFromString(reply);
 
     SharedMemoryHandler shr_mem(rx_metadata.shrmemname());
     shr_mem.remove_shr_mem();
 
 
-    zmq::message_t ack_msg;
+/*    zmq::message_t ack_msg;
     rad_socket.recv(&ack_msg);
     std::string ack_msg_str(static_cast<char*>(ack_msg.data()), ack_msg.size());
+*/
+    SEND_REQUEST(brian_to_driver, driver_options.get_driver_to_brian_identity(), message);
+    reply = RECV_REPLY(brian_to_driver, driver_options.get_brian_to_driver_identity());
 
-    driverpacket::DriverPacket ack;
-    ack.ParseFromString(ack_msg_str);
+   //k driverpacket::DriverPacket ack;
+    rx_metadata.ParseFromString(reply);
 
-    std::cout << std::endl << std::endl<<"Got ack #" <<ack.sequence_num()<< " for seq #"
+    std::cout << std::endl << std::endl<<"Got ack #" <<rx_metadata.sequence_num()<< " for seq #"
       << dp.sequence_num() <<std::endl << std::endl;
 
     seq_num++;
