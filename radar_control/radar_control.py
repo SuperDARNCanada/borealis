@@ -30,28 +30,17 @@ import sigprocpacket_pb2
 
 from sample_building.sample_building import azimuth_to_antenna_offset
 from experiments.experiment_prototype import ExperimentPrototype
-
 from radar_status.radar_status import RadarStatus
+from utils.zmq_borealis_helpers import socket_operations
 
-
-def setup_socket(context, address):
-    """
-    Setup a paired zmq socket and return it.
-    :param context: zmq context
-    :return zmq socket
-    """
-    socket = context.socket(zmq.PAIR)
-    socket.connect(address)
-    return socket
-
-
-def data_to_driver(driverpacket, txsocket, antennas, samples_array,
+def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, antennas, samples_array,
                    txctrfreq, rxctrfreq, txrate,
                    numberofreceivesamples, SOB, EOB, timing, seqnum,
                    repeat=False):
     """ Place data in the driver packet and send it via zeromq to the driver.
         :param driverpacket: the protobuf packet to fill and pass over zmq
-        :param txsocket: the zmq socket connected to the driver
+        :param radctrl_to_driver: the sender socket for sending the driverpacket
+	:param driver_to_radctrl_iden: the reciever socket identity on the driver side
         :param antennas: the antennas to transmit on.
         :param samples_array: this is a list of length main_antenna_count from the config file. It contains one
             numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
@@ -103,15 +92,17 @@ def data_to_driver(driverpacket, txsocket, antennas, samples_array,
         if __debug__:
             print("NOT A REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3};".format(timing, SOB, EOB, antennas))
 
-    txsocket.send(driverpacket.SerializeToString())
+   # txsocket.send(driverpacket.SerializeToString())
+    socket_operations.send_pulse(radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString())
 
     del driverpacket.channel_samples[:]  # TODO find out - Is this necessary in conjunction with .Clear()?
 
 
-def data_to_rx_dsp(packet, socket, seqnum, slice_ids, slice_dict, beam_dict):
+def data_to_rx_dsp(packet, radctrl_to_dsp, dsp_radctrl_iden, seqnum, slice_ids, slice_dict, beam_dict):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
-        :param socket: the zmq socket to connect to the rx dsp process
+        :param radctrl_to_dsp: The sender socket for sending data to dsp
+	:param dsp_radctrl_iden: The reciever socket identity on the dsp side
         :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
             with increasing sequences while radar_control is running. It is only reset when program restarts.
         :param slice_ids: The identifiers of the slices that are combined in this sequence. These IDs tell us where to
@@ -150,20 +141,22 @@ def data_to_rx_dsp(packet, socket, seqnum, slice_ids, slice_dict, beam_dict):
     # TODO : Beam directions will be formated e^i*phi so that a 0 will indicate not
     # to receive on that channel. ** make this update phase = 0 on channels not included.
 
-    socket.send(packet.SerializeToString())
+    socket_operations.send_reply(radctrl_to_dsp, dsp_radctrl_iden, packet.SerializeToString())
     # TODO : is it necessary to do a del packet.rxchannel[:] - test
 
 
-def get_ack(socket, procpacket):
+def get_ack(socket_sender_identity, socket_receiver_identity, procpacket):
     """ Get the acknowledgement from the process. This works with both the driver and the signal processing sockets
     as both packets have the field for sequence number.
-    :param socket: The socket to get the acknowledgement packet from. Either the driver packet socket or the
-        sigprocpacket socket.
+    :param sender_socket: The sender socket that the acknowledgement packet comes from. 
+	Either the driver packet socket or the sigprocpacket socket.
+    :param receiver_identity: The receiver identity of the socket that the acknowledgement packet comes from.
     :param procpacket: The packet type that we have. Either driverpacket or sigprocpacket.
     """
-    try:
-        msg = socket.recv(flags=zmq.NOBLOCK)
-        procpacket.ParseFromString(msg)
+    
+        #msg = socket.recv(flags=zmq.NOBLOCK)
+#       TODO: LEFT OFF HERE, WHERE DO ACKS GET HANDLED?
+	procpacket.ParseFromString(msg)
         return procpacket.sequence_num
     except zmq.Again:
         errmsg = "No Message Available"
@@ -173,58 +166,43 @@ def get_ack(socket, procpacket):
         raise [ExperimentException(errmsg), e]
 
 
-def search_for_experiment(socket, status):
+def search_for_experiment(radctrl_to_exphan_iden, exphan_to_radctrl_iden, status):
     """
     Check for new experiments from the experiment handler
-    :param socket: socket to experiment handler
+    :param radctrl_to_exphan_iden: The 
     :param status: status of type RadarStatus.
     :return: boolean (True for new experiment received), and the experiment (or None if there is no new experiment)
     """
 
+    def printing(msg):
+	RADAR_CONTROL = "\033[33m" + "RADAR_CONTROL: " + "\033[0m"
+        sys.stdout.write(RADAR_CONTROL + msg + "\n")
+
     try:
-        socket.send_pyobj(status)
+        socket_operations.send_request(radctrl_to_exphan_iden, exphan_to_radctrl_iden, status)
     except zmq.ZMQBaseError as e:
         errmsg = "ZMQ ERROR"
         raise [ExperimentException(errmsg), e]
-    poller = zmq.Poller()
-    poller.register(socket, zmq.POLLIN)
-    while True:
-        try:
-            socks = dict(poller.poll(10))  # polls for 10 ms, before inttime timer starts.
-        except zmq.NotDone:
-            experiment = None
-            new_experiment_received = False
-            if __debug__:
-                print("NO NEW EXPERIMENT. CONTINUING.")
-            break  # TODO log
-        except zmq.ZMQBaseError as e:
-            errmsg = "ZMQ ERROR"
-            raise [ExperimentException(errmsg), e]
+    
+    experiment = None
+    new_experiment_received = False
+    
+    try:
+	new_exp = socket_operations.recv_reply(radar_control_to_exp_handler, exp_handler_iden, printing)
+    except zmq.ZMQBaseError as e:
+	errmsg = "ZMQ ERROR"
+	raise [ExperimentException(errmsg), e]
 
-        if socket in socks:
-            if socks[socket] == zmq.POLLIN:
-                try:
-                    new_exp = socket.recv_pyobj()  # message should be waiting
-                except zmq.ZMQBaseError as e:
-                    errmsg = "ZMQ ERROR"
-                    raise [ExperimentException(errmsg), e]
-                if isinstance(new_exp, ExperimentPrototype):
-                    experiment = new_exp
-                    new_experiment_received = True
-                    if __debug__:
-                        print("NEW EXPERIMENT FOUND")
-                    break
-                else:
-                    experiment = None
-                    new_experiment_received = False
-                    if __debug__:
-                        print("RECEIVED AN EXPERIMENT NOT OF TYPE EXPERIMENT_PROTOTYPE. CANNOT RUN.")
-                    # TODO decide what to do here. I think we need this case if someone doesn't build their experiment
-                    # properly
-                    break
-        else:
-            print("No Experiment Provided - Continuing to Poll") # TODO : check if this if socket in socks is necessary.
-                                                                 # Was based on an example, but should be tested.
+    if isinstance(new_exp, ExperimentPrototype):
+    	experiment = new_exp
+        new_experiment_received = True
+        if __debug__:
+            print("NEW EXPERIMENT FOUND")
+    else:
+        if __debug__:
+            print("RECEIVED AN EXPERIMENT NOT OF TYPE EXPERIMENT_PROTOTYPE. CANNOT RUN.")
+        # TODO decide what to do here. I think we need this case if someone doesn't build their experiment
+        # properly
 
     return new_experiment_received, experiment
 
@@ -338,27 +316,35 @@ def radar():
     # Get config options.
     options = ExperimentOptions()
 
-    context = zmq.Context()  # single context for all sockets involved in this process.
+    # The socket identities for radar_control, retrieved from options
+    ids = [options.radctl_to_exphan_identity, options.radctl_to_dsp_identity, 
+           options.radctl_to_driver_identity, options.radctl_to_brian_identity]
+
     # Setup sockets.
     # Socket to send pulse samples over.
     # TODO test: need to make sure that we know that all sockets are set up after this try...except block.
     # TODO test: starting the programs in different orders.
     try:
-        tx_socket = setup_socket(context, options.radar_control_to_driver_address)
-        rx_socket = setup_socket(context, options.radar_control_to_rx_dsp_address)
-        rx_ack_socket = setup_socket(context, options.rx_dsp_to_radar_control_ack_address)
-        rx_time_socket = setup_socket(context, options.rx_dsp_to_radar_control_timing_address)
-        experiment_socket = setup_socket(context, options.experiment_handler_to_radar_control_address)
+	sockets_list = socket_operations.create_sockets(ids, options.router_address)
     except zmq.ZMQBaseError as e:
         errmsg = "ZMQ ERROR Setting up sockets"
         raise [ExperimentException(errmsg), e]
+    radar_control_to_exp_handler = sockets_list[0]
+    radar_control_to_dsp = sockets_list[1]
+    radar_control_to_driver = sockets_list[2]
+    radar_control_to_brian = sockets_list[3]
+    #tx_socket = setup_socket(context, options.radar_control_to_driver_address)
+    #rx_socket = setup_socket(context, options.radar_control_to_rx_dsp_address)
+    #rx_ack_socket = setup_socket(context, options.rx_dsp_to_radar_control_ack_address)
+    #rx_time_socket = setup_socket(context, options.rx_dsp_to_radar_control_timing_address)
+    #experiment_socket = setup_socket(context, options.experiment_handler_to_radar_control_address)
 
-    poller_for_first_completed_sequence = zmq.Poller()
-    poller_for_first_completed_sequence.register(tx_socket, zmq.POLLIN)
+    #poller_for_first_completed_sequence = zmq.Poller()
+    #poller_for_first_completed_sequence.register(tx_socket, zmq.POLLIN)
 
-    poller_for_completed_sequence = zmq.Poller()
-    poller_for_completed_sequence.register(tx_socket, zmq.POLLIN)
-    poller_for_completed_sequence.register(rx_ack_socket, zmq.POLLIN)
+    #poller_for_completed_sequence = zmq.Poller()
+    #poller_for_completed_sequence.register(tx_socket, zmq.POLLIN)
+    #poller_for_completed_sequence.register(rx_ack_socket, zmq.POLLIN)
 
     sigprocpacket = sigprocpacket_pb2.SigProcPacket()
     # seqnum is used as a identifier in all packets while
@@ -371,8 +357,8 @@ def radar():
 
     new_experiment_flag = False
 
-    while not new_experiment_flag:  # poll the socket at the start until we have an experiment to run.
-        new_experiment_flag, experiment = search_for_experiment(experiment_socket, status)
+    while not new_experiment_flag:  #  Wait for experiment handler at the start until we have an experiment to run.
+        new_experiment_flag, experiment = search_for_experiment(options.radctrl_to_exphan_identity, status)
 
     new_experiment_flag = False
 
@@ -406,10 +392,11 @@ def radar():
                     # Go through each aveperiod once then increase the beam
                     #   iterator to the next beam in each scan.
 
-                    # poll for new experiment here, before starting a new integration.
+                    # get new experiment here, before starting a new integration.
                     # if new_experiment_flag is set here, we will implement the new_experiment after this integration
                     # period.
-                    new_experiment_flag, new_experiment = search_for_experiment(experiment_socket,
+		    # TODO: This needs a timeout, or we'll just get stuck here... in brian maybe?
+                    new_experiment_flag, new_experiment = search_for_experiment(options.radctl_to_exphan_identity,
                                                                                 status)
 
                     # Check if there are beams remaining in this aveperiod, or in any aveperiods.
@@ -471,7 +458,7 @@ def radar():
                                 # TODO add a break for nave == intn if going for number of averages instead of
                                 # integration time
                             beam_phase_dict = beam_phase_dict_list[sequence_index]
-                            data_to_rx_dsp(sigprocpacket, rx_socket, seqnum_start + nave,
+                            data_to_rx_dsp(sigprocpacket, options.radctrl_to_dsp_identity, seqnum_start + nave,
                                            sequence.slice_ids, experiment.slice_dict,
                                            beam_phase_dict)
                             # beam_phase_dict is slice_id : list of beamdirs, where beamdir = list
