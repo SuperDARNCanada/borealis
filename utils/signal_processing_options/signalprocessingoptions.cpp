@@ -32,11 +32,19 @@ SignalProcessingOptions::SignalProcessingOptions() {
                 config_pt.get<std::string>("main_antenna_count"));
   interferometer_antenna_count = boost::lexical_cast<uint32_t>(
                 config_pt.get<std::string>("interferometer_antenna_count"));
-  driver_socket_address = config_pt.get<std::string>("driver_to_rx_dsp_address");
-  radar_control_socket_address =  config_pt.get<std::string>("radar_control_to_rx_dsp_address");
-  ack_socket_address = config_pt.get<std::string>("rx_dsp_to_radar_control_ack_address");
-  timing_socket_address = config_pt.get<std::string>("rx_dsp_to_radar_control_timing_address");
-  data_write_address = config_pt.get<std::string>("rx_dsp_to_data_write_address");
+  router_address = config_pt.get<std::string>("router_address");
+  dsp_to_radctrl_identity = config_pt.get<std::string>("dsp_to_radctrl_identity");
+  dsp_driver_identity = config_pt.get<std::string>("dsp_to_driver_identity");
+  dsp_exphan_identity = config_pt.get<std::string>("dsp_to_exphan_identity");
+  dsp_dw_identity = config_pt.get<std::string>("dsp_to_dw_identity");
+  dspbegin_brian_identity = config_pt.get<std::string>("dspbegin_to_brian_identity");
+  dspend_brian_identity = config_pt.get<std::string>("dspend_to_brian_identity");
+  radctrl_dsp_identity = config_pt.get<std::string>("radctrl_to_dsp_identity");
+  driver_dsp_identity = config_pt.get<std::string>("driver_to_dsp_identity");
+  brian_dspbegin_identity = config_pt.get<std::string>("brian_to_dspbegin_identity");
+  brian_dspend_identity = config_pt.get<std::string>("brian_to_dspend_identity");
+  exphan_dsp_identity = config_pt.get<std::string>("exphan_to_dsp_identity");
+  dw_dsp_identity = config_pt.get<std::string>("dw_to_dsp_identity");
 }
 
 uint32_t SignalProcessingOptions::get_main_antenna_count() const
@@ -93,27 +101,67 @@ double SignalProcessingOptions::get_third_stage_filter_transition() const
   return third_stage_filter_transition;
 }
 
-std::string SignalProcessingOptions::get_driver_socket_address() const
+std::string SignalProcessingOptions::get_router_address() const
 {
-  return driver_socket_address;
+  return router_address;
 }
 
-std::string SignalProcessingOptions::get_radar_control_socket_address() const
+std::string SignalProcessingOptions::get_dsp_radctrl_identity() const
 {
-  return radar_control_socket_address;
+  return dsp_to_radctrl_identity;
 }
 
-std::string SignalProcessingOptions::get_ack_socket_address() const
+std::string SignalProcessingOptions::get_dsp_driver_identity() const
 {
-  return ack_socket_address;
+  return dsp_driver_identity;
 }
 
-std::string SignalProcessingOptions::get_timing_socket_address() const
+std::string SignalProcessingOptions::get_dsp_exphan_identity() const
 {
-  return timing_socket_address;
+  return dsp_exphan_identity;
 }
 
-std::string SignalProcessingOptions::get_data_write_address() const
+std::string SignalProcessingOptions::get_dsp_dw_identity() const
 {
-  return data_write_address;
+  return dsp_dw_identity;
+}
+
+std::string SignalProcessingOptions::get_dspbegin_brian_identity() const
+{
+  return   dspbegin_brian_identity;
+}
+
+std::string SignalProcessingOptions::get_dspend_brian_identity() const
+{
+  return   dspend_brian_identity;
+}
+
+std::string SignalProcessingOptions::get_radctrl_dsp_identity() const
+{
+  return radctrl_dsp_identity;
+}
+
+std::string SignalProcessingOptions::get_driver_dsp_identity() const
+{
+  return driver_dsp_identity;
+}
+
+std::string SignalProcessingOptions::get_brian_dspbegin_identity() const
+{
+  return brian_dspbegin_identity;
+}
+
+std::string SignalProcessingOptions::get_brian_dspend_identity() const
+{
+  return brian_dspend_identity;
+}
+
+std::string SignalProcessingOptions::get_exphan_dsp_identity() const
+{
+  return exphan_dsp_identity;
+}
+
+std::string SignalProcessingOptions::get_dw_dsp_identity() const
+{
+  return dw_dsp_identity;
 }

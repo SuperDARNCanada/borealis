@@ -21,6 +21,8 @@ See LICENSE for details
 #include <chrono>
 #include <thread>
 
+#include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
+
 //TODO(keith): decide on handing gpu errors
 //TODO(keith): potentially add multigpu support
 
@@ -44,7 +46,7 @@ namespace {
       auto dp = static_cast<DSPCore*>(processing_data);
       dp->send_ack();
       dp->start_decimate_timing();
-      DEBUG_MSG(COLOR_RED("Finished initial memcpy handler for sequence #" 
+      DEBUG_MSG(COLOR_RED("Finished initial memcpy handler for sequence #"
                  << dp->get_sequence_num() << ". Thread should exit here"));
     };
 
@@ -207,14 +209,16 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * the shared memory with the received RF samples for a pulse sequence.
  */
 DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_s,
-                    uint32_t sq_num, std::string shr_mem_name, std::vector<double> freqs)
+                  SignalProcessingOptions &options, uint32_t sq_num, std::string shr_mem_name,
+                  std::vector<double> freqs)
 {
 
   sequence_num = sq_num;
   ack_socket = ack_s;
   timing_socket = timing_s;
-  data_write_socket = data_s;
+  data_socket = data_s;
   rx_freqs = freqs;
+  sig_options = options;
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));
   gpuErrchk(cudaEventCreate(&initial_start));
@@ -420,10 +424,14 @@ void DSPCore::send_timing()
 
   std::string s_msg_str;
   sp.SerializeToString(&s_msg_str);
-  zmq::message_t s_msg(s_msg_str.size());
+/*  zmq::message_t s_msg(s_msg_str.size());
   memcpy ((void *) s_msg.data (), s_msg_str.c_str(), s_msg_str.size());
+*/
+/*  timing_socket->send(s_msg);*/
 
-  timing_socket->send(s_msg);
+  auto request = RECV_REQUEST(*timing_socket, sig_options.get_brian_dspend_identity());
+  SEND_REPLY(*timing_socket, sig_options.get_brian_dspend_identity(), s_msg_str);
+
   DEBUG_MSG(COLOR_RED("Sent timing after processing with sequence #" << sequence_num));
 
 }
@@ -479,9 +487,12 @@ void DSPCore::send_ack()
 
   std::string s_msg_str;
   sp.SerializeToString(&s_msg_str);
-  zmq::message_t s_msg(s_msg_str.size());
+/*  zmq::message_t s_msg(s_msg_str.size());
   memcpy ((void *) s_msg.data(), s_msg_str.c_str(), s_msg_str.size());
-  ack_socket->send(s_msg);
+  ack_socket->send(s_msg);*/
+  auto request = RECV_REQUEST(*ack_socket, sig_options.get_brian_dspbegin_identity());
+  SEND_REPLY(*ack_socket, sig_options.get_brian_dspbegin_identity(), s_msg_str);
+
   DEBUG_MSG(COLOR_RED("Sent ack after copy for sequence_num #" << sequence_num));
 }
 
@@ -489,9 +500,13 @@ void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
 {
   std::string p_msg_str;
   pd.SerializeToString(&p_msg_str);
-  zmq::message_t p_msg(p_msg_str.size());
+/*  zmq::message_t p_msg(p_msg_str.size());
   memcpy ((void *) p_msg.data(), p_msg_str.c_str(), p_msg_str.size());
-  data_write_socket->send(p_msg);
+  data_write_socket->send(p_msg);*/
+
+  auto request = RECV_REQUEST(*data_socket, sig_options.get_dw_dsp_identity());
+  SEND_REPLY(*data_socket, sig_options.get_dw_dsp_identity(), p_msg_str);
+
   DEBUG_MSG(COLOR_RED("Send processed data to data_write for sequence #" << sequence_num));
 }
 

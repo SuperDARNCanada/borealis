@@ -19,7 +19,7 @@ See LICENSE for details
 #include <thrust/device_vector.h>
 #include "utils/shared_memory/shared_memory.hpp"
 #include "utils/protobuf/processeddata.pb.h"
-
+#include "utils/signal_processing_options/signalprocessingoptions.hpp"
 
 //This is inlined and used to detect and throw on CUDA errors.
 #define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
@@ -51,7 +51,8 @@ class DSPCore {
   void initial_memcpy_callback();
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
-                    uint32_t sq_num, std::string shr_mem_name,std::vector<double> freqs);
+                    SignalProcessingOptions &options, uint32_t sq_num, std::string shr_mem_name,
+                    std::vector<double> freqs);
   ~DSPCore(); //destructor
   void allocate_and_copy_rf_samples(uint32_t total_samples);
   void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
@@ -102,10 +103,9 @@ class DSPCore {
   //! Pointer to the socket used to report the timing of GPU kernels.
   zmq::socket_t *timing_socket;
 
-  zmq::socket_t *data_write_socket;
+  zmq::socket_t *data_socket;
   //! Stores the total GPU process timing once all the work is done.
   float total_process_timing_ms;
-
 
   //! Stores the decimation timing.
   float decimate_kernel_timing_ms;
@@ -151,6 +151,8 @@ class DSPCore {
 
   //! A shared memory handler object that contains RF samples from the USRP driver.
   SharedMemoryHandler shr_mem;
+
+  SignalProcessingOptions sig_options;
 
   cuComplex *first_stage_output_h;
   cuComplex *second_stage_output_h;
