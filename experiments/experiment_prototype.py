@@ -21,7 +21,7 @@ from sample_building.sample_building import get_wavetables
 
 import list_tests
 
-BOREALISPATH=os.environ['BOREALISPATH']
+BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiments.scan_classes.scans import Scan, ScanClassBase
