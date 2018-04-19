@@ -16,6 +16,7 @@ from radar_status.radar_status import RadarStatus
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from utils.zmq_borealis_helpers import socket_operations
 import threading
+import cPickle as pickle
 
 
 def printing(msg):
@@ -79,13 +80,15 @@ def experiment_handler(semaphore):
             printing("Sending new experiment from beginning")
             # starting anew
             exp.build_scans()
+            pickled_exp = pickle.dumps(exp)
             try:
                 socket_operations.send_reply(exp_handler_to_radar_control,
-                                             options.radctrl_to_exphan_identity, exp)
+                                             options.radctrl_to_exphan_identity,
+                                             pickled_exp)
             except zmq.ZMQError: # the queue was full - radarcontrol not receiving.
                 pass  #TODO handle this. Shutdown and restart all modules.
 
-        elif message.status == 'NOERROR':
+        elif message == 'NOERROR':
             # no errors
             if change_flag:
                 try:
@@ -100,21 +103,8 @@ def experiment_handler(semaphore):
                 except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
                     pass  # TODO handle this. Shutdown and restart all modules.
 
-
-        # elif message.status == 'WARNING':
-        #     #TODO: log the warning
-        #     if change_flag:
-        #         ctrl_socket.send_pyobj(prog)
-        #     else:
-        #         ctrl_socket.send_pyobj(None)
-        # elif message.status == 'EXITERROR':
-        #     #TODO: log the error
-        #     #TODO: determine what to do here, may want to revert experiment back to original (could reload to original by calling new instance)
-        #     if change_flag:
-        #         ctrl_socket.send_pyobj(prog)
-        #     else:
-        #         ctrl_socket.send_pyobj(None)
-
+        # TODO: handle errors with revert back to original experiment. requires another
+        # message
         semaphore.release()
 
 

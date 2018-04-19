@@ -17,6 +17,8 @@ import os
 from datetime import datetime, timedelta
 import os
 import zmq
+import cPickle as pickle
+
 sys.path.append(os.environ["BOREALISPATH"])
 from experiments.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
@@ -197,15 +199,17 @@ def search_for_experiment(radar_control_to_exp_handler,
     new_experiment_received = False
     
     try:
-	    new_exp = socket_operations.recv_reply(radar_control_to_exp_handler,
+        pickled_exp = socket_operations.recv_reply(radar_control_to_exp_handler,
                                                exphan_to_radctrl_iden,
                                                printing)
     except zmq.ZMQBaseError as e:
-	    errmsg = "ZMQ ERROR"
-	    raise [ExperimentException(errmsg), e]
+        errmsg = "ZMQ ERROR"
+        raise [ExperimentException(errmsg), e]
+
+    new_exp = pickle.loads(pickled_exp)
 
     if isinstance(new_exp, ExperimentPrototype):
-    	experiment = new_exp
+        experiment = new_exp
         new_experiment_received = True
         if __debug__:
             print("NEW EXPERIMENT FOUND")
