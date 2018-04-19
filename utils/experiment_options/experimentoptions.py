@@ -30,7 +30,6 @@ class ExperimentOptions:
         except IOError:
             errmsg = 'Cannot open config file at {}'.format(config_file)
             raise ExperimentException(errmsg)
-
         try:
             self.main_antenna_count = int(config['main_antenna_count'])
             self.interferometer_antenna_count = int(config['interferometer_antenna_count'])
@@ -58,26 +57,26 @@ class ExperimentOptions:
             self.atten_window_time_start = float(config['atten_window_time_start'])  # s
             self.atten_window_time_end = float(config['atten_window_time_end'])  # s
             self.router_address = config['router_address']
-            self.radctrl_to_exphan_identity = config["radctrl_to_exphan_identity"]
-            self.radctrl_to_dsp_identity = config["radctrl_to_dsp_identity"]
-            self.radctrl_to_driver_identity = config["radctrl_to_driver_identity"]
-            self.radctrl_to_brian_identity = config["radctrl_to_brian_identity"]
-            self.driver_to_radctrl_identity = config["driver_to_radctrl_identity"]
-            self.driver_to_dsp_identity = config["driver_to_dsp_identity"]
-            self.driver_to_brian_identity = config["driver_to_brian_identity"]
-            self.exphan_to_radctrl_identity = config["exphan_to_radctrl_identity"]
-            self.exphan_to_dsp_identity = config["exphan_to_dsp_identity"]
-            self.dsp_to_radctrl_identity = config["dsp_to_radctrl_identity"]
-            self.dsp_to_driver_identity = config["dsp_to_driver_identity"]
-            self.dsp_to_exphan_identity = config["dsp_to_exphan_identity"]
-            self.dsp_to_dw_identity = config["dsp_to_dw_identity"]
-            self.dspbegin_to_brian_identity = config["dspbegin_to_brian_identity"]
-            self.dspend_to_brian_identity = config["dspend_to_brian_identity"]
-            self.dw_to_dsp_identity = config["dw_to_dsp_identity"]
-            self.brian_to_radctrl_identity = config["brian_to_radctrl_identity"]
-            self.brian_to_driver_identity = config["brian_to_driver_identity"]
-            self.brian_to_dspbegin_identity = config["brian_to_dspbegin_identity"]
-            self.brian_to_dspend_identity = config["brian_to_dspend_identity"]
+            self.radctrl_to_exphan_identity = str(config["radctrl_to_exphan_identity"])
+            self.radctrl_to_dsp_identity = str(config["radctrl_to_dsp_identity"])
+            self.radctrl_to_driver_identity = str(config["radctrl_to_driver_identity"])
+            self.radctrl_to_brian_identity = str(config["radctrl_to_brian_identity"])
+            self.driver_to_radctrl_identity = str(config["driver_to_radctrl_identity"])
+            self.driver_to_dsp_identity = str(config["driver_to_dsp_identity"])
+            self.driver_to_brian_identity = str(config["driver_to_brian_identity"])
+            self.exphan_to_radctrl_identity = str(config["exphan_to_radctrl_identity"])
+            self.exphan_to_dsp_identity = str(config["exphan_to_dsp_identity"])
+            self.dsp_to_radctrl_identity = str(config["dsp_to_radctrl_identity"])
+            self.dsp_to_driver_identity = str(config["dsp_to_driver_identity"])
+            self.dsp_to_exphan_identity = str(config["dsp_to_exphan_identity"])
+            self.dsp_to_dw_identity = str(config["dsp_to_dw_identity"])
+            self.dspbegin_to_brian_identity = str(config["dspbegin_to_brian_identity"])
+            self.dspend_to_brian_identity = str(config["dspend_to_brian_identity"])
+            self.dw_to_dsp_identity = str(config["dw_to_dsp_identity"])
+            self.brian_to_radctrl_identity = str(config["brian_to_radctrl_identity"])
+            self.brian_to_driver_identity = str(config["brian_to_driver_identity"])
+            self.brian_to_dspbegin_identity = str(config["brian_to_dspbegin_identity"])
+            self.brian_to_dspend_identity = str(config["brian_to_dspend_identity"])
 
             # TODO add appropriate signal process maximum time here after timing is changed - can use to check for pulse spacing minimums, pace the driver
         except ValueError as e:
