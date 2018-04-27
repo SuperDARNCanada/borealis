@@ -60,21 +60,24 @@ int main(int argc, char *argv[]){
 
   driverpacket::DriverPacket dp;
   zmq::context_t context(1);
+
+  //std::thread router_t(router,std::ref(context), driver_options.get_router_address());
+
 /*  zmq::socket_t rad_socket(context, ZMQ_PAIR);
   zmq::socket_t dsp_socket(context, ZMQ_PAIR);
   rad_socket.connect(driver_options.get_radar_control_to_driver_address());
   dsp_socket.bind(driver_options.get_driver_to_rx_dsp_address());
 */
-  auto identities = {driver_options.get_radctrl_to_driver_identity(),
-                      driver_options.get_dsp_to_driver_identity(),
-                      driver_options.get_brian_to_driver_identity()};
+  auto identities = { driver_options.get_dsp_to_driver_identity(),
+                      driver_options.get_brian_to_driver_identity(),
+                      driver_options.get_radctrl_to_driver_identity()};
 
   auto sockets_vector = create_sockets(context, identities, driver_options.get_router_address());
 
-  auto &radctrl_to_driver = sockets_vector[0];
-  auto &dsp_to_driver = sockets_vector[1];
-  auto &brian_to_driver = sockets_vector[2];
 
+  auto &dsp_to_driver = sockets_vector[0];
+  auto &brian_to_driver = sockets_vector[1];
+  auto &radctrl_to_driver = sockets_vector[2];
 
   auto pulse_samples = make_pulse(driver_options);
   for (int j=0; j<driver_options.get_main_antenna_count(); j++){
@@ -93,10 +96,11 @@ int main(int argc, char *argv[]){
   dp.set_rxcenterfreq(14e6);
 
   bool SOB, EOB = false;
-  std::vector<int> pulse_seq ={0};//{0,9,12,20,22,26,27};//{0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553};//{0,1,4,11,26,32,56,68,76,115,117,134,150,163,168,177};//,{0,9,12,20,22,26,10000};
+  std::vector<int> pulse_seq ={0,9,12,20,22,26,27};//{0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553};//{0,1,4,11,26,32,56,68,76,115,117,134,150,163,168,177};//,{0,9,12,20,22,26,10000};
 
   auto first_time = true;
   auto seq_num = 0;
+
   while (1){
     for (auto &pulse : pulse_seq){
       std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
@@ -135,7 +139,7 @@ int main(int argc, char *argv[]){
 
       begin = std::chrono::steady_clock::now();
       //rad_socket.send (request);
-      send_data(radctrl_to_driver, driver_options.get_radctrl_to_driver_identity(), msg_str);
+      SEND_REQUEST(radctrl_to_driver, driver_options.get_driver_to_radctrl_identity(), msg_str);
       end= std::chrono::steady_clock::now();
 
       std::cout << "send time(us) = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() <<std::endl;
@@ -158,7 +162,7 @@ int main(int argc, char *argv[]){
 
     auto message = std::string("Need metadata");
     SEND_REQUEST(dsp_to_driver, driver_options.get_driver_to_dsp_identity(), message);
-    auto reply = RECV_REPLY(dsp_to_driver, driver_options.get_dsp_to_driver_identity());
+    auto reply = RECV_REPLY(dsp_to_driver, driver_options.get_driver_to_dsp_identity());
 
     rxsamplesmetadata::RxSamplesMetadata rx_metadata;
     rx_metadata.ParseFromString(reply);
@@ -172,7 +176,7 @@ int main(int argc, char *argv[]){
     std::string ack_msg_str(static_cast<char*>(ack_msg.data()), ack_msg.size());
 */
     SEND_REQUEST(brian_to_driver, driver_options.get_driver_to_brian_identity(), message);
-    reply = RECV_REPLY(brian_to_driver, driver_options.get_brian_to_driver_identity());
+    reply = RECV_REPLY(brian_to_driver, driver_options.get_driver_to_brian_identity());
 
    //k driverpacket::DriverPacket ack;
     rx_metadata.ParseFromString(reply);
@@ -184,4 +188,5 @@ int main(int argc, char *argv[]){
 
   }
 
+  //router_t.join();
 }

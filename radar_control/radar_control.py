@@ -38,9 +38,9 @@ from utils.zmq_borealis_helpers import socket_operations
 
 def printing(msg):
     """
-    
-    :param msg: 
-    :return: 
+
+    :param msg:
+    :return:
     """
     RADAR_CONTROL = "\033[33m" + "RADAR_CONTROL: " + "\033[0m"
     sys.stdout.write(RADAR_CONTROL + msg + "\n")
@@ -183,7 +183,7 @@ def search_for_experiment(radar_control_to_exp_handler,
                           status):
     """
     Check for new experiments from the experiment handler
-    :param radctrl_to_exphan_iden: The 
+    :param radctrl_to_exphan_iden: The
     :param status: status of type RadarStatus.
     :return: boolean (True for new experiment received), and the experiment (or None if there is no new experiment)
     """
@@ -194,10 +194,10 @@ def search_for_experiment(radar_control_to_exp_handler,
     except zmq.ZMQBaseError as e:
         errmsg = "ZMQ ERROR"
         raise [ExperimentException(errmsg), e]
-    
+
     experiment = None
     new_experiment_received = False
-    
+
     try:
         pickled_exp = socket_operations.recv_reply(radar_control_to_exp_handler,
                                                exphan_to_radctrl_iden,
@@ -229,7 +229,7 @@ def radar():
     For every pulse, samples and other control information are sent to the n200_driver.
     For every pulse sequence, processing information is sent to the signal processing block.
     After every integration time (AveragingPeriod), the experiment block is given the opportunity
-    to change the control program. If a new program is sent, radar will halt the old one and begin 
+    to change the control program. If a new program is sent, radar will halt the old one and begin
     with the new experiment.
     """
 
@@ -268,7 +268,7 @@ def radar():
 
     while not new_experiment_flag:  #  Wait for experiment handler at the start until we have an experiment to run.
         new_experiment_flag, experiment = search_for_experiment(
-            radar_control_to_exp_handler, options.radctrl_to_exphan_identity,
+            radar_control_to_exp_handler, options.exphan_to_radctrl_identity,
             b'EXPNEEDED')
 
     new_experiment_flag = False
@@ -308,7 +308,8 @@ def radar():
                     # period.
 		    # TODO: This needs a timeout, or we'll just get stuck here... in brian maybe?
                     new_experiment_flag, new_experiment = search_for_experiment(
-                        options.radctrl_to_exphan_identity, b'NOERROR')
+                        radar_control_to_exp_handler,
+                        options.exphan_to_radctrl_identity, b'NOERROR')
 
                     # Check if there are beams remaining in this aveperiod, or in any aveperiods.
                     if aveperiod in aveperiods_done_list:
@@ -371,7 +372,7 @@ def radar():
                             beam_phase_dict = beam_phase_dict_list[sequence_index]
                             send_metadata(sigprocpacket,
                                            radar_control_to_dsp,
-                                           options.radctrl_to_dsp_identity,
+                                           options.dsp_to_radctrl_identity,
                                            radar_control_to_brian,
                                            options.brian_to_radctrl_identity,
                                            seqnum_start + nave,

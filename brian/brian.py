@@ -12,6 +12,7 @@ import zmq
 import time
 from datetime import datetime, timedelta
 import threading
+
 sys.path.append(os.environ["BOREALISPATH"])
 
 if __debug__:
@@ -20,15 +21,18 @@ else:
 	sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
 import driverpacket_pb2
 import sigprocpacket_pb2
-
+import rxsamplesmetadata_pb2
+import processeddata_pb2
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/experiment_options')
 import experimentoptions as options
 
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/zmq_borealis_helpers')
 import socket_operations as so
+
 def router(opts):
     context = zmq.Context().instance()
     router = context.socket(zmq.ROUTER)
+    router.setsockopt(zmq.ROUTER_MANDATORY, 1)
     router.bind(opts.router_address)
 
     sys.stdout.write("Starting router!\n")
@@ -37,11 +41,18 @@ def router(opts):
         #sys.stdout.write(dd)
         sender, receiver, empty, data = dd
         output = "Router input/// Sender -> {}: Receiver -> {}: empty: Data -> {}\n".format(*dd)
-        #sys.stdout.write(output)
+        sys.stdout.write(output)
         frames = [receiver,sender,empty,data]
         output = "Router output/// Receiver -> {}: Sender -> {}: empty: Data -> {}\n".format(*frames)
-        #sys.stdout.write(output)
-        router.send_multipart(frames)
+        sys.stdout.write(output)
+        sent = False
+        while not sent:
+            try:
+                router.send_multipart(frames)
+                sent = True
+            except zmq.ZMQError as e:
+                sys.stdout.write("Trying to send \n")
+                time.sleep(0.5)
 
 def sequence_timing(opts):
     """Thread function for sequence timing
@@ -99,7 +110,7 @@ def sequence_timing(opts):
                 #Acknowledge new sequence can begin to Radar Control by requesting new sequence
                 #metadata
                 printing("Requesting metadata from Radar control")
-                so.send_request(brian_to_radar_control, opts.radctrl_brian_identity, "Requesting metadata")
+                so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity, "Requesting metadata")
                 want_to_start = good_to_start = False
 
             message = start_new.recv()
@@ -135,7 +146,7 @@ def sequence_timing(opts):
         if brian_to_radar_control in socks and socks[brian_to_radar_control] == zmq.POLLIN:
 
             #Get new sequence metadata from radar control
-            reply = so.recv_reply(brian_to_radar_control, opts.radctrl_brian_identity, printing)
+            reply = so.recv_reply(brian_to_radar_control, opts.radctrl_to_brian_identity, printing)
 
             sigp = sigprocpacket_pb2.SigProcPacket()
             sigp.ParseFromString(reply)

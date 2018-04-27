@@ -25,12 +25,12 @@ def printing(msg):
 
 
 def experiment_handler(semaphore):
-    
+
     # setup two sockets - one to get ACF data and
     # another to talk to runradar.
     options = ExperimentOptions()
     ids = [options.exphan_to_radctrl_identity, options.exphan_to_dsp_identity]
-    sockets_list = socket_operations.create_sockets(ids)
+    sockets_list = socket_operations.create_sockets(ids, options.router_address)
 
     exp_handler_to_radar_control = sockets_list[0]
     exp_handler_to_dsp = sockets_list[1]
@@ -91,17 +91,15 @@ def experiment_handler(semaphore):
         elif message == 'NOERROR':
             # no errors
             if change_flag:
-                try:
-                    socket_operations.send_reply(exp_handler_to_radar_control,
-                                                 options.radctrl_to_exphan_identity, exp)
-                except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
-                    pass  # TODO handle this. Shutdown and restart all modules.
+                pickled_exp = pickle.dumps(exp)
             else:
-                try:
-                    socket_operations.send_reply(exp_handler_to_radar_control,
-                                                 options.radctrl_to_exphan_identity, None)
-                except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
-                    pass  # TODO handle this. Shutdown and restart all modules.
+                pickled_exp = pickle.dumps(None)
+
+            try:
+                socket_operations.send_reply(exp_handler_to_radar_control,
+                                             options.radctrl_to_exphan_identity, pickled_exp)
+            except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
+                pass  # TODO handle this. Shutdown and restart all modules.
 
         # TODO: handle errors with revert back to original experiment. requires another
         # message

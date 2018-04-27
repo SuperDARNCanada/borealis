@@ -218,12 +218,6 @@ class ExperimentOptions:
                     \n    atten_window_time_end = {} \
                     \n    default_freq = {} \
                     \n    restricted_ranges = {} \
-                    \n    experiment_handler_to_radar_control_address = {} \
-                    \n    data_to_experiment_address = {} \
-                    \n    radar_control_to_rx_dsp_address = {} \
-                    \n    radar_control_to_driver_address = {} \
-                    \n    rx_dsp_to_radar_control_ack_address = {} \
-                    \n    rx_dsp_to_radar_control_timing_address = {} \
                      """.format(self.main_antenna_count, self.interferometer_antenna_count,
                                 self.main_antenna_spacing, self.interferometer_antenna_spacing,
                                 self.tx_sample_rate, self.rx_sample_rate,
@@ -237,12 +231,6 @@ class ExperimentOptions:
                                 self. minimum_pulse_length, self.minimum_mpinc_length,
                                 self.minimum_pulse_separation, self.tr_window_time,
                                 self.atten_window_time_start, self.atten_window_time_end,
-                                self.default_freq, self.restricted_ranges,
-                                self.experiment_handler_to_radar_control_address,
-                                self.data_to_experiment_address,
-                                self.radar_control_to_rx_dsp_address,
-                                self.radar_control_to_driver_address,
-                                self.rx_dsp_to_radar_control_ack_address,
-                                self.rx_dsp_to_radar_control_timing_address)
+                                self.default_freq, self.restricted_ranges)
         return return_str
 

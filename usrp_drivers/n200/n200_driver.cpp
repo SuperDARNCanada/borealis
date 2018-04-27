@@ -653,8 +653,10 @@ void control(zmq::context_t &driver_c, const DriverOptions &driver_options) {
         if (driver_packet.sob() == false && driver_packet.timetosendsamples() == 0.0){
           //TODO(keith): throw error? this is really the best check i can think of for this field.
         }
-        zmq::message_t pulse(pulse_data.size());
-        memcpy ((void *) pulse_data.data (), pulse_data.c_str(), pulse_data.size());
+        std::string whatisthis;
+        driver_packet.SerializeToString(&whatisthis);
+        zmq::message_t pulse(whatisthis.size());
+        memcpy ((void *) pulse.data(), whatisthis.c_str(), whatisthis.size());
 
         driver_packet_pub_socket.send(pulse);
       }()
@@ -670,10 +672,10 @@ void control(zmq::context_t &driver_c, const DriverOptions &driver_options) {
       std::string meta_str(static_cast<char*>(shr_mem_metadata.data()),shr_mem_metadata.size());
 
       auto request = RECV_REQUEST(driver_to_dsp, driver_options.get_dsp_to_driver_identity());
-      SEND_REPLY(driver_to_dsp, driver_options.get_driver_to_dsp_identity(), meta_str);
+      SEND_REPLY(driver_to_dsp, driver_options.get_dsp_to_driver_identity(), meta_str);
 
       request = RECV_REQUEST(driver_to_brian, driver_options.get_brian_to_driver_identity());
-      SEND_REPLY(driver_to_brian, driver_options.get_driver_to_brian_identity(), meta_str);
+      SEND_REPLY(driver_to_brian, driver_options.get_brian_to_driver_identity(), meta_str);
       //ack_socket.recv(&ack);
       //radarctrl_socket.send(ack);
 
@@ -696,7 +698,7 @@ void control(zmq::context_t &driver_c, const DriverOptions &driver_options) {
  */
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-  uhd::set_thread_priority_safe();
+  uhd::set_thread_priority_safe(1.0,true);
 
   DriverOptions driver_options;
 
