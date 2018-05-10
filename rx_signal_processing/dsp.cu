@@ -20,9 +20,11 @@ See LICENSE for details
 #include <cuComplex.h>
 #include <chrono>
 #include <thread>
-
+#include <complex>
 #include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
+#include "utils/signal_processing_options/signalprocessingoptions.hpp"
 
+#include "filtering.hpp"
 //TODO(keith): decide on handing gpu errors
 //TODO(keith): potentially add multigpu support
 
@@ -54,12 +56,91 @@ namespace {
     start_imc.join();
   }
 
+
+  void frerking_phase_correction(cuComplex *samples, uint32_t num_samps_per_antenna,
+                                  uint32_t num_antennas, double F_s, double F_new, double F_final,
+                                  double freq)
+  {
+    auto m = F_new / F_final;
+
+    for (int i=0; i<num_antennas; i++) {
+        for (int j=0; j<num_samps_per_antenna; j++){
+            auto phi_k = 2 * M_PI * (F_s/F_new) * fmod((m*j),F_s) * (freq/F_s);
+            auto phase = std::exp(std::complex<float>(0,1) * std::complex<float>(phi_k,0));
+            cuComplex cu_phase;
+            cu_phase.x = phase.real();
+            cu_phase.y = phase.imag();
+            auto corrected_samp = cuCmulf(samples[i*num_samps_per_antenna + j],cu_phase);
+            samples[i*num_samps_per_antenna + j] = corrected_samp;
+        }
+    }
+
+  }
+
+  void drop_bad_samples(cuComplex *input_samples, std::vector<std::complex<float>> &output_samples,
+                        std::vector<uint32_t> &samps_per_stage,
+                        std::vector<uint32_t> &taps_per_stage,
+                        uint32_t num_antennas)
+  {
+    std::vector<uint32_t> decimation_rates = {samps_per_stage[0]/samps_per_stage[1],
+                                              samps_per_stage[1]/samps_per_stage[2],
+                                              samps_per_stage[2]/samps_per_stage[3]};
+
+    auto num_bad_samples = 0;
+    for (int i=0; i<3 ;i++) {
+      if (num_bad_samples >= decimation_rates[i]) {
+        num_bad_samples = floor(num_bad_samples/decimation_rates[i]);
+      }
+      else {
+        num_bad_samples = 0;
+      }
+
+      num_bad_samples += floor(taps_per_stage[i]/decimation_rates[i]);
+      if (taps_per_stage[i] % decimation_rates[i] > samps_per_stage[i] % decimation_rates[i]){
+          num_bad_samples++;
+      }
+      samps_per_stage[i+1] -= num_bad_samples;
+    }
+
+    output_samples.resize(samps_per_stage.back() * num_antennas);
+
+    for (int i=0; i<num_antennas; i++){
+      auto dest = output_samples.data() + i*samps_per_stage.back();
+      auto src = input_samples + i*samps_per_stage.back();
+      auto num_bytes =  sizeof(std::complex<float>) * samps_per_stage.back();
+      memcpy(dest, src, num_bytes);
+    }
+
+  }
+
   void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCore* dp)
   {
 
+    for (auto &freq : dp->get_rx_freqs()){
+      frerking_phase_correction(dp->get_host_output_h(),
+                                dp->get_num_third_stage_samples_per_antenna(),
+                                dp->get_num_antennas(),
+                                dp->sig_options.get_rx_rate(),
+                                dp->sig_options.get_first_stage_sample_rate(),
+                                dp->sig_options.get_third_stage_sample_rate(),
+                                freq);
+    }
+
+    std::vector<std::complex<float>> output_samples;
+    std::vector<uint32_t> samps_per_stage = {dp->get_num_rf_samples(),
+                                             dp->get_num_first_stage_samples_per_antenna(),
+                                             dp->get_num_second_stage_samples_per_antenna(),
+                                             dp->get_num_third_stage_samples_per_antenna()};
+    std::vector<uint32_t> taps_per_stage = {dp->dsp_filters->get_num_first_stage_taps(),
+                                            dp->dsp_filters->get_num_second_stage_taps(),
+                                            dp->dsp_filters->get_num_third_stage_taps()};
+
+    drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
+                      dp->get_num_antennas());
+
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
       auto dataset = pd.add_outputdataset();
-      #ifdef DEBUG
+      #ifdef ENGINEERING_DEBUG
         auto add_debug_data = [dataset,i](std::string stage_name, cuComplex *output_p,
                                             uint32_t num_antennas, uint32_t num_samps_per_antenna)
         {
@@ -110,8 +191,10 @@ namespace {
     auto pp = [processing_data]()
     {
       auto dp = static_cast<DSPCore*>(processing_data);
+
       dp->stop_timing();
       dp->send_timing();
+
 
       processeddata::ProcessedData pd;
 
@@ -119,8 +202,10 @@ namespace {
         [&]() {
           create_processed_data_packet(pd,dp);
           //dp->send_processed_data(pd);
-        }
+        }()
       );
+
+
       DEBUG_MSG("Cuda kernel timing: " << COLOR_GREEN(dp->get_decimate_timing()) << "ms");
       DEBUG_MSG("Complete process timing: " << COLOR_GREEN(dp->get_total_timing()) << "ms");
       auto sq_num = dp->get_sequence_num();
@@ -210,7 +295,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  */
 DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_s,
                   SignalProcessingOptions &options, uint32_t sq_num, std::string shr_mem_name,
-                  std::vector<double> freqs)
+                  std::vector<double> freqs, Filtering *filters)
 {
 
   sequence_num = sq_num;
@@ -219,6 +304,7 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *d
   data_socket = data_s;
   rx_freqs = freqs;
   sig_options = options;
+  dsp_filters = filters;
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));
   gpuErrchk(cudaEventCreate(&initial_start));
@@ -246,7 +332,7 @@ DSPCore::~DSPCore()
   gpuErrchk(cudaFree(second_stage_output_d));
   gpuErrchk(cudaFree(third_stage_output_d));
   gpuErrchk(cudaFreeHost(host_output_h));
-  #ifdef DEBUG
+  #ifdef ENGINEERING_DEBUG
     gpuErrchk(cudaFreeHost(first_stage_output_h));
     gpuErrchk(cudaFreeHost(second_stage_output_h));
     gpuErrchk(cudaFreeHost(third_stage_output_h));
@@ -442,11 +528,12 @@ void DSPCore::send_timing()
  *
  */
 void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
+                                            uint32_t num_samples_rf,
                                             uint32_t num_output_samples_per_antenna_1,
                                             uint32_t num_output_samples_per_antenna_2,
                                             uint32_t num_output_samples_per_antenna_3)
 {
-    #ifdef DEBUG
+    #ifdef ENGINEERING_DEBUG
       auto total_output_samples_1 = num_output_samples_per_antenna_1 * rx_freqs.size() *
                                       total_antennas;
       auto total_output_samples_2 = num_output_samples_per_antenna_2 * rx_freqs.size() *
@@ -458,12 +545,13 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
       allocate_and_copy_second_stage_host(total_output_samples_2);
       allocate_and_copy_third_stage_host(total_output_samples_3);
 
-      num_first_stage_samples_per_antenna = num_output_samples_per_antenna_1;
-      num_second_stage_samples_per_antenna = num_output_samples_per_antenna_2;
     #endif
 
     rx_freqs = freqs;
+    num_rf_samples = num_samples_rf;
     num_antennas = total_antennas;
+    num_first_stage_samples_per_antenna = num_output_samples_per_antenna_1;
+    num_second_stage_samples_per_antenna = num_output_samples_per_antenna_2;
     num_third_stage_samples_per_antenna = num_output_samples_per_antenna_3;
 
     gpuErrchk(cudaStreamAddCallback(stream, postprocess, this, 0));
@@ -594,6 +682,10 @@ cuComplex* DSPCore::get_third_stage_output_p(){
   return third_stage_output_d;
 }
 
+cuComplex* DSPCore::get_host_output_h() {
+  return host_output_h;
+}
+
 std::vector<double> DSPCore::get_rx_freqs()
 {
   return rx_freqs;
@@ -647,6 +739,9 @@ uint32_t DSPCore::get_num_antennas()
   return num_antennas;
 }
 
+uint32_t DSPCore::get_num_rf_samples() {
+  return num_rf_samples;
+}
 uint32_t DSPCore::get_num_first_stage_samples_per_antenna()
 {
   return num_first_stage_samples_per_antenna;

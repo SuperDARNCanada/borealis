@@ -20,6 +20,7 @@ See LICENSE for details
 #include "utils/shared_memory/shared_memory.hpp"
 #include "utils/protobuf/processeddata.pb.h"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
+#include "filtering.hpp"
 
 //This is inlined and used to detect and throw on CUDA errors.
 #define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
@@ -45,6 +46,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties);
 class DSPCore {
  public:
   void cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
+                      uint32_t num_samples_rf,
                       uint32_t num_output_samples_per_antenna_1,
                       uint32_t num_output_samples_per_antenna_2,
                       uint32_t num_output_samples_per_antenna_3);
@@ -52,7 +54,7 @@ class DSPCore {
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num, std::string shr_mem_name,
-                    std::vector<double> freqs);
+                    std::vector<double> freqs, Filtering *filters);
   ~DSPCore(); //destructor
   void allocate_and_copy_rf_samples(uint32_t total_samples);
   void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
@@ -73,10 +75,12 @@ class DSPCore {
   cuComplex* get_first_stage_output_h();
   cuComplex* get_second_stage_output_h();
   cuComplex* get_third_stage_output_h();
+  cuComplex* get_host_output_h();
   std::vector<double> get_rx_freqs();
   float get_total_timing();
   float get_decimate_timing();
   uint32_t get_num_antennas();
+  uint32_t get_num_rf_samples();
   uint32_t get_num_first_stage_samples_per_antenna();
   uint32_t get_num_second_stage_samples_per_antenna();
   uint32_t get_num_third_stage_samples_per_antenna();
@@ -87,6 +91,10 @@ class DSPCore {
   void send_ack();
   void send_timing();
   void send_processed_data(processeddata::ProcessedData &pd);
+
+  SignalProcessingOptions sig_options;
+  Filtering *dsp_filters;
+
 
 //TODO(keith): May remove sizes as member variables.
  private:
@@ -152,14 +160,13 @@ class DSPCore {
   //! A shared memory handler object that contains RF samples from the USRP driver.
   SharedMemoryHandler shr_mem;
 
-  SignalProcessingOptions sig_options;
-
   cuComplex *first_stage_output_h;
   cuComplex *second_stage_output_h;
   cuComplex *third_stage_output_h;
 
   std::vector<double> rx_freqs;
   uint32_t num_antennas;
+  uint32_t num_rf_samples;
   uint32_t num_first_stage_samples_per_antenna;
   uint32_t num_second_stage_samples_per_antenna;
   uint32_t num_third_stage_samples_per_antenna;

@@ -10,6 +10,8 @@
 SignalProcessingOptions::SignalProcessingOptions() {
   Options::parse_config_file();
 
+  rx_sample_rate = boost::lexical_cast<double>(
+                config_pt.get<std::string>("rx_sample_rate"));
   first_stage_sample_rate = boost::lexical_cast<double>(
                 config_pt.get<std::string>("first_stage_sample_rate"));
   second_stage_sample_rate = boost::lexical_cast<double>(
@@ -45,6 +47,11 @@ SignalProcessingOptions::SignalProcessingOptions() {
   brian_dspend_identity = config_pt.get<std::string>("brian_to_dspend_identity");
   exphan_dsp_identity = config_pt.get<std::string>("exphan_to_dsp_identity");
   dw_dsp_identity = config_pt.get<std::string>("dw_to_dsp_identity");
+}
+
+double SignalProcessingOptions::get_rx_rate() const
+{
+  return rx_sample_rate;
 }
 
 uint32_t SignalProcessingOptions::get_main_antenna_count() const
