@@ -9,6 +9,7 @@
 class SignalProcessingOptions: public Options {
  public:
   explicit SignalProcessingOptions();
+  double get_rx_rate() const;
   double get_first_stage_sample_rate() const;
   double get_second_stage_sample_rate() const;
   double get_third_stage_sample_rate() const;
@@ -20,12 +21,7 @@ class SignalProcessingOptions: public Options {
   double get_third_stage_filter_transition() const;
   uint32_t get_main_antenna_count() const;
   uint32_t get_interferometer_antenna_count() const;
-/*  std::string get_driver_socket_address() const;
-  std::string get_radar_control_socket_address() const;
-  std::string get_ack_socket_address() const;
-  std::string get_timing_socket_address() const;
-  std::string get_data_write_address() const;
-*/
+
   std::string get_router_address() const;
   std::string get_dsp_radctrl_identity() const;
   std::string get_dsp_driver_identity() const;
@@ -43,6 +39,7 @@ class SignalProcessingOptions: public Options {
  private:
   uint32_t main_antenna_count;
   uint32_t interferometer_antenna_count;
+  double rx_sample_rate;
   double first_stage_sample_rate;
   double second_stage_sample_rate;
   double third_stage_sample_rate;

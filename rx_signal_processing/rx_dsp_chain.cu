@@ -31,9 +31,9 @@ int main(int argc, char **argv){
   GOOGLE_PROTOBUF_VERIFY_VERSION; // Verifies that header and lib are same version.
 
   //TODO(keith): verify config options.
-  auto driver_options = DriverOptions();
+  //auto driver_options = DriverOptions();
   auto sig_options = SignalProcessingOptions();
-  auto rx_rate = driver_options.get_rx_rate(); //Hz
+  auto rx_rate = sig_options.get_rx_rate(); //Hz
 
 
 
@@ -134,13 +134,6 @@ int main(int argc, char **argv){
 
   for(;;){
     //Receive packet from radar control
-/*    zmq::message_t radctl_request;
-    radar_control_socket.recv(&radctl_request);
-    sigprocpacket::SigProcPacket sp_packet;
-    std::string radctrl_str(static_cast<char*>(radctl_request.data()), radctl_request.size());
-    if (sp_packet.ParseFromString(radctrl_str) == false){
-      //TODO(keith): handle error
-    }*/
 
     auto message =  std::string("Need metadata");
     SEND_REQUEST(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity(), message);
@@ -152,14 +145,6 @@ int main(int argc, char **argv){
     }
 
     //Then receive packet from driver
-/*    zmq::message_t driver_request;
-    drive_socket.recv(&driver_request);
-    rxsamplesmetadata::RxSamplesMetadata rx_metadata;
-    std::string driver_str(static_cast<char*>(driver_request.data()), driver_request.size());
-    if (rx_metadata.ParseFromString(driver_str) == false) {
-      //TODO(keith): handle error
-    }*/
-
     message = std::string("Need data to process");
     SEND_REQUEST(dsp_to_driver, sig_options.get_driver_dsp_identity(), message);
     reply = RECV_REPLY(dsp_to_driver, sig_options.get_driver_dsp_identity());
@@ -199,7 +184,7 @@ int main(int argc, char **argv){
 
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
                              sig_options, sp_packet.sequence_num(), rx_metadata.shrmemname(),
-                             rx_freqs);
+                             rx_freqs, &filters);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
@@ -272,6 +257,7 @@ int main(int argc, char **argv){
     dp->allocate_and_copy_host_output(total_output_samples_3);
 
     dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
+                                      rx_metadata.numberofreceivesamples(),
                                       num_output_samples_per_antenna_1,
                                       num_output_samples_per_antenna_2,
                                       num_output_samples_per_antenna_3);
@@ -279,8 +265,5 @@ int main(int argc, char **argv){
 
 
   }
-
-
-
 
 }
