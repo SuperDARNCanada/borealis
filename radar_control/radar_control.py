@@ -286,6 +286,7 @@ def verify_completed_sequence(tx_poller, tx_rx_poller, tx_socket, rx_ack_socket,
         rx_seq_ack = False
         tx_seq_ack = False
         while not rx_seq_ack or not tx_seq_ack:
+            poll_timeout += 100  # TODO remove when poll timeout updated taking into account time to pulse in the future
             try:
                 socks = dict(tx_rx_poller.poll(poll_timeout))
                 #socks, wlist, xlist = zmq.select([tx_socket, rx_ack_socket], [], [])
@@ -533,7 +534,7 @@ def radar():
                                                pulse_dict['timing'], seqnum_start + nave,
                                                repeat=pulse_dict['isarepeat'])
                                 # Pulse is done.
-                            poll_timeout = int(sequence.sstime / 1000 + 20)  # ms TODO change based on pulse time into the future once timing info exchange is set up
+                            poll_timeout = int(sequence.sstime / 1000)  # ms TODO change based on pulse time into the future once timing info exchange is set up
                             # Get sequence acknowledgements and log synchronization and
                             # communication errors between the n200_driver, rx_sig_proc, and
                             # radar_control.

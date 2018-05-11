@@ -13,9 +13,11 @@ std::vector<std::complex<float>> make_pulse(DriverOptions &driver_options){
   auto amp = 1.0/sqrt(2.0);
   auto pulse_len = 300.0 * 1e-6;
   auto tx_rate = driver_options.get_tx_rate();
-  int tr_start_pad = std::ceil(tx_rate * (driver_options.get_atten_window_time_start() + driver_options.get_tr_window_time()));
-  int tr_end_pad = std::ceil(tx_rate * (driver_options.get_atten_window_time_end() + driver_options.get_tr_window_time()));
+  //int tr_start_pad = std::ceil(tx_rate * (driver_options.get_atten_window_time_start() + driver_options.get_tr_window_time()));
+  //int tr_end_pad = tx_rate * 10e-6;//std::ceil(tx_rate * (driver_options.get_atten_window_time_end() + driver_options.get_tr_window_time()));
+  int tr_start_pad = 0, tr_end_pad = 0;
   int num_samps_per_antenna = std::ceil(pulse_len * tx_rate) + tr_start_pad + tr_end_pad;
+  std::cout << num_samps_per_antenna << std::endl;
   std::vector<double> tx_freqs = {1e6};
 
   auto default_v = std::complex<float>(0.0,0.0);
@@ -82,7 +84,11 @@ int main(int argc, char *argv[]){
   dp.set_rxcenterfreq(14e6);
 
   bool SOB, EOB = false;
-  std::vector<int> pulse_seq ={0};//{0,9,12,20,22,26,27};//{0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553};//{0,1,4,11,26,32,56,68,76,115,117,134,150,163,168,177};//,{0,9,12,20,22,26,10000};
+  #define PULSE7 {0,9,12,20,22,26,27}
+  #define PULSE27 {0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553}
+  #define PULSE16 {0,1,4,11,26,32,56,68,76,115,117,134,150,163,168,177}
+  #define longdelay {0,9,12,20,22,26,10000}
+  std::vector<int> pulse_seq = PULSE16;
 
   auto first_time = true;
   auto seq_num = 0;
@@ -162,6 +168,8 @@ int main(int argc, char *argv[]){
       << dp.sequence_num() <<std::endl << std::endl;
 
     seq_num++;
+
+    //usleep(100.0e3);
 
   }
 

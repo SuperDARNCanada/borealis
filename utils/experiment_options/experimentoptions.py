@@ -205,8 +205,8 @@ class ExperimentOptions:
                     \n    atten_window_time_end = {} \
                     \n    default_freq = {} \
                     \n    restricted_ranges = {} \
-                    \n    experiment_to_control_socket = {} \
-                    \n    data_to_experiment_socket = {} \
+                    \n    experiment_handler_to_radar_control_address = {} \
+                    \n    data_to_experiment_address = {} \
                     \n    radar_control_to_rx_dsp_address = {} \
                     \n    radar_control_to_driver_address = {} \
                     \n    rx_dsp_to_radar_control_ack_address = {} \

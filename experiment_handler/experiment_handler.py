@@ -25,6 +25,7 @@ import importlib
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 print(BOREALISPATH)
+
 from radar_status.radar_status import RadarStatus
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.experiment_exception import ExperimentException
@@ -197,6 +198,7 @@ def experiment_handler():
                 prog = Experiment()
                 if __debug__:
                     print(prog)
+
                 prog.build_scans()
                 try:
                     ctrl_socket.send_pyobj(prog, flags=zmq.NOBLOCK)

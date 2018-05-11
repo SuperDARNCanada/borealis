@@ -82,6 +82,9 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
     
 slice_id
     The ID of this slice object. An experiment can have multiple slices.
+=======
+		    "iwavetable", "qwavetable"]
+>>>>>>> master:experiments/experiment_prototype.py
 
 cpid
     The ID of the experiment, consistent with existing radar control programs.
