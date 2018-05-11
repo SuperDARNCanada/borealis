@@ -1,34 +1,44 @@
 #!/usr/bin/python
 
-from experiments.experiment_exception import ExperimentException
+"""
+    scan_class_base
+    ~~~~~~~~~~~~~~~
+    This is the base module for all ScanClassBase types (iterable for an experiment 
+    given certain parameters). These types include the Scan class, the AveragingPeriod 
+    class, and the Sequence class.
+
+    :copyright: 2018 SuperDARN Canada
+    :author: Marci Detwiller
+"""
+
+from experiment_prototype.experiment_exception import ExperimentException
 import itertools
 
 
 class ScanClassBase(object):
     """
-    The base class for the classes scan, ave_period, and sequence.
+    The base class for the classes Scan, AveragingPeriod, and Sequence.
     
     Scans are made up of AveragingPeriods, these are typically a 3sec time of
     the same pulse sequence pointing in one direction.  AveragingPeriods are made
     up of Sequences, typically the same sequence run ave. 20-30 times after a clear
     frequency search.  Sequences are made up of pulses, which is a list of dictionaries 
     where each dictionary describes a pulse. 
+    
+    :param object_keys: list of slice_ids that need to be included in this 
+     scan_class_base type.
+    :param object_slice_dict: the slice dictionary that explains the parameters of each
+     slice that is included in this scan_class_base type. Keys are the slice_ids included
+     and values are dictionaries including all necessary slice parameters as keys.
+    :param object_interface: the interfacing dictionary that describes how to interface the 
+     slices that are included in this scan_class_base type. Keys are tuples of format
+     (slice_id_1, slice_id_2) and values are of interface_types set up in 
+     experiment_prototype.
+    :param options: the options from config, hdw.dat, and restrict.dat, of class
+     ExperimentOptions
     """
 
     def __init__(self, object_keys, object_slice_dict, object_interface, options):
-        """
-        This is the parent class initiator for the scan classes scan, ave_period, and sequence.
-        :param object_keys: list of slice_ids that need to be included in this scan_class_base type.
-        :param object_slice_dict: the slice dictionary that explains the parameters of each
-            slice that is included in this scan_class_base type. Keys are the slice_ids included
-            and values are dictionaries including all necessary slice parameters as keys.
-        :param object_interface: the interfacing dictionary that describes how to interface the 
-            slices that are included in this scan_class_base type. Keys are tuples of format
-             (slice_id_1, slice_id_2) and values are of interface_types set up in 
-             experiment_prototype.
-        :param options: the options from config, hdw.dat, and restrict.dat, of class
-            ExperimentOptions
-        """
 
         # list of slice_ids included in this scan_class_base
         self.slice_ids = object_keys
@@ -36,13 +46,15 @@ class ScanClassBase(object):
         # dictionary (key = slice_id) of dictionaries (keys = slice parameters)
         self.slice_dict = object_slice_dict
 
-        # interfacing dictionary (key = (slice_id_1, slice_id_2), value = one of interface_types)
+        # interfacing dictionary (key = (slice_id_1, slice_id_2), value = one of
+        # interface_types)
         self.interface = object_interface
 
-        # The nested slice list is filled in a child class before the prep_for_nested_scan_class
-        # function is run. This list is of format [[], [], ...] where the length of the outer list
-        # is equal to the number of the lower scan_class_base instance within the instance of
-        # the higher scan_class_base (ex. number of sequences within averagingperiods)
+        # The nested slice list is filled in a child class before the prep_for_
+        # nested_scan_class function is run. This list is of format [[], [], ...] where
+        #  the length of the outer list is equal to the number of the lower
+        # scan_class_base instance within the instance of the higher scan_class_base (
+        # ex. number of sequences within averagingperiods)
         self.nested_slice_list = []
 
         # options of class ExperimentOptions
@@ -50,12 +62,17 @@ class ScanClassBase(object):
 
     def prep_for_nested_scan_class(self):
         """
-        This class reduces duplicate code by breaking down the ScanClassBase class into the 
-        separate portions for the nested class. For Scan class, the nested class is AveragingPeriod, 
-        and we will need to break down the parameters given to the Scan instance because there may
-        be multiple AveragingPeriods within. For AveragingPeriod, the nested class is Sequence.
-        :return: params for the nested class's instantiation.
+        Retrieve the params needed for the nested class (also with base ScanClassBase).
+        
+        This class reduces duplicate code by breaking down the ScanClassBase class into 
+        the separate portions for the nested instances. For Scan class, the nested class 
+        is AveragingPeriod, and we will need to break down the parameters given to the 
+        Scan instance because there may be multiple AveragingPeriods within. For 
+        AveragingPeriod, the nested class is Sequence.
+        
+        :returns: params for the nested class's instantiation.
         """
+
         # TODO documentation make a detailed example of this and diagram
         nested_class_param_lists = []
         if __debug__:
@@ -82,18 +99,25 @@ class ScanClassBase(object):
 
         return nested_class_param_lists
 
-
     @staticmethod
     def slice_combos_sorter(list_of_combos, all_keys):
         """
-        This function modifes the input list_of_combos so that all slices that are associated are 
-        associated in the same list. For example, if input is list_of_combos = 
-        [[0,1], [0,2], [0,4], [1,4], [2,4]] and all_keys = [0,1,2,4,5] then the output should be 
-        [[0,1,2,4], [5]]. 
-        :param list_of_combos: list of lists of length two associating two slices together. 
-        :param all_keys: list of all keys included in this object (scan, ave_period, or sequence).
-        :return: list of combos that is sorted so that each key only appears once and the lists within
-         the list are of however long necessary
+        Sort keys of a list of combinations so that keys only appear once in the list.
+        
+        This function modifes the input list_of_combos so that all slices that are 
+        associated are associated in the same list. For example, if input is 
+        list_of_combos = [[0,1], [0,2], [0,4], [1,4], [2,4]] and all_keys = [0,1,2,4,5] 
+        then the output should be [[0,1,2,4], [5]]. This is used to get the slice 
+        dictionary for nested class instances. In the above example, we would then have
+        two instances of the nested class to create: one with slices 0,1,2,4 and another
+        with slice 5.
+        
+        :param list_of_combos: list of lists of length two associating two slices 
+         together. 
+        :param all_keys: list of all keys included in this object (scan, ave_period, or 
+         sequence).
+        :return: list of combos that is sorted so that each key only appears once and 
+         the lists within the list are of however long necessary
         """
 
         list_of_combos = sorted(list_of_combos)

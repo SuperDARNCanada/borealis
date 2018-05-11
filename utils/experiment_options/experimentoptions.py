@@ -4,14 +4,14 @@
 
 """
 To load the config options to be used by the experiment and radar_control blocks. 
-Config data comes from the config.ini file and the hdw.dat file.
+Config data comes from the config.ini file, the hdw.dat file, and the restrict.dat file.
 """
 
 import json
 import datetime
 import os
 
-from experiments.experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 
 borealis_path = os.environ['BOREALISPATH']
 config_file = borealis_path + '/config.ini'

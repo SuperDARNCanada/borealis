@@ -35,18 +35,13 @@ The next step is to add slices to your experiment. An experiment is
 defined by the slices in the class, and how the slices interface. You
 can think of a slice as an experiment of its own, and your experiment
 may only require one slice. However, more complicated functionality
-will require multiple slices, interfaced in one of three ways:
-
->>> print('hello')
->>>
-
-
+will require multiple slices, interfaced in one of four ways:
 
 
 
 ..  TODO determine where users should write their experiments
     because that will affect the import statement - putting them
-    directly in experiments probably a bad idea
+    directly in experiments?
 
 Checking your Experiment for Errors
 -----------------------------------
