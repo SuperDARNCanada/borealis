@@ -198,6 +198,7 @@ int main(int argc, char **argv){
     DEBUG_MSG("   Total samples in data message: " << total_samples);
 
     dp->allocate_and_copy_rf_samples(total_samples);
+    dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),
                                                 filters.get_first_stage_bandpass_taps_h().size());
 
@@ -213,7 +214,8 @@ int main(int argc, char **argv){
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
       dp->get_first_stage_output_p(),dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
       rx_metadata.numberofreceivesamples(), filters.get_first_stage_lowpass_taps().size(),
-      rx_freqs.size(), total_antennas, "First stage of decimation", dp->get_cuda_stream());
+      rx_freqs.size(), total_antennas, rx_rate, dp->get_frequencies_p(),
+      "First stage of decimation", dp->get_cuda_stream());
 
 
 
@@ -236,7 +238,8 @@ int main(int argc, char **argv){
     call_decimate<DecimationType::lowpass>(dp->get_first_stage_output_p(),
       dp->get_second_stage_output_p(), dp->get_second_stage_filter_p(), second_stage_dm_rate,
       samples_per_antenna_2, filters.get_second_stage_lowpass_taps().size(), rx_freqs.size(),
-      total_antennas, "Second stage of decimation", dp->get_cuda_stream());
+      total_antennas, rx_rate, dp->get_frequencies_p(), "Second stage of decimation",
+      dp->get_cuda_stream());
 
 
     dp->allocate_and_copy_third_stage_filter(filters.get_third_stage_lowpass_taps().data(),
@@ -252,7 +255,8 @@ int main(int argc, char **argv){
     call_decimate<DecimationType::lowpass>(dp->get_second_stage_output_p(),
       dp->get_third_stage_output_p(), dp->get_third_stage_filter_p(), third_stage_dm_rate,
       samples_per_antenna_3, filters.get_third_stage_lowpass_taps().size(), rx_freqs.size(),
-      total_antennas, "Third stage of decimation", dp->get_cuda_stream());
+      total_antennas, rx_rate, dp->get_frequencies_p(), "Third stage of decimation",
+      dp->get_cuda_stream());
 
     dp->allocate_and_copy_host_output(total_output_samples_3);
 

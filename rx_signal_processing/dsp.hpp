@@ -56,6 +56,7 @@ class DSPCore {
                     SignalProcessingOptions &options, uint32_t sq_num, std::string shr_mem_name,
                     std::vector<double> freqs, Filtering *filters);
   ~DSPCore(); //destructor
+  void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
   void allocate_and_copy_rf_samples(uint32_t total_samples);
   void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
   void allocate_and_copy_second_stage_filter(void *taps, uint32_t total_taps);
@@ -66,6 +67,7 @@ class DSPCore {
   void allocate_and_copy_host_output(uint32_t num_host_samples);
   void clear_device_and_destroy();
   cuComplex* get_rf_samples_p();
+  double* get_frequencies_p();
   cuComplex* get_first_stage_bp_filters_p();
   cuComplex* get_second_stage_filter_p();
   cuComplex* get_third_stage_filter_p();
@@ -111,13 +113,16 @@ class DSPCore {
   //! Pointer to the socket used to report the timing of GPU kernels.
   zmq::socket_t *timing_socket;
 
+
   zmq::socket_t *data_socket;
+
   //! Stores the total GPU process timing once all the work is done.
   float total_process_timing_ms;
 
   //! Stores the decimation timing.
   float decimate_kernel_timing_ms;
 
+  double *freqs_d;
   //! Pointer to the RF samples on device.
   cuComplex *rf_samples_d;
 

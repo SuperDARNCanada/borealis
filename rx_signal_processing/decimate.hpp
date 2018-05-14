@@ -16,13 +16,13 @@ void bandpass_decimate1024_wrapper(cuComplex* input_samples,
   cuComplex* decimated_samples,
   cuComplex* filter_taps, uint32_t dm_rate,
   uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
-  uint32_t num_antennas, cudaStream_t stream);
+  uint32_t num_antennas, double F_s, double *freqs, cudaStream_t stream);
 
 void bandpass_decimate2048_wrapper(cuComplex* input_samples,
   cuComplex* decimated_samples,
   cuComplex* filter_taps, uint32_t dm_rate,
   uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
-  uint32_t num_antennas, cudaStream_t stream);
+  uint32_t num_antennas, double F_s, double *freqs, cudaStream_t stream);
 
 void lowpass_decimate1024_wrapper(cuComplex* input_samples,
   cuComplex* decimated_samples,
@@ -39,34 +39,36 @@ void lowpass_decimate2048_wrapper(cuComplex* input_samples,
 /**
  * @brief      Selects which decimate kernel to run.
  *
- * @param[in]  input_samples        A pointer to original input samples from
- *                                  each antenna to decimate.
- * @param[in]  decimated_samples    A pointer to a buffer to place output
- *                                  samples for each frequency after decimation.
- * @param[in]  filter_taps          A pointer to one or more filters needed for
- *                                  each frequency. If using lowpass, one filter is used.
- *                                  If using bandpass, there is one filter for each RX frequency.
+ * @param[in]  input_samples        A pointer to original input samples from each antenna to
+ *                                  decimate.
+ * @param[in]  decimated_samples    A pointer to a buffer to place output samples for each frequency
+ *                                  after decimation.
+ * @param[in]  filter_taps          A pointer to one or more filters needed for each frequency. If
+ *                                  using lowpass, one filter is used. If using bandpass, there is
+ *                                  one filter for each RX frequency.
  * @param[in]  dm_rate              Decimation rate.
  * @param[in]  samples_per_antenna  The number of samples per antenna in the input set of samples
  *                                  for one frequency.
  * @param[in]  num_taps_per_filter  Number of taps per filter.
  * @param[in]  num_freqs            Number of receive frequencies.
- * @param[in]  num_antennas         Number of antennas for which there are
- *                                  samples.
- * @param[in]  output_msg           A simple character string that can be used
- *                                  to debug or distinguish different stages.
+ * @param[in]  num_antennas         Number of antennas for which there are samples.
+ * @param[in]  F_s                  The original sampling frequency.
+ * @param      freqs                A pointer to the filtering freqs.
+ * @param[in]  output_msg           A simple character string that can be used to debug or
+ *                                  distinguish different stages.
  * @param[in]  stream               The CUDA stream for which to run a run a kernel.
  *
- * Based off the total number of filter taps, this function will
- * choose what decimate kernel to use.
+ *             Based off the total number of filter taps, this function will choose what decimate
+ *             kernel to use.
  *
+ * @tparam     type                 { description }
  */
 template <DecimationType type>
 void call_decimate(cuComplex* input_samples,
   cuComplex* decimated_samples,
   cuComplex* filter_taps, uint32_t dm_rate,
   uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
-  uint32_t num_antennas, const char *output_msg, cudaStream_t stream) {
+  uint32_t num_antennas, double F_s, double* freqs, const char *output_msg, cudaStream_t stream) {
 
   std::cout << output_msg << std::endl;
 
@@ -81,11 +83,11 @@ void call_decimate(cuComplex* input_samples,
     }
     else if (num_taps_per_filter * num_freqs > gpu_properties[0].maxThreadsPerBlock) {
       bandpass_decimate2048_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
-        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
+        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, F_s, freqs, stream);
     }
     else {
       bandpass_decimate1024_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
-        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
+        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, F_s, freqs, stream);
     }
   }
   else if (type == DecimationType::lowpass){

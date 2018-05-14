@@ -122,17 +122,18 @@ namespace {
 
   void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCore* dp)
   {
-
+/*
     frerking_phase_correction(dp->get_host_output_h(),
                                 dp->get_num_third_stage_samples_per_antenna(),
                                 dp->get_num_antennas(),
                                 dp->sig_options.get_rx_rate(),
                                 dp->sig_options.get_first_stage_sample_rate(),
                                 dp->sig_options.get_third_stage_sample_rate(),
-                                dp->get_rx_freqs());
-    
-
+                                freq);
+    }
+*/
     std::vector<cuComplex> output_samples;
+
     std::vector<uint32_t> samps_per_stage = {dp->get_num_rf_samples(),
                                              dp->get_num_first_stage_samples_per_antenna(),
                                              dp->get_num_second_stage_samples_per_antenna(),
@@ -328,6 +329,7 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *d
  */
 DSPCore::~DSPCore()
 {
+  gpuErrchk(cudaFree(freqs_d));
   gpuErrchk(cudaFree(rf_samples_d));
   gpuErrchk(cudaFree(first_stage_bp_filters_d));
   gpuErrchk(cudaFree(second_stage_filter_d));
@@ -364,6 +366,18 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples)
   gpuErrchk(cudaMemcpyAsync(rf_samples_d,shr_mem.get_shrmem_addr(), rf_samples_size,
     cudaMemcpyHostToDevice, stream));
 
+}
+
+/**
+ * @brief      Allocates device memory for the filtering frequencies and then copies them to device.
+ *
+ * @param      freqs      A pointer to the filtering freqs.
+ * @param[in]  num_freqs  The number of freqs.
+ */
+void DSPCore::allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs) {
+  size_t freqs_size = num_freqs * sizeof(double);
+  gpuErrchk(cudaMalloc(&freqs_d, freqs_size));
+  gpuErrchk(cudaMemcpyAsync(freqs_d, freqs, freqs_size, cudaMemcpyHostToDevice, stream));
 }
 
 /**
@@ -632,6 +646,9 @@ cuComplex* DSPCore::get_rf_samples_p(){
   return rf_samples_d;
 }
 
+double* DSPCore::get_frequencies_p() {
+  return freqs_d;
+}
 /**
  * @brief      Gets the device pointer to the first stage bandpass filters.
  *
