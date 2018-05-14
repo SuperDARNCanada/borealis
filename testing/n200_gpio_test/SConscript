@@ -24,10 +24,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-""""""
-import os
+#""""""
+#import os
 
-Import('*')
+#Import('*')
 
-Prog('n200_gpio_test', Glob("./*.c*"),
-     LIBS=['uhd','boost_system', 'boost_program_options'])
+#Prog('n200_gpio_test', Glob("./*.c*"),
+#     LIBS=['uhd','boost_system', 'boost_program_options'])
