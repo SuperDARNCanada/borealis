@@ -143,7 +143,7 @@ void signals(zmq::context_t &context)
   auto num_samples = uint32_t(rx_rate* 0.096);
   samples_metadata.set_numberofreceivesamples(num_samples);
 
-  auto samples = simulate_samples(num_antennas, num_samples, rx_freqs, rx_rate, true);
+  auto samples = simulate_samples(num_antennas, num_samples, rx_freqs, rx_rate, false);
 
   auto sqn_num = 0;
 
@@ -254,10 +254,10 @@ int main(int argc, char** argv){
   auto sig_options = SignalProcessingOptions();
 
   std::vector<std::thread> threads;
-  std::thread router_t(router,std::ref(context), sig_options.get_router_address());
+  //std::thread router_t(router,std::ref(context), sig_options.get_router_address());
   std::thread signals_t(signals, std::ref(context));
 
-  threads.push_back(std::move(router_t));
+  //threads.push_back(std::move(router_t));
   threads.push_back(std::move(signals_t));
 
   for (auto& th : threads) {
