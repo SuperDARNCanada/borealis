@@ -1,28 +1,67 @@
+#!/usr/bin/python
+
+# Copyright 2017 SuperDARN Canada
+#
+# data_write.py
+# 2018-05-14
+# Data writing functionality to write iq/raw and other files
+
 import zmq
 import sys
 import datetime
 import json
 import os
 import h5py
-from utils.zmq_borealis_helpser import socket_operations as so
+import collections
 
-if not os.environ["BOREALISPATH"]:
+borealis_path = os.environ['BOREALISPATH']
+if not borealis_path:
     raise ValueError("BOREALISPATH env variable not set")
 
 if __debug__:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')
+    sys.path.append(borealis_path + '/build/debug/utils/protobuf')
 else:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
+    sys.path.append(borealis_path + '/build/release/utils/protobuf')
 import processeddata_pb2
 
-sys.path.append(os.environ["BOREALISPATH"] + '/utils/data_write_options')
-import data_write_options
-borealis_path = os.environ['BOREALISPATH']
+sys.path.append(borealis_path + '/utils/')
+import data_write_options.data_write_options as dwo
+from zmq_borealis_helpers import socket_operations as so
 
 
 def printing(msg):
     DATA_WRITE = "\033[96m" + "DATA WRITE: " + "\033[0m"
     sys.stdout.write(DATA_WRITE + msg + "\n")
+
+
+def write_json_file(filename, data_dict):
+    """
+    Write out data to a json file. If the file already exists it will be overwritten.
+    :param filename: The path to the file to write out. String
+    :param data_dict: Python dictionary to write out to the JSON file.
+    """
+    with open(filename, 'w+') as f:
+        f.write(json.dumps(data_dict))
+
+
+def write_hdf5_file(filename, data_dict):
+    """
+    Write out data to an HDF5 file. If the file already exists it will be overwritten.
+    :param filename: The path to the file to write out. String
+    :param data_dict: Python dictionary to write out to the HDF5 file.
+    """
+    hdf5_file = h5py.File(filename, "w+")
+    # TODO: Complete this by parsing through the dictionary and write out to proper HDF5 format
+
+
+def write_dmap_file(filename, data_dict):
+    """
+    Write out data to a dmap file. If the file already exists it will be overwritten.
+    :param filename: The path to the file to write out. String
+    :param data_dict: Python dictionary to write out to the dmap file.
+    """
+    # TODO: Complete this by parsing through the dictionary and write out to proper dmap format
+    pass
 
 
 class DataWrite(object):
@@ -37,7 +76,7 @@ class DataWrite(object):
     def output_debug_data(self):
         """
         Writes out to file a JSON representation of each stage of filtering for debug analysis.
-
+        WARNING: This takes a while
         """
         debug_data = {}
         for set_num, data_set in enumerate(self.processed_data.outputdataset):
@@ -53,60 +92,56 @@ class DataWrite(object):
                         debug_data[set_str][stage_str][ant_str]["real"].append(antenna_sample.real)
                         debug_data[set_str][stage_str][ant_str]["imag"].append(antenna_sample.imag)
 
-        self.write_json_file(self.options.debug_file, debug_data)
-
-    def write_json_file(self, filename, data_dict):
-        """
-        Write out data to a json file
-
-        """
-        with open(filename, 'w') as f:
-            f.write(json.dumps(data_dict))
-
-    def write_hdf5_file(self, filename, data_dict):
-        """
-        Write out data to an hdf5 file
-
-        """
-        hdf5_file = h5py.File(filename, "w")
-
-    def write_dmap_file(self, filename, data_dict):
-        """
-        Write out data to a dmap file
-
-        """
-        pass
+        write_json_file(self.options.debug_file, debug_data)
 
     def output_data(self, write_rawacf=True, write_iq=False, write_pre_bf_iq=False,
-                    hdf5=False, json=True, dmap=False):
+                    use_hdf5=False, use_json=True, use_dmap=False):
         """
-        Write out data to a file
- 
+        Parse through samples and write to file. Note that only one data type will be written out, 
+        and only to one type of file. If you specify all three types, the order of preference is: 
+        1) pre_bf_iq
+        2) iq
+        3) rawacf
+        The file format order of preference is:
+        1) hdf5
+        2) json
+        3) dmap
+        :param write_rawacf: Should rawacfs be written to file? Bool, default True. 
+        :param write_iq: Should IQ be written to file? Bool, default False.
+        :param write_pre_bf_iq: Should pre-beamformed IQ be written to file? Bool. Default False
+        :param use_hdf5: Write data out to hdf5 file. Default False
+        :param use_json: Write data out to json file. Default True
+        :param use_dmap: Write data out to dmap file. Default False
         """
+        # Find out what file format to write out
         file_format_string = None
-        if hdf5:
+        if use_hdf5:
             file_format_string = 'hdf5'
-        elif json:
+        elif use_json:
             file_format_string = 'json'
-        elif dmap:
+        elif use_dmap:
             file_format_string = 'dmap'
 
         if not file_format_string:
             raise ValueError("File format selection required (hdf5, json, dmap), none given")
 
-        # Iterate over every data set, one data set per frequency
         iq_available = False
         rawacf_available = False
         pre_bf_iq_available = False
         data_format_string = None
-        iq_pre_bf_data_dict = {}
+
+        # defaultdict will populate non-specified entries in the dictionary with the default
+        # value given as an argument, in this case a dictionary.
+        iq_pre_bf_data_dict = collections.defaultdict(dict)
         rawacf_data_dict = {}
         iq_data_dict = {}
         final_data_dict = {}
+
+        # Iterate over every data set, one data set per frequency
         for freq_num, data_set in enumerate(self.processed_data.outputdataset):
             freq_str = "frequency_{0}".format(freq_num)
-            # Find out what is available in the data to determine what to write out
 
+            # Find out what is available in the data to determine what to write out
             # Main acfs were calculated
             if len(data_set.mainacf) > 0:
                 rawacf_available = True
@@ -139,10 +174,10 @@ class DataWrite(object):
                     iq_data_dict[freq_str]['real'].append(complex_sample.real)
                     iq_data_dict[freq_str]['imag'].append(complex_sample.imag)
 
-            # Debug samples are available
+            # non beamformed IQ samples are available
             if len(data_set.debugsamples) > 0:
                 for stage_num, debug_samples in enumerate(data_set.debugsamples):
-                    if debug_samples.stagename == 'stage_3':
+                    if debug_samples.stagename == 'output_samples':
                         # Final stage, so write these samples only to file
                         pre_bf_iq_available = True
                         for ant_num, ant_data in enumerate(debug_samples.antennadata):
@@ -154,6 +189,8 @@ class DataWrite(object):
                     else:
                         continue
 
+        # Note that only one data type will be written out, and only to one type of file.
+        # If you specify all three types, the order of preference is: pre_bf_iq, iq, then rawacf
         if write_rawacf and rawacf_available:
             data_format_string = "rawacf"
             final_data_dict = rawacf_data_dict
@@ -164,35 +201,46 @@ class DataWrite(object):
             data_format_string = "iq"
             final_data_dict = iq_pre_bf_data_dict
 
-        # What is the name and location for the dataset?
+        # Format the name and location for the dataset
         today_string = datetime.datetime.today().strftime("%Y%m%d")
         datetime_string = datetime.datetime.today().strftime("%Y%m%d.%H%M.%S")
         dataset_name = "{0}.{1}.{2}.{3}".format(datetime_string, self.options.site_id,
                                                 data_format_string, file_format_string)
-        dataset_location = "{0}/{1}/{2}".format(self.data_directory, today_string, dataset_name)
+        dataset_directory = "{0}/{1}".format(self.options.data_directory, today_string)
+        dataset_location = "{0}/{1}".format(dataset_directory, dataset_name)
 
-        if hdf5:
-            self.write_hdf5_file(dataset_location, final_data_dict)
-        elif json:
-            self.write_json_file(dataset_location, final_data_dict)
-        elif dmap:
-            self.write_dmap_file(dataset_location, final_data_dict)
+        if not os.path.exists(dataset_directory):
+            os.makedirs(dataset_directory)
+
+        # Finally write out the appropriate file type
+        if use_hdf5:
+            write_hdf5_file(dataset_location, final_data_dict)
+        elif use_json:
+            write_json_file(dataset_location, final_data_dict)
+        elif use_dmap:
+            write_dmap_file(dataset_location, final_data_dict)
 
 
 if __name__ == '__main__':
-    options = data_write_options.DataWriteOptions()
-    ids = [options.dsp_to_dw_identity]
-    dsp_to_data_write = so.create_sockets(ids, options.router_address)
+    options = dwo.DataWriteOptions()
+    sockets = so.create_sockets([options.dw_to_dsp_identity], options.router_address)
+    dsp_to_data_write = sockets[0]
+
+    if __debug__:
+        printing("Socket connected")
 
     while True:
         try:
-            data = socket_operations.recv_data(dsp_to_data_write, ids[0], printing)
+            # Send a request for data to dsp. The actual message doesn't matter, so use 'Request'
+            # After that, receive the processed data from dsp, blocking.
+            so.send_request(dsp_to_data_write, options.dsp_to_dw_identity, "Request")
+            data = so.recv_data(dsp_to_data_write, options.dsp_to_dw_identity, printing)
         except KeyboardInterrupt:
-            processed_data_socket.close()
-            context.term()
             sys.exit()
 
-        start = datetime.datetime.now()
+        if __debug__:
+            printing("Data received from dsp")
+            start = datetime.datetime.now()
 
         pd = processeddata_pb2.ProcessedData()
         pd.ParseFromString(data)
@@ -202,11 +250,10 @@ if __name__ == '__main__':
         if __debug__:
             dw.output_debug_data()
         else:
-            dw.output_data()
-
-        end = datetime.datetime.now()
+            dw.output_data(write_pre_bf_iq=True)
 
         if __debug__:
+            end = datetime.datetime.now()
             diff = end - start
             time = diff.total_seconds() * 1000
             print("Sequence number: {0}".format(pd.sequence_num))

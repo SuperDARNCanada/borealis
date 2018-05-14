@@ -1,3 +1,12 @@
+#!/usr/bin/python
+
+# Copyright 2017 SuperDARN Canada
+#
+# data_write_options.py
+# 2018-05-14
+# options class for data write module
+# TODO: Get experiment details from somewhere to write metadata out to files (freq, cpid, etc..)
+
 import json
 import os
 
@@ -25,6 +34,7 @@ class DataWriteOptions(object):
             errmsg = 'Cannot open config file at {0}'.format(config_path)
             raise IOError(errmsg)
         self._dsp_to_dw_identity = raw_config["dsp_to_dw_identity"]
+        self._dw_to_dsp_identity = raw_config["dw_to_dsp_identity"]
         self._debug_file = raw_config["filter_outputs_debug_file"]
         self._data_directory = raw_config["data_directory"]
         self._site_id = raw_config["site_id"]
@@ -42,11 +52,20 @@ class DataWriteOptions(object):
         """
         Gets the identity used for the dsp to data write socket.
 
-
         :returns: The identity to use for dsp/data_write socket.
         :rtype: str
         """
         return self._dsp_to_dw_identity
+
+    @property
+    def dw_to_dsp_identity(self):
+        """
+        Gets the identity used for the data write to dsp socket.
+
+        :returns: The identity to use for data_write/dsp socket.
+        :rtype: str
+        """
+        return self._dw_to_dsp_identity
 
     @property
     def debug_file(self):
@@ -62,7 +81,7 @@ class DataWriteOptions(object):
     def data_directory(self):
         """
         Gets the location of the directory to place data files in.
-        
+
         :returns:  Data directory location
         :rtype:    str
         """
@@ -102,7 +121,7 @@ class DataWriteOptions(object):
     def pulse_ramp_time(self):
         """
         Gets the ramp-up and ramp-down time of the RF pulses in seconds
-
+        
         :return:    ramp-up/ramp-down time of the RF pulse in seconds.
         :rtype:     float
         """
