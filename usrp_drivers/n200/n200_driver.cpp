@@ -38,7 +38,8 @@
 
 
 
-std::vector<std::complex<float>> buffer();
+std::vector<std::complex<float>> buffer;
+
 /**
  * @brief      Makes a vector of USRP TX channels from a driver packet.
  *
@@ -93,6 +94,31 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(const driverpacket
   return samples;
 }
 
+/**
+ * @brief      Generates a string of random characters
+ *
+ * @param[in]  length  The length of desired string.
+ *
+ * @return     A string of random characters.
+ *
+ * This string is used for creation of named shared memory.
+ */
+std::string random_string( size_t length )
+{
+    //Lambda expression to return a random character.
+    auto randchar = []() -> char
+    {
+        const char charset[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+        const size_t max_index = (sizeof(charset) - 1);
+        return charset[ rand() % max_index ];
+    };
+    std::string str(length,0);
+    std::generate_n( str.begin(), length, randchar );
+    return str;
+}
 
 void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver_options)
 {
@@ -104,11 +130,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   auto sockets_vector = create_sockets(driver_c, identities,driver_options.get_router_address());
 
+  auto receive_channels = driver_options.get_receive_channels();
 
   zmq::socket_t &driver_to_radar_control = sockets_vector[0];
   zmq::socket_t &driver_to_dsp = sockets_vector[1];
   zmq::socket_t &driver_to_brian = sockets_vector[2];
 
+  zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
+  ERR_CHK_ZMQ(start_trigger.connect("inproc://thread"))
 
   auto usrp_channels_set = false;
   auto tx_center_freq_set = false;
@@ -130,14 +159,33 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
    *USRP, sets up the timing, and then sends samples/timing to the USRPs.
    */
 
+
   uhd::time_spec_t time_zero;
   uint32_t num_recv_samples;
+
+  size_t ringbuffer_size;
+  uhd::time_spec_t start_time;
+
+  zmq::message_t request;
+  start_trigger.recv(&request);
+  memcpy(&start_time, static_cast<uhd::time_spec_t*>(request.data()), request.size());
+
+  start_trigger.recv(&request);
+  memcpy(&ringbuffer_size, static_cast<size_t*>(request.data()), request.size());
+
+  std::vector<std::complex<float>*> ringbuffer_ptrs_start;
+
+  for(uint32_t i=0; i<receive_channels.size(); i++){
+    auto ptr = static_cast<std::complex<float>*>(buffer.data() + (i * ringbuffer_size));
+    ringbuffer_ptrs_start.push_back(ptr);
+  }
+
+
   while (1)
   {
     auto pulse_data = recv_data(driver_to_radar_control,
                                   driver_options.get_radctrl_to_driver_identity());
     driverpacket::DriverPacket driver_packet;
-
 
     //Here we accept our driver_packet from the radar_control. We use that info in order to
     //configure the USRP devices based on experiment requirements.
@@ -223,7 +271,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
 
     if (driver_packet.sob() == true) {
-      time_zero = usrp_d.get_current_usrp_time() + uhd::time_spec_t(DELAY);
+      time_zero = usrp_d.get_current_usrp_time() + uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
       num_recv_samples = driver_packet.numberofreceivesamples();
     }
 
@@ -237,7 +285,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
             auto md = TXMetadata();
             md.set_has_time_spec(true);
-            md.set_time_spec(time_zero + uhd::time_spec_t(driver_packet.timetosendsamples/1.0e6));
+            md.set_time_spec(time_zero + uhd::time_spec_t(driver_packet.timetosendsamples()/1.0e6));
             //The USRP tx_metadata start_of_burst and end_of_burst describe start and end of the pulse
             //samples.
             md.set_start_of_burst(true);
@@ -268,23 +316,81 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     );
 
     if (driver_packet.eob() == true) {
-      auto seqn_time = driver_options.get_rx_rate() * num_recv_samples;
-      auto time_diff = usrp_d.get_current_usrp_time() - time_zero + uhd::time_spec_t(DELAY);
+
+      auto seqn_time = num_recv_samples/driver_options.get_rx_rate();
+      auto time_diff = usrp_d.get_current_usrp_time() - time_zero + uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
 
       auto sleep_time = (seqn_time - time_diff.get_real_secs()) * 1e6;
       usleep(sleep_time);
 
-      auto start_sample = uint32_t((time_zero.get_real_secs() - start_time.get_real_secs()) *
-                                    driver_options.get_rx_rate()) % ringbuffer_size;
+      auto post_sqn_work = [&](){
+        auto shr_mem_name = random_string(25);
+        SharedMemoryHandler shrmem(shr_mem_name);
+
+        auto mem_size = receive_channels.size() * num_recv_samples
+                            * sizeof(std::complex<float>);
+        shrmem.create_shr_mem(mem_size);
+
+        //create a vector of pointers to where each channel's data gets received.
+        std::vector<std::complex<float>*> buffer_ptrs;
+        for(uint32_t i=0; i<receive_channels.size(); i++){
+          auto ptr = static_cast<std::complex<float>*>(shrmem.get_shrmem_addr()) +
+                                      i*num_recv_samples;
+          buffer_ptrs.push_back(ptr);
+        }
+
+        auto start_sample = uint32_t((time_zero.get_real_secs() - start_time.get_real_secs()) *
+                                      driver_options.get_rx_rate()) % ringbuffer_size;
 
 
-      if ((start_sample + (seqn_time * driver_options.get_rx_rate())) > ringbuffer_size) {
-        auto end_sample = uint32_t(start_sample + (seqn_time * driver_options.get_rx_rate())) -
-                          ringbuffer_size;
-      }
-      else {
-        auto end_sample = uint32_t(start_sample + (seqn_time * driver_options.get_rx_rate()));
-      }
+        if ((start_sample + num_recv_samples) > ringbuffer_size) {
+    /*        auto end_sample = uint32_t(start_sample + (seqn_time * driver_options.get_rx_rate())) -
+                            ringbuffer_size;
+    */
+          for (int i=0; i<receive_channels.size(); i++) {
+            auto first_piece = ringbuffer_size - start_sample;
+            auto second_piece = num_recv_samples - first_piece;
+
+            auto first_dest = buffer_ptrs[i];
+            auto second_dest = buffer_ptrs[i] + (first_piece);
+
+            auto first_src = ringbuffer_ptrs_start[i] + start_sample;
+            auto second_src = ringbuffer_ptrs_start[i];
+
+            memcpy(first_dest, first_src, first_piece*sizeof(std::complex<float>));
+            memcpy(second_dest, second_src, second_piece*sizeof(std::complex<float>));
+          }
+
+        }
+        else {
+    /*        auto end_sample = uint32_t(start_sample + (seqn_time * driver_options.get_rx_rate()));
+    */
+          for (int i=0; i<receive_channels.size(); i++) {
+            auto dest = buffer_ptrs[i];
+            auto src = ringbuffer_ptrs_start[i] + start_sample;
+
+            memcpy(dest, src, num_recv_samples * sizeof(std::complex<float>));
+          }
+        }
+
+        rxsamplesmetadata::RxSamplesMetadata samples_metadata;
+        samples_metadata.set_numberofreceivesamples(num_recv_samples);
+        samples_metadata.set_shrmemname(shr_mem_name);
+        samples_metadata.set_sequence_num(driver_packet.sequence_num());
+        samples_metadata.set_sequence_time(time_zero.get_real_secs());
+        std::string samples_metadata_str;
+        samples_metadata.SerializeToString(&samples_metadata_str);
+
+        auto request = RECV_REQUEST(driver_to_dsp, driver_options.get_dsp_to_driver_identity());
+        SEND_REPLY(driver_to_dsp, driver_options.get_dsp_to_driver_identity(), samples_metadata_str);
+
+        request = RECV_REQUEST(driver_to_brian, driver_options.get_brian_to_driver_identity());
+        SEND_REPLY(driver_to_brian, driver_options.get_brian_to_driver_identity(), samples_metadata_str);
+      };
+
+      std::thread post_sqn_work_t(post_sqn_work);
+      post_sqn_work_t.detach();
+
     }
 
    DEBUG_MSG(std::endl << std::endl);
@@ -293,46 +399,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   }
 }
 
-/**
- * @brief      Generates a string of random characters
- *
- * @param[in]  length  The length of desired string.
- *
- * @return     A string of random characters.
- *
- * This string is used for creation of named shared memory.
- */
-std::string random_string( size_t length )
-{
-    //Lambda expression to return a random character.
-    auto randchar = []() -> char
-    {
-        const char charset[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-        const size_t max_index = (sizeof(charset) - 1);
-        return charset[ rand() % max_index ];
-    };
-    std::string str(length,0);
-    std::generate_n( str.begin(), length, randchar );
-    return str;
-}
-
-    TIMEIT_IF_DEBUG("\033[33;40mRECEIVE\033[0m shared memory unpack timing: ",
-      [&]() {
-        mem_size = receive_channels.size() * driver_packet.numberofreceivesamples()
-                            * sizeof(std::complex<float>);
-        shrmem.create_shr_mem(mem_size);
-
-        //create a vector of pointers to where each channel's data gets received.
-        for(uint32_t i=0; i<receive_channels.size(); i++){
-          auto ptr = static_cast<std::complex<float>*>(shrmem.get_shrmem_addr()) +
-                                      i*driver_packet.numberofreceivesamples();
-          buffer_ptrs.push_back(ptr);
-        }
-      }()
-    );
 
 /**
  * @brief      Runs in a seperate thread to control receiving from the USRPs.
@@ -343,6 +409,9 @@ std::string random_string( size_t length )
  */
 void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver_options) {
   DEBUG_MSG("Enter receive thread");
+
+  zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
+  ERR_CHK_ZMQ(start_trigger.bind("inproc://thread"));
 
   uhd::stream_args_t stream_args("fc32", "sc16");
   uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
@@ -355,14 +424,14 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream(stream_args);  // ~44ms
 
   auto usrp_buffer_size = 100 * rx_stream->get_max_num_samps();
-  ringbuffer_size = (size_t(500.0e6)/sizeof(std::complex<float>)/usrp_buffer_size) *
+  size_t ringbuffer_size = (size_t(500.0e6)/sizeof(std::complex<float>)/usrp_buffer_size) *
                             usrp_buffer_size;
 
   buffer.resize(receive_channels.size() * ringbuffer_size);
 
   std::vector<std::complex<float>*> buffer_ptrs_start;
 
-  for(uint32_t i=0; i<rx_chans.size(); i++){
+  for(uint32_t i=0; i<receive_channels.size(); i++){
     auto ptr = static_cast<std::complex<float>*>(buffer.data() + (i * ringbuffer_size));
     buffer_ptrs_start.push_back(ptr);
   }
@@ -370,7 +439,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   stream_cmd.stream_now = false;
   stream_cmd.num_samps = 0;
-  stream_cmd.time_spec = usrp_d->get_time_now() + uhd::time_spec_t(DELAY);
+  stream_cmd.time_spec = usrp_d.get_current_usrp_time() + uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
 
   rx_stream->issue_stream_cmd(stream_cmd);
 
@@ -386,7 +455,13 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   uint32_t align_count = 0;
   uint32_t badp_count = 0;
 
-  auto first_time = true;
+  zmq::message_t start_time(sizeof(stream_cmd.time_spec));
+  memcpy(start_time.data(), &stream_cmd.time_spec, sizeof(stream_cmd.time_spec));
+  start_trigger.send(start_time);
+
+  zmq::message_t ring_size(sizeof(ringbuffer_size));
+  memcpy(ring_size.data(), &ringbuffer_size, sizeof(ringbuffer_size));
+  start_trigger.send(ring_size);
 
 
   //This loop receives 1 pulse sequence worth of samples.
@@ -397,11 +472,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
     //timeout = 0.5;
     auto error_code = meta.error_code;
     std::cout << "RX TIME: " << meta.time_spec.get_real_secs() << std::endl;
-    if(first_time) {
-      start_time = meta.time_spec;
-      start_tx = true;
-      first_time = false;
-    }
     switch(error_code) {
       case uhd::rx_metadata_t::ERROR_CODE_NONE :
         break;
@@ -462,102 +532,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
 }
 
-/**
- * @brief      Runs in a seperate thread to act as an interface for the ingress and egress data.
- *
- * @param[in]  driver_c        The driver ZMQ context.
- */
-void control(zmq::context_t &driver_c, const DriverOptions &driver_options) {
-  DEBUG_MSG("Enter control thread");
-
-  DEBUG_MSG("Creating and connecting to thread socket in control");
-
-  zmq::socket_t driver_packet_pub_socket(driver_c, ZMQ_PUB);
-  ERR_CHK_ZMQ(driver_packet_pub_socket.bind("inproc://threads"))
-
-  DEBUG_MSG("Creating and binding control socket");
-/*  zmq::socket_t radarctrl_socket(driver_c, ZMQ_PAIR);
-  ERR_CHK_ZMQ(radarctrl_socket.bind(driver_options.get_radar_control_to_driver_address()))
-  zmq::message_t request;
-*/
-  zmq::socket_t data_socket(driver_c, ZMQ_PAIR);
-  ERR_CHK_ZMQ(data_socket.bind("inproc://data"))
-
-  zmq::socket_t ack_socket(driver_c, ZMQ_PAIR);
-  ERR_CHK_ZMQ(ack_socket.bind("inproc://ack"))
-
-
-/*  zmq::socket_t rx_dsp_socket(driver_c, ZMQ_PAIR);
-  ERR_CHK_ZMQ(rx_dsp_socket.connect(driver_options.get_driver_to_rx_dsp_address()))
-
-*/
-
-  //Sleep to handle "slow joiner" problem
-  //http://zguide.zeromq.org/php:all#Getting-the-Message-Out
-  sleep(1);
-
-  while (1) {
-    //radarctrl_socket.recv(&request);
-    auto pulse_data = recv_data(driver_to_radar_control,
-                                  driver_options.get_radctrl_to_driver_identity());
-
-    driverpacket::DriverPacket driver_packet;
-    TIMEIT_IF_DEBUG("CONTROL Time difference to deserialize and forward = ",
-      [&]() {
-        //std::string request_str(static_cast<char*>(request.data()), request.size());
-        driver_packet.ParseFromString(pulse_data);
-
-        DEBUG_MSG("Control " << driver_packet.sob() << " " << driver_packet.eob()
-          << " " << driver_packet.channels_size());
-
-        //TODO(keith): thinking about moving this err chking to transmit
-        if (driver_packet.channel_samples_size() != driver_packet.channels_size()) {
-          // TODO(keith): throw error
-        }
-
-        for (int channel = 0; channel < driver_packet.channel_samples_size(); channel++) {
-          auto real_size = driver_packet.channel_samples(channel).real_size();
-          auto imag_size = driver_packet.channel_samples(channel).imag_size();
-          if (real_size != imag_size) {
-            // TODO(keith): throw error
-          }
-        }
-        if (driver_packet.sob() == false && driver_packet.timetosendsamples() == 0.0){
-          //TODO(keith): throw error? this is really the best check i can think of for this field.
-        }
-        std::string whatisthis;
-        driver_packet.SerializeToString(&whatisthis);
-        zmq::message_t pulse(whatisthis.size());
-        memcpy ((void *) pulse.data(), whatisthis.c_str(), whatisthis.size());
-
-        driver_packet_pub_socket.send(pulse);
-      }()
-    );
-
-    if (driver_packet.eob() == true) {
-      //TODO(keith): handle potential errors.
-      zmq::message_t ack, shr_mem_metadata;
-
-      data_socket.recv(&shr_mem_metadata);
-      //send data to dsp first so that processing can start before next sequence is aquired.
-      //rx_dsp_socket.send(shr_mem_metadata);
-      std::string meta_str(static_cast<char*>(shr_mem_metadata.data()),shr_mem_metadata.size());
-
-      auto request = RECV_REQUEST(driver_to_dsp, driver_options.get_dsp_to_driver_identity());
-      SEND_REPLY(driver_to_dsp, driver_options.get_dsp_to_driver_identity(), meta_str);
-
-      request = RECV_REQUEST(driver_to_brian, driver_options.get_brian_to_driver_identity());
-      SEND_REPLY(driver_to_brian, driver_options.get_brian_to_driver_identity(), meta_str);
-      //ack_socket.recv(&ack);
-      //radarctrl_socket.send(ack);
-
-    }
-
-  }
-}
-
-
-
 
 
 /**
@@ -570,7 +544,7 @@ void control(zmq::context_t &driver_c, const DriverOptions &driver_options) {
  */
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-  uhd::set_thread_priority_safe(1.0,true);
+  uhd::set_thread_priority_safe();
 
   DriverOptions driver_options;
 
@@ -589,16 +563,15 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   std::vector<std::thread> threads;
 
   // std::ref http://stackoverflow.com/a/15530639/1793295
-  std::thread control_t(control, std::ref(driver_context), std::ref(driver_options));
-  std::thread transmit_t(transmit, std::ref(driver_context), std::ref(usrp_d),
-                          std::ref(driver_options));
   std::thread receive_t(receive, std::ref(driver_context), std::ref(usrp_d),
                           std::ref(driver_options));
 
 
+  std::thread transmit_t(transmit, std::ref(driver_context), std::ref(usrp_d),
+                          std::ref(driver_options));
+
   threads.push_back(std::move(transmit_t));
   threads.push_back(std::move(receive_t));
-  threads.push_back(std::move(control_t));
 
   for (auto& th : threads) {
     th.join();
