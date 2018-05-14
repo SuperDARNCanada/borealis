@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 
 sys.path.append(os.environ["BOREALISPATH"])
 
+
 def create_sockets(identities, router_addr):
     """Creates a DEALER socket for each identity in the list argument. Each socket is then connected
     to the router
@@ -75,4 +76,3 @@ send_reply = send_request = send_pulse = send_data
 
 # Aliases for receiving from a socket 
 recv_reply = recv_request = recv_pulse = recv_data
-

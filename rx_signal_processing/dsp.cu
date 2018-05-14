@@ -59,33 +59,38 @@ namespace {
 
   void frerking_phase_correction(cuComplex *samples, uint32_t num_samps_per_antenna,
                                   uint32_t num_antennas, double F_s, double F_new, double F_final,
-                                  double freq)
+                                  std::vector<double> freqs)
   {
     auto m = F_new / F_final;
 
-    for (int i=0; i<num_antennas; i++) {
+    for (uint32_t freq_index=0; freq_index < freqs.size(); freq_index++) {
+      for (int i=0; i<num_antennas; i++) {
         for (int j=0; j<num_samps_per_antenna; j++){
-            auto phi_k = 2 * M_PI * (F_s/F_new) * fmod((m*j),F_s) * (freq/F_s);
-            auto phase = std::exp(std::complex<float>(0,1) * std::complex<float>(phi_k,0));
-            cuComplex cu_phase;
-            cu_phase.x = phase.real();
-            cu_phase.y = phase.imag();
-            auto corrected_samp = cuCmulf(samples[i*num_samps_per_antenna + j],cu_phase);
-            samples[i*num_samps_per_antenna + j] = corrected_samp;
-        }
+	  			auto phi_k = 2 * M_PI * (F_s/F_new) * fmod((m*j),F_s) * (freqs[freq_index]/F_s);
+	  			auto phase = std::exp(std::complex<float>(0,1) * std::complex<float>(phi_k,0));
+	  			cuComplex cu_phase;
+	  			cu_phase.x = phase.real();
+	  			cu_phase.y = phase.imag();
+          auto sample_index = freq_index*num_antennas*num_samps_per_antenna + i*num_samps_per_antenna + j;
+	  			auto corrected_samp = cuCmulf(samples[sample_index],cu_phase);
+	  			samples[sample_index] = corrected_samp;
+				}
+      }
     }
 
   }
 
-  void drop_bad_samples(cuComplex *input_samples, std::vector<std::complex<float>> &output_samples,
+  void drop_bad_samples(cuComplex *input_samples, std::vector<cuComplex> &output_samples,
                         std::vector<uint32_t> &samps_per_stage,
                         std::vector<uint32_t> &taps_per_stage,
-                        uint32_t num_antennas)
+                        uint32_t num_antennas, uint32_t num_freqs)
   {
     std::vector<uint32_t> decimation_rates = {samps_per_stage[0]/samps_per_stage[1],
                                               samps_per_stage[1]/samps_per_stage[2],
                                               samps_per_stage[2]/samps_per_stage[3]};
 
+    auto original_undropped_sample_count = samps_per_stage.back();
+    auto original_samples_per_frequency = num_antennas * original_undropped_sample_count;
     auto num_bad_samples = 0;
     for (int i=0; i<3 ;i++) {
       if (num_bad_samples >= decimation_rates[i]) {
@@ -102,22 +107,23 @@ namespace {
       samps_per_stage[i+1] -= num_bad_samples;
     }
 
-    output_samples.resize(samps_per_stage.back() * num_antennas);
+    auto samples_per_frequency = samps_per_stage.back() * num_antennas;
+    output_samples.resize(num_freqs * samples_per_frequency);
 
-    for (int i=0; i<num_antennas; i++){
-      auto dest = output_samples.data() + i*samps_per_stage.back();
-      auto src = input_samples + i*samps_per_stage.back();
-      auto num_bytes =  sizeof(std::complex<float>) * samps_per_stage.back();
-      memcpy(dest, src, num_bytes);
+    for (uint32_t freq_index=0; freq_index < num_freqs; freq_index++) {
+      for (int i=0; i<num_antennas; i++){
+        auto dest = output_samples.data() + freq_index*samples_per_frequency + i*samps_per_stage.back();
+				auto src = input_samples + freq_index*original_samples_per_frequency + i*original_undropped_sample_count;
+				auto num_bytes =  sizeof(cuComplex) * samps_per_stage.back();
+				memcpy(dest, src, num_bytes);
+      }
     }
-
   }
 
   void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCore* dp)
   {
-
-/*    for (auto &freq : dp->get_rx_freqs()){
-      frerking_phase_correction(dp->get_host_output_h(),
+/*
+    frerking_phase_correction(dp->get_host_output_h(),
                                 dp->get_num_third_stage_samples_per_antenna(),
                                 dp->get_num_antennas(),
                                 dp->sig_options.get_rx_rate(),
@@ -126,7 +132,8 @@ namespace {
                                 freq);
     }
 */
-    std::vector<std::complex<float>> output_samples;
+    std::vector<cuComplex> output_samples;
+
     std::vector<uint32_t> samps_per_stage = {dp->get_num_rf_samples(),
                                              dp->get_num_first_stage_samples_per_antenna(),
                                              dp->get_num_second_stage_samples_per_antenna(),
@@ -136,40 +143,41 @@ namespace {
                                             dp->dsp_filters->get_num_third_stage_taps()};
 
     drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
-                      dp->get_num_antennas());
+                     dp->get_num_antennas(), dp->get_rx_freqs().size());
 
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
       auto dataset = pd.add_outputdataset();
-      #ifdef ENGINEERING_DEBUG
-        auto add_debug_data = [dataset,i](std::string stage_name, cuComplex *output_p,
-                                            uint32_t num_antennas, uint32_t num_samps_per_antenna)
-        {
-          auto debug_samples = dataset->add_debugsamples();
+			auto add_debug_data = [dataset,i](std::string stage_name, cuComplex *output_p,
+			uint32_t num_antennas, uint32_t num_samps_per_antenna)
+			{
+				auto debug_samples = dataset->add_debugsamples();
 
-          debug_samples->set_stagename(stage_name);
-          auto stage_output = output_p;
-          auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
+				debug_samples->set_stagename(stage_name);
+				auto stage_output = output_p;
+				auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
 
-          for (uint32_t j=0; j<num_antennas; j++){
-            auto antenna_data = debug_samples->add_antennadata();
-            for(uint32_t k=0; k<num_samps_per_antenna; k++) {
-              auto idx = i * stage_samps_per_set + j * num_samps_per_antenna + k;
-              auto antenna_samp = antenna_data->add_antennasamples();
-              antenna_samp->set_real(stage_output[idx].x);
-              antenna_samp->set_imag(stage_output[idx].y);
-            }
-          }
-        };
-
+				for (uint32_t j=0; j<num_antennas; j++){
+					auto antenna_data = debug_samples->add_antennadata();
+					for(uint32_t k=0; k<num_samps_per_antenna; k++) {
+						auto idx = i * stage_samps_per_set + j * num_samps_per_antenna + k;
+						auto antenna_samp = antenna_data->add_antennasamples();
+						antenna_samp->set_real(stage_output[idx].x);
+						antenna_samp->set_imag(stage_output[idx].y);
+					}
+				}
+			};
+      
+			#ifdef ENGINEERING_DEBUG
         add_debug_data("stage_1",dp->get_first_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_first_stage_samples_per_antenna());
         add_debug_data("stage_2",dp->get_second_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_second_stage_samples_per_antenna());
         add_debug_data("stage_3",dp->get_third_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_third_stage_samples_per_antenna());
-
       #endif
-      DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
+				add_debug_data("output_samples", output_samples.data(), dp->get_num_antennas(), 
+					output_samples.size()/(dp->get_num_antennas()*dp->get_rx_freqs().size()));
+				DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     }
 
   }
@@ -200,11 +208,10 @@ namespace {
 
       TIMEIT_IF_DEBUG("Fill + send processed data time ",
         [&]() {
-          create_processed_data_packet(pd,dp);
-          //dp->send_processed_data(pd);
+          create_processed_data_packet(pd,dp);           
+	  			dp->send_processed_data(pd);
         }()
       );
-
 
       DEBUG_MSG("Cuda kernel timing: " << COLOR_GREEN(dp->get_decimate_timing()) << "ms");
       DEBUG_MSG("Complete process timing: " << COLOR_GREEN(dp->get_total_timing()) << "ms");
@@ -217,8 +224,6 @@ namespace {
 
     std::thread start_pp(pp);
     start_pp.detach();
-
-    //TODO(keith): add copy to host and final process details
   }
 
 }
