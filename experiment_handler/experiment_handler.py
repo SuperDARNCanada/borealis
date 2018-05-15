@@ -8,8 +8,8 @@
     then it will pass the experiment to the radar_control block to run. 
 
     It will be passed some data to use in its update method at the end of every integration time. 
-    This has yet to be implemented but will allow experiment_prototype to modify themselves based on 
-    received data as feedback.
+    This has yet to be implemented but will allow experiment_prototype to modify itself 
+    based on received data as feedback.
     
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
@@ -95,21 +95,27 @@ def retrieve_experiment():
     for class_name, obj in inspect.getmembers(experiment_mod, inspect.isclass):
         experiment_classes[class_name] = obj
 
-
     # need to have one ExperimentPrototype and one user-specified class.
     try:
+        experiment_proto_class = experiment_classes['ExperimentPrototype']
         del experiment_classes['ExperimentPrototype']
     except KeyError:
         errmsg = "Your experiment is not built from parent class ExperimentPrototype - exiting"
         raise ExperimentException(errmsg)
 
-    num_classes = 0
-    for experiment_name, experiment_obj in experiment_classes.items():
-        num_classes += 1
-        if num_classes != 1:
-            errmsg = "You have more than one experiment class in your experiment file - exiting"
-            raise ExperimentException(errmsg)
-        Experiment = experiment_obj  # this is the experiment class that we need to run.
+    list_experiments = []
+    for class_name, class_obj in experiment_classes.items():
+        if experiment_proto_class in inspect.getmro(class_name):  # an experiment
+            # must inherit from ExperimentPrototype
+            # other utility classes might be in the file but we will ignore them.
+            list_experiments.append(class_obj)
+
+    if len(list_experiments) != 1:
+        errmsg = "You have zero or more than one experiment class in your experiment " \
+                 "file - exiting"
+        raise ExperimentException(errmsg)
+
+    Experiment = list_experiments[0]  # this is the experiment class that we need to run.
 
     try:
         return Experiment
@@ -117,8 +123,6 @@ def retrieve_experiment():
         errmsg = "Cannot find the experiment inside your module. Please make sure there is a " \
                  "class that inherits from ExperimentPrototype in your module."
         raise ExperimentException(errmsg)
-
-    # TODO inspect the Experiment class to determine if the update method exists!
 
 
 def setup_data_socket(addr, context):

@@ -37,7 +37,7 @@ can think of a slice as an experiment of its own, and your experiment
 may only require one slice. However, more complicated functionality
 will require multiple slices, interfaced in one of four ways:
 
-
+..  TODO outline ways to interface
 
 ..  TODO determine where users should write their experiments
     because that will affect the import statement - putting them
@@ -46,5 +46,5 @@ will require multiple slices, interfaced in one of four ways:
 Checking your Experiment for Errors
 -----------------------------------
 
-
+..  TODO how to check your experiment for errors
 

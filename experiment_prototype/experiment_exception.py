@@ -3,7 +3,7 @@
 """
     experiment_exception
     ~~~~~~~~~~~~~~~~~~~~
-    This is exception that is raised when there are problems with the experiment that
+    This is the exception that is raised when there are problems with the experiment that
     cannot be remedied using experiment_prototype methods. 
 
     :copyright: 2018 SuperDARN Canada

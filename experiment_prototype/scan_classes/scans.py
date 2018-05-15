@@ -6,7 +6,7 @@
     This is the module containing the Scan class. The Scan class contains the 
     ScanClassBase members, as well as a scanbound (to be implemented), a beamdir 
     dictionary and scan_beams dictionary which specify beam direction angle and beam 
-    order in scan, respectively, for individual slices that are to be combined in this 
+    order in a scan, respectively, for individual slices that are to be combined in this 
     scan. Beam direction information gets passed on to the AveragingPeriod. 
 
     :copyright: 2018 SuperDARN Canada
