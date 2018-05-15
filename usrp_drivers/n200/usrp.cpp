@@ -12,6 +12,7 @@ See LICENSE for details.
 #include <string>
 #include <vector>
 #include <chrono>
+#include <cmath>
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
@@ -307,7 +308,7 @@ void USRP::set_time_source(std::string source)
   }
   if (source == "external"){
     usrp_->set_time_source(source);
-    usrp_->set_time_unknown_pps(tt_sc.count());
+    usrp_->set_time_unknown_pps(std::ceil(tt_sc.count()) + 1);
   }
   else {
     //TODO(keith): throw error
