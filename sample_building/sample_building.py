@@ -14,7 +14,6 @@ import math
 import matplotlib.pyplot as plt
 from experiments.experiment_exception import ExperimentException
 
-
 def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
     """
     This function will take in a list of directions and resolve that to a direction for each
@@ -275,6 +274,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
     
     """
 
+
     for pulse in pulse_list:
         try:
             assert pulse['combined_pulse_index'] == pulse_list[0]['combined_pulse_index']
@@ -324,6 +324,14 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
                 raise ExperimentException("RUNTIMEWARNING {}".format(len(combined_samples[antenna])))
                 # TODO determine if we can manage this overflow error to prevent this.
 
+    tr_window_num_samps = int(math.ceil(options.tr_window_time * txrate))
+    tr_window_samples = np.zeros(tr_window_num_samps, dtype=np.complex64)
+    combined_samples_tr = []
+    for cs in combined_samples:
+        combined_samples_channel = np.concatenate((tr_window_samples, cs,
+                                                   tr_window_samples))
+        combined_samples_tr.append(combined_samples_channel)
+
     # Now get what channels we need to transmit on for this combined
     #   pulse.
     # TODO : figure out - why did I do this I thought we were transmitting zeros on any channels not wanted
@@ -336,7 +344,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
                 pulse_channels.append(ant)
     pulse_channels.sort()
 
-    return combined_samples, pulse_channels
+    return combined_samples_tr, pulse_channels
 
 
 def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir, txctrfreq, txrate,

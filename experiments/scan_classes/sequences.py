@@ -246,9 +246,11 @@ class Sequence(ScanClassBase):
 
         # FIND the sequence time. Time before the first pulse is 70 us when RX and TR set up for the first pulse. The
         # timing to the last pulse is added, as well as its pulse length and the RX/TR delay at the end of last pulse.
-        self.seqtime = self.options.atten_window_time_start + 2*self.options.tr_window_time + \
-                       self.options.atten_window_time_end + self.pulses[-1]['pulse_timing_us'] + \
+        self.seqtime = 2*self.options.tr_window_time + self.pulses[-1]['pulse_timing_us'] + \
                        self.last_pulse_len
+
+        # TODO change numberofreceivesamples to oversample so that no sample dropping
+        # has to happen due to edge effects (account for filter length).
 
         # FIND the total scope sync time and number of samples to receive.
         self.sstime = self.seqtime + self.ssdelay
