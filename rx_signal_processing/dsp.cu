@@ -20,7 +20,11 @@ See LICENSE for details
 #include <cuComplex.h>
 #include <chrono>
 #include <thread>
+#include <complex>
+#include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
+#include "utils/signal_processing_options/signalprocessingoptions.hpp"
 
+#include "filtering.hpp"
 //TODO(keith): decide on handing gpu errors
 //TODO(keith): potentially add multigpu support
 
@@ -44,7 +48,7 @@ namespace {
       auto dp = static_cast<DSPCore*>(processing_data);
       dp->send_ack();
       dp->start_decimate_timing();
-      DEBUG_MSG(COLOR_RED("Finished initial memcpy handler for sequence #" 
+      DEBUG_MSG(COLOR_RED("Finished initial memcpy handler for sequence #"
                  << dp->get_sequence_num() << ". Thread should exit here"));
     };
 
@@ -52,41 +56,128 @@ namespace {
     start_imc.join();
   }
 
+
+  void frerking_phase_correction(cuComplex *samples, uint32_t num_samps_per_antenna,
+                                  uint32_t num_antennas, double F_s, double F_new, double F_final,
+                                  std::vector<double> freqs)
+  {
+    auto m = F_new / F_final;
+
+    for (uint32_t freq_index=0; freq_index < freqs.size(); freq_index++) {
+      for (int i=0; i<num_antennas; i++) {
+        for (int j=0; j<num_samps_per_antenna; j++){
+	  			auto phi_k = 2 * M_PI * (F_s/F_new) * fmod((m*j),F_s) * (freqs[freq_index]/F_s);
+	  			auto phase = std::exp(std::complex<float>(0,1) * std::complex<float>(phi_k,0));
+	  			cuComplex cu_phase;
+	  			cu_phase.x = phase.real();
+	  			cu_phase.y = phase.imag();
+          auto sample_index = freq_index*num_antennas*num_samps_per_antenna + i*num_samps_per_antenna + j;
+	  			auto corrected_samp = cuCmulf(samples[sample_index],cu_phase);
+	  			samples[sample_index] = corrected_samp;
+				}
+      }
+    }
+
+  }
+
+  void drop_bad_samples(cuComplex *input_samples, std::vector<cuComplex> &output_samples,
+                        std::vector<uint32_t> &samps_per_stage,
+                        std::vector<uint32_t> &taps_per_stage,
+                        uint32_t num_antennas, uint32_t num_freqs)
+  {
+    std::vector<uint32_t> decimation_rates = {samps_per_stage[0]/samps_per_stage[1],
+                                              samps_per_stage[1]/samps_per_stage[2],
+                                              samps_per_stage[2]/samps_per_stage[3]};
+
+    auto original_undropped_sample_count = samps_per_stage.back();
+    auto original_samples_per_frequency = num_antennas * original_undropped_sample_count;
+    auto num_bad_samples = 0;
+    for (int i=0; i<3 ;i++) {
+      if (num_bad_samples >= decimation_rates[i]) {
+        num_bad_samples = floor(num_bad_samples/decimation_rates[i]);
+      }
+      else {
+        num_bad_samples = 0;
+      }
+
+      num_bad_samples += floor(taps_per_stage[i]/decimation_rates[i]);
+      if (taps_per_stage[i] % decimation_rates[i] > samps_per_stage[i] % decimation_rates[i]){
+          num_bad_samples++;
+      }
+      samps_per_stage[i+1] -= num_bad_samples;
+    }
+
+    auto samples_per_frequency = samps_per_stage.back() * num_antennas;
+    output_samples.resize(num_freqs * samples_per_frequency);
+
+    for (uint32_t freq_index=0; freq_index < num_freqs; freq_index++) {
+      for (int i=0; i<num_antennas; i++){
+        auto dest = output_samples.data() + freq_index*samples_per_frequency + i*samps_per_stage.back();
+				auto src = input_samples + freq_index*original_samples_per_frequency + i*original_undropped_sample_count;
+				auto num_bytes =  sizeof(cuComplex) * samps_per_stage.back();
+				memcpy(dest, src, num_bytes);
+      }
+    }
+  }
+
   void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCore* dp)
   {
+/*
+    frerking_phase_correction(dp->get_host_output_h(),
+                                dp->get_num_third_stage_samples_per_antenna(),
+                                dp->get_num_antennas(),
+                                dp->sig_options.get_rx_rate(),
+                                dp->sig_options.get_first_stage_sample_rate(),
+                                dp->sig_options.get_third_stage_sample_rate(),
+                                freq);
+    }
+*/
+    std::vector<cuComplex> output_samples;
+
+    std::vector<uint32_t> samps_per_stage = {dp->get_num_rf_samples(),
+                                             dp->get_num_first_stage_samples_per_antenna(),
+                                             dp->get_num_second_stage_samples_per_antenna(),
+                                             dp->get_num_third_stage_samples_per_antenna()};
+    std::vector<uint32_t> taps_per_stage = {dp->dsp_filters->get_num_first_stage_taps(),
+                                            dp->dsp_filters->get_num_second_stage_taps(),
+                                            dp->dsp_filters->get_num_third_stage_taps()};
+
+    drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
+                     dp->get_num_antennas(), dp->get_rx_freqs().size());
 
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
       auto dataset = pd.add_outputdataset();
-      #ifdef DEBUG
-        auto add_debug_data = [dataset,i](std::string stage_name, cuComplex *output_p,
-                                            uint32_t num_antennas, uint32_t num_samps_per_antenna)
-        {
-          auto debug_samples = dataset->add_debugsamples();
+			auto add_debug_data = [dataset,i](std::string stage_name, cuComplex *output_p,
+			uint32_t num_antennas, uint32_t num_samps_per_antenna)
+			{
+				auto debug_samples = dataset->add_debugsamples();
 
-          debug_samples->set_stagename(stage_name);
-          auto stage_output = output_p;
-          auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
+				debug_samples->set_stagename(stage_name);
+				auto stage_output = output_p;
+				auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
 
-          for (uint32_t j=0; j<num_antennas; j++){
-            auto antenna_data = debug_samples->add_antennadata();
-            for(uint32_t k=0; k<num_samps_per_antenna; k++) {
-              auto idx = i * stage_samps_per_set + j * num_samps_per_antenna + k;
-              auto antenna_samp = antenna_data->add_antennasamples();
-              antenna_samp->set_real(stage_output[idx].x);
-              antenna_samp->set_imag(stage_output[idx].y);
-            }
-          }
-        };
-
+				for (uint32_t j=0; j<num_antennas; j++){
+					auto antenna_data = debug_samples->add_antennadata();
+					for(uint32_t k=0; k<num_samps_per_antenna; k++) {
+						auto idx = i * stage_samps_per_set + j * num_samps_per_antenna + k;
+						auto antenna_samp = antenna_data->add_antennasamples();
+						antenna_samp->set_real(stage_output[idx].x);
+						antenna_samp->set_imag(stage_output[idx].y);
+					}
+				}
+			};
+      
+			#ifdef ENGINEERING_DEBUG
         add_debug_data("stage_1",dp->get_first_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_first_stage_samples_per_antenna());
         add_debug_data("stage_2",dp->get_second_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_second_stage_samples_per_antenna());
         add_debug_data("stage_3",dp->get_third_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_third_stage_samples_per_antenna());
-
       #endif
-      DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
+				add_debug_data("output_samples", output_samples.data(), dp->get_num_antennas(), 
+					output_samples.size()/(dp->get_num_antennas()*dp->get_rx_freqs().size()));
+				DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     }
 
   }
@@ -108,17 +199,20 @@ namespace {
     auto pp = [processing_data]()
     {
       auto dp = static_cast<DSPCore*>(processing_data);
+
       dp->stop_timing();
       dp->send_timing();
+
 
       processeddata::ProcessedData pd;
 
       TIMEIT_IF_DEBUG("Fill + send processed data time ",
         [&]() {
-          create_processed_data_packet(pd,dp);
-          //dp->send_processed_data(pd);
-        }
+          create_processed_data_packet(pd,dp);           
+	  			dp->send_processed_data(pd);
+        }()
       );
+
       DEBUG_MSG("Cuda kernel timing: " << COLOR_GREEN(dp->get_decimate_timing()) << "ms");
       DEBUG_MSG("Complete process timing: " << COLOR_GREEN(dp->get_total_timing()) << "ms");
       auto sq_num = dp->get_sequence_num();
@@ -130,8 +224,6 @@ namespace {
 
     std::thread start_pp(pp);
     start_pp.detach();
-
-    //TODO(keith): add copy to host and final process details
   }
 
 }
@@ -207,14 +299,17 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * the shared memory with the received RF samples for a pulse sequence.
  */
 DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_s,
-                    uint32_t sq_num, std::string shr_mem_name, std::vector<double> freqs)
+                  SignalProcessingOptions &options, uint32_t sq_num, std::string shr_mem_name,
+                  std::vector<double> freqs, Filtering *filters)
 {
 
   sequence_num = sq_num;
   ack_socket = ack_s;
   timing_socket = timing_s;
-  data_write_socket = data_s;
+  data_socket = data_s;
   rx_freqs = freqs;
+  sig_options = options;
+  dsp_filters = filters;
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));
   gpuErrchk(cudaEventCreate(&initial_start));
@@ -234,6 +329,7 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *d
  */
 DSPCore::~DSPCore()
 {
+  gpuErrchk(cudaFree(freqs_d));
   gpuErrchk(cudaFree(rf_samples_d));
   gpuErrchk(cudaFree(first_stage_bp_filters_d));
   gpuErrchk(cudaFree(second_stage_filter_d));
@@ -242,7 +338,7 @@ DSPCore::~DSPCore()
   gpuErrchk(cudaFree(second_stage_output_d));
   gpuErrchk(cudaFree(third_stage_output_d));
   gpuErrchk(cudaFreeHost(host_output_h));
-  #ifdef DEBUG
+  #ifdef ENGINEERING_DEBUG
     gpuErrchk(cudaFreeHost(first_stage_output_h));
     gpuErrchk(cudaFreeHost(second_stage_output_h));
     gpuErrchk(cudaFreeHost(third_stage_output_h));
@@ -270,6 +366,18 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples)
   gpuErrchk(cudaMemcpyAsync(rf_samples_d,shr_mem.get_shrmem_addr(), rf_samples_size,
     cudaMemcpyHostToDevice, stream));
 
+}
+
+/**
+ * @brief      Allocates device memory for the filtering frequencies and then copies them to device.
+ *
+ * @param      freqs      A pointer to the filtering freqs.
+ * @param[in]  num_freqs  The number of freqs.
+ */
+void DSPCore::allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs) {
+  size_t freqs_size = num_freqs * sizeof(double);
+  gpuErrchk(cudaMalloc(&freqs_d, freqs_size));
+  gpuErrchk(cudaMemcpyAsync(freqs_d, freqs, freqs_size, cudaMemcpyHostToDevice, stream));
 }
 
 /**
@@ -420,10 +528,14 @@ void DSPCore::send_timing()
 
   std::string s_msg_str;
   sp.SerializeToString(&s_msg_str);
-  zmq::message_t s_msg(s_msg_str.size());
+/*  zmq::message_t s_msg(s_msg_str.size());
   memcpy ((void *) s_msg.data (), s_msg_str.c_str(), s_msg_str.size());
+*/
+/*  timing_socket->send(s_msg);*/
 
-  timing_socket->send(s_msg);
+  auto request = RECV_REQUEST(*timing_socket, sig_options.get_brian_dspend_identity());
+  SEND_REPLY(*timing_socket, sig_options.get_brian_dspend_identity(), s_msg_str);
+
   DEBUG_MSG(COLOR_RED("Sent timing after processing with sequence #" << sequence_num));
 
 }
@@ -434,11 +546,12 @@ void DSPCore::send_timing()
  *
  */
 void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
+                                            uint32_t num_samples_rf,
                                             uint32_t num_output_samples_per_antenna_1,
                                             uint32_t num_output_samples_per_antenna_2,
                                             uint32_t num_output_samples_per_antenna_3)
 {
-    #ifdef DEBUG
+    #ifdef ENGINEERING_DEBUG
       auto total_output_samples_1 = num_output_samples_per_antenna_1 * rx_freqs.size() *
                                       total_antennas;
       auto total_output_samples_2 = num_output_samples_per_antenna_2 * rx_freqs.size() *
@@ -450,12 +563,13 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
       allocate_and_copy_second_stage_host(total_output_samples_2);
       allocate_and_copy_third_stage_host(total_output_samples_3);
 
-      num_first_stage_samples_per_antenna = num_output_samples_per_antenna_1;
-      num_second_stage_samples_per_antenna = num_output_samples_per_antenna_2;
     #endif
 
     rx_freqs = freqs;
+    num_rf_samples = num_samples_rf;
     num_antennas = total_antennas;
+    num_first_stage_samples_per_antenna = num_output_samples_per_antenna_1;
+    num_second_stage_samples_per_antenna = num_output_samples_per_antenna_2;
     num_third_stage_samples_per_antenna = num_output_samples_per_antenna_3;
 
     gpuErrchk(cudaStreamAddCallback(stream, postprocess, this, 0));
@@ -479,9 +593,12 @@ void DSPCore::send_ack()
 
   std::string s_msg_str;
   sp.SerializeToString(&s_msg_str);
-  zmq::message_t s_msg(s_msg_str.size());
+/*  zmq::message_t s_msg(s_msg_str.size());
   memcpy ((void *) s_msg.data(), s_msg_str.c_str(), s_msg_str.size());
-  ack_socket->send(s_msg);
+  ack_socket->send(s_msg);*/
+  auto request = RECV_REQUEST(*ack_socket, sig_options.get_brian_dspbegin_identity());
+  SEND_REPLY(*ack_socket, sig_options.get_brian_dspbegin_identity(), s_msg_str);
+
   DEBUG_MSG(COLOR_RED("Sent ack after copy for sequence_num #" << sequence_num));
 }
 
@@ -489,9 +606,13 @@ void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
 {
   std::string p_msg_str;
   pd.SerializeToString(&p_msg_str);
-  zmq::message_t p_msg(p_msg_str.size());
+/*  zmq::message_t p_msg(p_msg_str.size());
   memcpy ((void *) p_msg.data(), p_msg_str.c_str(), p_msg_str.size());
-  data_write_socket->send(p_msg);
+  data_write_socket->send(p_msg);*/
+
+  auto request = RECV_REQUEST(*data_socket, sig_options.get_dw_dsp_identity());
+  SEND_REPLY(*data_socket, sig_options.get_dw_dsp_identity(), p_msg_str);
+
   DEBUG_MSG(COLOR_RED("Send processed data to data_write for sequence #" << sequence_num));
 }
 
@@ -525,6 +646,9 @@ cuComplex* DSPCore::get_rf_samples_p(){
   return rf_samples_d;
 }
 
+double* DSPCore::get_frequencies_p() {
+  return freqs_d;
+}
 /**
  * @brief      Gets the device pointer to the first stage bandpass filters.
  *
@@ -577,6 +701,10 @@ cuComplex* DSPCore::get_second_stage_output_p(){
  */
 cuComplex* DSPCore::get_third_stage_output_p(){
   return third_stage_output_d;
+}
+
+cuComplex* DSPCore::get_host_output_h() {
+  return host_output_h;
 }
 
 std::vector<double> DSPCore::get_rx_freqs()
@@ -632,6 +760,9 @@ uint32_t DSPCore::get_num_antennas()
   return num_antennas;
 }
 
+uint32_t DSPCore::get_num_rf_samples() {
+  return num_rf_samples;
+}
 uint32_t DSPCore::get_num_first_stage_samples_per_antenna()
 {
   return num_first_stage_samples_per_antenna;

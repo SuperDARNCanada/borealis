@@ -30,7 +30,6 @@ class ExperimentOptions:
         except IOError:
             errmsg = 'Cannot open config file at {}'.format(config_file)
             raise ExperimentException(errmsg)
-
         try:
             self.main_antenna_count = int(config['main_antenna_count'])
             self.interferometer_antenna_count = int(config['interferometer_antenna_count'])
@@ -57,14 +56,28 @@ class ExperimentOptions:
             self.tr_window_time = float(config['tr_window_time'])  # s
             self.atten_window_time_start = float(config['atten_window_time_start'])  # s
             self.atten_window_time_end = float(config['atten_window_time_end'])  # s
-            self.experiment_handler_to_radar_control_address = config[
-                'experiment_handler_to_radar_control_address']
-            self.data_to_experiment_address = config['data_to_experiment_address']
-            self.radar_control_to_driver_address = config['radar_control_to_driver_address']
-            self.radar_control_to_rx_dsp_address = config['radar_control_to_rx_dsp_address']
-            self.rx_dsp_to_radar_control_ack_address = config['rx_dsp_to_radar_control_ack_address']
-            self.rx_dsp_to_radar_control_timing_address = \
-                config['rx_dsp_to_radar_control_timing_address']
+            self.router_address = config['router_address']
+            self.radctrl_to_exphan_identity = str(config["radctrl_to_exphan_identity"])
+            self.radctrl_to_dsp_identity = str(config["radctrl_to_dsp_identity"])
+            self.radctrl_to_driver_identity = str(config["radctrl_to_driver_identity"])
+            self.radctrl_to_brian_identity = str(config["radctrl_to_brian_identity"])
+            self.driver_to_radctrl_identity = str(config["driver_to_radctrl_identity"])
+            self.driver_to_dsp_identity = str(config["driver_to_dsp_identity"])
+            self.driver_to_brian_identity = str(config["driver_to_brian_identity"])
+            self.exphan_to_radctrl_identity = str(config["exphan_to_radctrl_identity"])
+            self.exphan_to_dsp_identity = str(config["exphan_to_dsp_identity"])
+            self.dsp_to_radctrl_identity = str(config["dsp_to_radctrl_identity"])
+            self.dsp_to_driver_identity = str(config["dsp_to_driver_identity"])
+            self.dsp_to_exphan_identity = str(config["dsp_to_exphan_identity"])
+            self.dsp_to_dw_identity = str(config["dsp_to_dw_identity"])
+            self.dspbegin_to_brian_identity = str(config["dspbegin_to_brian_identity"])
+            self.dspend_to_brian_identity = str(config["dspend_to_brian_identity"])
+            self.dw_to_dsp_identity = str(config["dw_to_dsp_identity"])
+            self.brian_to_radctrl_identity = str(config["brian_to_radctrl_identity"])
+            self.brian_to_driver_identity = str(config["brian_to_driver_identity"])
+            self.brian_to_dspbegin_identity = str(config["brian_to_dspbegin_identity"])
+            self.brian_to_dspend_identity = str(config["brian_to_dspend_identity"])
+
             # TODO add appropriate signal process maximum time here after timing is changed - can use to check for pulse spacing minimums, pace the driver
         except ValueError as e:
             # TODO: error
@@ -205,12 +218,6 @@ class ExperimentOptions:
                     \n    atten_window_time_end = {} \
                     \n    default_freq = {} \
                     \n    restricted_ranges = {} \
-                    \n    experiment_handler_to_radar_control_address = {} \
-                    \n    data_to_experiment_address = {} \
-                    \n    radar_control_to_rx_dsp_address = {} \
-                    \n    radar_control_to_driver_address = {} \
-                    \n    rx_dsp_to_radar_control_ack_address = {} \
-                    \n    rx_dsp_to_radar_control_timing_address = {} \
                      """.format(self.main_antenna_count, self.interferometer_antenna_count,
                                 self.main_antenna_spacing, self.interferometer_antenna_spacing,
                                 self.tx_sample_rate, self.rx_sample_rate,
@@ -224,12 +231,6 @@ class ExperimentOptions:
                                 self. minimum_pulse_length, self.minimum_mpinc_length,
                                 self.minimum_pulse_separation, self.tr_window_time,
                                 self.atten_window_time_start, self.atten_window_time_end,
-                                self.default_freq, self.restricted_ranges,
-                                self.experiment_handler_to_radar_control_address,
-                                self.data_to_experiment_address,
-                                self.radar_control_to_rx_dsp_address,
-                                self.radar_control_to_driver_address,
-                                self.rx_dsp_to_radar_control_ack_address,
-                                self.rx_dsp_to_radar_control_timing_address)
+                                self.default_freq, self.restricted_ranges)
         return return_str
 

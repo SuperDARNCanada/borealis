@@ -96,7 +96,7 @@ ENV_EXTENSIONS = {
     ),
     'debug': dict(
         # Extra flags for debug C++ builds
-        CCFLAGS = ['-g', '-DDEBUG'],
+        CCFLAGS = ['-g', '-DDEBUG', '-DENGINEERING_DEBUG'],
         NVCCFLAGS = ['-G'],
     ),
     'release': dict(

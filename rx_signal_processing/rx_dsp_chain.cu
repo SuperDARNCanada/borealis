@@ -21,7 +21,7 @@
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 #include "utils/shared_memory/shared_memory.hpp"
 #include "utils/shared_macros/shared_macros.hpp"
-
+#include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
 #include "dsp.hpp"
 #include "filtering.hpp"
 #include "decimate.hpp"
@@ -31,16 +31,14 @@ int main(int argc, char **argv){
   GOOGLE_PROTOBUF_VERIFY_VERSION; // Verifies that header and lib are same version.
 
   //TODO(keith): verify config options.
-  auto driver_options = DriverOptions();
+  //auto driver_options = DriverOptions();
   auto sig_options = SignalProcessingOptions();
-  auto rx_rate = driver_options.get_rx_rate(); //Hz
+  auto rx_rate = sig_options.get_rx_rate(); //Hz
 
 
-  zmq::context_t sig_proc_context(1); // 1 is context num. Only need one per program as per examples
 
-  zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
+/*  zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
   ERR_CHK_ZMQ(driver_socket.bind(sig_options.get_driver_socket_address()))
-
 
   //This socket is used to receive metadata about the sequence to process
   zmq::socket_t radar_control_socket(sig_proc_context, ZMQ_PAIR);
@@ -49,14 +47,31 @@ int main(int argc, char **argv){
   //This socket is used to acknowledge a completed sequence to radar_control
   zmq::socket_t ack_socket(sig_proc_context, ZMQ_PAIR);
   ERR_CHK_ZMQ(ack_socket.bind(sig_options.get_ack_socket_address()))
-
+*/
   //This socket is used to send the GPU kernel timing to radar_control to know if the processing
   //can be done in real-time.
-  zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
+/*  zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
   ERR_CHK_ZMQ(timing_socket.bind(sig_options.get_timing_socket_address()))
 
   zmq::socket_t data_write_socket(sig_proc_context,ZMQ_PAIR);
   ERR_CHK_ZMQ(data_write_socket.connect(sig_options.get_data_write_address()))
+*/
+  zmq::context_t context(1); // 1 is context num. Only need one per program as per examples
+  auto identities = {sig_options.get_dsp_radctrl_identity(),
+                   sig_options.get_dsp_driver_identity(),
+                   sig_options.get_dsp_exphan_identity(),
+                   sig_options.get_dsp_dw_identity(),
+                   sig_options.get_dspbegin_brian_identity(),
+                   sig_options.get_dspend_brian_identity()};
+
+  auto sockets_vector = create_sockets(context, identities, sig_options.get_router_address());
+
+  zmq::socket_t &dsp_to_radar_control = sockets_vector[0];
+  zmq::socket_t &dsp_to_driver = sockets_vector[1];
+  zmq::socket_t &dsp_to_experiment_handler = sockets_vector[2];
+  zmq::socket_t &dsp_to_data_write = sockets_vector[3];
+  zmq::socket_t &dsp_to_brian_begin = sockets_vector[4];
+  zmq::socket_t &dsp_to_brian_end = sockets_vector[5];
 
   auto gpu_properties = get_gpu_properties();
   print_gpu_properties(gpu_properties);
@@ -104,7 +119,7 @@ int main(int argc, char **argv){
               << COLOR_YELLOW(filters.get_first_stage_lowpass_taps().size()));
   RUNTIME_MSG("Number of 2nd stage taps after padding: "
               << COLOR_YELLOW(filters.get_second_stage_lowpass_taps().size()));
-  RUNTIME_MSG("Number of 3rd stage taps after padding: " 
+  RUNTIME_MSG("Number of 3rd stage taps after padding: "
               << COLOR_YELLOW(filters.get_third_stage_lowpass_taps().size()));
 
   auto filter_timing_end = std::chrono::steady_clock::now();
@@ -119,20 +134,23 @@ int main(int argc, char **argv){
 
   for(;;){
     //Receive packet from radar control
-    zmq::message_t radctl_request;
-    radar_control_socket.recv(&radctl_request);
+
+    auto message =  std::string("Need metadata");
+    SEND_REQUEST(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity(), message);
+    auto reply = RECV_REPLY(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity());
+
     sigprocpacket::SigProcPacket sp_packet;
-    std::string radctrl_str(static_cast<char*>(radctl_request.data()), radctl_request.size());
-    if (sp_packet.ParseFromString(radctrl_str) == false){
+    if (sp_packet.ParseFromString(reply) == false){
       //TODO(keith): handle error
     }
 
     //Then receive packet from driver
-    zmq::message_t driver_request;
-    driver_socket.recv(&driver_request);
+    message = std::string("Need data to process");
+    SEND_REQUEST(dsp_to_driver, sig_options.get_driver_dsp_identity(), message);
+    reply = RECV_REPLY(dsp_to_driver, sig_options.get_driver_dsp_identity());
+
     rxsamplesmetadata::RxSamplesMetadata rx_metadata;
-    std::string driver_str(static_cast<char*>(driver_request.data()), driver_request.size());
-    if (rx_metadata.ParseFromString(driver_str) == false) {
+    if (rx_metadata.ParseFromString(reply) == false) {
       //TODO(keith): handle error
     }
 
@@ -164,8 +182,9 @@ int main(int argc, char **argv){
       //TODO(keith): handle missing name error
     }
 
-    DSPCore *dp = new DSPCore(&ack_socket, &timing_socket, &data_write_socket,
-                             sp_packet.sequence_num(), rx_metadata.shrmemname(), rx_freqs);
+    DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
+                             sig_options, sp_packet.sequence_num(), rx_metadata.shrmemname(),
+                             rx_freqs, &filters);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
@@ -179,6 +198,7 @@ int main(int argc, char **argv){
     DEBUG_MSG("   Total samples in data message: " << total_samples);
 
     dp->allocate_and_copy_rf_samples(total_samples);
+    dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),
                                                 filters.get_first_stage_bandpass_taps_h().size());
 
@@ -194,7 +214,8 @@ int main(int argc, char **argv){
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
       dp->get_first_stage_output_p(),dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
       rx_metadata.numberofreceivesamples(), filters.get_first_stage_lowpass_taps().size(),
-      rx_freqs.size(), total_antennas, "First stage of decimation", dp->get_cuda_stream());
+      rx_freqs.size(), total_antennas, rx_rate, dp->get_frequencies_p(),
+      "First stage of decimation", dp->get_cuda_stream());
 
 
 
@@ -217,7 +238,8 @@ int main(int argc, char **argv){
     call_decimate<DecimationType::lowpass>(dp->get_first_stage_output_p(),
       dp->get_second_stage_output_p(), dp->get_second_stage_filter_p(), second_stage_dm_rate,
       samples_per_antenna_2, filters.get_second_stage_lowpass_taps().size(), rx_freqs.size(),
-      total_antennas, "Second stage of decimation", dp->get_cuda_stream());
+      total_antennas, rx_rate, dp->get_frequencies_p(), "Second stage of decimation",
+      dp->get_cuda_stream());
 
 
     dp->allocate_and_copy_third_stage_filter(filters.get_third_stage_lowpass_taps().data(),
@@ -233,11 +255,13 @@ int main(int argc, char **argv){
     call_decimate<DecimationType::lowpass>(dp->get_second_stage_output_p(),
       dp->get_third_stage_output_p(), dp->get_third_stage_filter_p(), third_stage_dm_rate,
       samples_per_antenna_3, filters.get_third_stage_lowpass_taps().size(), rx_freqs.size(),
-      total_antennas, "Third stage of decimation", dp->get_cuda_stream());
+      total_antennas, rx_rate, dp->get_frequencies_p(), "Third stage of decimation",
+      dp->get_cuda_stream());
 
     dp->allocate_and_copy_host_output(total_output_samples_3);
 
     dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
+                                      rx_metadata.numberofreceivesamples(),
                                       num_output_samples_per_antenna_1,
                                       num_output_samples_per_antenna_2,
                                       num_output_samples_per_antenna_3);
@@ -245,8 +269,5 @@ int main(int argc, char **argv){
 
 
   }
-
-
-
 
 }

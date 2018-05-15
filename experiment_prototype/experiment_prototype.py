@@ -22,6 +22,7 @@ sys.path.append(BOREALISPATH)
 from experiment_exception import ExperimentException
 from sample_building.sample_building import get_wavetables
 import list_tests
+
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from scan_classes.scans import Scan, ScanClassBase
 

@@ -6,12 +6,14 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <zmq.hpp>
+#include <zmq_addon.hpp>
 #include <random>
 #include "utils/protobuf/rxsamplesmetadata.pb.h"
 #include "utils/protobuf/sigprocpacket.pb.h"
 #include "utils/shared_memory/shared_memory.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 #include "utils/driver_options/driveroptions.hpp"
+#include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
 #include <time.h>
 
 std::string random_string( size_t length )
@@ -28,70 +30,6 @@ std::string random_string( size_t length )
   std::string str(length,0);
   std::generate_n( str.begin(), length, randchar );
   return str;
-}
-
-void send_data(rxsamplesmetadata::RxSamplesMetadata& samples_metadata,
-        sigprocpacket::SigProcPacket& sp, std::vector<std::complex<float>>& samples,
-        zmq::socket_t& driver_socket, zmq::socket_t& radctrl_socket,
-        std::chrono::steady_clock::time_point& timing_ack_start)
-{
-  std::string r_msg_str;
-  sp.SerializeToString(&r_msg_str);
-  zmq::message_t r_msg (r_msg_str.size());
-  memcpy ((void *) r_msg.data (), r_msg_str.c_str(), r_msg_str.size());
-
-  auto name_str = random_string(10);
-
-  auto shr_start = std::chrono::steady_clock::now();
-  SharedMemoryHandler shrmem(name_str);
-  auto size = samples.size() * sizeof(std::complex<float>);
-  shrmem.create_shr_mem(size);
-  memcpy(shrmem.get_shrmem_addr(), samples.data(), size);
-  auto shr_end = std::chrono::steady_clock::now();
-  std::cout << "shrmem + memcpy for #" << sp.sequence_num()
-    << " after "
-    << std::chrono::duration_cast<std::chrono::milliseconds>(shr_end - shr_start).count()
-    << "ms" << std::endl;
-
-  std::cout << "Sending data with sequence_num: " << sp.sequence_num() << std::endl;
-
-  radctrl_socket.send(r_msg);
-
-  samples_metadata.set_shrmemname(name_str.c_str());
-
-  std::string samples_metadata_str;
-  samples_metadata.SerializeToString(&samples_metadata_str);
-  zmq::message_t samples_metadata_msg (samples_metadata_str.size());
-  memcpy ((void *) samples_metadata_msg.data (), samples_metadata_str.c_str(),
-      samples_metadata_str.size());
-
-  driver_socket.send(samples_metadata_msg);
-}
-
-void timing(zmq::context_t &context)
-{
-  auto sig_options = SignalProcessingOptions();
-  zmq::socket_t timing_socket(context, ZMQ_PAIR);
-  timing_socket.connect(sig_options.get_timing_socket_address());
-
-  auto timing_timing_end = std::chrono::steady_clock::now();
-  auto timing_timing_start = std::chrono::steady_clock::now();
-  while(1) {
-      sigprocpacket::SigProcPacket timing_from_dsp;
-      zmq::message_t timing;
-      timing_socket.recv(&timing);
-      std::string s_msg_str2(static_cast<char*>(timing.data()), timing.size());
-      timing_from_dsp.ParseFromString(s_msg_str2);
-
-      timing_timing_end = std::chrono::steady_clock::now();
-      auto seq_time = timing_timing_end - timing_timing_start;
-      std::cout << "Received timing for sequence #" << timing_from_dsp.sequence_num()
-        << " after " << std::chrono::duration_cast<std::chrono::milliseconds>(seq_time).count()
-        << "ms with decimation timing of " << timing_from_dsp.kerneltime() << "ms" <<  std::endl;
-
-      timing_timing_start = std::chrono::steady_clock::now();
-
-    }
 }
 
 std::vector<std::complex<float>> simulate_samples(uint32_t num_antennas,
@@ -165,14 +103,21 @@ void signals(zmq::context_t &context)
 {
   auto sig_options = SignalProcessingOptions();
 
-  zmq::socket_t driver_socket(context, ZMQ_PAIR);
-  driver_socket.connect(sig_options.get_driver_socket_address());
+  auto identities = {sig_options.get_radctrl_dsp_identity(),
+                   sig_options.get_driver_dsp_identity(),
+                   sig_options.get_exphan_dsp_identity(),
+                   sig_options.get_dw_dsp_identity(),
+                   sig_options.get_brian_dspbegin_identity(),
+                   sig_options.get_brian_dspend_identity()};
 
-  zmq::socket_t radctrl_socket(context, ZMQ_PAIR);
-  radctrl_socket.connect(sig_options.get_radar_control_socket_address());
+  auto sockets_vector = create_sockets(context, identities, sig_options.get_router_address());
 
-  zmq::socket_t ack_socket(context, ZMQ_PAIR);
-  ack_socket.connect(sig_options.get_ack_socket_address());
+  zmq::socket_t &radar_control_to_dsp = sockets_vector[0];
+  zmq::socket_t &driver_to_dsp = sockets_vector[1];
+  zmq::socket_t &experiment_handler_to_dsp = sockets_vector[2];
+  zmq::socket_t &data_write_to_dsp = sockets_vector[3];
+  zmq::socket_t &brian_to_dspbegin = sockets_vector[4];
+  zmq::socket_t &brian_to_dspend = sockets_vector[5];
 
   sigprocpacket::SigProcPacket sp;
 
@@ -180,7 +125,7 @@ void signals(zmq::context_t &context)
   auto rx_rate = driver_options.get_rx_rate();
 
 
-  std::vector<double> rx_freqs = {1.0e6};
+  std::vector<double> rx_freqs = {1.0e6, 2.0e6, 3.0e6};
   for (int i=0; i<rx_freqs.size(); i++) {
     auto rxchan = sp.add_rxchannel();
     rxchan->set_rxfreq(rx_freqs[i]);
@@ -198,28 +143,62 @@ void signals(zmq::context_t &context)
   auto num_samples = uint32_t(rx_rate* 0.096);
   samples_metadata.set_numberofreceivesamples(num_samples);
 
-  auto samples = simulate_samples(num_antennas, num_samples, rx_freqs, rx_rate, true);
+  auto samples = simulate_samples(num_antennas, num_samples, rx_freqs, rx_rate, false);
 
   auto sqn_num = 0;
 
   sp.set_sequence_num(sqn_num);
   samples_metadata.set_sequence_num(sqn_num);
 
-  std::chrono::steady_clock::time_point timing_ack_start, timing_ack_end;
+  std::chrono::steady_clock::time_point timing_ack_start, timing_ack_end, total_time_start,
+                                        total_time_end;
   std::chrono::milliseconds accum_time(0);
 
-  send_data(samples_metadata, sp, samples, driver_socket, radctrl_socket, timing_ack_start);
   sqn_num += 1;
 
   auto seq_counter = 0;
+  auto first_time = true;
   while(1) {
+
+    std::string r_msg_str;
+    sp.SerializeToString(&r_msg_str);
+
+    auto request = RECV_REQUEST(radar_control_to_dsp, sig_options.get_dsp_radctrl_identity());
+    SEND_REPLY(radar_control_to_dsp, sig_options.get_dsp_radctrl_identity(), r_msg_str);
+
+    auto name_str = random_string(10);
+
+    auto shr_start = std::chrono::steady_clock::now();
+    SharedMemoryHandler shrmem(name_str);
+    auto size = samples.size() * sizeof(std::complex<float>);
+    shrmem.create_shr_mem(size);
+    memcpy(shrmem.get_shrmem_addr(), samples.data(), size);
+    auto shr_end = std::chrono::steady_clock::now();
+    std::cout << "shrmem + memcpy for #" << sp.sequence_num()
+      << " after "
+      << std::chrono::duration_cast<std::chrono::milliseconds>(shr_end - shr_start).count()
+      << "ms" << std::endl;
+
+    std::cout << "Sending data with sequence_num: " << sp.sequence_num() << std::endl;
+
+    samples_metadata.set_shrmemname(name_str.c_str());
+
+    std::string samples_metadata_str;
+    samples_metadata.SerializeToString(&samples_metadata_str);
+    request = RECV_REQUEST(driver_to_dsp, sig_options.get_dsp_driver_identity());
+    SEND_REPLY(driver_to_dsp, sig_options.get_dsp_driver_identity(), samples_metadata_str);
+
+    total_time_start = std::chrono::steady_clock::now();
+    timing_ack_start = std::chrono::steady_clock::now();
+
+    request = std::string("Need ack");
+    SEND_REQUEST(brian_to_dspbegin, sig_options.get_dspbegin_brian_identity(), request);
+    auto ack = RECV_REPLY(brian_to_dspbegin, sig_options.get_dspbegin_brian_identity());
     sigprocpacket::SigProcPacket ack_from_dsp;
-    zmq::message_t ack;
-    ack_socket.recv(&ack);
-    std::string s_msg_str1(static_cast<char*>(ack.data()), ack.size());
-    ack_from_dsp.ParseFromString(s_msg_str1);
+    ack_from_dsp.ParseFromString(ack);
 
     timing_ack_end = std::chrono::steady_clock::now();
+
     seq_counter++;
     auto seq_time = timing_ack_end - timing_ack_start;
     std::cout << "Received ack #"<< ack_from_dsp.sequence_num() << " for sequence #"
@@ -235,16 +214,36 @@ void signals(zmq::context_t &context)
         accum_time = std::chrono::milliseconds(0);
     }
 
-    timing_ack_start = std::chrono::steady_clock::now();
-    sp.set_sequence_num(sqn_num);
+    auto timing_timing_start = std::chrono::steady_clock::now();
 
+    request = std::string("Need timing");
+    SEND_REQUEST(brian_to_dspend, sig_options.get_dspend_brian_identity(), request);
+    auto timing = RECV_REPLY(brian_to_dspend, sig_options.get_dspend_brian_identity());
+
+    sigprocpacket::SigProcPacket timing_from_dsp;
+    timing_from_dsp.ParseFromString(timing);
+
+    auto timing_timing_end = std::chrono::steady_clock::now();
+    auto timing_time = timing_timing_end - timing_timing_start;
+    std::cout << "Received timing for sequence #" << timing_from_dsp.sequence_num()
+      << " after " << std::chrono::duration_cast<std::chrono::milliseconds>(timing_time).count()
+      << "ms with decimation timing of " << timing_from_dsp.kerneltime() << "ms" <<  std::endl;
+
+    total_time_end = std::chrono::steady_clock::now();
+    auto total_time = total_time_end - total_time_start;
+    std::cout << "Sequence_num #" << timing_from_dsp.sequence_num()
+    << " total time " << std::chrono::duration_cast<std::chrono::milliseconds>(total_time).count()
+    << "ms" <<  std::endl;
+
+
+    sqn_num++;
+    sp.set_sequence_num(sqn_num);
     samples_metadata.set_sequence_num(sqn_num);
 
-    send_data(samples_metadata,sp, samples,driver_socket, radctrl_socket, timing_ack_start);
     #ifdef DEBUG
       usleep(0.1e6);
     #endif
-    sqn_num += 1;
+
   }
 }
 
@@ -252,12 +251,13 @@ int main(int argc, char** argv){
 
   srand(time(NULL));
   zmq::context_t context(1);
+  auto sig_options = SignalProcessingOptions();
 
   std::vector<std::thread> threads;
-  std::thread timing_t(timing,std::ref(context));
+  //std::thread router_t(router,std::ref(context), sig_options.get_router_address());
   std::thread signals_t(signals, std::ref(context));
 
-  threads.push_back(std::move(timing_t));
+  //threads.push_back(std::move(router_t));
   threads.push_back(std::move(signals_t));
 
   for (auto& th : threads) {

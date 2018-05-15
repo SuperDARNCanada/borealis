@@ -63,10 +63,16 @@ DriverOptions::DriverOptions() {
         return receive_channels;
     }();
 
-    radar_control_to_driver_address_ = config_pt.get<std::string>
+/*    radar_control_to_driver_address_ = config_pt.get<std::string>
                                             ("radar_control_to_driver_address");
-    driver_to_rx_dsp_address_ = config_pt.get<std::string>("driver_to_rx_dsp_address");
-
+    driver_to_rx_dsp_address_ = config_pt.get<std::string>("driver_to_rx_dsp_address");*/
+    router_address_ = config_pt.get<std::string>("router_address");
+    driver_to_radctrl_identity_ = config_pt.get<std::string>("driver_to_radctrl_identity");
+    driver_to_dsp_identity_ = config_pt.get<std::string>("driver_to_dsp_identity");
+    driver_to_brian_identity_ = config_pt.get<std::string>("driver_to_brian_identity");
+    radctrl_to_driver_identity_ = config_pt.get<std::string>("radctrl_to_driver_identity");
+    dsp_to_driver_identity_ = config_pt.get<std::string>("dsp_to_driver_identity");
+    brian_to_driver_identity_ = config_pt.get<std::string>("brian_to_driver_identity");
 }
 
 double DriverOptions::get_tx_rate() const
@@ -169,7 +175,45 @@ std::vector<size_t> DriverOptions::get_receive_channels() const
     return receive_channels_;
 }
 
-std::string DriverOptions::get_radar_control_to_driver_address() const
+std::string DriverOptions::get_driver_to_radctrl_identity() const
+{
+    return driver_to_radctrl_identity_;
+}
+
+std::string DriverOptions::get_driver_to_dsp_identity() const
+{
+    return driver_to_dsp_identity_;
+}
+
+std::string DriverOptions::get_driver_to_brian_identity() const
+{
+    return driver_to_brian_identity_;
+}
+
+std::string DriverOptions::get_router_address() const
+{
+    return router_address_;
+}
+
+std::string DriverOptions::get_radctrl_to_driver_identity() const
+{
+    return radctrl_to_driver_identity_;
+}
+
+
+std::string DriverOptions::get_dsp_to_driver_identity() const
+{
+    return dsp_to_driver_identity_;
+}
+
+
+std::string DriverOptions::get_brian_to_driver_identity() const
+{
+    return brian_to_driver_identity_;
+}
+
+
+/*std::string DriverOptions::get_radar_control_to_driver_address() const
 {
     return radar_control_to_driver_address_;
 }
@@ -178,3 +222,4 @@ std::string DriverOptions::get_driver_to_rx_dsp_address() const
 {
     return driver_to_rx_dsp_address_;
 }
+*/
