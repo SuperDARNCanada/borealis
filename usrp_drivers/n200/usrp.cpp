@@ -11,6 +11,8 @@ See LICENSE for details.
 #include <memory>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <cmath>
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
@@ -289,16 +291,28 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
  * @brief      Sets the USRP time source.
  *
  * @param[in]  source   A string with the time source the USRP will use.
+ *
+ * This uses Juha Vierinen's method of latching to the current time by making sure the clock time
+ * is in a stable place past the second. The USRP is then set to this time.
  */
 void USRP::set_time_source(std::string source)
 {
+  auto tt =  std::chrono::high_resolution_clock::now();
+  auto tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(tt.time_since_epoch());
+  while (tt_sc.count()-std::floor(tt_sc.count()) < 0.2 or
+         tt_sc.count()-std::floor(tt_sc.count()) > 0.3)
+  {
+    tt =  std::chrono::high_resolution_clock::now();
+    tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(tt.time_since_epoch());
+    usleep(10000);
+  }
   if (source == "external"){
     usrp_->set_time_source(source);
-    usrp_->set_time_unknown_pps(uhd::time_spec_t(0.0));
+    usrp_->set_time_unknown_pps(std::ceil(tt_sc.count()) + 1);
   }
   else {
     //TODO(keith): throw error
-    usrp_->set_time_now(0.0);
+    usrp_->set_time_now(tt_sc.count());
   }
 }
 
