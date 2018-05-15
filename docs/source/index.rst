@@ -11,20 +11,8 @@ Contents - THIS NEEDS WORK:
 ..  toctree::
     :maxdepth: 2
 
-    borealis
-
-    /config
-    /experiment_prototype_doc
-    /example_experiment
     /starting_the_radar
-
-..  automodule:: experiment_exception
-
-    ..  autoclass:: ExperimentException
-        :members:
-
-..  automodule:: scan_classes
-    :members:
+    /modules
 
 Indices and tables
 ==================

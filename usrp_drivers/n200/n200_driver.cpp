@@ -69,10 +69,24 @@ std::vector<size_t> make_tx_channels(const driverpacket::DriverPacket &driver_pa
  * Values in a protobuffer have no contiguous underlying storage so values need to be
  * parsed into a vector.
  */
-std::vector<std::vector<std::complex<float>>> make_tx_samples(const driverpacket::DriverPacket
-                                                                &driver_packet)
+std::vector<std::vector<std::complex<float>>> make_tx_samples(
+                                                    const driverpacket::DriverPacket &driver_packet, 
+                                                    const DriverOptions &driver_options)
 {
   std::vector<std::vector<std::complex<float>>> samples(driver_packet.channel_samples_size());
+
+  // With TXIO board, we pad 0s to correspond with the first signal to go high which is the atten
+  // signal. A hardware delay will then activate TR.
+  int tr_start_pad = std::ceil(driver_packet.txrate() * 
+                              (driver_options.get_atten_window_time_start() + 
+                               driver_options.get_tr_window_time()));
+
+  // We pad 0s to the end to the first signal that drops low which is TR. The hardware delay will
+  // then drop the atten signal low. 
+  int tr_end_pad = std::ceil(driver_packet.txrate() * driver_options.get_tr_window_time());
+
+  std::vector<std::complex<float>> start_pad(tr_start_pad, std::complex<float>(0.0f,0.0f));
+  std::vector<std::complex<float>> end_pad(tr_end_pad, std::complex<float>(0.0f,0.0f));
   for (int channel=0; channel<driver_packet.channel_samples_size(); channel++) {
     auto num_samps = driver_packet.channel_samples(channel).real_size();
     std::vector<std::complex<float>> v(num_samps);
@@ -80,6 +94,9 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(const driverpacket
     for (int smp_num = 0; smp_num < num_samps; smp_num++) {
       v[smp_num] = std::complex<float>(smp.real(smp_num), smp.imag(smp_num));
     }
+
+    v.insert(v.begin(), start_pad.begin(), start_pad.end());
+    v.insert(v.end(), end_pad.begin(), end_pad.end());
     samples[channel] = v;
   }
 
@@ -251,7 +268,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             //Parse new samples from driver packet if they exist.
             if (driver_packet.channel_samples_size() > 0)
             {  // ~700us to unpack 4x1600 samples
-              samples = make_tx_samples(driver_packet);
+              samples = make_tx_samples(driver_packet, driver_options);
               samples_per_buff = samples[0].size();
               samples_set = true;
             }

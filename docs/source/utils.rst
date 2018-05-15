@@ -1,3 +1,14 @@
+utils package
+=============
+
+utils.experiment_options.experimentoptions module
+-------------------------------------------------
+
+.. automodule:: utils.experiment_options.experimentoptions
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 =================
 Config Parameters
 =================
@@ -103,3 +114,4 @@ Config Parameters
 +---------------------------------------------+--------------------------------+--------------------------------------+
 | data_to_experiment_address                  | 'tcp://127.0.0.1:5006'         |    ??                                |
 +---------------------------------------------+--------------------------------+--------------------------------------+
+

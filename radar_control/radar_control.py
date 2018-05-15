@@ -1,14 +1,17 @@
 #!/usr/bin/python
 
-# Copyright 2017 SuperDARN Canada
-#
-# Marci Detwiller
-#
-# radar_control.py
-# 2017-03-13
-# Get a radar control program made of objects (scans, averaging periods, and sequences).
-# Communicate with the n200_driver to control the radar.
-# Communicate with the rx_dsp_chain to process the data.
+"""
+    radar_control process
+    ~~~~~~~~~~~~~~~~~~~~~
+    
+    Radar_control is the process that runs the radar (sends pulses to the driver with
+    timing information and sends processing information to the signal processing process).
+    Experiment_handler provides the experiment for radar_control to run. It iterates
+    through the scan_class_base objects to control the radar. 
+
+    :copyright: 2018 SuperDARN Canada
+    :author: Marci Detwiller
+"""
 
 import cmath
 import sys
@@ -20,25 +23,25 @@ import zmq
 import cPickle as pickle
 
 sys.path.append(os.environ["BOREALISPATH"])
-from experiments.experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 if __debug__:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
+    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils')
 else:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
-import driverpacket_pb2
-import sigprocpacket_pb2
+    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils')
+from protobuf.driverpacket_pb2 import DriverPacket
+from protobuf.sigprocpacket_pb2 import SigProcPacket
 
 from sample_building.sample_building import azimuth_to_antenna_offset
-from experiments.experiment_prototype import ExperimentPrototype
+from experiment_prototype.experiment_prototype import ExperimentPrototype
+
 from radar_status.radar_status import RadarStatus
 from utils.zmq_borealis_helpers import socket_operations
 
 
 def printing(msg):
     """
-
     :param msg:
     :return:
     """
@@ -74,6 +77,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
         in the sequence, in which case we will save the time and not send the samples list and other
         params that will be the same.
     """
+
     driverpacket.Clear()
     driverpacket.timetosendsamples = timing
     driverpacket.SOB = SOB
@@ -86,7 +90,8 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
         # ctrfreq empty
         # rxrate and txrate empty
         if __debug__:
-            print("REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3};".format(timing, SOB, EOB, antennas))
+            print("REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3}"
+                  ";".format(timing, SOB, EOB, antennas))
     else:
         # SETUP data to send to driver for transmit.
         for ant in antennas:
@@ -94,8 +99,8 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
         for samples in samples_array:
             sample_add = driverpacket.channel_samples.add()
             # Add one Samples message for each channel.
-            # Protobuf expects types: int, long, or float, will reject numpy types and throw a
-            # TypeError so we must convert the numpy arrays to lists
+            # Protobuf expects types: int, long, or float, will reject numpy types and
+            # throw a TypeError so we must convert the numpy arrays to lists
             sample_add.real.extend(samples.real.tolist())
             sample_add.imag.extend(samples.imag.tolist())
         driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
@@ -103,7 +108,8 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
         driverpacket.txrate = txrate
         driverpacket.numberofreceivesamples = numberofreceivesamples
         if __debug__:
-            print("NOT A REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3};".format(timing, SOB, EOB, antennas))
+            print("NOT A REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3}"
+                  ";".format(timing, SOB, EOB, antennas))
 
    # txsocket.send(driverpacket.SerializeToString())
     socket_operations.send_pulse(radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString())
@@ -185,7 +191,8 @@ def search_for_experiment(radar_control_to_exp_handler,
     Check for new experiments from the experiment handler
     :param radctrl_to_exphan_iden: The
     :param status: status of type RadarStatus.
-    :return: boolean (True for new experiment received), and the experiment (or None if there is no new experiment)
+    :returns new_experiment_received: boolean (True for new experiment received)
+    :returns experiment: experiment instance (or None if there is no new experiment)
     """
 
 
@@ -224,17 +231,23 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 def radar():
     """
-    Receives an instance of an experiment. Iterates through
-    the Scans, AveragingPeriods, Sequences, and pulses of the experiment.
+    Run the radar with the experiment supplied by experiment_handler.
+    
+    Receives an instance of an experiment. Iterates through the Scans, 
+    AveragingPeriods, Sequences, and pulses of the experiment.
+    
     For every pulse, samples and other control information are sent to the n200_driver.
-    For every pulse sequence, processing information is sent to the signal processing block.
-    After every integration time (AveragingPeriod), the experiment block is given the opportunity
-    to change the control program. If a new program is sent, radar will halt the old one and begin
-    with the new experiment.
+    
+    For every pulse sequence, processing information is sent to the signal processing 
+    block.
+    
+    After every integration time (AveragingPeriod), the experiment block is given the 
+    opportunity to change the experiment (not currently implemented). If a new 
+    experiment is sent, radar will halt the old one and begin with the new experiment.
     """
 
     # Initialize driverpacket.
-    driverpacket = driverpacket_pb2.DriverPacket()
+    driverpacket = DriverPacket()
 
     # Get config options.
     options = ExperimentOptions()
@@ -257,7 +270,7 @@ def radar():
     radar_control_to_driver = sockets_list[2]
     radar_control_to_brian = sockets_list[3]
 
-    sigprocpacket = sigprocpacket_pb2.SigProcPacket()
+    sigprocpacket = SigProcPacket()
     # seqnum is used as a identifier in all packets while
     # radar is running so set it up here.
     # seqnum will get increased by nave (number of averages or sequences in the integration period)
@@ -279,7 +292,7 @@ def radar():
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         for scan in experiment.scan_objects:
             # if a new experiment was received during the last scan, it finished the integration period it was on and
-            # returned here with new_experiment_flag set to True. Now change experiments if necessary.
+            # returned here with new_experiment_flag set to True. Now change experiment_prototype if necessary.
             if new_experiment_flag:  # start anew on first scan if we have a new experiment.
                 try:
                     experiment = new_experiment

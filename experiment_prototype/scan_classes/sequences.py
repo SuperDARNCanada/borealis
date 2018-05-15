@@ -1,52 +1,98 @@
 #!/usr/bin/python
 
+"""
+    sequences
+    ~~~~~~~~~
+    This is the module containing the Sequence class. The Sequence class contains the 
+    ScanClassBase members, as well as a list of pulse dictionaries, 
+    the total_combined_pulses in the sequence, power_divider, last_pulse_len, ssdelay, 
+    seqtime, which together give sstime (scope synce time, or time for receiving, 
+    and numberofreceivesamples to sample during the receiving window (calculated using 
+    the receive sampling rate). 
+
+    :copyright: 2018 SuperDARN Canada
+    :author: Marci Detwiller
+"""
+
 from operator import itemgetter
 
 from sample_building.sample_building import make_pulse_samples
-from experiments.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 
 
 class Sequence(ScanClassBase):
-    """
-    Scans are made up of AveragingPeriods, these are typically a 3sec time of
-    the same pulse sequence pointing in one direction.  AveragingPeriods are made
-    up of Sequences, typically the same sequence run ave. 20-30 times after a clear
-    frequency search.  Sequences are made up of pulses, which is a list of dictionaries 
-    where each dictionary describes a pulse. 
+    """  
+    Set up the sequence class. 
+    
+    **The members of the sequence are:**
+    
+    pulses
+        a list of pre-combined, pre-sampled pulse dictionaries (one dictionary = one 
+        basic pulse of single frequency). The dictionary keys are: isarepeat, 
+        pulse_timing_us, slice_id, slice_pulse_index, pulse_len, 
+        intra_pulse_start_time, combined_pulse_index, pulse_shift, iscombined, 
+        combine_total, and combine_index.
+    total_combined_pulses
+        the total number of pulses to be sent by the driver. This may not
+        be the sum of pulses in all slices in the sequence, as some pulses may need to be 
+        combined because they are overlapping in timing. This is the number of pulses in the 
+        combined sequence, or the number of times T/R signal goes high in the sequence.
+    power_divider
+        the power ratio per slice. If there are multiple slices in the same 
+        pulse then we must reduce the output amplitude to potentially accommodate multiple
+        frequencies.
+    last_pulse_len
+        the length of the last pulse (us)
+    ssdelay
+        delay past the end of the sequence to receive for (us) - function of nrang and
+        pulse_len. ss stands for scope sync.
+    seqtime
+        the amount of time for the whole sequence to transmit, until the logic signal 
+        switches low on the last pulse in the sequence.
+    sstime  
+        ssdelay + seqtime (total time for receiving).
+    numberofreceivesamples
+        the number of receive samples to take, given the rx rate, during 
+        the sstime.
+    
+    **Pulses is a list of pulse dictionaries. The pulse dictionary keys are:**
+    
+    isarepeat
+        Boolean, True if the pulse is exactly the same as the last pulse in the sequence.
+    pulse_timing_us
+        The time past the start of sequence for this pulse to start at (us).
+    slice_id
+        The slice_id that corresponds to this pulse and gives the information about the 
+        experiment and pulse information (frequency, nrang, frang, etc.).
+    slice_pulse_index
+        The index of the pulse in its own slice's sequence. 
+    pulse_len
+        The length of the pulse (us)
+    intra_pulse_start_time
+        If the pulse is combined with another pulse and they transmit in a single USRP 
+        burst, then we need to know if there is an offset from one pulse's samples being
+        sent and the other pulse's samples being sent. 
+    combined_pulse_index
+        The combined_pulse_index is the index corresponding with actual number of pulses 
+        that will be sent to driver, after combinations are completed. Multiple pulse 
+        dictionaries in self.pulses can have the same combined_pulse_index if they are 
+        combined together, ie are close enough in timing that T/R will not go low 
+        between them, and we will combine the samples of both pulses into one set to 
+        send to the driver.
+    pulse_shift
+        Phase shift for this pulse, for doing pulse coding.
+    iscombined
+        Boolean, true if there is another pulse with the same combined_pulse_index.
+    combine_total
+        Total number of pulse dictionaries that have the same combined_pulse_index as 
+        this one. (minimum number = 1, itself).
+    combine_index
+        Index of this pulse dictionary in regards to all the other pulse dictionaries that
+        have the same combined_pulse_index. 
     """
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, options):
-        """
-        Set up the sequence class. 
-        
-        This includes setting up the pulses. self.pulses is a list of
-        dictionaries where one dictionary = one pulse. The dictionary keys are : isarepeat, 
-        pulse_timing_us, slice_id, slice_pulse_index, pulse_len, intra_pulse_start_time, 
-        combined_pulse_index, pulse_shift, iscombined, combine_total, and combine_index.
-        
-        Other specific members of the sequence are:
-        total_combined_pulses: the total number of pulses to be sent by the driver. This may not
-            be the sum of pulses in all slices in the sequence, as some pulses may need to be 
-            combined because they are overlapping in timing. This is the number of pulses in the 
-            combined sequence, or the number of times T/R signal goes high in the sequence.
-        power_divider: the power ratio per slice. If there are multiple slices in the same 
-            pulse then we must reduce the output amplitude to potentially accommodate multiple
-            frequencies.
-        last_pulse_len: the length of the last pulse (us)
-        ssdelay: delay past the end of the sequence to receive for (us) - function of nrang and
-            pulse_len. ss stands for scope sync.
-        seqtime: the amount of time for the whole sequence to transmit, until the logic signal 
-            switches low on the last pulse in the sequence.
-        sstime: ssdelay + seqtime (total time for receiving.
-        numberofreceivesamples: the number of receive samples to take, given the rx rate, during 
-            the sstime.
-        
-        :param seqn_keys - slice ids in this sequence
-        :param sequence_slice_dict
-        :param sequence_interface
-        :param options
 
-        """
         # TODO describe pulse dictionary in docs
         # TODO make diagram(s) for pulse combining algorithm
         # TODO make diagram for pulses that are repeats, showing clearly what intra_pulse_start_time,
@@ -263,18 +309,42 @@ class Sequence(ScanClassBase):
 
     def build_pulse_transmit_data(self, slice_to_beamdir_dict, txctrfreq, txrate, options):
         #TODO only take in things you need or add needed params from options in the init function.
-        # These params would be main_antenna_count, main_antenna_spacing and some pulse building
+        # hese params would be main_antenna_count, main_antenna_spacing and some pulse
+        # building
         # parameters needed for basic_samples function in sample_mapping.
         # TODO consider rewriting options to have a mapping of transmit antennas and their
         # TODO ... orientation (do not assume main array all in a line at certain spacing.
         # TODO ... this orientation would also then be passed to signal processing.
         """
-        Build a list of pulse dictionaries including samples data to send to driver.
-        :param: slice_to_beamdir_dict:
-        :param: txctrfreq:
-        :param: txrate:
-        :param: options:
-        :return: sequence_list: list of pulse dictionaries in correct order.
+        Build a list of ready-to-transmit pulse dictionaries (with samples) to send to 
+        driver.
+        
+        :param: slice_to_beamdir_dict: dictionary of slice id to beam direction(s) for 
+         a single averaging period (i.e. if the list len > 1, we're imaging).
+        :param: txctrfreq: Centre frequency the USRP is tuned to.
+        :param: txrate: The transmit sample rate
+        :param: options: The config options.
+        :returns sequence_list: list of combined pulse dictionaries in correct order. 
+         The keys in the ready-to-transmit pulse dictionary are:
+         
+         startofburst
+            Boolean, True if this is the first pulse in the sequence.
+         endofburst
+            Boolean, True if this is the last pulse in the sequence.
+         pulse_antennas
+            The antennas to transmit on
+         samples_array
+            a list of arrays - each array corresponds to an antenna (the
+            samples are phased). All arrays are the same length for a single pulse on 
+            that antenna. The length of the list is equal to main_antenna_count (all 
+            samples are calculated). If we are not using an antenna, that index is a 
+            numpy array of zeroes.
+         timing
+            The time to send the pulse at (past the start of sequence, us)
+         isarepeat
+            Boolean, True if this pulse is the same as the last pulse except for its 
+            timing.
+         
         """
 
         sequence_list = []
