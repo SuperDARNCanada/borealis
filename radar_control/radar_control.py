@@ -27,11 +27,12 @@ from experiment_prototype.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 if __debug__:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils')
+    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')
 else:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils')
-from protobuf.driverpacket_pb2 import DriverPacket
-from protobuf.sigprocpacket_pb2 import SigProcPacket
+    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
+
+from driverpacket_pb2 import DriverPacket
+from sigprocpacket_pb2 import SigProcPacket
 
 from sample_building.sample_building import azimuth_to_antenna_offset
 from experiment_prototype.experiment_prototype import ExperimentPrototype
@@ -415,8 +416,8 @@ def radar():
                                 time.sleep(1)
                             # Sequence is done
                             nave = nave + 1
-                    if __debug__:
-                        print("Number of integrations: {}".format(nave))
+                    #if __debug__:
+                    print("Number of integrations: {}".format(nave))
                     seqnum_start += nave
                     # end of the averaging period loop - move onto the next averaging period. Increment the sequence
                     # number by the number of sequences that were in this averaging period.

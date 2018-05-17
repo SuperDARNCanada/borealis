@@ -111,7 +111,7 @@ def retrieve_experiment():
 
     list_experiments = []
     for class_name, class_obj in experiment_classes.items():
-        if experiment_proto_class in inspect.getmro(class_name):  # an experiment
+        if experiment_proto_class in inspect.getmro(class_obj):  # an experiment
             # must inherit from ExperimentPrototype
             # other utility classes might be in the file but we will ignore them.
             list_experiments.append(class_obj)
@@ -182,6 +182,7 @@ def experiment_handler(semaphore):
         change_flag = exp.update(some_data)
         if change_flag:
             exp.build_scans()
+            print "REBUILDING EXPERIMENT BECAUSE change_flag = TRUE!!!"
         semaphore.release()
 
         if __debug__:

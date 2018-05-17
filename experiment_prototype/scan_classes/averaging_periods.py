@@ -113,6 +113,24 @@ class AveragingPeriod(ScanClassBase):
         for params in self.prep_for_nested_scan_class():
             self.sequences.append(Sequence(*params))
 
+        #for beam_iter in len(beams[self.slice_ids[0]]):
+
+        #self.beamdir = {}
+        #self.scan_beams = {}
+        #for slice_id in self.slice_ids:
+        #    self.beamdir[slice_id] = self.slice_dict[slice_id]['beam_angle']
+        #    self.scan_beams[slice_id] = self.slice_dict[slice_id]['beam_order']
+
+        #slice_to_beamdir_dict = self.set_beamdirdict(beam_iter)
+
+        # Build an ordered list of sequences
+        # A sequence is a list of pulses in order
+        # A pulse is a dictionary with all required information for that pulse.
+        #sequence_dict_list = self.build_sequences(slice_to_beamdir_dict,
+        #                                               experiment.txctrfreq,
+        #                                               experiment.txrate, options)  # TODO pass in only options needed.
+
+
     def get_sequence_slice_ids(self):
         """
         Return the slice_ids that are within the Sequences in this AveragingPeriod 

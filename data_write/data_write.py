@@ -203,7 +203,7 @@ class DataWrite(object):
 
         # Format the name and location for the dataset
         today_string = datetime.datetime.today().strftime("%Y%m%d")
-        datetime_string = datetime.datetime.today().strftime("%Y%m%d.%H%M.%S")
+        datetime_string = datetime.datetime.today().strftime("%Y%m%d.%H%M.%S.%f")
         dataset_name = "{0}.{1}.{2}.{3}".format(datetime_string, self.options.site_id,
                                                 data_format_string, file_format_string)
         dataset_directory = "{0}/{1}".format(self.options.data_directory, today_string)
@@ -250,12 +250,13 @@ if __name__ == '__main__':
         if __debug__:
             dw.output_debug_data()
         else:
+            start = datetime.datetime.now()
             dw.output_data(write_pre_bf_iq=True)
 
-        if __debug__:
-            end = datetime.datetime.now()
-            diff = end - start
-            time = diff.total_seconds() * 1000
-            print("Sequence number: {0}".format(pd.sequence_num))
-            print("Time to process samples: {0} s".format(pd.processing_time))
-            print("Time to parse + write: {0} ms".format(time))
+        
+        end = datetime.datetime.now()
+        diff = end - start
+        time = diff.total_seconds() * 1000
+        print("Sequence number: {0}".format(pd.sequence_num))
+        print("Time to process samples: {0} s".format(pd.processing_time))
+        print("Time to parse + write: {0} ms".format(time))

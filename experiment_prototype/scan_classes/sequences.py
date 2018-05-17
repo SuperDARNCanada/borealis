@@ -286,6 +286,7 @@ class Sequence(ScanClassBase):
         # (numberofreceivesamples) using scope sync and send that to the driver to sample at
         # a specific rxrate (given by the config).
 
+        #TODO: Account for frang in ssdelay?
         self.ssdelay = max([self.slice_dict[slice_id]['nrang'] *
                             self.slice_dict[slice_id]['pulse_len'] for slice_id in self.slice_ids])
         # The delay is long enough for any slice's pulse length and nrang to be accounted for.
