@@ -163,17 +163,18 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
         rads = sampling_freq * np.arange(0, sampleslen)
         wave_form = np.exp(rads * 1j)
 
-        #amplitude_ramp_up = [ind * max_amplitude / linear_rampsampleslen for ind in np.arange(0, linear_rampsampleslen)]
-        #amplitude_ramp_down = np.flipud(amplitude_ramp_up)  # reverse
-        #amplitude = [max_amplitude for ind in np.arange(linear_rampsampleslen, sampleslen - linear_rampsampleslen)]
-        #linear_amps = np.concatenate((amplitude_ramp_up, amplitude, amplitude_ramp_down))
+        amplitude_ramp_up = [ind * max_amplitude / linear_rampsampleslen for ind in np.arange(0, linear_rampsampleslen)]
+        amplitude_ramp_down = np.flipud(amplitude_ramp_up)  # reverse
+        amplitude = [max_amplitude for ind in np.arange(linear_rampsampleslen, sampleslen - linear_rampsampleslen)]
+        linear_amps = np.concatenate((amplitude_ramp_up, amplitude, amplitude_ramp_down))
 
-        #samples = [x * y for x, y in zip(wave_form, linear_amps)]
+        samples = [x * y for x, y in zip(wave_form, linear_amps)]
 
-        gaussian_amps = max_amplitude * np.ones([sampleslen]) * gaussian(sampleslen, math.ceil(pulse_len/6.0))
+        #gaussian_amps = max_amplitude * np.ones([sampleslen]) * gaussian(sampleslen, math.ceil(pulse_len/6.0))
         # TODO modify ramp_time input to this function because going Gaussian (after
         # ... TODO: testing this)
-        samples = [x * y for x, y in zip(wave_form, gaussian_amps)]
+        #samples = [x * y for x, y in zip(wave_form, gaussian_amps)]
+        samples = np.array(samples)
         actual_wave_freq = wave_freq
 
     elif iwave_table is not None and qwave_table is not None:
@@ -236,14 +237,15 @@ def shift_samples(basic_samples, phshift, amplitude):
     Take the samples and shift by given phase shift in rads and adjust amplitude as 
     required for imaging.
     
-    :param basic_samples: samples for this pulse
-    :param phshift: phase for this antenna to offset by
-    :param amplitude: amplitude for this antenna (= 1 if not imaging)
+    :param basic_samples: samples for this pulse, numpy array
+    :param phshift: phase for this antenna to offset by, float
+    :param amplitude: amplitude for this antenna (= 1 if not imaging), float
     :returns samples: basic_samples that have been shaped for the antenna for the 
      desired beam.
     """
 
-    samples = [sample * amplitude * np.exp(1j * phshift) for sample in basic_samples]
+    #samples = [sample * amplitude * np.exp(1j * phshift) for sample in basic_samples]
+    samples = amplitude * np.exp(1j * phshift) * basic_samples
     return samples
 
 
@@ -262,8 +264,8 @@ def plot_samples(filename, samplesa, **kwargs):
     smpplot.plot(range(0, samplesa.shape[0]), samplesa)
     for sample_name, sample_array in more_samples.items():
         smpplot.plot(range(0, sample_array.shape[0]), sample_array)
-    plt.ylim([-1, 1])
-    plt.xlim([0, 100])
+    # plt.ylim([-1, 1])
+    # plt.xlim([0, len(samplesa)])
     fig.savefig(filename)
     plt.close(fig)
 
@@ -360,6 +362,9 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
     # all pulse dictionaries in the pulse_list now have a 'samples' key which is a list of numpy
     # complex arrays (one for each possible tx antenna).
 
+    #print type(pulse_list[0]), type(pulse_list[0]['samples']), type(pulse_list[0]['samples'][0])
+    plot_samples("samples.png", pulse_list[0]['samples'][0])
+
     # determine how long the combined pulse will be in number of samples, and add the key
     # 'sample_number_start' for all pulses in the pulse_list.
     combined_pulse_length = calculated_combined_pulse_samples_length(pulse_list, txrate)
@@ -400,6 +405,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
                                                    tr_window_samples))
         combined_samples_tr.append(combined_samples_channel)
 
+    # print(len(combined_samples_tr[0]))
     # Now get what channels we need to transmit on for this combined
     #   pulse.
     # TODO : figure out - why did I do this I thought we were transmitting zeros on any channels not wanted

@@ -1,6 +1,13 @@
 #!/usr/bin/python
 
 # write an experiment that creates a new control program.
+import os
+import sys
+
+BOREALISPATH = os.environ['BOREALISPATH']
+#sys.path.append(BOREALISPATH + "/experiment_prototype")
+
+#import test
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 class Twofsound(ExperimentPrototype):
@@ -9,10 +16,13 @@ class Twofsound(ExperimentPrototype):
         cpid = 3503
         super(Twofsound, self).__init__(cpid)
 
+        tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        rx_int_ant = [0]
         self.add_slice({  # slice_id = 0, the first slice
-            "txantennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-            "rx_main_antennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-            "rx_int_antennas": [0, 1, 2, 3],
+            "tx_antennas": tx_ant,
+            "rx_main_antennas": rx_main_ant,
+            "rx_int_antennas": rx_int_ant,
             "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
             "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
             "mpinc": 1500,  # us
@@ -26,8 +36,9 @@ class Twofsound(ExperimentPrototype):
             "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
             "scanboundflag": True,  # there is a scan boundary
             "scanbound": 60000,  # ms
-            "clrfrqflag": True,  # search for clear frequency before transmitting
-            "clrfrqrange": [12200, 12500],  # frequency range for clear frequency search,
+            #"clrfrqflag": True,  # search for clear frequency before transmitting
+            #"clrfrqrange": [13100, 13400],  # frequency range for clear frequency search,
+            "txfreq" : 13100,
             # kHz including a clrfrqrange overrides rxfreq and txfreq so these are no
             # longer necessary as they will be set by the frequency chosen from the
             # range.
@@ -36,9 +47,9 @@ class Twofsound(ExperimentPrototype):
         })
 
         self.add_slice({  # slice_id = 1
-            "txantennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-            "rx_main_antennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-            "rx_int_antennas": [0, 1, 2, 3],
+            "tx_antennas": tx_ant,
+            "rx_main_antennas": rx_main_ant,
+            "rx_int_antennas": rx_int_ant,
             "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
             "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
             "mpinc": 1500,  # us
@@ -52,8 +63,9 @@ class Twofsound(ExperimentPrototype):
             "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
             "scanboundflag": True,  # there is a scan boundary
             "scanbound": 60000,  # ms
-            "clrfrqflag": True,  # search for clear frequency before transmitting
-            "clrfrqrange": [10200, 10500],  # range for clear frequency search, kHz
+            #"clrfrqflag": True,  # search for clear frequency before transmitting
+            #"clrfrqrange": [10200, 10500],  # range for clear frequency search, kHz
+            "txfreq": 14500,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         }, interfacing_dict={0: 'SCAN'})
