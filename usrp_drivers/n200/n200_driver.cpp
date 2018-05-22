@@ -22,7 +22,7 @@
 #include <string>
 #include <thread>
 #include <cstdlib>
-
+#include <cmath>
 #include "utils/driver_options/driveroptions.hpp"
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/protobuf/driverpacket.pb.h"
@@ -73,6 +73,7 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
                                                     const driverpacket::DriverPacket &driver_packet,
                                                     const DriverOptions &driver_options)
 {
+  // channel_samples_size() will get you # of channels (protobuf in c++)
   std::vector<std::vector<std::complex<float>>> samples(driver_packet.channel_samples_size());
 
   // With TXIO board, we pad 0s to correspond with the first signal to go high which is the atten
@@ -88,9 +89,11 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
   //std::vector<std::complex<float>> start_pad(tr_start_pad, std::complex<float>(0.0f,0.0f));
   //std::vector<std::complex<float>> end_pad(tr_end_pad, std::complex<float>(0.0f,0.0f));
   for (int channel=0; channel<driver_packet.channel_samples_size(); channel++) {
+    // Get the number of real samples in this particular channel (_size() is from protobuf)
     auto num_samps = driver_packet.channel_samples(channel).real_size();
     std::vector<std::complex<float>> v(num_samps);
-    auto smp = driver_packet.channel_samples(channel);
+    // Type for smp? protobuf object, containing repeated double real and double imag
+    auto smp = driver_packet.channel_samples(channel); 
     for (int smp_num = 0; smp_num < num_samps; smp_num++) {
       v[smp_num] = std::complex<float>(smp.real(smp_num), smp.imag(smp_num));
     }
@@ -140,8 +143,8 @@ std::string random_string( size_t length )
 void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver_options)
 {
   DEBUG_MSG("Enter transmit thread");
+  //uhd::set_thread_priority_safe(1.0,true);
 
-  uhd::set_thread_priority_safe(1.0,true);
   auto identities = {driver_options.get_driver_to_radctrl_identity(),
                       driver_options.get_driver_to_dsp_identity(),
                       driver_options.get_driver_to_brian_identity()};
@@ -312,14 +315,22 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       continue;
     }
 
+/*    std::ofstream output_file(std::string("samples") + std::to_string(sqn_num), std::ios::binary);
+    //output_file += ;
 
+    // Loop over samples, which is a vector of vectors of vectors (channel, pulse, imag/real)
+    for (auto &s : samples) {
+      for (auto &data : s) {
+        output_file.write(reinterpret_cast<char*>(data.data()), data.size() * sizeof(std::complex<float>));
+      }
+    }*/
     time_zero = usrp_d.get_current_usrp_time() + uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
     // Here we are time-aligning our time_zero to the start of a sample. Do this by recalculating
     // time_zero using the calculated value of start_sample.
     // TODO: Account for offset btw TX/RX (seems to change with sampling rate at least)
-    uint32_t start_sample = uint32_t((time_zero.get_real_secs() - start_time.get_real_secs()) *
+    double future_start_sample = std::floor((time_zero.get_real_secs() - start_time.get_real_secs()) *
                                     driver_options.get_rx_rate());
-    time_zero = uhd::time_spec_t(start_time + (start_sample/driver_options.get_rx_rate()));
+    time_zero = uhd::time_spec_t(start_time + (future_start_sample/driver_options.get_rx_rate()));
 
     TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
       [&]() {
@@ -332,7 +343,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             for (int i=0; i<samples.size(); i++){
               auto md = TXMetadata();
               md.set_has_time_spec(true);
-              md.set_time_spec(time_zero + uhd::time_spec_t(time_to_send_samples[i]/1.0e6));
+              auto time = time_zero + uhd::time_spec_t(time_to_send_samples[i]/1.0e6);
+              md.set_time_spec(time);
+              //std::cout << "time diff :" << time.get_real_secs() - usrp_d.get_current_usrp_time().get_real_secs() <<std::endl;
+              //std::cout << "start_sample: " << future_start_sample << std::endl;
               //The USRP tx_metadata start_of_burst and end_of_burst describe start and end of the pulse
               //samples.
               md.set_start_of_burst(true);
@@ -343,13 +357,22 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               //or timed out(too many samples to send within timeout period). Send has a default timing of
               //0.1 seconds.
               auto samples_per_buff = samples[i][0].size();
+              // If grabbing start of vector using samples[i] it doesn't work (samples are firked)
+              // You need to grab the ptr to the vector using samples[a][b].data(). See tx_waveforms
+              // for how to do this properly. Also see uhd::tx_streamer::send(...) in the uhd docs
+              // see 'const buffs_type &'' argument to the send function, the description should read
+              // 'Typedef for a pointer to a single, or a collection of pointers to send buffers'.
+              std::vector<std::complex<float> *> samples_ptrs(samples[i].size());
+              for (int j=0; j< samples[j].size(); j++) {
+                samples_ptrs[j] = samples[i][j].data(); 
+              }
               while (num_samps_sent < samples_per_buff)
               {
                 auto num_samps_to_send = samples_per_buff - num_samps_sent;
                 DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples to send " << num_samps_to_send);
 
                 //Send behaviour can be found in UHD docs
-                num_samps_sent = tx_stream->send(samples[i], num_samps_to_send, md.get_md()); //TODO(keith): Determine timeout properties.
+                num_samps_sent = tx_stream->send(samples_ptrs, num_samps_to_send, md.get_md()); //TODO(keith): Determine timeout properties.
                 DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples sent " << num_samps_sent);
 
                 md.set_start_of_burst(false);
@@ -370,13 +393,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto time_diff = usrp_time - time_zero + uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
 
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
-    auto sleep_time = (seqn_sampling_time - time_diff.get_real_secs()) * 1e6;
+    auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
+    auto sleep_time = (seqn_sampling_time + 1.5 * delay.get_real_secs()) * 1e6;
 /*      std::cout << "sleep_time " << sleep_time << std::endl;
     std::cout << "seqn_sampling_time " << seqn_sampling_time << std::endl;
     std::cout << "time_zero " << time_zero.get_real_secs() << std::endl;
     std::cout << "usrp_time " << usrp_time.get_real_secs() << std::endl;
     std::cout << "time_diff " << time_diff.get_real_secs() << std::endl;*/
-    usleep(seqn_sampling_time);
+    usleep(sleep_time);
 
 
     //auto post_sqn_work = [&](){
@@ -395,8 +419,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
         buffer_ptrs.push_back(ptr);
       }
 
-      start_sample = uint32_t((time_zero.get_real_secs() - start_time.get_real_secs()) *
-                                    driver_options.get_rx_rate()) % ringbuffer_size;
+      auto start_sample = uint32_t(std::fmod(((time_zero.get_real_secs() - start_time.get_real_secs()) *
+                                    driver_options.get_rx_rate()), ringbuffer_size));
 
 
       if ((start_sample + num_recv_samples) > ringbuffer_size) {
@@ -606,7 +630,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
  */
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-  //uhd::set_thread_priority_safe();
+  uhd::set_thread_priority_safe();
 
   DriverOptions driver_options;
 

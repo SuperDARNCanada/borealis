@@ -312,7 +312,7 @@ void USRP::set_time_source(std::string source)
   }
   else {
     //TODO(keith): throw error
-    usrp_->set_time_now(tt_sc.count());
+    usrp_->set_time_now(uhd::time_spec_t(0.0));
   }
 }
 
