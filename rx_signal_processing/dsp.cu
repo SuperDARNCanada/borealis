@@ -166,8 +166,10 @@ namespace {
 					}
 				}
 			};
-      
+
 			#ifdef ENGINEERING_DEBUG
+        add_debug_data("rf_samples",(cuComplex*)dp->get_rf_samples_h(),dp->get_num_antennas(),
+          dp->get_num_rf_samples());
         add_debug_data("stage_1",dp->get_first_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_first_stage_samples_per_antenna());
         add_debug_data("stage_2",dp->get_second_stage_output_h(),dp->get_num_antennas(),
@@ -175,7 +177,7 @@ namespace {
         add_debug_data("stage_3",dp->get_third_stage_output_h(),dp->get_num_antennas(),
                     dp->get_num_third_stage_samples_per_antenna());
       #endif
-				add_debug_data("output_samples", output_samples.data(), dp->get_num_antennas(), 
+				add_debug_data("output_samples", output_samples.data(), dp->get_num_antennas(),
 					output_samples.size()/(dp->get_num_antennas()*dp->get_rx_freqs().size()));
 				DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     }
@@ -208,7 +210,7 @@ namespace {
 
       TIMEIT_IF_DEBUG("Fill + send processed data time ",
         [&]() {
-          create_processed_data_packet(pd,dp);           
+          create_processed_data_packet(pd,dp);
 	  			dp->send_processed_data(pd);
         }()
       );
@@ -644,6 +646,10 @@ void DSPCore::initial_memcpy_callback()
  */
 cuComplex* DSPCore::get_rf_samples_p(){
   return rf_samples_d;
+}
+
+cuComplex* DSPCore::get_rf_samples_h() {
+  return (cuComplex*)shr_mem.get_shrmem_addr();
 }
 
 double* DSPCore::get_frequencies_p() {

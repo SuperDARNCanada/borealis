@@ -41,10 +41,10 @@ def router(opts):
         #sys.stdout.write(dd)
         sender, receiver, empty, data = dd
         output = "Router input/// Sender -> {}: Receiver -> {}: empty: Data -> {}\n".format(*dd)
-        sys.stdout.write(output)
+        #sys.stdout.write(output)
         frames = [receiver,sender,empty,data]
         output = "Router output/// Receiver -> {}: Sender -> {}: empty: Data -> {}\n".format(*frames)
-        sys.stdout.write(output)
+        #sys.stdout.write(output)
         sent = False
         while not sent:
             try:

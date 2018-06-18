@@ -67,6 +67,7 @@ class DSPCore {
   void allocate_and_copy_host_output(uint32_t num_host_samples);
   void clear_device_and_destroy();
   cuComplex* get_rf_samples_p();
+  cuComplex* get_rf_samples_h();
   double* get_frequencies_p();
   cuComplex* get_first_stage_bp_filters_p();
   cuComplex* get_second_stage_filter_p();
