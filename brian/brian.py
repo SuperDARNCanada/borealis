@@ -12,6 +12,7 @@ import zmq
 import time
 from datetime import datetime, timedelta
 import threading
+import argparse
 
 sys.path.append(os.environ["BOREALISPATH"])
 
@@ -214,10 +215,16 @@ def sequence_timing(opts):
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--router-only', action='store_true', help='Run brian in router only mode')
+    args = parser.parse_args()
+
     opts = options.ExperimentOptions()
     threads = []
     threads.append(threading.Thread(target=router,args=(opts,)))
-    threads.append(threading.Thread(target=sequence_timing,args=(opts,)))
+    if not args.router_only:
+        threads.append(threading.Thread(target=sequence_timing,args=(opts,)))
 
     for thread in threads:
         thread.daemon = True

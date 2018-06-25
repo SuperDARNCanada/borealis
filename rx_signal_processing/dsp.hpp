@@ -53,14 +53,19 @@ class DSPCore {
   void initial_memcpy_callback();
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
-                    SignalProcessingOptions &options, uint32_t sq_num, std::string shr_mem_name,
+                    SignalProcessingOptions &options, uint32_t sq_num,
                     std::vector<double> freqs, Filtering *filters);
   ~DSPCore(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
-  void allocate_and_copy_rf_samples(uint32_t total_samples);
+  void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_recv_samples,
+                                double time_zero, double start_time,
+                                uint64_t ringbuffer_size, uint32_t first_stage_dm_rate,
+                                uint32_t second_stage_dm_rate,
+                                std::vector<cuComplex*> &ringbuffer_ptrs_start);
   void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
   void allocate_and_copy_second_stage_filter(void *taps, uint32_t total_taps);
   void allocate_and_copy_third_stage_filter(void *taps, uint32_t total_taps);
+  void allocate_and_copy_device_rf(uint32_t num_rf_samples);
   void allocate_first_stage_output(uint32_t num_first_stage_output_samples);
   void allocate_second_stage_output(uint32_t num_second_stage_output_samples);
   void allocate_third_stage_output(uint32_t num_third_stage_output_samples);
@@ -166,6 +171,8 @@ class DSPCore {
   //! A shared memory handler object that contains RF samples from the USRP driver.
   SharedMemoryHandler shr_mem;
 
+  std::vector<cuComplex*> ringbuffers;
+  cuComplex *rf_samples_h;
   cuComplex *first_stage_output_h;
   cuComplex *second_stage_output_h;
   cuComplex *third_stage_output_h;
@@ -179,6 +186,8 @@ class DSPCore {
   void allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples);
   void allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples);
   void allocate_and_copy_third_stage_host(uint32_t num_third_stage_output_samples);
+  void allocate_and_copy_rf_from_device(uint32_t num_rf_samples);
+
 };
 
 void postprocess(DSPCore *dp);

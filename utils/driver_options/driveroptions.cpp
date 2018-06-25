@@ -63,9 +63,6 @@ DriverOptions::DriverOptions() {
         return receive_channels;
     }();
 
-/*    radar_control_to_driver_address_ = config_pt.get<std::string>
-                                            ("radar_control_to_driver_address");
-    driver_to_rx_dsp_address_ = config_pt.get<std::string>("driver_to_rx_dsp_address");*/
     router_address_ = config_pt.get<std::string>("router_address");
     driver_to_radctrl_identity_ = config_pt.get<std::string>("driver_to_radctrl_identity");
     driver_to_dsp_identity_ = config_pt.get<std::string>("driver_to_dsp_identity");
@@ -73,6 +70,9 @@ DriverOptions::DriverOptions() {
     radctrl_to_driver_identity_ = config_pt.get<std::string>("radctrl_to_driver_identity");
     dsp_to_driver_identity_ = config_pt.get<std::string>("dsp_to_driver_identity");
     brian_to_driver_identity_ = config_pt.get<std::string>("brian_to_driver_identity");
+    ringbuffer_name_ = config_pt.get<std::string>("ringbuffer_name");
+    ringbuffer_size_bytes_ = boost::lexical_cast<double>(
+                                    config_pt.get<std::string>("ringbuffer_size_bytes"));
 }
 
 double DriverOptions::get_tx_rate() const
@@ -170,6 +170,11 @@ uint32_t DriverOptions::get_interferometer_antenna_count() const
     return interferometer_antenna_count_;
 }
 
+double DriverOptions::get_ringbuffer_size() const
+{
+    return ringbuffer_size_bytes_;
+}
+
 std::vector<size_t> DriverOptions::get_receive_channels() const
 {
     return receive_channels_;
@@ -212,14 +217,8 @@ std::string DriverOptions::get_brian_to_driver_identity() const
     return brian_to_driver_identity_;
 }
 
-
-/*std::string DriverOptions::get_radar_control_to_driver_address() const
+std::string DriverOptions::get_ringbuffer_name() const
 {
-    return radar_control_to_driver_address_;
+    return ringbuffer_name_;
 }
 
-std::string DriverOptions::get_driver_to_rx_dsp_address() const
-{
-    return driver_to_rx_dsp_address_;
-}
-*/

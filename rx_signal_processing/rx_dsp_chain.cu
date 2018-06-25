@@ -31,31 +31,10 @@ int main(int argc, char **argv){
   GOOGLE_PROTOBUF_VERIFY_VERSION; // Verifies that header and lib are same version.
 
   //TODO(keith): verify config options.
-  //auto driver_options = DriverOptions();
   auto sig_options = SignalProcessingOptions();
   auto rx_rate = sig_options.get_rx_rate(); //Hz
 
 
-
-/*  zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(driver_socket.bind(sig_options.get_driver_socket_address()))
-
-  //This socket is used to receive metadata about the sequence to process
-  zmq::socket_t radar_control_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(radar_control_socket.bind(sig_options.get_radar_control_socket_address()))
-
-  //This socket is used to acknowledge a completed sequence to radar_control
-  zmq::socket_t ack_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(ack_socket.bind(sig_options.get_ack_socket_address()))
-*/
-  //This socket is used to send the GPU kernel timing to radar_control to know if the processing
-  //can be done in real-time.
-/*  zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(timing_socket.bind(sig_options.get_timing_socket_address()))
-
-  zmq::socket_t data_write_socket(sig_proc_context,ZMQ_PAIR);
-  ERR_CHK_ZMQ(data_write_socket.connect(sig_options.get_data_write_address()))
-*/
   zmq::context_t context(1); // 1 is context num. Only need one per program as per examples
   auto identities = {sig_options.get_dsp_radctrl_identity(),
                    sig_options.get_dsp_driver_identity(),
@@ -102,6 +81,10 @@ int main(int argc, char **argv){
     third_stage_dm_rate = static_cast<uint32_t>(float_dm_rate);
   }
 
+  std::cout << sig_options.get_first_stage_sample_rate() << std::endl;
+  std::cout << sig_options.get_second_stage_sample_rate() << std::endl;
+  std::cout << sig_options.get_third_stage_sample_rate() << std::endl;
+
   RUNTIME_MSG("1st stage dm rate: " << COLOR_YELLOW(first_stage_dm_rate));
   RUNTIME_MSG("2nd stage dm rate: " << COLOR_YELLOW(second_stage_dm_rate));
   RUNTIME_MSG("3rd stage dm rate: " << COLOR_YELLOW(third_stage_dm_rate));
@@ -132,6 +115,10 @@ int main(int argc, char **argv){
   filters.save_filter_to_file(filters.get_second_stage_lowpass_taps(),"filter2coefficients.dat");
   filters.save_filter_to_file(filters.get_third_stage_lowpass_taps(),"filter3coefficients.dat");
 
+  SharedMemoryHandler shrmem(sig_options.get_ringbuffer_name());
+  std::vector<cuComplex*> ringbuffer_ptrs_start;
+
+  auto first_time = true;
   for(;;){
     //Receive packet from radar control
 
@@ -156,6 +143,21 @@ int main(int argc, char **argv){
 
     RUNTIME_MSG("Got driver request for sequence #" << COLOR_RED(rx_metadata.sequence_num()));
 
+    auto total_antennas = sig_options.get_main_antenna_count() +
+                sig_options.get_interferometer_antenna_count();
+
+    if (first_time) {
+      shrmem.open_shr_mem();
+      if (rx_metadata.ringbuffer_size() == 0) {
+        //TODO(keith): handle error
+      }
+      for(uint32_t i=0; i<total_antennas; i++){
+        auto ptr = static_cast<cuComplex*>(shrmem.get_shrmem_addr()) +
+                                              (i * rx_metadata.ringbuffer_size());
+        ringbuffer_ptrs_start.push_back(ptr);
+      }
+      first_time = false;
+    }
     //Verify driver and radar control packets align
     if (sp_packet.sequence_num() != rx_metadata.sequence_num()) {
       //TODO(keith): handle error
@@ -178,26 +180,26 @@ int main(int argc, char **argv){
       }()
     );
 
-    if (rx_metadata.shrmemname().empty()){
+/*    if (rx_metadata.shrmemname().empty()){
       //TODO(keith): handle missing name error
     }
-
+*/
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
-                             sig_options, sp_packet.sequence_num(), rx_metadata.shrmemname(),
+                             sig_options, sp_packet.sequence_num(),
                              rx_freqs, &filters);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
     }
 
-    auto total_antennas = sig_options.get_main_antenna_count() +
-                sig_options.get_interferometer_antenna_count();
-
     auto total_samples = rx_metadata.numberofreceivesamples() * total_antennas;
 
     DEBUG_MSG("   Total samples in data message: " << total_samples);
 
-    dp->allocate_and_copy_rf_samples(total_samples);
+    dp->allocate_and_copy_rf_samples(total_antennas, rx_metadata.numberofreceivesamples(),
+                                rx_metadata.time_zero(), rx_metadata.start_time(),
+                                rx_metadata.ringbuffer_size(), first_stage_dm_rate,
+                                second_stage_dm_rate,ringbuffer_ptrs_start);
     dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),
                                                 filters.get_first_stage_bandpass_taps_h().size());

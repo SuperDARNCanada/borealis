@@ -66,15 +66,15 @@ namespace {
     for (uint32_t freq_index=0; freq_index < freqs.size(); freq_index++) {
       for (int i=0; i<num_antennas; i++) {
         for (int j=0; j<num_samps_per_antenna; j++){
-	  			auto phi_k = 2 * M_PI * (F_s/F_new) * fmod((m*j),F_s) * (freqs[freq_index]/F_s);
-	  			auto phase = std::exp(std::complex<float>(0,1) * std::complex<float>(phi_k,0));
-	  			cuComplex cu_phase;
-	  			cu_phase.x = phase.real();
-	  			cu_phase.y = phase.imag();
+          auto phi_k = 2 * M_PI * (F_s/F_new) * fmod((m*j),F_s) * (freqs[freq_index]/F_s);
+          auto phase = std::exp(std::complex<float>(0,1) * std::complex<float>(phi_k,0));
+          cuComplex cu_phase;
+          cu_phase.x = phase.real();
+          cu_phase.y = phase.imag();
           auto sample_index = freq_index*num_antennas*num_samps_per_antenna + i*num_samps_per_antenna + j;
-	  			auto corrected_samp = cuCmulf(samples[sample_index],cu_phase);
-	  			samples[sample_index] = corrected_samp;
-				}
+          auto corrected_samp = cuCmulf(samples[sample_index],cu_phase);
+          samples[sample_index] = corrected_samp;
+        }
       }
     }
 
@@ -113,25 +113,16 @@ namespace {
     for (uint32_t freq_index=0; freq_index < num_freqs; freq_index++) {
       for (int i=0; i<num_antennas; i++){
         auto dest = output_samples.data() + freq_index*samples_per_frequency + i*samps_per_stage.back();
-				auto src = input_samples + freq_index*original_samples_per_frequency + i*original_undropped_sample_count;
-				auto num_bytes =  sizeof(cuComplex) * samps_per_stage.back();
-				memcpy(dest, src, num_bytes);
+        auto src = input_samples + freq_index*original_samples_per_frequency + i*original_undropped_sample_count;
+        auto num_bytes =  sizeof(cuComplex) * samps_per_stage.back();
+        memcpy(dest, src, num_bytes);
       }
     }
   }
 
   void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCore* dp)
   {
-/*
-    frerking_phase_correction(dp->get_host_output_h(),
-                                dp->get_num_third_stage_samples_per_antenna(),
-                                dp->get_num_antennas(),
-                                dp->sig_options.get_rx_rate(),
-                                dp->sig_options.get_first_stage_sample_rate(),
-                                dp->sig_options.get_third_stage_sample_rate(),
-                                freq);
-    }
-*/
+
     std::vector<cuComplex> output_samples;
 
     std::vector<uint32_t> samps_per_stage = {dp->get_num_rf_samples(),
@@ -145,41 +136,79 @@ namespace {
     drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
                      dp->get_num_antennas(), dp->get_rx_freqs().size());
 
+    auto make_ptrs_vec = [](cuComplex* output_p, uint32_t num_freqs, uint32_t num_antennas,
+                              uint32_t num_samps_per_antenna)
+    {
+      //auto stage_output = output_p;
+      auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
+
+      std::vector<std::vector<cuComplex*>> ptrs;
+      for (uint32_t freq=0; freq<num_freqs; freq++) {
+        std::vector<cuComplex*> stage_ptrs;
+        for(uint32_t antenna=0; antenna<num_antennas; antenna++) {
+          auto idx = freq * stage_samps_per_set + antenna * num_samps_per_antenna;
+          stage_ptrs.push_back(output_p + idx);
+        }
+        ptrs.push_back(stage_ptrs);
+      }
+
+      return ptrs;
+    };
+
+    #ifdef ENGINEERING_DEBUG
+      auto rf_ptrs = make_ptrs_vec(dp->get_rf_samples_h(), 1, dp->get_num_antennas(),
+                            dp->get_num_rf_samples());
+      auto stage_1_ptrs = make_ptrs_vec(dp->get_first_stage_output_h(), dp->get_rx_freqs().size(),
+                            dp->get_num_antennas(),dp->get_num_first_stage_samples_per_antenna());
+
+      auto stage_2_ptrs = make_ptrs_vec(dp->get_second_stage_output_h(), dp->get_rx_freqs().size(),
+                            dp->get_num_antennas(),dp->get_num_second_stage_samples_per_antenna());
+
+      auto stage_3_ptrs = make_ptrs_vec(dp->get_third_stage_output_h(), dp->get_rx_freqs().size(),
+                              dp->get_num_antennas(),dp->get_num_third_stage_samples_per_antenna());
+    #endif
+
+    auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_rx_freqs().size(),
+                          dp->get_num_antennas(),
+                          output_samples.size()/(dp->get_num_antennas()*dp->get_rx_freqs().size()));
+
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
       auto dataset = pd.add_outputdataset();
-			auto add_debug_data = [dataset,i](std::string stage_name, cuComplex *output_p,
-			uint32_t num_antennas, uint32_t num_samps_per_antenna)
-			{
-				auto debug_samples = dataset->add_debugsamples();
+      auto add_debug_data = [dataset,i](std::string stage_name, std::vector<cuComplex*> &data_ptrs,
+                                          uint32_t num_antennas, uint32_t num_samps_per_antenna)
+      {
+        auto debug_samples = dataset->add_debugsamples();
 
-				debug_samples->set_stagename(stage_name);
-				auto stage_output = output_p;
-				auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
+        debug_samples->set_stagename(stage_name);
+        //auto stage_output = output_p;
+        //auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
 
-				for (uint32_t j=0; j<num_antennas; j++){
-					auto antenna_data = debug_samples->add_antennadata();
-					for(uint32_t k=0; k<num_samps_per_antenna; k++) {
-						auto idx = i * stage_samps_per_set + j * num_samps_per_antenna + k;
-						auto antenna_samp = antenna_data->add_antennasamples();
-						antenna_samp->set_real(stage_output[idx].x);
-						antenna_samp->set_imag(stage_output[idx].y);
-					}
-				}
-			};
+        for (uint32_t j=0; j<num_antennas; j++){
+          auto antenna_data = debug_samples->add_antennadata();
+          for(uint32_t k=0; k<num_samps_per_antenna; k++) {
+            //auto idx = i * stage_samps_per_set + j * num_samps_per_antenna + k;
+            auto antenna_samp = antenna_data->add_antennasamples();
+            antenna_samp->set_real(data_ptrs[j][k].x);
+            antenna_samp->set_imag(data_ptrs[j][k].y);
+          }
+        }
+      };
 
-			#ifdef ENGINEERING_DEBUG
-        add_debug_data("rf_samples",(cuComplex*)dp->get_rf_samples_h(),dp->get_num_antennas(),
-          dp->get_num_rf_samples());
-        add_debug_data("stage_1",dp->get_first_stage_output_h(),dp->get_num_antennas(),
+
+      #ifdef ENGINEERING_DEBUG
+        if (i == 0) {
+          add_debug_data("rf_samples",rf_ptrs[i],dp->get_num_antennas(), dp->get_num_rf_samples());
+        }
+        add_debug_data("stage_1",stage_1_ptrs[i],dp->get_num_antennas(),
                     dp->get_num_first_stage_samples_per_antenna());
-        add_debug_data("stage_2",dp->get_second_stage_output_h(),dp->get_num_antennas(),
+        add_debug_data("stage_2",stage_2_ptrs[i],dp->get_num_antennas(),
                     dp->get_num_second_stage_samples_per_antenna());
-        add_debug_data("stage_3",dp->get_third_stage_output_h(),dp->get_num_antennas(),
+        add_debug_data("stage_3",stage_3_ptrs[i],dp->get_num_antennas(),
                     dp->get_num_third_stage_samples_per_antenna());
       #endif
-				add_debug_data("output_samples", output_samples.data(), dp->get_num_antennas(),
-					output_samples.size()/(dp->get_num_antennas()*dp->get_rx_freqs().size()));
-				DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
+        add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
+          output_samples.size()/(dp->get_num_antennas()*dp->get_rx_freqs().size()));
+        DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     }
 
   }
@@ -211,7 +240,7 @@ namespace {
       TIMEIT_IF_DEBUG("Fill + send processed data time ",
         [&]() {
           create_processed_data_packet(pd,dp);
-	  			dp->send_processed_data(pd);
+          dp->send_processed_data(pd);
         }()
       );
 
@@ -301,7 +330,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * the shared memory with the received RF samples for a pulse sequence.
  */
 DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_s,
-                  SignalProcessingOptions &options, uint32_t sq_num, std::string shr_mem_name,
+                  SignalProcessingOptions &options, uint32_t sq_num,
                   std::vector<double> freqs, Filtering *filters)
 {
 
@@ -312,6 +341,7 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *d
   rx_freqs = freqs;
   sig_options = options;
   dsp_filters = filters;
+  //ringbuffers = ringbuffer_ptrs_start;
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));
   gpuErrchk(cudaEventCreate(&initial_start));
@@ -320,9 +350,9 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *d
   gpuErrchk(cudaEventCreate(&mem_transfer_end));
   gpuErrchk(cudaEventRecord(initial_start, stream));
 
-  shr_mem = SharedMemoryHandler(shr_mem_name);
+/*  shr_mem = SharedMemoryHandler(shr_mem_name);
   shr_mem.open_shr_mem();
-
+*/
 }
 
 /**
@@ -341,6 +371,7 @@ DSPCore::~DSPCore()
   gpuErrchk(cudaFree(third_stage_output_d));
   gpuErrchk(cudaFreeHost(host_output_h));
   #ifdef ENGINEERING_DEBUG
+    gpuErrchk(cudaFreeHost(rf_samples_h))
     gpuErrchk(cudaFreeHost(first_stage_output_h));
     gpuErrchk(cudaFreeHost(second_stage_output_h));
     gpuErrchk(cudaFreeHost(third_stage_output_h));
@@ -350,7 +381,7 @@ DSPCore::~DSPCore()
   gpuErrchk(cudaEventDestroy(stop));
   gpuErrchk(cudaStreamDestroy(stream));
 
-  shr_mem.remove_shr_mem();
+  //shr_mem.remove_shr_mem();
 
   DEBUG_MSG(COLOR_RED("Running deconstructor for sequence #" << sequence_num));
 
@@ -361,12 +392,58 @@ DSPCore::~DSPCore()
  *
  * @param[in]  total_samples  Total number of samples to copy.
  */
-void DSPCore::allocate_and_copy_rf_samples(uint32_t total_samples)
+void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_recv_samples,
+                                double time_zero, double start_time,
+                                uint64_t ringbuffer_size, uint32_t first_stage_dm_rate,
+                                uint32_t second_stage_dm_rate,
+                                std::vector<cuComplex*> &ringbuffer_ptrs_start)
 {
-  size_t rf_samples_size = total_samples * sizeof(cuComplex);
+  size_t rf_samples_size = total_antennas * num_recv_samples * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&rf_samples_d, rf_samples_size));
-  gpuErrchk(cudaMemcpyAsync(rf_samples_d,shr_mem.get_shrmem_addr(), rf_samples_size,
-    cudaMemcpyHostToDevice, stream));
+
+  auto sample_time_diff = start_time - time_zero;
+  auto diff_sample = sample_time_diff * sig_options.get_rx_rate();
+  auto start_sample = int64_t(std::fmod(diff_sample, ringbuffer_size));
+
+  //We need to sample early to account for propagating samples through filters.
+  int64_t extra_samples = (first_stage_dm_rate * second_stage_dm_rate *
+                        dsp_filters->get_num_third_stage_taps());
+  if (start_sample - extra_samples < 0) {
+      start_sample = ringbuffer_size - (extra_samples - start_sample);
+  } else {
+      start_sample -= extra_samples;
+  }
+
+  if ((start_sample + num_recv_samples) > ringbuffer_size) {
+    for (int32_t i=0; i<total_antennas; i++) {
+      auto first_piece = ringbuffer_size - start_sample;
+      auto second_piece = num_recv_samples - first_piece;
+
+      auto first_dest = rf_samples_d + (i*num_recv_samples);
+      auto second_dest = rf_samples_d + (i*num_recv_samples) + (first_piece);
+
+      auto first_src = ringbuffer_ptrs_start[i] + start_sample;
+      auto second_src = ringbuffer_ptrs_start[i];
+
+      gpuErrchk(cudaMemcpyAsync(first_dest, first_src, first_piece * sizeof(cuComplex),
+                                 cudaMemcpyHostToDevice, stream));
+      gpuErrchk(cudaMemcpyAsync(second_dest, second_src, second_piece * sizeof(cuComplex),
+                                 cudaMemcpyHostToDevice, stream));
+    }
+
+  }
+  else {
+    for (int32_t i=0; i<total_antennas; i++) {
+      auto dest = rf_samples_d + (i*num_recv_samples);
+      auto src = ringbuffer_ptrs_start[i] + start_sample;
+
+      gpuErrchk(cudaMemcpyAsync(dest, src, num_recv_samples * sizeof(cuComplex),
+        cudaMemcpyHostToDevice, stream));
+    }
+  }
+
+/*  gpuErrchk(cudaMemcpyAsync(rf_samples_d,shr_mem.get_shrmem_addr(), rf_samples_size,
+    cudaMemcpyHostToDevice, stream));*/
 
 }
 
@@ -501,6 +578,15 @@ void DSPCore::allocate_and_copy_third_stage_host(uint32_t num_third_stage_output
         host_output_size, cudaMemcpyDeviceToHost,stream));
 }
 
+void DSPCore::allocate_and_copy_rf_from_device(uint32_t num_rf_samples)
+{
+  size_t rf_output_size = num_rf_samples * sizeof(cuComplex);
+  gpuErrchk(cudaHostAlloc(&rf_samples_h, rf_output_size, cudaHostAllocDefault));
+  gpuErrchk(cudaMemcpyAsync(rf_samples_h, rf_samples_d,
+        rf_output_size, cudaMemcpyDeviceToHost,stream));
+}
+
+
 /**
  * @brief      Stops the timers that the constructor starts.
  */
@@ -554,6 +640,7 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
                                             uint32_t num_output_samples_per_antenna_3)
 {
     #ifdef ENGINEERING_DEBUG
+      auto total_rf_samples = num_samples_rf * total_antennas;
       auto total_output_samples_1 = num_output_samples_per_antenna_1 * rx_freqs.size() *
                                       total_antennas;
       auto total_output_samples_2 = num_output_samples_per_antenna_2 * rx_freqs.size() *
@@ -561,6 +648,7 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
       auto total_output_samples_3 = num_output_samples_per_antenna_3 * rx_freqs.size() *
                                       total_antennas;
 
+      allocate_and_copy_rf_from_device(total_rf_samples);
       allocate_and_copy_first_stage_host(total_output_samples_1);
       allocate_and_copy_second_stage_host(total_output_samples_2);
       allocate_and_copy_third_stage_host(total_output_samples_3);
@@ -595,9 +683,7 @@ void DSPCore::send_ack()
 
   std::string s_msg_str;
   sp.SerializeToString(&s_msg_str);
-/*  zmq::message_t s_msg(s_msg_str.size());
-  memcpy ((void *) s_msg.data(), s_msg_str.c_str(), s_msg_str.size());
-  ack_socket->send(s_msg);*/
+
   auto request = RECV_REQUEST(*ack_socket, sig_options.get_brian_dspbegin_identity());
   SEND_REPLY(*ack_socket, sig_options.get_brian_dspbegin_identity(), s_msg_str);
 
@@ -608,9 +694,6 @@ void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
 {
   std::string p_msg_str;
   pd.SerializeToString(&p_msg_str);
-/*  zmq::message_t p_msg(p_msg_str.size());
-  memcpy ((void *) p_msg.data(), p_msg_str.c_str(), p_msg_str.size());
-  data_write_socket->send(p_msg);*/
 
   auto request = RECV_REQUEST(*data_socket, sig_options.get_dw_dsp_identity());
   SEND_REPLY(*data_socket, sig_options.get_dw_dsp_identity(), p_msg_str);
@@ -649,7 +732,7 @@ cuComplex* DSPCore::get_rf_samples_p(){
 }
 
 cuComplex* DSPCore::get_rf_samples_h() {
-  return (cuComplex*)shr_mem.get_shrmem_addr();
+  return rf_samples_h;
 }
 
 double* DSPCore::get_frequencies_p() {

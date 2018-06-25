@@ -279,6 +279,7 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
     double actual_freq = usrp_->get_rx_freq(channel);
     if (actual_freq != freq) {
       /*TODO: something*/
+      std::cout << "freq difference " << actual_freq - freq << std::endl;
     }
 
   }

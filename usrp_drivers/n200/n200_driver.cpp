@@ -36,10 +36,6 @@
 #define SET_TIME_COMMAND_DELAY 7e-3 // seconds
 
 
-
-
-std::vector<std::complex<float>> buffer;
-
 /**
  * @brief      Makes a vector of USRP TX channels from a driver packet.
  *
@@ -181,11 +177,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
    */
 
 
-  uhd::time_spec_t time_zero;
+  uhd::time_spec_t start_time;
   uint32_t num_recv_samples;
 
   size_t ringbuffer_size;
-  uhd::time_spec_t start_time;
+  uhd::time_spec_t time_zero;
 
   zmq::message_t request;
 
@@ -193,18 +189,16 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   memcpy(&ringbuffer_size, static_cast<size_t*>(request.data()), request.size());
 
   start_trigger.recv(&request);
-  memcpy(&start_time, static_cast<uhd::time_spec_t*>(request.data()), request.size());
-
-  std::cout << "tx start " <<start_time.get_full_secs() << " " << start_time.get_frac_secs()<< std::endl;
+  memcpy(&time_zero, static_cast<uhd::time_spec_t*>(request.data()), request.size());
 
 
-  std::vector<std::complex<float>*> ringbuffer_ptrs_start;
+/*  std::vector<std::complex<float>*> ringbuffer_ptrs_start;
 
   for(uint32_t i=0; i<receive_channels.size(); i++){
     auto ptr = static_cast<std::complex<float>*>(buffer.data() + (i * ringbuffer_size));
     ringbuffer_ptrs_start.push_back(ptr);
   }
-
+*/
   double tx_center_freq = 0.0, rx_center_freq = 0.0;
   while (1)
   {
@@ -330,7 +324,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }*/
     auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
     auto time_now = usrp_d.get_current_usrp_time();
-    time_zero = time_now + delay;
+    start_time = time_now + delay;
     // Here we are time-aligning our time_zero to the start of a sample. Do this by recalculating
     // time_zero using the calculated value of start_sample.
     // TODO: Account for offset btw TX/RX (seems to change with sampling rate at least)
@@ -349,7 +343,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             for (int i=0; i<samples.size(); i++){
               auto md = TXMetadata();
               md.set_has_time_spec(true);
-              auto time = time_zero + uhd::time_spec_t(time_to_send_samples[i]/1.0e6);
+              auto time = start_time + uhd::time_spec_t(time_to_send_samples[i]/1.0e6);
               md.set_time_spec(time);
               //std::cout << "time diff :" << time.get_real_secs() - usrp_d.get_current_usrp_time().get_real_secs() <<std::endl;
               //std::cout << "start_sample: " << future_start_sample << std::endl;
@@ -410,14 +404,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
 
     //auto post_sqn_work = [&](){
-      auto shr_mem_name = random_string(25);
-      SharedMemoryHandler shrmem(shr_mem_name);
-      auto mem_size = receive_channels.size() * num_recv_samples
-                          * sizeof(std::complex<float>);
-      shrmem.create_shr_mem(mem_size);
 
       //create a vector of pointers to where each channel's data gets received.
-      std::vector<std::complex<float>*> buffer_ptrs;
+/*      std::vector<std::complex<float>*> buffer_ptrs;
       for(uint32_t i=0; i<receive_channels.size(); i++){
         auto ptr = static_cast<std::complex<float>*>(shrmem.get_shrmem_addr()) +
                                     i*num_recv_samples;
@@ -425,12 +414,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       }
 
 
-      auto sample_time_diff = time_zero - start_time;
+      auto sample_time_diff = start_time - time_zero;
       auto diff_sample = (sample_time_diff.get_real_secs()) * driver_options.get_rx_rate();
       auto start_sample = uint32_t(std::fmod(diff_sample, ringbuffer_size)) - 36000;
-      std::cout << "start_sample " << start_sample << std::endl;
-
-
 
       if ((start_sample + num_recv_samples) > ringbuffer_size) {
         for (int i=0; i<receive_channels.size(); i++) {
@@ -456,10 +442,13 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
           memcpy(dest, src, num_recv_samples * sizeof(std::complex<float>));
         }
       }
-
+*/
       rxsamplesmetadata::RxSamplesMetadata samples_metadata;
+      samples_metadata.set_time_zero(time_zero.get_real_secs());
+      samples_metadata.set_start_time(start_time.get_real_secs());
+      samples_metadata.set_ringbuffer_size(ringbuffer_size);
       samples_metadata.set_numberofreceivesamples(num_recv_samples);
-      samples_metadata.set_shrmemname(shr_mem_name);
+      //samples_metadata.set_shrmemname(shr_mem_name);
       samples_metadata.set_sequence_num(sqn_num);
       std::string samples_metadata_str;
       samples_metadata.SerializeToString(&samples_metadata_str);
@@ -507,9 +496,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   auto receive_channels = driver_options.get_receive_channels();
   stream_args.channels = receive_channels;
 
-  for (auto &ch : receive_channels) {
-    std::cout << "ch " << ch << std::endl;
-  }
   usrp_d.set_rx_rate(rx_rate_hz, receive_channels);  // ~450us
   uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream(stream_args);  // ~44ms
 
@@ -517,22 +503,25 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
      so there won't be fragmentation and the while(1) loop below
      with the recv runs less times
   */
-  auto usrp_buffer_size = 50 * rx_stream->get_max_num_samps();
-  std::cout << "usrp_buffer_size " << usrp_buffer_size << std::endl;
-  // TODO: Put ringbuffer_size into the config file
+  auto usrp_buffer_size = 100 * rx_stream->get_max_num_samps();
   /* The ringbuffer_size is calculated this way because it's first truncated (size_t)
      then rescaled by usrp_buffer_size */
-  size_t ringbuffer_size = (size_t(500.0e6)/sizeof(std::complex<float>)/usrp_buffer_size) *
-                            usrp_buffer_size;
+  size_t ringbuffer_size = size_t(driver_options.get_ringbuffer_size()/
+                            sizeof(std::complex<float>)/
+                            usrp_buffer_size) * usrp_buffer_size;
 
-  buffer.resize(receive_channels.size() * ringbuffer_size);
+  SharedMemoryHandler shrmem(driver_options.get_ringbuffer_name());
+
+  shrmem.create_shr_mem(receive_channels.size() * ringbuffer_size * sizeof(std::complex<float>));
+
 
   std::vector<std::complex<float>*> buffer_ptrs_start;
 
   for(uint32_t i=0; i<receive_channels.size(); i++){
-    auto ptr = static_cast<std::complex<float>*>(buffer.data() + (i * ringbuffer_size));
+    auto ptr = static_cast<std::complex<float>*>(shrmem.get_shrmem_addr()) + (i * ringbuffer_size);
     buffer_ptrs_start.push_back(ptr);
   }
+
   std::vector<std::complex<float>*> buffer_ptrs = buffer_ptrs_start;
 
   stream_cmd.stream_now = false;
@@ -564,20 +553,14 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
     // 3.0 is the timeout in seconds for the recv call, arbitrary number
     size_t num_rx_samples = rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0);
     if (first_time) {
-      std::cout << "rx meta " <<meta.time_spec.get_full_secs() << " " << meta.time_spec.get_frac_secs()<< std::endl;
-      std::cout << "rx stream " <<stream_cmd.time_spec.get_full_secs() << " " << stream_cmd.time_spec.get_frac_secs()<< std::endl;
-        zmq::message_t start_time(sizeof(meta.time_spec));
-  memcpy(start_time.data(), &meta.time_spec, sizeof(meta.time_spec));
-  start_trigger.send(start_time);
-
+      zmq::message_t start_time(sizeof(meta.time_spec));
+      memcpy(start_time.data(), &meta.time_spec, sizeof(meta.time_spec));
+      start_trigger.send(start_time);
       first_time = false;
     }
 
-/*    std::cout << "Recv " << num_rx_samples << " samples" << std::endl;
-    std::cout << "On ringbuffer idx: " << usrp_buffer_size * buffer_inc << std::endl;*/
-    //timeout = 0.5;
     auto error_code = meta.error_code;
-    //std::cout << "RX TIME: " << meta.time_spec.get_real_secs() << std::endl;
+
     switch(error_code) {
       case uhd::rx_metadata_t::ERROR_CODE_NONE :
         break;
