@@ -57,8 +57,8 @@ class DSPCore {
                     std::vector<double> freqs, Filtering *filters);
   ~DSPCore(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
-  void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_recv_samples,
-                                double time_zero, double start_time,
+  void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
+                                int64_t extra_samples, double time_zero, double start_time,
                                 uint64_t ringbuffer_size, uint32_t first_stage_dm_rate,
                                 uint32_t second_stage_dm_rate,
                                 std::vector<cuComplex*> &ringbuffer_ptrs_start);
@@ -169,7 +169,7 @@ class DSPCore {
   float mem_time_ms;
 
   //! A shared memory handler object that contains RF samples from the USRP driver.
-  SharedMemoryHandler shr_mem;
+  //SharedMemoryHandler shr_mem;
 
   std::vector<cuComplex*> ringbuffers;
   cuComplex *rf_samples_h;

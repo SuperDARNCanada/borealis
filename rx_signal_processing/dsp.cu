@@ -392,13 +392,15 @@ DSPCore::~DSPCore()
  *
  * @param[in]  total_samples  Total number of samples to copy.
  */
-void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_recv_samples,
-                                double time_zero, double start_time,
+void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
+                                int64_t extra_samples, double time_zero, double start_time,
                                 uint64_t ringbuffer_size, uint32_t first_stage_dm_rate,
                                 uint32_t second_stage_dm_rate,
                                 std::vector<cuComplex*> &ringbuffer_ptrs_start)
 {
-  size_t rf_samples_size = total_antennas * num_recv_samples * sizeof(cuComplex);
+
+
+  size_t rf_samples_size = total_antennas * num_samples_needed * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&rf_samples_d, rf_samples_size));
 
   auto sample_time_diff = start_time - time_zero;
@@ -406,21 +408,20 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
   auto start_sample = int64_t(std::fmod(diff_sample, ringbuffer_size));
 
   //We need to sample early to account for propagating samples through filters.
-  int64_t extra_samples = (first_stage_dm_rate * second_stage_dm_rate *
-                        dsp_filters->get_num_third_stage_taps());
+
   if (start_sample - extra_samples < 0) {
       start_sample = ringbuffer_size - (extra_samples - start_sample);
   } else {
       start_sample -= extra_samples;
   }
 
-  if ((start_sample + num_recv_samples) > ringbuffer_size) {
+  if ((start_sample + num_samples_needed) > ringbuffer_size) {
     for (int32_t i=0; i<total_antennas; i++) {
       auto first_piece = ringbuffer_size - start_sample;
-      auto second_piece = num_recv_samples - first_piece;
+      auto second_piece = num_samples_needed - first_piece;
 
-      auto first_dest = rf_samples_d + (i*num_recv_samples);
-      auto second_dest = rf_samples_d + (i*num_recv_samples) + (first_piece);
+      auto first_dest = rf_samples_d + (i*num_samples_needed);
+      auto second_dest = rf_samples_d + (i*num_samples_needed) + (first_piece);
 
       auto first_src = ringbuffer_ptrs_start[i] + start_sample;
       auto second_src = ringbuffer_ptrs_start[i];
@@ -434,16 +435,14 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
   }
   else {
     for (int32_t i=0; i<total_antennas; i++) {
-      auto dest = rf_samples_d + (i*num_recv_samples);
+      auto dest = rf_samples_d + (i*num_samples_needed);
       auto src = ringbuffer_ptrs_start[i] + start_sample;
 
-      gpuErrchk(cudaMemcpyAsync(dest, src, num_recv_samples * sizeof(cuComplex),
+      gpuErrchk(cudaMemcpyAsync(dest, src, num_samples_needed * sizeof(cuComplex),
         cudaMemcpyHostToDevice, stream));
     }
   }
 
-/*  gpuErrchk(cudaMemcpyAsync(rf_samples_d,shr_mem.get_shrmem_addr(), rf_samples_size,
-    cudaMemcpyHostToDevice, stream));*/
 
 }
 

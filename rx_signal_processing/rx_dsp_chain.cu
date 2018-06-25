@@ -192,11 +192,16 @@ int main(int argc, char **argv){
       //TODO(keith): handle error for missing number of samples.
     }
 
-    auto total_samples = rx_metadata.numberofreceivesamples() * total_antennas;
+      //We need to sample early to account for propagating samples through filters.
+    int64_t extra_samples = (first_stage_dm_rate * second_stage_dm_rate *
+                        filters.get_num_third_stage_taps());
+
+    auto samples_needed = rx_metadata.numberofreceivesamples() + 2 * extra_samples;
+    auto total_samples = samples_needed * total_antennas;
 
     DEBUG_MSG("   Total samples in data message: " << total_samples);
 
-    dp->allocate_and_copy_rf_samples(total_antennas, rx_metadata.numberofreceivesamples(),
+    dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
                                 rx_metadata.time_zero(), rx_metadata.start_time(),
                                 rx_metadata.ringbuffer_size(), first_stage_dm_rate,
                                 second_stage_dm_rate,ringbuffer_ptrs_start);
@@ -204,8 +209,7 @@ int main(int argc, char **argv){
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),
                                                 filters.get_first_stage_bandpass_taps_h().size());
 
-    auto num_output_samples_per_antenna_1 = rx_metadata.numberofreceivesamples()/
-                                              first_stage_dm_rate;
+    auto num_output_samples_per_antenna_1 = samples_needed / first_stage_dm_rate;
     auto total_output_samples_1 = rx_freqs.size() * num_output_samples_per_antenna_1 *
                                    total_antennas;
 
@@ -215,7 +219,7 @@ int main(int argc, char **argv){
 
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
       dp->get_first_stage_output_p(),dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
-      rx_metadata.numberofreceivesamples(), filters.get_first_stage_lowpass_taps().size(),
+      samples_needed, filters.get_first_stage_lowpass_taps().size(),
       rx_freqs.size(), total_antennas, rx_rate, dp->get_frequencies_p(),
       "First stage of decimation", dp->get_cuda_stream());
 
@@ -263,7 +267,7 @@ int main(int argc, char **argv){
     dp->allocate_and_copy_host_output(total_output_samples_3);
 
     dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
-                                      rx_metadata.numberofreceivesamples(),
+                                      samples_needed,
                                       num_output_samples_per_antenna_1,
                                       num_output_samples_per_antenna_2,
                                       num_output_samples_per_antenna_3);
