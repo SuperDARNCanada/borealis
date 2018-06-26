@@ -39,20 +39,24 @@ def router(opts):
     sys.stdout.write("Starting router!\n")
     while True:
         dd = router.recv_multipart()
-        #sys.stdout.write(dd)
+
         sender, receiver, empty, data = dd
-        output = "Router input/// Sender -> {}: Receiver -> {}: empty: Data -> {}\n".format(*dd)
-        #sys.stdout.write(output)
+        if __debug__:
+            output = "Router input/// Sender -> {}: Receiver -> {}: empty: Data -> {}\n".format(*dd)
+            sys.stdout.write(output)
         frames = [receiver,sender,empty,data]
-        output = "Router output/// Receiver -> {}: Sender -> {}: empty: Data -> {}\n".format(*frames)
-        #sys.stdout.write(output)
+        if __debug__:
+            output = "Router output/// Receiver -> {}: Sender -> {}: empty: Data -> {}\n"
+            output = output.format(*frames)
+            sys.stdout.write(output)
         sent = False
         while not sent:
             try:
                 router.send_multipart(frames)
                 sent = True
             except zmq.ZMQError as e:
-                sys.stdout.write("Trying to send \n")
+                if __debug__:
+                    sys.stdout.write("Trying to send \n")
                 time.sleep(0.5)
 
 def sequence_timing(opts):
@@ -110,8 +114,10 @@ def sequence_timing(opts):
             if want_to_start and good_to_start:
                 #Acknowledge new sequence can begin to Radar Control by requesting new sequence
                 #metadata
-                printing("Requesting metadata from Radar control")
-                so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity, "Requesting metadata")
+                if __debug__:
+                    printing("Requesting metadata from Radar control")
+                so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity,
+                                    "Requesting metadata")
                 want_to_start = good_to_start = False
 
             message = start_new.recv()
@@ -139,8 +145,10 @@ def sequence_timing(opts):
 
         if first_time:
             #Request new sequence metadata
-            printing("Requesting metadata from Radar control")
-            so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity, "Requesting metadata")
+            if __debug__:
+                printing("Requesting metadata from Radar control")
+            so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity,
+                                "Requesting metadata")
             first_time = False
 
         socks = dict(sequence_poller.poll())
@@ -151,14 +159,17 @@ def sequence_timing(opts):
 
             sigp = sigprocpacket_pb2.SigProcPacket()
             sigp.ParseFromString(reply)
-            reply_output = "Radar control sent -> sequence {} time {}".format(sigp.sequence_num,
-                                                                              sigp.sequence_time)
-            printing(reply_output)
+            if __debug__:
+                reply_output = "Radar control sent -> sequence {} time {}".format(sigp.sequence_num,
+                                                                                sigp.sequence_time)
+                printing(reply_output)
 
             pulse_seq_times[sigp.sequence_num] = sigp.sequence_time
 
             #Request acknowledgement of sequence from driver
-            printing("Requesting ack from driver")
+            if __debug__:
+                printing("Requesting ack from driver")
+
             so.send_request(brian_to_driver, opts.driver_to_brian_identity, "Requesting ack")
 
         if brian_to_driver in socks and socks[brian_to_driver] == zmq.POLLIN:
@@ -167,24 +178,33 @@ def sequence_timing(opts):
             reply = so.recv_reply(brian_to_driver, opts.driver_to_brian_identity, printing)
             meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
             meta.ParseFromString(reply)
-            reply_output = "Driver sent -> time {}, sqnum {}".format(meta.sequence_time, meta.sequence_num)
-            printing(reply_output)
+
+            if __debug__:
+                reply_output = "Driver sent -> time {}, sqnum {}"
+                reply_output = reply_output.format(meta.sequence_time, meta.sequence_num)
+                printing(reply_output)
 
             driver_times[meta.sequence_num] = meta.sequence_time
 
             #Requesting acknowledgement of work begins from DSP
-            printing("Requesting work begins from DSP")
-            so.send_request(brian_to_dsp_begin, opts.dspbegin_to_brian_identity, "Requesting work begins")
+            if __debug__:
+                printing("Requesting work begins from DSP")
+
+            so.send_request(brian_to_dsp_begin, opts.dspbegin_to_brian_identity,
+                                "Requesting work begins")
 
         if brian_to_dsp_begin in socks and socks[brian_to_dsp_begin] == zmq.POLLIN:
 
             #Get acknowledgement that work began in processing.
             reply = so.recv_reply(brian_to_dsp_begin, opts.dspbegin_to_brian_identity, printing)
-            reply_output = "Dsp sent -> {}".format(reply)
-            printing(reply_output)
+            if __debug__:
+                reply_output = "Dsp sent -> {}".format(reply)
+                printing(reply_output)
 
             #Requesting acknowledgement of work ends from DSP
-            printing("Requesting work end from DSP")
+            if __debug__:
+                printing("Requesting work end from DSP")
+
             so.send_request(brian_to_dsp_end, opts.dspend_to_brian_identity, "Requesting work ends")
 
             #acknowledge we want to start something new
@@ -198,8 +218,10 @@ def sequence_timing(opts):
 
             proc_d = processeddata_pb2.ProcessedData()
             proc_d.ParseFromString(reply)
-            reply_output = "Dsp sent -> time {}, sqnum {}".format(proc_d.processing_time, proc_d.sequence_num)
-            printing(reply_output)
+            if __debug__:
+                reply_output = "Dsp sent -> time {}, sqnum {}"
+                reply_output = reply_output.format(proc_d.processing_time, proc_d.sequence_num)
+                printing(reply_output)
 
 
             processing_times[proc_d.sequence_num] = proc_d.processing_time
@@ -208,7 +230,9 @@ def sequence_timing(opts):
                     late_counter +=1
                 else:
                     late_counter = 0
-            printing("Late counter {}".format(late_counter))
+
+            if __debug__:
+                printing("Late counter {}".format(late_counter))
 
             #acknowledge that we are good and able to start something new
             start_new_sock.send("good_to_start")
