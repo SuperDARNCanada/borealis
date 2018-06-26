@@ -59,15 +59,7 @@ int main(int argc, char **argv){
   //Check for non integer dm rates
   if (fmod(rx_rate,sig_options.get_first_stage_sample_rate()) > 0.0) {
     //TODO(keith): handle error
-  } //TODO(keith): not sure these checks will work.
-/*  else if (fmod(sig_options.get_first_stage_sample_rate(),
-          sig_options.get_second_stage_sample_rate()) > 0.0) {
-    //TODO(keith): handle error
   }
-  else if(fmod(sig_options.get_second_stage_sample_rate(),
-        sig_options.get_third_stage_sample_rate()) > 0.0) {
-    //TODO(keith): handle error
-  }*/
   else{
     auto float_dm_rate = rx_rate/sig_options.get_first_stage_sample_rate();
     first_stage_dm_rate = static_cast<uint32_t>(float_dm_rate);
@@ -121,7 +113,6 @@ int main(int argc, char **argv){
   auto first_time = true;
   for(;;){
     //Receive packet from radar control
-
     auto message =  std::string("Need metadata");
     SEND_REQUEST(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity(), message);
     auto reply = RECV_REPLY(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity());
@@ -180,10 +171,7 @@ int main(int argc, char **argv){
       }()
     );
 
-/*    if (rx_metadata.shrmemname().empty()){
-      //TODO(keith): handle missing name error
-    }
-*/
+
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
                              sig_options, sp_packet.sequence_num(),
                              rx_freqs, &filters);

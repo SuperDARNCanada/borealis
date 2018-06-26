@@ -37,8 +37,6 @@ USRP::USRP(const DriverOptions& driver_options)
   set_main_rx_subdev(driver_options.get_main_rx_subdev());
   set_interferometer_rx_subdev(driver_options.get_interferometer_rx_subdev(),
                                 driver_options.get_interferometer_antenna_count());
-/*  receive_channels = create_receive_channels(driver_options.get_main_antenna_count(),
-                                              driver_options.get_interferometer_antenna_count());*/
   set_time_source(driver_options.get_pps());
   check_ref_locked();
   set_atr_gpios();
@@ -181,60 +179,6 @@ void USRP::set_interferometer_rx_subdev(std::string interferometer_subdev,
 }
 
 /**
- * @brief      Creates the order of USRP receiver channels.
- *
- * @param[in]  main_antenna_count            The main antenna count.
- * @param[in]  interferometer_antenna_count  The interferometer antenna count.
- *
- * @return     A vector with the USRP channel ordering.
- *
- * The USRP default channel mapping will cause the main antenna and interferometer
- * antenna data to be interleaved buffer by buffer. When setting up the receive streamer from the
- * USRP, it is possible to reorder the host side data buffers. This algorithm reorders the channels
- * so that the main array buffers are in order, followed by the interferometers buffers. This
- * ordering is easiest to work with and is what most people would assume the data layout looks like.
- */
-/*std::vector<size_t> USRP::create_receive_channels(uint32_t main_antenna_count,
-                        uint32_t interferometer_antenna_count) //TODO(keith): add channel mapping
-{
-
-  std::vector<size_t> channels;
-
-  //Add the main array channels from the mboards that will also be receiving the
-  //interferometer samples
-  for(uint32_t i=0; i<interferometer_antenna_count; i++) {
-    channels.push_back(2*i);
-  }
-
-  //starts at 2 * i_count since those channels are interleaved
-  auto start = 2 * interferometer_antenna_count;
-  auto end = main_antenna_count + interferometer_antenna_count;
-
-  //Add the rest of main array channels
-  for(uint32_t i=start; i<end; i++){
-    channels.push_back(i);
-  }
-
-  //Now add the interferometer channels
-  for(uint32_t i=0; i<interferometer_antenna_count; i++) {
-    channels.push_back(2*i + 1);
-  }
-
-  return channels;
-
-}
-*/
-/**
- * @brief      Gets the receive channels.
- *
- * @return     A vector of the receive channel ordering.
- */
-/*std::vector<size_t> USRP::get_receive_channels()
-{
-  return receive_channels;
-}
-*/
-/**
  * @brief      Sets the receive sample rate.
  *
  * @param[in]  rx_rate  The receive rate in Sps.
@@ -279,7 +223,6 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
     double actual_freq = usrp_->get_rx_freq(channel);
     if (actual_freq != freq) {
       /*TODO: something*/
-      std::cout << "freq difference " << actual_freq - freq << std::endl;
     }
 
   }

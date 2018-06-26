@@ -57,29 +57,17 @@ namespace {
   }
 
 
-  void frerking_phase_correction(cuComplex *samples, uint32_t num_samps_per_antenna,
-                                  uint32_t num_antennas, double F_s, double F_new, double F_final,
-                                  std::vector<double> freqs)
-  {
-    auto m = F_new / F_final;
-
-    for (uint32_t freq_index=0; freq_index < freqs.size(); freq_index++) {
-      for (int i=0; i<num_antennas; i++) {
-        for (int j=0; j<num_samps_per_antenna; j++){
-          auto phi_k = 2 * M_PI * (F_s/F_new) * fmod((m*j),F_s) * (freqs[freq_index]/F_s);
-          auto phase = std::exp(std::complex<float>(0,1) * std::complex<float>(phi_k,0));
-          cuComplex cu_phase;
-          cu_phase.x = phase.real();
-          cu_phase.y = phase.imag();
-          auto sample_index = freq_index*num_antennas*num_samps_per_antenna + i*num_samps_per_antenna + j;
-          auto corrected_samp = cuCmulf(samples[sample_index],cu_phase);
-          samples[sample_index] = corrected_samp;
-        }
-      }
-    }
-
-  }
-
+  /**
+   * @brief      Drops samples contaminated by edge effects and filter roll off.
+   *
+   * @param      input_samples    The input samples.
+   * @param      output_samples   The output samples.
+   * @param      samps_per_stage  The number of output samples per stage.
+   * @param      taps_per_stage   The number of filter taps per stage.
+   * @param[in]  num_antennas     The number of antennas.
+   * @param[in]  num_freqs        The number of freqs.
+   *
+   */
   void drop_bad_samples(cuComplex *input_samples, std::vector<cuComplex> &output_samples,
                         std::vector<uint32_t> &samps_per_stage,
                         std::vector<uint32_t> &taps_per_stage,
@@ -120,6 +108,14 @@ namespace {
     }
   }
 
+  /**
+   * @brief      Creates a data packet of processed data.
+   *
+   * @param      pd    A processeddata protobuf object.
+   * @param      dp    A pointer to the DSPCore object with data to be extracted.
+   *
+   * This function extracts the processed data into a protobuf that data write can use.
+   */
   void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCore* dp)
   {
 
@@ -136,10 +132,12 @@ namespace {
     drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
                      dp->get_num_antennas(), dp->get_rx_freqs().size());
 
+
+    // We have a lambda to extract the starting pointers of each set of output samples so that
+    // we can use a consistent function to write either rf samples or stage data.
     auto make_ptrs_vec = [](cuComplex* output_p, uint32_t num_freqs, uint32_t num_antennas,
                               uint32_t num_samps_per_antenna)
     {
-      //auto stage_output = output_p;
       auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
 
       std::vector<std::vector<cuComplex*>> ptrs;
@@ -174,19 +172,16 @@ namespace {
 
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
       auto dataset = pd.add_outputdataset();
+      // This lambda adds the stage data to the processed data for debug purposes.
       auto add_debug_data = [dataset,i](std::string stage_name, std::vector<cuComplex*> &data_ptrs,
                                           uint32_t num_antennas, uint32_t num_samps_per_antenna)
       {
         auto debug_samples = dataset->add_debugsamples();
 
         debug_samples->set_stagename(stage_name);
-        //auto stage_output = output_p;
-        //auto stage_samps_per_set = num_antennas * num_samps_per_antenna;
-
         for (uint32_t j=0; j<num_antennas; j++){
           auto antenna_data = debug_samples->add_antennadata();
           for(uint32_t k=0; k<num_samps_per_antenna; k++) {
-            //auto idx = i * stage_samps_per_set + j * num_samps_per_antenna + k;
             auto antenna_samp = antenna_data->add_antennasamples();
             antenna_samp->set_real(data_ptrs[j][k].x);
             antenna_samp->set_imag(data_ptrs[j][k].y);
@@ -341,7 +336,6 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *d
   rx_freqs = freqs;
   sig_options = options;
   dsp_filters = filters;
-  //ringbuffers = ringbuffer_ptrs_start;
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));
   gpuErrchk(cudaEventCreate(&initial_start));
@@ -350,9 +344,6 @@ DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *d
   gpuErrchk(cudaEventCreate(&mem_transfer_end));
   gpuErrchk(cudaEventRecord(initial_start, stream));
 
-/*  shr_mem = SharedMemoryHandler(shr_mem_name);
-  shr_mem.open_shr_mem();
-*/
 }
 
 /**
@@ -381,7 +372,6 @@ DSPCore::~DSPCore()
   gpuErrchk(cudaEventDestroy(stop));
   gpuErrchk(cudaStreamDestroy(stream));
 
-  //shr_mem.remove_shr_mem();
 
   DEBUG_MSG(COLOR_RED("Running deconstructor for sequence #" << sequence_num));
 
@@ -390,7 +380,18 @@ DSPCore::~DSPCore()
 /**
  * @brief      Allocates device memory for the RF samples and then copies them to device.
  *
- * @param[in]  total_samples  Total number of samples to copy.
+ * @param[in]  total_antennas         The total number of antennas.
+ * @param[in]  num_samples_needed     The number samples needed from each antenna ringbuffer.
+ * @param[in]  extra_samples          The number of extra samples needed for filter propagation.
+ * @param[in]  time_zero              The time the driver began collecting samples.
+ * @param[in]  start_time             The start time of the pulse sequence.
+ * @param[in]  ringbuffer_size        The ringbuffer size.
+ * @param[in]  first_stage_dm_rate    The first stage dm rate.
+ * @param[in]  second_stage_dm_rate   The second stage dm rate.
+ * @param      ringbuffer_ptrs_start  A vector of pointers to the start of each antenna ringbuffer.
+ *
+ * Samples are being stored in a shared memory ringbuffer. This function calculates where to index
+ * into the ringbuffer for samples and copies them to the gpu.
  */
 void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
                                 int64_t extra_samples, double time_zero, double start_time,
@@ -407,8 +408,8 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
   auto diff_sample = sample_time_diff * sig_options.get_rx_rate();
   auto start_sample = int64_t(std::fmod(diff_sample, ringbuffer_size));
 
-  //We need to sample early to account for propagating samples through filters.
-
+  // We need to sample early to account for propagating samples through filters.
+  // We cannot index using negative numbers so we have to roll back from ringbuffer size.
   if (start_sample - extra_samples < 0) {
       start_sample = ringbuffer_size - (extra_samples - start_sample);
   } else {
@@ -553,6 +554,11 @@ void DSPCore::allocate_and_copy_host_output(uint32_t num_host_samples)
 }
 
 
+/**
+ * @brief      Allocates host memory for the first stage samples and copies from device to host.
+ *
+ * @param[in]  num_first_stage_output_samples  The number of first stage output samples.
+ */
 void DSPCore::allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples)
 {
   size_t host_output_size = num_first_stage_output_samples * sizeof(cuComplex);
@@ -561,6 +567,11 @@ void DSPCore::allocate_and_copy_first_stage_host(uint32_t num_first_stage_output
         host_output_size, cudaMemcpyDeviceToHost,stream));
 }
 
+/**
+ * @brief      Allocates host memory for the second stage samples and copies from device to host.
+ *
+ * @param[in]  num_second_stage_output_samples  The number of second stage output samples.
+ */
 void DSPCore::allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples)
 {
   size_t host_output_size = num_second_stage_output_samples * sizeof(cuComplex);
@@ -569,6 +580,11 @@ void DSPCore::allocate_and_copy_second_stage_host(uint32_t num_second_stage_outp
         host_output_size, cudaMemcpyDeviceToHost,stream));
 }
 
+/**
+ * @brief      Allocates host memory for the third stage samples and copies from device to host.
+ *
+ * @param[in]  num_third_stage_output_samples  The number of third stage output samples.
+ */
 void DSPCore::allocate_and_copy_third_stage_host(uint32_t num_third_stage_output_samples)
 {
   size_t host_output_size = num_third_stage_output_samples * sizeof(cuComplex);
@@ -577,6 +593,15 @@ void DSPCore::allocate_and_copy_third_stage_host(uint32_t num_third_stage_output
         host_output_size, cudaMemcpyDeviceToHost,stream));
 }
 
+/**
+ * @brief      Allocates host memory for rf samples and copies from device to host.
+ *
+ * @param[in]  num_rf_samples  The number of rf samples.
+ *
+ * The rf samples are originally copied directly from the ringbuffer to the device. The samples
+ * are copied back to the host application into contiguous memory if further analysis of the rf
+ * samples is needed.
+ */
 void DSPCore::allocate_and_copy_rf_from_device(uint32_t num_rf_samples)
 {
   size_t rf_output_size = num_rf_samples * sizeof(cuComplex);
@@ -615,10 +640,6 @@ void DSPCore::send_timing()
 
   std::string s_msg_str;
   sp.SerializeToString(&s_msg_str);
-/*  zmq::message_t s_msg(s_msg_str.size());
-  memcpy ((void *) s_msg.data (), s_msg_str.c_str(), s_msg_str.size());
-*/
-/*  timing_socket->send(s_msg);*/
 
   auto request = RECV_REQUEST(*timing_socket, sig_options.get_brian_dspend_identity());
   SEND_REPLY(*timing_socket, sig_options.get_brian_dspend_identity(), s_msg_str);
@@ -689,6 +710,11 @@ void DSPCore::send_ack()
   DEBUG_MSG(COLOR_RED("Sent ack after copy for sequence_num #" << sequence_num));
 }
 
+/**
+ * @brief      Sends a processed data packet to data write.
+ *
+ * @param      pd    A processeddata protobuf object.
+ */
 void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
 {
   std::string p_msg_str;
@@ -730,13 +756,24 @@ cuComplex* DSPCore::get_rf_samples_p(){
   return rf_samples_d;
 }
 
+/**
+ * @brief      Gets the host pointer to the RF samples.
+ *
+ * @return     The rf samples host pointer.
+ */
 cuComplex* DSPCore::get_rf_samples_h() {
   return rf_samples_h;
 }
 
+/**
+ * @brief      Gets the device pointer to the receive frequencies.
+ *
+ * @return     The frequencies device pointer.
+ */
 double* DSPCore::get_frequencies_p() {
   return freqs_d;
 }
+
 /**
  * @brief      Gets the device pointer to the first stage bandpass filters.
  *
@@ -791,10 +828,20 @@ cuComplex* DSPCore::get_third_stage_output_p(){
   return third_stage_output_d;
 }
 
+/**
+ * @brief      Gets the host pointer to the output samples.
+ *
+ * @return     The host output pointer.
+ */
 cuComplex* DSPCore::get_host_output_h() {
   return host_output_h;
 }
 
+/**
+ * @brief      Get the vector of host side frequencies.
+ *
+ * @return     The receive freqs vector.
+ */
 std::vector<double> DSPCore::get_rx_freqs()
 {
   return rx_freqs;
@@ -828,44 +875,91 @@ float DSPCore::get_decimate_timing()
   return decimate_kernel_timing_ms;
 }
 
+/**
+ * @brief      Gets the host pointer for first stage output.
+ *
+ * @return     The first stage output host pointer.
+ */
 cuComplex* DSPCore::get_first_stage_output_h()
 {
   return first_stage_output_h;
 }
 
+/**
+ * @brief      Gets the host pointer for the second stage output.
+ *
+ * @return     The second stage output host pointer.
+ */
 cuComplex* DSPCore::get_second_stage_output_h()
 {
   return second_stage_output_h;
 }
 
+/**
+ * @brief      Gets the host pointer for the third stage output.
+ *
+ * @return     The third stage output host pointer.
+ */
 cuComplex* DSPCore::get_third_stage_output_h()
 {
   return third_stage_output_h;
 }
 
+/**
+ * @brief      Gets the number of antennas.
+ *
+ * @return     The number of antennas.
+ */
 uint32_t DSPCore::get_num_antennas()
 {
   return num_antennas;
 }
 
-uint32_t DSPCore::get_num_rf_samples() {
+/**
+ * @brief      Gets the number of rf samples.
+ *
+ * @return     The number of rf samples.
+ */
+uint32_t DSPCore::get_num_rf_samples()
+{
   return num_rf_samples;
 }
+
+/**
+ * @brief      Gets the number first stage samples per antenna.
+ *
+ * @return     The number first stage samples per antenna.
+ */
 uint32_t DSPCore::get_num_first_stage_samples_per_antenna()
 {
   return num_first_stage_samples_per_antenna;
 }
 
+/**
+ * @brief      Gets the number second stage samples per antenna.
+ *
+ * @return     The number second stage samples per antenna.
+ */
 uint32_t DSPCore::get_num_second_stage_samples_per_antenna()
 {
   return num_second_stage_samples_per_antenna;
 }
 
+/**
+ * @brief      Gets the number third stage samples per antenna.
+ *
+ * @return     The number third stage samples per antenna.
+ */
 uint32_t DSPCore::get_num_third_stage_samples_per_antenna()
 {
   return num_third_stage_samples_per_antenna;
 }
 
+/**
+ * @brief      Gets the sequence number.
+ *
+ * @return     The sequence number.
+ */
 uint32_t DSPCore::get_sequence_num()
 {
   return sequence_num;

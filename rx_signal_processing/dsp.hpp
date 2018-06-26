@@ -128,7 +128,9 @@ class DSPCore {
   //! Stores the decimation timing.
   float decimate_kernel_timing_ms;
 
+  //! Pointer to the device rx frequencies.
   double *freqs_d;
+
   //! Pointer to the RF samples on device.
   cuComplex *rf_samples_d;
 
@@ -168,21 +170,39 @@ class DSPCore {
   //! Stores the memory transfer timing.
   float mem_time_ms;
 
-  //! A shared memory handler object that contains RF samples from the USRP driver.
-  //SharedMemoryHandler shr_mem;
-
+  //! A vector of pointers to the start of ringbuffers.
   std::vector<cuComplex*> ringbuffers;
+
+  //! A host side pointer to the rf samples.
   cuComplex *rf_samples_h;
+
+  //! A host side pointer to the first stage output.
   cuComplex *first_stage_output_h;
+
+  //! A host side pointer to the second stage output.
   cuComplex *second_stage_output_h;
+
+  //! A host side pointer to the third stage output.
   cuComplex *third_stage_output_h;
 
+  //! A vector containing the host side rx frequencies.
   std::vector<double> rx_freqs;
+
+  //! The number of total antennas.
   uint32_t num_antennas;
+
+  //! The number of rf samples per antenna.
   uint32_t num_rf_samples;
+
+  //! The number of first stage samplesper antenna.
   uint32_t num_first_stage_samples_per_antenna;
+
+  //! The number of second stage samples per antenna.
   uint32_t num_second_stage_samples_per_antenna;
+
+  //! The number of third stage samples per antenna.
   uint32_t num_third_stage_samples_per_antenna;
+
   void allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples);
   void allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples);
   void allocate_and_copy_third_stage_host(uint32_t num_third_stage_output_samples);
