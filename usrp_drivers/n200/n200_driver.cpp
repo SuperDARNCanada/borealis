@@ -102,7 +102,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   auto identities = {driver_options.get_driver_to_radctrl_identity(),
                       driver_options.get_driver_to_dsp_identity(),
-                      driver_options.get_driver_to_brian_identity()};
+                      driver_options.get_driver_to_brian_identity(),
+                      driver_options.get_driver_to_txaffinity_identity()};
 
   auto sockets_vector = create_sockets(driver_c, identities, driver_options.get_router_address());
 
@@ -111,6 +112,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   zmq::socket_t &driver_to_radar_control = sockets_vector[0];
   zmq::socket_t &driver_to_dsp = sockets_vector[1];
   zmq::socket_t &driver_to_brian = sockets_vector[2];
+  zmq::socket_t &driver_to_txaffinity = sockets_vector[3];
 
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.connect("inproc://thread"))
@@ -192,6 +194,15 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 auto actual_tx_rate = usrp_d.set_tx_rate(driver_packet.txrate(), tx_channels); // TODO(keith): Test that USRPs exist to match channels in config.
                 tx_stream = usrp_d.get_usrp_tx_stream(stream_args);  // ~44ms
                 usrp_channels_set = true;
+
+                // This will break if our tx channels are changing. This will probably need a design
+                // change. Maybe we should just TX zeros if there is no channel data. That will
+                // trigger TR though.
+                auto set_tid_msg = std::string("SET_TIDS");
+                SEND_REQUEST(driver_to_txaffinity,
+                              driver_options.get_txaffinity_to_driver_identity(), set_tid_msg);
+                auto keep_going = RECV_REPLY(driver_to_txaffinity,
+                                              driver_options.get_txaffinity_to_driver_identity());
               }
             }()
           );
@@ -388,6 +399,18 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   usrp_d.set_rx_rate(rx_rate_hz, receive_channels);  // ~450us
   uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream(stream_args);  // ~44ms
 
+  auto identities = {driver_options.get_driver_to_rxaffinity_identity()};
+
+  auto sockets_vector = create_sockets(driver_c, identities,
+                                        driver_options.get_router_address());
+  zmq::socket_t &driver_to_rxaffinity = sockets_vector[0];
+
+  auto set_tid_msg = std::string("SET_TIDS");
+  SEND_REQUEST(driver_to_rxaffinity,
+                driver_options.get_rxaffinity_to_driver_identity(), set_tid_msg);
+  auto keep_going = RECV_REPLY(driver_to_rxaffinity,
+                                driver_options.get_rxaffinity_to_driver_identity());
+
   /* 100 is the arbitrary scaling for the usrp_buffer_size
      so there won't be fragmentation and the while(1) loop below
      with the recv runs less times
@@ -419,7 +442,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   rx_stream->issue_stream_cmd(stream_cmd);
 
-  //auto kill_loop = false;
   uhd::rx_metadata_t meta;
 
   uint32_t buffer_inc = 0;
@@ -522,7 +544,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
  */
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-  uhd::set_thread_priority_safe();
+  //uhd::set_thread_priority_safe();
 
   DriverOptions driver_options;
 
@@ -537,6 +559,19 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   //  Prepare our context
   zmq::context_t driver_context(1);
+  auto identities = {driver_options.get_driver_to_mainaffinity_identity()};
+
+  auto sockets_vector = create_sockets(driver_context, identities,
+                                        driver_options.get_router_address());
+
+
+  zmq::socket_t &driver_to_mainaffinity = sockets_vector[0];
+
+  auto set_tid_msg = std::string("SET_TIDS");
+  SEND_REQUEST(driver_to_mainaffinity,
+                              driver_options.get_mainaffinity_to_driver_identity(), set_tid_msg);
+  auto keep_going = RECV_REPLY(driver_to_mainaffinity,
+                                driver_options.get_mainaffinity_to_driver_identity());
 
   std::vector<std::thread> threads;
 
@@ -550,6 +585,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   threads.push_back(std::move(transmit_t));
   threads.push_back(std::move(receive_t));
+
+  SEND_REQUEST(driver_to_mainaffinity,
+                              driver_options.get_mainaffinity_to_driver_identity(), set_tid_msg);
+  keep_going = RECV_REPLY(driver_to_mainaffinity,
+                                driver_options.get_mainaffinity_to_driver_identity());
 
   for (auto& th : threads) {
     th.join();

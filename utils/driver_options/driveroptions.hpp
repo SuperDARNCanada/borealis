@@ -30,8 +30,6 @@ class DriverOptions: public Options {
         uint32_t get_interferometer_antenna_count() const;
         double get_ringbuffer_size() const;
         std::vector<size_t> get_receive_channels() const;
-/*        std::string get_radar_control_to_driver_address() const;
-        std::string get_driver_to_rx_dsp_address() const;*/
         std::string get_driver_to_radctrl_identity() const;
         std::string get_driver_to_dsp_identity() const;
         std::string get_driver_to_brian_identity() const;
@@ -40,6 +38,12 @@ class DriverOptions: public Options {
         std::string get_dsp_to_driver_identity() const;
         std::string get_brian_to_driver_identity() const;
         std::string get_ringbuffer_name() const;
+        std::string get_driver_to_mainaffinity_identity() const;
+        std::string get_driver_to_txaffinity_identity() const;
+        std::string get_driver_to_rxaffinity_identity() const;
+        std::string get_mainaffinity_to_driver_identity() const;
+        std::string get_txaffinity_to_driver_identity() const;
+        std::string get_rxaffinity_to_driver_identity() const;
  private:
 
         std::string devices_;
@@ -71,6 +75,12 @@ class DriverOptions: public Options {
         std::string dsp_to_driver_identity_;
         std::string brian_to_driver_identity_;
         std::string ringbuffer_name_;
+        std::string driver_to_mainaffinity_identity_;
+        std::string driver_to_txaffinity_identity_;
+        std::string driver_to_rxaffinity_identity_;
+        std::string mainaffinity_to_driver_identity_;
+        std::string txaffinity_to_driver_identity_;
+        std::string rxaffinity_to_driver_identity_;
 
 
 };
