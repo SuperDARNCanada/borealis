@@ -1,5 +1,7 @@
 import json
 from scipy.fftpack import fft
+import matplotlib
+matplotlib.use("TKAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
@@ -73,7 +75,7 @@ class PlotData(object):
                 real = antv["real"]
                 imag = antv["imag"]
                 cmplx = np.array(real) + 1.0j * np.array(imag)
-                fig = AnalysisUtils.fft_and_plot(cmplx,rate)
+                fig = AnalysisUtils.fft_and_plot(np.abs(cmplx),rate)
                 plots_directory = "non_bf_iq_plots"
                 output_name = "{0}/{1}.{2}.png".format(plots_directory, dsetk, antk)
                 if not os.path.exists(plots_directory):
@@ -87,22 +89,23 @@ class PlotData(object):
 
         rx_rate = float(self.config["rx_sample_rate"])
 
-        for i in range(rf_samples.shape[0]):
-            ant_samps = rf_samples[i]
-            x = np.arange(len(ant_samps))
-            fig, smpplt = plt.subplots(1,1)
-            smpplt.plot(x,ant_samps.real)
-            #smpplt.plot(x,ant_samps.imag)
-            plt.show()
-            fig.savefig("debug_plots/antenna_{0}_rf.png".format(i))
-            plt.close(fig)
-            fig = AnalysisUtils.fft_and_plot(ant_samps,rx_rate)
-            fig.savefig("debug_plots/antenna_{0}_rf_fft.png".format(i))
-            plt.close(fig)
+        # for i in range(rf_samples.shape[0]):
+        #     ant_samps = rf_samples[i]
+        #     x = np.arange(len(ant_samps))
+        #     fig, smpplt = plt.subplots(1,1)
+        #     smpplt.plot(x,np.abs(ant_samps))
+        #     #smpplt.plot(x,ant_samps.imag)
+        #     plt.show()
+        #     fig.savefig("debug_plots/antenna_{0}_rf.png".format(i))
+        #     plt.close(fig)
+        #     fig = AnalysisUtils.fft_and_plot(ant_samps,rx_rate)
+        #     fig.savefig("debug_plots/antenna_{0}_rf_fft.png".format(i))
+        #     plt.close(fig)
 
         with open(self.config['filter_outputs_debug_file'],'r') as f:
             data = json.load(f)
 
+        rf_rate = float(config["rx_sample_rate"])
         first_stage_rate = float(config["first_stage_sample_rate"])
         second_stage_rate = float(config["second_stage_sample_rate"])
         third_stage_rate = float(config["third_stage_sample_rate"])
@@ -110,7 +113,9 @@ class PlotData(object):
             for stagek,stagev in dsetv.iteritems():
                 if "output_samples" in stagek:
                     continue
-                if "stage_1" in stagek:
+                if "rf_samples" in stagek:
+                    rate = rf_rate
+                elif "stage_1" in stagek:
                     rate = first_stage_rate
                 elif "stage_2" in stagek:
                     rate = second_stage_rate
@@ -123,7 +128,8 @@ class PlotData(object):
                     cmplx = np.array(real) + 1.0j * np.array(imag)
                     x = np.arange(len(cmplx))
                     fig, smpplt = plt.subplots(1,1)
-                    smpplt.plot(x, np.absolute(cmplx))
+                    smpplt.plot(x, np.abs(cmplx))
+                    plt.show()
                     fig.savefig("debug_plots/cmplx.{0}.{1}.{2}.png".format(dsetk, stagek, antk))
                     plt.close(fig)
                     fig = AnalysisUtils.fft_and_plot(cmplx,rate)
@@ -153,9 +159,10 @@ if __name__ == "__main__":
     plotting = PlotData(config)
 
     total_antennas = int(config["main_antenna_count"]) + int(config["interferometer_antenna_count"])
-    rf_samples = open_binary_samples(file_path, total_antennas)
+    #rf_samples = open_binary_samples(file_path, total_antennas)
+    rf_samples = None
     plotting.create_debug_plots(rf_samples)
-    plotting.create_plots(output_samples_file)
+    #plotting.create_plots(output_samples_file)
 
 
 

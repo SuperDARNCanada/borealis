@@ -145,6 +145,34 @@ void signals(zmq::context_t &context)
 
   auto samples = simulate_samples(num_antennas, num_samples, rx_freqs, rx_rate, false);
 
+  auto usrp_buffer_size = 36300;
+  /* The ringbuffer_size is calculated this way because it's first truncated (size_t)
+     then rescaled by usrp_buffer_size */
+  size_t ringbuffer_size = size_t(driver_options.get_ringbuffer_size()/
+                            sizeof(std::complex<float>)/
+                            usrp_buffer_size) * usrp_buffer_size;
+
+
+  SharedMemoryHandler shrmem(driver_options.get_ringbuffer_name());
+
+  shrmem.create_shr_mem(num_antennas * ringbuffer_size * sizeof(std::complex<float>));
+
+
+  std::vector<std::complex<float>*> buffer_ptrs_start;
+
+  for(uint32_t i=0; i<num_antennas; i++){
+    auto ptr = static_cast<std::complex<float>*>(shrmem.get_shrmem_addr()) + (i * ringbuffer_size);
+    buffer_ptrs_start.push_back(ptr);
+  }
+
+  for (uint32_t i=0; i<num_antennas; i++) {
+    size_t counter = 0;
+    while(counter < ringbuffer_size){
+      buffer_ptrs_start[i][counter] = samples[i*num_samples + counter % num_samples];
+      counter++;
+    }
+  }
+
   auto sqn_num = 0;
 
   sp.set_sequence_num(sqn_num);
@@ -154,10 +182,7 @@ void signals(zmq::context_t &context)
                                         total_time_end;
   std::chrono::milliseconds accum_time(0);
 
-  sqn_num += 1;
-
   auto seq_counter = 0;
-  auto first_time = true;
   while(1) {
 
     std::string r_msg_str;
@@ -166,7 +191,7 @@ void signals(zmq::context_t &context)
     auto request = RECV_REQUEST(radar_control_to_dsp, sig_options.get_dsp_radctrl_identity());
     SEND_REPLY(radar_control_to_dsp, sig_options.get_dsp_radctrl_identity(), r_msg_str);
 
-    auto name_str = random_string(10);
+    /*auto name_str = random_string(10);
 
     auto shr_start = std::chrono::steady_clock::now();
     SharedMemoryHandler shrmem(name_str);
@@ -178,10 +203,14 @@ void signals(zmq::context_t &context)
       << " after "
       << std::chrono::duration_cast<std::chrono::milliseconds>(shr_end - shr_start).count()
       << "ms" << std::endl;
-
+*/
+    samples_metadata.set_time_zero(0.0);
+    samples_metadata.set_ringbuffer_size(ringbuffer_size);
+    double start_time = (sqn_num + 1) * num_samples / rx_rate;
+    samples_metadata.set_start_time(start_time);
     std::cout << "Sending data with sequence_num: " << sp.sequence_num() << std::endl;
 
-    samples_metadata.set_shrmemname(name_str.c_str());
+   // samples_metadata.set_shrmemname(name_str.c_str());
 
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);
@@ -228,6 +257,10 @@ void signals(zmq::context_t &context)
     std::cout << "Received timing for sequence #" << timing_from_dsp.sequence_num()
       << " after " << std::chrono::duration_cast<std::chrono::milliseconds>(timing_time).count()
       << "ms with decimation timing of " << timing_from_dsp.kerneltime() << "ms" <<  std::endl;
+
+    request = std::string("Need data");
+    SEND_REQUEST(data_write_to_dsp, sig_options.get_dsp_dw_identity(), request);
+    auto data = RECV_REPLY(data_write_to_dsp, sig_options.get_dsp_dw_identity());
 
     total_time_end = std::chrono::steady_clock::now();
     auto total_time = total_time_end - total_time_start;

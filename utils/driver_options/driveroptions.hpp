@@ -28,6 +28,7 @@ class DriverOptions: public Options {
         double get_tr_window_time() const;
         uint32_t get_main_antenna_count() const;
         uint32_t get_interferometer_antenna_count() const;
+        double get_ringbuffer_size() const;
         std::vector<size_t> get_receive_channels() const;
 /*        std::string get_radar_control_to_driver_address() const;
         std::string get_driver_to_rx_dsp_address() const;*/
@@ -38,6 +39,7 @@ class DriverOptions: public Options {
         std::string get_radctrl_to_driver_identity() const;
         std::string get_dsp_to_driver_identity() const;
         std::string get_brian_to_driver_identity() const;
+        std::string get_ringbuffer_name() const;
  private:
 
         std::string devices_;
@@ -60,9 +62,7 @@ class DriverOptions: public Options {
         double tr_window_time_;
         uint32_t main_antenna_count_;
         uint32_t interferometer_antenna_count_;
-
-/*        std::string radar_control_to_driver_address_;
-        std::string driver_to_rx_dsp_address_;*/
+        double ringbuffer_size_bytes_;
         std::string router_address_;
         std::string driver_to_radctrl_identity_;
         std::string driver_to_dsp_identity_;
@@ -70,6 +70,7 @@ class DriverOptions: public Options {
         std::string radctrl_to_driver_identity_;
         std::string dsp_to_driver_identity_;
         std::string brian_to_driver_identity_;
+        std::string ringbuffer_name_;
 
 
 };
