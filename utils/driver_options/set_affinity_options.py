@@ -42,6 +42,17 @@ class SetAffinityOptions(object):
         self._mainaffinity_to_driver_identity = raw_config["mainaffinity_to_driver_identity"]
         self._txaffinity_to_driver_identity = raw_config["txaffinity_to_driver_identity"]
         self._rxaffinity_to_driver_identity = raw_config["rxaffinity_to_driver_identity"]
+        self._device_str = raw_config["devices"]
+
+    @property
+    def device_str(self):
+        """Gets the device string from config file.
+
+        :returns: Gets the device string from config file.
+        :rtype: String
+        """
+        return self._device_str
+
 
     @property
     def driver_to_mainaffinity_identity(self):

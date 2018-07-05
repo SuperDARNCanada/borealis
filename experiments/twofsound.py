@@ -16,9 +16,9 @@ class Twofsound(ExperimentPrototype):
         cpid = 3503
         super(Twofsound, self).__init__(cpid)
 
-        tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        rx_int_ant = [0]
+        tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15]
+        rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,15]
+        rx_int_ant = [0,1,2,3]
         self.add_slice({  # slice_id = 0, the first slice
             "tx_antennas": tx_ant,
             "rx_main_antennas": rx_main_ant,

@@ -102,8 +102,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   auto identities = {driver_options.get_driver_to_radctrl_identity(),
                       driver_options.get_driver_to_dsp_identity(),
-                      driver_options.get_driver_to_brian_identity(),
-                      driver_options.get_driver_to_txaffinity_identity()};
+                      driver_options.get_driver_to_brian_identity()};
 
   auto sockets_vector = create_sockets(driver_c, identities, driver_options.get_router_address());
 
@@ -112,7 +111,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   zmq::socket_t &driver_to_radar_control = sockets_vector[0];
   zmq::socket_t &driver_to_dsp = sockets_vector[1];
   zmq::socket_t &driver_to_brian = sockets_vector[2];
-  zmq::socket_t &driver_to_txaffinity = sockets_vector[3];
+
 
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.connect("inproc://thread"))
@@ -195,14 +194,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 tx_stream = usrp_d.get_usrp_tx_stream(stream_args);  // ~44ms
                 usrp_channels_set = true;
 
-                // This will break if our tx channels are changing. This will probably need a design
-                // change. Maybe we should just TX zeros if there is no channel data. That will
-                // trigger TR though.
-                auto set_tid_msg = std::string("SET_TIDS");
-                SEND_REQUEST(driver_to_txaffinity,
-                              driver_options.get_txaffinity_to_driver_identity(), set_tid_msg);
-                auto keep_going = RECV_REPLY(driver_to_txaffinity,
-                                              driver_options.get_txaffinity_to_driver_identity());
               }
             }()
           );
@@ -315,7 +306,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               // see 'const buffs_type &'' argument to the send function, the description should read
               // 'Typedef for a pointer to a single, or a collection of pointers to send buffers'.
               std::vector<std::complex<float> *> samples_ptrs(samples[i].size());
-              for (int j=0; j< samples[j].size(); j++) {
+              for (int j=0; j< samples[i].size(); j++) {
                 samples_ptrs[j] = samples[i][j].data();
               }
               while (num_samps_sent < samples_per_buff)
@@ -398,18 +389,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   usrp_d.set_rx_rate(rx_rate_hz, receive_channels);  // ~450us
   uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream(stream_args);  // ~44ms
-
-  auto identities = {driver_options.get_driver_to_rxaffinity_identity()};
-
-  auto sockets_vector = create_sockets(driver_c, identities,
-                                        driver_options.get_router_address());
-  zmq::socket_t &driver_to_rxaffinity = sockets_vector[0];
-
-  auto set_tid_msg = std::string("SET_TIDS");
-  SEND_REQUEST(driver_to_rxaffinity,
-                driver_options.get_rxaffinity_to_driver_identity(), set_tid_msg);
-  auto keep_going = RECV_REPLY(driver_to_rxaffinity,
-                                driver_options.get_rxaffinity_to_driver_identity());
 
   /* 100 is the arbitrary scaling for the usrp_buffer_size
      so there won't be fragmentation and the while(1) loop below
@@ -567,12 +546,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 
   zmq::socket_t &driver_to_mainaffinity = sockets_vector[0];
 
-  auto set_tid_msg = std::string("SET_TIDS");
-  SEND_REQUEST(driver_to_mainaffinity,
-                              driver_options.get_mainaffinity_to_driver_identity(), set_tid_msg);
-  auto keep_going = RECV_REPLY(driver_to_mainaffinity,
-                                driver_options.get_mainaffinity_to_driver_identity());
-
   std::vector<std::thread> threads;
 
   // std::ref http://stackoverflow.com/a/15530639/1793295
@@ -586,9 +559,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   threads.push_back(std::move(transmit_t));
   threads.push_back(std::move(receive_t));
 
+  auto set_tid_msg = std::string("SET_TIDS");
   SEND_REQUEST(driver_to_mainaffinity,
                               driver_options.get_mainaffinity_to_driver_identity(), set_tid_msg);
-  keep_going = RECV_REPLY(driver_to_mainaffinity,
+  auto keep_going = RECV_REPLY(driver_to_mainaffinity,
                                 driver_options.get_mainaffinity_to_driver_identity());
 
   for (auto& th : threads) {

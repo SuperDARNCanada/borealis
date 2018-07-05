@@ -24,7 +24,7 @@ else
     command3="echo Initialize radar_control.py; sleep 0.001s; python radar_control/radar_control.py; bash"
     command4="echo Initialize data_write.py; sleep 0.001s; python data_write/data_write.py; bash"
     command5="echo Initialize taskset; sleep 0.001s; source mode "$2" ; gdb -ex start n200_driver; bash"
-    command6="echo Initialize signal_processing; sleep 0.001s; source mode "$2"; cuda-gdb -ex start signal_processing; bash"
+    command6="echo Initialize signal_processing; sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
 fi
 # Modify terminator's config
 sed -i.bak "s#COMMAND1#$command1#; s#COMMAND2#$command2#; s#COMMAND3#$command3#; s#COMMAND4#$command4#; s#COMMAND5#$command5#; s#COMMAND6#$command6#;" ~/.config/terminator/config
