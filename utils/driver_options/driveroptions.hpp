@@ -30,6 +30,7 @@ class DriverOptions: public Options {
         uint32_t get_interferometer_antenna_count() const;
         double get_ringbuffer_size() const;
         std::vector<size_t> get_receive_channels() const;
+        std::vector<size_t> get_transmit_channels() const;
         std::string get_driver_to_radctrl_identity() const;
         std::string get_driver_to_dsp_identity() const;
         std::string get_driver_to_brian_identity() const;
@@ -49,6 +50,7 @@ class DriverOptions: public Options {
         std::string devices_;
         std::string tx_subdev_;
         std::vector<size_t> receive_channels_;
+        std::vector<size_t> transmit_channels_;
         std::string main_rx_subdev_;
         std::string interferometer_rx_subdev_;
         std::string pps_;

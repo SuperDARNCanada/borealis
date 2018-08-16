@@ -46,22 +46,28 @@ DriverOptions::DriverOptions() {
     interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("interferometer_antenna_count"));
 
-    receive_channels_ = [&](){
-        auto ma_str = config_pt.get<std::string>("main_antenna_usrp_channels");
-        auto ia_str = config_pt.get<std::string>("interferometer_antenna_usrp_channels");
-        auto total_chs_str = ma_str + "," + ia_str;
+    auto make_channels = [&](std::string chs){
 
-        std::stringstream ss(total_chs_str);
+        std::stringstream ss(chs);
 
-        std::vector<size_t> receive_channels;
+        std::vector<size_t> channels;
         while (ss.good()) {
             std::string s;
             std::getline(ss, s, ',');
-            receive_channels.push_back(boost::lexical_cast<size_t>(s));
+            channels.push_back(boost::lexical_cast<size_t>(s));
         }
 
-        return receive_channels;
-    }();
+        return channels;
+    };
+
+    auto ma_recv_str = config_pt.get<std::string>("main_antenna_usrp_rx_channels");
+    auto ia_recv_str = config_pt.get<std::string>("interferometer_antenna_usrp_rx_channels");
+    auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
+
+    auto ma_tx_str = config_pt.get<std::string>("main_antenna_usrp_tx_channels");
+    
+    receive_channels_ = make_channels(total_recv_chs_str);
+    transmit_channels_ = make_channels(ma_tx_str);
 
     router_address_ = config_pt.get<std::string>("router_address");
     driver_to_radctrl_identity_ = config_pt.get<std::string>("driver_to_radctrl_identity");
@@ -184,6 +190,11 @@ double DriverOptions::get_ringbuffer_size() const
 std::vector<size_t> DriverOptions::get_receive_channels() const
 {
     return receive_channels_;
+}
+
+std::vector<size_t> DriverOptions::get_transmit_channels() const
+{
+    return transmit_channels_;
 }
 
 std::string DriverOptions::get_driver_to_radctrl_identity() const
