@@ -33,8 +33,9 @@
 
 
 //Delay needed for before any set_time_commands will work.
-#define SET_TIME_COMMAND_DELAY 7e-3 // seconds
+#define SET_TIME_COMMAND_DELAY 5e-3 // seconds
 
+uhd::time_spec_t box_time;
 
 /**
  * @brief      Makes a vector of USRP TX channels from a driver packet.
@@ -49,7 +50,7 @@
 std::vector<size_t> make_tx_channels(const driverpacket::DriverPacket &driver_packet)
 {
   std::vector<size_t> channels(driver_packet.channels_size());
-  for (int i=0; i<driver_packet.channels_size(); i++) {
+  for (uint32_t i=0; i<driver_packet.channels_size(); i++) {
     channels[i] = driver_packet.channels(i);
   }
   return channels;
@@ -72,13 +73,13 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
   // channel_samples_size() will get you # of channels (protobuf in c++)
   std::vector<std::vector<std::complex<float>>> samples(driver_packet.channel_samples_size());
 
-  for (int channel=0; channel<driver_packet.channel_samples_size(); channel++) {
+  for (uint32_t channel=0; channel<driver_packet.channel_samples_size(); channel++) {
     // Get the number of real samples in this particular channel (_size() is from protobuf)
     auto num_samps = driver_packet.channel_samples(channel).real_size();
     std::vector<std::complex<float>> v(num_samps);
     // Type for smp? protobuf object, containing repeated double real and double imag
     auto smp = driver_packet.channel_samples(channel);
-    for (int smp_num = 0; smp_num < num_samps; smp_num++) {
+    for (uint32_t smp_num = 0; smp_num < num_samps; smp_num++) {
       v[smp_num] = std::complex<float>(smp.real(smp_num), smp.imag(smp_num));
     }
     samples[channel] = v;
@@ -98,7 +99,7 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
 void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver_options)
 {
   DEBUG_MSG("Enter transmit thread");
-  //uhd::set_thread_priority_safe(1.0,true);
+  uhd::set_thread_priority_safe(1.0,true);
 
   auto identities = {driver_options.get_driver_to_radctrl_identity(),
                       driver_options.get_driver_to_dsp_identity(),
@@ -121,7 +122,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   auto rx_center_freq_set = false;
   auto samples_set = false;
 
-  std::vector<size_t> tx_channels;
+  std::vector<size_t> tx_channels = driver_options.get_transmit_channels();
 
   uhd::tx_streamer::sptr tx_stream;
   uhd::stream_args_t stream_args("fc32", "sc16");
@@ -133,11 +134,13 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   uint32_t expected_sqn_num = 0;
 
 
-  uhd::time_spec_t start_time;
+
   uint32_t num_recv_samples;
 
   size_t ringbuffer_size;
-  uhd::time_spec_t time_zero;
+
+  uhd::time_spec_t sequence_start_time;
+  uhd::time_spec_t initialization_time;
 
   zmq::message_t request;
 
@@ -145,8 +148,16 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   memcpy(&ringbuffer_size, static_cast<size_t*>(request.data()), request.size());
 
   start_trigger.recv(&request);
-  memcpy(&time_zero, static_cast<uhd::time_spec_t*>(request.data()), request.size());
+  memcpy(&initialization_time, static_cast<uhd::time_spec_t*>(request.data()), request.size());
 
+
+/*  ringbuffer_size = size_t(driver_options.get_ringbuffer_size()/
+                            sizeof(std::complex<float>)/
+                            363) * 363;
+  SharedMemoryHandler shrmem(driver_options.get_ringbuffer_name());
+
+  shrmem.create_shr_mem(receive_channels.size() * ringbuffer_size * sizeof(std::complex<float>));
+*/
 
   double tx_center_freq = 0.0, rx_center_freq = 0.0;
 
@@ -164,7 +175,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
       //Here we accept our driver_packet from the radar_control. We use that info in order to
       //configure the USRP devices based on experiment requirements.
-      TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " total setup time: ",
+      TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " total setup time: ",
         [&]() {
           if (driver_packet.ParseFromString(pulse_data) == false)
           {
@@ -173,39 +184,38 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
           sqn_num = driver_packet.sequence_num();
           if (sqn_num != expected_sqn_num){
-            DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: "
-              << expected_sqn_num);
+            DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: " << 
+                        expected_sqn_num);
             //TODO(keith): handle error
           }
 
-          DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " burst flags: SOB "  << driver_packet.sob() << " EOB "
-            << driver_packet.eob());
+          DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " burst flags: SOB "  << driver_packet.sob() << 
+                      " EOB " << driver_packet.eob());
 
-          TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " stream set up time: ",
+          TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " stream set up time: ",
             [&]() {
               //On start of new sequence, check if there are new USRP channels and if so
               //set what USRP TX channels and rate(Hz) to use.
               if (driver_packet.channels_size() > 0 && driver_packet.sob() == true)
               {
                 DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " starting something new");
-                tx_channels = make_tx_channels(driver_packet);
                 stream_args.channels = tx_channels;
-                auto actual_tx_rate = usrp_d.set_tx_rate(driver_packet.txrate(), tx_channels); // TODO(keith): Test that USRPs exist to match channels in config.
-                tx_stream = usrp_d.get_usrp_tx_stream(stream_args);  // ~44ms
+                tx_stream = usrp_d.get_usrp_tx_stream(stream_args);  // ~10ms per channel
+                
                 usrp_channels_set = true;
 
               }
             }()
           );
 
-          TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " center freq ",
+          TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " center freq ",
             [&]() {
               //If there is new center frequency data, set TX center frequency for each USRP TX channel.
               if (tx_center_freq != driver_packet.txcenterfreq()){
                 if (driver_packet.txcenterfreq() > 0.0 && driver_packet.sob() == true)
                 {
-                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx center freq to "
-                            << driver_packet.txcenterfreq());
+                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx center freq to " << 
+                              driver_packet.txcenterfreq());
                   usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), tx_channels);
                   tx_center_freq_set = true;
                   tx_center_freq = driver_packet.txcenterfreq();
@@ -216,8 +226,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               if (rx_center_freq != driver_packet.rxcenterfreq()){
                 if (driver_packet.rxcenterfreq() > 0.0 && driver_packet.sob() == true)
                 {
-                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting rx center freq to "
-                            << driver_packet.rxcenterfreq());
+                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting rx center freq to " << 
+                              driver_packet.rxcenterfreq());
                   usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), receive_channels);
                   rx_center_freq_set = true;
                   rx_center_freq = driver_packet.rxcenterfreq();
@@ -228,7 +238,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
           );
 
-          TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " sample unpack time: ",
+          TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " sample unpack time: ",
             [&]() {
               //Parse new samples from driver packet if they exist.
               if (driver_packet.channel_samples_size() > 0)
@@ -238,7 +248,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 }
                 auto s = make_tx_samples(driver_packet, driver_options);
                 samples.push_back(s);
-                //samples_per_buff.push_back(s.size());
                 samples_set = true;
               }
             }()
@@ -268,80 +277,134 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
 
     auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
-    auto time_now = usrp_d.get_current_usrp_time();
-    start_time = time_now + delay;
-    // Here we are time-aligning our time_zero to the start of a sample. Do this by recalculating
-    // time_zero using the calculated value of start_sample.
-    // TODO: Account for offset btw TX/RX (seems to change with sampling rate at least)
-/*    auto time_diff = time_zero.get_real_secs() - start_time.get_real_secs();
-    double future_start_sample = std::floor(time_diff * driver_options.get_rx_rate());
-    time_zero = start_time + uhd::time_spec_t((future_start_sample/driver_options.get_rx_rate()));
-*/
-    TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
-      [&]() {
-        //We send the start time and samples to the USRP. This is done before IO signals are set
-        //since those commands create a blocking buffer which causes the transfer of samples to be
-        //late. This leads to no waveform output on the USRP.
-        TIMEIT_IF_DEBUG(COLOR_BLUE("TRANSMIT") << " time to send samples to USRP: ",
-          [&]() {
+    auto time_now = box_time;
+    auto sequence_start_time = time_now + delay;          
 
-            for (int i=0; i<samples.size(); i++){
+    TIMEIT_IF_TRUE_OR_DEBUG(true,COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
+      [&]() {
+
+        // Here we are time-aligning our time_zero to the start of a sample. Do this by recalculating
+        // time_zero using the calculated value of start_sample.
+        // TODO: Account for offset btw TX/RX (seems to change with sampling rate at least)
+
+        auto time_diff = sequence_start_time - initialization_time;
+        auto rate = driver_options.get_rx_rate();
+        double future_start_sample = std::floor(time_diff.get_real_secs() * rate);
+        auto time_from_initialization = uhd::time_spec_t((future_start_sample/rate));
+
+        sequence_start_time = initialization_time + time_from_initialization;
+
+        TIMEIT_IF_TRUE_OR_DEBUG(true,COLOR_BLUE("TRANSMIT") << " time to send all samples to USRP: ",
+          [&]() {
+            for (uint32_t i=0; i<samples.size(); i++){
               auto md = TXMetadata();
               md.set_has_time_spec(true);
-              auto time = start_time + uhd::time_spec_t(time_to_send_samples[i]/1.0e6);
+              auto time = sequence_start_time + uhd::time_spec_t(time_to_send_samples[i]/1.0e6);
               md.set_time_spec(time);
               //The USRP tx_metadata start_of_burst and end_of_burst describe start and end of the pulse
               //samples.
               md.set_start_of_burst(true);
+              md.set_end_of_burst(false);
 
-              uint64_t num_samps_sent = 0;
 
               //This will loop until all samples are sent to the usrp. Send will block until all samples sent
               //or timed out(too many samples to send within timeout period). Send has a default timing of
               //0.1 seconds.
-              auto samples_per_buff = samples[i][0].size();
+              auto samples_per_pulse = samples[i][0].size();
               // If grabbing start of vector using samples[i] it doesn't work (samples are firked)
               // You need to grab the ptr to the vector using samples[a][b].data(). See tx_waveforms
               // for how to do this properly. Also see uhd::tx_streamer::send(...) in the uhd docs
               // see 'const buffs_type &'' argument to the send function, the description should read
               // 'Typedef for a pointer to a single, or a collection of pointers to send buffers'.
               std::vector<std::complex<float> *> samples_ptrs(samples[i].size());
-              for (int j=0; j< samples[i].size(); j++) {
+              for (uint32_t j=0; j< samples[i].size(); j++) {
                 samples_ptrs[j] = samples[i][j].data();
               }
-              while (num_samps_sent < samples_per_buff)
+              TIMEIT_IF_TRUE_OR_DEBUG(true, COLOR_BLUE("TRANSMIT") << " time to send pulse " << i <<
+                                      " to USRP: ",
+                [&]() {
+                  uint64_t total_samps_sent = 0;
+                  while (total_samps_sent < samples_per_pulse) {
+                    auto num_samps_to_send = samples_per_pulse - total_samps_sent;
+
+
+                    auto num_samps_sent = tx_stream->send(samples_ptrs, 
+                                                          num_samps_to_send, md.get_md()); //TODO(keith): Determine timeout properties.
+                    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples sent " << num_samps_sent);
+
+                    total_samps_sent += num_samps_sent;
+                    md.md_.start_of_burst = false;
+                    md.md_.has_time_spec = false;
+
+                  }
+                  md.set_end_of_burst(true);
+                  tx_stream->send("", 0, md.get_md());
+
+                }() //pulse lambda
+              ); //pulse timeit macro
+            }
+
+            for (uint32_t i=0; i<samples.size(); i++) {
+              uhd::async_metadata_t async_md;
+              std::vector<size_t> acks(tx_channels.size(),0);
+              std::vector<size_t> lates(tx_channels.size(),0);
+              size_t channel_acks = 0;
+              size_t channel_lates = 0;
+              //loop through all messages for the ACK packets (may have underflow messages in queue)
+              while (channel_acks < tx_channels.size() and tx_stream->recv_async_msg(async_md))
               {
-                auto num_samps_to_send = samples_per_buff - num_samps_sent;
-                DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples to send " << num_samps_to_send);
+                  if (async_md.event_code == uhd::async_metadata_t::EVENT_CODE_BURST_ACK)
+                  {
+                    channel_acks++;
+                    acks[async_md.channel]++;
+                  }
 
-                //Send behaviour can be found in UHD docs
-                num_samps_sent = tx_stream->send(samples_ptrs, num_samps_to_send, md.get_md()); //TODO(keith): Determine timeout properties.
-                DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples sent " << num_samps_sent);
+                  if (async_md.event_code == uhd::async_metadata_t::EVENT_CODE_TIME_ERROR) 
+                  {
 
-                md.set_start_of_burst(false);
-                md.set_has_time_spec(false);
+                    channel_lates++;
+                    lates[async_md.channel]++;
+
+                  }
               }
 
-              md.set_end_of_burst(true);
-              tx_stream->send("", 0, md.get_md());
-            }
-          }()
-        );
-      }()
-    );
+              for(uint32_t j=0; j<lates.size(); j++) {
+                RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": channel " << j <<
+                              " got " << lates[j] << " lates for pulse " << i);
+              }
+
+              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num <<" Got " 
+                            << channel_acks << " acks out of " << tx_channels.size() 
+                            << " channels for pulse " << i);
+              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num << " Got " 
+                            << channel_lates << " lates out of " << tx_channels.size() 
+                            << " channels for pulse " << i);
+              }
+          }() //all pulses lambda
+        ); //all pulses timeit macro
+      }() // full usrp function lambda
+    ); // full usrp function timeit macro
 
 
     auto seqn_sampling_time = num_recv_samples/driver_options.get_rx_rate();
 
+    auto end_time = box_time;
+    auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
-    auto sleep_time = (seqn_sampling_time + 1.5 * delay.get_real_secs()) * 1e6;
 
-    usleep(sleep_time);
+/*    RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Leftover time " << (end_time-sequence_start_time).get_real_secs()
+                  << " us");*/
+    RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sleep time " << sleep_time.get_real_secs() * 1e6 
+                  << " us");
 
+    if(sleep_time.get_real_secs() > 0.0) {
+      auto duration = std::chrono::duration<double>(sleep_time.get_real_secs());
+      std::this_thread::sleep_for(duration);
+    }
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
-    samples_metadata.set_time_zero(time_zero.get_real_secs());
-    samples_metadata.set_start_time(start_time.get_real_secs());
+    samples_metadata.set_time_zero(initialization_time.get_real_secs());
+    samples_metadata.set_start_time(sequence_start_time.get_real_secs());
     samples_metadata.set_ringbuffer_size(ringbuffer_size);
     samples_metadata.set_numberofreceivesamples(num_recv_samples);
     samples_metadata.set_sequence_num(sqn_num);
@@ -387,14 +450,15 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   auto receive_channels = driver_options.get_receive_channels();
   stream_args.channels = receive_channels;
 
-  usrp_d.set_rx_rate(rx_rate_hz, receive_channels);  // ~450us
+  //usrp_d.set_rx_rate(rx_rate_hz, receive_channels);  // ~450us
+  //usrp_d.set_time_source(driver_options.get_pps());
   uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream(stream_args);  // ~44ms
 
   /* 100 is the arbitrary scaling for the usrp_buffer_size
      so there won't be fragmentation and the while(1) loop below
      with the recv runs less times
   */
-  auto usrp_buffer_size = 100 * rx_stream->get_max_num_samps();
+  auto usrp_buffer_size = rx_stream->get_max_num_samps();
   /* The ringbuffer_size is calculated this way because it's first truncated (size_t)
      then rescaled by usrp_buffer_size */
   size_t ringbuffer_size = size_t(driver_options.get_ringbuffer_size()/
@@ -448,7 +512,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
       start_trigger.send(start_time);
       first_time = false;
     }
-
+    box_time = meta.time_spec;
     auto error_code = meta.error_code;
 
     switch(error_code) {
@@ -521,9 +585,9 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
  * Creates a new multi-USRP object using parameters from config file. Starts control, receive,
  * and transmit threads to operate on the multi-USRP object.
  */
-int UHD_SAFE_MAIN(int argc, char *argv[]) {
+int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-  //uhd::set_thread_priority_safe();
+  //uhd::set_thread_priority_safe(1.0,true);
 
   DriverOptions driver_options;
 
