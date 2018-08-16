@@ -8,6 +8,9 @@ zypper install -y scons
 zypper install -y python-devel
 zypper install -y python-pip 
 pip2 install --upgrade pip
+pip2 install scipy
+pip2 install h5py
+zypper install -y python-matplotlib
 zypper install -y libX11-devel
 
 #### INSTALL PROTOBUF ####i
@@ -78,8 +81,8 @@ cd ../../../ || exit
 #kernel_variant=`uname -r | awk -F'-' '{print $NF}'`
 #zypper install -y kernel-${kernel_variant}-devel=${kernel_version}
 zypper install -y kernel-devel
-wget http://developer.download.nvidia.com/compute/cuda/repos/opensuse422/x86_64/cuda-repo-opensuse422-9.0.176-1.x86_64.rpm
-rpm -i cuda-repo-opensuse422-9.0.176-1.x86_64.rpm
+#wget http://developer.download.nvidia.com/compute/cuda/repos/opensuse422/x86_64/cuda-repo-opensuse422-9.0.176-1.x86_64.rpm
+rpm -i cuda-repo-opensuse132-8.0.61-1.x86_64.rpm
 zypper refresh
 zypper install -y cuda
 zypper install -y cuda # Seems to fail the first time due to 'no space left on device' error
