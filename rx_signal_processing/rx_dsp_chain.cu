@@ -165,7 +165,7 @@ int main(int argc, char **argv){
       rx_freqs.push_back(sp_packet.rxchannel(i).rxfreq());
     }
 
-    TIMEIT_IF_DEBUG("   NCO mix timing: ",
+    TIMEIT_IF_TRUE_OR_DEBUG(false, "   NCO mix timing: ",
       [&]() {
         filters.mix_first_stage_to_bandpass(rx_freqs,rx_rate);
       }()

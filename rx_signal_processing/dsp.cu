@@ -232,7 +232,7 @@ namespace {
 
       processeddata::ProcessedData pd;
 
-      TIMEIT_IF_DEBUG("Fill + send processed data time ",
+      TIMEIT_IF_TRUE_OR_DEBUG(false, "Fill + send processed data time ",
         [&]() {
           create_processed_data_packet(pd,dp);
           dp->send_processed_data(pd);
