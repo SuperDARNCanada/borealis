@@ -150,15 +150,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   start_trigger.recv(&request);
   memcpy(&initialization_time, static_cast<uhd::time_spec_t*>(request.data()), request.size());
 
-
-/*  ringbuffer_size = size_t(driver_options.get_ringbuffer_size()/
-                            sizeof(std::complex<float>)/
-                            363) * 363;
-  SharedMemoryHandler shrmem(driver_options.get_ringbuffer_name());
-
-  shrmem.create_shr_mem(receive_channels.size() * ringbuffer_size * sizeof(std::complex<float>));
-*/
-
   double tx_center_freq = 0.0, rx_center_freq = 0.0;
 
    /*This loop accepts pulse by pulse from the radar_control. It parses the samples, configures the
@@ -333,8 +324,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                     DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples sent " << num_samps_sent);
 
                     total_samps_sent += num_samps_sent;
-                    md.md_.start_of_burst = false;
-                    md.md_.has_time_spec = false;
+                    md.set_start_of_burst(false);
+                    md.set_has_time_spec(false);
 
                   }
                   md.set_end_of_burst(true);
@@ -392,8 +383,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
 
-/*    RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Leftover time " << (end_time-sequence_start_time).get_real_secs()
-                  << " us");*/
     RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sleep time " << sleep_time.get_real_secs() * 1e6 
                   << " us");
 
@@ -450,14 +439,9 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   auto receive_channels = driver_options.get_receive_channels();
   stream_args.channels = receive_channels;
 
-  //usrp_d.set_rx_rate(rx_rate_hz, receive_channels);  // ~450us
-  //usrp_d.set_time_source(driver_options.get_pps());
+
   uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream(stream_args);  // ~44ms
 
-  /* 100 is the arbitrary scaling for the usrp_buffer_size
-     so there won't be fragmentation and the while(1) loop below
-     with the recv runs less times
-  */
   auto usrp_buffer_size = rx_stream->get_max_num_samps();
   /* The ringbuffer_size is calculated this way because it's first truncated (size_t)
      then rescaled by usrp_buffer_size */
