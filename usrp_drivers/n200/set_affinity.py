@@ -37,28 +37,32 @@ def get_tids(process_name):
     return tids
 
 def set_affinity(tids, cpus, num_boxes):
-    cmd = "taskset -c -p {0} {1}"
+    cmd = "taskset -c -p {cpu} {tid}"
 
 
     #main, uhd control, tx and rx threads
-    print zip(tids[:3]+tids[-4:],cpus[0:7])
-    for tid,cpu in zip(tids[:3]+tids[-4:],cpus[0:7]):
-        sp.call(cmd.format(cpu,tid).split())
+    #print zip(tids[:3]+tids[-4:],cpus[0:7])
+    non_uhd_tx_rx = [(cpus[-1],tids[0]),
+                     (cpus[-2],tids[1]),
+                     (cpus[-3],tids[2]),
+                     (cpus[-4],tids[-1]),
+                     (cpus[-5],tids[-2]),
+                     (cpus[-6],tids[-3]),
+                     (cpus[-7],tids[-4])]
+    # for tid,cpu in zip(tids[:3]+tids[-4:],it.cycle(cpus[0:1])):
+    #     sp.call(cmd.format(cpu,tid).split())
         #time.sleep(0.02)
 
-    #uhd tx threads
-    # for tid in tids[4:4+num_boxes]:
-    #     sp.call(cmd.format(cpus[7],tid).split())
+    for cpu,tid in non_uhd_tx_rx:
+        sp.call(cmd.format(cpu=cpu,tid=tid).split())
 
-    for tid,cpu in zip(tids[3:3+num_boxes],it.cycle(cpus[9:])):
-        sp.call(cmd.format(cpu,tid).split())
-        #time.sleep(0.02)
+    # for tid,cpu in zip(tids[3:3+num_boxes],it.cycle(cpus[7:])):
+    #     sp.call(cmd.format(cpu=cpu,tid=tid).split())
 
+    # #uhd rx threads
+    # for tid,cpu in zip(tids[3+num_boxes:-3],it.cycle(cpus[7:])):
+    #     sp.call(cmd.format(cpu=cpu,tid=tid).split())
 
-    #uhd rx threads
-    for tid,cpu in zip(tids[3+num_boxes:-3],it.cycle(cpus[8:9])):
-        sp.call(cmd.format(cpu,tid).split())
-        #time.sleep(0.02)
 
 
 
@@ -71,7 +75,7 @@ if __name__ == "__main__":
     options = op.SetAffinityOptions()
 
     num_boxes = options.device_str.count("addr")
-    cpus = range(10)
+    cpus = range(20)
 
     ids = [options.mainaffinity_to_driver_identity, options.txaffinity_to_driver_identity,
             options.rxaffinity_to_driver_identity]
@@ -87,8 +91,9 @@ if __name__ == "__main__":
     so.send_reply(mainaffinity_to_driver, options.driver_to_mainaffinity_identity, "ALL SET")
 
     #time.sleep(5)
-    while True:
-        set_affinity(get_tids(process_name), cpus, num_boxes)
-        time.sleep(1)
+    #set_affinity(get_tids(process_name), cpus, num_boxes)
+
+    # while True:
+    #     time.sleep(10)
 
 
