@@ -8,11 +8,13 @@ See LICENSE for details.
 
 */
 #include <uhd/usrp/multi_usrp.hpp>
+#include <uhd/usrp_clock/multi_usrp_clock.hpp>
 #include <memory>
 #include <string>
 #include <vector>
 #include <chrono>
 #include <cmath>
+#include <thread>
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
@@ -37,6 +39,8 @@ USRP::USRP(const DriverOptions& driver_options)
   set_main_rx_subdev(driver_options.get_main_rx_subdev());
   set_interferometer_rx_subdev(driver_options.get_interferometer_rx_subdev(),
                                 driver_options.get_interferometer_antenna_count());
+  set_rx_rate(driver_options.get_rx_rate(), driver_options.get_receive_channels());
+  set_tx_rate(driver_options.get_tx_rate(), driver_options.get_transmit_channels());
   set_time_source(driver_options.get_pps());
   check_ref_locked();
   set_atr_gpios();
@@ -251,12 +255,58 @@ void USRP::set_time_source(std::string source)
     usleep(10000);
   }
   if (source == "external"){
+    uhd::usrp_clock::multi_usrp_clock::sptr clock;
+    clock = uhd::usrp_clock::multi_usrp_clock::make(std::string("addr=192.168.10.131"));
+    
+    //Make sure Clock configuration is correct
+    if(clock->get_sensor("gps_detected").value == "false"){
+        throw uhd::runtime_error("No GPSDO detected on Clock.");
+    }
+    if(clock->get_sensor("using_ref").value != "internal"){
+        throw uhd::runtime_error("Clock must be using an internal reference.");
+    }
+
+    while(! (clock->get_sensor("gps_locked").to_bool())) {
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+      std::cout << "Waiting for gps lock..." << std::endl;
+    }  
     usrp_->set_time_source(source);
-    usrp_->set_time_unknown_pps(std::ceil(tt_sc.count()) + 1);
+
+    auto wait_for_update = [&]() {
+      uhd::time_spec_t last = usrp_->get_time_last_pps();
+      uhd::time_spec_t next = usrp_->get_time_last_pps();
+      while(next == last) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
+          last = next;
+          next = usrp_->get_time_last_pps();
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    };
+
+    wait_for_update();
+
+    usrp_->set_time_next_pps(uhd::time_spec_t(double(clock->get_time() + 1)));
+
+    wait_for_update();
+
+    //while(true){
+      auto clock_time = uhd::time_spec_t(double(clock->get_time()));
+
+      for (uint32_t board=0; board<usrp_->get_num_mboards(); board++){
+        auto usrp_time = usrp_->get_time_last_pps(board);
+        auto time_diff = clock_time - usrp_time;
+
+        std::cout << "Time difference between USRPs and gps clock for board " << board 
+                  << " " << time_diff.get_real_secs() << std::endl;
+      }
+
+    //}
+    //usrp_->set_time_unknown_pps(uhd::time_spec_t(std::ceil(tt_sc.count()) + 1));
+    //std::this_thread::sleep_for(std::chrono::seconds(1));
   }
   else {
     //TODO(keith): throw error
-    usrp_->set_time_now(uhd::time_spec_t(0.0));
+    usrp_->set_time_now(uhd::time_spec_t(std::ceil(tt_sc.count())));
   }
 }
 
