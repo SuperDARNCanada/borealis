@@ -120,20 +120,18 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   auto usrp_channels_set = false;
   auto tx_center_freq_set = false;
   auto rx_center_freq_set = false;
-  auto samples_set = false;
+  auto pulses_set = false;
 
   std::vector<size_t> tx_channels = driver_options.get_transmit_channels();
 
   uhd::tx_streamer::sptr tx_stream;
   uhd::stream_args_t stream_args("fc32", "sc16");
 
-  std::vector<std::vector<std::vector<std::complex<float>>>> samples;
+  std::vector<std::vector<std::vector<std::complex<float>>>> pulses;
 
 
   uint32_t sqn_num = 0;
   uint32_t expected_sqn_num = 0;
-
-
 
   uint32_t num_recv_samples;
 
@@ -175,12 +173,12 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
           sqn_num = driver_packet.sequence_num();
           if (sqn_num != expected_sqn_num){
-            DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: " << 
+            DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: " <<
                         expected_sqn_num);
             //TODO(keith): handle error
           }
 
-          DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " burst flags: SOB "  << driver_packet.sob() << 
+          DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " burst flags: SOB "  << driver_packet.sob() <<
                       " EOB " << driver_packet.eob());
 
           TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " stream set up time: ",
@@ -192,7 +190,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " starting something new");
                 stream_args.channels = tx_channels;
                 tx_stream = usrp_d.get_usrp_tx_stream(stream_args);  // ~10ms per channel
-                
+
                 usrp_channels_set = true;
 
               }
@@ -205,7 +203,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               if (tx_center_freq != driver_packet.txcenterfreq()){
                 if (driver_packet.txcenterfreq() > 0.0 && driver_packet.sob() == true)
                 {
-                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx center freq to " << 
+                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx center freq to " <<
                               driver_packet.txcenterfreq());
                   usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), tx_channels);
                   tx_center_freq_set = true;
@@ -217,7 +215,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               if (rx_center_freq != driver_packet.rxcenterfreq()){
                 if (driver_packet.rxcenterfreq() > 0.0 && driver_packet.sob() == true)
                 {
-                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting rx center freq to " << 
+                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting rx center freq to " <<
                               driver_packet.rxcenterfreq());
                   usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), receive_channels);
                   rx_center_freq_set = true;
@@ -235,11 +233,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               if (driver_packet.channel_samples_size() > 0)
               {  // ~700us to unpack 4x1600 samples
                 if (driver_packet.sob() == true) {
-                  samples.clear();
+                  pulses.clear();
                 }
                 auto s = make_tx_samples(driver_packet, driver_options);
-                samples.push_back(s);
-                samples_set = true;
+                pulses.push_back(s);
+                pulses_set = true;
               }
             }()
           );
@@ -261,7 +259,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     if ((usrp_channels_set == false) ||
       (tx_center_freq_set == false) ||
       (rx_center_freq_set == false) ||
-      (samples_set == false))
+      (pulses_set == false))
     {
       // TODO(keith): throw error
       continue;
@@ -269,7 +267,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
     auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
     auto time_now = box_time;
-    auto sequence_start_time = time_now + delay;          
+    auto sequence_start_time = time_now + delay;
 
     TIMEIT_IF_TRUE_OR_DEBUG(true,COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
       [&]() {
@@ -287,40 +285,42 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
         TIMEIT_IF_TRUE_OR_DEBUG(true,COLOR_BLUE("TRANSMIT") << " time to send all samples to USRP: ",
           [&]() {
-            for (uint32_t i=0; i<samples.size(); i++){
+            for (uint32_t pulse_num=0; pulse_num<pulses.size(); pulse_num++){
               auto md = TXMetadata();
               md.set_has_time_spec(true);
-              auto time = sequence_start_time + uhd::time_spec_t(time_to_send_samples[i]/1.0e6);
+              auto time = sequence_start_time +
+                            uhd::time_spec_t(time_to_send_samples[pulse_num]/1.0e6);
               md.set_time_spec(time);
               //The USRP tx_metadata start_of_burst and end_of_burst describe start and end of the pulse
               //samples.
               md.set_start_of_burst(true);
               md.set_end_of_burst(false);
 
-
-              //This will loop until all samples are sent to the usrp. Send will block until all samples sent
-              //or timed out(too many samples to send within timeout period). Send has a default timing of
-              //0.1 seconds.
-              auto samples_per_pulse = samples[i][0].size();
-              // If grabbing start of vector using samples[i] it doesn't work (samples are firked)
-              // You need to grab the ptr to the vector using samples[a][b].data(). See tx_waveforms
+              // There is a set of pulse samples for each antenna.
+              auto samples_per_pulse = pulses[pulse_num][0].size();
+              // If grabbing start of vector using pulses[i] it doesn't work (samples are firked)
+              // You need to grab the ptr to the vector using pulses[a][b].data(). See tx_waveforms
               // for how to do this properly. Also see uhd::tx_streamer::send(...) in the uhd docs
               // see 'const buffs_type &'' argument to the send function, the description should read
               // 'Typedef for a pointer to a single, or a collection of pointers to send buffers'.
-              std::vector<std::complex<float> *> samples_ptrs(samples[i].size());
-              for (uint32_t j=0; j< samples[i].size(); j++) {
-                samples_ptrs[j] = samples[i][j].data();
+              std::vector<std::complex<float> *> pulse_ptrs(pulses[pulse_num].size());
+              for (uint32_t antenna_num=0; antenna_num < pulses[pulse_num].size(); antenna_num++) {
+                pulse_ptrs[antenna_num] = pulses[pulse_num][antenna_num].data();
               }
-              TIMEIT_IF_TRUE_OR_DEBUG(true, COLOR_BLUE("TRANSMIT") << " time to send pulse " << i <<
-                                      " to USRP: ",
+              TIMEIT_IF_TRUE_OR_DEBUG(true, COLOR_BLUE("TRANSMIT") << " time to send pulse " <<
+                                              pulse_num << " to USRP: ",
                 [&]() {
+
+                  //This will loop until all samples are sent to the usrp. Send will block until all
+                  //samples sent or timed out(too many samples to send within timeout period).
+                  //Send has a default timing of 0.1 seconds.
                   uint64_t total_samps_sent = 0;
                   while (total_samps_sent < samples_per_pulse) {
                     auto num_samps_to_send = samples_per_pulse - total_samps_sent;
 
-
-                    auto num_samps_sent = tx_stream->send(samples_ptrs, 
-                                                          num_samps_to_send, md.get_md()); //TODO(keith): Determine timeout properties.
+                    //TODO(keith): Determine timeout properties.
+                    auto num_samps_sent = tx_stream->send(pulse_ptrs,num_samps_to_send,
+                                                            md.get_md());
                     DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples sent " << num_samps_sent);
 
                     total_samps_sent += num_samps_sent;
@@ -335,7 +335,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               ); //pulse timeit macro
             }
 
-            for (uint32_t i=0; i<samples.size(); i++) {
+            for (uint32_t pulse_num=0; pulse_num<pulses.size(); pulse_num++) {
               uhd::async_metadata_t async_md;
               std::vector<size_t> acks(tx_channels.size(),0);
               std::vector<size_t> lates(tx_channels.size(),0);
@@ -350,7 +350,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                     acks[async_md.channel]++;
                   }
 
-                  if (async_md.event_code == uhd::async_metadata_t::EVENT_CODE_TIME_ERROR) 
+                  if (async_md.event_code == uhd::async_metadata_t::EVENT_CODE_TIME_ERROR)
                   {
 
                     channel_lates++;
@@ -359,17 +359,17 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                   }
               }
 
-              for(uint32_t j=0; j<lates.size(); j++) {
-                RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": channel " << j <<
-                              " got " << lates[j] << " lates for pulse " << i);
+              for(uint32_t channel_num=0; channel_num<lates.size(); channel_num++) {
+                RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": channel " << channel_num <<
+                              " got " << lates[channel_num] << " lates for pulse " << pulse_num);
               }
 
-              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num <<" Got " 
-                            << channel_acks << " acks out of " << tx_channels.size() 
-                            << " channels for pulse " << i);
-              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num << " Got " 
-                            << channel_lates << " lates out of " << tx_channels.size() 
-                            << " channels for pulse " << i);
+              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num <<" Got "
+                            << channel_acks << " acks out of " << tx_channels.size()
+                            << " channels for pulse " << pulse_num);
+              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num << " Got "
+                            << channel_lates << " lates out of " << tx_channels.size()
+                            << " channels for pulse " << pulse_num);
               }
           }() //all pulses lambda
         ); //all pulses timeit macro
@@ -383,7 +383,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
 
-    RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sleep time " << sleep_time.get_real_secs() * 1e6 
+    RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sleep time " << sleep_time.get_real_secs() * 1e6
                   << " us");
 
     if(sleep_time.get_real_secs() > 0.0) {
@@ -392,8 +392,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
-    samples_metadata.set_time_zero(initialization_time.get_real_secs());
-    samples_metadata.set_start_time(sequence_start_time.get_real_secs());
+    samples_metadata.set_initialization_time(initialization_time.get_real_secs());
+    samples_metadata.set_sequence_start_time(sequence_start_time.get_real_secs());
     samples_metadata.set_ringbuffer_size(ringbuffer_size);
     samples_metadata.set_numberofreceivesamples(num_recv_samples);
     samples_metadata.set_sequence_num(sqn_num);
@@ -456,8 +456,9 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   std::vector<std::complex<float>*> buffer_ptrs_start;
 
-  for(uint32_t i=0; i<receive_channels.size(); i++){
-    auto ptr = static_cast<std::complex<float>*>(shrmem.get_shrmem_addr()) + (i * ringbuffer_size);
+  for(uint32_t channel_num=0; channel_num<receive_channels.size(); channel_num++){
+    auto ptr = static_cast<std::complex<float>*>(shrmem.get_shrmem_addr()) +
+                                                  (channel_num * ringbuffer_size);
     buffer_ptrs_start.push_back(ptr);
   }
 
@@ -466,6 +467,10 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   stream_cmd.stream_now = false;
   stream_cmd.num_samps = 0;
   stream_cmd.time_spec = usrp_d.get_current_usrp_time() + uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
+
+  // Align start time with exact sample number.
+  double future_start_sample = std::floor(stream_cmd.time_spec.get_real_secs() * rx_rate_hz);
+  stream_cmd.time_spec = uhd::time_spec_t((future_start_sample/rx_rate_hz));
 
   rx_stream->issue_stream_cmd(stream_cmd);
 

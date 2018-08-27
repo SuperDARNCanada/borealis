@@ -191,26 +191,14 @@ void signals(zmq::context_t &context)
     auto request = RECV_REQUEST(radar_control_to_dsp, sig_options.get_dsp_radctrl_identity());
     SEND_REPLY(radar_control_to_dsp, sig_options.get_dsp_radctrl_identity(), r_msg_str);
 
-    /*auto name_str = random_string(10);
-
-    auto shr_start = std::chrono::steady_clock::now();
-    SharedMemoryHandler shrmem(name_str);
-    auto size = samples.size() * sizeof(std::complex<float>);
-    shrmem.create_shr_mem(size);
-    memcpy(shrmem.get_shrmem_addr(), samples.data(), size);
-    auto shr_end = std::chrono::steady_clock::now();
-    std::cout << "shrmem + memcpy for #" << sp.sequence_num()
-      << " after "
-      << std::chrono::duration_cast<std::chrono::milliseconds>(shr_end - shr_start).count()
-      << "ms" << std::endl;
-*/
-    samples_metadata.set_time_zero(0.0);
+    //Since we are faking input from the driver, we can't have time_zero and start time be the same,
+    //otherwis  e the calculation into the ringbuffer doesnt make sense. We get around this by
+    //shifting one sequence into the future.
+    samples_metadata.set_initialization_time(0.0);
     samples_metadata.set_ringbuffer_size(ringbuffer_size);
     double start_time = (sqn_num + 1) * num_samples / rx_rate;
-    samples_metadata.set_start_time(start_time);
+    samples_metadata.set_sequence_start_time(start_time);
     std::cout << "Sending data with sequence_num: " << sp.sequence_num() << std::endl;
-
-   // samples_metadata.set_shrmemname(name_str.c_str());
 
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);

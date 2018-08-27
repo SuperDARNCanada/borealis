@@ -241,7 +241,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--router-only', action='store_true', help='Run brian in router only mode')
+    help_msg = 'Run only the router. Do not run any of the other threads or functions.'
+    parser.add_argument('--router-only', action='store_true', help=help_msg)
     args = parser.parse_args()
 
     opts = options.ExperimentOptions()

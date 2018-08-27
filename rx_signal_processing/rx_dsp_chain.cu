@@ -73,9 +73,9 @@ int main(int argc, char **argv){
     third_stage_dm_rate = static_cast<uint32_t>(float_dm_rate);
   }
 
-  std::cout << sig_options.get_first_stage_sample_rate() << std::endl;
-  std::cout << sig_options.get_second_stage_sample_rate() << std::endl;
-  std::cout << sig_options.get_third_stage_sample_rate() << std::endl;
+  RUNTIME_MSG("First stage sample rate: " << sig_options.get_first_stage_sample_rate());
+  RUNTIME_MSG("Second stage sample rate: " << sig_options.get_second_stage_sample_rate());
+  RUNTIME_MSG("Third stage sample rate: " << sig_options.get_third_stage_sample_rate());
 
   RUNTIME_MSG("1st stage dm rate: " << COLOR_YELLOW(first_stage_dm_rate));
   RUNTIME_MSG("2nd stage dm rate: " << COLOR_YELLOW(second_stage_dm_rate));
@@ -132,6 +132,14 @@ int main(int argc, char **argv){
       //TODO(keith): handle error
     }
 
+    //Verify driver and radar control packets align
+    if (sp_packet.sequence_num() != rx_metadata.sequence_num()) {
+      //TODO(keith): handle error
+      RUNTIME_MSG("SEQUENCE NUMBER mismatch radar_control: " << COLOR_RED(sp_packet.sequence_num())
+        << " usrp_driver: " << COLOR_RED(rx_metadata.sequence_num()));
+    }
+
+
     RUNTIME_MSG("Got driver request for sequence #" << COLOR_RED(rx_metadata.sequence_num()));
 
     auto total_antennas = sig_options.get_main_antenna_count() +
@@ -148,12 +156,6 @@ int main(int argc, char **argv){
         ringbuffer_ptrs_start.push_back(ptr);
       }
       first_time = false;
-    }
-    //Verify driver and radar control packets align
-    if (sp_packet.sequence_num() != rx_metadata.sequence_num()) {
-      //TODO(keith): handle error
-      RUNTIME_MSG("SEQUENCE NUMBER mismatch radar_control: " << COLOR_RED(sp_packet.sequence_num())
-        << " usrp_driver: " << COLOR_RED(rx_metadata.sequence_num()));
     }
 
     //Parse needed packet values now
@@ -190,7 +192,8 @@ int main(int argc, char **argv){
     DEBUG_MSG("   Total samples in data message: " << total_samples);
 
     dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
-                                rx_metadata.time_zero(), rx_metadata.start_time(),
+                                rx_metadata.initialization_time(),
+                                rx_metadata.sequence_start_time(),
                                 rx_metadata.ringbuffer_size(), first_stage_dm_rate,
                                 second_stage_dm_rate,ringbuffer_ptrs_start);
     dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());

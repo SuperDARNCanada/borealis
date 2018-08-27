@@ -170,38 +170,41 @@ namespace {
                           dp->get_num_antennas(),
                           output_samples.size()/(dp->get_num_antennas()*dp->get_rx_freqs().size()));
 
-    for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
+    for(uint32_t dataset_num=0; dataset_num <dp->get_rx_freqs().size(); dataset_num++) {
       auto dataset = pd.add_outputdataset();
       // This lambda adds the stage data to the processed data for debug purposes.
-      auto add_debug_data = [dataset,i](std::string stage_name, std::vector<cuComplex*> &data_ptrs,
-                                          uint32_t num_antennas, uint32_t num_samps_per_antenna)
+      auto add_debug_data = [dataset,dataset_num](std::string stage_name,
+                                                    std::vector<cuComplex*> &data_ptrs,
+                                                    uint32_t num_antennas,
+                                                    uint32_t num_samps_per_antenna)
       {
         auto debug_samples = dataset->add_debugsamples();
 
         debug_samples->set_stagename(stage_name);
-        for (uint32_t j=0; j<num_antennas; j++){
+        for (uint32_t antenna_num=0; antenna_num<num_antennas; antenna_num++){
           auto antenna_data = debug_samples->add_antennadata();
-          for(uint32_t k=0; k<num_samps_per_antenna; k++) {
+          for(uint32_t sample_num=0; sample_num<num_samps_per_antenna; sample_num++) {
             auto antenna_samp = antenna_data->add_antennasamples();
-            antenna_samp->set_real(data_ptrs[j][k].x);
-            antenna_samp->set_imag(data_ptrs[j][k].y);
+            antenna_samp->set_real(data_ptrs[antenna_num][sample_num].x);
+            antenna_samp->set_imag(data_ptrs[antenna_num][sample_num].y);
           }
         }
       };
 
 
       #ifdef ENGINEERING_DEBUG
-        if (i == 0) {
-          add_debug_data("rf_samples",rf_ptrs[i],dp->get_num_antennas(), dp->get_num_rf_samples());
+        if (dataset_num == 0) {
+          add_debug_data("rf_samples",rf_ptrs[dataset_num],dp->get_num_antennas(),
+                          dp->get_num_rf_samples());
         }
-        add_debug_data("stage_1",stage_1_ptrs[i],dp->get_num_antennas(),
+        add_debug_data("stage_1",stage_1_ptrs[dataset_num],dp->get_num_antennas(),
                     dp->get_num_first_stage_samples_per_antenna());
-        add_debug_data("stage_2",stage_2_ptrs[i],dp->get_num_antennas(),
+        add_debug_data("stage_2",stage_2_ptrs[dataset_num],dp->get_num_antennas(),
                     dp->get_num_second_stage_samples_per_antenna());
-        add_debug_data("stage_3",stage_3_ptrs[i],dp->get_num_antennas(),
+        add_debug_data("stage_3",stage_3_ptrs[dataset_num],dp->get_num_antennas(),
                     dp->get_num_third_stage_samples_per_antenna());
       #endif
-        add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
+        add_debug_data("output_samples", output_ptrs[dataset_num], dp->get_num_antennas(),
           output_samples.size()/(dp->get_num_antennas()*dp->get_rx_freqs().size()));
         DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     }
@@ -314,15 +317,16 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
 /**
  * @brief      Initializes the parameters needed in order to do asynchronous DSP processing.
  *
- * @param      ack_s         A pointer to the socket used for acknowledging when the transfer of RF
- *                           samples has completed.
- * @param[in]  timing_s      A pointer to the socket used for reporting GPU kernel timing.
- * @param[in]  sq_num        The pulse sequence number for which will be acknowledged.
- * @param[in]  shr_mem_name  The char string used to open a section of shared memory with RF
- *                           samples.
+ * @param      ack_s     A pointer to the socket used for acknowledging when the transfer of RF
+ *                       samples has completed.
+ * @param[in]  timing_s  A pointer to the socket used for reporting GPU kernel timing.
+ * @param      data_s    A pointer to the socket used for sending data to data write.
+ * @param      options   A reference to the signal processing options from config.
+ * @param[in]  sq_num    The pulse sequence number for which will be acknowledged.
+ * @param[in]  freqs     A vector of the rx frequencies to filter.
+ * @param      filters   A pointer to the object holding the filters.
  *
- * The constructor creates a new CUDA stream and initializes the timing events. It then opens
- * the shared memory with the received RF samples for a pulse sequence.
+ * The constructor creates a new CUDA stream and initializes the timing events.
  */
 DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_s,
                   SignalProcessingOptions &options, uint32_t sq_num,
