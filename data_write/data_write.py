@@ -13,6 +13,7 @@ import json
 import os
 import h5py
 import collections
+import threading
 
 borealis_path = os.environ['BOREALISPATH']
 if not borealis_path:
@@ -233,30 +234,35 @@ if __name__ == '__main__':
         try:
             # Send a request for data to dsp. The actual message doesn't matter, so use 'Request'
             # After that, receive the processed data from dsp, blocking.
-            so.send_request(dsp_to_data_write, options.dsp_to_dw_identity, "Request")
+            #so.send_request(dsp_to_data_write, options.dsp_to_dw_identity, "Request")
             data = so.recv_data(dsp_to_data_write, options.dsp_to_dw_identity, printing)
         except KeyboardInterrupt:
             sys.exit()
 
-        if __debug__:
-            printing("Data received from dsp")
-            start = datetime.datetime.now()
+        def make_file(data_data):
+            if __debug__:
+                printing("Data received from dsp")
+                start = datetime.datetime.now()
 
-        pd = processeddata_pb2.ProcessedData()
-        pd.ParseFromString(data)
+            pd = processeddata_pb2.ProcessedData()
+            pd.ParseFromString(data_data)
 
-        dw = DataWrite(pd, options)
+            dw = DataWrite(pd, options)
 
-        if __debug__:
-            dw.output_debug_data()
-        else:
-            start = datetime.datetime.now()
-            dw.output_data(write_pre_bf_iq=True)
+            if __debug__:
+                dw.output_debug_data()
+            else:
+                start = datetime.datetime.now()
+                dw.output_data(write_pre_bf_iq=True)
 
-        
-        end = datetime.datetime.now()
-        diff = end - start
-        time = diff.total_seconds() * 1000
-        print("Sequence number: {0}".format(pd.sequence_num))
-        print("Time to process samples: {0} s".format(pd.processing_time))
-        print("Time to parse + write: {0} ms".format(time))
+            
+            end = datetime.datetime.now()
+            diff = end - start
+            time = diff.total_seconds() * 1000
+            print("Sequence number: {0}".format(pd.sequence_num))
+            print("Time to process samples: {0} s".format(pd.processing_time))
+            print("Time to parse + write: {0} ms".format(time))
+
+        thread = threading.Thread(target=make_file,args=(data,))
+        thread.daemon = True
+        thread.start()

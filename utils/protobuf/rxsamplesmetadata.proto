@@ -5,6 +5,9 @@ package rxsamplesmetadata;
 message RxSamplesMetadata {
   uint32 sequence_num = 1;
   uint32 numberofreceivesamples = 2;
-  string shrmemname = 3; // REVIEW #26 this should indicate that it's the location of shared memory?
-  float sequence_time = 4;
+  //string shrmemname = 3; // REVIEW #26 this should indicate that it's the location of shared memory?
+  double sequence_time = 3;
+  double time_zero = 4;
+  double start_time = 5;
+  uint64 ringbuffer_size = 6;
 }

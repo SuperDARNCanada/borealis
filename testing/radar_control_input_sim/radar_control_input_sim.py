@@ -40,7 +40,7 @@ def printing(err_msg):
 
 def dsp():
     while True:
-        so.send_request(dsp_to_radctrl, options.radctrl_to_dsp_identity ,"Need metadata")
+        #so.send_request(dsp_to_radctrl, options.radctrl_to_dsp_identity ,"Need metadata")
         reply = so.recv_reply(dsp_to_radctrl, options.radctrl_to_dsp_identity,printing)
 
         sigp = SigProcPacket()
@@ -49,7 +49,6 @@ def dsp():
         so.send_request(dsp_to_driver, options.driver_to_dsp_identity, "Need data to process")
         reply = so.recv_reply(dsp_to_driver, options.driver_to_dsp_identity, printing)
 
-        print(type(reply))
         meta = RxSamplesMetadata()
         meta.ParseFromString(reply) 
 
@@ -58,8 +57,8 @@ def dsp():
         request = so.recv_request(dsp_to_brian_begin, options.brian_to_dspbegin_identity, printing)
         so.send_data(dsp_to_brian_begin, options.brian_to_dspbegin_identity, "Ack start of work, "
                                                            "sqnum {}".format(sigp.sequence_num))
-        def do_work():
-            sequence_num = sigp.sequence_num
+        def do_work(sqn_num):
+            sequence_num = sqn_num
 
             start = time.time()
             time.sleep(0.05)
@@ -74,7 +73,7 @@ def dsp():
             so.send_data(dsp_to_brian_end, options.brian_to_dspend_identity, proc_data.SerializeToString())
 
 
-        thread = threading.Thread(target=do_work)
+        thread = threading.Thread(target=do_work, args=(sigp.sequence_num,))
         thread.daemon = True
         thread.start()
 

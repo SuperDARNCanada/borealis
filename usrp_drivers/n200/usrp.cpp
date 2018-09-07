@@ -8,11 +8,13 @@ See LICENSE for details.
 
 */
 #include <uhd/usrp/multi_usrp.hpp>
+#include <uhd/usrp_clock/multi_usrp_clock.hpp>
 #include <memory>
 #include <string>
 #include <vector>
 #include <chrono>
 #include <cmath>
+#include <thread>
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
@@ -37,8 +39,8 @@ USRP::USRP(const DriverOptions& driver_options)
   set_main_rx_subdev(driver_options.get_main_rx_subdev());
   set_interferometer_rx_subdev(driver_options.get_interferometer_rx_subdev(),
                                 driver_options.get_interferometer_antenna_count());
-/*  receive_channels = create_receive_channels(driver_options.get_main_antenna_count(),
-                                              driver_options.get_interferometer_antenna_count());*/
+  set_rx_rate(driver_options.get_rx_rate(), driver_options.get_receive_channels());
+  set_tx_rate(driver_options.get_tx_rate(), driver_options.get_transmit_channels());
   set_time_source(driver_options.get_pps());
   check_ref_locked();
   set_atr_gpios();
@@ -181,60 +183,6 @@ void USRP::set_interferometer_rx_subdev(std::string interferometer_subdev,
 }
 
 /**
- * @brief      Creates the order of USRP receiver channels.
- *
- * @param[in]  main_antenna_count            The main antenna count.
- * @param[in]  interferometer_antenna_count  The interferometer antenna count.
- *
- * @return     A vector with the USRP channel ordering.
- *
- * The USRP default channel mapping will cause the main antenna and interferometer
- * antenna data to be interleaved buffer by buffer. When setting up the receive streamer from the
- * USRP, it is possible to reorder the host side data buffers. This algorithm reorders the channels
- * so that the main array buffers are in order, followed by the interferometers buffers. This
- * ordering is easiest to work with and is what most people would assume the data layout looks like.
- */
-/*std::vector<size_t> USRP::create_receive_channels(uint32_t main_antenna_count,
-                        uint32_t interferometer_antenna_count) //TODO(keith): add channel mapping
-{
-
-  std::vector<size_t> channels;
-
-  //Add the main array channels from the mboards that will also be receiving the
-  //interferometer samples
-  for(uint32_t i=0; i<interferometer_antenna_count; i++) {
-    channels.push_back(2*i);
-  }
-
-  //starts at 2 * i_count since those channels are interleaved
-  auto start = 2 * interferometer_antenna_count;
-  auto end = main_antenna_count + interferometer_antenna_count;
-
-  //Add the rest of main array channels
-  for(uint32_t i=start; i<end; i++){
-    channels.push_back(i);
-  }
-
-  //Now add the interferometer channels
-  for(uint32_t i=0; i<interferometer_antenna_count; i++) {
-    channels.push_back(2*i + 1);
-  }
-
-  return channels;
-
-}
-*/
-/**
- * @brief      Gets the receive channels.
- *
- * @return     A vector of the receive channel ordering.
- */
-/*std::vector<size_t> USRP::get_receive_channels()
-{
-  return receive_channels;
-}
-*/
-/**
  * @brief      Sets the receive sample rate.
  *
  * @param[in]  rx_rate  The receive rate in Sps.
@@ -307,12 +255,58 @@ void USRP::set_time_source(std::string source)
     usleep(10000);
   }
   if (source == "external"){
+    uhd::usrp_clock::multi_usrp_clock::sptr clock;
+    clock = uhd::usrp_clock::multi_usrp_clock::make(std::string("addr=192.168.10.131"));
+    
+    //Make sure Clock configuration is correct
+    if(clock->get_sensor("gps_detected").value == "false"){
+        throw uhd::runtime_error("No GPSDO detected on Clock.");
+    }
+    if(clock->get_sensor("using_ref").value != "internal"){
+        throw uhd::runtime_error("Clock must be using an internal reference.");
+    }
+
+    while(! (clock->get_sensor("gps_locked").to_bool())) {
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+      std::cout << "Waiting for gps lock..." << std::endl;
+    }  
     usrp_->set_time_source(source);
-    usrp_->set_time_unknown_pps(std::ceil(tt_sc.count()) + 1);
+
+    auto wait_for_update = [&]() {
+      uhd::time_spec_t last = usrp_->get_time_last_pps();
+      uhd::time_spec_t next = usrp_->get_time_last_pps();
+      while(next == last) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
+          last = next;
+          next = usrp_->get_time_last_pps();
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    };
+
+    wait_for_update();
+
+    usrp_->set_time_next_pps(uhd::time_spec_t(double(clock->get_time() + 1)));
+
+    wait_for_update();
+
+    //while(true){
+      auto clock_time = uhd::time_spec_t(double(clock->get_time()));
+
+      for (uint32_t board=0; board<usrp_->get_num_mboards(); board++){
+        auto usrp_time = usrp_->get_time_last_pps(board);
+        auto time_diff = clock_time - usrp_time;
+
+        std::cout << "Time difference between USRPs and gps clock for board " << board 
+                  << " " << time_diff.get_real_secs() << std::endl;
+      }
+
+    //}
+    //usrp_->set_time_unknown_pps(uhd::time_spec_t(std::ceil(tt_sc.count()) + 1));
+    //std::this_thread::sleep_for(std::chrono::seconds(1));
   }
   else {
     //TODO(keith): throw error
-    usrp_->set_time_now(uhd::time_spec_t(0.0));
+    usrp_->set_time_now(uhd::time_spec_t(std::ceil(tt_sc.count())));
   }
 }
 

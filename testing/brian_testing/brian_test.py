@@ -553,8 +553,6 @@ def sequence_timing():
             start_new_sock.send("want_to_start")           
 
             
-            
-
         if brian_to_radar_control in socks and socks[brian_to_radar_control] == zmq.POLLIN:
 
             #Get new sequence metadata from radar control
@@ -575,54 +573,54 @@ def sequence_timing():
 
         if brian_to_dsp_begin in socks and socks[brian_to_dsp_begin] == zmq.POLLIN:
 
-            def dspb_f():
+            #def dspb_f():
 
-                #Get acknowledgement that work began in processing.
-                reply = recv_reply(brian_to_dsp_begin, DSPBEGIN_BRIAN_IDEN, printing)
-                reply_output = "Dsp sent -> {}".format(reply)
-                printing(reply_output)
+            #Get acknowledgement that work began in processing.
+            reply = recv_reply(brian_to_dsp_begin, DSPBEGIN_BRIAN_IDEN, printing)
+            reply_output = "Dsp sent -> {}".format(reply)
+            printing(reply_output)
 
-                #Requesting acknowledgement of work ends from DSP
-                printing("Requesting work end from DSP")
-                send_request(brian_to_dsp_end, DSPEND_BRIAN_IDEN, "Requesting work ends")
+            #Requesting acknowledgement of work ends from DSP
+            printing("Requesting work end from DSP")
+            send_request(brian_to_dsp_end, DSPEND_BRIAN_IDEN, "Requesting work ends")
 
-                #acknowledge that we are good and able to start something new
-                start_new_sock.send("good_to_start")
+            #acknowledge that we are good and able to start something new
+            start_new_sock.send("good_to_start")
                 
 
 
-            dspb_t = threading.Thread(target=dspb_f)
-            dspb_t.daemon = True
-            dspb_t.start()
+            # dspb_t = threading.Thread(target=dspb_f)
+            # dspb_t.daemon = True
+            # dspb_t.start()
 
         if brian_to_dsp_end in socks and socks[brian_to_dsp_end] == zmq.POLLIN:
 
-            def dspe_t():
-                global late_counter
+            #def dspe_f():
+            global late_counter
                 #Receive ack that work finished on previous sequence.
-                reply = recv_reply(brian_to_dsp_end, DSPEND_BRIAN_IDEN, printing)
+            reply = recv_reply(brian_to_dsp_end, DSPEND_BRIAN_IDEN, printing)
 
-                proc_d = processeddata_pb2.ProcessedData()
-                proc_d.ParseFromString(reply)
-                reply_output = "Dsp sent -> time {}, sqnum {}".format(proc_d.processing_time, proc_d.sequence_num)
-                printing(reply_output)
+            proc_d = processeddata_pb2.ProcessedData()
+            proc_d.ParseFromString(reply)
+            reply_output = "Dsp sent -> time {}, sqnum {}".format(proc_d.processing_time, proc_d.sequence_num)
+            printing(reply_output)
 
-                print(proc_d.sequence_num)
-                processing_times[proc_d.sequence_num] = proc_d.processing_time
-                if proc_d.sequence_num != 0:
-                    if proc_d.processing_time > processing_times[proc_d.sequence_num-1]:
-                        late_counter +=1
-                    else:
-                        late_counter = 0
-                printing("Late counter {}".format(late_counter))
+            print(proc_d.sequence_num)
+            processing_times[proc_d.sequence_num] = proc_d.processing_time
+            if proc_d.sequence_num != 0:
+                if proc_d.processing_time > processing_times[proc_d.sequence_num-1]:
+                    late_counter +=1
+                else:
+                    late_counter = 0
+            printing("Late counter {}".format(late_counter))
 
-                #acknowledge that we are good and able to start something new
-                start_new_sock.send("extra_good_to_start")
+            #acknowledge that we are good and able to start something new
+            start_new_sock.send("extra_good_to_start")
 
                 
-            dspe_t = threading.Thread(target=dspe_t)
-            dspe_t.daemon = True
-            dspe_t.start()
+            # dspe_t = threading.Thread(target=dspe_f)
+            # dspe_t.daemon = True
+            # dspe_t.start()
             
 
 

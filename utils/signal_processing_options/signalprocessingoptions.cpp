@@ -47,6 +47,7 @@ SignalProcessingOptions::SignalProcessingOptions() {
   brian_dspend_identity = config_pt.get<std::string>("brian_to_dspend_identity");
   exphan_dsp_identity = config_pt.get<std::string>("exphan_to_dsp_identity");
   dw_dsp_identity = config_pt.get<std::string>("dw_to_dsp_identity");
+  ringbuffer_name = config_pt.get<std::string>("ringbuffer_name");
 }
 
 double SignalProcessingOptions::get_rx_rate() const
@@ -171,4 +172,9 @@ std::string SignalProcessingOptions::get_exphan_dsp_identity() const
 std::string SignalProcessingOptions::get_dw_dsp_identity() const
 {
   return dw_dsp_identity;
+}
+
+std::string SignalProcessingOptions::get_ringbuffer_name() const
+{
+  return ringbuffer_name;
 }
