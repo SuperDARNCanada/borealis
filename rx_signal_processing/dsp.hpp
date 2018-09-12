@@ -54,7 +54,8 @@ class DSPCore {
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num,
-                    std::vector<double> freqs, Filtering *filters);
+                    std::vector<double> freqs, Filtering *filters, 
+                    std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts);
   ~DSPCore(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
   void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
@@ -94,6 +95,8 @@ class DSPCore {
   uint32_t get_num_third_stage_samples_per_antenna();
   uint32_t get_sequence_num();
   cudaStream_t get_cuda_stream();
+  std::vector<cuComplex> get_beam_phases();
+  std::vector<uint32_t> get_beam_direction_counts();
   void start_decimate_timing();
   void stop_timing();
   void send_ack();
@@ -119,7 +122,7 @@ class DSPCore {
   //! Pointer to the socket used to report the timing of GPU kernels.
   zmq::socket_t *timing_socket;
 
-
+  //! Pointer to the data writing socket.
   zmq::socket_t *data_socket;
 
   //! Stores the total GPU process timing once all the work is done.
@@ -202,6 +205,13 @@ class DSPCore {
 
   //! The number of third stage samples per antenna.
   uint32_t num_third_stage_samples_per_antenna;
+
+  //! A set of beam angle phases for each beam direction.
+  std::vector<cuComplex> beam_phases;
+
+  //! Each entry holds the number of beam directions for an RX frequency.
+  std::vector<uint32_t> beam_direction_counts;
+
 
   void allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples);
   void allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples);

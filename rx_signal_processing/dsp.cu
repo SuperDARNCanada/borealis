@@ -21,6 +21,7 @@ See LICENSE for details
 #include <chrono>
 #include <thread>
 #include <complex>
+#include <eigen3/Eigen/Dense>
 #include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 
@@ -108,6 +109,44 @@ namespace {
     }
   }
 
+  void beamform_samples(std::vector<cuComplex> &filtered_samples, 
+                        std::vector<cuComplex> &beamformed_samples,
+                        std::vector<cuComplex> &phases, uint32_t num_antennas, 
+                        std::vector<uint32_t> beam_direction_counts, uint32_t num_samples) 
+  {
+    auto phase_offset = 0;
+    for (uint32_t beamdir_num=0; beamdir_num<beam_direction_counts.size(); beamdir_num++) {
+
+      auto sample_offset = num_samples * beamdir_num;
+
+      auto samples_cast = reinterpret_cast<std::complex<float>*>(filtered_samples.data()) + 
+                          sample_offset;
+      auto phases_cast = reinterpret_cast<std::complex<float>*>(phases.data()) + phase_offset;
+
+      Eigen::MatrixXcf samps = Eigen::Map<Eigen::Matrix<std::complex<float>,
+                                                        Eigen::Dynamic,
+                                                        Eigen::Dynamic, 
+                                                        Eigen::RowMajor>>(samples_cast, 
+                                                                          num_antennas, 
+                                                                          num_samples);
+      Eigen::MatrixXcf phases = Eigen::Map<Eigen::Matrix<std::complex<float>,
+                                                          Eigen::Dynamic,
+                                                          Eigen::Dynamic, 
+                                                          Eigen::RowMajor>>(phases_cast, 
+                                                                beam_direction_counts[beamdir_num], 
+                                                                num_antennas);
+
+      auto result = phases * samps;
+      
+      auto beamformed_cast = reinterpret_cast<std::complex<float>*>(beamformed_samples.data());
+      Eigen::Map<Eigen::Matrix<std::complex<float>, Eigen::Dynamic, 
+                                Eigen::Dynamic, Eigen::RowMajor>>(beamformed_cast, result.rows(), 
+                                                                  result.cols()) = result;
+      //Possibly non uniform striding means we incremement the offset as we go.
+      phase_offset += beam_direction_counts[beamdir_num] * num_antennas;
+    }
+
+  }
   /**
    * @brief      Creates a data packet of processed data.
    *
@@ -131,6 +170,28 @@ namespace {
 
     drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
                      dp->get_num_antennas(), dp->get_rx_freqs().size());
+
+    auto num_samples_after_dropping = output_samples.size()/
+                                      (dp->get_num_antennas()*dp->get_rx_freqs().size());
+
+
+
+
+    auto total_beam_dirs = 0;
+    for(auto &beam_count : dp->get_beam_direction_counts()) {
+      total_beam_dirs += beam_count;
+    }
+
+    std::vector<cuComplex> beamformed_samples(dp->get_num_antennas() * 
+                                                total_beam_dirs * 
+                                                num_samples_after_dropping);
+
+    auto beam_phases = dp->get_beam_phases();
+    beamform_samples(output_samples, beamformed_samples, beam_phases, 
+                      dp->get_num_antennas(), dp->get_beam_direction_counts(), 
+                      num_samples_after_dropping);
+
+
 
 
     // We have a lambda to extract the starting pointers of each set of output samples so that
@@ -167,8 +228,7 @@ namespace {
     #endif
 
     auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_rx_freqs().size(),
-                          dp->get_num_antennas(),
-                          output_samples.size()/(dp->get_num_antennas()*dp->get_rx_freqs().size()));
+                          dp->get_num_antennas(), num_samples_after_dropping);
 
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
       auto dataset = pd.add_outputdataset();
@@ -202,7 +262,7 @@ namespace {
                     dp->get_num_third_stage_samples_per_antenna());
       #endif
         add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
-          output_samples.size()/(dp->get_num_antennas()*dp->get_rx_freqs().size()));
+          num_samples_after_dropping);
         DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     }
 
@@ -311,6 +371,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
 }
 
 
+///TODO(keith): update docstring
 /**
  * @brief      Initializes the parameters needed in order to do asynchronous DSP processing.
  *
@@ -324,18 +385,30 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * The constructor creates a new CUDA stream and initializes the timing events. It then opens
  * the shared memory with the received RF samples for a pulse sequence.
  */
-DSPCore::DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_s,
-                  SignalProcessingOptions &options, uint32_t sq_num,
-                  std::vector<double> freqs, Filtering *filters)
+DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::socket_t *data_socket,
+                  SignalProcessingOptions &sig_options, uint32_t sequence_num,
+                  std::vector<double> rx_freqs, Filtering *dsp_filters,
+                  std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts) :
+  sequence_num(sequence_num),
+  ack_socket(ack_socket),
+  timing_socket(timing_socket),
+  data_socket(data_socket),
+  rx_freqs(rx_freqs),
+  sig_options(sig_options),
+  dsp_filters(dsp_filters),
+  beam_phases(beam_phases),
+  beam_direction_counts(beam_direction_counts)
 {
 
-  sequence_num = sq_num;
+/*  sequence_num = sq_num;
   ack_socket = ack_s;
   timing_socket = timing_s;
   data_socket = data_s;
   rx_freqs = freqs;
   sig_options = options;
   dsp_filters = filters;
+  num_beams = 
+  phases = beam_phases;*/
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));
   gpuErrchk(cudaEventCreate(&initial_start));
@@ -966,5 +1039,17 @@ uint32_t DSPCore::get_sequence_num()
   return sequence_num;
 }
 
+/*uint32_t DSPCore::get_num_beams()
+{
+  return num_beams;
+}*/
 
+std::vector<cuComplex> DSPCore::get_beam_phases()
+{
+  return beam_phases;
+}
 
+std::vector<uint32_t> DSPCore::get_beam_direction_counts()
+{
+  return beam_direction_counts;
+}

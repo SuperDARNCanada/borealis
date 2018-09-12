@@ -161,8 +161,25 @@ int main(int argc, char **argv){
       //TODO(keith): handle error
     }
     std::vector<double> rx_freqs;
-    for(int i=0; i<sp_packet.rxchannel_size(); i++) {
-      rx_freqs.push_back(sp_packet.rxchannel(i).rxfreq());
+    for(uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
+      rx_freqs.push_back(sp_packet.rxchannel(channel).rxfreq());
+    }
+
+    std::vector<cuComplex> beam_phases;
+    std::vector<uint32_t> beam_direction_counts;
+    for (uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
+      auto rx_channel = sp_packet.rxchannel(channel);
+      beam_direction_counts.push_back(rx_channel.beam_directions_size());
+      for (uint32_t beam_num=0; beam_num<rx_channel.beam_directions_size(); beam_num++) {
+        auto beam = rx_channel.beam_directions(beam_num);
+        for(uint32_t phase_num=0; phase_num<beam.phase_size(); phase_num++) {
+          auto phase = beam.phase(phase_num);
+          cuComplex new_angle;
+          new_angle.x = phase.real_phase();
+          new_angle.y = phase.imag_phase();
+          beam_phases.push_back(new_angle);
+        }
+      }
     }
 
     TIMEIT_IF_TRUE_OR_DEBUG(false, "   NCO mix timing: ",
@@ -174,7 +191,8 @@ int main(int argc, char **argv){
 
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
                              sig_options, sp_packet.sequence_num(),
-                             rx_freqs, &filters);
+                             rx_freqs, &filters, beam_phases,
+                             beam_direction_counts);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
