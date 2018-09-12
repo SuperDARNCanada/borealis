@@ -54,6 +54,14 @@ cp zmq_addon.hpp /usr/local/include
 cd ../ || exit
 pip2 install zmq
 
+#### INSTALL EIGEN####
+git clone https://github.com/eigenteam/eigen-git-mirror.git
+cd eigen-git-mirror
+mkdir build
+cd build || exit
+cmake ../
+make install
+cd ../../ || exit
 
 #### INSTALL UHD ####
 #http://files.ettus.com/manual/page_build_guide.html
