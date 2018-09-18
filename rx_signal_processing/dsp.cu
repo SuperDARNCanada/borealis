@@ -136,9 +136,9 @@ namespace {
     
     // Gonna make a lambda here to avoid repeated code. This is the main procedure that will 
     // beamform the samples from offsets into the vectors.
-    auto beamform_from_offsets = [&](std::complex<cuComplex>* samples_ptr, 
-                                      std::complex<cuComplex>* phases_ptr,
-                                      std::complex<cuComplex>* result_ptr, 
+    auto beamform_from_offsets = [&](cuComplex* samples_ptr, 
+                                      cuComplex* phases_ptr,
+                                      cuComplex* result_ptr, 
                                       uint32_t num_antennas, uint32_t num_beams)
     {
 
@@ -171,7 +171,7 @@ namespace {
       Eigen::Map<Eigen::Matrix<std::complex<float>, Eigen::Dynamic, 
                                 Eigen::Dynamic, Eigen::RowMajor>>(beamformed_cast, result.rows(), 
                                                                   result.cols()) = result;
-    }
+    };
 
     auto main_phase_offset = 0;
     auto main_results_offset = 0;
@@ -208,7 +208,7 @@ namespace {
         // Result offsets will be the same. Each main and intf will have one set of samples for
         // each beam.
         auto intf_results_offset = main_results_offset;
-        auto intf_results_ptr = beamformed_samples_intf.data() + intf_results_ptr;
+        auto intf_results_ptr = beamformed_samples_intf.data() + intf_results_offset;
 
         beamform_from_offsets(intf_sample_ptr, intf_phase_ptr, intf_results_ptr,
                               num_intf_ants, num_beams);
@@ -260,7 +260,8 @@ namespace {
 
     auto beam_phases = dp->get_beam_phases();
     beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf, beam_phases, 
-                      dp->get_num_antennas(), dp->get_beam_direction_counts(), 
+                      dp->sig_options.get_main_antenna_count(), 
+                      dp->sig_options.get_main_antenna_count(), dp->get_beam_direction_counts(), 
                       num_samples_after_dropping);
 
 
