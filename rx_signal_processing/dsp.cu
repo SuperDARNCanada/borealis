@@ -8,7 +8,7 @@ See LICENSE for details
   This file contains the implementation for the all the needed GPU DSP work.
 */
 
-#include "dsp.hpp"
+#include "dsp.hpp" 
 #include "utils/protobuf/sigprocpacket.pb.h"
 #include "utils/protobuf/processeddata.pb.h"
 #include "utils/shared_macros/shared_macros.hpp"
@@ -109,20 +109,45 @@ namespace {
     }
   }
 
+  /**
+   * @brief      Beamforms the final samples
+   *
+   * @param      filtered_samples         A flat vector containing all the filtered samples.
+   * @param      beamformed_samples_main  A vector where the beamformed main samples are placed.     
+   * @param      beamformed_samples_intf  A vector where the beamformed intf samples are placed.
+   * @param      phases                   A flat vector of the beam angle phases.
+   * @param      num_main_ants            The number of main antennas.
+   * @param      num_intf_ants            The number of intf antennas.
+   * @param      beam_direction_counts    A vector containing the number of beam directions for each
+   *                                      RX frequency.
+   * @param      num_samples              The number of samples per antenna.
+   *
+   * This method extracts the offsets to the phases and samples needed for the beam directions of
+   * each RX frequency. The Eigen library is then used to multiply the matrices to yield the final
+   * beamformed samples. The main array and interferometer array are beamformed separately.
+   */
   void beamform_samples(std::vector<cuComplex> &filtered_samples, 
-                        std::vector<cuComplex> &beamformed_samples,
-                        std::vector<cuComplex> &phases, uint32_t num_antennas, 
-                        std::vector<uint32_t> beam_direction_counts, uint32_t num_samples) 
+                        std::vector<cuComplex> &beamformed_samples_main, 
+                        std::vector<cuComplex> &beamformed_samples_intf,
+                        std::vector<cuComplex> &phases, uint32_t num_main_ants, 
+                        uint32_t num_intf_ants, std::vector<uint32_t> beam_direction_counts, 
+                        uint32_t num_samples) 
   {
-    auto phase_offset = 0;
-    for (uint32_t beamdir_num=0; beamdir_num<beam_direction_counts.size(); beamdir_num++) {
+    
+    // Gonna make a lambda here to avoid repeated code. This is the main procedure that will 
+    // beamform the samples from offsets into the vectors.
+    auto beamform_from_offsets = [&](std::complex<cuComplex>* samples_ptr, 
+                                      std::complex<cuComplex>* phases_ptr,
+                                      std::complex<cuComplex>* result_ptr, 
+                                      uint32_t num_antennas, uint32_t num_beams)
+    {
 
-      auto sample_offset = num_samples * beamdir_num;
+      // We work with cuComplex type for most DSP, but Eigen only knows the equivalent std lib type
+      // so we cast to it for this context.
+      auto samples_cast = reinterpret_cast<std::complex<float>*>(samples_ptr);
+      auto phases_cast = reinterpret_cast<std::complex<float>*>(phases_ptr);
 
-      auto samples_cast = reinterpret_cast<std::complex<float>*>(filtered_samples.data()) + 
-                          sample_offset;
-      auto phases_cast = reinterpret_cast<std::complex<float>*>(phases.data()) + phase_offset;
-
+      // All we do here is map an existing set of memory to a structure that Eigen uses.
       Eigen::MatrixXcf samps = Eigen::Map<Eigen::Matrix<std::complex<float>,
                                                         Eigen::Dynamic,
                                                         Eigen::Dynamic, 
@@ -133,17 +158,65 @@ namespace {
                                                           Eigen::Dynamic,
                                                           Eigen::Dynamic, 
                                                           Eigen::RowMajor>>(phases_cast, 
-                                                                beam_direction_counts[beamdir_num], 
-                                                                num_antennas);
+                                                                            num_beams, 
+                                                                            num_antennas);
 
-      auto result = phases * samps;
+      // Result matrix has dimensions beams x num_samples. This means one set of samples for 
+      // each beam dir. Eigen overloads the * operator so we dont need to implement any matrix
+      // work ourselves.
+      auto result = phases * samps;  
       
-      auto beamformed_cast = reinterpret_cast<std::complex<float>*>(beamformed_samples.data());
+      // This piece of code just transforms the Eigen result back into our flat vector.
+      auto beamformed_cast = reinterpret_cast<std::complex<float>*>(result_ptr);
       Eigen::Map<Eigen::Matrix<std::complex<float>, Eigen::Dynamic, 
                                 Eigen::Dynamic, Eigen::RowMajor>>(beamformed_cast, result.rows(), 
                                                                   result.cols()) = result;
+    }
+
+    auto main_phase_offset = 0;
+    auto main_results_offset = 0;
+
+    // Now we calculate the offsets into the samples, phases, and results vector for each
+    // RX frequency. Each RX frequency could have a different number of beams, so we increment
+    // the phase and results offsets based off the accumulated number of beams. Once we have the
+    // offsets, we can call the beamforming lambda.
+    for (uint32_t rx_freq_num=0; rx_freq_num<beam_direction_counts.size(); rx_freq_num++) {
+
+      auto num_beams = beam_direction_counts[rx_freq_num];
+
+      // Increment to start of new frequency dataset.
+      auto main_sample_offset = num_samples * (num_main_ants + num_intf_ants) * rx_freq_num;
+      auto main_sample_ptr = filtered_samples.data() + main_sample_offset;
+
+      auto main_phase_ptr = phases.data() + main_phase_offset;
+
+      auto main_results_ptr = beamformed_samples_main.data() + main_results_offset;
+
+      beamform_from_offsets(main_sample_ptr, main_sample_ptr, main_results_ptr, 
+                            num_main_ants, num_beams);
+
+      // Only need to worry about beamforming the interferometer if its being used.
+      if (num_intf_ants > 0) {
+
+        // Skip the main array samples.
+        auto intf_sample_offset = main_sample_offset + (num_samples * num_main_ants);
+        auto intf_sample_ptr = filtered_samples.data() + intf_sample_offset;
+
+        auto intf_phase_offset = main_phase_offset + (num_beams * num_main_ants);
+        auto intf_phase_ptr = phases.data() + intf_phase_offset;
+
+        // Result offsets will be the same. Each main and intf will have one set of samples for
+        // each beam.
+        auto intf_results_offset = main_results_offset;
+        auto intf_results_ptr = beamformed_samples_intf.data() + intf_results_ptr;
+
+        beamform_from_offsets(intf_sample_ptr, intf_phase_ptr, intf_results_ptr,
+                              num_intf_ants, num_beams);
+      }
+
       //Possibly non uniform striding means we incremement the offset as we go.
-      phase_offset += beam_direction_counts[beamdir_num] * num_antennas;
+      main_phase_offset += num_beams * (num_main_ants + num_intf_ants);
+      main_results_offset += num_beams * num_samples;
     }
 
   }
@@ -182,12 +255,11 @@ namespace {
       total_beam_dirs += beam_count;
     }
 
-    std::vector<cuComplex> beamformed_samples(dp->get_num_antennas() * 
-                                                total_beam_dirs * 
-                                                num_samples_after_dropping);
+    std::vector<cuComplex> beamformed_samples_main(total_beam_dirs * num_samples_after_dropping);
+    std::vector<cuComplex> beamformed_samples_intf(total_beam_dirs * num_samples_after_dropping);
 
     auto beam_phases = dp->get_beam_phases();
-    beamform_samples(output_samples, beamformed_samples, beam_phases, 
+    beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf, beam_phases, 
                       dp->get_num_antennas(), dp->get_beam_direction_counts(), 
                       num_samples_after_dropping);
 

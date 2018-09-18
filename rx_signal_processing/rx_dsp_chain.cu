@@ -165,12 +165,19 @@ int main(int argc, char **argv){
       rx_freqs.push_back(sp_packet.rxchannel(channel).rxfreq());
     }
 
+
+    // Parse out the beam phases from the radar control signal proc packet.
     std::vector<cuComplex> beam_phases;
     std::vector<uint32_t> beam_direction_counts;
+
     for (uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
+      // In this case each channel is the info for a new RX frequency
       auto rx_channel = sp_packet.rxchannel(channel);
+
+      // Keep track of the number of beams each RX freq has. We will need this for beamforming.
       beam_direction_counts.push_back(rx_channel.beam_directions_size());
       for (uint32_t beam_num=0; beam_num<rx_channel.beam_directions_size(); beam_num++) {
+        // Go through each beam now and add the phases for each antenna to a vector.
         auto beam = rx_channel.beam_directions(beam_num);
         for(uint32_t phase_num=0; phase_num<beam.phase_size(); phase_num++) {
           auto phase = beam.phase(phase_num);
