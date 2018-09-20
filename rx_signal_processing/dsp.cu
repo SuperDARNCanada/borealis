@@ -8,7 +8,7 @@ See LICENSE for details
   This file contains the implementation for the all the needed GPU DSP work.
 */
 
-#include "dsp.hpp" 
+#include "dsp.hpp"
 #include "utils/protobuf/sigprocpacket.pb.h"
 #include "utils/protobuf/processeddata.pb.h"
 #include "utils/shared_macros/shared_macros.hpp"
@@ -112,10 +112,13 @@ namespace {
   /**
    * @brief      Beamforms the final samples
    *
-   * @param      filtered_samples         A flat vector containing all the filtered samples.
-   * @param      beamformed_samples_main  A vector where the beamformed main samples are placed.     
+   * @param      filtered_samples         A flat vector containing all the filtered samples for all
+   *                                      RX frequencies.
+   * @param      beamformed_samples_main  A vector where the beamformed main samples are placed.
    * @param      beamformed_samples_intf  A vector where the beamformed intf samples are placed.
-   * @param      phases                   A flat vector of the beam angle phases.
+   * @param      phases                   A flat vector of the phase delay offsets used to generate
+   *                                      azimuthal directions. Phase offsets are complex
+   *                                      exponential.
    * @param      num_main_ants            The number of main antennas.
    * @param      num_intf_ants            The number of intf antennas.
    * @param      beam_direction_counts    A vector containing the number of beam directions for each
@@ -126,19 +129,19 @@ namespace {
    * each RX frequency. The Eigen library is then used to multiply the matrices to yield the final
    * beamformed samples. The main array and interferometer array are beamformed separately.
    */
-  void beamform_samples(std::vector<cuComplex> &filtered_samples, 
-                        std::vector<cuComplex> &beamformed_samples_main, 
+  void beamform_samples(std::vector<cuComplex> &filtered_samples,
+                        std::vector<cuComplex> &beamformed_samples_main,
                         std::vector<cuComplex> &beamformed_samples_intf,
-                        std::vector<cuComplex> &phases, uint32_t num_main_ants, 
-                        uint32_t num_intf_ants, std::vector<uint32_t> beam_direction_counts, 
-                        uint32_t num_samples) 
+                        std::vector<cuComplex> &phases, uint32_t num_main_ants,
+                        uint32_t num_intf_ants, std::vector<uint32_t> beam_direction_counts,
+                        uint32_t num_samples)
   {
-    
-    // Gonna make a lambda here to avoid repeated code. This is the main procedure that will 
+
+    // Gonna make a lambda here to avoid repeated code. This is the main procedure that will
     // beamform the samples from offsets into the vectors.
-    auto beamform_from_offsets = [&](cuComplex* samples_ptr, 
+    auto beamform_from_offsets = [&](cuComplex* samples_ptr,
                                       cuComplex* phases_ptr,
-                                      cuComplex* result_ptr, 
+                                      cuComplex* result_ptr,
                                       uint32_t num_antennas, uint32_t num_beams)
     {
 
@@ -150,26 +153,26 @@ namespace {
       // All we do here is map an existing set of memory to a structure that Eigen uses.
       Eigen::MatrixXcf samps = Eigen::Map<Eigen::Matrix<std::complex<float>,
                                                         Eigen::Dynamic,
-                                                        Eigen::Dynamic, 
-                                                        Eigen::RowMajor>>(samples_cast, 
-                                                                          num_antennas, 
+                                                        Eigen::Dynamic,
+                                                        Eigen::RowMajor>>(samples_cast,
+                                                                          num_antennas,
                                                                           num_samples);
       Eigen::MatrixXcf phases = Eigen::Map<Eigen::Matrix<std::complex<float>,
                                                           Eigen::Dynamic,
-                                                          Eigen::Dynamic, 
-                                                          Eigen::RowMajor>>(phases_cast, 
-                                                                            num_beams, 
+                                                          Eigen::Dynamic,
+                                                          Eigen::RowMajor>>(phases_cast,
+                                                                            num_beams,
                                                                             num_antennas);
 
-      // Result matrix has dimensions beams x num_samples. This means one set of samples for 
+      // Result matrix has dimensions beams x num_samples. This means one set of samples for
       // each beam dir. Eigen overloads the * operator so we dont need to implement any matrix
       // work ourselves.
-      auto result = phases * samps;  
-      
+      auto result = phases * samps;
+
       // This piece of code just transforms the Eigen result back into our flat vector.
       auto beamformed_cast = reinterpret_cast<std::complex<float>*>(result_ptr);
-      Eigen::Map<Eigen::Matrix<std::complex<float>, Eigen::Dynamic, 
-                                Eigen::Dynamic, Eigen::RowMajor>>(beamformed_cast, result.rows(), 
+      Eigen::Map<Eigen::Matrix<std::complex<float>, Eigen::Dynamic,
+                                Eigen::Dynamic, Eigen::RowMajor>>(beamformed_cast, result.rows(),
                                                                   result.cols()) = result;
     };
 
@@ -192,7 +195,7 @@ namespace {
 
       auto main_results_ptr = beamformed_samples_main.data() + main_results_offset;
 
-      beamform_from_offsets(main_sample_ptr, main_sample_ptr, main_results_ptr, 
+      beamform_from_offsets(main_sample_ptr, main_phase_ptr, main_results_ptr,
                             num_main_ants, num_beams);
 
       // Only need to worry about beamforming the interferometer if its being used.
@@ -259,9 +262,9 @@ namespace {
     std::vector<cuComplex> beamformed_samples_intf(total_beam_dirs * num_samples_after_dropping);
 
     auto beam_phases = dp->get_beam_phases();
-    beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf, beam_phases, 
-                      dp->sig_options.get_main_antenna_count(), 
-                      dp->sig_options.get_main_antenna_count(), dp->get_beam_direction_counts(), 
+    beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf, beam_phases,
+                      dp->sig_options.get_main_antenna_count(),
+                      dp->sig_options.get_intf_antenna_count(), dp->get_beam_direction_counts(),
                       num_samples_after_dropping);
 
 
@@ -480,7 +483,7 @@ DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::s
   rx_freqs = freqs;
   sig_options = options;
   dsp_filters = filters;
-  num_beams = 
+  num_beams =
   phases = beam_phases;*/
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));

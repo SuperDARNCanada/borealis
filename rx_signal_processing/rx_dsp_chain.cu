@@ -179,12 +179,34 @@ int main(int argc, char **argv){
       for (uint32_t beam_num=0; beam_num<rx_channel.beam_directions_size(); beam_num++) {
         // Go through each beam now and add the phases for each antenna to a vector.
         auto beam = rx_channel.beam_directions(beam_num);
+
+        // We are going to use two intermediate vectors here to rearrange the phase data so that
+        // all M data comes first, followed by all I data. This way can we directly treat each
+        // block of memory as a matrix for beamforming the individual arrays.
+        std::vector<cuComplex> main_phases;
+        std::vector<cuComplex> intf_phases;
+
         for(uint32_t phase_num=0; phase_num<beam.phase_size(); phase_num++) {
           auto phase = beam.phase(phase_num);
           cuComplex new_angle;
           new_angle.x = phase.real_phase();
           new_angle.y = phase.imag_phase();
-          beam_phases.push_back(new_angle);
+
+          if (phase_num < sig_options.get_main_antenna_count()) {
+            main_phases.push_back(new_angle);
+          }
+          else {
+            intf_phases.push_back(new_angle);
+          }
+        }
+
+        // Combine the separated antenna phases back into a flat vector.
+        for (auto &phase : main_phases) {
+          beam_phases.push_back(phase);
+        }
+
+        for (auto &phase : intf_phases) {
+          beam_phases.push_back(phase);
         }
       }
     }
