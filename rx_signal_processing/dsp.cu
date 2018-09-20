@@ -114,8 +114,10 @@ namespace {
    *
    * @param      filtered_samples         A flat vector containing all the filtered samples for all
    *                                      RX frequencies.
-   * @param      beamformed_samples_main  A vector where the beamformed main samples are placed.
-   * @param      beamformed_samples_intf  A vector where the beamformed intf samples are placed.
+   * @param      beamformed_samples_main  A vector where the beamformed and combined main array
+   *                                      samples are placed.
+   * @param      beamformed_samples_intf  A vector where the beamformed and combined intf array
+   *                                      samples are placed.
    * @param      phases                   A flat vector of the phase delay offsets used to generate
    *                                      azimuthal directions. Phase offsets are complex
    *                                      exponential.
