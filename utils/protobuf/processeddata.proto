@@ -11,8 +11,15 @@ message ProcessedData {
         repeated ComplexData mainacf = 1;
         repeated ComplexData intacf = 2;
         repeated ComplexData xcf = 3;
-        repeated ComplexData beamformediqsamples = 4;
-        repeated DebugData debugsamples = 5;
+	uint32 numberofbeams = 4;
+        repeated BeamData beamformedsamples = 5;
+        repeated DebugData debugsamples = 7;
+
+	message BeamData {
+	    uint32 beamnum = 1;
+	    repeated ComplexData mainsamples = 2;
+	    repeated ComplexData intfsamples = 3;
+	}
 
         message DebugData {
             string stagename = 1;

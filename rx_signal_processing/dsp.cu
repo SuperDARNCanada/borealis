@@ -256,7 +256,8 @@ namespace {
 
 
     auto total_beam_dirs = 0;
-    for(auto &beam_count : dp->get_beam_direction_counts()) {
+    auto beam_direction_counts = dp->get_beam_direction_counts();
+    for(auto &beam_count : beam_direction_counts) {
       total_beam_dirs += beam_count;
     }
 
@@ -266,7 +267,8 @@ namespace {
     auto beam_phases = dp->get_beam_phases();
     beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf, beam_phases,
                       dp->sig_options.get_main_antenna_count(),
-                      dp->sig_options.get_intf_antenna_count(), dp->get_beam_direction_counts(),
+                      dp->sig_options.get_interferometer_antenna_count(),
+                      beam_direction_counts,
                       num_samples_after_dropping);
 
 
@@ -308,6 +310,7 @@ namespace {
     auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_rx_freqs().size(),
                           dp->get_num_antennas(), num_samples_after_dropping);
 
+    auto beamformed_offset = 0;
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
       auto dataset = pd.add_outputdataset();
       // This lambda adds the stage data to the processed data for debug purposes.
@@ -327,6 +330,26 @@ namespace {
         }
       };
 
+      // Add our beamformed IQ data to the processed data packet that gets sent to data_write.
+      for (uint32_t beam_count=0; beam_count<beam_direction_counts[i]; beam_count++) {
+        auto beam = dataset->add_beamformedsamples();
+        beam->set_beamnum(beam_count);
+
+        for (uint32_t sample=0; sample<num_samples_after_dropping; sample++){
+          auto main_sample = beam->add_mainsamples();
+          main_sample->set_real(beamformed_samples_main[beamformed_offset + sample].x);
+          main_sample->set_imag(beamformed_samples_main[beamformed_offset + sample].y);
+
+          if (dp->sig_options.get_interferometer_antenna_count() > 0) {
+            auto intf_sample = beam->add_intfsamples();
+            intf_sample->set_real(beamformed_samples_intf[beamformed_offset + sample].x);
+            intf_sample->set_imag(beamformed_samples_intf[beamformed_offset + sample].y);
+          }
+      }
+
+      }
+      beamformed_offset += beam_direction_counts[i];
+
 
       #ifdef ENGINEERING_DEBUG
         if (i == 0) {
@@ -339,8 +362,9 @@ namespace {
         add_debug_data("stage_3",stage_3_ptrs[i],dp->get_num_antennas(),
                     dp->get_num_third_stage_samples_per_antenna());
       #endif
-        add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
-          num_samples_after_dropping);
+/*        add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
+          num_samples_after_dropping);*/
+
         DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     }
 

@@ -14,6 +14,7 @@ import os
 import h5py
 import collections
 import threading
+import numpy as np
 
 borealis_path = os.environ['BOREALISPATH']
 if not borealis_path:
@@ -98,8 +99,8 @@ class DataWrite(object):
     def output_data(self, write_rawacf=True, write_iq=False, write_pre_bf_iq=False,
                     use_hdf5=False, use_json=True, use_dmap=False):
         """
-        Parse through samples and write to file. Note that only one data type will be written out, 
-        and only to one type of file. If you specify all three types, the order of preference is: 
+        Parse through samples and write to file. Note that only one data type will be written out,
+        and only to one type of file. If you specify all three types, the order of preference is:
         1) pre_bf_iq
         2) iq
         3) rawacf
@@ -107,7 +108,7 @@ class DataWrite(object):
         1) hdf5
         2) json
         3) dmap
-        :param write_rawacf: Should rawacfs be written to file? Bool, default True. 
+        :param write_rawacf: Should rawacfs be written to file? Bool, default True.
         :param write_iq: Should IQ be written to file? Bool, default False.
         :param write_pre_bf_iq: Should pre-beamformed IQ be written to file? Bool. Default False
         :param use_hdf5: Write data out to hdf5 file. Default False
@@ -126,7 +127,8 @@ class DataWrite(object):
         if not file_format_string:
             raise ValueError("File format selection required (hdf5, json, dmap), none given")
 
-        iq_available = False
+        main_iq_available = False
+        intf_iq_available = False
         rawacf_available = False
         pre_bf_iq_available = False
         data_format_string = None
@@ -167,13 +169,40 @@ class DataWrite(object):
                     rawacf_data_dict[freq_str]['xcf']['real'].append(complex_sample.real)
                     rawacf_data_dict[freq_str]['xcf']['imag'].append(complex_sample.imag)
 
-            # IQ samples were beamformed
-            if len(data_set.beamformediqsamples) > 0:
+
+            if len(data_set.beamformedsamples > 0):
                 iq_available = True
-                iq_data_dict[freq_str] = {'real': [], 'imag': []}
-                for complex_sample in data_set.beamformediqsamples:
-                    iq_data_dict[freq_str]['real'].append(complex_sample.real)
-                    iq_data_dict[freq_str]['imag'].append(complex_sample.imag)
+                iq_data_dict[freq_str]['main'] = {'real': [], 'imag': []}
+                for beam in data_set.beamformedsamples:
+                    beam_str = "beam_{}".format(beam.beamnum)
+                    iq_data_dict[freq_str][beam_str] = {'main' : {'real' : [], 'imag' : []},
+                                                        'intf' : {'real' : [], 'imag' : []}
+                                                        }
+                    for main_sample in beam.mainsamples:
+                        iq_data_dict[freq_str][beam_str]['main']['real'].append(main_sample.real)
+                        iq_data_dict[freq_str][beam_str]['main']['imag'].append(main_sample.imag)
+
+                    if len(beam.intfsamples > 0):
+                        for intf_sample in beam.intfsamples:
+                            dict_to_add = iq_data_dict[freq_str][beam_str]['intf']
+                            dict_to_add['real'].append(intf_sample.real)
+                            dict_to_add['imag'].append(intf_sample.imag)
+
+            # # Main IQ samples were beamformed
+            # if len(data_set.beamformedmainiqsamples) > 0:
+            #     iq_available = True
+            #     iq_data_dict[freq_str]['main'] = {'real': [], 'imag': []}
+
+            #     for complex_sample in data_set.beamformedmainiqsamples:
+            #         main_iq_data_dict[freq_str]['main']['real'].append(complex_sample.real)
+            #         main_iq_data_dict[freq_str]['main']['imag'].append(complex_sample.imag)
+
+            # # Interferometer IQ samples were beamformed
+            # if len(data_set.beamformedintfiqsamples) > 0:
+            #     iq_data_dict[freq_str]['intf'] = {'real': [], 'imag': []}
+            #     for complex_sample in data_set.beamformedintfiqsamples:
+            #         intf_iq_data_dict[freq_str]['intf']['real'].append(complex_sample.real)
+            #         intf_iq_data_dict[freq_str]['intf']['imag'].append(complex_sample.imag)
 
             # non beamformed IQ samples are available
             if len(data_set.debugsamples) > 0:
@@ -255,7 +284,7 @@ if __name__ == '__main__':
                 start = datetime.datetime.now()
                 dw.output_data(write_pre_bf_iq=True)
 
-            
+
             end = datetime.datetime.now()
             diff = end - start
             time = diff.total_seconds() * 1000
