@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Copyright 2017 SuperDARN Canada
 #
@@ -30,7 +30,7 @@ def create_sockets(identities, router_addr):
     num_sockets = len(identities)
     sockets = [context.socket(zmq.DEALER) for _ in range(num_sockets)]
     for sk, iden in zip(sockets, identities):
-        sk.setsockopt(zmq.IDENTITY, iden)
+        sk.setsockopt_string(zmq.IDENTITY, iden)
         sk.connect(router_addr)
 
     return sockets
@@ -49,13 +49,13 @@ def recv_data(socket, sender_iden, pprint):
     :rtype: String or Protobuf or None
     """
     recv_identity, empty, data = socket.recv_multipart()
-    if recv_identity != sender_iden:
+    if recv_identity != sender_iden.encode('utf-8'):
         err_msg = "Expected identity {}, received from identity {}."
         err_msg = err_msg.format(sender_iden, recv_identity)
         pprint(err_msg)
         return None
     else:
-        return data
+        return data.decode('utf-8')
 
 
 def send_data(socket, recv_iden, msg):
@@ -68,7 +68,8 @@ def send_data(socket, recv_iden, msg):
     :param msg: The data message to send.
     :type msg: String
     """
-    frames = [recv_iden, b"", b"{}".format(msg)]
+    frames = [recv_iden.encode('utf-8'), b"", msg.encode('utf-8')]
+    #frames = [recv_iden, b"", b"{}".format(msg)]
     socket.send_multipart(frames)
 
 # Aliases for sending to a socket

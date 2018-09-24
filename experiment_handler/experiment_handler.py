@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 """
     experiment_handler process
@@ -22,7 +22,8 @@ import argparse
 import inspect
 import importlib
 import threading
-import cPickle as pickle
+import pickle
+import json
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -95,7 +96,7 @@ def retrieve_experiment():
     if __debug__:
         print("Running the experiment: " + args.experiment_module)
     experiment = args.experiment_module
-    experiment_mod = importlib.import_module("." + experiment, package="experiments")
+    experiment_mod = importlib.import_module("experiments." + experiment)
 
     experiment_classes = {}
     for class_name, obj in inspect.getmembers(experiment_mod, inspect.isclass):
@@ -111,7 +112,7 @@ def retrieve_experiment():
 
     list_experiments = []
     for class_name, class_obj in experiment_classes.items():
-        if experiment_proto_class in inspect.getmro(class_name):  # an experiment
+        if experiment_proto_class in inspect.getmro(class_obj):  # an experiment
             # must inherit from ExperimentPrototype
             # other utility classes might be in the file but we will ignore them.
             list_experiments.append(class_obj)
@@ -208,24 +209,24 @@ def experiment_handler(semaphore):
             printing("Sending new experiment from beginning")
             # starting anew
             exp.build_scans()
-            pickled_exp = pickle.dumps(exp)
+            serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
             try:
                 socket_operations.send_reply(exp_handler_to_radar_control,
                                              options.radctrl_to_exphan_identity,
-                                             pickled_exp)
+                                             serialized_exp)
             except zmq.ZMQError: # the queue was full - radarcontrol not receiving.
                 pass  #TODO handle this. Shutdown and restart all modules.
 
         elif message == 'NOERROR':
             # no errors
             if change_flag:
-                pickled_exp = pickle.dumps(exp)
+                serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
             else:
-                pickled_exp = pickle.dumps(None)
+                serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
 
             try:
                 socket_operations.send_reply(exp_handler_to_radar_control,
-                                             options.radctrl_to_exphan_identity, pickled_exp)
+                                             options.radctrl_to_exphan_identity, serialized_exp)
             except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
                 pass  # TODO handle this. Shutdown and restart all modules.
 
