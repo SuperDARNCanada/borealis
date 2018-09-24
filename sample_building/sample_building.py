@@ -12,6 +12,8 @@ from scipy.constants import speed_of_light
 from scipy.signal import gaussian
 import numpy as np
 import math
+import json
+from datetime import datetime
 import matplotlib.pyplot as plt
 from experiment_prototype.experiment_exception import ExperimentException
 
@@ -564,3 +566,41 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
         beams_antenna_phases.append(phase_array)
 
     return beams_antenna_phases
+
+
+def write_samples_to_file(txrate, txctrfreq, number_of_samples,
+                          pulse_sequence_timing, antennas, pulse_samples, file_path):
+    """
+    Write the samples and transmitted metadata to a json file for use in testing.
+
+    :param txrate: The rate at which these samples will be transmitted at.
+    :param txctrfreq: The centre frequency that the N200 is tuned to (and will mix with
+     these samples).
+    :param number_of_samples: The number of samples per antenna in the pulse_samples list.
+    :param pulse_sequence_timing: The timing for these pulses, given in us where 0 us
+     is the very start of the sequence.
+    :param antennas: A list of tx_antennas to be transmitted on, indexed from 0
+    :param pulse_samples: a list of arrays - each array corresponds to an antenna (the
+     samples are phased). All arrays are the same length for a single pulse on
+     that antenna. The length of the list is equal to main_antenna_count (all
+     samples are calculated). If we are not using an antenna, that index is a
+     numpy array of zeroes.
+    :param file_path: location to place the json file.
+    :return:
+    """
+
+    # Create a dictionary to encode as json
+    write_dict = {}
+    write_dict['txrate'] = txrate
+    write_dict['txctrfreq'] = txctrfreq
+    write_dict['number_of_samples'] = number_of_samples
+    write_dict['pulse_sequence_timing'] = pulse_sequence_timing
+    write_dict['antennas'] = antennas
+    write_dict['pulse_samples'] = pulse_samples
+
+    write_time = datetime.now()
+    string_time = write_time.strftime('%Y%m%d.%H%M')
+    write_dict['samples_approx_time'] = string_time
+
+    with open(file_path + string_time + '.json', 'w') as outfile:
+        json.dump(write_dict, outfile)

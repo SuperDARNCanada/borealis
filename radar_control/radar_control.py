@@ -27,6 +27,7 @@ from experiment_prototype.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 if __debug__:
+    debug_path = os.environ["BOREALISPATH"] + 'testing/tmp'
     sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')
 else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
@@ -34,7 +35,7 @@ else:
 from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
 
-from sample_building.sample_building import azimuth_to_antenna_offset
+from sample_building.sample_building import azimuth_to_antenna_offset, write_samples_to_file
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from radar_status.radar_status import RadarStatus
@@ -411,6 +412,20 @@ def radar():
                             if first_time:
                                 for pulse_index, pulse_dict in \
                                         enumerate(sequence_dict_list[sequence_index]):
+
+                                    if __debug__:
+                                        if nave == 0 and pulse_index == 0:
+                                            # the start of the integration period.
+                                            write_samples_to_file(experiment.txrate,
+                                                                  experiment.txctrfreq,
+                                                                  sequence.numberofreceivesamples,
+                                                                  pulse_dict['timing'],
+                                                                  pulse_dict[
+                                                                      'pulse_antennas'],
+                                                                  pulse_dict[
+                                                                      'samples_array'],
+                                                                  debug_path)
+
                                     data_to_driver(driverpacket, radar_control_to_driver,
                                                    options.driver_to_radctrl_identity,
                                                    pulse_dict['pulse_antennas'],
