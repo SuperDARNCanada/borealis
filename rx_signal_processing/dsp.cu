@@ -264,12 +264,17 @@ namespace {
     std::vector<cuComplex> beamformed_samples_main(total_beam_dirs * num_samples_after_dropping);
     std::vector<cuComplex> beamformed_samples_intf(total_beam_dirs * num_samples_after_dropping);
 
-    auto beam_phases = dp->get_beam_phases();
-    beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf, beam_phases,
-                      dp->sig_options.get_main_antenna_count(),
-                      dp->sig_options.get_interferometer_antenna_count(),
-                      beam_direction_counts,
-                      num_samples_after_dropping);
+    TIMEIT_IF_TRUE_OR_DEBUG(false,"Beamforming time: ", 
+      {
+      auto beam_phases = dp->get_beam_phases();
+      beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf, 
+                        beam_phases,
+                        dp->sig_options.get_main_antenna_count(),
+                        dp->sig_options.get_interferometer_antenna_count(),
+                        beam_direction_counts,
+                        num_samples_after_dropping);
+      }
+    );
 
 
 

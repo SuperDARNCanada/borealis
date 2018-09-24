@@ -96,7 +96,7 @@ class DataWrite(object):
 
         write_json_file(self.options.debug_file, debug_data)
 
-    def output_data(self, write_rawacf=True, write_iq=False, write_pre_bf_iq=False,
+    def output_data(self, write_rawacf=True, write_iq=True, write_pre_bf_iq=False,
                     use_hdf5=False, use_json=True, use_dmap=False):
         """
         Parse through samples and write to file. Note that only one data type will be written out,
@@ -137,7 +137,7 @@ class DataWrite(object):
         # value given as an argument, in this case a dictionary.
         iq_pre_bf_data_dict = collections.defaultdict(dict)
         rawacf_data_dict = {}
-        iq_data_dict = {}
+        iq_data_dict = collections.defaultdict(dict)
         final_data_dict = {}
 
         # Iterate over every data set, one data set per frequency
@@ -169,8 +169,8 @@ class DataWrite(object):
                     rawacf_data_dict[freq_str]['xcf']['real'].append(complex_sample.real)
                     rawacf_data_dict[freq_str]['xcf']['imag'].append(complex_sample.imag)
 
-
-            if len(data_set.beamformedsamples > 0):
+            print(len(data_set.beamformedsamples))
+            if len(data_set.beamformedsamples) > 0:
                 iq_available = True
                 iq_data_dict[freq_str]['main'] = {'real': [], 'imag': []}
                 for beam in data_set.beamformedsamples:
@@ -182,7 +182,7 @@ class DataWrite(object):
                         iq_data_dict[freq_str][beam_str]['main']['real'].append(main_sample.real)
                         iq_data_dict[freq_str][beam_str]['main']['imag'].append(main_sample.imag)
 
-                    if len(beam.intfsamples > 0):
+                    if len(beam.intfsamples) > 0:
                         for intf_sample in beam.intfsamples:
                             dict_to_add = iq_data_dict[freq_str][beam_str]['intf']
                             dict_to_add['real'].append(intf_sample.real)
