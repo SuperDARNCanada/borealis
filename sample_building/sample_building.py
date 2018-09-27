@@ -568,7 +568,7 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
     return beams_antenna_phases
 
 
-def write_samples_to_file(txrate, txctrfreq, number_of_samples,
+def write_samples_to_file(txrate, txctrfreq,
                           pulse_sequence_timing, antennas, pulse_samples, file_path):
     """
     Write the samples and transmitted metadata to a json file for use in testing.
@@ -576,7 +576,6 @@ def write_samples_to_file(txrate, txctrfreq, number_of_samples,
     :param txrate: The rate at which these samples will be transmitted at.
     :param txctrfreq: The centre frequency that the N200 is tuned to (and will mix with
      these samples).
-    :param number_of_samples: The number of samples per antenna in the pulse_samples list.
     :param pulse_sequence_timing: The timing for these pulses, given in us where 0 us
      is the very start of the sequence.
     :param antennas: A list of tx_antennas to be transmitted on, indexed from 0
@@ -593,10 +592,14 @@ def write_samples_to_file(txrate, txctrfreq, number_of_samples,
     write_dict = {}
     write_dict['txrate'] = txrate
     write_dict['txctrfreq'] = txctrfreq
-    write_dict['number_of_samples'] = number_of_samples
     write_dict['pulse_sequence_timing'] = pulse_sequence_timing
     write_dict['antennas'] = antennas
-    write_dict['pulse_samples'] = pulse_samples
+    write_dict['pulse_samples'] = {}
+    for ant, samples in enumerate(pulse_samples):
+        write_dict['pulse_samples'][ant] = {
+            'real': samples.real,
+            'imag': samples.imag
+        }
 
     write_time = datetime.now()
     string_time = write_time.strftime('%Y%m%d.%H%M')
@@ -604,3 +607,4 @@ def write_samples_to_file(txrate, txctrfreq, number_of_samples,
 
     with open(file_path + string_time + '.json', 'w') as outfile:
         json.dump(write_dict, outfile)
+

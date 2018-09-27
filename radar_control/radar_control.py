@@ -16,7 +16,6 @@
 import cmath
 import sys
 import time
-import os
 from datetime import datetime, timedelta
 import os
 import zmq
@@ -27,7 +26,9 @@ from experiment_prototype.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 if __debug__:
-    debug_path = os.environ["BOREALISPATH"] + 'testing/tmp'
+    debug_path = os.environ["BOREALISPATH"] + '/testing/tmp'
+    if not os.path.isdir(debug_path):
+        os.mkdir(debug_path)
     sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')
 else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
