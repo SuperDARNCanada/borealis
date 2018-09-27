@@ -362,6 +362,20 @@ def radar():
                     sequence_dict_list = aveperiod.build_sequences(slice_to_beamdir_dict,
                                                                    experiment.txctrfreq,
                                                                    experiment.txrate, options)  # TODO pass in only options needed.
+                    if __debug__:
+                        if len(sequence_dict_list) == 1:
+                            all_repeats = True
+                            for pulse_index, pulse_dict in enumerate(
+                                    sequence_dict_list[0]):
+                                if pulse_index == 0:
+                                    continue
+                                elif pulse_dict['isarepeat']:
+                                    continue
+                                else:
+                                    all_repeats = False
+                                    break
+                        else:
+                            all_repeats = False
 
                     beam_phase_dict_list = []
 
@@ -419,12 +433,12 @@ def radar():
                                             # the start of the integration period.
                                             write_samples_to_file(experiment.txrate,
                                                                   experiment.txctrfreq,
-                                                                  sequence.numberofreceivesamples,
                                                                   pulse_dict['timing'],
                                                                   pulse_dict[
                                                                       'pulse_antennas'],
                                                                   pulse_dict[
                                                                       'samples_array'],
+                                                                  all_repeats,
                                                                   debug_path)
 
                                     data_to_driver(driverpacket, radar_control_to_driver,

@@ -568,8 +568,8 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
     return beams_antenna_phases
 
 
-def write_samples_to_file(txrate, txctrfreq,
-                          pulse_sequence_timing, antennas, pulse_samples, file_path):
+def write_samples_to_file(txrate, txctrfreq, pulse_sequence_timing, antennas,
+                          pulse_samples, all_repeats, file_path):
     """
     Write the samples and transmitted metadata to a json file for use in testing.
 
@@ -584,6 +584,8 @@ def write_samples_to_file(txrate, txctrfreq,
      that antenna. The length of the list is equal to main_antenna_count (all
      samples are calculated). If we are not using an antenna, that index is a
      numpy array of zeroes.
+    :param all_repeats: Boolean indicating if all pulses in the averaging period are
+    the same as this pulse. (test can be applied to entire ave period)
     :param file_path: location to place the json file.
     :return:
     """
@@ -594,6 +596,7 @@ def write_samples_to_file(txrate, txctrfreq,
     write_dict['txctrfreq'] = txctrfreq
     write_dict['pulse_sequence_timing'] = pulse_sequence_timing
     write_dict['antennas'] = antennas
+    write_dict['all_repeats'] = all_repeats
     write_dict['pulse_samples'] = {}
     for ant, samples in enumerate(pulse_samples):
         write_dict['pulse_samples'][ant] = {

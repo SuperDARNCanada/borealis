@@ -218,4 +218,4 @@ class AveragingPeriod(ScanClassBase):
 
             sequence_dict_list.append(sequence_dict)
 
-            return sequence_dict_list
+        return sequence_dict_list
