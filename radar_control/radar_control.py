@@ -26,7 +26,7 @@ from experiment_prototype.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 if __debug__:
-    debug_path = os.environ["BOREALISPATH"] + '/testing/tmp'
+    debug_path = os.environ["BOREALISPATH"] + '/testing/tmp/'
     if not os.path.isdir(debug_path):
         os.mkdir(debug_path)
     sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')
