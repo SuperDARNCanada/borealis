@@ -568,8 +568,7 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
     return beams_antenna_phases
 
 
-def write_samples_to_file(txrate, txctrfreq, pulse_sequence_timing, antennas,
-                          pulse_samples, all_repeats, file_path):
+def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts, all_repeats, file_path):
     """
     Write the samples and transmitted metadata to a json file for use in testing.
 
@@ -589,6 +588,9 @@ def write_samples_to_file(txrate, txctrfreq, pulse_sequence_timing, antennas,
     :param file_path: location to place the json file.
     :return:
     """
+
+    for pulse_index, pulse_dict in enumerate(list_of_pulse_dicts):
+
 
     # Create a dictionary to encode as json
     write_dict = {}
