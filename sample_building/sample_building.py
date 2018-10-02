@@ -568,42 +568,89 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
     return beams_antenna_phases
 
 
-def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts, all_repeats, file_path):
+def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
+                          file_path, main_antenna_count, final_rx_sample_rate):
     """
     Write the samples and transmitted metadata to a json file for use in testing.
 
     :param txrate: The rate at which these samples will be transmitted at.
     :param txctrfreq: The centre frequency that the N200 is tuned to (and will mix with
      these samples).
-    :param pulse_sequence_timing: The timing for these pulses, given in us where 0 us
-     is the very start of the sequence.
-    :param antennas: A list of tx_antennas to be transmitted on, indexed from 0
-    :param pulse_samples: a list of arrays - each array corresponds to an antenna (the
-     samples are phased). All arrays are the same length for a single pulse on
-     that antenna. The length of the list is equal to main_antenna_count (all
-     samples are calculated). If we are not using an antenna, that index is a
-     numpy array of zeroes.
-    :param all_repeats: Boolean indicating if all pulses in the averaging period are
-    the same as this pulse. (test can be applied to entire ave period)
+    :param list_of_pulse_dicts: The list of all pulse dictionaries for pulses included
+    in this sequence. Pulse dictionaries have all metadata and the samples for the
+    pulse.
     :param file_path: location to place the json file.
+    :param main_antenna_count: The number of antennas available for transmitting on.
+    :param final_rx_sample_rate: The final sample rate after decimating on the receive
+    side.
     :return:
     """
 
+    # Get full pulse sequence
+    pulse_sequence_us = []
+    sequence_of_samples = [[] for x in range(main_antenna_count)]
     for pulse_index, pulse_dict in enumerate(list_of_pulse_dicts):
+        pulse_sequence_us.append(pulse_dict['timing'])
+        # Determine the time difference and number of samples between each start of pulse.
 
+    num_samples_list = []
+    pulse_offset_error = []
+    for pulse_index, pulse_time in enumerate(pulse_sequence_us):
+        if pulse_index == 0:
+            continue
+        num_samples = (pulse_time - pulse_sequence_us[pulse_index - 1]) * 1.0e-6 * txrate
+        error = (num_samples - int(num_samples)) / txrate  # in seconds
+        num_samples = int(num_samples)
+        num_samples_list.append(num_samples)
+        pulse_offset_error.append(error)
+
+    current_pulse_samples = []
+    for pulse_index, pulse_dict in enumerate(list_of_pulse_dicts):
+        if pulse_dict['startofburst'] or not pulse_dict['isarepeat']:
+            current_pulse_samples = pulse_dict['pulse_samples']
+
+        if pulse_index != len(list_of_pulse_dicts) - 1:  # not the last index
+            # Add in zeros for the correct number of samples - all arrays in
+            # current_pulse_samples are the same length.
+            num_zero_samples = num_samples_list[pulse_index] - len(current_pulse_samples[0])
+            zeros_list = [0.0] * num_zero_samples
+        else:
+            zeros_list = []
+
+        for antenna, samples_array in enumerate(current_pulse_samples):
+            sequence_of_samples[antenna].extend(samples_array)
+            sequence_of_samples[antenna].extend(zeros_list)
+
+    sequence_of_samples = [np.array(samples_array) for samples_array in
+                           sequence_of_samples[:]]
+
+    dm_rate = txrate/final_rx_sample_rate
+    dm_rate_error = dm_rate - int(dm_rate)
+    dm_rate = int(dm_rate)
 
     # Create a dictionary to encode as json
-    write_dict = {}
-    write_dict['txrate'] = txrate
-    write_dict['txctrfreq'] = txctrfreq
-    write_dict['pulse_sequence_timing'] = pulse_sequence_timing
-    write_dict['antennas'] = antennas
-    write_dict['all_repeats'] = all_repeats
-    write_dict['pulse_samples'] = {}
-    for ant, samples in enumerate(pulse_samples):
-        write_dict['pulse_samples'][ant] = {
+    write_dict = {
+        'txrate': txrate,
+        'txctrfreq': txctrfreq,
+        'pulse_sequence_timing': pulse_sequence_us,
+        'sequence_samples': {},
+        'decimated_sequence': {},
+        'pulse_offset_error': pulse_offset_error,
+        'dm_rate_error': dm_rate_error,
+        'dm_rate': dm_rate
+    }
+
+    for ant, samples in enumerate(sequence_of_samples):
+        write_dict['sequence_samples'][ant] = {
             'real': samples.real.tolist(),
             'imag': samples.imag.tolist()
+        }
+
+    for ant, samples in enumerate(sequence_of_samples):
+        decimated_samples = samples[::dm_rate]
+        write_dict['decimated_sequence'][ant] = {
+            'real': decimated_samples.real.tolist(),
+            'imag': decimated_samples.imag.tolist()
         }
 
     write_time = datetime.now()

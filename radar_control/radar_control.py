@@ -387,11 +387,14 @@ def radar():
                         timedelta(milliseconds=(float(aveperiod.intt)))  # ms
 
                     if __debug__:
+                        # Write the sequences to file for this integration period.
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
                             write_samples_to_file(experiment.txrate,
                                                   experiment.txctrfreq,
                                                   sequence_dict_list[sequence_index],
-                                                  debug_path)
+                                                  debug_path,
+                                                  options.main_antenna_count,
+                                                  options.output_sample_rate)
 
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
