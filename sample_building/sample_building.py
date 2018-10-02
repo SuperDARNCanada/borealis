@@ -602,8 +602,8 @@ def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts, all_repeats, f
     write_dict['pulse_samples'] = {}
     for ant, samples in enumerate(pulse_samples):
         write_dict['pulse_samples'][ant] = {
-            'real': samples.real,
-            'imag': samples.imag
+            'real': samples.real.tolist(),
+            'imag': samples.imag.tolist()
         }
 
     write_time = datetime.now()
