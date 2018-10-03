@@ -16,7 +16,6 @@
 import cmath
 import sys
 import time
-import os
 from datetime import datetime, timedelta
 import os
 import zmq
@@ -27,6 +26,9 @@ from experiment_prototype.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 if __debug__:
+    debug_path = os.environ["BOREALISPATH"] + '/testing/tmp/'
+    if not os.path.isdir(debug_path):
+        os.mkdir(debug_path)
     sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')
 else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
@@ -34,7 +36,7 @@ else:
 from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
 
-from sample_building.sample_building import azimuth_to_antenna_offset
+from sample_building.sample_building import azimuth_to_antenna_offset, write_samples_to_file
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from radar_status.radar_status import RadarStatus
@@ -383,6 +385,17 @@ def radar():
                     time_remains = True
                     integration_period_done_time = integration_period_start_time + \
                         timedelta(milliseconds=(float(aveperiod.intt)))  # ms
+
+                    if __debug__:
+                        # Write the sequences to file for this integration period.
+                        for sequence_index, sequence in enumerate(aveperiod.sequences):
+                            write_samples_to_file(experiment.txrate,
+                                                  experiment.txctrfreq,
+                                                  sequence_dict_list[sequence_index],
+                                                  debug_path,
+                                                  options.main_antenna_count,
+                                                  options.output_sample_rate)
+
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
 
@@ -411,6 +424,7 @@ def radar():
                             if first_time:
                                 for pulse_index, pulse_dict in \
                                         enumerate(sequence_dict_list[sequence_index]):
+
                                     data_to_driver(driverpacket, radar_control_to_driver,
                                                    options.driver_to_radctrl_identity,
                                                    pulse_dict['pulse_antennas'],
