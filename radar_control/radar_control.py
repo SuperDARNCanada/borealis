@@ -394,7 +394,8 @@ def radar():
                                                   sequence_dict_list[sequence_index],
                                                   debug_path,
                                                   options.main_antenna_count,
-                                                  options.output_sample_rate)
+                                                  options.output_sample_rate,
+                                                  sequence.ssdelay)
 
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):

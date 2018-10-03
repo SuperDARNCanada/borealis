@@ -569,7 +569,7 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
 
 
 def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
-                          file_path, main_antenna_count, final_rx_sample_rate):
+                          file_path, main_antenna_count, final_rx_sample_rate, ssdelay):
     """
     Write the samples and transmitted metadata to a json file for use in testing.
 
@@ -583,6 +583,8 @@ def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
     :param main_antenna_count: The number of antennas available for transmitting on.
     :param final_rx_sample_rate: The final sample rate after decimating on the receive
     side.
+    :param ssdelay: Receiver time of flight for last echo. This is the time to continue
+     receiving after the last pulse is transmitted.
     :return:
     """
 
@@ -613,9 +615,10 @@ def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
             # Add in zeros for the correct number of samples - all arrays in
             # current_pulse_samples are the same length.
             num_zero_samples = num_samples_list[pulse_index] - len(current_pulse_samples[0])
-            zeros_list = [0.0] * num_zero_samples
         else:
-            zeros_list = []
+            num_zero_samples = int(ssdelay * 1.0e-6 * txrate)
+
+        zeros_list = [0.0] * num_zero_samples
 
         for antenna, samples_array in enumerate(current_pulse_samples):
             sequence_of_samples[antenna].extend(samples_array)
