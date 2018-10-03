@@ -17,7 +17,7 @@ with open(bf_iq_samples, 'r') as f:
 
 main_beams = []
 for dsetk, dsetv in bf_iq.iteritems():
-    for beamk, beamv in dsetv.iteritems():
+    for beamk, beamv in dsev.iteritems():
         main_data = beamv['main']
 
         real = main_data['real']
@@ -29,41 +29,28 @@ for dsetk, dsetv in bf_iq.iteritems():
 main_beams = np.array(main_beams)
 
 
-phases = []
 ant_samples = []
-for samplek, samplev in tx_samples.iteritems():
-    for antk, antv in tx_samples.iteritems():
-        real = antv['real']
-        imag = antv['imag']
+pulse_offset_errors = tx_samples['pulse_offset_error']
+decimated_sequences = tx_samples['decimated_sequence']
+tx_rate = tx_samples['txrate']
+tx_ctr_freq = tx_samples['txctrfreq']
+pulse_sequence_timings = tx_samples['pulse_sequence_timing']
+dm_rate_error = tx_samples['dm_rate_error']
+dm_rate = tx_samples['dm_rate']
 
-        cmplx = np.array(real) + 1.0j*np.array(imag)
-        ant_samples.append(cmplx)
-        phases.append(antv['phase'])
+for antk, antv in decimated_sequences.iteritems():
+    real = antv['real']
+    imag = antv['imag']
+
+    cmplx = np.array(real) + 1.0j*np.array(imag)
+    ant_samples.append(cmplx)
 
 
-phases = np.array(phases)
 
 ant_samples = np.array(ant_samples)
-combined_tx_samples = np.sum(ant_samples,axis=1)
+combined_tx_samples = np.sum(ant_samples,axis=0)
 
-correlated_samples = []
-for i in range(main_beams.shape[0]):
-    prev_corr = -1.0
-    corr = 0.0
-    for j in range(main_beams.shape[1]):
-        tx_sample_len = len(combined_tx_samples)
-
-        window = main_beams[i][j:j+tx_sample_len]
-
-        corr = np.correlate(window, combined_tx_samples)
-
-        if corr < prev_corr:
-            correlated_samples.append(window)
-            break
-        else:
-            prev_corr = corr
-
-
+print(combined_tx_samples.shape, main_beams.shape)
 
 
 
