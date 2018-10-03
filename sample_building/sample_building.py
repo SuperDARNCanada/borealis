@@ -607,7 +607,7 @@ def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
     current_pulse_samples = []
     for pulse_index, pulse_dict in enumerate(list_of_pulse_dicts):
         if pulse_dict['startofburst'] or not pulse_dict['isarepeat']:
-            current_pulse_samples = pulse_dict['pulse_samples']
+            current_pulse_samples = pulse_dict['samples_array']
 
         if pulse_index != len(list_of_pulse_dicts) - 1:  # not the last index
             # Add in zeros for the correct number of samples - all arrays in
