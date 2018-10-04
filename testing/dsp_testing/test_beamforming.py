@@ -1,8 +1,9 @@
 import json
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
-
 
 
 tx_samples_file = sys.argv[1]
@@ -17,7 +18,7 @@ with open(bf_iq_samples, 'r') as f:
 
 main_beams = []
 for dsetk, dsetv in bf_iq.iteritems():
-    for beamk, beamv in dsev.iteritems():
+    for beamk, beamv in dsetv.iteritems():
         main_data = beamv['main']
 
         real = main_data['real']
@@ -50,10 +51,18 @@ for antk, antv in decimated_sequences.iteritems():
 ant_samples = np.array(ant_samples)
 combined_tx_samples = np.sum(ant_samples,axis=0)
 
-print(combined_tx_samples.shape, main_beams.shape)
+fig, (ax1,ax2,ax3) = plt.subplots(3,1)
 
 
+#print(combined_tx_samples.shape, main_beams.shape)
 
+corr = np.correlate(ant_samples[0],main_beams[0],mode='same')
+
+ax1.plot(np.arange(len(ant_samples[0])),np.abs(ant_samples[0]))
+ax2.plot(np.arange(len(main_beams[0])),np.abs(main_beams[0]))
+ax3.plot(np.arange(len(corr)),np.abs(corr))
+
+plt.show()
 
 
 
