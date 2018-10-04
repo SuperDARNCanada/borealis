@@ -29,7 +29,7 @@ class SetAffinityOptions(object):
         config_path = os.environ["BOREALISPATH"] + "/config.ini"
         try:
             with open(config_path, 'r') as config_data:
-                raw_config = json.load(config_data, object_hook=ascii_encode_dict)
+                raw_config = json.load(config_data)
         except IOError:
             errmsg = 'Cannot open config file at {0}'.format(config_path)
             raise IOError(errmsg)

@@ -183,7 +183,7 @@ def experiment_handler(semaphore):
         change_flag = exp.update(some_data)
         if change_flag:
             exp.build_scans()
-            print "REBUILDING EXPERIMENT BECAUSE change_flag = TRUE!!!"
+            print("REBUILDING EXPERIMENT BECAUSE change_flag = TRUE!!!")
         semaphore.release()
 
         if __debug__:
@@ -210,7 +210,7 @@ def experiment_handler(semaphore):
             printing("Sending new experiment from beginning")
             # starting anew
             exp.build_scans()
-            serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
+            serialized_exp = pickle.dumps(exp)
             try:
                 socket_operations.send_reply(exp_handler_to_radar_control,
                                              options.radctrl_to_exphan_identity,
