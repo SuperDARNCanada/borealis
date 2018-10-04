@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 """
     radar_control process
@@ -19,7 +19,8 @@ import time
 from datetime import datetime, timedelta
 import os
 import zmq
-import cPickle as pickle
+import pickle
+import json
 
 sys.path.append(os.environ["BOREALISPATH"])
 from experiment_prototype.experiment_exception import ExperimentException
@@ -213,14 +214,14 @@ def search_for_experiment(radar_control_to_exp_handler,
     new_experiment_received = False
 
     try:
-        pickled_exp = socket_operations.recv_reply(radar_control_to_exp_handler,
+        serialized_exp = socket_operations.recv_reply(radar_control_to_exp_handler,
                                                exphan_to_radctrl_iden,
                                                printing)
     except zmq.ZMQBaseError as e:
         errmsg = "ZMQ ERROR"
         raise [ExperimentException(errmsg), e]
 
-    new_exp = pickle.loads(pickled_exp)
+    new_exp = pickle.loads(serialized_exp)
 
     if isinstance(new_exp, ExperimentPrototype):
         experiment = new_exp
@@ -290,7 +291,7 @@ def radar():
     while not new_experiment_flag:  #  Wait for experiment handler at the start until we have an experiment to run.
         new_experiment_flag, experiment = search_for_experiment(
             radar_control_to_exp_handler, options.exphan_to_radctrl_identity,
-            b'EXPNEEDED')
+            'EXPNEEDED')
 
     new_experiment_flag = False
 

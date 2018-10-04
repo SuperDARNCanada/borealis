@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
     experiment_prototype
@@ -19,12 +19,12 @@ import os
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
-from experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 from sample_building.sample_building import get_wavetables
-import list_tests
+from experiment_prototype import list_tests
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
-from scan_classes.scans import Scan, ScanClassBase
+from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
