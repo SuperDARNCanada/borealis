@@ -69,11 +69,51 @@ def send_data(socket, recv_iden, msg):
     :type msg: String
     """
     frames = [recv_iden.encode('utf-8'), b"", msg.encode('utf-8')]
-    #frames = [recv_iden, b"", b"{}".format(msg)]
     socket.send_multipart(frames)
 
 # Aliases for sending to a socket
-send_reply = send_request = send_pulse = send_data
+send_reply = send_request = send_data
 
 # Aliases for receiving from a socket 
-recv_reply = recv_request = recv_pulse = recv_data
+recv_reply = recv_request = recv_data
+
+def recv_bytes(socket, sender_iden, pprint):
+    """Receives data from a socket and verifies it comes from the correct sender.
+
+    :param socket: Socket to recv from.
+    :type socket: Zmq socket
+    :param sender_iden: Identity of the expected sender.
+    :type sender_iden: String
+    :param pprint: A function to pretty print the message
+    :type pprint: function
+    :returns: Received data
+    :rtype: String or Protobuf or None
+    """
+    recv_identity, empty, pickled_exp = socket.recv_multipart()
+    if recv_identity != sender_iden.encode('utf-8'):
+        err_msg = "Expected identity {}, received from identity {}."
+        err_msg = err_msg.format(sender_iden, recv_identity)
+        pprint(err_msg)
+        return None
+    else:
+        return pickled_exp
+
+
+def send_bytes(socket, recv_iden, pickled_exp):
+    """Sends experiment to another identity.
+
+    :param socket: Socket to send from.
+    :type socket: Zmq socket.
+    :param recv_iden: The identity to send to.
+    :type recv_iden: String
+    :param pickled_exp: The experiment to send.
+    :type msg: bytes object or object encoded using highest pickle protocol available.
+    """
+    frames = [recv_iden.encode('utf-8'), b"", pickled_exp]
+    socket.send_multipart(frames)
+
+send_pulse = send_obj = send_exp = send_bytes
+
+recv_pulse = recv_obj = recv_exp = recv_bytes
+
+

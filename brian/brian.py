@@ -41,10 +41,10 @@ def router(opts):
         #sys.stdout.write(dd)
         sender, receiver, empty, data = dd
         output = "Router input/// Sender -> {}: Receiver -> {}: empty: Data -> {}\n".format(*dd)
-        #sys.stdout.write(output)
+        sys.stdout.write(output)
         frames = [receiver,sender,empty,data]
         output = "Router output/// Receiver -> {}: Sender -> {}: empty: Data -> {}\n".format(*frames)
-        #sys.stdout.write(output)
+        sys.stdout.write(output)
         sent = False
         while not sent:
             try:
@@ -152,7 +152,7 @@ def sequence_timing(opts):
         if brian_to_driver in socks and socks[brian_to_driver] == zmq.POLLIN:
 
             #Receive metadata of completed sequence from driver such as timing
-            reply = so.recv_reply(brian_to_driver, opts.driver_to_brian_identity, printing)
+            reply = so.recv_obj(brian_to_driver, opts.driver_to_brian_identity, printing)
             meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
             meta.ParseFromString(reply)
             reply_output = "Driver sent -> time {} ms, sqnum {}".format(meta.sequence_time*1e3, meta.sequence_num)
@@ -165,12 +165,12 @@ def sequence_timing(opts):
             so.send_request(brian_to_dsp_begin, opts.dspbegin_to_brian_identity, "Requesting work begins")
             
             #acknowledge we want to start something new
-            start_new_sock.send("want_to_start")
+            start_new_sock.send_string("want_to_start")
             
         if brian_to_radar_control in socks and socks[brian_to_radar_control] == zmq.POLLIN:
 
             #Get new sequence metadata from radar control
-            reply = so.recv_reply(brian_to_radar_control, opts.radctrl_to_brian_identity, printing)
+            reply = so.recv_obj(brian_to_radar_control, opts.radctrl_to_brian_identity, printing)
 
             sigp = sigprocpacket_pb2.SigProcPacket()
             sigp.ParseFromString(reply)
@@ -197,7 +197,7 @@ def sequence_timing(opts):
             so.send_request(brian_to_dsp_end, opts.dspend_to_brian_identity, "Requesting work ends")
             
             #acknowledge that we are good and able to start something new
-            start_new_sock.send("good_to_start")
+            start_new_sock.send_string("good_to_start")
 
             # dspb_t = threading.Thread(target=dspb_f)
             # dspb_t.daemon = True
@@ -208,7 +208,7 @@ def sequence_timing(opts):
             #def dspe_f():
             global late_counter
             #Receive ack that work finished on previous sequence.
-            reply = so.recv_reply(brian_to_dsp_end, opts.dspend_to_brian_identity, printing)
+            reply = so.recv_obj(brian_to_dsp_end, opts.dspend_to_brian_identity, printing)
 
             sig_p = sigprocpacket_pb2.SigProcPacket()
             sig_p.ParseFromString(reply)
@@ -224,7 +224,7 @@ def sequence_timing(opts):
             printing("Late counter {}".format(late_counter))
 
             #acknowledge that we are good and able to start something new
-            start_new_sock.send("extra_good_to_start")
+            start_new_sock.send_string("extra_good_to_start")
 
             # dspe_t = threading.Thread(target=dspe_f)
             # dspe_t.daemon = True

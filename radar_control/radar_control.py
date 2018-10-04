@@ -179,8 +179,9 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
         request_output = "Brian requested -> {}".format(request)
         printing(request_output)
 
-    socket_operations.send_reply(radctrl_to_brian, brian_radctrl_iden,
-                    packet.SerializeToString())
+    bytes_packet = packet.SerializeToString()
+
+    socket_operations.send_obj(radctrl_to_brian, brian_radctrl_iden, bytes_packet)
     
     #Radar control receives request for metadata from DSP
     # request = socket_operations.recv_request(radctrl_to_dsp, dsp_radctrl_iden, printing)
@@ -188,7 +189,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
         request_output = "DSP requested -> {}".format(request)
         printing(request_output)
 
-    socket_operations.send_reply(radctrl_to_dsp, dsp_radctrl_iden, packet.SerializeToString())
+    socket_operations.send_obj(radctrl_to_dsp, dsp_radctrl_iden, packet.SerializeToString())
     # TODO : is it necessary to do a del packet.rxchannel[:] - test
 
 
@@ -198,7 +199,7 @@ def search_for_experiment(radar_control_to_exp_handler,
     """
     Check for new experiments from the experiment handler
     :param radctrl_to_exphan_iden: The
-    :param status: status of type RadarStatus.
+    :param status: status string (EXP_NEEDED or NO_ERROR).
     :returns new_experiment_received: boolean (True for new experiment received)
     :returns experiment: experiment instance (or None if there is no new experiment)
     """
@@ -214,14 +215,14 @@ def search_for_experiment(radar_control_to_exp_handler,
     new_experiment_received = False
 
     try:
-        serialized_exp = socket_operations.recv_reply(radar_control_to_exp_handler,
+        serialized_exp = socket_operations.recv_exp(radar_control_to_exp_handler,
                                                exphan_to_radctrl_iden,
                                                printing)
     except zmq.ZMQBaseError as e:
         errmsg = "ZMQ ERROR"
         raise [ExperimentException(errmsg), e]
 
-    new_exp = pickle.loads(serialized_exp)
+    new_exp = pickle.loads(serialized_exp)  # protocol detected automatically
 
     if isinstance(new_exp, ExperimentPrototype):
         experiment = new_exp
@@ -334,7 +335,7 @@ def radar():
 		    # TODO: This needs a timeout, or we'll just get stuck here... in brian maybe?
                     new_experiment_flag, new_experiment = search_for_experiment(
                         radar_control_to_exp_handler,
-                        options.exphan_to_radctrl_identity, b'NOERROR')
+                        options.exphan_to_radctrl_identity, 'NOERROR')
 
                     # Check if there are beams remaining in this aveperiod, or in any aveperiods.
                     if aveperiod in aveperiods_done_list:

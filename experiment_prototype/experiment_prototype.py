@@ -365,7 +365,7 @@ class ExperimentPrototype(object):
         This can change when add_slice, edit_slice, and del_slice are called.
         """
 
-        return self.__slice_dict.keys()
+        return list(self.__slice_dict.keys())
 
     @property
     def options(self):

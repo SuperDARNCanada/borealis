@@ -24,6 +24,7 @@ import importlib
 import threading
 import pickle
 import json
+import zlib
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -210,9 +211,10 @@ def experiment_handler(semaphore):
             printing("Sending new experiment from beginning")
             # starting anew
             exp.build_scans()
-            serialized_exp = pickle.dumps(exp)
+            serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
+            
             try:
-                socket_operations.send_reply(exp_handler_to_radar_control,
+                socket_operations.send_exp(exp_handler_to_radar_control,
                                              options.radctrl_to_exphan_identity,
                                              serialized_exp)
             except zmq.ZMQError: # the queue was full - radarcontrol not receiving.
@@ -226,8 +228,8 @@ def experiment_handler(semaphore):
                 serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
 
             try:
-                socket_operations.send_reply(exp_handler_to_radar_control,
-                                             options.radctrl_to_exphan_identity, serialized_exp)
+                socket_operations.send_exp(exp_handler_to_radar_control,
+                                           options.radctrl_to_exphan_identity, serialized_exp)
             except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
                 pass  # TODO handle this. Shutdown and restart all modules.
 
