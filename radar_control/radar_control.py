@@ -21,6 +21,7 @@ import os
 import zmq
 import pickle
 import json
+import threading
 
 sys.path.append(os.environ["BOREALISPATH"])
 from experiment_prototype.experiment_exception import ExperimentException
@@ -242,7 +243,7 @@ def search_for_experiment(radar_control_to_exp_handler,
     return new_experiment_received, experiment
 
 
-def radar():
+def radar(semaphore):
     """
     Run the radar with the experiment supplied by experiment_handler.
     
@@ -324,8 +325,6 @@ def radar():
             aveperiods_done_list = []
             beam_iter = 0
             while beam_remaining and not new_experiment_flag:
-
-
                 for aveperiod in scan.aveperiods:
 
                     # If there are multiple aveperiods in a scan they are alternated
@@ -358,7 +357,8 @@ def radar():
                             continue
                     if __debug__:
                         print("New AveragingPeriod")
-                    integration_period_prep_time_start = datetime.utcnow() # ms
+                    
+                    integration_period_start_time = datetime.utcnow()  # ms
 
                     slice_to_beamdir_dict = aveperiod.set_beamdirdict(beam_iter)
 
@@ -388,20 +388,25 @@ def radar():
 
                     if __debug__:
                         # Write the sequences to file for this integration period.
-                        for sequence_index, sequence in enumerate(aveperiod.sequences):
-                            write_samples_to_file(experiment.txrate,
-                                                  experiment.txctrfreq,
-                                                  sequence_dict_list[sequence_index],
-                                                  debug_path,
-                                                  options.main_antenna_count,
-                                                  options.output_sample_rate,
-                                                  sequence.ssdelay)
+                        def debug_write_samples_to_file():
+                            semaphore.acquire()
+                            integration_period_prep_time_start = datetime.utcnow() # ms
+                            for sequence_index, sequence in enumerate(aveperiod.sequences):
+                                write_samples_to_file(experiment.txrate,
+                                              experiment.txctrfreq,
+                                              sequence_dict_list[sequence_index],
+                                              debug_path,
+                                              options.main_antenna_count,
+                                              options.output_sample_rate,
+                                              sequence.ssdelay)
+                            semaphore.release()
+                            integration_period_prep_time_end = datetime.utcnow() 
+                            integration_period_prep_time = integration_period_prep_time_end - integration_period_prep_time_start
+                            print("Time to write samples to file: {}".format(integration_period_prep_time))
+                        thread = threading.Thread(target=debug_write_samples_to_file)
+                        thread.daemon = True
+                        thread.start()
                     
-                    integration_period_prep_time_end = datetime.utcnow() 
-                    integration_period_prep_time = integration_period_prep_time_end - integration_period_prep_time_start
-                    if __debug__:
-                        print("Time to prep integration period: {}".format(integration_period_prep_time))
-                    integration_period_start_time = datetime.utcnow()  # ms
                     # all phases are set up for this averaging period for the beams required. Time to start averaging
                     # in the below loop.
                     nave = 0
@@ -410,6 +415,7 @@ def radar():
                         timedelta(milliseconds=(float(aveperiod.intt)))  # ms
 
                     while time_remains:
+                        semaphore.acquire()
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
 
                             # Alternating sequences if there are multiple in the averaging_period.
@@ -473,8 +479,11 @@ def radar():
                     seqnum_start += nave
                     # end of the averaging period loop - move onto the next averaging period. Increment the sequence
                     # number by the number of sequences that were in this averaging period.
+                    semaphore.release()
                 beam_iter = beam_iter + 1
 
 
 if __name__ == "__main__":
-    radar()
+    semaphore = threading.Semaphore(value=4)
+    radar(semaphore)
+
