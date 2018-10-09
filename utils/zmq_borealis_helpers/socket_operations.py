@@ -89,17 +89,17 @@ def recv_bytes(socket, sender_iden, pprint):
     :returns: Received data
     :rtype: String or Protobuf or None
     """
-    recv_identity, empty, pickled_exp = socket.recv_multipart()
+    recv_identity, empty, bytes_object = socket.recv_multipart()
     if recv_identity != sender_iden.encode('utf-8'):
         err_msg = "Expected identity {}, received from identity {}."
         err_msg = err_msg.format(sender_iden, recv_identity)
         pprint(err_msg)
         return None
     else:
-        return pickled_exp
+        return bytes_object
 
 
-def send_bytes(socket, recv_iden, pickled_exp):
+def send_bytes(socket, recv_iden, bytes_object):
     """Sends experiment to another identity.
 
     :param socket: Socket to send from.
@@ -109,7 +109,7 @@ def send_bytes(socket, recv_iden, pickled_exp):
     :param pickled_exp: The experiment to send.
     :type msg: bytes object or object encoded using highest pickle protocol available.
     """
-    frames = [recv_iden.encode('utf-8'), b"", pickled_exp]
+    frames = [recv_iden.encode('utf-8'), b"", bytes_object]
     socket.send_multipart(frames)
 
 send_pulse = send_obj = send_exp = send_bytes

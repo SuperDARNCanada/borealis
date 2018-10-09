@@ -40,10 +40,10 @@ def router(opts):
         dd = router.recv_multipart()
         #sys.stdout.write(dd)
         sender, receiver, empty, data = dd
-        output = "Router input/// Sender -> {}: Receiver -> {}: empty: Data -> {}\n".format(*dd)
+        output = "Router input/// Sender -> {}: Receiver -> {}\n".format(sender, receiver) #: empty: {} Data -> {}\n".format(*dd)
         sys.stdout.write(output)
         frames = [receiver,sender,empty,data]
-        output = "Router output/// Receiver -> {}: Sender -> {}: empty: Data -> {}\n".format(*frames)
+        output = "Router output/// Receiver -> {}: Sender -> {}\n".format(receiver, sender) #: empty: {} Data -> {}\n".format(*frames)
         sys.stdout.write(output)
         sent = False
         while not sent:
@@ -116,7 +116,8 @@ def sequence_timing(opts):
                 want_to_start = good_to_start = False
                 dsp_finish_counter -= 1
 
-            message = start_new.recv()
+            message = start_new.recv_string()
+            #print("message: {}".format(message))
             if message == "want_to_start":
                 want_to_start = True
 

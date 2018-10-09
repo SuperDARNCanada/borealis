@@ -32,7 +32,7 @@ sys.path.append(BOREALISPATH)
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from utils.zmq_borealis_helpers import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
-
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 def printing(msg):
     EXPERIMENT_HANDLER = "\033[34m" + "EXPERIMENT HANDLER: " + "\033[0m"
@@ -170,7 +170,7 @@ def experiment_handler(semaphore):
     change_flag = False
 
     def update_experiment():
-        # Recv complete processed data from DSP
+        # Recv complete processed data from DSP or datawrite? TODO
         socket_operations.send_request(exp_handler_to_dsp,
                                        options.dsp_to_exphan_identity,
                                        "Need completed data")
@@ -192,6 +192,7 @@ def experiment_handler(semaphore):
             printing(data_output)
 
     if experiment_update:
+        print("UPDATING EXPERIMENT")
         thread = threading.Thread(target=update_experiment)
         thread.daemon = True
         thread.start()

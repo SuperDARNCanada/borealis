@@ -172,7 +172,8 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     # to receive on that channel. ** make this update phase = 0 on channels not included.
 
     # Brian requests sequence metadata for timeouts
-    
+   
+    print('Waiting for Brian request')
     request = socket_operations.recv_request(radctrl_to_brian, brian_radctrl_iden,
                                              printing)
     if __debug__:
@@ -229,9 +230,12 @@ def search_for_experiment(radar_control_to_exp_handler,
         new_experiment_received = True
         if __debug__:
             print("NEW EXPERIMENT FOUND")
-    else:
+    elif new_exp != None:
         if __debug__:
             print("RECEIVED AN EXPERIMENT NOT OF TYPE EXPERIMENT_PROTOTYPE. CANNOT RUN.")
+    else:
+        if __debug__:
+            print("The experiment was not updated - continuing.")
         # TODO decide what to do here. I think we need this case if someone doesn't build their experiment
         # properly
 
@@ -332,7 +336,7 @@ def radar():
                     # get new experiment here, before starting a new integration.
                     # if new_experiment_flag is set here, we will implement the new_experiment after this integration
                     # period.
-		    # TODO: This needs a timeout, or we'll just get stuck here... in brian maybe?
+		    # TODO: This needs a timeout, or we'll just get stuck here... 
                     new_experiment_flag, new_experiment = search_for_experiment(
                         radar_control_to_exp_handler,
                         options.exphan_to_radctrl_identity, 'NOERROR')
@@ -354,7 +358,7 @@ def radar():
                             continue
                     if __debug__:
                         print("New AveragingPeriod")
-                    integration_period_start_time = datetime.utcnow()  # ms
+                    integration_period_prep_time_start = datetime.utcnow() # ms
 
                     slice_to_beamdir_dict = aveperiod.set_beamdirdict(beam_iter)
 
@@ -381,12 +385,6 @@ def radar():
 
                         beam_phase_dict_list.append(beam_phase_dict)
 
-                    # all phases are set up for this averaging period for the beams required. Time to start averaging
-                    # in the below loop.
-                    nave = 0
-                    time_remains = True
-                    integration_period_done_time = integration_period_start_time + \
-                        timedelta(milliseconds=(float(aveperiod.intt)))  # ms
 
                     if __debug__:
                         # Write the sequences to file for this integration period.
@@ -398,6 +396,18 @@ def radar():
                                                   options.main_antenna_count,
                                                   options.output_sample_rate,
                                                   sequence.ssdelay)
+                    
+                    integration_period_prep_time_end = datetime.utcnow() 
+                    integration_period_prep_time = integration_period_prep_time_end - integration_period_prep_time_start
+                    if __debug__:
+                        print("Time to prep integration period: {}".format(integration_period_prep_time))
+                    integration_period_start_time = datetime.utcnow()  # ms
+                    # all phases are set up for this averaging period for the beams required. Time to start averaging
+                    # in the below loop.
+                    nave = 0
+                    time_remains = True
+                    integration_period_done_time = integration_period_start_time + \
+                        timedelta(milliseconds=(float(aveperiod.intt)))  # ms
 
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
@@ -409,7 +419,7 @@ def radar():
                                 # TODO add a break for nave == intn if going for number of averages instead of
                                 # integration time
                             beam_phase_dict = beam_phase_dict_list[sequence_index]
-                            
+                            print("Sending metadata to DSP")
                             send_metadata(sigprocpacket,
                                            radar_control_to_dsp,
                                            options.dsp_to_radctrl_identity,
@@ -427,7 +437,7 @@ def radar():
                             if first_time:
                                 for pulse_index, pulse_dict in \
                                         enumerate(sequence_dict_list[sequence_index]):
-
+                                    print("Sending data to driver")
                                     data_to_driver(driverpacket, radar_control_to_driver,
                                                    options.driver_to_radctrl_identity,
                                                    pulse_dict['pulse_antennas'],
