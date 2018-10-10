@@ -243,7 +243,8 @@ def search_for_experiment(radar_control_to_exp_handler,
     return new_experiment_received, experiment
 
 
-def radar(semaphore):
+
+def radar():
     """
     Run the radar with the experiment supplied by experiment_handler.
     
@@ -358,7 +359,6 @@ def radar(semaphore):
                     if __debug__:
                         print("New AveragingPeriod")
                     
-                    integration_period_start_time = datetime.utcnow()  # ms
 
                     slice_to_beamdir_dict = aveperiod.set_beamdirdict(beam_iter)
 
@@ -387,9 +387,7 @@ def radar(semaphore):
 
 
                     if __debug__:
-                        # Write the sequences to file for this integration period.
                         def debug_write_samples_to_file():
-                            semaphore.acquire()
                             integration_period_prep_time_start = datetime.utcnow() # ms
                             for sequence_index, sequence in enumerate(aveperiod.sequences):
                                 write_samples_to_file(experiment.txrate,
@@ -399,14 +397,19 @@ def radar(semaphore):
                                               options.main_antenna_count,
                                               options.output_sample_rate,
                                               sequence.ssdelay)
-                            semaphore.release()
                             integration_period_prep_time_end = datetime.utcnow() 
                             integration_period_prep_time = integration_period_prep_time_end - integration_period_prep_time_start
                             print("Time to write samples to file: {}".format(integration_period_prep_time))
-                        thread = threading.Thread(target=debug_write_samples_to_file)
+                        # Write the sequences to file for this integration period.
+                        start_thread = datetime.utcnow()
+                        thread = threading.Thread(target=debug_write_samples_to_file)# target=debug_write_samples_to_file(aveperiod.sequences, experiment, debug_path, options, sequence_dict_list))
                         thread.daemon = True
                         thread.start()
+                        thread_started = datetime.utcnow()
+                        time_to_start_thread = thread_started - start_thread
+                        print("time to start thread: {}".format(time_to_start_thread))
                     
+                    integration_period_start_time = datetime.utcnow()  # ms
                     # all phases are set up for this averaging period for the beams required. Time to start averaging
                     # in the below loop.
                     nave = 0
@@ -415,7 +418,6 @@ def radar(semaphore):
                         timedelta(milliseconds=(float(aveperiod.intt)))  # ms
 
                     while time_remains:
-                        semaphore.acquire()
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
 
                             # Alternating sequences if there are multiple in the averaging_period.
@@ -469,8 +471,6 @@ def radar(semaphore):
                                 # Pulse is done.
 
                             # TODO: Make sure you can have a slice that doesn't transmit, only receives on a frequency. # REVIEW #1 what do you mean, what is this TODO for? REPLY : driver acks wouldn't be required etc need to make sure this is possible
-                            if __debug__:
-                                time.sleep(1)
                             # Sequence is done
                             nave = nave + 1
                             
@@ -479,11 +479,9 @@ def radar(semaphore):
                     seqnum_start += nave
                     # end of the averaging period loop - move onto the next averaging period. Increment the sequence
                     # number by the number of sequences that were in this averaging period.
-                    semaphore.release()
                 beam_iter = beam_iter + 1
 
 
 if __name__ == "__main__":
-    semaphore = threading.Semaphore(value=4)
-    radar(semaphore)
+    radar()
 
