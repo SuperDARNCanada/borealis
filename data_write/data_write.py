@@ -15,6 +15,8 @@ import h5py
 import collections
 import threading
 import numpy as np
+import deepdish as dd
+import argparse as ap
 
 borealis_path = os.environ['BOREALISPATH']
 if not borealis_path:
@@ -52,7 +54,9 @@ def write_hdf5_file(filename, data_dict):
     :param filename: The path to the file to write out. String
     :param data_dict: Python dictionary to write out to the HDF5 file.
     """
-    hdf5_file = h5py.File(filename, "w+")
+    #hdf5_file = h5py.File(filename, "w+")
+
+    dd.io.save(filename, data_dict, compression=('blosc', 5))
     # TODO: Complete this by parsing through the dictionary and write out to proper HDF5 format
 
 
@@ -96,8 +100,7 @@ class DataWrite(object):
 
         write_json_file(self.options.debug_file, debug_data)
 
-    def output_data(self, write_rawacf=False, write_iq=False, write_pre_bf_iq=False,
-                    use_hdf5=False, use_json=True, use_dmap=False):
+    def output_data(self, write_iq, write_pre_bf_iq, file_ext, write_rawacf=True):
         """
         Parse through samples and write to file. Note that only one data type will be written out,
         and only to one type of file. If you specify all three types, the order of preference is:
@@ -116,15 +119,8 @@ class DataWrite(object):
         :param use_dmap: Write data out to dmap file. Default False
         """
         # Find out what file format to write out
-        file_format_string = None
-        if use_hdf5:
-            file_format_string = 'hdf5'
-        elif use_json:
-            file_format_string = 'json'
-        elif use_dmap:
-            file_format_string = 'dmap'
 
-        if not file_format_string:
+        if file_ext not in ['hdf5','json','dmap']:
             raise ValueError("File format selection required (hdf5, json, dmap), none given")
 
         main_iq_available = False
@@ -189,51 +185,70 @@ class DataWrite(object):
             # non beamformed IQ samples are available
             if len(data_set.debugsamples) > 0:
                 for stage_num, debug_samples in enumerate(data_set.debugsamples):
-                    if debug_samples.stagename == 'output_samples':
-                        # Final stage, so write these samples only to file
-                        pre_bf_iq_available = True
-                        for ant_num, ant_data in enumerate(debug_samples.antennadata):
-                            ant_str = "antenna_{0}".format(ant_num)
-                            iq_pre_bf_data_dict[freq_str][ant_str] = {'real': [], 'imag': []}
-                            for ant_samp in ant_data.antennasamples:
-                                iq_pre_bf_data_dict[freq_str][ant_str]['real'].append(ant_samp.real)
-                                iq_pre_bf_data_dict[freq_str][ant_str]['imag'].append(ant_samp.imag)
-                    else:
-                        continue
+                    pre_bf_iq_available = True
+                    for ant_num, ant_data in enumerate(debug_samples.antennadata):
+                        ant_str = "antenna_{0}".format(ant_num)
+                        stage_name = debugsamples.stagename
+                        ipbdd = iq_pre_bf_data_dict[stage_name][freq_str][ant_str]
+                        ipbdd = {'real': [], 'imag': []}
+                        for ant_samp in ant_data.antennasamples:
+                            ipbdd['real'].append(ant_samp.real)
+                            ipbdd['imag'].append(ant_samp.imag)
 
-        # Note that only one data type will be written out, and only to one type of file.
-        # If you specify all three types, the order of preference is: pre_bf_iq, iq, then rawacf
-        if write_rawacf and rawacf_available:
-            data_format_string = "rawacf"
-            final_data_dict = rawacf_data_dict
-        if write_iq and iq_available:
-            data_format_string = "bfiq"
-            final_data_dict = iq_data_dict
-        if write_pre_bf_iq and pre_bf_iq_available:
-            data_format_string = "iq"
-            final_data_dict = iq_pre_bf_data_dict
 
         # Format the name and location for the dataset
         today_string = datetime.datetime.today().strftime("%Y%m%d")
         datetime_string = datetime.datetime.today().strftime("%Y%m%d.%H%M.%S.%f")
-        dataset_name = "{0}.{1}.{2}.{3}".format(datetime_string, self.options.site_id,
-                                                data_format_string, file_format_string)
         dataset_directory = "{0}/{1}".format(self.options.data_directory, today_string)
-        dataset_location = "{0}/{1}".format(dataset_directory, dataset_name)
+        dataset_name = "{dt}.{site}.{{dformat}}.{fformat}".format(dt=datetime_string,
+                                                                site=self.options.site_id,
+                                                                fformat=file_format_string)
+        dataset_location = "{dir}/{{name}}".format(dir=dataset_directory)
 
-        if not os.path.exists(dataset_directory):
-            os.makedirs(dataset_directory)
 
-        # Finally write out the appropriate file type
-        if use_hdf5:
-            write_hdf5_file(dataset_location, final_data_dict)
-        elif use_json:
-            write_json_file(dataset_location, final_data_dict)
-        elif use_dmap:
-            write_dmap_file(dataset_location, final_data_dict)
+        def write_file(location, final_data_dict):
+            if not os.path.exists(dataset_directory):
+                os.makedirs(dataset_directory)
 
+            # Finally write out the appropriate file type
+            if use_hdf5:
+                write_hdf5_file(location, final_data_dict)
+            elif use_json:
+                write_json_file(location, final_data_dict)
+            elif use_dmap:
+                write_dmap_file(location, final_data_dict)
+
+
+        if write_rawacf and rawacf_available:
+            name = dataset_name.format(dformat="rawacf")
+            output_file = dataset_location.format(name=name)
+
+            write_file(output_file, rawacf_data_dict)
+
+        if write_iq and iq_available:
+            name = dataset_name.format(dformat="bfiq")
+            output_file = dataset_location.format(name=name)
+
+            write_file(output_file, iq_data_dict)
+
+
+        if write_pre_bf_iq and pre_bf_iq_available:
+            name = dataset_name.format(dformat="iq")
+            output_file = dataset_location.format(name=name)
+
+            write_file(output_file, iq_pre_bf_data_dict)
 
 if __name__ == '__main__':
+
+    parser = ap.ArgumentParser(description='Write processed SuperDARN data to file')
+    parser.add_argument('--file-type', help='Type of output file: hdf5, json, or dmap',
+                        default='hdf5')
+    parser.add_argument('--enable-bfiq', help='Enable beamformed iq writing',
+                        action='store_true')
+    parser.add_argument('--enable-pre-bf-iq', help='Enable individual antenna iq writing',
+                        action='store_true')
+    args=parser.parse_args()
+
     options = dwo.DataWriteOptions()
     sockets = so.create_sockets([options.dw_to_dsp_identity], options.router_address)
     dsp_to_data_write = sockets[0]
@@ -260,11 +275,9 @@ if __name__ == '__main__':
 
             dw = DataWrite(pd, options)
 
-            if __debug__:
-                dw.output_debug_data()
-            else:
-                start = datetime.datetime.now()
-                dw.output_data(write_pre_bf_iq=False, write_iq=True)
+            start = datetime.datetime.now()
+            dw.output_data(write_iq=args.enable_bfiq, write_pre_bf_iq=args.enable_pre_bf_iq,
+                            file_ext=args.file_type, write_rawacf=False)
 
 
             end = datetime.datetime.now()
