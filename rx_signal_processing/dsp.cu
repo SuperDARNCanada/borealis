@@ -9,9 +9,7 @@ See LICENSE for details
 */
 
 #include "dsp.hpp"
-#include "utils/protobuf/sigprocpacket.pb.h"
-#include "utils/protobuf/processeddata.pb.h"
-#include "utils/shared_macros/shared_macros.hpp"
+
 #include <iostream>
 #include <cstdlib>
 #include <fstream>
@@ -24,7 +22,10 @@ See LICENSE for details
 #include <eigen3/Eigen/Dense>
 #include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
-
+#include "utils/protobuf/sigprocpacket.pb.h"
+#include "utils/protobuf/processeddata.pb.h"
+#include "utils/shared_macros/shared_macros.hpp"
+#include "utils/shared_memory/shared_memory.hpp"
 #include "filtering.hpp"
 //TODO(keith): decide on handing gpu errors
 //TODO(keith): potentially add multigpu support
@@ -300,8 +301,8 @@ namespace {
     };
 
     #ifdef ENGINEERING_DEBUG
-      auto rf_ptrs = make_ptrs_vec(dp->get_rf_samples_h(), 1, dp->get_num_antennas(),
-                            dp->get_num_rf_samples());
+/*      auto rf_ptrs = make_ptrs_vec(dp->get_rf_samples_h(), 1, dp->get_num_antennas(),
+                            dp->get_num_rf_samples());*/
       auto stage_1_ptrs = make_ptrs_vec(dp->get_first_stage_output_h(), dp->get_rx_freqs().size(),
                             dp->get_num_antennas(),dp->get_num_first_stage_samples_per_antenna());
 
@@ -357,9 +358,9 @@ namespace {
 
 
       #ifdef ENGINEERING_DEBUG
-        if (i == 0) {
+/*        if (i == 0) {
           add_debug_data("rf_samples",rf_ptrs[i],dp->get_num_antennas(), dp->get_num_rf_samples());
-        }
+        }*/
         add_debug_data("stage_1",stage_1_ptrs[i],dp->get_num_antennas(),
                     dp->get_num_first_stage_samples_per_antenna());
         add_debug_data("stage_2",stage_2_ptrs[i],dp->get_num_antennas(),
@@ -367,10 +368,20 @@ namespace {
         add_debug_data("stage_3",stage_3_ptrs[i],dp->get_num_antennas(),
                     dp->get_num_third_stage_samples_per_antenna());
       #endif
-/*        add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
-          num_samples_after_dropping);*/
 
-        DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
+      auto shr_mem_name = random_string(20);
+      auto num_bytes = dp->get_num_antennas() * dp->get_num_rf_samples() * sizeof(cuComplex);
+      SharedMemoryHandler shr_mem(shr_mem_name);
+      shr_mem.create_shr_mem(num_bytes);
+      memcpy(shr_mem.get_shrmem_addr(), dp->get_rf_samples_h(), num_bytes);
+      pd.set_rf_samples_location(shr_mem_name);
+
+      add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
+        num_samples_after_dropping);
+
+      pd.set_sequence_num(dp->get_sequence_num());
+      pd.set_processing_time(dp->get_decimate_timing());
+      DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     }
 
   }
@@ -399,7 +410,7 @@ namespace {
 
       processeddata::ProcessedData pd;
 
-      TIMEIT_IF_TRUE_OR_DEBUG(false, "Fill + send processed data time ",
+      TIMEIT_IF_TRUE_OR_DEBUG(true, "Fill + send processed data time ",
         [&]() {
           create_processed_data_packet(pd,dp);
           dp->send_processed_data(pd);
@@ -841,7 +852,6 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
                                             uint32_t num_output_samples_per_antenna_3)
 {
     #ifdef ENGINEERING_DEBUG
-      auto total_rf_samples = num_samples_rf * total_antennas;
       auto total_output_samples_1 = num_output_samples_per_antenna_1 * rx_freqs.size() *
                                       total_antennas;
       auto total_output_samples_2 = num_output_samples_per_antenna_2 * rx_freqs.size() *
@@ -849,12 +859,15 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
       auto total_output_samples_3 = num_output_samples_per_antenna_3 * rx_freqs.size() *
                                       total_antennas;
 
-      allocate_and_copy_rf_from_device(total_rf_samples);
+      
       allocate_and_copy_first_stage_host(total_output_samples_1);
       allocate_and_copy_second_stage_host(total_output_samples_2);
       allocate_and_copy_third_stage_host(total_output_samples_3);
 
     #endif
+
+    auto total_rf_samples = num_samples_rf * total_antennas;
+    allocate_and_copy_rf_from_device(total_rf_samples);
 
     rx_freqs = freqs;
     num_rf_samples = num_samples_rf;

@@ -6,6 +6,7 @@
 #include <boost/interprocess/file_mapping.hpp>
 #include <string>
 
+std::string random_string( size_t length );
 
 class SharedMemoryHandler {
 

@@ -17,6 +17,9 @@ import threading
 import numpy as np
 import deepdish as dd
 import argparse as ap
+import posix_ipc as ipc
+import mmap 
+import multiprocess
 
 borealis_path = os.environ['BOREALISPATH']
 if not borealis_path:
@@ -26,6 +29,7 @@ if __debug__:
     sys.path.append(borealis_path + '/build/debug/utils/protobuf')
 else:
     sys.path.append(borealis_path + '/build/release/utils/protobuf')
+
 import processeddata_pb2
 
 sys.path.append(borealis_path + '/utils/')
@@ -56,7 +60,22 @@ def write_hdf5_file(filename, data_dict):
     """
     #hdf5_file = h5py.File(filename, "w+")
 
-    dd.io.save(filename, data_dict, compression=('blosc', 5))
+    def convert_to_numpy(dd):
+        for k,v in dd.items():
+            if isinstance(v,dict):
+                convert_to_numpy(v)
+            elif isinstance(v,list):
+                dd[k] = np.array(v)
+            else:
+                continue
+
+    convert_to_numpy(data_dict)
+
+    a = datetime.datetime.now()
+    dd.io.save(filename, data_dict, compression=None)
+    b = datetime.datetime.now()
+    diff= b-a
+    printing("Time to write: {}".format(diff))
     # TODO: Complete this by parsing through the dictionary and write out to proper HDF5 format
 
 
@@ -100,7 +119,7 @@ class DataWrite(object):
 
         write_json_file(self.options.debug_file, debug_data)
 
-    def output_data(self, write_iq, write_pre_bf_iq, file_ext, write_rawacf=True):
+    def output_data(self, write_iq, write_pre_bf_iq, write_raw_rf, file_ext, write_rawacf=True):
         """
         Parse through samples and write to file. Note that only one data type will be written out,
         and only to one type of file. If you specify all three types, the order of preference is:
@@ -131,10 +150,12 @@ class DataWrite(object):
 
         # defaultdict will populate non-specified entries in the dictionary with the default
         # value given as an argument, in this case a dictionary.
-        iq_pre_bf_data_dict = collections.defaultdict(dict)
-        rawacf_data_dict = {}
-        iq_data_dict = collections.defaultdict(dict)
-        final_data_dict = {}
+
+        nested_dict = lambda: collections.defaultdict(nested_dict)
+        iq_pre_bf_data_dict = nested_dict()
+        rawacf_data_dict = nested_dict()
+        iq_data_dict = nested_dict()
+        raw_rf_dict = nested_dict()
 
         # Iterate over every data set, one data set per frequency
         for freq_num, data_set in enumerate(self.processed_data.outputdataset):
@@ -188,12 +209,14 @@ class DataWrite(object):
                     pre_bf_iq_available = True
                     for ant_num, ant_data in enumerate(debug_samples.antennadata):
                         ant_str = "antenna_{0}".format(ant_num)
-                        stage_name = debugsamples.stagename
+                        stage_name = debug_samples.stagename
+                        #iq_pre_bf_data_dict[stage_name] = collections.defaultdict(dict)
                         ipbdd = iq_pre_bf_data_dict[stage_name][freq_str][ant_str]
                         ipbdd = {'real': [], 'imag': []}
                         for ant_samp in ant_data.antennasamples:
                             ipbdd['real'].append(ant_samp.real)
                             ipbdd['imag'].append(ant_samp.imag)
+
 
 
         # Format the name and location for the dataset
@@ -202,7 +225,7 @@ class DataWrite(object):
         dataset_directory = "{0}/{1}".format(self.options.data_directory, today_string)
         dataset_name = "{dt}.{site}.{{dformat}}.{fformat}".format(dt=datetime_string,
                                                                 site=self.options.site_id,
-                                                                fformat=file_format_string)
+                                                                fformat=file_ext)
         dataset_location = "{dir}/{{name}}".format(dir=dataset_directory)
 
 
@@ -211,11 +234,11 @@ class DataWrite(object):
                 os.makedirs(dataset_directory)
 
             # Finally write out the appropriate file type
-            if use_hdf5:
+            if file_ext == 'hdf5':
                 write_hdf5_file(location, final_data_dict)
-            elif use_json:
+            elif file_ext == 'json':
                 write_json_file(location, final_data_dict)
-            elif use_dmap:
+            elif file_ext == 'dmap':
                 write_dmap_file(location, final_data_dict)
 
 
@@ -231,12 +254,39 @@ class DataWrite(object):
 
             write_file(output_file, iq_data_dict)
 
-
         if write_pre_bf_iq and pre_bf_iq_available:
             name = dataset_name.format(dformat="iq")
             output_file = dataset_location.format(name=name)
 
             write_file(output_file, iq_pre_bf_data_dict)
+
+        if write_raw_rf:
+            name = dataset_name.format(dformat='rawrf')
+            output_file = dataset_location.format(name=name)
+
+            shm = ipc.SharedMemory(self.processed_data.rf_samples_location)
+            mapfile = mmap.mmap(shm.fd,shm.size)
+
+            rf_samples = np.frombuffer(mapfile,dtype=np.complex64)
+            
+
+
+            total_antennas = self.options.main_antenna_count + self.options.intf_antenna_count
+            rf_samples = np.reshape(rf_samples,(total_antennas,-1))
+            #rf_samples.tofile(output_file)
+            for ant in range(total_antennas):
+                ant_str = "antenna_{0}".format(ant)
+                raw_rf_dict[ant_str] = rf_samples[ant]
+
+            write_file(output_file, raw_rf_dict)
+
+            shm.close_fd()
+            shm.unlink()
+            mapfile.close()
+
+
+
+
 
 if __name__ == '__main__':
 
@@ -246,6 +296,8 @@ if __name__ == '__main__':
     parser.add_argument('--enable-bfiq', help='Enable beamformed iq writing',
                         action='store_true')
     parser.add_argument('--enable-pre-bf-iq', help='Enable individual antenna iq writing',
+                        action='store_true')
+    parser.add_argument('--enable-raw-rf', help='Save the raw, unfiltered IQ samples',
                         action='store_true')
     args=parser.parse_args()
 
@@ -270,6 +322,7 @@ if __name__ == '__main__':
                 printing("Data received from dsp")
                 start = datetime.datetime.now()
 
+
             pd = processeddata_pb2.ProcessedData()
             pd.ParseFromString(data_data)
 
@@ -277,8 +330,8 @@ if __name__ == '__main__':
 
             start = datetime.datetime.now()
             dw.output_data(write_iq=args.enable_bfiq, write_pre_bf_iq=args.enable_pre_bf_iq,
-                            file_ext=args.file_type, write_rawacf=False)
-
+                            write_raw_rf=args.enable_raw_rf,file_ext=args.file_type, 
+                            write_rawacf=False)
 
             end = datetime.datetime.now()
             diff = end - start
