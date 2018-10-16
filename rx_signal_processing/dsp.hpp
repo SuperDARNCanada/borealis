@@ -73,7 +73,7 @@ class DSPCore {
   void allocate_and_copy_host_output(uint32_t num_host_samples);
   void clear_device_and_destroy();
   cuComplex* get_rf_samples_p();
-  cuComplex* get_rf_samples_h();
+  std::vector<cuComplex> get_rf_samples_h();
   double* get_frequencies_p();
   cuComplex* get_first_stage_bp_filters_p();
   cuComplex* get_second_stage_filter_p();
@@ -97,6 +97,7 @@ class DSPCore {
   cudaStream_t get_cuda_stream();
   std::vector<cuComplex> get_beam_phases();
   std::vector<uint32_t> get_beam_direction_counts();
+  std::string get_shared_memory_name();
   void start_decimate_timing();
   void stop_timing();
   void send_ack();
@@ -176,8 +177,8 @@ class DSPCore {
   //! A vector of pointers to the start of ringbuffers.
   std::vector<cuComplex*> ringbuffers;
 
-  //! A host side pointer to the rf samples.
-  cuComplex *rf_samples_h;
+  //! A host side vector for the rf samples.
+  std::vector<cuComplex> rf_samples_h;
 
   //! A host side pointer to the first stage output.
   cuComplex *first_stage_output_h;
@@ -212,6 +213,8 @@ class DSPCore {
   //! Each entry holds the number of beam directions for an RX frequency.
   std::vector<uint32_t> beam_direction_counts;
 
+  //! A handler for a shared memory section.
+  SharedMemoryHandler shm;
 
   void allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples);
   void allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples);

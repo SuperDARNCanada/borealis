@@ -85,6 +85,11 @@ void* SharedMemoryHandler::get_shrmem_addr()
   return shr_region.get_address();
 }
 
+std::string SharedMemoryHandler::get_region_name() {
+  return region_name;
+}
+
+
 
 
 

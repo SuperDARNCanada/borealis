@@ -18,6 +18,7 @@ class SharedMemoryHandler {
         void open_shr_mem();
         void* get_shrmem_addr();
         void remove_shr_mem();
+        std::string get_region_name();
 
     private:
         std::string region_name;

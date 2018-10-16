@@ -358,9 +358,6 @@ namespace {
 
 
       #ifdef ENGINEERING_DEBUG
-/*        if (i == 0) {
-          add_debug_data("rf_samples",rf_ptrs[i],dp->get_num_antennas(), dp->get_num_rf_samples());
-        }*/
         add_debug_data("stage_1",stage_1_ptrs[i],dp->get_num_antennas(),
                     dp->get_num_first_stage_samples_per_antenna());
         add_debug_data("stage_2",stage_2_ptrs[i],dp->get_num_antennas(),
@@ -369,16 +366,10 @@ namespace {
                     dp->get_num_third_stage_samples_per_antenna());
       #endif
 
-      auto shr_mem_name = random_string(20);
-      auto num_bytes = dp->get_num_antennas() * dp->get_num_rf_samples() * sizeof(cuComplex);
-      SharedMemoryHandler shr_mem(shr_mem_name);
-      shr_mem.create_shr_mem(num_bytes);
-      memcpy(shr_mem.get_shrmem_addr(), dp->get_rf_samples_h(), num_bytes);
-      pd.set_rf_samples_location(shr_mem_name);
-
       add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
         num_samples_after_dropping);
 
+      pd.set_rf_samples_location(dp->get_shared_memory_name());
       pd.set_sequence_num(dp->get_sequence_num());
       pd.set_processing_time(dp->get_decimate_timing());
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
@@ -410,7 +401,7 @@ namespace {
 
       processeddata::ProcessedData pd;
 
-      TIMEIT_IF_TRUE_OR_DEBUG(true, "Fill + send processed data time ",
+      TIMEIT_IF_TRUE_OR_DEBUG(false, "Fill + send processed data time ",
         [&]() {
           create_processed_data_packet(pd,dp);
           dp->send_processed_data(pd);
@@ -518,15 +509,6 @@ DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::s
   beam_direction_counts(beam_direction_counts)
 {
 
-/*  sequence_num = sq_num;
-  ack_socket = ack_s;
-  timing_socket = timing_s;
-  data_socket = data_s;
-  rx_freqs = freqs;
-  sig_options = options;
-  dsp_filters = filters;
-  num_beams =
-  phases = beam_phases;*/
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));
   gpuErrchk(cudaEventCreate(&initial_start));
@@ -534,6 +516,9 @@ DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::s
   gpuErrchk(cudaEventCreate(&stop));
   gpuErrchk(cudaEventCreate(&mem_transfer_end));
   gpuErrchk(cudaEventRecord(initial_start, stream));
+
+  shm = SharedMemoryHandler(random_string(20));
+
 
 }
 
@@ -543,6 +528,9 @@ DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::s
  */
 DSPCore::~DSPCore()
 {
+  gpuErrchk(cudaEventDestroy(initial_start));
+  gpuErrchk(cudaEventDestroy(kernel_start));
+  gpuErrchk(cudaEventDestroy(stop));
   gpuErrchk(cudaFree(freqs_d));
   gpuErrchk(cudaFree(rf_samples_d));
   gpuErrchk(cudaFree(first_stage_bp_filters_d));
@@ -551,20 +539,13 @@ DSPCore::~DSPCore()
   gpuErrchk(cudaFree(first_stage_output_d));
   gpuErrchk(cudaFree(second_stage_output_d));
   gpuErrchk(cudaFree(third_stage_output_d));
-  gpuErrchk(cudaFreeHost(host_output_h));
   #ifdef ENGINEERING_DEBUG
-    gpuErrchk(cudaFreeHost(rf_samples_h))
     gpuErrchk(cudaFreeHost(first_stage_output_h));
     gpuErrchk(cudaFreeHost(second_stage_output_h));
     gpuErrchk(cudaFreeHost(third_stage_output_h));
   #endif
-  gpuErrchk(cudaEventDestroy(initial_start));
-  gpuErrchk(cudaEventDestroy(kernel_start));
-  gpuErrchk(cudaEventDestroy(stop));
+  gpuErrchk(cudaFreeHost(host_output_h));
   gpuErrchk(cudaStreamDestroy(stream));
-
-
-  DEBUG_MSG(COLOR_RED("Running deconstructor for sequence #" << sequence_num));
 
 }
 
@@ -582,7 +563,9 @@ DSPCore::~DSPCore()
  * @param      ringbuffer_ptrs_start  A vector of pointers to the start of each antenna ringbuffer.
  *
  * Samples are being stored in a shared memory ringbuffer. This function calculates where to index
- * into the ringbuffer for samples and copies them to the gpu.
+ * into the ringbuffer for samples and copies them to the gpu. This function will also copy the
+ * samples to a shared memory section that data write, or another process can access in order to 
+ * work with the raw RF samples.
  */
 void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
                                 int64_t extra_samples, double time_zero, double start_time,
@@ -593,6 +576,7 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
 
 
   size_t rf_samples_size = total_antennas * num_samples_needed * sizeof(cuComplex);
+  shm.create_shr_mem(rf_samples_size);
   gpuErrchk(cudaMalloc(&rf_samples_d, rf_samples_size));
 
   auto sample_time_diff = start_time - time_zero;
@@ -622,6 +606,13 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
                                  cudaMemcpyHostToDevice, stream));
       gpuErrchk(cudaMemcpyAsync(second_dest, second_src, second_piece * sizeof(cuComplex),
                                  cudaMemcpyHostToDevice, stream));
+
+      auto mem_cast = static_cast<cuComplex*>(shm.get_shrmem_addr());
+      auto first_dest_h = mem_cast + (i*num_samples_needed);
+      auto second_dest_h = mem_cast + (i*num_samples_needed) + (first_piece);
+
+      memcpy(first_dest_h, first_src, first_piece * sizeof(cuComplex));
+      memcpy(second_dest_h, second_src, second_piece * sizeof(cuComplex));
     }
 
   }
@@ -632,6 +623,10 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
 
       gpuErrchk(cudaMemcpyAsync(dest, src, num_samples_needed * sizeof(cuComplex),
         cudaMemcpyHostToDevice, stream));
+
+      auto mem_cast = static_cast<cuComplex*>(shm.get_shrmem_addr());
+      auto dest_h = mem_cast + (i*num_samples_needed);
+      memcpy(dest_h, src, num_samples_needed * sizeof(cuComplex));
     }
   }
 
@@ -784,23 +779,6 @@ void DSPCore::allocate_and_copy_third_stage_host(uint32_t num_third_stage_output
         host_output_size, cudaMemcpyDeviceToHost,stream));
 }
 
-/**
- * @brief      Allocates host memory for rf samples and copies from device to host.
- *
- * @param[in]  num_rf_samples  The number of rf samples.
- *
- * The rf samples are originally copied directly from the ringbuffer to the device. The samples
- * are copied back to the host application into contiguous memory if further analysis of the rf
- * samples is needed.
- */
-void DSPCore::allocate_and_copy_rf_from_device(uint32_t num_rf_samples)
-{
-  size_t rf_output_size = num_rf_samples * sizeof(cuComplex);
-  gpuErrchk(cudaHostAlloc(&rf_samples_h, rf_output_size, cudaHostAllocDefault));
-  gpuErrchk(cudaMemcpyAsync(rf_samples_h, rf_samples_d,
-        rf_output_size, cudaMemcpyDeviceToHost,stream));
-}
-
 
 /**
  * @brief      Stops the timers that the constructor starts.
@@ -866,9 +844,6 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
 
     #endif
 
-    auto total_rf_samples = num_samples_rf * total_antennas;
-    allocate_and_copy_rf_from_device(total_rf_samples);
-
     rx_freqs = freqs;
     num_rf_samples = num_samples_rf;
     num_antennas = total_antennas;
@@ -914,7 +889,6 @@ void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
   std::string p_msg_str;
   pd.SerializeToString(&p_msg_str);
 
-  //auto request = RECV_REQUEST(*data_socket, sig_options.get_dw_dsp_identity());
   SEND_REPLY(*data_socket, sig_options.get_dw_dsp_identity(), p_msg_str);
 
   DEBUG_MSG(COLOR_RED("Send processed data to data_write for sequence #" << sequence_num));
@@ -955,7 +929,7 @@ cuComplex* DSPCore::get_rf_samples_p(){
  *
  * @return     The rf samples host pointer.
  */
-cuComplex* DSPCore::get_rf_samples_h() {
+std::vector<cuComplex> DSPCore::get_rf_samples_h() {
   return rf_samples_h;
 }
 
@@ -1159,17 +1133,32 @@ uint32_t DSPCore::get_sequence_num()
   return sequence_num;
 }
 
-/*uint32_t DSPCore::get_num_beams()
-{
-  return num_beams;
-}*/
-
+/**
+ * @brief     Gets the vector of beam phases.
+ *
+ * @return    The beam phases.
+ */
 std::vector<cuComplex> DSPCore::get_beam_phases()
 {
   return beam_phases;
 }
 
+/**
+ * @brief     Gets the vector of beam direction counts for each RX frequency.
+ *
+ * @return    The beam direction counts.
+ */
 std::vector<uint32_t> DSPCore::get_beam_direction_counts()
 {
   return beam_direction_counts;
+}
+
+/**
+ * @brief     Gets the name of the shared memory section.
+ *
+ * @return    The shared memory name string.
+ */
+std::string DSPCore::get_shared_memory_name() 
+{
+  return shm.get_region_name();
 }

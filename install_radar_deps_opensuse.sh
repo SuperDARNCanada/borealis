@@ -10,6 +10,7 @@ zypper install -y python-pip
 pip2 install --upgrade pip
 zypper install -y libX11-devel
 pip2 install deepdish
+pip2 install posix_ipc
 
 #### INSTALL PROTOBUF ####i
 #https://github.com/google/protobuf/blob/master/src/README.md#c-installation---uni 
