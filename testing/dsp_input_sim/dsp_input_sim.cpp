@@ -16,7 +16,7 @@
 #include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
 #include <time.h>
 
-std::string random_string( size_t length )
+/*std::string random_string( size_t length )
 {
   auto randchar = []() -> char
   {
@@ -31,7 +31,7 @@ std::string random_string( size_t length )
   std::generate_n( str.begin(), length, randchar );
   return str;
 }
-
+*/
 std::vector<std::complex<float>> simulate_samples(uint32_t num_antennas,
                                                     uint32_t num_samps_per_antenna,
                                                     std::vector<double> rx_freqs,double rx_rate,
@@ -140,12 +140,12 @@ void signals(zmq::context_t &context)
 
   rxsamplesmetadata::RxSamplesMetadata samples_metadata;
 
-  auto num_samples = uint32_t(rx_rate* 0.096);
+  auto num_samples = uint32_t(rx_rate* 0.069);
   samples_metadata.set_numberofreceivesamples(num_samples);
 
   auto samples = simulate_samples(num_antennas, num_samples, rx_freqs, rx_rate, false);
 
-  auto usrp_buffer_size = 36300;
+  auto usrp_buffer_size = 363;
   /* The ringbuffer_size is calculated this way because it's first truncated (size_t)
      then rescaled by usrp_buffer_size */
   size_t ringbuffer_size = size_t(driver_options.get_ringbuffer_size()/

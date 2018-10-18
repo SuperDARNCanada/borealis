@@ -6,6 +6,7 @@ message ProcessedData {
     uint32 sequence_num = 1;
     repeated OutputDataSet outputdataset = 2; // 1 set for every frequency
     float processing_time = 3;
+    string rf_samples_location = 4;
 
     message OutputDataSet {
         repeated ComplexData mainacf = 1;
