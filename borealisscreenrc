@@ -1,0 +1,27 @@
+chdir $BOREALISPATH
+screen -t "Brian" bash -c "python brian/brian.py"
+split
+
+split -v
+focus right
+screen -t "N200 Driver" bash -c "source mode release; n200_driver"
+
+split -v
+focus right
+screen -t "Signal Processing" bash -c "source mode release; signal_processing"
+
+focus down
+screen -t "Data Write" bash -c "python -O data_write/data_write.py"
+
+split -v
+focus right
+screen -t "Experiment Handler" bash -c "python experiment_handler/experiment_handler.py twofsound"
+
+split -v
+focus right
+screen -t "Radar Control" bash -c "python -O radar_control/radar_control.py"
+
+split -v
+focus right
+screen -t "Cpu Affinity" bash -c "python -O usrp_drivers/n200/set_affinity.py"
+
