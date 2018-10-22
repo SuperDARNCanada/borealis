@@ -491,7 +491,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   auto first_time = true;
   while (1) {
     // 3.0 is the timeout in seconds for the recv call, arbitrary number
-    size_t num_rx_samples = rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0);
+    size_t num_rx_samples = rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
     if (first_time) {
       zmq::message_t start_time(sizeof(meta.time_spec));
       memcpy(start_time.data(), &meta.time_spec, sizeof(meta.time_spec));
@@ -538,15 +538,13 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
         break;
     }
 
-    if ((buffer_inc+1) * usrp_buffer_size < ringbuffer_size) {
-      for (auto &buffer_ptr : buffer_ptrs) {
-        buffer_ptr += usrp_buffer_size;
-      }
-      buffer_inc++;
-    }
-    else{
-      buffer_ptrs = buffer_ptrs_start;
-      buffer_inc = 0;
+    auto rx_packet_time_diff = meta.time_spec.get_real_secs()-stream_cmd.time_spec.get_real_secs();
+    auto diff_sample = rx_packet_time_diff * rx_rate_hz;
+    auto true_sample = (int64_t(diff_sample/usrp_buffer_size) + 1) * usrp_buffer_size;
+    auto ringbuffer_idx = true_sample % ringbuffer_size;
+
+    for(size_t buffer_idx=0; buffer_idx<buffer_ptrs_start.size(); buffer_idx++){
+      buffer_ptrs[buffer_idx] = buffer_ptrs_start[buffer_idx] + ringbuffer_idx; 
     }
 
 /*    std::cout << "Timeout count: " << timeout_count << std::endl;
