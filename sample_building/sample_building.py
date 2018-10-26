@@ -657,7 +657,7 @@ def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
         }
 
     write_time = datetime.now()
-    string_time = write_time.strftime('%Y%m%d.%H%M')
+    string_time = write_time.strftime('%Y%m%d.%H%M%S')
     write_dict['samples_approx_time'] = string_time
 
     with open(file_path + string_time + '.json', 'w') as outfile:

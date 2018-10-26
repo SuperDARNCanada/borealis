@@ -262,8 +262,8 @@ class ExperimentPrototype(object):
         self.__new_slice_id = 0
 
         # Centre frequencies can be specified in your experiment class using the setter. TODO: make modifiable (with warning that it takes time. Get time estimate for this.
-        self.__txctrfreq = 13000  # in kHz.
-        self.__rxctrfreq = 13000  # in kHz.
+        self.__txctrfreq = 12000  # in kHz.
+        self.__rxctrfreq = 12000  # in kHz.
 
         # Load the config, hardware, and restricted frequency data
         self.__options = ExperimentOptions()
@@ -460,7 +460,7 @@ class ExperimentPrototype(object):
     @property
     def txctrfreq(self):
         """
-        The transmission centre frequency that USRP is tuned to (Hz).
+        The transmission centre frequency that USRP is tuned to (kHz).
         
         If you would like to change this value, note that it will take tuning time.
         """
@@ -473,7 +473,7 @@ class ExperimentPrototype(object):
         
         This will take tuning time, use with caution.     
             
-        :param value: int for transmission centre frequency to tune USRP to (Hz).
+        :param value: int for transmission centre frequency to tune USRP to (kHz).
         """
         # TODO review if this should be modifiable, definitely takes tuning time.
         if isinstance(value, int):
@@ -514,7 +514,7 @@ class ExperimentPrototype(object):
     @property
     def rxctrfreq(self):
         """
-        The receive centre frequency that USRP is tuned to (Hz).
+        The receive centre frequency that USRP is tuned to (kHz).
         
         If you would like to change this, note that it will take tuning time.
         """
@@ -523,11 +523,11 @@ class ExperimentPrototype(object):
     @rxctrfreq.setter
     def rxctrfreq(self, value):
         """
-        Set the receive centre frequency that USRP is tuned to (Hz). 
+        Set the receive centre frequency that USRP is tuned to (kHz). 
         
         This will take tuning time, use with caution.  
         
-        :param value: int for receive centre frequency to tune USRP to (Hz).
+        :param value: int for receive centre frequency to tune USRP to (kHz).
         """
         # TODO review if this should be modifiable, definitely takes tuning time.
         if isinstance(value, int):

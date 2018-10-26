@@ -352,7 +352,7 @@ def radar():
                             continue
                     if __debug__:
                         print("New AveragingPeriod")
-                    integration_period_start_time = datetime.utcnow()  # ms
+
 
                     slice_to_beamdir_dict = aveperiod.set_beamdirdict(beam_iter)
 
@@ -381,10 +381,6 @@ def radar():
 
                     # all phases are set up for this averaging period for the beams required. Time to start averaging
                     # in the below loop.
-                    nave = 0
-                    time_remains = True
-                    integration_period_done_time = integration_period_start_time + \
-                        timedelta(milliseconds=(float(aveperiod.intt)))  # ms
 
                     if __debug__:
                         # Write the sequences to file for this integration period.
@@ -396,6 +392,13 @@ def radar():
                                                   options.main_antenna_count,
                                                   options.output_sample_rate,
                                                   sequence.ssdelay)
+                            
+                    integration_period_start_time = datetime.utcnow()  # ms
+
+                    nave = 0
+                    time_remains = True
+                    integration_period_done_time = integration_period_start_time + \
+                        timedelta(milliseconds=(float(aveperiod.intt)))  # ms
 
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
