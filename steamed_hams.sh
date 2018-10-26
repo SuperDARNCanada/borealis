@@ -6,21 +6,39 @@
 
 # Title Header.
 echo ""
-echo "Project Borealis Booter" 
+echo "Project Borealis Booter"
 echo "v2.3-Alpha Season 1 Episode 3"
 echo "-----------------------------------------------------------------------------------"
 
 # These are the commands to in each window.
-command1="echo Initialize brian.py; python brain/brain.py; bash"
-command2="echo Initialize experiment_handler.py; sleep 0.001s; python experiment_handler/experiment_handler.py "$1" ; bash"
-command3="echo Initialize radar_control.py; sleep 0.001s; python -O radar_control/radar_control.py; bash"
-command4="echo Initialize data_write.py; sleep 0.001s; python -O data_write/data_write.py; bash"
-command5="echo Initialize taskset; sleep 0.001s; source mode "$2" ; taskset -ac 0-"$3" n200_driver; bash"
-command6="echo Initialize signal_processing; sleep 0.001s; signal_processing; bash"
+if [ "$2" = "release" ]; then
+    start_brian="python -O brian/brian.py; bash"
+    start_exphan="sleep 0.001s; python experiment_handler/experiment_handler.py "$1" ; bash;"
+    start_radctrl="sleep 0.001s; python -O radar_control/radar_control.py; bash;"
+    start_datawrite="sleep 0.001s; python -O data_write/data_write.py --file-type=hdf5 --enable-pre-bf-iq --enable-bfiq; bash;"
+    start_n200driver="sleep 0.001s; source mode "$2"; n200_driver > n200_output.txt; bash"
+    start_dsp="sleep 0.001s; source mode "$2"; signal_processing; bash;"
+    start_tids="sleep 0.001s; python -O usrp_drivers/n200/set_affinity.py; bash;"
+else
+    start_brian="python brian/brian.py; bash"
+    start_exphan="sleep 0.001s; python experiment_handler/experiment_handler.py "$1" ; bash"
+    start_radctrl="sleep 0.001s; python -O radar_control/radar_control.py; bash"
+    start_datawrite="sleep 0.001s; python data_write/data_write.py; bash"
+    start_n200driver="sleep 0.001s; source mode "$2" ; gdb -ex start n200_driver; bash"
+    start_dsp="sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
+    start_tids="sleep 0.001s; python usrp_drivers/n200/set_affinity.py; bash"
+fi
 
-# Modify terminator's config
-sed -i.bak "s#COMMAND1#$command1#; s#COMMAND2#$command2#; s#COMMAND3#$command3#; s#COMMAND4#$command4#; s#COMMAND5#$command5#; s#COMMAND6#$command6#;" ~/.config/terminator/config
-# Launch a terminator instance using the new layout
-terminator -l BoreBoot
+# Modify screen rc file
+sed -i.bak "s#START_BRIAN#$start_brian#; \
+            s#START_EXPHAN#$start_exphan#; \
+            s#START_RADCTRL#$start_radctrl#; \
+            s#START_DATAWRITE#$start_datawrite#; \
+            s#START_N200DRIVER#$start_n200driver#; \
+            s#START_DSP#$START_DSP#; \
+            s#START_TIDS#$start_tids#;" borealisscreenrc
+
+# Launch a detached screen with editted layout.
+screen -S borealis -c borealisscreenrc
 # Return the original config file
-mv ~/.config/terminator/config.bak ~/.config/terminator/config
+mv borealisscreenrc.bak borealisscreenrc

@@ -1,27 +1,27 @@
 chdir $BOREALISPATH
-screen -t "Brian" bash -c "python brian/brian.py"
+screen -t "Brian" bash -c "START_BRIAN"
 split
 
 split -v
 focus right
-screen -t "N200 Driver" bash -c "source mode release; n200_driver"
+screen -t "N200 Driver" bash -c "START_N200DRIVER"
 
 split -v
 focus right
-screen -t "Signal Processing" bash -c "source mode release; signal_processing"
+screen -t "Signal Processing" bash -c "START_DSP"
 
 focus down
-screen -t "Data Write" bash -c "python -O data_write/data_write.py"
+screen -t "Data Write" bash -c "START_DATAWRITE"
 
 split -v
 focus right
-screen -t "Experiment Handler" bash -c "python experiment_handler/experiment_handler.py twofsound"
+screen -t "Experiment Handler" bash -c "START_EXPHAN"
 
 split -v
 focus right
-screen -t "Radar Control" bash -c "python -O radar_control/radar_control.py"
+screen -t "Radar Control" bash -c "START_RADCTRL"
 
 split -v
 focus right
-screen -t "Cpu Affinity" bash -c "python -O usrp_drivers/n200/set_affinity.py"
+screen -t "Cpu Affinity" bash -c "START_TIDS"
 
