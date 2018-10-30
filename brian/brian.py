@@ -189,8 +189,10 @@ def sequence_timing(opts):
 
             #def dspb_f():
                 #Get acknowledgement that work began in processing.
-            reply = so.recv_reply(brian_to_dsp_begin, opts.dspbegin_to_brian_identity, printing)
-            reply_output = "Dsp sent -> {}".format(reply)
+            reply = so.recv_obj(brian_to_dsp_begin, opts.dspbegin_to_brian_identity, printing)
+            sig_p = sigprocpacket_pb2.SigProcPacket()
+            sig_p.ParseFromString(reply)
+            reply_output = "Dsp began -> sqnum {}".format(sig_p.sequence_num)
             printing(reply_output)
 
             #Requesting acknowledgement of work ends from DSP
