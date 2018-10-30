@@ -55,8 +55,7 @@ def dsp():
         time.sleep(0.030)
 
         request = so.recv_request(dsp_to_brian_begin, options.brian_to_dspbegin_identity, printing)
-        so.send_data(dsp_to_brian_begin, options.brian_to_dspbegin_identity, "Ack start of work, "
-                                                           "sqnum {}".format(sigp.sequence_num))
+        so.send_bytes(dsp_to_brian_begin, options.brian_to_dspbegin_identity, sigp.SerializeToString())
         def do_work(sqn_num):
             sequence_num = sqn_num
 
