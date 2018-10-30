@@ -51,4 +51,5 @@ Now to build Borealis (after 'source mode release/debug'):
 scons -n  (for dry run)
 scons
 
-
+To compile the protobuf (example given for driverpacket):
+protoc -I=$SRC_DIR --python_out=$DST_DIR $SRC_DIR/driverpacket.proto

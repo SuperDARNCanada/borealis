@@ -20,9 +20,9 @@ from processeddata_pb2 import ProcessedData
 
 options = ExperimentOptions()
 
-ids = [options.dsp_to_radctrl_identity, options.driver_to_radctrl_identity, 
+ids = [options.dsp_to_radctrl_identity, options.driver_to_radctrl_identity,
         options.driver_to_dsp_identity, options.driver_to_brian_identity,
-        options.dsp_to_driver_identity, options.dspbegin_to_brian_identity, 
+        options.dsp_to_driver_identity, options.dspbegin_to_brian_identity,
         options.dspend_to_brian_identity]
 
 sockets_list = so.create_sockets(ids, options.router_address)
@@ -41,18 +41,18 @@ def printing(err_msg):
 def dsp():
     while True:
         #so.send_request(dsp_to_radctrl, options.radctrl_to_dsp_identity ,"Need metadata")
-        reply = so.recv_reply(dsp_to_radctrl, options.radctrl_to_dsp_identity,printing)
+        reply = so.recv_bytes(dsp_to_radctrl, options.radctrl_to_dsp_identity,printing)
 
         sigp = SigProcPacket()
         sigp.ParseFromString(reply)
-        
+
         so.send_request(dsp_to_driver, options.driver_to_dsp_identity, "Need data to process")
-        reply = so.recv_reply(dsp_to_driver, options.driver_to_dsp_identity, printing)
+        reply = so.recv_bytes(dsp_to_driver, options.driver_to_dsp_identity, printing)
 
         meta = RxSamplesMetadata()
-        meta.ParseFromString(reply) 
+        meta.ParseFromString(reply)
 
-        time.sleep(0.030)   
+        time.sleep(0.030)
 
         request = so.recv_request(dsp_to_brian_begin, options.brian_to_dspbegin_identity, printing)
         so.send_data(dsp_to_brian_begin, options.brian_to_dspbegin_identity, "Ack start of work, "
@@ -70,7 +70,7 @@ def dsp():
 
             # acknowledge end of work
             request = so.recv_request(dsp_to_brian_end, options.brian_to_dspend_identity, printing)
-            so.send_data(dsp_to_brian_end, options.brian_to_dspend_identity, proc_data.SerializeToString())
+            so.send_bytes(dsp_to_brian_end, options.brian_to_dspend_identity, proc_data.SerializeToString())
 
 
         thread = threading.Thread(target=do_work, args=(sigp.sequence_num,))
@@ -83,7 +83,7 @@ def driver():
         sqn_time = 0.0
 
         while not eob:
-            data = so.recv_data(driver_to_radctrl,options.radctrl_to_driver_identity, printing)
+            data = so.recv_bytes(driver_to_radctrl,options.radctrl_to_driver_identity, printing)
 
             pulse = DriverPacket()
             pulse.ParseFromString(data)
@@ -105,11 +105,11 @@ def driver():
 
         #sending sequence data to dsp
         request = so.recv_request(driver_to_dsp, options.dsp_to_driver_identity, printing)
-        so.send_reply(driver_to_dsp, options.dsp_to_driver_identity, samps_meta.SerializeToString())
+        so.send_bytes(driver_to_dsp, options.dsp_to_driver_identity, samps_meta.SerializeToString())
 
         #sending collected data to brian
         request = so.recv_request(driver_to_brian, options.brian_to_driver_identity, printing)
-        so.send_reply(driver_to_brian, options.brian_to_driver_identity, samps_meta.SerializeToString())
+        so.send_bytes(driver_to_brian, options.brian_to_driver_identity, samps_meta.SerializeToString())
 
 
 if __name__ == "__main__":

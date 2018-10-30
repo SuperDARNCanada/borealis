@@ -147,6 +147,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     # TODO: does the for loop below need to happen every time. Could be only updated
     # as necessary to make it more efficient.
     packet.Clear()
+    packet.sequence_time = 0.0 # TODO change
     packet.sequence_num = seqnum
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
