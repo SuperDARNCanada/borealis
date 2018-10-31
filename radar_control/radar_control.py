@@ -127,7 +127,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
 
 def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                    brian_radctrl_iden, seqnum, slice_ids,
-                   slice_dict, beam_dict):
+                   slice_dict, beam_dict, sequence_time):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
         :param radctrl_to_dsp: The sender socket for sending data to dsp
@@ -141,13 +141,15 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
             information about the slices in this sequence. Namely, we get the frequency we want to receive at, the
             number of ranges and the first range information.
         :param beam_dict: The dictionary containing beam directions for each slice.
+        :param sequence_time: entire duration of sequence, including receive time after all
+        transmissions.
 
     """
 
     # TODO: does the for loop below need to happen every time. Could be only updated
     # as necessary to make it more efficient.
     packet.Clear()
-    packet.sequence_time = 0.0 # TODO change
+    packet.sequence_time = sequence_time
     packet.sequence_num = seqnum
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
@@ -360,7 +362,6 @@ def radar():
                     if __debug__:
                         print("New AveragingPeriod")
                     
-
                     slice_to_beamdir_dict = aveperiod.set_beamdirdict(beam_iter)
 
                     # Build an ordered list of sequences
@@ -371,7 +372,6 @@ def radar():
                                                                    experiment.txrate, options)  # TODO pass in only options needed.
 
                     beam_phase_dict_list = []
-
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
                         beam_phase_dict = {}
                         for slice_id in sequence.slice_ids:
@@ -436,7 +436,7 @@ def radar():
                                            options.brian_to_radctrl_identity,
                                            seqnum_start + nave,
                                            sequence.slice_ids, experiment.slice_dict,
-                                           beam_phase_dict)
+                                           beam_phase_dict, sequence.seqtime)
                             
                             # beam_phase_dict is slice_id : list of beamdirs, where beamdir = list
                             # of antenna phase offsets for all antennas for that direction ordered
