@@ -344,12 +344,8 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
                                                    tr_window_samples))
         combined_samples_tr.append(combined_samples_channel)
 
-    # print(len(combined_samples_tr[0]))
     # Now get what channels we need to transmit on for this combined
     #   pulse.
-    # TODO : figure out - why did I do this I thought we were transmitting zeros on any channels not wanted
-    # TODO : decide which to do. Currently filling the combined_samples[unused_antenna] with an array of zeroes and
-    # also sending the channels that we want to send.
     pulse_channels = []
     for pulse in pulse_list:
         for ant in exp_slices[pulse['slice_id']]['tx_antennas']:
