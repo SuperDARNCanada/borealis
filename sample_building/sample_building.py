@@ -533,7 +533,7 @@ def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
     for pulse_index, pulse_time in enumerate(pulse_sequence_us):
         if pulse_index == 0:
             continue
-        num_samples = (pulse_time - pulse_sequence_us[pulse_index - 1]) * 1.0e-6 * txrate
+        num_samples = ((pulse_time - pulse_sequence_us[pulse_index - 1]) * txrate) * 1.0e-6
         error = (num_samples - int(num_samples)) / txrate  # in seconds
         num_samples = int(num_samples)
         num_samples_list.append(num_samples)

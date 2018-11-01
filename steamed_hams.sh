@@ -15,6 +15,7 @@ echo "Project Borealis Booter"
 echo "v2.3-Alpha Season 1 Episode 3"
 echo "-----------------------------------------------------------------------------------"
 
+cp ~/.config/terminator/config.backup ~/.config/terminator/config
 # These are the commands to in each window.
 if [ "$2" = "release" ]; then
     command1="echo Initialize brian.py; python3 -O brian/brian.py; bash"

@@ -154,11 +154,11 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
         if slice_dict[slice_id]['rxonly']:
-            chan_add.rxfreq = slice_dict[slice_id]['rxfreq']
+            chan_add.rxfreq = slice_dict[slice_id]['rxfreq'] * 1.0e3
         elif slice_dict[slice_id]['clrfrqflag']:
             pass  # TODO - get freq from clear frequency search.
         else:
-            chan_add.rxfreq = slice_dict[slice_id]['txfreq']
+            chan_add.rxfreq = slice_dict[slice_id]['txfreq'] * 1.0e3
         chan_add.nrang = slice_dict[slice_id]['nrang']
         chan_add.frang = slice_dict[slice_id]['frang']
         for beamdir in beam_dict[slice_id]:
