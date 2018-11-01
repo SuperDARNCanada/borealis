@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 # Copyright 2017 SuperDARN Canada
 #
@@ -341,7 +341,8 @@ if __name__ == '__main__':
         try:
             # Send a request for data to dsp. The actual message doesn't matter, so use 'Request'
             # After that, receive the processed data from dsp, blocking.
-            data = so.recv_data(dsp_to_data_write, options.dsp_to_dw_identity, printing)
+            #so.send_request(dsp_to_data_write, options.dsp_to_dw_identity, "Request")
+            data = so.recv_obj(dsp_to_data_write, options.dsp_to_dw_identity, printing)
         except KeyboardInterrupt:
             sys.exit()
 

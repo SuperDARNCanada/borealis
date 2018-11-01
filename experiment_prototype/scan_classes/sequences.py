@@ -271,7 +271,7 @@ class Sequence(ScanClassBase):
                         pulse['isarepeat'] = True
 
         if __debug__:
-            print(self.pulses)
+            print('PULSES:\n{}'.format(self.pulses))
 
 
         last_pulse = self.pulses[-1]
@@ -370,12 +370,10 @@ class Sequence(ScanClassBase):
             pulse_samples = []
             if repeat:
                 pulse_antennas = []
-
             else:
                 # Initialize a list of lists for samples on all channels.
                 # TODO: modify this function if we put a weighting on powers instead of just a
                 # simple power_divider integer
-
                 pulse_samples, pulse_antennas = (
                     make_pulse_samples(one_pulse_list, self.power_divider, self.slice_dict,
                                        slice_to_beamdir_dict, txctrfreq,
