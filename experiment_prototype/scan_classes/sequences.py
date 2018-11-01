@@ -93,7 +93,6 @@ class Sequence(ScanClassBase):
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, options):
 
-        # TODO describe pulse dictionary in docs
         # TODO make diagram(s) for pulse combining algorithm
         # TODO make diagram for pulses that are repeats, showing clearly what intra_pulse_start_time,
         # and pulse_shift are.
@@ -269,6 +268,15 @@ class Sequence(ScanClassBase):
                             break
                     else:  # no break
                         pulse['isarepeat'] = True
+            else:  # not combined
+                if pulse['slice_id'] != last_pulse['slice_id']: # governs freq, length, etc.
+                    pulse['isarepeat'] = False
+                elif pulse['intra_pulse_start_time'] != last_pulse['intra_pulse_start_time']:
+                    pulse['isarepeat'] = False
+                elif pulse['pulse_shift'] != last_pulse['pulse_shift']:
+                    pulse['isarepeat'] = False
+                else:
+                    pulse['isarepeat'] = True
 
         if __debug__:
             print('PULSES:\n{}'.format(self.pulses))
