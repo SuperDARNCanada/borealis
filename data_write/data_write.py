@@ -18,8 +18,10 @@ import numpy as np
 import deepdish as dd
 import argparse as ap
 import posix_ipc as ipc
-import mmap 
+import mmap
 import multiprocessing as mp
+import subprocess as sp
+import warnings
 
 borealis_path = os.environ['BOREALISPATH']
 if not borealis_path:
@@ -52,7 +54,7 @@ def write_json_file(filename, data_dict):
         f.write(json.dumps(data_dict))
 
 
-def write_hdf5_file(filename, data_dict):
+def write_hdf5_file(filename, data_dict, dt_str):
     """
     Write out data to an HDF5 file. If the file already exists it will be overwritten.
     :param filename: The path to the file to write out. String
@@ -70,7 +72,11 @@ def write_hdf5_file(filename, data_dict):
 
     convert_to_numpy(data_dict)
 
-    dd.io.save(filename, data_dict, compression=None)
+    time_stamped_dd = {}
+    time_stamped_dd[dt_str] = data_dict
+
+    warnings.simplefilter("ignore") #ignore NaturalNameWarning
+    dd.io.save(filename, time_stamped_dd, compression=None)
 
 
 def write_dmap_file(filename, data_dict):
@@ -92,9 +98,10 @@ class DataWrite(object):
         self.options = data_write_options
         self.processed_data = processed_data
 
-    def output_data(self, write_iq, write_pre_bf_iq, write_raw_rf, file_ext, write_rawacf=True):
+    def output_data(self, write_iq, write_pre_bf_iq, write_raw_rf, file_ext, two_hr_file,
+                    write_rawacf=True):
         """
-        Parse through samples and write to file. 
+        Parse through samples and write to file.
 
         A file will be created using the file extention for each requested data product.
 
@@ -109,8 +116,11 @@ class DataWrite(object):
             raise ValueError("File format selection required (hdf5, json, dmap), none given")
 
         # Format the name and location for the dataset
-        today_string = datetime.datetime.today().strftime("%Y%m%d")
-        datetime_string = datetime.datetime.today().strftime("%Y%m%d.%H%M.%S.%f")
+        time_now = datetime.datetime.utcnow()
+        today_string = time_now.strftime("%Y%m%d")
+        datetime_string = time_now.strftime("%Y%m%d.%H%M.%S.%f")
+        epoch = datetime.datetime.utcfromtimestamp(0)
+        epoch_milliseconds = str(int((today - epoch).total_seconds() * 1000))
         dataset_directory = "{0}/{1}".format(self.options.data_directory, today_string)
         dataset_name = "{dt}.{site}.{{dformat}}.{fformat}".format(dt=datetime_string,
                                                                 site=self.options.site_id,
@@ -118,13 +128,14 @@ class DataWrite(object):
         dataset_location = "{dir}/{{name}}".format(dir=dataset_directory)
 
 
-        def write_file(location, final_data_dict):     
+        def write_file(location, final_data_dict, two_hr_file_with_type):
             """
             Writes the final data out to the location based on the type of file extention required
 
-            :param location:        File path and name to write to. String
-            :param final_data_dict: Data dict parsed out from protobuf. Dict
-                
+            :param location:                File path and name to write to. String
+            :param final_data_dict:         Data dict parsed out from protobuf. Dict
+            :param two_hr_file_with_type:   Name of the two hour file with data type added. String
+
             """
             if not os.path.exists(dataset_directory):
                 try:
@@ -133,7 +144,21 @@ class DataWrite(object):
                     pass
 
             if file_ext == 'hdf5':
-                write_hdf5_file(location, final_data_dict)
+                full_two_hr_file = "{0}/{1}.hdf5".format(dataset_directory, two_hr_file_with_type)
+
+                try:
+                    fd = os.open(full_two_hr_file, os.O_CREAT | os.O_EXCL)
+                    os.close(fd)
+                except FileExistsError:
+                    pass
+
+                write_hdf5_file(location, final_data_dict, epoch_milliseconds)
+
+                # use external h5copy utility to move new record into 2hr file.
+                cmd = 'h5copy -i {newfile} -o {twohr} -s {dtstr} -d {dtstr}'
+                cmd = cmd.format(newfile=location, twohr=full_two_hr_file, dtstr=epoch_milliseconds)
+                sp.call(cmd.split())
+
             elif file_ext == 'json':
                 write_json_file(location, final_data_dict)
             elif file_ext == 'dmap':
@@ -172,7 +197,7 @@ class DataWrite(object):
                     for complex_sample in data_set.intacf:
                         rawacf_data_dict[freq_str]['intacf']['real'].append(complex_sample.real)
                         rawacf_data_dict[freq_str]['intacf']['imag'].append(complex_sample.imag)
-            
+
                 # Cross correlations were calculated
                 if len(data_set.xcf) > 0:
                     rawacf_available = True
@@ -180,12 +205,13 @@ class DataWrite(object):
                     for complex_sample in data_set.xcf:
                         rawacf_data_dict[freq_str]['xcf']['real'].append(complex_sample.real)
                         rawacf_data_dict[freq_str]['xcf']['imag'].append(complex_sample.imag)
-            
+
             if rawacf_available:
                 name = dataset_name.format(dformat="rawacf")
                 output_file = dataset_location.format(name=name)
 
-                write_file(output_file, rawacf_data_dict)
+                two_hr_file_with_type = two_hr_file.format(ext="rawacf")
+                write_file(output_file, rawacf_data_dict, two_hr_file_with_type)
 
 
         def do_bfiq():
@@ -195,13 +221,13 @@ class DataWrite(object):
 
             """
             iq_data_dict = nested_dict()
-            iq_available = False
+            bfiq_available = False
             for freq_num, data_set in enumerate(self.processed_data.outputdataset):
                 freq_str = "frequency_{0}".format(freq_num)
 
                 # Find out what is available in the data to determine what to write out
                 if len(data_set.beamformedsamples) > 0:
-                    iq_available = True
+                    bfiq_available = True
                     for beam in data_set.beamformedsamples:
                         beam_str = "beam_{}".format(beam.beamnum)
                         iq_data_dict[freq_str][beam_str] = {'main' : {'real' : [], 'imag' : []},
@@ -216,12 +242,13 @@ class DataWrite(object):
                                 dict_to_add = iq_data_dict[freq_str][beam_str]['intf']
                                 dict_to_add['real'].append(intf_sample.real)
                                 dict_to_add['imag'].append(intf_sample.imag)
-            
-            if iq_available:
+
+            if bfiq_available:
                 name = dataset_name.format(dformat="bfiq")
                 output_file = dataset_location.format(name=name)
 
-                write_file(output_file, iq_data_dict)
+                two_hr_file_with_type = two_hr_file.format(ext="bfiq")
+                write_file(output_file, iq_data_dict, two_hr_file_with_type)
 
 
         def do_pre_bfiq():
@@ -242,19 +269,19 @@ class DataWrite(object):
                         for ant_num, ant_data in enumerate(debug_samples.antennadata):
                             ant_str = "antenna_{0}".format(ant_num)
                             stage_name = debug_samples.stagename
-                            #iq_pre_bf_data_dict[stage_name] = collections.defaultdict(dict)
                             iq_pre_bf_data_dict[stage_name][freq_str][ant_str] = {'real': [],
                                                                                   'imag': []}
-                            ipbdd = iq_pre_bf_data_dict[stage_name][freq_str][ant_str] 
+                            ipbdd = iq_pre_bf_data_dict[stage_name][freq_str][ant_str]
                             for ant_samp in ant_data.antennasamples:
                                 ipbdd['real'].append(ant_samp.real)
                                 ipbdd['imag'].append(ant_samp.imag)
-        
+
             if pre_bf_iq_available:
                 name = dataset_name.format(dformat="iq")
                 output_file = dataset_location.format(name=name)
 
-                write_file(output_file, iq_pre_bf_data_dict)
+                two_hr_file_with_type = two_hr_file.format(ext="iq")
+                write_file(output_file, iq_pre_bf_data_dict, two_hr_file_with_type)
 
 
 
@@ -272,7 +299,7 @@ class DataWrite(object):
             mapfile = mmap.mmap(shm.fd,shm.size)
 
             rf_samples = np.frombuffer(mapfile,dtype=np.complex64)
-            
+
             total_antennas = self.options.main_antenna_count + self.options.intf_antenna_count
             rf_samples = np.reshape(rf_samples,(total_antennas,-1))
             for ant in range(total_antennas):
@@ -284,7 +311,6 @@ class DataWrite(object):
             shm.close_fd()
             shm.unlink()
             mapfile.close()
-
 
         # Use multiprocessing to speed up writing. Each data type can be parsed and written by a
         # separate process in order to parallelize the work. Parsing the protobuf is not a fast
@@ -337,6 +363,10 @@ if __name__ == '__main__':
     if __debug__:
         printing("Socket connected")
 
+    two_hr_format = "{dt}.{site}.{{ext}}"
+    two_hr_str = None
+
+    acf_accumulator = {'main' : {}}
     while True:
         try:
             # Send a request for data to dsp. The actual message doesn't matter, so use 'Request'
@@ -345,11 +375,41 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             sys.exit()
 
+        def two_hr_ceiling(dt):
+            """Finds the next 2hr boundary starting from midnight
+
+            Args:
+                dt (TYPE): A datetime to find the next 2hr boundary.
+
+            Returns:
+                TYPE: 2hr aligned datetime
+            """
+            time_now = datetime.datetime.utcnow()
+            midnight_today = time_now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+            boundary_time = midnight_today + datetime.timedelta(hours=2)
+
+            while time_now > boundary_time:
+                boundary_time += datetime.timedelta(hours=2)
+
+            return boundary_time
+
+        time_now = datetime.datetime.utcnow()
+        if two_hr_str is None:
+            two_hr_str = two_hr_format.format(dt=time_now.strftime("%Y%m%d.%H%M.%S"),
+                                                site=options.site_id)
+            next_boundary = two_hr_ceiling(time_now)
+        else:
+            if time_now > next_boundary:
+                two_hr_str = two_hr_format.format(dt=time_now.strftime("%Y%m%d.%H%M.%S"),
+                                                site=options.site_id)
+                next_boundary = two_hr_ceiling(time_now)
+
+
         def make_file(data_data):
             if __debug__:
                 printing("Data received from dsp")
-                start = datetime.datetime.now()
-
+                start = datetime.datetime.utcnow()
 
             pd = processeddata_pb2.ProcessedData()
             pd.ParseFromString(data_data)
@@ -358,8 +418,8 @@ if __name__ == '__main__':
 
             start = datetime.datetime.now()
             dw.output_data(write_iq=args.enable_bfiq, write_pre_bf_iq=args.enable_pre_bf_iq,
-                            write_raw_rf=args.enable_raw_rf, file_ext=args.file_type, 
-                            write_rawacf=False)
+                            write_raw_rf=args.enable_raw_rf, file_ext=args.file_type,
+                            two_hr_file=two_hr_str, write_rawacf=False)
 
             end = datetime.datetime.now()
             diff = end - start
