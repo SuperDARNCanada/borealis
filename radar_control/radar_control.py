@@ -177,7 +177,6 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
 
     # Brian requests sequence metadata for timeouts
    
-    print('Waiting for Brian request')
     request = socket_operations.recv_request(radctrl_to_brian, brian_radctrl_iden,
                                              printing)
     if __debug__:
@@ -264,7 +263,6 @@ def radar():
     experiment is sent, radar will halt the old one and begin with the new experiment.
     """
 
-    first_time = True
     # Initialize driverpacket.
     driverpacket = DriverPacket()
 
@@ -359,6 +357,7 @@ def radar():
                                 beam_remaining = False  # all aveperiods are at the end of their beam_order list - must restart scan of alternating aveperiod types.
                                 break
                             continue
+
                     if __debug__:
                         print("New AveragingPeriod")
                     
@@ -418,6 +417,8 @@ def radar():
                     integration_period_done_time = integration_period_start_time + \
                         timedelta(milliseconds=(float(aveperiod.intt)))  # ms
 
+                    first_sequence_out = False
+
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
 
@@ -428,7 +429,6 @@ def radar():
                                 # TODO add a break for nave == intn if going for number of averages instead of
                                 # integration time
                             beam_phase_dict = beam_phase_dict_list[sequence_index]
-                            print("Sending metadata to DSP")
                             send_metadata(sigprocpacket,
                                            radar_control_to_dsp,
                                            options.dsp_to_radctrl_identity,
@@ -443,20 +443,10 @@ def radar():
                             # [0 ... main_antenna_count, 0 ... interferometer_antenna_count]
 
                             # SEND ALL PULSES IN SEQUENCE.
-                            if first_time:
-                                for pulse_index, pulse_dict in \
-                                        enumerate(sequence_dict_list[sequence_index]):
-                                    print("Sending data to driver")
-                                    data_to_driver(driverpacket, radar_control_to_driver,
-                                                   options.driver_to_radctrl_identity,
-                                                   pulse_dict['pulse_antennas'],
-                                                   pulse_dict['samples_array'], experiment.txctrfreq,
-                                                   experiment.rxctrfreq, experiment.txrate,
-                                                   sequence.numberofreceivesamples,
-                                                   pulse_dict['startofburst'], pulse_dict['endofburst'],
-                                                   pulse_dict['timing'], seqnum_start + nave,
-                                                   repeat=pulse_dict['isarepeat'])
-                            else:
+                            # If we have sent first sequence already and there is only one unique
+                            #  pulse in the averaging period, send all repeats until end of the
+                            #  averaging period.
+                            if first_sequence_out and aveperiod.one_pulse_only:
                                 for pulse_index, pulse_dict in \
                                         enumerate(sequence_dict_list[sequence_index]):
                                     data_to_driver(driverpacket, radar_control_to_driver,
@@ -468,8 +458,19 @@ def radar():
                                                    pulse_dict['startofburst'], pulse_dict['endofburst'],
                                                    pulse_dict['timing'], seqnum_start + nave,
                                                    repeat=True)
-                            first_time = False
-                                # Pulse is done.
+                            else:
+                                for pulse_index, pulse_dict in \
+                                        enumerate(sequence_dict_list[sequence_index]):
+                                    data_to_driver(driverpacket, radar_control_to_driver,
+                                                   options.driver_to_radctrl_identity,
+                                                   pulse_dict['pulse_antennas'],
+                                                   pulse_dict['samples_array'], experiment.txctrfreq,
+                                                   experiment.rxctrfreq, experiment.txrate,
+                                                   sequence.numberofreceivesamples,
+                                                   pulse_dict['startofburst'], pulse_dict['endofburst'],
+                                                   pulse_dict['timing'], seqnum_start + nave,
+                                                   repeat=pulse_dict['isarepeat'])
+                                first_sequence_out = True
 
                             # TODO: Make sure you can have a slice that doesn't transmit, only receives on a frequency. # REVIEW #1 what do you mean, what is this TODO for? REPLY : driver acks wouldn't be required etc need to make sure this is possible
                             # Sequence is done
