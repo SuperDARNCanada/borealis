@@ -20,12 +20,12 @@ message Integration_Time_Metadata {
       repeated Beam beams = 4;
       bool rx_only = 5;
       uint32 pulse_len = 6;
-      uint32 pulse_spacing = 7;
+      uint32 tau_spacing = 7;
       uint32 rxfreq = 8;
       PulseTable ptab = 9;
       bool acf = 10;
       bool xcf = 11;
-      bool intacf = 12;
+      bool acfint = 12;
       uint32 rsep = 13;
       LagTable ltab = 14;
       string comment_buffer = 15;
