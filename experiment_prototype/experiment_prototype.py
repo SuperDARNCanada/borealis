@@ -76,16 +76,13 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
                     "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
                     "beam_order", "scanboundflag", "scanbound", "txfreq", "rxfreq",
                     "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
-                    "iwavetable", "qwavetable"])
+                    "iwavetable", "qwavetable", "comment", "rsep", "lag_table"])
 # TODO add scanboundt?
 """   
 **Description of Slice Keys**
     
 slice_id
     The ID of this slice object. An experiment can have multiple slices.
-=======
-		    "iwavetable", "qwavetable"]
->>>>>>> master:experiments/experiment_prototype.py
 
 cpid
     The ID of the experiment, consistent with existing radar control programs.
@@ -166,15 +163,6 @@ rxfreq
     receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only 
     necessary to specify if you want a receive-only slice.
 
-acf
-    flag for rawacf and generation. The default is True.
-
-xcf
-    flag for cross-correlation data. The default is True.
-
-acfint
-    flag for interferometer autocorrelation data. The default is True.
-
 wavetype
     string for wavetype. The default is SINE. Any other wavetypes not currently supported but 
     possible to add in at later date.
@@ -192,6 +180,27 @@ seqoffset
     This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence 
     you can offset one slice's sequence from the other by a certain time value so as to not run both
     frequencies in the same pulse, etc.
+
+comment 
+    a comment string that will be placed in the iq hdf5 file describing the slice. 
+
+acf
+    flag for rawacf and generation. The default is False.
+
+xcf
+    flag for cross-correlation data. The default is True if acf is True, otherwise False.
+
+acfint
+    flag for interferometer autocorrelation data. The default is True if acf is True, otherwise 
+    False.
+
+rsep
+    a calculated value from pulse_len. If already set, it will be overwritten to be the correct 
+    value determined by the pulse_len. Used for acfs.
+
+lag_table
+    used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from 
+    8-pulse normalscan.
 
 Should add: 
 
@@ -276,9 +285,9 @@ class ExperimentPrototype(object):
         #   upon instantiation. These are defaults for all slices, but these values are
         #   slice-specific so if the slice is added with these flags specified, that will override
         #   these values for the specific slice.
-        self._xcf = True  # cross-correlation
-        self._acf = True  # auto-correlation
-        self._acfint = True  # interferometer auto-correlation.
+        self._xcf = False  # cross-correlation
+        self._acf = False  # auto-correlation
+        self._acfint = False  # interferometer auto-correlation.
 
         self._interface = {}  # setup_interfacing(self.num_slices)
         # TODO discuss rephrasing the description of _interface as a graph with defined rules
@@ -1125,6 +1134,7 @@ class ExperimentPrototype(object):
                              """.format(freq_range)
                     raise ExperimentException(errmsg)
 
+
     def set_slice_defaults(self, exp_slice):
         """
         Set up defaults in case of some parameters being left blank.
@@ -1171,16 +1181,67 @@ class ExperimentPrototype(object):
 
         if 'acf' not in exp_slice:
             slice_with_defaults['acf'] = self.acf
-        if 'xcf' not in exp_slice:
             slice_with_defaults['xcf'] = self.xcf
-        if 'acfint' not in exp_slice:
             slice_with_defaults['acfint'] = self.acfint
+        if exp_slice['acf']:
+            if 'xcf' not in exp_slice:
+                slice_with_defaults['xcf'] = True
+            if 'acfint' not in exp_slice:
+                slice_with_defaults['acfint'] = True
+        else:  # acf is False
+            # TODO log that no xcf or acfint will happen if acfs are not set.
+            slice_with_defaults['xcf'] = False
+            slice_with_defaults['acfint'] = False
+
+        if slice_with_defaults['acf']:
+            if 'rsep' in exp_slice:
+                if slice_with_defaults['rsep'] != int(slice_with_defaults['pulse_len'] * 3.0/20.0):
+                    # TODO Log warning that rsep is being changed
+                    errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
+                    print(errmsg)
+                    pass
+
+            slice_with_defaults['rsep'] = int(slice_with_defaults['pulse_len'] * 3.0/20.0)
+
+            if 'lag_table' in exp_slice:
+                # Check that lags are valid
+                for lag in exp_slice['lag_table']:
+                    for pulse_position in lag:
+                        if pulse_position not in exp_slice['pulse_sequence']:
+                            errmsg = 'Lag {} not valid; Pulse {} does not exist in ' \
+                                     'sequence'.format(lag, pulse_position)
+                            raise ExperimentException(errmsg)
+            else:
+                # build lag table from pulse_sequence
+                lag_table = []
+                for index, pulse1 in enumerate(slice_with_defaults['pulse_sequence']):
+                    for pulse2 in slice_with_defaults['pulse_sequence'][index+1:]:
+                        lag_table.append([pulse1, pulse2])
+                lag_table.append([slice_with_defaults['pulse_sequence'][0], slice_with_defaults[
+                    'pulse_sequence'][0]])  # lag 0
+                lag_table.append([slice_with_defaults['pulse_sequence'][-1], slice_with_defaults[
+                    'pulse_sequence'][-1]])  # alternate lag 0
+                slice_with_defaults['lag_table'] = lag_table
+
+        else:
+            # TODO record rsep, lag_table, xcf, and acfint will not be used
+            print('Rsep, lag_table, xcf, and acfint will not be used because acf is not True.')
+            for key in ['rsep', 'lag_table', 'xcf', 'acfint']:
+                try:
+                    del slice_with_defaults[key]
+                except KeyError:
+                    pass
+
         if 'wavetype' not in exp_slice:
             slice_with_defaults['wavetype'] = 'SINE'
         if 'seqoffset' not in exp_slice:
             slice_with_defaults['seqoffset'] = 0
 
+        if 'comment' not in exp_slice:
+            slice_with_defaults['comment'] = ''
+
         return slice_with_defaults
+
 
     def setup_slice(self, exp_slice):
         """
