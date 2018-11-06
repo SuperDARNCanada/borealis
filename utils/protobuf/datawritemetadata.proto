@@ -4,30 +4,32 @@ package datawritemetadata;
 
 message Integration_Time_Metadata {
   repeated SequenceType sequences = 1;
-  uint32 nave = 1;
-  uint32 last_seqn_num = 2;
-  bool scan_flag  = 3;
-  double integration_time  = 4;
+  uint32 nave = 2;
+  uint32 last_seqn_num = 3;
+  bool scan_flag  = 4;
+  double integration_time  = 5;
 
   message SequenceType {
     repeated RXChan rxchannel = 1;
     repeated uint32 blanks = 2;
 
     message RXChan {
-      uint32 frang = 1;
-      uint32 nrang = 2;
-      repeated Beam beams = 3;
-      bool rx_only = 4;
-      uint32 pulse_len = 5;
-      uint32 rsep = 6;
+      uint32 slice_id = 1;
+      uint32 frang = 2;
+      uint32 nrang = 3;
+      repeated Beam beams = 4;
+      bool rx_only = 5;
+      uint32 pulse_len = 6;
       uint32 pulse_spacing = 7;
       uint32 rxfreq = 8;
-      repeated PulseTable ptab = 9;
-      repeated LagTable ltab = 10;
-      string comment_buffer = 11;
-      bool acf = 12;
-      bool xcf = 13;
-      bool intacf = 14;
+      PulseTable ptab = 9;
+      bool acf = 10;
+      bool xcf = 11;
+      bool intacf = 12;
+      uint32 rsep = 13;
+      LagTable ltab = 14;
+      string comment_buffer = 15;
+      string interfacing = 16;
 
       message Beam {
       uint32 beamnum = 1;  // no channel phase data because beamforming already occurred

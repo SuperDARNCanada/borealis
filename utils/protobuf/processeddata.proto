@@ -12,9 +12,10 @@ message ProcessedData {
         repeated ComplexData mainacf = 1;
         repeated ComplexData intacf = 2;
         repeated ComplexData xcf = 3;
-	uint32 numberofbeams = 4;
+	    uint32 numberofbeams = 4;
         repeated BeamData beamformedsamples = 5;
         repeated DebugData debugsamples = 7;
+        uint32 slice_id = 8;
 
 	message BeamData {
 	    uint32 beamnum = 1;
