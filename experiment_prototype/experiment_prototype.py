@@ -16,6 +16,7 @@ import copy
 import os
 import numpy as np
 import itertools
+from scipy.constants import speed_of_light
 #import pygit2
 
 BOREALISPATH = os.environ['BOREALISPATH']
@@ -1172,13 +1173,17 @@ class ExperimentPrototype(object):
 
         if slice_with_defaults['acf']:
             if 'rsep' in exp_slice:
-                if slice_with_defaults['rsep'] != int(slice_with_defaults['pulse_len'] * 3.0/20.0):
+                if slice_with_defaults['rsep'] != int(round(slice_with_defaults['pulse_len'] *
+                                                      speed_of_light/2.0)):
                     # TODO Log warning that rsep is being changed
                     errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
                     print(errmsg)
                     pass
 
-            slice_with_defaults['rsep'] = int(slice_with_defaults['pulse_len'] * 3.0/20.0)
+            slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] *
+                                                      speed_of_light/2.0))
+            # This is the distance travelled by the wave in the length of the pulse, divided by
+            # two because it's an echo (travels there and back). 
 
             if 'lag_table' in exp_slice:
                 # Check that lags are valid
