@@ -1183,7 +1183,7 @@ class ExperimentPrototype(object):
             slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] *
                                                       speed_of_light/2.0))
             # This is the distance travelled by the wave in the length of the pulse, divided by
-            # two because it's an echo (travels there and back). 
+            # two because it's an echo (travels there and back).
 
             if 'lag_table' in exp_slice:
                 # Check that lags are valid
