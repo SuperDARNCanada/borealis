@@ -506,16 +506,16 @@ def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
     """
     Write the samples and transmitted metadata to a json file for use in testing.
 
-    :param txrate: The rate at which these samples will be transmitted at.
+    :param txrate: The rate at which these samples will be transmitted at, Hz.
     :param txctrfreq: The centre frequency that the N200 is tuned to (and will mix with
-     these samples).
+     these samples, kHz).
     :param list_of_pulse_dicts: The list of all pulse dictionaries for pulses included
     in this sequence. Pulse dictionaries have all metadata and the samples for the
     pulse.
     :param file_path: location to place the json file.
     :param main_antenna_count: The number of antennas available for transmitting on.
     :param final_rx_sample_rate: The final sample rate after decimating on the receive
-    side.
+    side (Hz).
     :param ssdelay: Receiver time of flight for last echo. This is the time to continue
      receiving after the last pulse is transmitted.
     :return:

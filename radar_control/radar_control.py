@@ -20,7 +20,6 @@ from datetime import datetime, timedelta
 import os
 import zmq
 import pickle
-import json
 import threading
 
 sys.path.append(os.environ["BOREALISPATH"])
@@ -325,7 +324,7 @@ def radar():
                 break
             beam_remaining = True  # started a new scan, therefore this must be True.
 
-                        # Make iterator for cycling through beam numbers
+            # Make iterator for cycling through beam numbers
             aveperiods_done_list = []
             beam_iter = 0
             while beam_remaining and not new_experiment_flag:

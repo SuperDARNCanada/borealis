@@ -23,7 +23,6 @@ import inspect
 import importlib
 import threading
 import pickle
-import json
 import zlib
 
 BOREALISPATH = os.environ['BOREALISPATH']
@@ -213,7 +212,7 @@ def experiment_handler(semaphore):
             # starting anew
             exp.build_scans()
             serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
-            
+            # use the newest, fastest protocol (currently version 4 in python 3.4+)
             try:
                 socket_operations.send_exp(exp_handler_to_radar_control,
                                              options.radctrl_to_exphan_identity,

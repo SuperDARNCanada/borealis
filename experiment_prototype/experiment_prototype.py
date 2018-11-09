@@ -267,7 +267,7 @@ class ExperimentPrototype(object):
 
         # Load the config, hardware, and restricted frequency data
         self.__options = ExperimentOptions()
-        self.__txrate = self.__options.tx_sample_rate  # sampling rate, samples per sec.
+        self.__txrate = self.__options.tx_sample_rate  # sampling rate, samples per sec, Hz.
         self.__rxrate = self.__options.rx_sample_rate  # sampling rate for rx in samples per sec
         # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
         # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
