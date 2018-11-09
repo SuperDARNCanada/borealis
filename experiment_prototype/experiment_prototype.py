@@ -253,7 +253,7 @@ class ExperimentPrototype(object):
 
     __hidden_slice_keys = hidden_key_set
 
-    def __init__(self, cpid):
+    def __init__(self, cpid, comment_string=''):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
@@ -268,6 +268,8 @@ class ExperimentPrototype(object):
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
 
         self.__cpid = cpid
+
+        self.__comment_string = comment_string
 
         self.__slice_dict = {}
 
@@ -320,6 +322,16 @@ class ExperimentPrototype(object):
         """
 
         return self.__cpid
+
+    @property
+    def comment_string(self):
+        """
+        A string related to the experiment, to be placed in the experiment's files.
+
+        This read-only once established in instantiation.
+        """
+
+        return self.__comment_string
 
     @property
     def num_slices(self):

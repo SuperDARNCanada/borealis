@@ -239,7 +239,8 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
-                   seqnum, nave, scan_flag, inttime, sequences, beamdir_dict):
+                            seqnum, nave, scan_flag, inttime, sequences, beamdir_dict,
+                            experiment_id, experiment_string):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
     :param packet: The Integration_Time_Metadata protobuf packet.
@@ -255,9 +256,13 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     AveragingPeriod).
     :param beamdir_dict: Dictionary where each slice_id key corresponds to a list of beam
     directions for that slice for this integration period.
+    :param experiment_id: the ID of the experiment that is running
+    :param experiment_string: the experiment string to be placed in the data files.
     """
 
     packet.Clear()
+    packet.experiment_id = experiment_id
+    packet.experiment_string = experiment_string
     packet.nave = nave
     packet.last_seqn_num = seqnum
     packet.scan_flag = scan_flag
@@ -545,7 +550,8 @@ def radar():
                     send_datawrite_metadata(integration_time_packet, radar_control_to_dw,
                                             options.dw_to_radctrl_identity, last_sequence_num, nave,
                                             scan_flag, integration_period_time,
-                                            aveperiod.sequences, slice_to_beamdir_dict)
+                                            aveperiod.sequences, slice_to_beamdir_dict,
+                                            experiment.cpid, experiment.comment_string)
 
 
                     # end of the averaging period loop - move onto the next averaging period.

@@ -3,11 +3,13 @@ syntax = "proto3";
 package datawritemetadata;
 
 message Integration_Time_Metadata {
-  repeated SequenceType sequences = 1;
-  uint32 nave = 2;
-  uint32 last_seqn_num = 3;
-  bool scan_flag  = 4;
-  double integration_time  = 5;
+  uint32 experiment_id = 1;
+  string experiment_string = 2;
+  repeated SequenceType sequences = 3;
+  uint32 nave = 4;
+  uint32 last_seqn_num = 5;
+  bool scan_flag  = 6;
+  double integration_time  = 7;
 
   message SequenceType {
     repeated RXChan rxchannel = 1;
