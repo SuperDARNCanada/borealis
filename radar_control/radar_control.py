@@ -37,7 +37,7 @@ from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
 from datawritemetadata_pb2 import Integration_Time_Metadata
 
-from sample_building.sample_building import azimuth_to_antenna_offset, write_samples_to_file
+from sample_building.sample_building import azimuth_to_antenna_offset, create_debug_sequence_samples
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from radar_status.radar_status import RadarStatus
@@ -240,7 +240,7 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, nave, scan_flag, inttime, sequences, beamdir_dict,
-                            experiment_id, experiment_string):
+                            experiment_id, experiment_string, debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
     :param packet: The Integration_Time_Metadata protobuf packet.
@@ -258,6 +258,13 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     directions for that slice for this integration period.
     :param experiment_id: the ID of the experiment that is running
     :param experiment_string: the experiment string to be placed in the data files.
+    :param debug_samples: the debug samples for this integration period, to be written to the
+    file if debug is set. This is a list of dictionaries for each Sequence in the
+    AveragingPeriod. The dictionary is set up in the sample_building module function
+    create_debug_sequence_samples. The keys are 'txrate', 'txctrfreq', 'pulse_sequence_timing',
+    'pulse_offset_error', 'sequence_samples', 'decimated_sequence', 'dmrate_error', and 'dmrate'.
+    The 'sequence_samples' and 'decimated_sequence' values are themselves dictionaries, where the
+    keys are the antenna numbers (there is a sample set for each transmit antenna).
     """
 
     packet.Clear()
@@ -272,6 +279,25 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
         sequence_add = packet.sequences.add()
         for blank in sequence.blanks:
             sequence_add.blanks.append(blank)
+        if debug_samples:
+            sequence_add.tx_data.txrate = debug_samples[sequence_index]['txrate']
+            sequence_add.tx_data.txctrfeq = debug_samples[sequence_index]['txctrfreq']
+            sequence_add.tx_data.pulse_sequence_timing_us = debug_samples[sequence_index][
+                'pulse_sequence_timing']
+            sequence_add.tx_data.pulse_offset_error_us = debug_samples[sequence_index][
+                'pulse_offset_error']
+            for ant, ant_samples in debug_samples[sequence_index]['sequence_samples'].items():
+                tx_samples_add = sequence_add.tx_samples.add()
+                tx_samples_add.real = ant_samples['real']
+                tx_samples_add.imag = ant_samples['imag']
+                tx_samples_add.tx_antenna_number = ant
+            sequence_add.tx_data.dmrate = debug_samples[sequence_index]['dmrate']
+            sequence_add.tx_data.dmrate_error = debug_samples[sequence_index]['dmrate_error']
+            for ant, ant_samples in debug_samples[sequence_index]['decimated_sequence'].items():
+                tx_samples_add = sequence_add.decimated_tx_samples.add()
+                tx_samples_add.real = ant_samples['real']
+                tx_samples_add.imag = ant_samples.imag()['imag']
+                tx_samples_add.tx_antenna_number = ant
         for slice_id in sequence.slice_ids:
             rxchan_add = sequence_add.rxchannel.add()
             rxchan_add.slice_id = slice_id
@@ -459,16 +485,18 @@ def radar():
 
                     # all phases are set up for this averaging period for the beams required.
 
+                    # Setup debug samples if in debug mode.
+                    debug_samples = []
                     if __debug__:
-                        # Write the sequences to file for this integration period.
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
-                            write_samples_to_file(experiment.txrate,
+                            sequence_samples_dict = create_debug_sequence_samples(experiment.txrate,
                                                   experiment.txctrfreq,
                                                   sequence_dict_list[sequence_index],
                                                   debug_path,
                                                   options.main_antenna_count,
                                                   options.output_sample_rate,
                                                   sequence.ssdelay)
+                            debug_samples.append(sequence_samples_dict)
 
                     # Get ready to iterate for an given integration time.
                     integration_period_start_time = datetime.utcnow()  # ms
@@ -551,8 +579,8 @@ def radar():
                                             options.dw_to_radctrl_identity, last_sequence_num, nave,
                                             scan_flag, integration_period_time,
                                             aveperiod.sequences, slice_to_beamdir_dict,
-                                            experiment.cpid, experiment.comment_string)
-
+                                            experiment.cpid, experiment.comment_string,
+                                            debug_samples)
 
                     # end of the averaging period loop - move onto the next averaging period.
                     # Increment the sequence number by the number of sequences that were in this
