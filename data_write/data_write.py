@@ -589,8 +589,8 @@ class DataWrite(object):
                     parameters['borealis_git_hash'] = self.git_hash
 
                     parameters['timestamp_of_write'] = (time_now - epoch).total_seconds()
-                    parameters['experiment_id'] = ""
-                    parameters['experiment_string'] = ""
+                    parameters['experiment_id'] = integration_meta.experiment_id
+                    parameters['experiment_string'] = integration_meta.experiment_string
                     parameters['station'] = self.options.site_id
                     parameters['timestamp_of_scan'] = data_parsing.timestamps[0]
                     parameters['num_sequences'] = integration_meta.nave
@@ -772,7 +772,7 @@ def main():
     integration_meta = None
 
     current_experiment = None
-    data_write = DataWrite(options)
+    data_write = None
     while True:
         try:
             # Send a request for data to dsp. The actual message doesn't matter, so use 'Request'
@@ -786,6 +786,11 @@ def main():
             data = so.recv_data(dsp_to_data_write, options.dsp_to_dw_identity, printing)
 
             if data_parsing.sequence_num > final_integration:
+
+                if integration_meta.experiment_string != current_experiment:
+                    data_write = DataWrite(options)
+                    current_experiment = integration_meta.experiment_string
+
                 data_write.output_data(write_bfiq=args.enable_bfiq,
                                        write_pre_bfiq=args.enable_pre_bfiq,
                                        write_raw_rf=args.enable_raw_rf,
