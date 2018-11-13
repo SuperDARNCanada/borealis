@@ -54,8 +54,10 @@ class DSPCore {
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num,
-                    std::vector<double> freqs, Filtering *filters, 
-                    std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts);
+                    std::vector<double> freqs, Filtering *filters,
+                    std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
+                    double driver_initialization_time, double sequence_start_time,
+                    std::vector<uint32_t> slice_ids);
   ~DSPCore(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
   void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
@@ -94,6 +96,9 @@ class DSPCore {
   uint32_t get_num_second_stage_samples_per_antenna();
   uint32_t get_num_third_stage_samples_per_antenna();
   uint32_t get_sequence_num();
+  double get_driver_initialization_time();
+  double get_sequence_start_time();
+  std::vector<uint32_t> get_slice_ids();
   cudaStream_t get_cuda_stream();
   std::vector<cuComplex> get_beam_phases();
   std::vector<uint32_t> get_beam_direction_counts();
@@ -215,6 +220,15 @@ class DSPCore {
 
   //! A handler for a shared memory section.
   SharedMemoryHandler shm;
+
+  //! Timestamp of when the driver began sampling.
+  double driver_initialization_time;
+
+  //! Timestamp of when the sequence began.
+  double sequence_start_time;
+
+  //! Identifiers for each slice
+  std::vector<uint32_t> slice_ids;
 
   void allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples);
   void allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples);

@@ -6,7 +6,7 @@ message RxSamplesMetadata {
   uint32 sequence_num = 1;
   uint32 numberofreceivesamples = 2;
   double sequence_time = 3;
-  double time_zero = 4;
-  double start_time = 5;
+  double initialization_time = 4;
+  double sequence_start_time = 5;
   uint64 ringbuffer_size = 6;
 }
