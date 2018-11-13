@@ -308,7 +308,7 @@ class Sequence(ScanClassBase):
         sample_times = [first_sample_time + i*sample_time for i in range(0,output_samples_in_sequence)]
         for sample_num, time_s in enumerate(sample_times):
             for pulse_start_stop in pulses_time:
-                if time_s in range(pulse_start_stop[0], pulse_start_stop[1]):
+                if pulse_start_stop[0] <= time_s <= pulse_start_stop[1]:
                     blanks.append(sample_num)
         self.blanks = blanks
         print(self.blanks)
