@@ -14,6 +14,9 @@ from __future__ import print_function
 import sys
 import copy
 import os
+import numpy as np
+import itertools
+from scipy.constants import speed_of_light
 #import pygit2
 
 BOREALISPATH = os.environ['BOREALISPATH']
@@ -182,7 +185,7 @@ seqoffset
     frequencies in the same pulse, etc.
 
 comment 
-    a comment string that will be placed in the iq hdf5 file describing the slice. 
+    a comment string that will be placed in the borealis files describing the slice. 
 
 acf
     flag for rawacf and generation. The default is False.
@@ -207,7 +210,7 @@ Should add:
 scanboundt : time past the hour to start a scan at ?  
 """
 
-hidden_key_set = frozenset(['rxonly', 'clrfrqflag'])
+hidden_key_set = frozenset(['rxonly', 'clrfrqflag', 'slice_interfacing'])
 """
 These are used by the build_scans method (called from the experiment_handler every 
 time the experiment is run). If set by the user, the values will be overwritten and 
@@ -250,7 +253,7 @@ class ExperimentPrototype(object):
 
     __hidden_slice_keys = hidden_key_set
 
-    def __init__(self, cpid):
+    def __init__(self, cpid, comment_string=''):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
@@ -265,6 +268,8 @@ class ExperimentPrototype(object):
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
 
         self.__cpid = cpid
+
+        self.__comment_string = comment_string
 
         self.__slice_dict = {}
 
@@ -317,6 +322,16 @@ class ExperimentPrototype(object):
         """
 
         return self.__cpid
+
+    @property
+    def comment_string(self):
+        """
+        A string related to the experiment, to be placed in the experiment's files.
+
+        This read-only once established in instantiation.
+        """
+
+        return self.__comment_string
 
     @property
     def num_slices(self):
@@ -799,30 +814,6 @@ class ExperimentPrototype(object):
         # # Returns list of scan lists. Each scan list is a list of the slice_ids for the slices
         # # included in that scan.
 
-
-        # for slice_list in self.__slice_id_scan_lists:
-        #     slices_for_scan = {}
-        #     for slice_id in slice_list:
-        #         try:
-        #             slices_for_scan[slice_id] = self.slice_dict[slice_id]
-        #         except KeyError:
-        #             errmsg = 'Error with slice list - slice {} cannot be found.'.format(slice_id)
-        #             raise ExperimentException(errmsg)
-        #
-        #     # Create smaller interfacing dictionary for this scan specifically.
-        #     # This dictionary will only include the slices in this scan, therefore it will not include any SCAN interfacing.
-        #     scan_interface_keys = []
-        #
-        #     nested_class_interface = {}
-        #     for i in itertools.combinations(slice_list, 2):
-        #         # slice_list is sorted so we should have the following effect:
-        #         # combinations([1, 3, 5], 2) --> [1,3], [1,5], [3,5]
-        #         nested_class_interface[tuple(i)] = self.interface[tuple(i)]
-        #
-        #     self.__scan_objects.append(Scan(slice_list, slices_for_scan, nested_class_interface,
-        #                                     self.options))
-        #     # Append a scan instance, passing in the list of slice ids to include in scan.
-
         if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
             print("Number of AveragingPeriods in Scan #1: {}".format(len(self.__scan_objects[
@@ -1134,7 +1125,6 @@ class ExperimentPrototype(object):
                              """.format(freq_range)
                     raise ExperimentException(errmsg)
 
-
     def set_slice_defaults(self, exp_slice):
         """
         Set up defaults in case of some parameters being left blank.
@@ -1195,28 +1185,28 @@ class ExperimentPrototype(object):
 
         if slice_with_defaults['acf']:
             if 'rsep' in exp_slice:
-                if slice_with_defaults['rsep'] != int(slice_with_defaults['pulse_len'] * 3.0/20.0):
+                if slice_with_defaults['rsep'] != int(round(slice_with_defaults['pulse_len'] *
+                                                      speed_of_light/2.0)):
                     # TODO Log warning that rsep is being changed
                     errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
                     print(errmsg)
                     pass
 
-            slice_with_defaults['rsep'] = int(slice_with_defaults['pulse_len'] * 3.0/20.0)
+            slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] *
+                                                      speed_of_light/2.0))
+            # This is the distance travelled by the wave in the length of the pulse, divided by
+            # two because it's an echo (travels there and back).
 
             if 'lag_table' in exp_slice:
                 # Check that lags are valid
                 for lag in exp_slice['lag_table']:
-                    for pulse_position in lag:
-                        if pulse_position not in exp_slice['pulse_sequence']:
-                            errmsg = 'Lag {} not valid; Pulse {} does not exist in ' \
-                                     'sequence'.format(lag, pulse_position)
+                    if not set(np.array(lag).flatten()).issubset(set(exp_slice['pulse_sequence'])):
+                            errmsg = 'Lag {} not valid; One of the pulses does not exist in the ' \
+                                     'sequence'.format(lag)
                             raise ExperimentException(errmsg)
             else:
                 # build lag table from pulse_sequence
-                lag_table = []
-                for index, pulse1 in enumerate(slice_with_defaults['pulse_sequence']):
-                    for pulse2 in slice_with_defaults['pulse_sequence'][index+1:]:
-                        lag_table.append([pulse1, pulse2])
+                lag_table = list(itertools.combinations(slice_with_defaults['pulse_sequence'], 2))
                 lag_table.append([slice_with_defaults['pulse_sequence'][0], slice_with_defaults[
                     'pulse_sequence'][0]])  # lag 0
                 lag_table.append([slice_with_defaults['pulse_sequence'][-1], slice_with_defaults[
@@ -1241,7 +1231,6 @@ class ExperimentPrototype(object):
             slice_with_defaults['comment'] = ''
 
         return slice_with_defaults
-
 
     def setup_slice(self, exp_slice):
         """
@@ -1508,7 +1497,8 @@ class ExperimentPrototype(object):
 
     def check_interfacing(self):
         """
-        Check that the keys in the interface are not NONE and are valid.
+        Check that the keys in the interface are not NONE and are valid. If they are valid,
+        update all slices' slice_interfacing key. This function is called whenever scans are built.
         """
 
         for key, interface_type in self.interface.items():
@@ -1528,3 +1518,26 @@ class ExperimentPrototype(object):
                 errmsg = 'Interfacing Not Valid Type between Slice_id {} and Slice_id {}'.format(
                     num1, num2)
                 sys.exit(errmsg)  # TODO for error handling. Perhaps use exceptions instead.
+
+        # Interfacing is valid - set the slice dictionary's slice_interfacing key.
+        for slice_id in self.slice_ids:
+            self.__slice_dict[slice_id]['slice_interfacing'] = self.get_slice_interfacing(slice_id)
+
+    def get_slice_interfacing(self, slice_id):
+        """
+        Check the experiment's interfacing dictionary for all interfacing that pertains to a
+        given slice, and return that interfacing in a dictionary made specifically for that slice.
+        :param slice_id: Slice ID to search the
+        :return: interfacing dictionary for the slice.
+        """
+
+        slice_interface = {}
+        for keys, interfacing_type in self.interface.items():
+            num1 = keys[0]
+            num2 = keys[1]
+            if num1 == slice_id:
+                slice_interface[num2] = interfacing_type
+            elif num2 == slice_id:
+                slice_interface[num1] = interfacing_type
+
+        return slice_interface
