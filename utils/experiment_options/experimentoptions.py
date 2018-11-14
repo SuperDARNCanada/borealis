@@ -4,25 +4,32 @@
 
 """
 To load the config options to be used by the experiment and radar_control blocks. 
-Config data comes from the config.ini file and the hdw.dat file.
+Config data comes from the config.ini file, the hdw.dat file, and the restrict.dat file.
 """
 
 import json
 import datetime
 import os
 
-python_path = os.environ['PYTHONPATH']
-config_file = python_path + 'config.ini'
-hdw_dat_file = python_path + 'hdw.dat.'
-restricted_freq_file = python_path + 'restrict.dat.'
+from experiment_prototype.experiment_exception import ExperimentException
+
+borealis_path = os.environ['BOREALISPATH']
+config_file = borealis_path + '/config.ini'
+hdw_dat_file = borealis_path + '/hdw.dat.'
+restricted_freq_file = borealis_path + '/restrict.dat.'
 
 class ExperimentOptions:
+    # TODO long init file, consider using multiple functions
     def __init__(self):
         """
-        Create an object of config data for use in the experiment.
+        Create an object of necessary hardware and site parameters for use in the experiment.
         """
-        with open(config_file) as config_data:
-            config = json.load(config_data)
+        try:
+            with open(config_file) as config_data:
+                config = json.load(config_data)
+        except IOError:
+            errmsg = 'Cannot open config file at {}'.format(config_file)
+            raise ExperimentException(errmsg)
         try:
             self.main_antenna_count = int(config['main_antenna_count'])
             self.interferometer_antenna_count = int(config['interferometer_antenna_count'])
@@ -33,7 +40,8 @@ class ExperimentOptions:
             self.max_usrp_dac_amplitude = float(config['max_usrp_dac_amplitude'])
             self.pulse_ramp_time = float(config['pulse_ramp_time'])  # in seconds
             self.tr_window_time = float(config['tr_window_time'])
-            self.output_sample_rate = float(config['third_stage_sample_rate'])  # should use to check iqdata samples
+            self.output_sample_rate = float(
+                config['third_stage_sample_rate'])  # should use to check iqdata samples
             # when adjusting the experiment during operations.
             self.filter_description = {'filter_cutoff': config['third_stage_filter_cutoff'],
                                        'filter_transition': config['third_stage_filter_transition']}
@@ -48,24 +56,44 @@ class ExperimentOptions:
             self.tr_window_time = float(config['tr_window_time'])  # s
             self.atten_window_time_start = float(config['atten_window_time_start'])  # s
             self.atten_window_time_end = float(config['atten_window_time_end'])  # s
-            self.experiment_handler_to_radar_control_address = config['experiment_handler_to_radar_control_address']
-            self.data_to_experiment_socket = config['data_to_experiment_socket']
-            self.radar_control_to_driver_address = config['radar_control_to_driver_address']
-            self.radar_control_to_rx_dsp_address = config['radar_control_to_rx_dsp_address']
-            self.rx_dsp_to_radar_control_ack_address = config['rx_dsp_to_radar_control_ack_address']
-            self.rx_dsp_to_radar_control_timing_address = \
-                config['rx_dsp_to_radar_control_timing_address']
-            # TODO add appropriate timing here after timing is changed - can use to check for pulse spacing minimums
+            self.router_address = config['router_address']
+            self.radctrl_to_exphan_identity = str(config["radctrl_to_exphan_identity"])
+            self.radctrl_to_dsp_identity = str(config["radctrl_to_dsp_identity"])
+            self.radctrl_to_driver_identity = str(config["radctrl_to_driver_identity"])
+            self.radctrl_to_brian_identity = str(config["radctrl_to_brian_identity"])
+            self.driver_to_radctrl_identity = str(config["driver_to_radctrl_identity"])
+            self.driver_to_dsp_identity = str(config["driver_to_dsp_identity"])
+            self.driver_to_brian_identity = str(config["driver_to_brian_identity"])
+            self.exphan_to_radctrl_identity = str(config["exphan_to_radctrl_identity"])
+            self.exphan_to_dsp_identity = str(config["exphan_to_dsp_identity"])
+            self.dsp_to_radctrl_identity = str(config["dsp_to_radctrl_identity"])
+            self.dsp_to_driver_identity = str(config["dsp_to_driver_identity"])
+            self.dsp_to_exphan_identity = str(config["dsp_to_exphan_identity"])
+            self.dsp_to_dw_identity = str(config["dsp_to_dw_identity"])
+            self.dspbegin_to_brian_identity = str(config["dspbegin_to_brian_identity"])
+            self.dspend_to_brian_identity = str(config["dspend_to_brian_identity"])
+            self.dw_to_dsp_identity = str(config["dw_to_dsp_identity"])
+            self.brian_to_radctrl_identity = str(config["brian_to_radctrl_identity"])
+            self.brian_to_driver_identity = str(config["brian_to_driver_identity"])
+            self.brian_to_dspbegin_identity = str(config["brian_to_dspbegin_identity"])
+            self.brian_to_dspend_identity = str(config["brian_to_dspend_identity"])
+
+            # TODO add appropriate signal process maximum time here after timing is changed - can use to check for pulse spacing minimums, pace the driver
         except ValueError as e:
             # TODO: error
             raise e
 
         today = datetime.datetime.today()
-        year_start = datetime.datetime(today.year,1,1,0,0,0,0) # start of the year
+        year_start = datetime.datetime(today.year, 1, 1, 0, 0, 0, 0)  # start of the year
         year_timedelta = today - year_start
 
-        with open(hdw_dat_file + self.site_id) as hdwdata:
-            lines = hdwdata.readlines()
+        try:
+            with open(hdw_dat_file + self.site_id) as hdwdata:
+                lines = hdwdata.readlines()
+        except IOError:
+            errmsg = 'Cannot open hdw.dat.{} file at {}'.format(self.site_id, (hdw_dat_file + self.site_id))
+            raise ExperimentException(errmsg)
+
         lines[:] = [line for line in lines if line[0] != "#"]  # remove comments
         lines[:] = [line for line in lines if len(line.split()) != 0]  # remove blanks
         lines[:] = [line for line in lines if int(line.split()[1]) > today.year or
@@ -89,17 +117,27 @@ class ExperimentOptions:
                         hdw_index = i
             hdw = lines[hdw_index]
         else:
-            hdw = lines[0]
+            try:
+                hdw = lines[0]
+            except IndexError:
+                errmsg = 'Cannot find any valid lines for this time period in the hardware file ' \
+                         '{}'.format((hdw_dat_file + self.site_id))
+                raise ExperimentException(errmsg)
         # we now have the correct line of data.
+
         params = hdw.split()
+        if len(params) != 19:
+            errmsg = 'Found {} parameters in hardware file, expected 19'.format(len(params))
+            raise ExperimentException(errmsg)
+
         self.geo_lat = params[3]  # decimal degrees, S = negative
         self.geo_long = params[4]  # decimal degrees, W = negative
         self.altitude = params[5]  # metres
         self.boresight = params[6]  # degrees from geographic north, CCW = negative.
-        self.beam_sep = params[7]  # degrees TODO is this necessary, or is this a min.
+        self.beam_sep = params[7]  # degrees TODO is this necessary, or is this a min. - for post-processing software in RST? check with others.
         self.velocity_sign = params[8]  # +1.0 or -1.0
         self.analog_rx_attenuator = params[9]  # dB
-        self.tdiff = params[10]
+        self.tdiff = params[10] # ns
         self.phase_sign = params[11]
         self.intf_offset = [float(params[12]), float(params[13]), float(params[14])]  # interferometer offset from
         # midpoint of main, metres [x, y, z] where x is along line of antennas, y is along array
@@ -108,10 +146,16 @@ class ExperimentOptions:
         self.analog_atten_stages = params[16]  # number of stages
         self.max_range_gates = params[17]
         self.max_beams = params[18]  # so a beam number always points in a certain direction
-                        # TODO Is this last one necessary - why don't we specify directions in angle.
+                        # TODO Is this last one necessary - why don't we specify directions in angle. - also for post-processing so check if it applies to Borealis
 
-        with open(restricted_freq_file + self.site_id) as restricted_freq_data:
-            restricted = restricted_freq_data.readlines()
+        try:
+            with open(restricted_freq_file + self.site_id) as restricted_freq_data:
+                restricted = restricted_freq_data.readlines()
+        except IOError:
+            errmsg = 'Cannot open restrict.dat.{} file at {}'.format(self.site_id,
+                                                                (restricted_freq_file + self.site_id))
+            raise ExperimentException(errmsg)
+
         restricted[:] = [line for line in restricted if line[0] != "#"]  # remove comments
         restricted[:] = [line for line in restricted if len(line.split()) != 0]  # remove blanks
 
@@ -131,7 +175,7 @@ class ExperimentOptions:
             if len(splitup) != 2:
                 raise Exception('Problem with Restricted Frequency: A Range Len != 2')
             try:
-                splitup[:] = [int(freq) for freq in splitup]  # convert to ints
+                splitup = [int(float(freq)) for freq in splitup]  # convert to ints
             except ValueError:
                 raise ValueError('Error parsing Restrict.Dat Frequency Ranges, Invalid Literal')
             restricted_range = tuple(splitup)
@@ -174,12 +218,6 @@ class ExperimentOptions:
                     \n    atten_window_time_end = {} \
                     \n    default_freq = {} \
                     \n    restricted_ranges = {} \
-                    \n    experiment_to_control_socket = {} \
-                    \n    data_to_experiment_socket = {} \
-                    \n    radar_control_to_rx_dsp_address = {} \
-                    \n    radar_control_to_driver_address = {} \
-                    \n    rx_dsp_to_radar_control_ack_address = {} \
-                    \n    rx_dsp_to_radar_control_timing_address = {} \
                      """.format(self.main_antenna_count, self.interferometer_antenna_count,
                                 self.main_antenna_spacing, self.interferometer_antenna_spacing,
                                 self.tx_sample_rate, self.rx_sample_rate,
@@ -193,11 +231,6 @@ class ExperimentOptions:
                                 self. minimum_pulse_length, self.minimum_mpinc_length,
                                 self.minimum_pulse_separation, self.tr_window_time,
                                 self.atten_window_time_start, self.atten_window_time_end,
-                                self.default_freq, self.restricted_ranges,
-                                self.experiment_handler_to_radar_control_address,
-                                self.data_to_experiment_socket,
-                                self.radar_control_to_rx_dsp_address,
-                                self.radar_control_to_driver_address,
-                                self.rx_dsp_to_radar_control_ack_address,
-                                self.rx_dsp_to_radar_control_timing_address)
+                                self.default_freq, self.restricted_ranges)
         return return_str
+

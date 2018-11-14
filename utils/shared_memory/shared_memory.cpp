@@ -1,7 +1,6 @@
 #include "utils/shared_memory/shared_memory.hpp"
 #include <iostream>
 boost::interprocess::mapped_region shr_mem_create(std::string name, size_t size) {
-  std::cout << "SHRMEMSIZE: " << size << std::endl;
   boost::interprocess::shared_memory_object::remove(name.c_str());
 
   // Create a shared memory object with read/write privilege.

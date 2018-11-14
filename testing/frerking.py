@@ -159,7 +159,7 @@ for x in range(1, int(fs)):
         number_of_coeff_sets = x
         break
 else: # no break
-    sys.exit(['Error: could not find number of coefficient sets, greater than fs') 
+    sys.exit(['Error: could not find number of coefficient sets, greater than fs'])
 
 if number_of_coeff_sets > pmax:
     sys.exit(['Error: number of coefficient sets required is too large: %d' % number_of_coeff_sets])

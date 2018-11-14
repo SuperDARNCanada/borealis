@@ -39,3 +39,4 @@
 *.swp
 bin/
 build/
+*.dat

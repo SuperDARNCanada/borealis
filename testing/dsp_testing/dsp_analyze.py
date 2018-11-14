@@ -26,8 +26,8 @@ class AnalysisUtils(object):
         fft_to_plot = np.empty([num_samps],dtype=np.complex64)
         halfway = int(math.ceil(float(num_samps)/2))
         fft_to_plot = np.concatenate([fft_samps[halfway:], fft_samps[:halfway]])
-        xf = xf[699900:700100]
-        fft_to_plot = fft_to_plot[699900:700100]
+        #xf = xf[halfway-200:halfway+200]
+        #fft_to_plot = fft_to_plot[halfway-200:halfway+200]
         smpplt.plot(xf, 1.0/num_samps * np.abs(fft_to_plot))
         return fig
 
@@ -51,13 +51,35 @@ class AnalysisUtils(object):
         return samples
 
 
-
 class PlotData(object):
 
     def __init__(self, config):
         self.config = config
 
+    def create_plots(self, filename):
+        with open(filename,'r') as f:
+            data = json.load(f)
 
+        rate = float(config["third_stage_sample_rate"])
+        for dsetk,dsetv in data.iteritems():
+            #for stagek,stagev in dsetv.iteritems():
+            #    if "output_samples" in stagek:
+            #        print("output samples stage")
+            #    else:
+            #        print("Don't know what this stage is: {0}".format(stagek))
+            print("Dataset {0}".format(dsetk))
+            for antk, antv in dsetv.iteritems():
+                print("ant {0}".format(antk))
+                real = antv["real"]
+                imag = antv["imag"]
+                cmplx = np.array(real) + 1.0j * np.array(imag)
+                fig = AnalysisUtils.fft_and_plot(cmplx,rate)
+                plots_directory = "non_bf_iq_plots"
+                output_name = "{0}/{1}.{2}.png".format(plots_directory, dsetk, antk)
+                if not os.path.exists(plots_directory):
+                    os.makedirs(plots_directory)
+                fig.savefig(output_name)
+                plt.close(fig)
 
     def create_debug_plots(self,rf_samples):
         if not os.path.exists('debug_plots'):
@@ -86,6 +108,8 @@ class PlotData(object):
         third_stage_rate = float(config["third_stage_sample_rate"])
         for dsetk,dsetv in data.iteritems():
             for stagek,stagev in dsetv.iteritems():
+                if "output_samples" in stagek:
+                    continue
                 if "stage_1" in stagek:
                     rate = first_stage_rate
                 elif "stage_2" in stagek:
@@ -97,24 +121,27 @@ class PlotData(object):
                     real = antv["real"]
                     imag = antv["imag"]
                     cmplx = np.array(real) + 1.0j * np.array(imag)
-
+                    x = np.arange(len(cmplx))
+                    fig, smpplt = plt.subplots(1,1)
+                    smpplt.plot(x, np.absolute(cmplx))
+                    fig.savefig("debug_plots/cmplx.{0}.{1}.{2}.png".format(dsetk, stagek, antk))
+                    plt.close(fig)
                     fig = AnalysisUtils.fft_and_plot(cmplx,rate)
                     output_name = "debug_plots/{0}.{1}.{2}.png".format(dsetk,stagek,antk)
                     fig.savefig(output_name)
                     plt.close(fig)
 
-def open_binary_samples(file_path,num_antennas):
+def open_binary_samples(file_path, num_antennas):
     samples = np.fromfile(file_path,dtype=np.complex64)
     samples = samples.reshape((num_antennas,-1))
     return samples
 
 
-
-
 if __name__ == "__main__":
 
     file_path = sys.argv[1]
-
+    if len(sys.argv) > 2:
+        output_samples_file = sys.argv[2]
 
     if not os.environ["BOREALISPATH"]:
         raise ValueError("BOREALISPATH env variable not set")
@@ -128,6 +155,7 @@ if __name__ == "__main__":
     total_antennas = int(config["main_antenna_count"]) + int(config["interferometer_antenna_count"])
     rf_samples = open_binary_samples(file_path, total_antennas)
     plotting.create_debug_plots(rf_samples)
+    plotting.create_plots(output_samples_file)
 
 
 

@@ -11,6 +11,8 @@ See LICENSE for details.
 #include <memory>
 #include <string>
 #include <vector>
+#include <chrono>
+#include <cmath>
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
@@ -39,6 +41,7 @@ USRP::USRP(const DriverOptions& driver_options)
                                               driver_options.get_interferometer_antenna_count());*/
   set_time_source(driver_options.get_pps());
   check_ref_locked();
+  set_atr_gpios();
 
 }
 
@@ -288,16 +291,28 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
  * @brief      Sets the USRP time source.
  *
  * @param[in]  source   A string with the time source the USRP will use.
+ *
+ * This uses Juha Vierinen's method of latching to the current time by making sure the clock time
+ * is in a stable place past the second. The USRP is then set to this time.
  */
 void USRP::set_time_source(std::string source)
 {
+  auto tt =  std::chrono::high_resolution_clock::now();
+  auto tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(tt.time_since_epoch());
+  while (tt_sc.count()-std::floor(tt_sc.count()) < 0.2 or
+         tt_sc.count()-std::floor(tt_sc.count()) > 0.3)
+  {
+    tt =  std::chrono::high_resolution_clock::now();
+    tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(tt.time_since_epoch());
+    usleep(10000);
+  }
   if (source == "external"){
     usrp_->set_time_source(source);
-    usrp_->set_time_unknown_pps(uhd::time_spec_t(0.0));
+    usrp_->set_time_unknown_pps(std::ceil(tt_sc.count()) + 1);
   }
   else {
     //TODO(keith): throw error
-    usrp_->set_time_now(0.0);
+    usrp_->set_time_now(uhd::time_spec_t(0.0));
   }
 }
 
@@ -397,6 +412,31 @@ void USRP::clear_tr(uhd::time_spec_t tr_low)
 void USRP::clear_command_times()
 {
   usrp_->clear_command_time();
+}
+
+void USRP::set_atr_gpios()
+{
+  for (int i=0; i<usrp_->get_num_mboards(); i++){
+    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0xFFFF, 0b11111111, i);
+    usrp_->set_gpio_attr(gpio_bank_, "DDR", 0xFFFF, 0b11111111, i);
+
+    //Mirror pins along bank for easier scoping.
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, 0b000000010, i);
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, 0b000000100, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, 0b000001000, i);
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, 0b000010000, i);
+
+    //XX is the actual TR signal
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, 0b000100000, i);
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, 0b001000000, i);
+
+    //0X acts as 'scope sync'
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, 0b010000000, i);
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, 0b100000000, i);
+  }
+
+
 }
 
 /**

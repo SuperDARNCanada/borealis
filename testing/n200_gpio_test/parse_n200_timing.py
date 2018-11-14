@@ -1,12 +1,15 @@
 #! /usr/bin/env python
 
-# Nabbed this class from http://code.activestate.com/recipes/410692/
-# This class provides the functionality we want. You only need to look at
-# this if you want to know how this works. It only needs to be defined
-# once, no need to muck around with its internals.
+# This script takes in a csv exported file from the Saleae Logic software
+# and finds out if the timing passes or fails
+import csv
+import sys
 
-
-class switch(object):
+class Switch(object):
+    # Nabbed this class from http://code.activestate.com/recipes/410692/
+    # This class provides the functionality we want. You only need to look at
+    # this if you want to know how this works. It only needs to be defined
+    # once, no need to muck around with its internals.
     def __init__(self, value):
         self.value = value
         self.fall = False
@@ -27,243 +30,156 @@ class switch(object):
             return False
 
 
-# This script takes in a csv exported file from the Saleae Logic software
-# and finds out if the timing passes or fails 
-import csv
-import sys
-
 # Columns in the csv file correspond to certain information. 
-# There is a timestamp, a scope sync bit, an atten bit, a tr bit and an rf bit.
-##time_index = 0
-##ss_index = 1
-##a_index = 2
-##tr_index = 3
-##rf_index = 4
-
-# This is for the ATR version of the borealis code where we have a SS bit and an ATR bit only
+# There is a timestamp, a pps signal (from octoclock), a tr bit and an rf bit.
 time_index = 0
-ss_index = 1
-atr_index = 2
+pps_index = 1
+tr_index = 2
+rf_index = 3
 
 # The time delays between each of the various events can be programmed, so here we can change them
-# start_delay_us = 49500            # Delay between scope sync low and scope sync high
-# scope_sync_pre_delay_us = 0  # Delay between scope sync high and ATTEN high
-# atten_pre_delay_us = 10       # Delay between ATTEN high and TR high
-# tr_pre_delay_us = 60           # Delay between TR high and RF pulse high
-# rf_pulse_time_us = 300        # How long is the RF pulse?
-# tr_post_delay_us = 40         # Delay between RF low and TR low
-# atten_post_delay_us = 10       # Delay between TR low and ATTEN low
-THRESHOLD_US = 1
-BETWEEN_PULSE_SEQUENCES_THRESHOLD_US = 4000  # threshold for between pulse sequences
-# scope_sync_pre_delay_to_atr_us = 0 # how long between scope sync high and first atr going high?
-atr_pulse_length_us = 320  # How long is the atr pulse ?
-
-# Various items related to scope sync delay
-num_ranges = 75
-rsep_km = 45
-first_range_km = 180
-speed_of_light = 299792458.0
-scope_sync_post_delay_us = (num_ranges * rsep_km + first_range_km) * \
-                           1000.0 * 1000000 * 2.0 / speed_of_light
-print("Scope sync post delay: " + str(scope_sync_post_delay_us) + " us")
+tr_pre_delay_us = 65          # Delay between TR high and RF pulse high
+rf_pulse_time_us = 296.3        # How long is the RF pulse?
+tr_post_delay_us = 58         # Delay between RF low and TR low
+THRESHOLD_US = 3              # What error are we willing to live with?
 
 # Items related to the pulse sequence
 tau_us = 1500
-# pulse_sequence = [0,14,22,24,27,31,42,43]
-# pulse_sequence = [0,5,8,12,18,30,32,33]
-pulse_sequence_8 = [0, 14, 22, 24, 27, 31, 42, 43]
-pulse_sequence = pulse_sequence_8
+pulse_sequence = [0, 14, 22, 24, 27, 31, 42, 43]  # This is the normal 8 pulse sequence
+# pulse_sequence = [0,5,8,12,18,30,32,33]  # This is another 8 pulse sequence, a golomb sequence
 
 # State machine
-# states = ("unknown", "between_sequences", "start_of_sequence", "atten_pre_pulse", "tr_pre_pulse", "pulse", "tr_post_pulse", "atten_post_pulse", "between_pulses", "end_of_sequence")
-states = ("unknown", "between_sequences", "start_of_sequence", "atr_pulse", "between_pulses",
-          "end_of_sequence")  # For ATR
-state = states[0]
-print("state is : " + state)
+states = ("unknown", "between_sequences", "tr_pre_pulse", "pulse",
+          "tr_post_pulse", "between_pulses")
+state = states[0]  # Unknown
 
 # Get the file and read into memory
-test_file = csv.reader(open(sys.argv[1], 'r'), delimiter=',')
+test_file = None
+try:
+    test_file = csv.reader(open(sys.argv[1], 'r'), delimiter=',')
+except IOError as e:
+    print(e)
+    exit(1)
 
 max_time_error_us = 0.0
 timestamp = 0.0
 pulse_num = 0
 num_pulses = len(pulse_sequence)
-for row in test_file:
+
+previous_bits_value = 0
+for row_num, row in enumerate(test_file):
+    # There are 8 possible cases for the 3 bits, so let's just handle them all. The PPS signal is
+    # just recorded for future reference, and the case statements with it high are basically ignored
+    bits_value = (int(row[pps_index]) << pps_index-1)
+    bits_value += (int(row[tr_index]) << tr_index-1)
+    bits_value += (int(row[rf_index]) << rf_index-1)
+    if abs(previous_bits_value - bits_value) == 1:
+        previous_bits_value = bits_value
+        continue
+    previous_bits_value = bits_value
     timestamp_previous = timestamp
     timestamp = float(row[0])
-    ## There are 16 possible cases for the 4 bits, so let's just handle them all
-    # bits_value = (int(row[ss_index]) << ss_index-1)
-    # bits_value += (int(row[a_index]) << a_index-1)
-    # bits_value += (int(row[tr_index]) << tr_index-1)
-    # bits_value += (int(row[rf_index]) << rf_index-1)
-    # There are 4 possible cases for the 2 bits, so handle them all
-    bits_value = (int(row[ss_index]) << ss_index - 1)
-    bits_value += (int(row[atr_index]) << atr_index - 1)
-    print("state: " + state + " pulse number: " + str(pulse_num))
-    print("Bits value : " + str(bits_value))
-    for case in switch(bits_value):
-        if case(0):  # Both ss and atr are low, so we are either at start of sequence or between pulses...
-            if state == states[0]:  # if we are currently in an unknown state, then let's just continue
-                continue
-            elif state == states[1]:  # if we were previously between sequences, then we are now at start of sequence
-                state = states[2]
+    print("\n" + str(row_num) + " State: " + state)
+    print("Pulse number: " + str(pulse_num))
+    print("Bits value : "+str(bits_value))
+
+    for case in Switch(bits_value):
+
+        # TR and RF bits are low, so we are unknown, between sequences or between pulses.
+        # Valid previous states are: unknown and tr_post_pulse
+        if case(0) or case(1):
+            if state == states[0]:  # previous state unknown, so try 'between sequences'
+                state = states[1]  # between_sequences
                 pulse_num = 0
-                timediff = timestamp - timestamp_previous
-                if abs(timediff) > BETWEEN_PULSE_SEQUENCES_THRESHOLD_US:
-                    print "TIMING ERROR: LARGE TIME BETWEEN SEQUENCES: " + str(timediff) + " us"
-            elif state == states[3]:  # previously in atr pulse, now between pulses
-                timediff = timestamp - timestamp_previous
-                time_error_us = (timediff - atr_pulse_length_us / 1000000.0) * 1000000.0
-                if abs(time_error_us) > THRESHOLD_US:
-                    if max_time_error_us < time_error_us:
-                        max_time_error_us = time_error_us
-                    print("TIMING ERROR: ATR PULSE LENGTH: " + str(time_error_us) + " us")
-                    print("Time diff: " + str(timediff * 1000000.0) + " us")
-                if pulse_num == num_pulses - 1:
-                    state = states[5]
+                if __debug__:
+                    print("Starting sequence")
+            elif state == states[4]:  # previous state tr_post_pulse, now between pulses/sequences
+                if pulse_num == num_pulses - 1:  # If we finished the last pulse
+                    state = states[1]  # Now we're between sequences
+                    if __debug__:
+                        print("Starting downtime between sequences")
+                    pulse_num = 0
                 else:
-                    pulse_num += 1
-                    # Between pulses
-                    state = states[4]
-            else:
-                print ("ERROR WITH PULSE SEQUENCE, state was " + state +
-                       " but we now see between pulses or beginning of sequence. Resetting")
-                state == states[0]
-            break
-
-        if case(1):  # Between sequences
-            if state == states[0]:
-                state = states[1]  # Now between sequences if we didn't know before
-            elif state == states[5]:  # End of sequence, so now between sequences
+                    state = states[5]  # Otherwise we're between pulses
+                    if __debug__:
+                        print("Between pulses")
                 timediff = timestamp - timestamp_previous
-                time_error_us = (timediff - scope_sync_post_delay_us / 1000000.0) * 1000000.0
+                time_error_us = (timediff - tr_post_delay_us / 1000000.0) * 1000000.0
                 if abs(time_error_us) > THRESHOLD_US:
                     if max_time_error_us < time_error_us:
                         max_time_error_us = time_error_us
-                    print("TIMING ERROR SS_POST_DELAY: " + str(time_error_us) + " us")
-                    state = states[1]
+                    print("TIMING ERROR TR_POST_DELAY: " + str(time_error_us) + " us")
             else:
                 print ("ERROR WITH PULSE SEQUENCE, state was " + state +
-                       " but we now see only ss high. Resetting")
-                state = states[0]
+                       " but we now see between pulses or sequences. Resetting")
+                state = states[0]  # unknown
+                pulse_num = 0
             break
 
-        if case(2):  # ATR high, ss low, so in a pulse
-            if state == states[0]:
+        # We have just the TR bit high
+        # Valid previous states are unknown, between_sequences, pulse, or between_pulses
+        # Valid states now are tr_pre_pulse or tr_post_pulse
+        if case(2) or case(3):
+            if state == states[0]:  # If we are unknown state just skip this and continue
                 continue
-            elif state == states[1]:  # between sequences, so first pulse now
-                if pulse_num != 0:
-                    print("ERROR: We were between sequences, but pulse number is not 0! Resetting")
-                    state = states[0]
-                    break
+            elif state == states[1]:  # If we were between sequences, now we're starting sequence
+                # TODO: We can calculate time between sequences here if we want
+                # Starting pulse sequence
+                state = states[2]  # tr_pre_pulse
+            elif state == states[3]:  # If we were in a pulse, now we're post pulse
                 timediff = timestamp - timestamp_previous
-                if abs(timediff) > BETWEEN_PULSE_SEQUENCES_THRESHOLD_US:
-                    print "TIMING ERROR: LARGE TIME BETWEEN SEQUENCES: " + str(timediff) + " us"
-                pulse_num += 1
-                state = states[3]  # Still in a pulse
-            elif state == states[4]:  # Between pulses, so in some pulse now
-                if pulse_num == num_pulses - 1:
-                    state = states[5]  # now in end of sequence
-                else:
+                time_error_us = (timediff-rf_pulse_time_us/1000000.0)*1000000.0
+                if abs(time_error_us) > THRESHOLD_US:
+                    if max_time_error_us < time_error_us:
+                        max_time_error_us = time_error_us
+                    print("TIMING ERROR RF PULSE LENGTH: " + str(time_error_us) + " us")
+                    print("Time diff: " + str(timediff*1000000.0) + " us")
+                if pulse_num < num_pulses-1:  # If we haven't finished sequence, increment counter
                     pulse_num += 1
-                    state = states[3]  # Still in a pulse
-                    timediff = timestamp - timestamp_previous
-                    correct_delay_us = tau_us * (pulse_sequence[pulse_num] -
-                                                 pulse_sequence[pulse_num - 1]) - \
-                                       atr_pulse_len_us
-                    time_error_us = (timediff - correct_delay_us / 1000000.0) * 1000000.0
-                    if abs(time_error_us) > THRESHOLD_US:
-                        if max_time_error_us < time_error_us:
-                            max_time_error_us = time_error_us
-                        print("TIMING ERROR between pulses: " + str(time_error_us) + " us")
+                state = states[4]  # tr_post_pulse now
+            elif state == states[5]:  # If we were between pulses, should be tr pre-pulse now
+                timediff = timestamp - timestamp_previous
+                total_pulse_time = tr_post_delay_us + tr_pre_delay_us + rf_pulse_time_us
+                inter_pulse_time = tau_us*(pulse_sequence[pulse_num] - pulse_sequence[pulse_num-1])
+                correct_delay_us = inter_pulse_time - total_pulse_time
+                time_error_us = (timediff - correct_delay_us / 1000000.0) * 1000000.0
+                if abs(time_error_us) > THRESHOLD_US:
+                    if max_time_error_us < time_error_us:
+                        max_time_error_us = time_error_us
+                    print("TIMING ERROR BETWEEN_PULSES: " + str(time_error_us) + " us")
+                state = states[2]  # tr_pre_pulse
             else:
-                print("ERROR WITH PULSE SEQUENCE, state was " + state +
-                      " but we now see both atr and ss high. Resetting")
+                print ("ERROR WITH PULSE SEQUENCE, state was " + state +
+                       " but we now see only TR high. Resetting")
                 state = states[0]
-                break
-
-        if case(3):
-            print ("ERROR: ATR and SS both HIGH. Resetting")
-            state = states[0]
+                pulse_num = 0
             break
-            # atr and ss high,  error
-            # if state == states[0]:
-            #  continue
-            # elif state == states[2]:
-            #  timediff = timestamp - timestamp_previous
-            #  time_error_us = (timediff-scope_sync_pre_delay_us/1000000.0)*1000000.0
-            #  if(abs(time_error_us) > THRESHOLD_US):
-            #    if max_time_error_us < time_error_us:
-            #      max_time_error_us = time_error_us
-            #    print("TIMING ERROR1: " + str(time_error_us) + " us")
-            #  # Pre pulse
-            #  state = states[3]
-            # elif state == states[8]:
-            #  timediff = timestamp - timestamp_previous
-            #  correct_delay_us = tau_us*(pulse_sequence[pulse_num]-pulse_sequence[pulse_num-1]) - tr_post_delay_us - atten_post_delay_us - atten_pre_delay_us - tr_pre_delay_us - rf_pulse_time_us
-            #  time_error_us = (timediff - correct_delay_us/1000000.0)*1000000.0
-            #  if(abs(time_error_us) > THRESHOLD_US):
-            #    if max_time_error_us < time_error_us:
-            #      max_time_error_us = time_error_us
-            #    print("TIMING ERROR2: " + str(time_error_us) + " us")
-            #  # Pre pulse
-            #  state = states[3]
-            # elif state == states[6]:
-            #  timediff = timestamp - timestamp_previous
-            #  time_error_us = (timediff-tr_post_delay_us/1000000.0)*1000000.0
-            #  if(abs(time_error_us) > THRESHOLD_US):
-            #    if max_time_error_us < time_error_us:
-            #      max_time_error_us = time_error_us
-            #    print("TIMING ERROR3: " + str(time_error_us) + " us")
-            #    print("Time diff: " + str(timediff*1000000.0) + " us")
-            #  # Post pulse
-            #  state = states[7]
-            # else:
-            #  print ("ERROR WITH PULSE SEQUENCE, state was "+state+" but we now see atten and ss high. Resetting")
-            #  state == states[0]
-            # break
 
-            # if case(7):
-            #  # Scope sync, atten and tr high - either before or right after a pulse
-            #  if state == states[0]:
-            #    continue
-            #  elif state == states[3]:
-            #    timediff = timestamp - timestamp_previous
-            #    time_error_us = (timediff - atten_pre_delay_us/1000000.0)*1000000.0
-            #    if(abs(time_error_us) > THRESHOLD_US):
-            #      if max_time_error_us < time_error_us:
-            #        max_time_error_us = time_error_us
-            #      print("TIMING ERROR1: " + str(time_error_us) + " us")
-            #    state = states[4]
-            #  elif state == states[5]:
-            #    timediff = timestamp - timestamp_previous
-            #    time_error_us = (timediff - rf_pulse_time_us/1000000.0)*1000000.0
-            #    if(abs(time_error_us) > THRESHOLD_US):
-            #      if max_time_error_us < time_error_us:
-            #        max_time_error_us = time_error_us
-            #      print("TIMING ERROR2: " + str(time_error_us) + " us")
-            #    state = states[6]
-            #  else:
-            #    print ("ERROR WITH PULSE SEQUENCE, state was "+state+" but we now see ss atten and tr high. Resetting")
-            #    state == states[0]
-            #  break
+        # We have just the RF bit high, This is an error condition
+        if case(4) or case(5):
+            # Error, RF high but TR is not
+            print("Error, only RF is high, TR is not!")
+            break
 
-            # if case(15):
-            #  if state == states[0]:
-            #    continue
-            #  elif state == states[4]:
-            #    timediff = timestamp - timestamp_previous
-            #    time_error_us = (timediff - tr_pre_delay_us/1000000.0)*1000000.0
-            #    if(abs(time_error_us) > THRESHOLD_US):
-            #      if max_time_error_us < time_error_us:
-            #        max_time_error_us = time_error_us
-            #      print("TIMING ERROR: " + str(time_error_us) + " us")
-            #    # We now go from tr high to pulse
-            #    state = states[5]
-            #  else:
-            #    # Error
-            #    print("ERROR WITH PULSE SEQUENCE, state was " + state + " but now we see all high. Resetting")
-            #    state = states[0]
-            #  break
-            #
+        # We have the TR and RF bits high, so we are in state 'pulse'
+        # Valid previous states are unknown, or tr_pre_pulse
+        # Valid states now are pulse
+        if case(6) or case(7):
+            if state == states[0]:  # If we are unknown state just skip this and continue
+                continue
+            elif state == states[2]:  # If we were in tr_pre_pulse
+                timediff = timestamp - timestamp_previous
+                time_error_us = (timediff-tr_pre_delay_us/1000000.0)*1000000.0
+                if abs(time_error_us) > THRESHOLD_US:
+                    if max_time_error_us < time_error_us:
+                        max_time_error_us = time_error_us
+                    print("TIMING ERROR TR_PRE_DELAY: " + str(time_error_us) + " us")
+                state = states[3]
+            else:
+                print ("ERROR WITH PULSE SEQUENCE, state was " + state +
+                       " but we now see TR and RF high. Resetting")
+                state = states[0]
+                pulse_num = 0
+            break
+
 print("Max timing error: " + str(max_time_error_us) + " us")

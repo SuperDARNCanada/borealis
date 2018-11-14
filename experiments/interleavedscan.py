@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 # write an experiment that creates a new control program.
-from experiment_prototype import ExperimentPrototype
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
 class Interleavedscan(ExperimentPrototype):
@@ -78,7 +78,7 @@ class Interleavedscan(ExperimentPrototype):
         existing conditions. Talk to us if you have something specific in mind that you're not sure if you can 
         implement here. 
 
-        :param acfdata ??? TBD
+        :param acfdata ? TODO
         :rtype boolean
         :return change_flag, indicating whether the experiment has changed or not. True = change has occurred.
         """  # TODO update with how acfdata will be passed in

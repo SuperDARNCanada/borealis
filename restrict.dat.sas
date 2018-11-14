@@ -1,4 +1,4 @@
-# Restricted frequency table for the standard radar.
+# Restricted frequency table for Saskatoon radar.
 default=13500
 8006 8016
 8071 8081
