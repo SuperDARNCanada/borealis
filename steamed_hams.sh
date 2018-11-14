@@ -19,7 +19,7 @@ if [ "$2" = "release" ]; then
     start_n200driver="sleep 0.001s; source mode "$2"; n200_driver > n200_output.txt; bash"
     start_dsp="sleep 0.001s; source mode "$2"; signal_processing; bash;"
     start_tids="sleep 0.001s; python -O usrp_drivers/n200/set_affinity.py; bash;"
-else
+elif [ "$2" = "debug" ] || [ "$2" = "engineeringdebug" ]; then
     start_brian="python brian/brian.py; bash"
     start_exphan="sleep 0.001s; python experiment_handler/experiment_handler.py "$1" ; bash"
     start_radctrl="sleep 0.001s; python -O radar_control/radar_control.py; bash"
@@ -27,6 +27,9 @@ else
     start_n200driver="sleep 0.001s; source mode "$2" ; gdb -ex start n200_driver; bash"
     start_dsp="sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
     start_tids="sleep 0.001s; python usrp_drivers/n200/set_affinity.py; bash"
+else
+    echo "Mode '$2' is unknown"
+    exit -1
 fi
 
 # Modify screen rc file
