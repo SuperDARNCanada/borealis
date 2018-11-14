@@ -5,7 +5,6 @@
 import csv
 import sys
 
-
 class Switch(object):
     # Nabbed this class from http://code.activestate.com/recipes/410692/
     # This class provides the functionality we want. You only need to look at
@@ -66,6 +65,7 @@ max_time_error_us = 0.0
 timestamp = 0.0
 pulse_num = 0
 num_pulses = len(pulse_sequence)
+
 previous_bits_value = 0
 for row_num, row in enumerate(test_file):
     # There are 8 possible cases for the 3 bits, so let's just handle them all. The PPS signal is
