@@ -304,7 +304,7 @@ class Sequence(ScanClassBase):
             pulse_start_stop = [pulse['pulse_timing_us'], pulse['pulse_timing_us'] + pulse[
                 'pulse_len']]
             pulses_time.append(pulse_start_stop)
-        output_samples_in_sequence = int(self.seqtime/sample_time)
+        output_samples_in_sequence = int(self.seqtime * 1.0e-6/sample_time)
         sample_times = [first_sample_time + i*sample_time for i in range(0,output_samples_in_sequence)]
         for sample_num, time_s in enumerate(sample_times):
             for pulse_start_stop in pulses_time:
