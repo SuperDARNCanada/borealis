@@ -35,7 +35,7 @@ else:
 
 from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
-from datawritemetadata_pb2 import Integration_Time_Metadata
+from datawritemetadata_pb2 import IntegrationTimeMetadata
 
 from sample_building.sample_building import azimuth_to_antenna_offset, create_debug_sequence_samples
 from experiment_prototype.experiment_prototype import ExperimentPrototype
@@ -277,8 +277,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
 
     for sequence_index, sequence in enumerate(sequences):
         sequence_add = packet.sequences.add()
-        for blank in sequence.blanks:
-            sequence_add.blanks.append(blank)
+        sequence_add.blanks = sequence.blanks
         if debug_samples:
             sequence_add.tx_data.txrate = debug_samples[sequence_index]['txrate']
             sequence_add.tx_data.txctrfeq = debug_samples[sequence_index]['txctrfreq']
@@ -296,7 +295,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
             for ant, ant_samples in debug_samples[sequence_index]['decimated_sequence'].items():
                 tx_samples_add = sequence_add.decimated_tx_samples.add()
                 tx_samples_add.real = ant_samples['real']
-                tx_samples_add.imag = ant_samples.imag()['imag']
+                tx_samples_add.imag = ant_samples['imag']
                 tx_samples_add.tx_antenna_number = ant
         for slice_id in sequence.slice_ids:
             rxchan_add = sequence_add.rxchannel.add()

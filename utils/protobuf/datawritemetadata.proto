@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package datawritemetadata;
 
-message Integration_Time_Metadata {
+message IntegrationTimeMetadata {
   uint32 experiment_id = 1;
   string experiment_string = 2;
   repeated SequenceType sequences = 3;
