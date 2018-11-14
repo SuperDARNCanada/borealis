@@ -250,6 +250,7 @@ namespace {
     drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
                      dp->get_num_antennas(), dp->get_rx_freqs().size());
 
+    // For each antenna, for each frequency.
     auto num_samples_after_dropping = output_samples.size()/
                                       (dp->get_num_antennas()*dp->get_rx_freqs().size());
 
@@ -265,10 +266,10 @@ namespace {
     std::vector<cuComplex> beamformed_samples_main(total_beam_dirs * num_samples_after_dropping);
     std::vector<cuComplex> beamformed_samples_intf(total_beam_dirs * num_samples_after_dropping);
 
-    TIMEIT_IF_TRUE_OR_DEBUG(false,"Beamforming time: ", 
+    TIMEIT_IF_TRUE_OR_DEBUG(false,"Beamforming time: ",
       {
       auto beam_phases = dp->get_beam_phases();
-      beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf, 
+      beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf,
                         beam_phases,
                         dp->sig_options.get_main_antenna_count(),
                         dp->sig_options.get_interferometer_antenna_count(),
@@ -301,8 +302,6 @@ namespace {
     };
 
     #ifdef ENGINEERING_DEBUG
-/*      auto rf_ptrs = make_ptrs_vec(dp->get_rf_samples_h(), 1, dp->get_num_antennas(),
-                            dp->get_num_rf_samples());*/
       auto stage_1_ptrs = make_ptrs_vec(dp->get_first_stage_output_h(), dp->get_rx_freqs().size(),
                             dp->get_num_antennas(),dp->get_num_first_stage_samples_per_antenna());
 
@@ -354,6 +353,8 @@ namespace {
       }
 
       }
+      // Keep track of offsets as we move along frequencies. Different frequencies can have
+      // different beams.
       beamformed_offset += beam_direction_counts[i];
 
 
@@ -455,27 +456,27 @@ std::vector<cudaDeviceProp> get_gpu_properties()
  */
 void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
   for(auto i : gpu_properties) {
-    std::cout << "Device name: " << i.name << std::endl;
-    std::cout << "  Max grid size x: " << i.maxGridSize[0] << std::endl;
-    std::cout << "  Max grid size y: " << i.maxGridSize[1] << std::endl;
-    std::cout << "  Max grid size z: " << i.maxGridSize[2] << std::endl;
-    std::cout << "  Max threads per block: " << i.maxThreadsPerBlock
-      << std::endl;
-    std::cout << "  Max size of block dimension x: " << i.maxThreadsDim[0]
-      << std::endl;
-    std::cout << "  Max size of block dimension y: " << i.maxThreadsDim[1]
-      << std::endl;
-    std::cout << "  Max size of block dimension z: " << i.maxThreadsDim[2]
-      << std::endl;
-    std::cout << "  Memory Clock Rate (GHz): " << i.memoryClockRate/1e6
-      << std::endl;
-    std::cout << "  Memory Bus Width (bits): " << i.memoryBusWidth
-      << std::endl;
-    std::cout << "  Peak Memory Bandwidth (GB/s): " <<
-       2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6 << std::endl;
-    std::cout << "  Max shared memory per block: " << i.sharedMemPerBlock
-      << std::endl;
-    std::cout << "  Warpsize: " << i.warpSize << std::endl;
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "Device name: " << i.name);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max grid size x: " << i.maxGridSize[0]);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max grid size y: " << i.maxGridSize[1]);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max grid size z: " << i.maxGridSize[2]);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max threads per block: "
+                << i.maxThreadsPerBlock);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max size of block dimension x: "
+                << i.maxThreadsDim[0]);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max size of block dimension y: "
+                << i.maxThreadsDim[1]);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max size of block dimension z: "
+                << i.maxThreadsDim[2]);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Memory Clock Rate (GHz): "
+                << i.memoryClockRate/1e6);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Memory Bus Width (bits): "
+                << i.memoryBusWidth);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Peak Memory Bandwidth (GB/s): "
+                << 2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max shared memory per block: "
+                << i.sharedMemPerBlock);
+    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Warpsize: " << i.warpSize);
   }
 }
 
@@ -553,18 +554,19 @@ DSPCore::~DSPCore()
  * @brief      Allocates device memory for the RF samples and then copies them to device.
  *
  * @param[in]  total_antennas         The total number of antennas.
- * @param[in]  num_samples_needed     The number samples needed from each antenna ringbuffer.
+ * @param[in]  num_samples_needed     The number of samples needed from each antenna ringbuffer.
  * @param[in]  extra_samples          The number of extra samples needed for filter propagation.
- * @param[in]  time_zero              The time the driver began collecting samples.
- * @param[in]  start_time             The start time of the pulse sequence.
- * @param[in]  ringbuffer_size        The ringbuffer size.
- * @param[in]  first_stage_dm_rate    The first stage dm rate.
- * @param[in]  second_stage_dm_rate   The second stage dm rate.
+ * @param[in]  time_zero              The time the driver began collecting samples. seconds since
+ *                                    epoch.
+ * @param[in]  start_time             The start time of the pulse sequence. seconds since epoch.
+ * @param[in]  ringbuffer_size        The ringbuffer size in number of samples.
+ * @param[in]  first_stage_dm_rate    The first stage decimation rate.
+ * @param[in]  second_stage_dm_rate   The second stage decimation rate.
  * @param      ringbuffer_ptrs_start  A vector of pointers to the start of each antenna ringbuffer.
  *
  * Samples are being stored in a shared memory ringbuffer. This function calculates where to index
  * into the ringbuffer for samples and copies them to the gpu. This function will also copy the
- * samples to a shared memory section that data write, or another process can access in order to 
+ * samples to a shared memory section that data write, or another process can access in order to
  * work with the raw RF samples.
  */
 void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
@@ -592,7 +594,7 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
   }
 
   if ((start_sample + num_samples_needed) > ringbuffer_size) {
-    for (int32_t i=0; i<total_antennas; i++) {
+    for (uint32_t i=0; i<total_antennas; i++) {
       auto first_piece = ringbuffer_size - start_sample;
       auto second_piece = num_samples_needed - first_piece;
 
@@ -617,7 +619,7 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
 
   }
   else {
-    for (int32_t i=0; i<total_antennas; i++) {
+    for (uint32_t i=0; i<total_antennas; i++) {
       auto dest = rf_samples_d + (i*num_samples_needed);
       auto src = ringbuffer_ptrs_start[i] + start_sample;
 
@@ -837,7 +839,7 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
       auto total_output_samples_3 = num_output_samples_per_antenna_3 * rx_freqs.size() *
                                       total_antennas;
 
-      
+
       allocate_and_copy_first_stage_host(total_output_samples_1);
       allocate_and_copy_second_stage_host(total_output_samples_2);
       allocate_and_copy_third_stage_host(total_output_samples_3);
@@ -1158,7 +1160,7 @@ std::vector<uint32_t> DSPCore::get_beam_direction_counts()
  *
  * @return    The shared memory name string.
  */
-std::string DSPCore::get_shared_memory_name() 
+std::string DSPCore::get_shared_memory_name()
 {
   return shm.get_region_name();
 }

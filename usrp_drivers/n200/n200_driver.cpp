@@ -35,6 +35,7 @@
 //Delay needed for before any set_time_commands will work.
 #define SET_TIME_COMMAND_DELAY 2e-3 // seconds
 
+// GPS clock variable. Gets updated every time an RX packet is recvd.
 uhd::time_spec_t box_time;
 
 /**
@@ -175,12 +176,12 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
           sqn_num = driver_packet.sequence_num();
           if (sqn_num != expected_sqn_num){
-            DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: " << 
+            DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: " <<
                         expected_sqn_num);
             //TODO(keith): handle error
           }
 
-          DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " burst flags: SOB "  << driver_packet.sob() << 
+          DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " burst flags: SOB "  << driver_packet.sob() <<
                       " EOB " << driver_packet.eob());
 
           TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " stream set up time: ",
@@ -192,7 +193,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " starting something new");
                 stream_args.channels = tx_channels;
                 tx_stream = usrp_d.get_usrp_tx_stream(stream_args);  // ~10ms per channel
-                
+
                 usrp_channels_set = true;
 
               }
@@ -205,7 +206,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               if (tx_center_freq != driver_packet.txcenterfreq()){
                 if (driver_packet.txcenterfreq() > 0.0 && driver_packet.sob() == true)
                 {
-                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx center freq to " << 
+                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx center freq to " <<
                               driver_packet.txcenterfreq());
                   usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), tx_channels);
                   tx_center_freq_set = true;
@@ -217,7 +218,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               if (rx_center_freq != driver_packet.rxcenterfreq()){
                 if (driver_packet.rxcenterfreq() > 0.0 && driver_packet.sob() == true)
                 {
-                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting rx center freq to " << 
+                  DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting rx center freq to " <<
                               driver_packet.rxcenterfreq());
                   usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), receive_channels);
                   rx_center_freq_set = true;
@@ -267,9 +268,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       continue;
     }
 
+    // Getting usrp box time to find out when to send samples. box_time continously being updated.
     auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
     auto time_now = box_time;
-    auto sequence_start_time = time_now + delay;          
+    auto sequence_start_time = time_now + delay;
 
     TIMEIT_IF_TRUE_OR_DEBUG(true,COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
       [&]() {
@@ -319,7 +321,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                     auto num_samps_to_send = samples_per_pulse - total_samps_sent;
 
 
-                    auto num_samps_sent = tx_stream->send(samples_ptrs, 
+                    auto num_samps_sent = tx_stream->send(samples_ptrs,
                                                           num_samps_to_send, md.get_md()); //TODO(keith): Determine timeout properties.
                     DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples sent " << num_samps_sent);
 
@@ -350,7 +352,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                     acks[async_md.channel]++;
                   }
 
-                  if (async_md.event_code == uhd::async_metadata_t::EVENT_CODE_TIME_ERROR) 
+                  if (async_md.event_code == uhd::async_metadata_t::EVENT_CODE_TIME_ERROR)
                   {
 
                     channel_lates++;
@@ -364,11 +366,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                               " got " << lates[j] << " lates for pulse " << i);
               }
 
-              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num <<" Got " 
-                            << channel_acks << " acks out of " << tx_channels.size() 
+              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num <<" Got "
+                            << channel_acks << " acks out of " << tx_channels.size()
                             << " channels for pulse " << i);
-              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num << " Got " 
-                            << channel_lates << " lates out of " << tx_channels.size() 
+              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num << " Got "
+                            << channel_lates << " lates out of " << tx_channels.size()
                             << " channels for pulse " << i);
               }
           }() //all pulses lambda
@@ -383,7 +385,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
 
-    RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sleep time " << sleep_time.get_real_secs() * 1e6 
+    RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sleep time " << sleep_time.get_real_secs() * 1e6
                   << " us");
 
     if(sleep_time.get_real_secs() > 0.0) {
@@ -544,17 +546,9 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
     auto ringbuffer_idx = true_sample % ringbuffer_size;
 
     for(size_t buffer_idx=0; buffer_idx<buffer_ptrs_start.size(); buffer_idx++){
-      buffer_ptrs[buffer_idx] = buffer_ptrs_start[buffer_idx] + ringbuffer_idx; 
+      buffer_ptrs[buffer_idx] = buffer_ptrs_start[buffer_idx] + ringbuffer_idx;
     }
 
-/*    std::cout << "Timeout count: " << timeout_count << std::endl;
-    std::cout << "Overflow count: " << overflow_count << std::endl;
-    std::cout << "Overflow oos count: " << overflow_oos_count << std::endl;
-    std::cout << "Late count: " << late_count << std::endl;
-    std::cout << "Broken chain count: " << bchain_count << std::endl;
-    std::cout << "Alignment count: " << align_count << std::endl;
-    std::cout << "Bad packet count: " << badp_count << std::endl;
-*/
   }
 
 }
@@ -610,8 +604,7 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   auto set_tid_msg = std::string("SET_TIDS");
   SEND_REQUEST(driver_to_mainaffinity,
                               driver_options.get_mainaffinity_to_driver_identity(), set_tid_msg);
-  auto keep_going = RECV_REPLY(driver_to_mainaffinity,
-                                driver_options.get_mainaffinity_to_driver_identity());
+  RECV_REPLY(driver_to_mainaffinity, driver_options.get_mainaffinity_to_driver_identity());
 
   for (auto& th : threads) {
     th.join();

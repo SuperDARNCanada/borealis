@@ -14,7 +14,7 @@ message ProcessedData {
         repeated ComplexData xcf = 3;
 	uint32 numberofbeams = 4;
         repeated BeamData beamformedsamples = 5;
-        repeated DebugData debugsamples = 7;
+        repeated DebugData debugsamples = 6;
 
 	message BeamData {
 	    uint32 beamnum = 1;

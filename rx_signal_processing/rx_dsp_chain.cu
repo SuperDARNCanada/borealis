@@ -240,7 +240,7 @@ int main(int argc, char **argv){
     dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
                                 rx_metadata.time_zero(), rx_metadata.start_time(),
                                 rx_metadata.ringbuffer_size(), first_stage_dm_rate,
-                                second_stage_dm_rate,ringbuffer_ptrs_start);
+                                second_stage_dm_rate, ringbuffer_ptrs_start);
     dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),
                                                 filters.get_first_stage_bandpass_taps_h().size());
@@ -254,7 +254,7 @@ int main(int argc, char **argv){
     dp->initial_memcpy_callback();
 
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
-      dp->get_first_stage_output_p(),dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
+      dp->get_first_stage_output_p(), dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
       samples_needed, filters.get_first_stage_lowpass_taps().size(),
       rx_freqs.size(), total_antennas, rx_rate, dp->get_frequencies_p(),
       "First stage of decimation", dp->get_cuda_stream());

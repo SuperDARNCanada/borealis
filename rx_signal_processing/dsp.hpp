@@ -54,7 +54,7 @@ class DSPCore {
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num,
-                    std::vector<double> freqs, Filtering *filters, 
+                    std::vector<double> freqs, Filtering *filters,
                     std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts);
   ~DSPCore(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
@@ -198,7 +198,7 @@ class DSPCore {
   //! The number of rf samples per antenna.
   uint32_t num_rf_samples;
 
-  //! The number of first stage samplesper antenna.
+  //! The number of first stage samples per antenna.
   uint32_t num_first_stage_samples_per_antenna;
 
   //! The number of second stage samples per antenna.
