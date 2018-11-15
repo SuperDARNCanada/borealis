@@ -31,31 +31,10 @@ int main(int argc, char **argv){
   GOOGLE_PROTOBUF_VERIFY_VERSION; // Verifies that header and lib are same version.
 
   //TODO(keith): verify config options.
-  //auto driver_options = DriverOptions();
   auto sig_options = SignalProcessingOptions();
   auto rx_rate = sig_options.get_rx_rate(); //Hz
 
 
-
-/*  zmq::socket_t driver_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(driver_socket.bind(sig_options.get_driver_socket_address()))
-
-  //This socket is used to receive metadata about the sequence to process
-  zmq::socket_t radar_control_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(radar_control_socket.bind(sig_options.get_radar_control_socket_address()))
-
-  //This socket is used to acknowledge a completed sequence to radar_control
-  zmq::socket_t ack_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(ack_socket.bind(sig_options.get_ack_socket_address()))
-*/
-  //This socket is used to send the GPU kernel timing to radar_control to know if the processing
-  //can be done in real-time.
-/*  zmq::socket_t timing_socket(sig_proc_context, ZMQ_PAIR);
-  ERR_CHK_ZMQ(timing_socket.bind(sig_options.get_timing_socket_address()))
-
-  zmq::socket_t data_write_socket(sig_proc_context,ZMQ_PAIR);
-  ERR_CHK_ZMQ(data_write_socket.connect(sig_options.get_data_write_address()))
-*/
   zmq::context_t context(1); // 1 is context num. Only need one per program as per examples
   auto identities = {sig_options.get_dsp_radctrl_identity(),
                    sig_options.get_dsp_driver_identity(),
@@ -80,15 +59,7 @@ int main(int argc, char **argv){
   //Check for non integer dm rates
   if (fmod(rx_rate,sig_options.get_first_stage_sample_rate()) > 0.0) {
     //TODO(keith): handle error
-  } //TODO(keith): not sure these checks will work.
-/*  else if (fmod(sig_options.get_first_stage_sample_rate(),
-          sig_options.get_second_stage_sample_rate()) > 0.0) {
-    //TODO(keith): handle error
   }
-  else if(fmod(sig_options.get_second_stage_sample_rate(),
-        sig_options.get_third_stage_sample_rate()) > 0.0) {
-    //TODO(keith): handle error
-  }*/
   else{
     auto float_dm_rate = rx_rate/sig_options.get_first_stage_sample_rate();
     first_stage_dm_rate = static_cast<uint32_t>(float_dm_rate);
@@ -101,6 +72,10 @@ int main(int argc, char **argv){
           sig_options.get_third_stage_sample_rate();
     third_stage_dm_rate = static_cast<uint32_t>(float_dm_rate);
   }
+
+  std::cout << sig_options.get_first_stage_sample_rate() << std::endl;
+  std::cout << sig_options.get_second_stage_sample_rate() << std::endl;
+  std::cout << sig_options.get_third_stage_sample_rate() << std::endl;
 
   RUNTIME_MSG("1st stage dm rate: " << COLOR_YELLOW(first_stage_dm_rate));
   RUNTIME_MSG("2nd stage dm rate: " << COLOR_YELLOW(second_stage_dm_rate));
@@ -132,11 +107,14 @@ int main(int argc, char **argv){
   filters.save_filter_to_file(filters.get_second_stage_lowpass_taps(),"filter2coefficients.dat");
   filters.save_filter_to_file(filters.get_third_stage_lowpass_taps(),"filter3coefficients.dat");
 
+  SharedMemoryHandler shrmem(sig_options.get_ringbuffer_name());
+  std::vector<cuComplex*> ringbuffer_ptrs_start;
+
+  auto first_time = true;
   for(;;){
     //Receive packet from radar control
-
-    auto message =  std::string("Need metadata");
-    SEND_REQUEST(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity(), message);
+    //auto message =  std::string("Need metadata");
+    //SEND_REQUEST(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity(), message);
     auto reply = RECV_REPLY(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity());
 
     sigprocpacket::SigProcPacket sp_packet;
@@ -145,7 +123,7 @@ int main(int argc, char **argv){
     }
 
     //Then receive packet from driver
-    message = std::string("Need data to process");
+    auto message = std::string("Need data to process");
     SEND_REQUEST(dsp_to_driver, sig_options.get_driver_dsp_identity(), message);
     reply = RECV_REPLY(dsp_to_driver, sig_options.get_driver_dsp_identity());
 
@@ -156,6 +134,21 @@ int main(int argc, char **argv){
 
     RUNTIME_MSG("Got driver request for sequence #" << COLOR_RED(rx_metadata.sequence_num()));
 
+    auto total_antennas = sig_options.get_main_antenna_count() +
+                sig_options.get_interferometer_antenna_count();
+
+    if (first_time) {
+      shrmem.open_shr_mem();
+      if (rx_metadata.ringbuffer_size() == 0) {
+        //TODO(keith): handle error
+      }
+      for(uint32_t i=0; i<total_antennas; i++){
+        auto ptr = static_cast<cuComplex*>(shrmem.get_shrmem_addr()) +
+                                              (i * rx_metadata.ringbuffer_size());
+        ringbuffer_ptrs_start.push_back(ptr);
+      }
+      first_time = false;
+    }
     //Verify driver and radar control packets align
     if (sp_packet.sequence_num() != rx_metadata.sequence_num()) {
       //TODO(keith): handle error
@@ -168,42 +161,91 @@ int main(int argc, char **argv){
       //TODO(keith): handle error
     }
     std::vector<double> rx_freqs;
-    for(int i=0; i<sp_packet.rxchannel_size(); i++) {
-      rx_freqs.push_back(sp_packet.rxchannel(i).rxfreq());
+    for(uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
+      rx_freqs.push_back(sp_packet.rxchannel(channel).rxfreq());
     }
 
-    TIMEIT_IF_DEBUG("   NCO mix timing: ",
+
+    // Parse out the beam phases from the radar control signal proc packet.
+    std::vector<cuComplex> beam_phases;
+    std::vector<uint32_t> beam_direction_counts;
+
+    for (uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
+      // In this case each channel is the info for a new RX frequency
+      auto rx_channel = sp_packet.rxchannel(channel);
+
+      // Keep track of the number of beams each RX freq has. We will need this for beamforming.
+      beam_direction_counts.push_back(rx_channel.beam_directions_size());
+
+      // We are going to use two intermediate vectors here to rearrange the phase data so that
+      // all M data comes first, followed by all I data. This way can we directly treat each
+      // block of memory as a matrix for beamforming the individual arrays.
+      std::vector<cuComplex> main_phases;
+      std::vector<cuComplex> intf_phases;
+
+      for (uint32_t beam_num=0; beam_num<rx_channel.beam_directions_size(); beam_num++) {
+        // Go through each beam now and add the phases for each antenna to a vector.
+        auto beam = rx_channel.beam_directions(beam_num);
+
+        for(uint32_t phase_num=0; phase_num<beam.phase_size(); phase_num++) {
+          auto phase = beam.phase(phase_num);
+          cuComplex new_angle;
+          new_angle.x = phase.real_phase();
+          new_angle.y = phase.imag_phase();
+
+          if (phase_num < sig_options.get_main_antenna_count()) {
+            main_phases.push_back(new_angle);
+          }
+          else {
+            intf_phases.push_back(new_angle);
+          }
+        }
+      }
+
+    // Combine the separated antenna phases back into a flat vector.
+    for (auto &phase : main_phases) {
+      beam_phases.push_back(phase);
+    }
+
+    for (auto &phase : intf_phases) {
+      beam_phases.push_back(phase);
+    }
+  }
+
+    TIMEIT_IF_TRUE_OR_DEBUG(false, "   NCO mix timing: ",
       [&]() {
         filters.mix_first_stage_to_bandpass(rx_freqs,rx_rate);
       }()
     );
 
-    if (rx_metadata.shrmemname().empty()){
-      //TODO(keith): handle missing name error
-    }
 
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
-                             sig_options, sp_packet.sequence_num(), rx_metadata.shrmemname(),
-                             rx_freqs, &filters);
+                             sig_options, sp_packet.sequence_num(),
+                             rx_freqs, &filters, beam_phases,
+                             beam_direction_counts);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
     }
 
-    auto total_antennas = sig_options.get_main_antenna_count() +
-                sig_options.get_interferometer_antenna_count();
+      //We need to sample early to account for propagating samples through filters.
+    int64_t extra_samples = (first_stage_dm_rate * second_stage_dm_rate *
+                        filters.get_num_third_stage_taps());
 
-    auto total_samples = rx_metadata.numberofreceivesamples() * total_antennas;
+    auto samples_needed = rx_metadata.numberofreceivesamples() + 2 * extra_samples;
+    auto total_samples = samples_needed * total_antennas;
 
     DEBUG_MSG("   Total samples in data message: " << total_samples);
 
-    dp->allocate_and_copy_rf_samples(total_samples);
+    dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
+                                rx_metadata.time_zero(), rx_metadata.start_time(),
+                                rx_metadata.ringbuffer_size(), first_stage_dm_rate,
+                                second_stage_dm_rate, ringbuffer_ptrs_start);
     dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),
                                                 filters.get_first_stage_bandpass_taps_h().size());
 
-    auto num_output_samples_per_antenna_1 = rx_metadata.numberofreceivesamples()/
-                                              first_stage_dm_rate;
+    auto num_output_samples_per_antenna_1 = samples_needed / first_stage_dm_rate;
     auto total_output_samples_1 = rx_freqs.size() * num_output_samples_per_antenna_1 *
                                    total_antennas;
 
@@ -212,8 +254,8 @@ int main(int argc, char **argv){
     dp->initial_memcpy_callback();
 
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
-      dp->get_first_stage_output_p(),dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
-      rx_metadata.numberofreceivesamples(), filters.get_first_stage_lowpass_taps().size(),
+      dp->get_first_stage_output_p(), dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
+      samples_needed, filters.get_first_stage_lowpass_taps().size(),
       rx_freqs.size(), total_antennas, rx_rate, dp->get_frequencies_p(),
       "First stage of decimation", dp->get_cuda_stream());
 
@@ -261,7 +303,7 @@ int main(int argc, char **argv){
     dp->allocate_and_copy_host_output(total_output_samples_3);
 
     dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
-                                      rx_metadata.numberofreceivesamples(),
+                                      samples_needed,
                                       num_output_samples_per_antenna_1,
                                       num_output_samples_per_antenna_2,
                                       num_output_samples_per_antenna_3);

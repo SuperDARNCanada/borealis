@@ -9,6 +9,8 @@ zypper install -y python-devel
 zypper install -y python-pip 
 pip2 install --upgrade pip
 zypper install -y libX11-devel
+pip2 install deepdish
+pip2 install posix_ipc
 
 #### INSTALL PROTOBUF ####i
 #https://github.com/google/protobuf/blob/master/src/README.md#c-installation---uni 
@@ -54,6 +56,14 @@ cp zmq_addon.hpp /usr/local/include
 cd ../ || exit
 pip2 install zmq
 
+#### INSTALL EIGEN####
+git clone https://github.com/eigenteam/eigen-git-mirror.git
+cd eigen-git-mirror
+mkdir build
+cd build || exit
+cmake ../
+make install
+cd ../../ || exit
 
 #### INSTALL UHD ####
 #http://files.ettus.com/manual/page_build_guide.html

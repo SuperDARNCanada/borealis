@@ -5,30 +5,44 @@
 # Adam Lozinsky
 
 # Title Header.
+
+# ARGS:
+# $1 : experiment module to run, ex. normalscan
+# $2 : run-type, including release, debug, and python-profiling
+
 echo ""
 echo "Project Borealis Booter"
 echo "v2.3-Alpha Season 1 Episode 3"
 echo "-----------------------------------------------------------------------------------"
 
+cp ~/.config/terminator/config.backup ~/.config/terminator/config
 # These are the commands to in each window.
 if [ "$2" = "release" ]; then
-    start_brian="python -O brian/brian.py; bash"
-    start_exphan="sleep 0.001s; python experiment_handler/experiment_handler.py "$1" ; bash;"
-    start_radctrl="sleep 0.001s; python -O radar_control/radar_control.py; bash;"
-    start_datawrite="sleep 0.001s; python -O data_write/data_write.py --file-type=hdf5 --enable-pre-bf-iq --enable-bfiq; bash;"
+    start_brian="python3 -O brian/brian.py; bash"
+    start_exphan="sleep 0.001s; python3 experiment_handler/experiment_handler.py "$1" ; bash;"
+    start_radctrl="sleep 0.001s; python3 -O radar_control/radar_control.py; bash;"
+    start_datawrite="sleep 0.001s; python3 -O data_write/data_write.py --file-type=hdf5 --enable-pre-bf-iq --enable-bfiq; bash;"
     start_n200driver="sleep 0.001s; source mode "$2"; n200_driver > n200_output.txt; bash"
     start_dsp="sleep 0.001s; source mode "$2"; signal_processing; bash;"
-    start_tids="sleep 0.001s; python -O usrp_drivers/n200/set_affinity.py; bash;"
+    start_tids="sleep 0.001s; python3 -O usrp_drivers/n200/set_affinity.py; bash;"
+elif [ "$2" = "python-profiling" ]; then  # uses source mode release for C code.
+    start_brian="python3 -O -m cProfile -o testing/python_testing/brian.cprof brian/brian.py; bash"
+    start_exphan="sleep 0.001s; python3 -O -m cProfile -o testing/python_testing/experiment_handler.cprof experiment_handler/experiment_handler.py "$1" ; bash;"
+    start_radctrl="sleep 0.001s; python3 -O -m cProfile -o testing/python_testing/radar_control.cprof radar_control/radar_control.py; bash;"
+    start_datawrite="sleep 0.001s; python3 -O -m cProfile -o testing/python_testing/data_write.cprof data_write/data_write.py; bash;"
+    start_n200driver="sleep 0.001s; source mode release; n200_driver > n200_output.txt ; read -p 'press enter' "
+    start_dsp="sleep 0.001s; source mode release; signal_processing; bash;"
+    start_tids="sleep 0.001s; python3 -O usrp_drivers/n200/set_affinity.py; bash;" 
 elif [ "$2" = "debug" ] || [ "$2" = "engineeringdebug" ]; then
-    start_brian="python brian/brian.py; bash"
-    start_exphan="sleep 0.001s; python experiment_handler/experiment_handler.py "$1" ; bash"
-    start_radctrl="sleep 0.001s; python -O radar_control/radar_control.py; bash"
-    start_datawrite="sleep 0.001s; python data_write/data_write.py; bash"
+    start_brian="python3 brian/brian.py; bash"
+    start_exphan="sleep 0.001s; python3 experiment_handler/experiment_handler.py "$1" ; bash"
+    start_radctrl="sleep 0.001s; python3 -O radar_control/radar_control.py; bash"
+    start_datawrite="sleep 0.001s; python3 data_write/data_write.py; bash"
     start_n200driver="sleep 0.001s; source mode "$2" ; gdb -ex start n200_driver; bash"
     start_dsp="sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
-    start_tids="sleep 0.001s; python usrp_drivers/n200/set_affinity.py; bash"
+    start_tids="sleep 0.001s; python3 usrp_drivers/n200/set_affinity.py; bash"
 else
-    echo "Mode '$2' is unknown"
+    echo "Mode '$2' is unknown, exiting without running Borealis"
     exit -1
 fi
 

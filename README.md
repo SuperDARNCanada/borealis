@@ -10,6 +10,9 @@ So far we need to have the following things installed (tested on OpenSuSe 42.2).
 * 'pip install protobuf' for python protobuf bindings
 * scons ('zypper in scons' on openSuSe)
 * zmq ('zypper in zeromq-devel' and 'zypper in cppzmq-devel' on openSuSe)
+* 'pip3 install zmq'
+* 'sudo zypper install python3-tk'
+* 'pip3 install matplotlib scipy numpy h5py'
 
 ## Environment
 In order to set up the correct environment, we use a script called 'mode' in the parent directory, in conjunction with scons.
@@ -48,4 +51,5 @@ Now to build Borealis (after 'source mode release/debug'):
 scons -n  (for dry run)
 scons
 
-
+To compile the protobuf (example given for driverpacket):
+protoc -I=$SRC_DIR --python_out=$DST_DIR $SRC_DIR/driverpacket.proto
