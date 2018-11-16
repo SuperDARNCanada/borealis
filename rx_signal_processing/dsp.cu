@@ -331,8 +331,8 @@ namespace {
             auto antenna_samp = antenna_data->add_antennasamples();
             antenna_samp->set_real(data_ptrs[j][k].x);
             antenna_samp->set_imag(data_ptrs[j][k].y);
-          }
-        }
+          } // close loop over samples
+        } // close loop over antennas
       };
 
       // Add our beamformed IQ data to the processed data packet that gets sent to data_write.
@@ -350,9 +350,9 @@ namespace {
             intf_sample->set_real(beamformed_samples_intf[beamformed_offset + sample].x);
             intf_sample->set_imag(beamformed_samples_intf[beamformed_offset + sample].y);
           }
-      }
+        } // close loop over samples.
+      } // close loop over beams.
 
-      }
       // Keep track of offsets as we move along frequencies. Different frequencies can have
       // different beams.
       beamformed_offset += beam_direction_counts[i];
@@ -374,7 +374,7 @@ namespace {
       pd.set_sequence_num(dp->get_sequence_num());
       pd.set_processing_time(dp->get_decimate_timing());
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
-    }
+    } // close loop over frequencies.
 
   }
 
