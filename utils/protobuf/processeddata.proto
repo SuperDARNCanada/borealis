@@ -6,13 +6,21 @@ message ProcessedData {
     uint32 sequence_num = 1;
     repeated OutputDataSet outputdataset = 2; // 1 set for every frequency
     float processing_time = 3;
+    string rf_samples_location = 4;
 
     message OutputDataSet {
         repeated ComplexData mainacf = 1;
         repeated ComplexData intacf = 2;
         repeated ComplexData xcf = 3;
-        repeated ComplexData beamformediqsamples = 4;
-        repeated DebugData debugsamples = 5;
+	uint32 numberofbeams = 4;
+        repeated BeamData beamformedsamples = 5;
+        repeated DebugData debugsamples = 6;
+
+	message BeamData {
+	    uint32 beamnum = 1;
+	    repeated ComplexData mainsamples = 2;
+	    repeated ComplexData intfsamples = 3;
+	}
 
         message DebugData {
             string stagename = 1;

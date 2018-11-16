@@ -113,8 +113,8 @@ namespace {
  */
 __device__ inline cuComplex __shfl_down(cuComplex var, unsigned int srcLane, int width=32){
   float2 a = *reinterpret_cast<float2*>(&var);
-  a.x = __shfl_down(a.x, srcLane, width);
-  a.y = __shfl_down(a.y, srcLane, width);
+  a.x = __shfl_down_sync(0xFFFFFFFF, a.x, srcLane, width);
+  a.y = __shfl_down_sync(0xFFFFFFFF, a.y, srcLane, width);
   return *reinterpret_cast<cuComplex*>(&a);
 }
 

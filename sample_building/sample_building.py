@@ -5,14 +5,15 @@
 # Functions to process and build samples,
 # including getting phase shifts from beam directions,
 # and functions for creating samples
-# as well as plotting them and shifting them
+# as well as shifting them as required.
 
 from scipy.fftpack import fft
 from scipy.constants import speed_of_light
 from scipy.signal import gaussian
 import numpy as np
 import math
-import matplotlib.pyplot as plt
+import json
+from datetime import datetime
 from experiment_prototype.experiment_exception import ExperimentException
 
 def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
@@ -249,68 +250,6 @@ def shift_samples(basic_samples, phshift, amplitude):
     return samples
 
 
-def plot_samples(filename, samplesa, **kwargs):
-    """
-    Plot samples to a file for testing.
-    
-    :param filename: the filename to save the plot as.
-    :param samplesa: Some samples to plot
-    :param kwargs: any more sample arrays to plot.
-    """
-
-    more_samples = dict(kwargs)
-
-    fig, smpplot = plt.subplots(1, 1)
-    smpplot.plot(range(0, samplesa.shape[0]), samplesa)
-    for sample_name, sample_array in more_samples.items():
-        smpplot.plot(range(0, sample_array.shape[0]), sample_array)
-    # plt.ylim([-1, 1])
-    # plt.xlim([0, len(samplesa)])
-    fig.savefig(filename)
-    plt.close(fig)
-
-
-def plot_fft(filename, samplesa, rate):
-    """
-    For plotting the fft of test samples. 
-    
-    Plot the double-sided FFT of the samples in Hz (-fs/2 to +fs/2)
-    
-    :param filename: The filename to save the plot as. 
-    :param samplesa: The time-domain samples to take the fft of.
-    :param rate: The sampling rate that the samples were taken at (Hz).
-    """
-
-    fft_samps = fft(samplesa)
-    T = 1.0 / float(rate)
-    num_samps = len(samplesa)
-    xf = np.linspace(-1.0 / (2.0 * T), 1.0 / (2.0 * T), num_samps)
-    # print len(xf), len(fft_samps)
-    fig, smpplt = plt.subplots(1, 1)
-    fft_to_plot = np.empty([num_samps], dtype=np.complex64)
-    if num_samps % 2 == 1:
-        halfway = (num_samps + 1) / 2
-        for sample in range(halfway, num_samps):
-            fft_to_plot[sample - halfway] = fft_samps[sample]
-            # Move negative samples to start for plot
-        for sample in range(0, halfway):
-            fft_to_plot[sample + halfway - 1] = fft_samps[sample]
-            # Move positive samples at end
-    else:
-        halfway = num_samps / 2
-        for sample in range(halfway, num_samps):
-            fft_to_plot[sample - halfway] = fft_samps[sample]
-            # Move negative samples to start for plot
-        for sample in range(0, halfway):
-            fft_to_plot[sample + halfway] = fft_samps[sample]
-            # Move positive samples at end
-    smpplt.plot(xf, 1.0 / num_samps * np.abs(fft_to_plot))
-    #    plt.xlim([-2500000,-2000000])
-    fig.savefig(filename)
-    plt.close(fig)
-    return None
-
-
 def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_dict, txctrfreq,
                        txrate, options):
     """
@@ -363,7 +302,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
     # complex arrays (one for each possible tx antenna).
 
     #print type(pulse_list[0]), type(pulse_list[0]['samples']), type(pulse_list[0]['samples'][0])
-    plot_samples("samples.png", pulse_list[0]['samples'][0])
+    #plot_samples("samples.png", pulse_list[0]['samples'][0])
 
     # determine how long the combined pulse will be in number of samples, and add the key
     # 'sample_number_start' for all pulses in the pulse_list.
@@ -405,12 +344,8 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
                                                    tr_window_samples))
         combined_samples_tr.append(combined_samples_channel)
 
-    # print(len(combined_samples_tr[0]))
     # Now get what channels we need to transmit on for this combined
     #   pulse.
-    # TODO : figure out - why did I do this I thought we were transmitting zeros on any channels not wanted
-    # TODO : decide which to do. Currently filling the combined_samples[unused_antenna] with an array of zeroes and
-    # also sending the channels that we want to send.
     pulse_channels = []
     for pulse in pulse_list:
         for ant in exp_slices[pulse['slice_id']]['tx_antennas']:
@@ -564,3 +499,100 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
         beams_antenna_phases.append(phase_array)
 
     return beams_antenna_phases
+
+
+def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
+                          file_path, main_antenna_count, final_rx_sample_rate, ssdelay):
+    """
+    Write the samples and transmitted metadata to a json file for use in testing.
+
+    :param txrate: The rate at which these samples will be transmitted at, Hz.
+    :param txctrfreq: The centre frequency that the N200 is tuned to (and will mix with
+     these samples, kHz).
+    :param list_of_pulse_dicts: The list of all pulse dictionaries for pulses included
+    in this sequence. Pulse dictionaries have all metadata and the samples for the
+    pulse.
+    :param file_path: location to place the json file.
+    :param main_antenna_count: The number of antennas available for transmitting on.
+    :param final_rx_sample_rate: The final sample rate after decimating on the receive
+    side (Hz).
+    :param ssdelay: Receiver time of flight for last echo. This is the time to continue
+     receiving after the last pulse is transmitted.
+    :return:
+    """
+
+    # Get full pulse sequence
+    pulse_sequence_us = []
+    sequence_of_samples = [[] for x in range(main_antenna_count)]
+    for pulse_index, pulse_dict in enumerate(list_of_pulse_dicts):
+        pulse_sequence_us.append(pulse_dict['timing'])
+        # Determine the time difference and number of samples between each start of pulse.
+
+    num_samples_list = []
+    pulse_offset_error = []
+    for pulse_index, pulse_time in enumerate(pulse_sequence_us):
+        if pulse_index == 0:
+            continue
+        num_samples = ((pulse_time - pulse_sequence_us[pulse_index - 1]) * txrate) * 1.0e-6
+        error = (num_samples - int(num_samples)) / txrate  # in seconds
+        num_samples = int(num_samples)
+        num_samples_list.append(num_samples)
+        pulse_offset_error.append(error)
+
+    current_pulse_samples = []
+    for pulse_index, pulse_dict in enumerate(list_of_pulse_dicts):
+        if pulse_dict['startofburst'] or not pulse_dict['isarepeat']:
+            current_pulse_samples = pulse_dict['samples_array']
+
+        if pulse_index != len(list_of_pulse_dicts) - 1:  # not the last index
+            # Add in zeros for the correct number of samples - all arrays in
+            # current_pulse_samples are the same length.
+            num_zero_samples = num_samples_list[pulse_index] - len(current_pulse_samples[0])
+        else:
+            num_zero_samples = int(ssdelay * 1.0e-6 * txrate)
+
+        zeros_list = [0.0] * num_zero_samples
+
+        for antenna, samples_array in enumerate(current_pulse_samples):
+            sequence_of_samples[antenna].extend(samples_array)
+            sequence_of_samples[antenna].extend(zeros_list)
+
+    sequence_of_samples = [np.array(samples_array) for samples_array in
+                           sequence_of_samples[:]]
+
+    dm_rate = txrate/final_rx_sample_rate
+    dm_rate_error = dm_rate - int(dm_rate)
+    dm_rate = int(dm_rate)
+
+    # Create a dictionary to encode as json
+    write_dict = {
+        'txrate': txrate,
+        'txctrfreq': txctrfreq,
+        'pulse_sequence_timing': pulse_sequence_us,
+        'sequence_samples': {},
+        'decimated_sequence': {},
+        'pulse_offset_error': pulse_offset_error,
+        'dm_rate_error': dm_rate_error,
+        'dm_rate': dm_rate
+    }
+
+    for ant, samples in enumerate(sequence_of_samples):
+        write_dict['sequence_samples'][ant] = {
+            'real': samples.real.tolist(),
+            'imag': samples.imag.tolist()
+        }
+
+    for ant, samples in enumerate(sequence_of_samples):
+        decimated_samples = samples[::dm_rate]
+        write_dict['decimated_sequence'][ant] = {
+            'real': decimated_samples.real.tolist(),
+            'imag': decimated_samples.imag.tolist()
+        }
+
+    write_time = datetime.now()
+    string_time = write_time.strftime('%Y%m%d.%H%M')
+    write_dict['samples_approx_time'] = string_time
+
+    with open(file_path + string_time + '.json', 'w') as outfile:
+        json.dump(write_dict, outfile)
+

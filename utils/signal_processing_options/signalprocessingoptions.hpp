@@ -35,6 +35,7 @@ class SignalProcessingOptions: public Options {
   std::string get_brian_dspend_identity() const;
   std::string get_exphan_dsp_identity() const;
   std::string get_dw_dsp_identity() const;
+  std::string get_ringbuffer_name() const;
 
  private:
   uint32_t main_antenna_count;
@@ -68,6 +69,7 @@ class SignalProcessingOptions: public Options {
   std::string brian_dspend_identity;
   std::string exphan_dsp_identity;
   std::string dw_dsp_identity;
+  std::string ringbuffer_name;
 
 
 };

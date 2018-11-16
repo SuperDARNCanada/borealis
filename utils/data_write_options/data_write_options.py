@@ -29,7 +29,7 @@ class DataWriteOptions(object):
         config_path = os.environ["BOREALISPATH"] + "/config.ini"
         try:
             with open(config_path, 'r') as config_data:
-                raw_config = json.load(config_data, object_hook=ascii_encode_dict)
+                raw_config = json.load(config_data)
         except IOError:
             errmsg = 'Cannot open config file at {0}'.format(config_path)
             raise IOError(errmsg)
@@ -46,6 +46,8 @@ class DataWriteOptions(object):
         self._atten_window_time_start = float(raw_config["atten_window_time_start"])  # s
         self._atten_window_time_end = float(raw_config["atten_window_time_end"])  # s
         self._router_address = raw_config["router_address"]
+        self._main_antenna_count = int(raw_config["main_antenna_count"])
+        self._intf_antenna_count = int(raw_config["interferometer_antenna_count"])
 
     @property
     def dsp_to_dw_identity(self):
@@ -170,12 +172,34 @@ class DataWriteOptions(object):
     @property
     def router_address(self):
         """
-        Gets the socket address of the router that routes interprocess messages
+        Gets the socket address of the router that routes interprocess messages.
 
-        :return:    socket address of the router that routes interprocess messages
+        :return:    socket address of the router that routes interprocess messages.
         :rtype:     str
         """
         return self._router_address
+
+    @property
+    def main_antenna_count(self):
+        """
+        Gets the number of main array antennas.
+
+        :return:    number of main antennas.
+        :rtype:     int
+        """
+
+        return self._main_antenna_count
+
+    @property
+    def intf_antenna_count(self):
+        """
+        Gets the number of interferometer array antennas.
+
+        :return:    number of interferometer antennas.
+        :rtype:     int
+        """
+
+        return self._intf_antenna_count
 
 if __name__ == '__main__':
     DataWriteOptions()

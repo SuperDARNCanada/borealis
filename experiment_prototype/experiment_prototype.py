@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
     experiment_prototype
@@ -19,12 +19,12 @@ import os
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
-from experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 from sample_building.sample_building import get_wavetables
-import list_tests
+from experiment_prototype import list_tests
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
-from scan_classes.scans import Scan, ScanClassBase
+from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
@@ -267,7 +267,7 @@ class ExperimentPrototype(object):
 
         # Load the config, hardware, and restricted frequency data
         self.__options = ExperimentOptions()
-        self.__txrate = self.__options.tx_sample_rate  # sampling rate, samples per sec.
+        self.__txrate = self.__options.tx_sample_rate  # sampling rate, samples per sec, Hz.
         self.__rxrate = self.__options.rx_sample_rate  # sampling rate for rx in samples per sec
         # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
         # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
@@ -365,7 +365,7 @@ class ExperimentPrototype(object):
         This can change when add_slice, edit_slice, and del_slice are called.
         """
 
-        return self.__slice_dict.keys()
+        return list(self.__slice_dict.keys())
 
     @property
     def options(self):

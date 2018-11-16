@@ -42,7 +42,6 @@ class USRP{
     uhd::time_spec_t get_current_usrp_time();
     uhd::rx_streamer::sptr get_usrp_rx_stream(uhd::stream_args_t stream_args);
     uhd::tx_streamer::sptr get_usrp_tx_stream(uhd::stream_args_t stream_args);
-    //std::vector<size_t> get_receive_channels();
     uhd::usrp::multi_usrp::sptr get_usrp();
     std::string to_string(std::vector<size_t> tx_chs, std::vector<size_t> rx_chs);
 
@@ -65,11 +64,6 @@ class USRP{
     //! The bitmask to use for the TR GPIO.
     uint32_t tr_mask_;
 
-    //! This is the reordered USRP receive channels.
-/*    std::vector<size_t> receive_channels;
-
-    std::vector<size_t> create_receive_channels(uint32_t main_antenna_count,
-                uint32_t interferometer_antenna_count);*/
     void set_atr_gpios();
 
 };
@@ -92,6 +86,7 @@ class TXMetadata{
   private:
     //! A raw USRP TX metadata object.
     uhd::tx_metadata_t md_;
+
 
 };
 

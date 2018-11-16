@@ -6,6 +6,7 @@
 #include <boost/interprocess/file_mapping.hpp>
 #include <string>
 
+std::string random_string( size_t length );
 
 class SharedMemoryHandler {
 
@@ -17,6 +18,7 @@ class SharedMemoryHandler {
         void open_shr_mem();
         void* get_shrmem_addr();
         void remove_shr_mem();
+        std::string get_region_name();
 
     private:
         std::string region_name;

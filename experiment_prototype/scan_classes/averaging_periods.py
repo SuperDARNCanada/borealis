@@ -59,6 +59,12 @@ class AveragingPeriod(ScanClassBase):
         many averages will be transmitted in the aveperiod. If there are multiple 
         sequences in the list, they will be alternated between until the end of the 
         aveperiod.
+    one_pulse_only
+        boolean, True if this averaging period only has one unique set of pulse samples in it.
+        This is true if there is only one sequence in the averaging period, and all pulses after the
+        first pulse in the sequence have the isarepeat key = True. This boolean can be used to
+        speed up the process of sending data to the driver which means we can get more averages
+        in less time.
     """
 
     def __init__(self, ave_keys, ave_slice_dict, ave_interface, options, slice_to_beamorder_dict,
@@ -112,6 +118,8 @@ class AveragingPeriod(ScanClassBase):
 
         for params in self.prep_for_nested_scan_class():
             self.sequences.append(Sequence(*params))
+
+        self.one_pulse_only = False
 
         #for beam_iter in len(beams[self.slice_ids[0]]):
 
@@ -218,4 +226,14 @@ class AveragingPeriod(ScanClassBase):
 
             sequence_dict_list.append(sequence_dict)
 
-            return sequence_dict_list
+        if len(sequence_dict_list) == 1:
+            # only one sequence in the averaging period
+            for pulse_num, pulse_dict in enumerate(sequence_dict_list[0]):
+                if pulse_num == 0:
+                    continue
+                elif pulse_dict['isarepeat'] == False:
+                    break  # there is another unique pulse in the sequence.
+            else:  # no break
+                self.one_pulse_only = True  # there is only one unique pulse in the sequence.
+
+        return sequence_dict_list
