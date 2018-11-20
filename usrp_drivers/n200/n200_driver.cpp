@@ -23,6 +23,7 @@
 #include <thread>
 #include <cstdlib>
 #include <cmath>
+#include <tuple>
 #include "utils/driver_options/driveroptions.hpp"
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/protobuf/driverpacket.pb.h"
@@ -33,7 +34,7 @@
 
 
 //Delay needed for before any set_time_commands will work.
-#define SET_TIME_COMMAND_DELAY 2e-3 // seconds
+#define SET_TIME_COMMAND_DELAY 5e-3 // seconds
 
 // GPS clock variable. Gets updated every time an RX packet is recvd.
 uhd::time_spec_t box_time;
@@ -128,8 +129,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   uhd::tx_streamer::sptr tx_stream;
   uhd::stream_args_t stream_args("fc32", "sc16");
 
-  std::vector<std::vector<std::vector<std::complex<float>>>> samples;
 
+  std::vector<std::vector<std::vector<std::complex<float>>>> pulses;
+  std::vector<std::vector<std::complex<float>>> last_pulse_sent;
 
   uint32_t sqn_num = 0;
   uint32_t expected_sqn_num = 0;
@@ -230,18 +232,20 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
           );
 
+
           TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " sample unpack time: ",
             [&]() {
+              if (driver_packet.sob() == true) 
+              {
+                pulses.clear();
+              }
               //Parse new samples from driver packet if they exist.
               if (driver_packet.channel_samples_size() > 0)
               {  // ~700us to unpack 4x1600 samples
-                if (driver_packet.sob() == true) {
-                  samples.clear();
-                }
-                auto s = make_tx_samples(driver_packet, driver_options);
-                samples.push_back(s);
+                last_pulse_sent = make_tx_samples(driver_packet, driver_options);
                 samples_set = true;
               }
+              pulses.push_back(last_pulse_sent);
             }()
           );
         }();
@@ -258,6 +262,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       );
     }
 
+
     //In order to transmit, these parameters need to be set at least once.
     if ((usrp_channels_set == false) ||
       (tx_center_freq_set == false) ||
@@ -266,6 +271,22 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     {
       // TODO(keith): throw error
       continue;
+    }
+
+    // If grabbing start of vector using samples[i] it doesn't work (samples are firked)
+    // You need to grab the ptr to the vector using samples[a][b].data(). See tx_waveforms
+    // for how to do this properly. Also see uhd::tx_streamer::send(...) in the uhd docs
+    // see 'const buffs_type &'' argument to the send function, the description should read
+    // 'Typedef for a pointer to a single, or a collection of pointers to send buffers'.
+    std::vector<std::vector<std::complex<float> *>> pulse_ptrs(pulses.size());
+    for (uint32_t i=0; i<pulses.size(); i++)
+    {
+      std::vector<std::complex<float> *> ptrs(pulses[i].size());
+      for (uint32_t j=0; j<pulses[i].size(); j++)
+      {
+        ptrs[j] = pulses[i][j].data();
+      }
+      pulse_ptrs[i] = ptrs;
     }
 
     // Getting usrp box time to find out when to send samples. box_time continously being updated.
@@ -289,7 +310,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
         TIMEIT_IF_TRUE_OR_DEBUG(true,COLOR_BLUE("TRANSMIT") << " time to send all samples to USRP: ",
           [&]() {
-            for (uint32_t i=0; i<samples.size(); i++){
+            for (uint32_t i=0; i<pulses.size(); i++){
               auto md = TXMetadata();
               md.set_has_time_spec(true);
               auto time = sequence_start_time + uhd::time_spec_t(time_to_send_samples[i]/1.0e6);
@@ -303,16 +324,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               //This will loop until all samples are sent to the usrp. Send will block until all samples sent
               //or timed out(too many samples to send within timeout period). Send has a default timing of
               //0.1 seconds.
-              auto samples_per_pulse = samples[i][0].size();
-              // If grabbing start of vector using samples[i] it doesn't work (samples are firked)
-              // You need to grab the ptr to the vector using samples[a][b].data(). See tx_waveforms
-              // for how to do this properly. Also see uhd::tx_streamer::send(...) in the uhd docs
-              // see 'const buffs_type &'' argument to the send function, the description should read
-              // 'Typedef for a pointer to a single, or a collection of pointers to send buffers'.
-              std::vector<std::complex<float> *> samples_ptrs(samples[i].size());
-              for (uint32_t j=0; j< samples[i].size(); j++) {
-                samples_ptrs[j] = samples[i][j].data();
-              }
+              auto samples_per_pulse = pulses[i][0].size();
+
               TIMEIT_IF_TRUE_OR_DEBUG(true, COLOR_BLUE("TRANSMIT") << " time to send pulse " << i <<
                                       " to USRP: ",
                 [&]() {
@@ -321,7 +334,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                     auto num_samps_to_send = samples_per_pulse - total_samps_sent;
 
 
-                    auto num_samps_sent = tx_stream->send(samples_ptrs,
+                    auto num_samps_sent = tx_stream->send(pulse_ptrs[i],
                                                           num_samps_to_send, md.get_md()); //TODO(keith): Determine timeout properties.
                     DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " Samples sent " << num_samps_sent);
 
@@ -337,7 +350,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               ); //pulse timeit macro
             }
 
-            for (uint32_t i=0; i<samples.size(); i++) {
+            for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
               std::vector<size_t> acks(tx_channels.size(),0);
               std::vector<size_t> lates(tx_channels.size(),0);
@@ -416,7 +429,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
     expected_sqn_num++;
     more_pulses = true;
-    time_to_send_samples.clear();
     DEBUG_MSG(std::endl << std::endl);
   }
 

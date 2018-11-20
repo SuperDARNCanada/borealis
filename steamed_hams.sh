@@ -36,7 +36,7 @@ elif [ "$2" = "python-profiling" ]; then  # uses source mode release for C code.
 elif [ "$2" = "debug" ] || [ "$2" = "engineeringdebug" ]; then
     start_brian="python3 brian/brian.py; bash"
     start_exphan="sleep 0.001s; python3 experiment_handler/experiment_handler.py "$1" ; bash"
-    start_radctrl="sleep 0.001s; python3 -O radar_control/radar_control.py; bash"
+    start_radctrl="sleep 0.001s; python3 radar_control/radar_control.py; bash"
     start_datawrite="sleep 0.001s; python3 data_write/data_write.py; bash"
     start_n200driver="sleep 0.001s; source mode "$2" ; gdb -ex start n200_driver; bash"
     start_dsp="sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
@@ -52,7 +52,7 @@ sed -i.bak "s#START_BRIAN#$start_brian#; \
             s#START_RADCTRL#$start_radctrl#; \
             s#START_DATAWRITE#$start_datawrite#; \
             s#START_N200DRIVER#$start_n200driver#; \
-            s#START_DSP#$START_DSP#; \
+            s#START_DSP#$start_dsp#; \
             s#START_TIDS#$start_tids#;" borealisscreenrc
 
 # Launch a detached screen with editted layout.

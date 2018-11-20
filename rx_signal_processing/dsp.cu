@@ -25,7 +25,6 @@ See LICENSE for details
 #include "utils/protobuf/sigprocpacket.pb.h"
 #include "utils/protobuf/processeddata.pb.h"
 #include "utils/shared_macros/shared_macros.hpp"
-#include "utils/shared_memory/shared_memory.hpp"
 #include "filtering.hpp"
 //TODO(keith): decide on handing gpu errors
 //TODO(keith): potentially add multigpu support
@@ -456,27 +455,27 @@ std::vector<cudaDeviceProp> get_gpu_properties()
  */
 void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
   for(auto i : gpu_properties) {
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "Device name: " << i.name);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max grid size x: " << i.maxGridSize[0]);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max grid size y: " << i.maxGridSize[1]);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max grid size z: " << i.maxGridSize[2]);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max threads per block: "
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Device name: " << i.name);
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Max grid size x: " << i.maxGridSize[0]);
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Max grid size y: " << i.maxGridSize[1]);
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Max grid size z: " << i.maxGridSize[2]);
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Max threads per block: "
                 << i.maxThreadsPerBlock);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max size of block dimension x: "
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Max size of block dimension x: "
                 << i.maxThreadsDim[0]);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max size of block dimension y: "
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Max size of block dimension y: "
                 << i.maxThreadsDim[1]);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max size of block dimension z: "
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Max size of block dimension z: "
                 << i.maxThreadsDim[2]);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Memory Clock Rate (GHz): "
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Memory Clock Rate (GHz): "
                 << i.memoryClockRate/1e6);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Memory Bus Width (bits): "
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Memory Bus Width (bits): "
                 << i.memoryBusWidth);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Peak Memory Bandwidth (GB/s): "
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Peak Memory Bandwidth (GB/s): "
                 << 2.0*i.memoryClockRate*(i.memoryBusWidth/8)/1.0e6);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Max shared memory per block: "
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Max shared memory per block: "
                 << i.sharedMemPerBlock);
-    RUNTIME_MSG(COLOR_MAGENTA("Signal Processing: ") << "  Warpsize: " << i.warpSize);
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "  Warpsize: " << i.warpSize);
   }
 }
 
@@ -793,8 +792,10 @@ void DSPCore::stop_timing()
   gpuErrchk(cudaEventElapsedTime(&total_process_timing_ms, initial_start, stop));
   gpuErrchk(cudaEventElapsedTime(&decimate_kernel_timing_ms, kernel_start, stop));
   gpuErrchk(cudaEventElapsedTime(&mem_time_ms, initial_start, mem_transfer_end));
-  RUNTIME_MSG("Cuda memcpy time: " << COLOR_GREEN(mem_time_ms) << "ms");
-  RUNTIME_MSG("Decimate time: " << COLOR_GREEN(decimate_kernel_timing_ms) << "ms");
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Cuda memcpy time: " 
+    << COLOR_GREEN(mem_time_ms) << "ms");
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimate time: " 
+    << COLOR_GREEN(decimate_kernel_timing_ms) << "ms");
 
 }
 
