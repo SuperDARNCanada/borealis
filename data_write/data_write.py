@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 # Copyright 2017 SuperDARN Canada
 #
@@ -818,29 +818,3 @@ if __name__ == '__main__':
 
     main()
 
-
-        # def make_file(data_data):
-        #     if __debug__:
-        #         printing("Data received from dsp")
-        #         start = datetime.datetime.utcnow()
-
-        #     pd = processeddata_pb2.ProcessedData()
-        #     pd.ParseFromString(data_data)
-
-        #     dw = DataWrite(pd, options)
-
-        #     start = datetime.datetime.now()
-        #     dw.output_data(write_iq=args.enable_bfiq, write_pre_bf_iq=args.enable_pre_bf_iq,
-        #                     write_raw_rf=args.enable_raw_rf, file_ext=args.file_type,
-        #                     two_hr_file=two_hr_str, write_rawacf=False)
-
-        #     end = datetime.datetime.now()
-        #     diff = end - start
-        #     time = diff.total_seconds() * 1000
-        #     printing("Sequence number: {0}".format(pd.sequence_num))
-        #     printing("Time to process samples: {0} ms".format(pd.processing_time))
-        #     printing("Time to parse + write: {0} ms".format(time))
-
-        # thread = threading.Thread(target=make_file,args=(data,))
-        # thread.daemon = True
-        # thread.start()

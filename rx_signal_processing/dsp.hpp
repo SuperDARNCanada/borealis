@@ -58,6 +58,7 @@ class DSPCore {
                     std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
                     double driver_initialization_time, double sequence_start_time,
                     std::vector<uint32_t> slice_ids);
+
   ~DSPCore(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
   void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
@@ -203,7 +204,7 @@ class DSPCore {
   //! The number of rf samples per antenna.
   uint32_t num_rf_samples;
 
-  //! The number of first stage samplesper antenna.
+  //! The number of first stage samples per antenna.
   uint32_t num_first_stage_samples_per_antenna;
 
   //! The number of second stage samples per antenna.

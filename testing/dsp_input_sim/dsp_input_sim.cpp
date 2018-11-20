@@ -204,10 +204,10 @@ void signals(zmq::context_t &context)
       << std::chrono::duration_cast<std::chrono::milliseconds>(shr_end - shr_start).count()
       << "ms" << std::endl;
 */
-    samples_metadata.set_time_zero(0.0);
+    samples_metadata.set_initialization_time(0.0);
     samples_metadata.set_ringbuffer_size(ringbuffer_size);
     double start_time = (sqn_num + 1) * num_samples / rx_rate;
-    samples_metadata.set_start_time(start_time);
+    samples_metadata.set_sequence_start_time(start_time);
     std::cout << "Sending data with sequence_num: " << sp.sequence_num() << std::endl;
 
    // samples_metadata.set_shrmemname(name_str.c_str());

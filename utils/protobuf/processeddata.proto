@@ -19,6 +19,7 @@ message ProcessedData {
         repeated DebugData debugsamples = 7;
         uint32 slice_id = 8;
 
+
     	message BeamData {
     	    uint32 beamnum = 1;
     	    repeated ComplexData mainsamples = 2;
