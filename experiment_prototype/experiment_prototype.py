@@ -198,8 +198,14 @@ acfint
     False.
 
 rsep
+<<<<<<< HEAD
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct
     value determined by the pulse_len. Used for acfs.
+=======
+    a calculated value from pulse_len. If already set, it will be overwritten to be the correct 
+    value determined by the pulse_len. Used for acfs. This is the range gate separation, 
+    in azimuthal direction, in km.
+>>>>>>> e5e9dfa301e927aa564c8f17565c001c6439ef11
 
 lag_table
     used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
@@ -328,7 +334,7 @@ class ExperimentPrototype(object):
         """
         A string related to the experiment, to be placed in the experiment's files.
 
-        This read-only once established in instantiation.
+        This is read-only once established in instantiation.
         """
 
         return self.__comment_string
@@ -1186,13 +1192,13 @@ class ExperimentPrototype(object):
         if slice_with_defaults['acf']:
             if 'rsep' in exp_slice:
                 if slice_with_defaults['rsep'] != int(round(slice_with_defaults['pulse_len'] *
-                                                      speed_of_light/2.0)):
+                                                            1.0e-6 * speed_of_light/2.0)):
                     # TODO Log warning that rsep is being changed
                     errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
                     print(errmsg)
                     pass
 
-            slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] *
+            slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] * 1.0e-6 *
                                                       speed_of_light/2.0))
             # This is the distance travelled by the wave in the length of the pulse, divided by
             # two because it's an echo (travels there and back).
@@ -1525,7 +1531,7 @@ class ExperimentPrototype(object):
     def get_slice_interfacing(self, slice_id):
         """
         Check the experiment's interfacing dictionary for all interfacing that pertains to a
-        given slice, and return that interfacing in a dictionary made specifically for that slice.
+        given slice, and return the interfacing information in a dictionary.
         :param slice_id: Slice ID to search the
         :return: interfacing dictionary for the slice.
         """

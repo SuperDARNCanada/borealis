@@ -14,6 +14,7 @@ import json
 import collections
 import mmap
 import warnings
+import time
 import multiprocessing as mp
 import subprocess as sp
 import argparse as ap
@@ -145,10 +146,8 @@ class ParseData(object):
                 self._bfiq_available = True
 
                 for beam in data_set.beamformedsamples:
-                    self._bfiq_accumulator['data_descriptors'].append("beam_{}".format(beam))
-
                     cmplx = np.empty(len(beam.mainsamples), dtype=np.complex64)
-                    self._bfiq_accumulator['num_samps'] = len(beam.mainsamples)
+                    self._bfiq_accumulator[slice_id]['num_samps'] = len(beam.mainsamples)
 
                     def add_samples(samples, antenna_arr_type):
                         """Summary TODO
@@ -159,15 +158,14 @@ class ParseData(object):
                         """
 
                         for i, sample in enumerate(samples):
-                            cmplx[i].real = sample.real
-                            cmplx[i].imag = sample.imag
+                            cmplx[i] = sample.real + 1.0j * sample.imag
 
                         # only need to test either real or imag to see if data exists
                         if not 'data' in self._bfiq_accumulator[slice_id][antenna_arr_type]:
                             self._bfiq_accumulator[slice_id][antenna_arr_type]['data'] = cmplx
                         else:
                             arr = self._bfiq_accumulator[slice_id][antenna_arr_type]
-                            arr['data'] = np.concatenate(arr['data'], cmplx)
+                            arr['data'] = np.concatenate((arr['data'], cmplx))
 
                     add_samples(beam.mainsamples, "main")
 
@@ -193,25 +191,25 @@ class ParseData(object):
 
                 # Loops over all filter stage data, one set per stage
                 for debug_samples in data_set.debugsamples:
-
+                    stage_name = debug_samples.stagename
+                    self._pre_bfiq_accumulator[slice_id][stage_name] = collections.OrderedDict()
+                    pre_bfiq_stage = self._pre_bfiq_accumulator[slice_id][stage_name]
                     # Loops over antenna data within stage
                     for ant_num, ant_data in enumerate(debug_samples.antennadata):
                         ant_str = "antenna_{0}".format(ant_num)
-                        stage_name = debug_samples.stagename
 
                         cmplx = np.empty(len(ant_data.antennasamples), dtype=np.complex64)
-                        pre_bfiq_stage = self._pre_bfiq_accumulator[slice_id][stage_name]
                         pre_bfiq_stage["num_samps"] = len(ant_data.antennasamples)
 
-                        for i, sample in ant_data.antennasamples:
-                            cmplx.real[i] = sample.real
-                            cmplx.imag[i] = sample.imag
+                        for i, sample in enumerate(ant_data.antennasamples):
+                            cmplx[i] = sample.real + 1.0j * sample.imag
 
+                        pre_bfiq_stage[ant_str] = {}
                         if not 'data' in pre_bfiq_stage[ant_str]:
                             pre_bfiq_stage[ant_str]['data'] = cmplx
                         else:
                             arr = pre_bfiq_stage[ant_str]
-                            arr['data'] = np.concatenate(arr['data'], cmplx)
+                            arr['data'] = np.concatenate((arr['data'], cmplx))
 
 
         # if pre_bf_iq_available:
@@ -239,8 +237,8 @@ class ParseData(object):
 
         procs = []
 
-        procs.append(mp.Process(target=self.do_bfiq))
-        procs.append(mp.Process(target=self.do_pre_bfiq))
+        self.do_bfiq()
+        self.do_pre_bfiq()
 
         for proc in procs:
             proc.start()
@@ -313,6 +311,10 @@ class ParseData(object):
             set: slice id numbers
         """
         return self._slice_ids
+
+    @property
+    def rawrf_locations(self):
+        return self._rawrf_locations
 
     # def parse_acf(self):
     #     """
@@ -442,7 +444,7 @@ class DataWrite(object):
         super(DataWrite, self).__init__()
         self.options = data_write_options
 
-        self.two_hr_format = "{dt}.{site}.{{ext}}"
+        self.two_hr_format = "{dt}.{site}.{sliceid}.{{ext}}"
 
         self.slice_filenames = {}
 
@@ -507,17 +509,18 @@ class DataWrite(object):
         for slice_id in data_parsing.slice_ids:
             if slice_id not in self.slice_filenames:
                 two_hr_str = self.two_hr_format.format(dt=time_now.strftime("%Y%m%d.%H%M.%S"),
-                                                       site=options.site_id)
+                                                       sliceid=slice_id, site=self.options.site_id)
                 self.slice_filenames[slice_id] = two_hr_str
 
                 self.next_boundary = two_hr_ceiling(time_now)
-            else:
-                if time_now > self.next_boundary:
-                    two_hr_str = self.two_hr_format.format(dt=time_now.strftime("%Y%m%d.%H%M.%S"),
-                                                           site=options.site_id)
-                    self.slice_filenames[slice_id] = two_hr_str
-                    self.next_boundary = two_hr_ceiling(time_now)
 
+        if time_now > self.next_boundary:
+            for slice_id in self.slice_filenames.keys():
+                two_hr_str = self.two_hr_format.format(dt=time_now.strftime("%Y%m%d.%H%M.%S"),
+                                                        sliceid=slice_id,
+                                                        site=self.options.site_id)
+                self.slice_filenames[slice_id] = two_hr_str
+                self.next_boundary = two_hr_ceiling(time_now)
 
 
 
@@ -551,6 +554,7 @@ class DataWrite(object):
                 cmd = 'h5copy -i {newfile} -o {twohr} -s {dtstr} -d {dtstr}'
                 cmd = cmd.format(newfile=location, twohr=full_two_hr_file, dtstr=epoch_milliseconds)
                 sp.call(cmd.split())
+                os.remove(location)
 
             elif file_ext == 'json':
                 write_json_file(location, final_data_dict)
@@ -579,17 +583,17 @@ class DataWrite(object):
 
             """
 
-            bfiq = data_parsing.bfiq_accumlator
+            bfiq = data_parsing.bfiq_accumulator
 
             parameters_holder = {}
             for meta in integration_meta.sequences:
                 for rx_freq in meta.rxchannel:
                     parameters = data_file_classes.iq_data.copy()
 
-                    parameters['borealis_git_hash'] = self.git_hash
+                    parameters['borealis_git_hash'] = self.git_hash.decode('utf-8')
 
                     parameters['timestamp_of_write'] = (time_now - epoch).total_seconds()
-                    parameters['experiment_id'] = integration_meta.experiment_id
+                    parameters['experiment_id'] = np.uint32(integration_meta.experiment_id)
                     parameters['experiment_string'] = integration_meta.experiment_string
                     parameters['station'] = self.options.site_id
                     parameters['timestamp_of_scan'] = data_parsing.timestamps[0]
@@ -598,39 +602,40 @@ class DataWrite(object):
                     speed_of_light = 299792458 #m/s
                     #time to first range and back. convert to meters, div by c then convert to us
                     rtt = (rx_freq.frang * 2 * 1.0e3 / speed_of_light) * 1.0e6
-                    parameters['first_range_rtt'] = int(rtt)
-                    parameters['first_range'] = rx_freq.frang,
+                    parameters['first_range_rtt'] = np.uint32(rtt)
+                    parameters['first_range'] = np.uint32(rx_freq.frang)
                     parameters['rx_sample_rate'] = 0
-                    parameters['scan_start_marker'] = meta.scan_flag # Should this change to scan_start_marker?
-                    parameters['int_time'] = meta.integration_time
-                    parameters['tx_pulse_len'] = rx_freq.pulse_len
-                    parameters['tau_spacing'] = rx_freq.pulse_spacing # should this change to tau_spacing?
-                    parameters['num_pulses'] = len(rx_freq.ptab)
-                    parameters['num_lags'] = len(rx_freq.ltab)
-                    parameters['main_antenna_count'] = self.options.main_antenna_count
-                    parameters['intf_antenna_count'] = self.options.intf_antenna_count
-                    parameters['freq'] = rx_freq.rxfreq
+                    parameters['scan_start_marker'] = integration_meta.scan_flag # Should this change to scan_start_marker?
+                    parameters['int_time'] = np.float32(integration_meta.integration_time)
+                    parameters['tx_pulse_len'] = np.uint32(rx_freq.pulse_len)
+                    parameters['tau_spacing'] = np.uint32(rx_freq.tau_spacing)
+                    parameters['num_pulses'] = np.uint32(len(rx_freq.ptab.pulse_position))
+                    parameters['num_lags'] = np.uint32(len(rx_freq.ltab.lag))
+                    parameters['main_antenna_count'] = np.uint32(self.options.main_antenna_count)
+                    parameters['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
+                    parameters['freq'] = np.uint32(rx_freq.rxfreq)
                     parameters['comment'] = rx_freq.comment_buffer
                     parameters['samples_data_type'] = "complex float"
-                    parameters['pulses'] = []
-                    for pulse in rx_freq.ptab:
-                        parameters['pulses'].append(pulse.pulse_position)
+                    parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
 
-                    parameters['lags'] = []
-                    for lag in rx_freq.ltab:
-                        parameters['lags'].append([lag.pulse_position[0], lag.pulse_position[1]])
+                    lags = []
+                    for lag in rx_freq.ltab.lag:
+                        lags.append([lag.pulse_position[0], lag.pulse_position[1]])
 
-                    parameters['blanked_samples'] = list(meta.blanks)
+                    parameters['lags'] = np.array(lags,dtype=np.uint32)
+
+                    parameters['blanked_samples'] = np.array(meta.blanks,dtype=np.uint32)
 
                     parameters['beam_nums'] = []
                     parameters['beam_azms'] = []
 
                     for beam in rx_freq.beams:
-                        parameters['beam_nums'].append(beam.beamnum)
+                        parameters['beam_nums'].append(np.uint32(beam.beamnum))
                         parameters['beam_azms'].append(beam.beamazimuth)
 
-                    parameters['data_descriptors'] = bfiq['data_descriptors']
+                    parameters['data_descriptors'] = bfiq.pop('data_descriptors', None)
                     parameters_holder[rx_freq.slice_id] = parameters
+
 
             for slice_id in bfiq:
                 parameters = parameters_holder[slice_id]
@@ -643,20 +648,19 @@ class DataWrite(object):
 
                 parameters['sqn_timestamps'] = data_parsing.timestamps
 
-                parameters['data_dimensions'] = [len(bfiq[slice_id].keys()),
+                parameters['num_samps'] = np.uint32(bfiq[slice_id].pop('num_samps', None))
+                parameters['data_dimensions'] = np.array([len(bfiq[slice_id].keys()),
                                                  integration_meta.nave,
-                                                 len(rx_freq.beams),
-                                                 bfiq[slice_id]['num_samps']]
+                                                 len(parameters['beam_nums']),
+                                                 parameters['num_samps']], dtype=np.uint32)
 
                 if bfiq[slice_id]['intf']:
-                    flattened_data = np.concatenate(bfiq[slice_id]['main']['data'],
-                                                    bfiq[slice_id]['intf']['data'])
+                    flattened_data = np.concatenate((bfiq[slice_id]['main']['data'],
+                                                    bfiq[slice_id]['intf']['data']))
                 else:
                     flattened_data = bfiq[slice_id]['main']['data']
 
-                flattened_data = np.void(flattened_data)
                 parameters['data'] = flattened_data
-
 
 
             for slice_id, parameters in parameters_holder.items():
@@ -664,6 +668,7 @@ class DataWrite(object):
                 output_file = dataset_location.format(name=name)
 
                 two_hr_file_with_type = self.slice_filenames[slice_id].format(ext="bfiq")
+
                 write_file(output_file, parameters, two_hr_file_with_type)
 
 
@@ -673,12 +678,98 @@ class DataWrite(object):
             All variables are captured.
             """
 
-            if pre_bf_iq_available:
-                name = dataset_name.format(dformat="iq")
-                output_file = dataset_location.format(name=name)
+            pre_bfiq = data_parsing.pre_bfiq_accumulator
 
-                two_hr_file_with_type = two_hr_file.format(ext="iq")
-                write_file(output_file, iq_pre_bf_data_dict, two_hr_file_with_type)
+            parameters_holder = {}
+            for meta in integration_meta.sequences:
+                for rx_freq in meta.rxchannel:
+                    parameters = data_file_classes.iq_data.copy()
+
+                    parameters['borealis_git_hash'] = self.git_hash.decode('utf-8')
+
+                    parameters['timestamp_of_write'] = (time_now - epoch).total_seconds()
+                    parameters['experiment_id'] = np.uint32(integration_meta.experiment_id)
+                    parameters['experiment_string'] = integration_meta.experiment_string
+                    parameters['station'] = self.options.site_id
+                    parameters['timestamp_of_scan'] = data_parsing.timestamps[0]
+                    parameters['num_sequences'] = integration_meta.nave
+
+                    speed_of_light = 299792458 #m/s
+                    #time to first range and back. convert to meters, div by c then convert to us
+                    rtt = (rx_freq.frang * 2 * 1.0e3 / speed_of_light) * 1.0e6
+                    parameters['first_range_rtt'] = np.uint32(rtt)
+                    parameters['first_range'] = np.uint32(rx_freq.frang)
+                    parameters['rx_sample_rate'] = 0
+                    parameters['scan_start_marker'] = integration_meta.scan_flag # Should this change to scan_start_marker?
+                    parameters['int_time'] = np.float32(integration_meta.integration_time)
+                    parameters['tx_pulse_len'] = np.uint32(rx_freq.pulse_len)
+                    parameters['tau_spacing'] = np.uint32(rx_freq.tau_spacing)
+                    parameters['num_pulses'] = np.uint32(len(rx_freq.ptab.pulse_position))
+                    parameters['num_lags'] = np.uint32(len(rx_freq.ltab.lag))
+                    parameters['main_antenna_count'] = np.uint32(self.options.main_antenna_count)
+                    parameters['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
+                    parameters['freq'] = np.uint32(rx_freq.rxfreq)
+                    parameters['comment'] = rx_freq.comment_buffer
+                    parameters['samples_data_type'] = "complex float"
+                    parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
+
+                    lags = []
+                    for lag in rx_freq.ltab.lag:
+                        lags.append([lag.pulse_position[0], lag.pulse_position[1]])
+
+                    parameters['lags'] = np.array(lags,dtype=np.uint32)
+
+                    parameters['blanked_samples'] = np.array(meta.blanks,dtype=np.uint32)
+
+                    parameters['beam_nums'] = []
+                    parameters['beam_azms'] = []
+
+                    for beam in rx_freq.beams:
+                        parameters['beam_nums'].append(np.uint32(beam.beamnum))
+                        parameters['beam_azms'].append(beam.beamazimuth)
+
+                    parameters['data_descriptors'] = pre_bfiq.pop('data_descriptors', None)
+                    parameters_holder[rx_freq.slice_id] = parameters
+
+
+            final_data_params = {}
+            for slice_id in pre_bfiq:
+                final_data_params[slice_id] = {}
+
+                for stage in pre_bfiq[slice_id]:
+                    parameters = parameters_holder[slice_id].copy()
+
+                    parameters['sqn_timestamps'] = data_parsing.timestamps
+
+                    parameters['num_samps'] = np.uint32(
+                                                pre_bfiq[slice_id][stage].pop('num_samps', None))
+                    parameters['data_dimensions'] = np.array([len(pre_bfiq[slice_id][stage].keys()),
+                                                     integration_meta.nave,
+                                                     len(parameters['beam_nums']),
+                                                     parameters['num_samps']], dtype=np.uint32)
+
+                    parameters['antenna_arrays_order'] = list(pre_bfiq[slice_id][stage].keys())
+
+                    data = []
+                    for ant, data_dict in pre_bfiq[slice_id][stage].items():
+                        data.append(data_dict['data'])
+
+                    flattened_data = np.concatenate(data)
+                    parameters['data'] = flattened_data
+
+                    final_data_params[slice_id][stage] = parameters
+
+
+            for slice_id, slices in final_data_params.items():
+                for stage, params in slices.items():
+                    name = dataset_name.format(sliceid=slice_id, dformat="{}.iq".format(stage))
+                    output_file = dataset_location.format(name=name)
+
+                    ext = "{}.iq".format(stage)
+                    two_hr_file_with_type = self.slice_filenames[slice_id].format(ext=ext)
+
+                    write_file(output_file, params, two_hr_file_with_type)
+
 
 
 
@@ -768,11 +859,12 @@ def main():
         printing("Socket connected")
 
     data_parsing = ParseData()
-    final_integration = None
+    final_integration = sys.maxsize
     integration_meta = None
 
     current_experiment = None
     data_write = None
+    first_time = True
     while True:
         try:
             # Send a request for data to dsp. The actual message doesn't matter, so use 'Request'
@@ -783,35 +875,47 @@ def main():
 
 
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
-            data = so.recv_data(dsp_to_data_write, options.dsp_to_dw_identity, printing)
+            data = so.recv_bytes(dsp_to_data_write, options.dsp_to_dw_identity, printing)
 
-            if data_parsing.sequence_num > final_integration:
+            if not first_time:
+                if data_parsing.sequence_num == final_integration:
 
-                if integration_meta.experiment_string != current_experiment:
-                    data_write = DataWrite(options)
-                    current_experiment = integration_meta.experiment_string
+                    if integration_meta.experiment_string != current_experiment:
+                        data_write = DataWrite(options)
+                        current_experiment = integration_meta.experiment_string
 
-                data_write.output_data(write_bfiq=args.enable_bfiq,
-                                       write_pre_bfiq=args.enable_pre_bfiq,
-                                       write_raw_rf=args.enable_raw_rf,
-                                       file_ext=args.file_type,
-                                       integration_meta=integration_meta,
-                                       data_parsing=data_parsing,
-                                       write_rawacf=False)
+                    start = time.time()
+                    data_write.output_data(write_bfiq=args.enable_bfiq,
+                                           write_pre_bfiq=args.enable_pre_bfiq,
+                                           write_raw_rf=args.enable_raw_rf,
+                                           file_ext=args.file_type,
+                                           integration_meta=integration_meta,
+                                           data_parsing=data_parsing,
+                                           write_rawacf=False)
+                    end = time.time()
+                    printing("Time to write: {} ms".format((end-start)*1000))
 
-                data_parsing = ParseData()
+                    data_parsing = ParseData()
+
+
+
+
+            first_time = False
+
+            start = time.time()
+            data_parsing.update(data)
+            end = time.time()
+            printing("Time to parse: {} ms".format((end-start)*1000))
 
 
         if radctrl_to_data_write in socks and socks[radctrl_to_data_write] == zmq.POLLIN:
-            data = so.recv_data(radctrl_to_data_write, options.dsp_to_dw_identity, printing)
+            data = so.recv_data(radctrl_to_data_write, options.radctrl_to_dw_identity, printing)
 
-            integration_meta = datawritemetadata_pb2.Integration_Time_Metadata()
+            integration_meta = datawritemetadata_pb2.IntegrationTimeMetadata()
             integration_meta.ParseFromString(data)
 
             final_integration = integration_meta.last_seqn_num
 
-
-        data_parsing.update(data)
 
 
 if __name__ == '__main__':

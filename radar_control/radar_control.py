@@ -36,7 +36,7 @@ else:
 
 from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
-from datawritemetadata_pb2 import Integration_Time_Metadata
+from datawritemetadata_pb2 import IntegrationTimeMetadata
 
 from sample_building.sample_building import azimuth_to_antenna_offset, create_debug_sequence_samples
 from experiment_prototype.experiment_prototype import ExperimentPrototype
@@ -252,7 +252,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                             experiment_id, experiment_string, debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
-    :param packet: The Integration_Time_Metadata protobuf packet.
+    :param packet: The IntegrationTimeMetadata protobuf packet.
     :param radctrl_to_datawrite: The socket to send the packet on.
     :param datawrite_radctrl_iden: Identity of datawrite on the socket.
     :param seqnum: The last sequence number (identifier) that is valid for this integration
@@ -282,12 +282,12 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     packet.nave = nave
     packet.last_seqn_num = seqnum
     packet.scan_flag = scan_flag
-    packet.integration_time = inttime
+
+    packet.integration_time = inttime.total_seconds()
 
     for sequence_index, sequence in enumerate(sequences):
         sequence_add = packet.sequences.add()
-        for blank in sequence.blanks:
-            sequence_add.blanks.append(blank)
+        sequence_add.blanks[:] = sequence.blanks
         if debug_samples:
             sequence_add.tx_data.txrate = debug_samples[sequence_index]['txrate']
             sequence_add.tx_data.txctrfeq = debug_samples[sequence_index]['txctrfreq']
@@ -297,15 +297,15 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 'pulse_offset_error']
             for ant, ant_samples in debug_samples[sequence_index]['sequence_samples'].items():
                 tx_samples_add = sequence_add.tx_samples.add()
-                tx_samples_add.real = ant_samples['real']
-                tx_samples_add.imag = ant_samples['imag']
+                tx_samples_add.real[:] = ant_samples['real']
+                tx_samples_add.imag[:] = ant_samples['imag']
                 tx_samples_add.tx_antenna_number = ant
             sequence_add.tx_data.dmrate = debug_samples[sequence_index]['dmrate']
             sequence_add.tx_data.dmrate_error = debug_samples[sequence_index]['dmrate_error']
             for ant, ant_samples in debug_samples[sequence_index]['decimated_sequence'].items():
                 tx_samples_add = sequence_add.decimated_tx_samples.add()
-                tx_samples_add.real = ant_samples['real']
-                tx_samples_add.imag = ant_samples.imag()['imag']
+                tx_samples_add.real[:] = ant_samples['real']
+                tx_samples_add.imag[:] = ant_samples['imag']
                 tx_samples_add.tx_antenna_number = ant
         for slice_id in sequence.slice_ids:
             rxchan_add = sequence_add.rxchannel.add()
@@ -316,15 +316,22 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
             beamdirs = beamdir_dict[slice_id]
             for index, beamdir in enumerate(beamdirs):
                 beam = rxchan_add.beams.add()
-                beam.beamnum = sequence.slice_dict[slice_id]["beam_order"].index(beamdir)
+                beam.beamnum = sequence.slice_dict[slice_id]["beam_angle"].index(beamdir)
                 beam.beamazimuth = beamdir
 
             rxchan_add.rx_only = sequence.slice_dict[slice_id]['rxonly']
             rxchan_add.pulse_len = sequence.slice_dict[slice_id]['pulse_len']
             rxchan_add.tau_spacing = sequence.slice_dict[slice_id]['mpinc']
-            rxchan_add.rxfreq = sequence.slice_dict[slice_id]['rxfreq']
-            for pulse in sequence.slice_dict[slice_id]['pulse_sequence']:
-                rxchan_add.ptab.append(pulse)
+            if sequence.slice_dict[slice_id]['rxonly']:
+                rxchan_add.rxfreq = sequence.slice_dict[slice_id]['rxfreq']
+            else:
+                rxchan_add.rxfreq = sequence.slice_dict[slice_id]['txfreq']
+
+            #pulse_add = rxchan_add.ptab.pulse_position.add()
+
+            rxchan_add.ptab.pulse_position[:] = sequence.slice_dict[slice_id]['pulse_sequence']
+
+
             if sequence.slice_dict[slice_id]['acf']:
                 rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
@@ -366,7 +373,7 @@ def radar():
     # Initialize driverpacket.
     driverpacket = DriverPacket()
     sigprocpacket = SigProcPacket()
-    integration_time_packet = Integration_Time_Metadata()
+    integration_time_packet = IntegrationTimeMetadata()
 
     # Get config options.
     options = ExperimentOptions()
@@ -512,6 +519,8 @@ def radar():
                         thread_started = datetime.utcnow()
                         time_to_start_thread = thread_started - start_thread
                         print("time to start thread: {}".format(time_to_start_thread))
+                    else:
+                        debug_samples = None
 
                     integration_period_start_time = datetime.utcnow()  # ms
                     # all phases are set up for this averaging period for the beams required. Time to start averaging
