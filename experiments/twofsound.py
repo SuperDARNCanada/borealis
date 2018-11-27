@@ -16,8 +16,8 @@ class Twofsound(ExperimentPrototype):
         cpid = 3503
         super(Twofsound, self).__init__(cpid)
 
-        tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14]
-        rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14]
+        tx_ant = [0]
+        rx_main_ant = [0]
         rx_int_ant = [0]
         self.add_slice({  # slice_id = 0, the first slice
             "tx_antennas": tx_ant,
@@ -42,8 +42,8 @@ class Twofsound(ExperimentPrototype):
             # kHz including a clrfrqrange overrides rxfreq and txfreq so these are no
             # longer necessary as they will be set by the frequency chosen from the
             # range.
-            "xcf": True,  # cross-correlation processing
-            "acfint": True,  # interferometer acfs
+            #"xcf": True,  # cross-correlation processing
+            #"acfint": True,  # interferometer acfs
         })
 
         self.add_slice({  # slice_id = 1
@@ -66,8 +66,8 @@ class Twofsound(ExperimentPrototype):
             #"clrfrqflag": True,  # search for clear frequency before transmitting
             #"clrfrqrange": [10200, 10500],  # range for clear frequency search, kHz
             "txfreq": 14500,
-            "xcf": True,  # cross-correlation processing
-            "acfint": True,  # interferometer acfs
+            #"xcf": True,  # cross-correlation processing
+            #"acfint": True,  # interferometer acfs
         }, interfacing_dict={0: 'SCAN'})
 
         # Other things you can change if you wish. You may want to discuss with us about

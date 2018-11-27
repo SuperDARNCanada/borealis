@@ -160,7 +160,7 @@ def radar_control(context=None):
         sigp.sequence_num = count
         count += 1
 
-        
+
         #Brian requests sequence metadata for timeouts
         request = recv_request(radar_control_to_brian, BRIAN_RADCTRL_IDEN, printing)
         request_output = "Brian requested -> {}".format(request)
@@ -171,9 +171,6 @@ def radar_control(context=None):
         middle = time.time()
         printing("brian time {}".format(middle-start))
         #Radar control receives request for metadata from DSP
-        #request = recv_request(radar_control_to_dsp, DSP_RADCTRL_IDEN, printing)
-        # request_output = "DSP requested -> {}".format(request)
-        # printing(request_output)
 
         send_reply(radar_control_to_dsp, DSP_RADCTRL_IDEN, sigp.SerializeToString())
 
@@ -492,7 +489,7 @@ def sequence_timing():
                 send_request(brian_to_radar_control, RADCTRL_BRIAN_IDEN, "Requesting metadata")
                 want_to_start = good_to_start = False
                 dsp_finish_counter -= 1
-                
+
 
             message = start_new.recv()
             if message == "want_to_start":
@@ -518,8 +515,8 @@ def sequence_timing():
 
     first_time = True
     processing_done = True
-    
-    
+
+
 
     while True:
 
@@ -550,9 +547,9 @@ def sequence_timing():
             printing("Requesting work begins from DSP")
             send_request(brian_to_dsp_begin, DSPBEGIN_BRIAN_IDEN, "Requesting work begins")
             #acknowledge we want to start something new
-            start_new_sock.send("want_to_start")           
+            start_new_sock.send("want_to_start")
 
-            
+
         if brian_to_radar_control in socks and socks[brian_to_radar_control] == zmq.POLLIN:
 
             #Get new sequence metadata from radar control
@@ -573,8 +570,6 @@ def sequence_timing():
 
         if brian_to_dsp_begin in socks and socks[brian_to_dsp_begin] == zmq.POLLIN:
 
-            #def dspb_f():
-
             #Get acknowledgement that work began in processing.
             reply = recv_reply(brian_to_dsp_begin, DSPBEGIN_BRIAN_IDEN, printing)
             reply_output = "Dsp sent -> {}".format(reply)
@@ -586,16 +581,10 @@ def sequence_timing():
 
             #acknowledge that we are good and able to start something new
             start_new_sock.send("good_to_start")
-                
 
-
-            # dspb_t = threading.Thread(target=dspb_f)
-            # dspb_t.daemon = True
-            # dspb_t.start()
 
         if brian_to_dsp_end in socks and socks[brian_to_dsp_end] == zmq.POLLIN:
 
-            #def dspe_f():
             global late_counter
                 #Receive ack that work finished on previous sequence.
             reply = recv_reply(brian_to_dsp_end, DSPEND_BRIAN_IDEN, printing)
@@ -617,16 +606,9 @@ def sequence_timing():
             #acknowledge that we are good and able to start something new
             start_new_sock.send("extra_good_to_start")
 
-                
-            # dspe_t = threading.Thread(target=dspe_f)
-            # dspe_t.daemon = True
-            # dspe_t.start()
-            
 
 
 
-            
-            
 
 
 def router():

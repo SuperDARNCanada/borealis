@@ -15,6 +15,7 @@ See LICENSE for details.
 #include <chrono>
 #include <cmath>
 #include <thread>
+#include <sstream>
 #include "usrp_drivers/n200/usrp.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
@@ -240,8 +241,11 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
  *
  * @param[in]  source   A string with the time source the USRP will use.
  *
- * This uses Juha Vierinen's method of latching to the current time by making sure the clock time
- * is in a stable place past the second. The USRP is then set to this time.
+ * Uses the method Ettus suggests for setting time on the x300.
+ * https://files.ettus.com/manual/page_gpsdo_x3x0.html
+ * Falls back to Juha Vierinen's method of latching to the current time by making sure the clock
+ * time is in a stable place past the second if no gps is available.
+ * The USRP is then set to this time.
  */
 void USRP::set_time_source(std::string source)
 {
@@ -257,19 +261,22 @@ void USRP::set_time_source(std::string source)
   if (source == "external"){
     uhd::usrp_clock::multi_usrp_clock::sptr clock;
     clock = uhd::usrp_clock::multi_usrp_clock::make(std::string("addr=192.168.10.131"));
-    
+
     //Make sure Clock configuration is correct
     if(clock->get_sensor("gps_detected").value == "false"){
-        throw uhd::runtime_error("No GPSDO detected on Clock.");
+      throw uhd::runtime_error("No GPSDO detected on Clock.");
     }
     if(clock->get_sensor("using_ref").value != "internal"){
-        throw uhd::runtime_error("Clock must be using an internal reference.");
+      std::ostringstream msg;
+      msg << "Clock must be using an internal reference. Using "
+          << clock->get_sensor("using_ref").value;
+      throw uhd::runtime_error(msg.str());
     }
 
     while(! (clock->get_sensor("gps_locked").to_bool())) {
       std::this_thread::sleep_for(std::chrono::seconds(2));
       std::cout << "Waiting for gps lock..." << std::endl;
-    }  
+    }
     usrp_->set_time_source(source);
 
     auto wait_for_update = [&]() {
@@ -289,20 +296,16 @@ void USRP::set_time_source(std::string source)
 
     wait_for_update();
 
-    //while(true){
-      auto clock_time = uhd::time_spec_t(double(clock->get_time()));
+    auto clock_time = uhd::time_spec_t(double(clock->get_time()));
 
-      for (uint32_t board=0; board<usrp_->get_num_mboards(); board++){
-        auto usrp_time = usrp_->get_time_last_pps(board);
-        auto time_diff = clock_time - usrp_time;
+    for (uint32_t board=0; board<usrp_->get_num_mboards(); board++){
+      auto usrp_time = usrp_->get_time_last_pps(board);
+      auto time_diff = clock_time - usrp_time;
 
-        std::cout << "Time difference between USRPs and gps clock for board " << board 
-                  << " " << time_diff.get_real_secs() << std::endl;
-      }
+      std::cout << "Time difference between USRPs and gps clock for board " << board
+                << " " << time_diff.get_real_secs() << std::endl;
+    }
 
-    //}
-    //usrp_->set_time_unknown_pps(uhd::time_spec_t(std::ceil(tt_sc.count()) + 1));
-    //std::this_thread::sleep_for(std::chrono::seconds(1));
   }
   else {
     //TODO(keith): throw error
