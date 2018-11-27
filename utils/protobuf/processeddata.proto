@@ -5,22 +5,26 @@ package processeddata;
 message ProcessedData {
     uint32 sequence_num = 1;
     repeated OutputDataSet outputdataset = 2; // 1 set for every frequency
-    float processing_time = 3;
-    string rf_samples_location = 4;
+    double processing_time = 3;
+    double initialization_time = 4;
+    double sequence_start_time = 5;
+    string rf_samples_location = 6;
 
     message OutputDataSet {
         repeated ComplexData mainacf = 1;
         repeated ComplexData intacf = 2;
         repeated ComplexData xcf = 3;
-	uint32 numberofbeams = 4;
+	    uint32 numberofbeams = 4;
         repeated BeamData beamformedsamples = 5;
         repeated DebugData debugsamples = 7;
+        uint32 slice_id = 8;
 
-	message BeamData {
-	    uint32 beamnum = 1;
-	    repeated ComplexData mainsamples = 2;
-	    repeated ComplexData intfsamples = 3;
-	}
+
+    	message BeamData {
+    	    uint32 beamnum = 1;
+    	    repeated ComplexData mainsamples = 2;
+    	    repeated ComplexData intfsamples = 3;
+    	}
 
         message DebugData {
             string stagename = 1;

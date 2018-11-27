@@ -9,6 +9,7 @@ See LICENSE for details
 #define DECIMATE_H
 
 #include "dsp.hpp"
+#include "utils/shared_macros/shared_macros.hpp"
 
 enum class DecimationType {lowpass, bandpass};
 
@@ -70,13 +71,13 @@ void call_decimate(cuComplex* input_samples,
   uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
   uint32_t num_antennas, double F_s, double* freqs, const char *output_msg, cudaStream_t stream) {
 
-  std::cout << output_msg << std::endl;
+  DEBUG_MSG(COLOR_BLUE("Decimate: ") << output_msg);
 
   auto gpu_properties = get_gpu_properties();
 
 
   if (type == DecimationType::bandpass) {
-    std::cout << "    Running bandpass" << std::endl;
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running bandpass")
     //For now we have a kernel that will process 2 samples per thread if need be
     if (num_taps_per_filter * num_freqs > 2 * gpu_properties[0].maxThreadsPerBlock) {
       //TODO(Keith) : handle error
@@ -91,7 +92,7 @@ void call_decimate(cuComplex* input_samples,
     }
   }
   else if (type == DecimationType::lowpass){
-    std::cout << "    Running lowpass" << std::endl;
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running lowpass")
     if (num_taps_per_filter > 2 * gpu_properties[0].maxThreadsPerBlock) {
       //TODO(Keith) : handle error
     }

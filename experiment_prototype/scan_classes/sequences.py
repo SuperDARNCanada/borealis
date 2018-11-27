@@ -54,6 +54,8 @@ class Sequence(ScanClassBase):
     numberofreceivesamples
         the number of receive samples to take, given the rx rate, during 
         the sstime.
+    blanks
+        A list of times when transmitting, samples to not be used for acfs.
     
     **Pulses is a list of pulse dictionaries. The pulse dictionary keys are:**
     
@@ -93,7 +95,6 @@ class Sequence(ScanClassBase):
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, options):
 
-        # TODO describe pulse dictionary in docs
         # TODO make diagram(s) for pulse combining algorithm
         # TODO make diagram for pulses that are repeats, showing clearly what intra_pulse_start_time,
         # and pulse_shift are.
@@ -121,9 +122,6 @@ class Sequence(ScanClassBase):
         self.pulses = sorted(pulses, key=itemgetter('pulse_timing_us', 'slice_id'))
         # Will sort by timing first and then by slice if timing =. This is all pulses in the sequence,
         # in a list of dictionaries.
-
-        if __debug__:
-            print(self.pulses)
 
         # Set up the combined pulse list
         this_pulse_index = 0
@@ -269,9 +267,18 @@ class Sequence(ScanClassBase):
                             break
                     else:  # no break
                         pulse['isarepeat'] = True
+            else:  # not combined
+                if pulse['slice_id'] != last_pulse['slice_id']: # governs freq, length, etc.
+                    pulse['isarepeat'] = False
+                elif pulse['intra_pulse_start_time'] != last_pulse['intra_pulse_start_time']:
+                    pulse['isarepeat'] = False
+                elif pulse['pulse_shift'] != last_pulse['pulse_shift']:
+                    pulse['isarepeat'] = False
+                else:
+                    pulse['isarepeat'] = True
 
         if __debug__:
-            print(self.pulses)
+            print('PULSES:\n{}'.format(self.pulses))
 
 
         last_pulse = self.pulses[-1]
@@ -296,8 +303,23 @@ class Sequence(ScanClassBase):
         self.seqtime = 2*self.options.tr_window_time + self.pulses[-1]['pulse_timing_us'] + \
                        self.last_pulse_len
 
-        # TODO change numberofreceivesamples to oversample so that no sample dropping
-        # has to happen due to edge effects (account for filter length).
+        blanks = []
+        sample_time = 1.0/float(self.options.output_sample_rate)
+        first_sample_time = sample_time/2.0  # TODO this needs to be calculated appropriately
+        # given number of samples added on the front when filtering occurs
+        pulses_time = []
+        for pulse in self.pulses:
+            pulse_start_stop = [pulse['pulse_timing_us'], pulse['pulse_timing_us'] + pulse[
+                'pulse_len']]
+            pulses_time.append(pulse_start_stop)
+        output_samples_in_sequence = int(self.seqtime * 1.0e-6/sample_time)
+        sample_times = [first_sample_time + i*sample_time for i in range(0,output_samples_in_sequence)]
+        for sample_num, time_s in enumerate(sample_times):
+            for pulse_start_stop in pulses_time:
+                if pulse_start_stop[0] <= time_s <= pulse_start_stop[1]:
+                    blanks.append(sample_num)
+        self.blanks = blanks
+        print(self.blanks)
 
         # FIND the total scope sync time and number of samples to receive.
         self.sstime = self.seqtime + self.ssdelay
@@ -370,12 +392,10 @@ class Sequence(ScanClassBase):
             pulse_samples = []
             if repeat:
                 pulse_antennas = []
-
             else:
                 # Initialize a list of lists for samples on all channels.
                 # TODO: modify this function if we put a weighting on powers instead of just a
                 # simple power_divider integer
-
                 pulse_samples, pulse_antennas = (
                     make_pulse_samples(one_pulse_list, self.power_divider, self.slice_dict,
                                        slice_to_beamdir_dict, txctrfreq,
