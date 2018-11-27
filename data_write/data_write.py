@@ -909,7 +909,7 @@ def main():
 
 
         if radctrl_to_data_write in socks and socks[radctrl_to_data_write] == zmq.POLLIN:
-            data = so.recv_data(radctrl_to_data_write, options.radctrl_to_dw_identity, printing)
+            data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, printing)
 
             integration_meta = datawritemetadata_pb2.IntegrationTimeMetadata()
             integration_meta.ParseFromString(data)
