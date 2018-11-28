@@ -86,6 +86,18 @@ DATA_TEMPLATE = {
     "data" : None # A contiguous set of data.
 }
 
+TX_TEMPLATE = {
+    "tx_rate" : [],
+    "tx_center_freq" : [],
+    "pulse_sequence_timing_us" : [],
+    "pulse_offset_error_us" : [],
+    "tx_samples" : [],
+    "dm_rate" : [],
+    "dm_rate_error" : [],
+    "decimated_tx_samples" : [],
+    "tx_antennas" : [],
+    "decimated_tx_antennas" : [],
+}
 
 
 class ParseData(object):
@@ -207,7 +219,6 @@ class ParseData(object):
                             arr = pre_bfiq_stage[ant_str]
                             arr['data'] = np.concatenate((arr['data'], cmplx))
 
-
     def update(self, data):
         """ Parses the protobuf and updates the accumulator fields with the new data.
 
@@ -320,6 +331,9 @@ class DataWrite(object):
         self.raw_rf_two_hr_format = "{dt}.{site}.rawrf"
         self.raw_rf_two_hr_name = None
 
+        self.tx_data_two_hr_format = "{dt}.{site}.txdata"
+        self.raw_rf_two_hr_name = None
+
         self.slice_filenames = {}
 
         self.git_hash = sp.check_output("git describe --always".split()).strip()
@@ -375,8 +389,8 @@ class DataWrite(object):
         # TODO: Complete this by parsing through the dictionary and write out to proper dmap format
         pass
 
-    def output_data(self, write_bfiq, write_pre_bfiq, write_raw_rf, file_ext, integration_meta,
-                    data_parsing, write_rawacf=True):
+    def output_data(self, write_bfiq, write_pre_bfiq, write_raw_rf, write_tx, file_ext,
+                    integration_meta, data_parsing, write_rawacf=True):
         """
         Parse through samples and write to file.
 
@@ -432,6 +446,9 @@ class DataWrite(object):
             self.raw_rf_two_hr_name = self.raw_rf_two_hr_format.format(
                 dt=time_now.strftime("%Y%m%d.%H%M.%S"),
                 site=self.options.site_id)
+            self.tx_data_two_hr_name = self.tx_data_two_hr_format.format(
+                dt=time_now.strftime("%Y%m%d.%H%M.%S"),
+                site=self.options.site_id)
 
         for slice_id in data_parsing.slice_ids:
             if slice_id not in self.slice_filenames:
@@ -443,6 +460,9 @@ class DataWrite(object):
 
         if time_now > self.next_boundary:
             self.raw_rf_two_hr_name = self.raw_rf_two_hr_format.format(
+                dt=time_now.strftime("%Y%m%d.%H%M.%S"),
+                site=self.options.site_id)
+            self.tx_data_two_hr_name = self.tx_data_two_hr_format.format(
                 dt=time_now.strftime("%Y%m%d.%H%M.%S"),
                 site=self.options.site_id)
             for slice_id in self.slice_filenames.keys():
@@ -655,13 +675,73 @@ class DataWrite(object):
                 shm.unlink()
                 mapfile.close()
 
+        def do_tx_data():
+            """Writes out the tx samples and metadata for debugging purposes.
+            """
+            tx_data = None
+            for meta in integration_meta.sequences:
+                if meta.HasField('tx_data'):
+                    tx_data = TX_TEMPLATE.copy()
+                    break
+
+
+            if tx_data is not None:
+                for meta in integration_meta.sequences:
+                    tx_data['tx_rate'].append(meta.tx_data.txrate)
+                    tx_data['tx_center_freq'].append(meta.tx_data.txctrfreq)
+                    tx_data['pulse_sequence_timing_us'].append(
+                        meta.tx_data.pulse_sequence_timing_us)
+                    tx_data['pulse_offset_error_us'].append(meta.tx_data.pulse_offset_error_us)
+                    tx_data['dm_rate'].append(meta.tx_data.dmrate)
+                    tx_data['dm_rate_error'].append(meta.tx_data.dmrate_error)
+
+                    tx_samples = []
+                    decimated_tx_samples = []
+                    decimated_tx_antennas = []
+                    tx_antennas = []
+
+                    for ant in meta.tx_data.tx_samples:
+                        tx_antennas.append(ant.tx_antenna_number)
+                        real = np.array(ant.real, dtype=np.float32)
+                        imag = np.array(ant.imag, dtype=np.float32)
+
+                        cmplx = np.array(real + 1j*imag, dtype=np.complex64)
+                        tx_samples.append(cmplx)
+
+
+                    for ant in meta.tx_data.decimated_tx_samples:
+                        decimated_tx_antennas.append(ant.tx_antenna_number)
+                        real = np.array(ant.real, dtype=np.float32)
+                        imag = np.array(ant.imag, dtype=np.float32)
+
+                        cmplx = np.array(real + 1j*imag, dtype=np.complex64)
+                        decimated_tx_samples.append(cmplx)
+
+                    tx_data['tx_antennas'].append(tx_antennas)
+                    tx_data['decimated_tx_antennas'].append(decimated_tx_antennas)
+                    tx_data['tx_samples'].append(tx_samples)
+                    tx_data['decimated_tx_samples'].append(decimated_tx_samples)
+
+
+                tx_data['tx_antennas'] = np.array(tx_data['tx_antennas'], dtype=np.uint32)
+                tx_data['decimated_tx_antennas'] = np.array(tx_data['decimated_tx_antennas'],
+                                                            dtype=np.uint32)
+                tx_data['tx_samples'] = np.array(tx_data['tx_samples'], dtype=np.complex64)
+                tx_data['decimated_tx_samples'] = np.array(tx_data['decimated_tx_samples'],
+                                                           dtype=np.complex64)
+
+                name = name = dataset_name.replace('{sliceid}.', '').format(dformat='txdata')
+                output_file = dataset_location.format(name=name)
+
+                write_file(output_file, tx_data, self.tx_data_two_hr_name)
+
+
 
 
         parameters_holder = {}
         for meta in integration_meta.sequences:
             for rx_freq in meta.rxchannel:
                 parameters = DATA_TEMPLATE.copy()
-
                 parameters['borealis_git_hash'] = self.git_hash.decode('utf-8')
 
                 parameters['timestamp_of_write'] = (time_now - epoch).total_seconds()
@@ -732,6 +812,9 @@ class DataWrite(object):
                 shm.close_fd()
                 shm.unlink()
 
+        if write_tx:
+            procs.append(mp.Process(target=do_tx_data))
+
         for proc in procs:
             proc.start()
 
@@ -750,6 +833,8 @@ def main():
     parser.add_argument('--enable-pre-bfiq', help='Enable individual antenna iq writing',
                         action='store_true')
     parser.add_argument('--enable-raw-rf', help='Save raw, unfiltered IQ samples. Requires HDF5.',
+                        action='store_true')
+    parser.add_argument('--enable-tx', help='Save tx samples and metadata. Requires HDF5.',
                         action='store_true')
     args = parser.parse_args()
 
@@ -798,6 +883,7 @@ def main():
                     data_write.output_data(write_bfiq=args.enable_bfiq,
                                            write_pre_bfiq=args.enable_pre_bfiq,
                                            write_raw_rf=args.enable_raw_rf,
+                                           write_tx=args.enable_tx,
                                            file_ext=args.file_type,
                                            integration_meta=integration_meta,
                                            data_parsing=data_parsing,
