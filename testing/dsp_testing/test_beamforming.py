@@ -26,6 +26,10 @@ import random
 import traceback
 
 
+sys.path.append(os.environ["BOREALISPATH"])
+from sample_building.sample_building import get_phshift, shift_samples
+
+
 def testing_parser():
     """
     Creates the parser for this script.
@@ -94,6 +98,55 @@ def correlate_and_align_tx_samples(tx_samples, some_other_samples):
     return aligned_ant_samples, correlated_offset
 
 
+def beamform(antennas_data, beamdirs, rxfreq):
+    """
+    :param antennas_data: numpy array of dimensions num_antennas x num_samps. All antennas are assumed to be 
+    from the same array and are assumed to be side by side with antenna spacing 15.24 m, pulse_shift = 0.0
+    :param beamdirs: list of azimuthal beam directions in degrees off boresite
+    """
+
+    beamformed_data = []
+    for beam_direction in beamdirs:
+        print(beam_direction)
+        antenna_phase_shifts = []
+        for antenna in range(0, antennas_data.shape[0]):
+            phase_shift = get_phshift(-beam_direction, rxfreq, antenna, 0.0, antennas_data.shape[0], 15.24)
+            #phase_shift = get_phshift(-beam_direction, rxfreq, antenna, 0.0, 16, 15.24)
+            
+            
+            #phase_shift = math.fmod((0.0 - get_phshift(beam_direction, rxfreq, antenna, 0.0, antennas_data.shape[0], 15.24)), 2*math.pi)
+            antenna_phase_shifts.append(phase_shift)
+        phased_antenna_data = [shift_samples(antennas_data[i], antenna_phase_shifts[i], 1.0) for i in range(0, antennas_data.shape[0])]
+        phased_antenna_data = np.array(phased_antenna_data)
+        one_beam_data = np.sum(phased_antenna_data, axis=0)
+        beamformed_data.append(one_beam_data)
+    beamformed_data = np.array(beamformed_data)
+
+    return beamformed_data
+
+
+def get_offsets(samples_a, samples_b):
+    """
+    Return the offset of samples b from samples a.
+    :param samples_a: numpy array of complex samples
+    :param samples_b: another numpy array of complex samples
+    """
+    samples_diff = samples_a * np.conj(samples_b)
+    return np.angle(samples_diff)
+
+
+def find_pulse_indices(data, threshold):
+    """
+    :param data: a numpy array of complex values to find the pulses within. 
+    :param threshold: a magnitude valude threshold (absolute value) that pulses will be defined as being greater than.
+    """
+    absolute_max = max(abs(data))
+    normalized_data = abs(data)/absolute_max
+    pulse_points = (normalized_data > threshold)
+    pulse_indices = list(np.where(pulse_points == True)[0])
+    return pulse_indices
+
+
 parser = testing_parser()
 args = parser.parse_args()
 data_file_path = args.filename
@@ -132,12 +185,13 @@ for file_type in list(file_types_avail):  # copy of file_types_avail so we can m
         data[file_type] = deepdish.io.load(filename)
     except:
         file_types_avail.remove(file_type)
-        if filename == data_file:  # if this is the filename you provided.
+        if file_type == type_of_file:  # if this is the filename you provided.
             raise
 
 # choose a record from the provided file. 
 good_record_found = False
 while not good_record_found:
+    # record_name = '1543445187982' 
     record_name = random.choice(list(data[type_of_file].keys()))
     print(record_name)
 
@@ -170,7 +224,7 @@ while not good_record_found:
             number_of_antennas = rawrf['main_antenna_count'] + rawrf['intf_antenna_count']
             flat_data = np.array(rawrf['data'])  
             # reshape to number_of_antennas x number_of_samples
-            rawrf_data = np.reshape(flat_data, (number_of_antennas, rawrf['num_samps']))
+            rawrf_data = np.reshape(flat_data, (rawrf['num_sequences'], number_of_antennas, rawrf['num_samps']))
             rawrf['data'] = rawrf_data
     except ValueError as e:
         print('Record {} raised an exception:\n'.format(record_name))
@@ -182,32 +236,112 @@ while not good_record_found:
 
 
 # find pulse points in data that is decimated. 
-for filetype, record_dict in record_data:
+for filetype, record_dict in record_data.items():
+    
+    data_description_list = list(record_dict['data_descriptors'])
+    
+    # STEP 1: DECIMATE IF NECESSARY
     if record_dict['rx_sample_rate'] != 3333.0:
         # we aren't at 3.3 kHz - need to decimate.
-
-        decimated_data = record_dict['data'][0][:][:][0:]
-        pass
+        dm_rate = int(record_data['rx_sample_rate']/3333.0)
+        print(dm_rate)
+        if data_description_list == ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']:
+            decimated_data = record_dict['data'][0][0][:][0:dm_rate:] # grab only main array data, first sequence, all beams.
+        elif data_description_list == ['num_sequences', 'num_antennas', 'num_samps']:
+            decimated_data = record_dict['data'][0][:][0:dm_rate:] # first sequence only, all antennas.
+        else:
+            raise Exception('Not sure how to decimate with the dimensions of this data: {}'.format(record_dict['data_descriptors']))
     else:
-        decimated_data = record_dict['data'][0] # only main array
+        if data_description_list == ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']:
+            decimated_data = record_dict['data'][0][0][:][:] # only main array
+        elif data_description_list == ['num_sequences', 'num_antennas', 'num_samps']:
+            decimated_data = record_dict['data'][0][:][:] # first sequence only, all antennas.
+        else:
+            raise Exception('Unexpected data dimensions: {}'.format(record_dict['data_descriptors']))
+    
+    # STEP 2: BEAMFORM ANY UNBEAMFORMED DATA
     if filetype != bfiq_filetype:
         # need to beamform the data. 
+        antenna_list = []
+        if data_description_list == ['num_sequences', 'num_antennas', 'num_samps']:
+            for antenna in range(0, record_dict['data'].shape[1]):
+                antenna_list.append(decimated_data[antenna][:])
+            antenna_list = np.array(antenna_list)
+        else:
+            raise Exception('Not sure how to beamform with the dimensions of this data: {}'.format(record_dict['data_descriptors']))
+
+        # beamform main array antennas only. 
+        decimated_beamformed_data = beamform(antenna_list[0:record_dict['main_antenna_count']][:].copy(), record_dict['beam_azms'], record_dict['freq']) 
+        summed_data = np.sum(antenna_list[0:record_dict['main_antenna_count']][:], axis=0)
+        record_dict['straight_summed_data'] = summed_data
     else:
-        decimated_beamformed_data = 
+        decimated_beamformed_data = decimated_data  
+
+    record_dict['one_sequence_bf_data'] = decimated_beamformed_data # this has 2 dimensions: num_beams x num_samps
+
+    # STEP 3: FIND THE PULSES IN THE DATA
+    for beamnum in range(0, record_dict['one_sequence_bf_data'].shape[0]):
 
 
+        len_of_data = record_dict['num_samps']
+        pulse_indices = find_pulse_indices(record_dict['one_sequence_bf_data'][beamnum], 0.05)
+        if len(pulse_indices) > len(record_dict['pulses']): # sometimes we get two samples from the same pulse.
+            if math.fmod(len(pulse_indices), len(record_dict['pulses'])) == 0.0:
+                step_size = int(len(pulse_indices)/len(record_dict['pulses']))
+                pulse_indices = pulse_indices[step_size-1::step_size]
+        
+        pulse_points = [False if i not in pulse_indices else True for i in range(0,len_of_data)]
+        record_dict['pulse_indices'] = pulse_indices
 
-def check_beamforming(bf_iq_record, prebf_iq_record):
-    """
-    Combine the pre-beamformed samples to verify the beamformed samples produced.
 
-    :param bf_iq_record: beamformed record from bfiq file, data reshaped to num_arrays 
-     x nave x number_of_beams x number_of_samples
-    :param prebf_iq_record: unbeamformed record from output_samples_iq file, data reshaped 
-     to num_antennas x nave x number_of_beams x number_of_samples
-    """
+        # verify pulse indices make sense.
+        num_samples_in_tau_spacing = int(round(record_dict['tau_spacing'] * 1.0e-6 * record_dict['rx_sample_rate']))  # us
+        pulse_spacing = record_dict['pulses'] * num_samples_in_tau_spacing
+        expected_pulse_indices = list(pulse_spacing + pulse_indices[0])
+        if expected_pulse_indices != pulse_indices:
+            print(expected_pulse_indices)
+            print(pulse_indices)
+            raise Exception('Pulse Indices are Not Equal to Expected.')
 
-    for antenna in range(0, bf_iq_record['main_antenna_count']):
+        # get the phases of the pulses for this data.
+        pulse_data = record_dict['one_sequence_bf_data'][beamnum][pulse_points]
+        record_dict['pulse_samples'] = pulse_data
+        pulse_phases = np.angle(pulse_data)
+        record_dict['pulse_phases'] = pulse_phases
+        print(filetype)
+        print(pulse_phases)
+
+        # Straight summed pre-bf data has been the same as running beamform() function on the prebf data every time. The below was a test.
+        # if filetype == output_samples_filetype:
+        #     pulse_phases_straight_sum = np.angle(record_dict['straight_summed_data'][pulse_indices])
+        #     print(pulse_phases_straight_sum)
+        #     print(np.subtract(pulse_phases, pulse_phases_straight_sum))
+# Compare phases from pulses in the various datasets.
+beamforming_phase_offset = get_offsets(record_data[output_samples_filetype]['pulse_samples'], record_data[bfiq_filetype]['pulse_samples'])
+print('There are the following phase offsets between the prebf and bf iq data pulses: {}'.format(beamforming_phase_offset))
+
+fig, ax1 = plt.subplots(1, 1, sharex=True)
+for filetype, record_dict in record_data.items():
+    normalized_real = record_dict['one_sequence_bf_data'][0].real / max(abs(record_dict['one_sequence_bf_data'][0]))
+    normalized_imag = record_dict['one_sequence_bf_data'][0].imag / max(abs(record_dict['one_sequence_bf_data'][0]))
+    ax1.plot(np.arange(record_dict['one_sequence_bf_data'].shape[1]), normalized_real, label='Normalized Real {}'.format(filetype))
+    ax1.plot(np.arange(record_dict['one_sequence_bf_data'].shape[1]), normalized_imag, label="Normalized Imag {}".format(filetype))
+    ax1.legend()
+
+#plt.show()
+
+
+#def check_beamforming(bf_iq_record, prebf_iq_record):
+    # """
+    # Combine the pre-beamformed samples to verify the beamformed samples produced.
+
+    # :param bf_iq_record: beamformed record from bfiq file, data reshaped to num_arrays 
+    #  x nave x number_of_beams x number_of_samples
+    # :param prebf_iq_record: unbeamformed record from output_samples_iq file, data reshaped 
+    #  to num_antennas x nave x number_of_beams x number_of_samples
+    # """
+
+    #for antenna in range(0, bf_iq_record['main_antenna_count']):
 
 
 
@@ -359,9 +493,6 @@ def check_beamforming(bf_iq_record, prebf_iq_record):
 #     #beamformed_rx_pulses_norm = beamformed_rx_pulses / np.abs(beamformed_rx_pulses)
 #     #samples_diff = np.subtract(beamformed_rx_pulses_norm, beamformed_tx_pulses_norm)
 
-# def get_offsets(samples, tx_samples):
-#     samples_diff = samples * np.conj(tx_samples)
-#     return np.angle(samples_diff)
 
 # ch0_tx_phase = np.angle(tx_pulse_points_dict['0'])
 # tx_phase = np.angle(beamformed_tx_pulses)
