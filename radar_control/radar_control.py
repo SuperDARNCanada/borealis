@@ -510,13 +510,12 @@ def radar():
                     integration_period_start_time = datetime.utcnow()  # ms
                     # all phases are set up for this averaging period for the beams required. Time to start averaging
                     # in the below loop.
+
                     nave = 0
                     time_remains = True
                     integration_period_done_time = integration_period_start_time + \
                         timedelta(milliseconds=(float(aveperiod.intt)))  # ms
-
                     first_sequence_out = False
-
 
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
