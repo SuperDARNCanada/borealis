@@ -626,8 +626,13 @@ class DataWrite(object):
             rf_samples = np.concatenate(samples_list)
 
             param['rx_sample_rate'] = np.float32(self.options.rx_sample_rate)
-            param['num_samps'] = np.uint32(len(samples_list[0]))
-            param['data_dimensions'] = np.array([len(samples_list), param['num_samps']],
+
+            total_ants = self.options.main_antenna_count + self.options.intf_antenna_count
+            param['num_samps'] = np.uint32(len(samples_list[0])/total_ants)
+
+            param['data_descriptors'] = ["num_sequences", "num_antennas", "num_samps"]
+            param['data_dimensions'] = np.array([param['num_sequences'], total_ants,
+                                                 param['num_samps']],
                                                 dtype=np.uint32)
 
             # These fields don't make much sense when working with the raw rf. It's expected
@@ -635,8 +640,7 @@ class DataWrite(object):
             # this data.
             unneeded_fields = ['first_range', 'first_range_rtt', 'tx_pulse_len', 'tau_spacing',
                                'num_pulses', 'num_lags', 'freq', 'pulses', 'lags',
-                               'blanked_samples', 'beam_nums', 'beam_azms', 'data_descriptors',
-                               'antenna_arrays_order']
+                               'blanked_samples', 'beam_nums', 'beam_azms', 'antenna_arrays_order']
 
             for field in unneeded_fields:
                 param.pop(field, None)
