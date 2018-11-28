@@ -592,7 +592,7 @@ class DataWrite(object):
                     name = dataset_name.format(sliceid=slice_id, dformat="{}_iq".format(stage))
                     output_file = dataset_location.format(name=name)
 
-                    ext = "{}.iq".format(stage)
+                    ext = "{}_iq".format(stage)
                     two_hr_file_with_type = self.slice_filenames[slice_id].format(ext=ext)
 
                     write_file(output_file, params, two_hr_file_with_type)

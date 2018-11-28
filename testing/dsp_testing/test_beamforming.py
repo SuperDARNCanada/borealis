@@ -23,6 +23,7 @@ import os
 import deepdish
 import argparse
 import random
+import traceback
 
 
 def testing_parser():
@@ -100,20 +101,25 @@ data_file_path = args.filename
 data_file = os.path.basename(data_file_path)
 
 data_file_metadata = data_file.split('.')
-if '.'.join(data_file_metadata[0:7]) != data_file:
-    raise Exception('Data File Name is Incorrectly Joined: {}'.format(data_file))
 
 date_of_file = data_file_metadata[0]
 timestamp_of_file = '.'.join(data_file_metadata[0:3])
 station_name = data_file_metadata[3]
 slice_id_number = data_file_metadata[4]
-type_of_file = data_file_metadata[5]  # XX.hdf5
-file_suffix = data_file_metadata[6]
+type_of_file = data_file_metadata[-2]  # XX.hdf5
+if type_of_file == slice_id_number:
+    slice_id_number = 0  # choose the first slice to search for other available files.
+else:
+    type_of_file = slice_id_number + '.' + type_of_file
+file_suffix = data_file_metadata[-1]
 
 if file_suffix != 'hdf5':
     raise Exception('Incorrect File Suffix: {}'.format(file_suffix))
 
-file_types_avail = ["output_samples_iq", "bfiq", "testing"]
+output_samples_filetype = slice_id_number + ".output_samples_iq"
+bfiq_filetype = slice_id_number + ".bfiq"
+rawrf_filetype = "rawrf"
+file_types_avail = [output_samples_filetype, bfiq_filetype]
 
 if type_of_file not in file_types_avail:
     raise Exception('Type of Data Not Incorporated in Script: {}'.format(type_of_file))
@@ -122,7 +128,7 @@ data = {}
 for file_type in list(file_types_avail):  # copy of file_types_avail so we can modify it within.
     try:
         filename = '/data/borealis_data/' + date_of_file + '/' + timestamp_of_file + \
-                    '.' + station_name + '.' + slice_id_number + '.' + file_type + '.hdf5'
+                    '.' + station_name + '.' + file_type + '.hdf5'
         data[file_type] = deepdish.io.load(filename)
     except:
         file_types_avail.remove(file_type)
@@ -130,34 +136,65 @@ for file_type in list(file_types_avail):  # copy of file_types_avail so we can m
             raise
 
 # choose a record from the provided file. 
+good_record_found = False
+while not good_record_found:
+    record_name = random.choice(list(data[type_of_file].keys()))
+    print(record_name)
 
-record_name = random.choice(list(data[type_of_file].keys()))
-print(record_name)
+    record_data = {}
+    for file_type in file_types_avail:
+        record_data[file_type] = data[file_type][record_name]
 
-record_data = {}
-for file_type in file_types_avail:
-    record_data[file_type] = data[file_type][record_name]
+    try:
+        if bfiq_filetype in file_types_avail:
+            bf_iq = record_data[bfiq_filetype]
+            number_of_beams = len(bf_iq['beam_azms'])
+            number_of_arrays = len(bf_iq['antenna_arrays_order'])
 
-if 'bfiq' in file_types_avail:
-    bf_iq = record_data['bfiq']
-    
-    number_of_beams = len(bf_iq['beam_azms'])
-    number_of_arrays = len(bf_iq['antenna_arrays_order'])
+            flat_data = np.array(bf_iq['data'])  
+            # reshape to 2 (main, intf) x nave x number_of_beams x number_of_samples
+            bf_iq_data = np.reshape(flat_data, (number_of_arrays, bf_iq['num_sequences'], number_of_beams, bf_iq['num_samps']))
+            bf_iq['data'] = bf_iq_data
 
-    flat_data = np.array(bf_iq['data'])  
-    # reshape to 2 (main, intf) x nave x number_of_beams x number_of_samples
-    bf_iq_data = np.reshape(flat_data, (number_of_arrays, bf_iq['num_sequences'], number_of_beams, bf_iq['num_samps']))
-    bf_iq['data'] = bf_iq_data
+        if output_samples_filetype in file_types_avail:
+            output_samples_iq = record_data[output_samples_filetype]
+            number_of_antennas = len(output_samples_iq['antenna_arrays_order'])
 
-if 'output_samples_iq' in file_types_avail:
-    output_samples_iq = record_data['output_samples_iq']
-    number_of_beams = len(output_samples_iq['beam_azms'])
-    number_of_antennas = len(output_samples_iq['antenna_arrays_order'])
+            flat_data = np.array(output_samples_iq['data'])  
+            # reshape to nave x number of antennas (M0..... I3) x number_of_samples
+            output_samples_iq_data = np.reshape(flat_data, (output_samples_iq['num_sequences'], number_of_antennas, output_samples_iq['num_samps']))
+            output_samples_iq['data'] = output_samples_iq_data
 
-    flat_data = np.array(output_samples_iq['data'])  
-    # reshape to 19 (M0..... I3) x nave x number_of_beams x number_of_samples
-    output_samples_iq_data = np.reshape(flat_data, (number_of_antennas, output_samples_iq['num_sequences'], number_of_beams, output_samples_iq['num_samps']))
-    output_samples_iq['data'] = output_samples_iq_data
+        if 'rawrf' in file_types_avail:
+            rawrf = record_data[rawrf_filetype]
+            number_of_antennas = rawrf['main_antenna_count'] + rawrf['intf_antenna_count']
+            flat_data = np.array(rawrf['data'])  
+            # reshape to number_of_antennas x number_of_samples
+            rawrf_data = np.reshape(flat_data, (number_of_antennas, rawrf['num_samps']))
+            rawrf['data'] = rawrf_data
+    except ValueError as e:
+        print('Record {} raised an exception:\n'.format(record_name))
+        traceback.print_exc()
+        print('\nA new record will be selected.')
+
+    else:  # no errors
+        good_record_found = True
+
+
+# find pulse points in data that is decimated. 
+for filetype, record_dict in record_data:
+    if record_dict['rx_sample_rate'] != 3333.0:
+        # we aren't at 3.3 kHz - need to decimate.
+
+        decimated_data = record_dict['data'][0][:][:][0:]
+        pass
+    else:
+        decimated_data = record_dict['data'][0] # only main array
+    if filetype != bfiq_filetype:
+        # need to beamform the data. 
+    else:
+        decimated_beamformed_data = 
+
 
 
 def check_beamforming(bf_iq_record, prebf_iq_record):
