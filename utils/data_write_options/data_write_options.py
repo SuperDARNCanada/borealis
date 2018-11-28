@@ -42,6 +42,7 @@ class DataWriteOptions(object):
         self._data_directory = raw_config["data_directory"]
         self._site_id = raw_config["site_id"]
         self._rx_sample_rate = float(raw_config["rx_sample_rate"])
+        self._third_stage_sample_rate = float(raw_config["third_stage_sample_rate"])
         self._max_usrp_dac_amplitude = float(raw_config["max_usrp_dac_amplitude"])
         self._pulse_ramp_time = float(raw_config["pulse_ramp_time"])
         self._tr_window_time = float(raw_config["tr_window_time"])
@@ -223,6 +224,16 @@ class DataWriteOptions(object):
 
         return self._intf_antenna_count
 
+    @property
+    def third_stage_sample_rate(self):
+        """
+        Gets the third stage sample rate.
+
+        :return:    third stage sample rate.
+        :rtype:     float
+        """
+
+        return self._third_stage_sample_rate
 
 if __name__ == '__main__':
     DataWriteOptions()
