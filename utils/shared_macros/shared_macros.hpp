@@ -42,8 +42,8 @@
         x;                                                                     \
       }                                                                        \
     } while (0)  
-//#define TIMEIT_IF_DEBUG(msg,x) do {x;} while(0)
 #endif
 
 
 #endif
+

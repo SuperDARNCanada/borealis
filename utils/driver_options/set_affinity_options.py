@@ -1,11 +1,10 @@
 #!/usr/bin/python
 
-# Copyright 2017 SuperDARN Canada
+# Copyright 2018 SuperDARN Canada
 #
 # set_affinity_options.py
 # 2018-05-14
-# options class for data write module
-# TODO: Get experiment details from somewhere to write metadata out to files (freq, cpid, etc..)
+# options class for set_affinity module
 
 import json
 import os
@@ -29,7 +28,7 @@ class SetAffinityOptions(object):
         config_path = os.environ["BOREALISPATH"] + "/config.ini"
         try:
             with open(config_path, 'r') as config_data:
-                raw_config = json.load(config_data, object_hook=ascii_encode_dict)
+                raw_config = json.load(config_data)
         except IOError:
             errmsg = 'Cannot open config file at {0}'.format(config_path)
             raise IOError(errmsg)
@@ -85,9 +84,8 @@ class SetAffinityOptions(object):
     def mainaffinity_to_driver_identity(self):
         """Gets the socket name for the main affinity to driver.
 
-        [description]
         :returns: Gets the socket name for the main affinity to driver.
-        :rtype: {[type]}
+        :rtype:   String
         """
         return self._mainaffinity_to_driver_identity
 
@@ -115,7 +113,7 @@ class SetAffinityOptions(object):
         Gets the socket address of the router that routes interprocess messages
 
         :return:    socket address of the router that routes interprocess messages
-        :rtype:     str
+        :rtype:     String
         """
         return self._router_address
 

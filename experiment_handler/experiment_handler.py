@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 """
     experiment_handler process
@@ -22,7 +22,8 @@ import argparse
 import inspect
 import importlib
 import threading
-import cPickle as pickle
+import pickle
+import zlib
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -30,7 +31,7 @@ sys.path.append(BOREALISPATH)
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from utils.zmq_borealis_helpers import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
-
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 def printing(msg):
     EXPERIMENT_HANDLER = "\033[34m" + "EXPERIMENT HANDLER: " + "\033[0m"
@@ -95,7 +96,7 @@ def retrieve_experiment():
     if __debug__:
         print("Running the experiment: " + args.experiment_module)
     experiment = args.experiment_module
-    experiment_mod = importlib.import_module("." + experiment, package="experiments")
+    experiment_mod = importlib.import_module("experiments." + experiment)
 
     experiment_classes = {}
     for class_name, obj in inspect.getmembers(experiment_mod, inspect.isclass):
@@ -168,7 +169,7 @@ def experiment_handler(semaphore):
     change_flag = False
 
     def update_experiment():
-        # Recv complete processed data from DSP
+        # Recv complete processed data from DSP or datawrite? TODO
         socket_operations.send_request(exp_handler_to_dsp,
                                        options.dsp_to_exphan_identity,
                                        "Need completed data")
@@ -182,7 +183,7 @@ def experiment_handler(semaphore):
         change_flag = exp.update(some_data)
         if change_flag:
             exp.build_scans()
-            print "REBUILDING EXPERIMENT BECAUSE change_flag = TRUE!!!"
+            print("REBUILDING EXPERIMENT BECAUSE change_flag = TRUE!!!")
         semaphore.release()
 
         if __debug__:
@@ -190,6 +191,7 @@ def experiment_handler(semaphore):
             printing(data_output)
 
     if experiment_update:
+        print("UPDATING EXPERIMENT")
         thread = threading.Thread(target=update_experiment)
         thread.daemon = True
         thread.start()
@@ -209,24 +211,25 @@ def experiment_handler(semaphore):
             printing("Sending new experiment from beginning")
             # starting anew
             exp.build_scans()
-            pickled_exp = pickle.dumps(exp)
+            serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
+            # use the newest, fastest protocol (currently version 4 in python 3.4+)
             try:
-                socket_operations.send_reply(exp_handler_to_radar_control,
+                socket_operations.send_exp(exp_handler_to_radar_control,
                                              options.radctrl_to_exphan_identity,
-                                             pickled_exp)
+                                             serialized_exp)
             except zmq.ZMQError: # the queue was full - radarcontrol not receiving.
                 pass  #TODO handle this. Shutdown and restart all modules.
 
         elif message == 'NOERROR':
             # no errors
             if change_flag:
-                pickled_exp = pickle.dumps(exp)
+                serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
             else:
-                pickled_exp = pickle.dumps(None)
+                serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
 
             try:
-                socket_operations.send_reply(exp_handler_to_radar_control,
-                                             options.radctrl_to_exphan_identity, pickled_exp)
+                socket_operations.send_exp(exp_handler_to_radar_control,
+                                           options.radctrl_to_exphan_identity, serialized_exp)
             except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
                 pass  # TODO handle this. Shutdown and restart all modules.
 
