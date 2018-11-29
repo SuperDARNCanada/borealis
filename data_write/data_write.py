@@ -182,7 +182,7 @@ class ParseData(object):
         All variables are captured.
         """
 
-        self._pre_bfiq_accumulator['data_descriptors'] = ['num_sequences', 'num_antennas',
+        self._pre_bfiq_accumulator['data_descriptors'] = ['num_antennas', 'num_sequences',
                                                           'num_samps']
         # Iterate over every data set, one data set per slice
         for data_set in self.processed_data.outputdataset:
@@ -588,7 +588,7 @@ class DataWrite(object):
                     rx_main_antennas[rx_freq.slice_id] = list(rx_freq.rx_main_antennas)
                     rx_intf_antennas[rx_freq.slice_id] = list(rx_freq.rx_intf_antennas)
 
-            # Build strings from antennas used in the protobuf. This will be used to know 
+            # Build strings from antennas used in the protobuf. This will be used to know
             # what antennas were recorded on since we sample all available USRP channels
             # and some channels may not be transmitted on, or connected.
             main_ant_str = lambda x: "antenna_{}".format(x)
@@ -613,8 +613,10 @@ class DataWrite(object):
                     parameters['antenna_arrays_order'] = rx_main_antennas[slice_id] +\
                                                          rx_intf_antennas[slice_id]
 
-                    parameters['data_dimensions'] = np.array([integration_meta.nave,
-                                                              len(parameters['antenna_arrays_order']),
+                    num_ants = parameters['antenna_arrays_order']
+
+                    parameters['data_dimensions'] = np.array([num_ants,
+                                                              integration_meta.nave,
                                                               parameters['num_samps']],
                                                              dtype=np.uint32)
 
