@@ -290,20 +290,20 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
         sequence_add.blanks[:] = sequence.blanks
         if debug_samples:
             sequence_add.tx_data.txrate = debug_samples[sequence_index]['txrate']
-            sequence_add.tx_data.txctrfeq = debug_samples[sequence_index]['txctrfreq']
-            sequence_add.tx_data.pulse_sequence_timing_us = debug_samples[sequence_index][
+            sequence_add.tx_data.txctrfreq = debug_samples[sequence_index]['txctrfreq']
+            sequence_add.tx_data.pulse_sequence_timing_us[:] = debug_samples[sequence_index][
                 'pulse_sequence_timing']
-            sequence_add.tx_data.pulse_offset_error_us = debug_samples[sequence_index][
+            sequence_add.tx_data.pulse_offset_error_us[:] = debug_samples[sequence_index][
                 'pulse_offset_error']
             for ant, ant_samples in debug_samples[sequence_index]['sequence_samples'].items():
-                tx_samples_add = sequence_add.tx_samples.add()
+                tx_samples_add = sequence_add.tx_data.tx_samples.add()
                 tx_samples_add.real[:] = ant_samples['real']
                 tx_samples_add.imag[:] = ant_samples['imag']
                 tx_samples_add.tx_antenna_number = ant
             sequence_add.tx_data.dmrate = debug_samples[sequence_index]['dmrate']
             sequence_add.tx_data.dmrate_error = debug_samples[sequence_index]['dmrate_error']
             for ant, ant_samples in debug_samples[sequence_index]['decimated_sequence'].items():
-                tx_samples_add = sequence_add.decimated_tx_samples.add()
+                tx_samples_add = sequence_add.tx_data.decimated_tx_samples.add()
                 tx_samples_add.real[:] = ant_samples['real']
                 tx_samples_add.imag[:] = ant_samples['imag']
                 tx_samples_add.tx_antenna_number = ant
@@ -327,10 +327,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
             else:
                 rxchan_add.rxfreq = sequence.slice_dict[slice_id]['txfreq']
 
-            #pulse_add = rxchan_add.ptab.pulse_position.add()
-
             rxchan_add.ptab.pulse_position[:] = sequence.slice_dict[slice_id]['pulse_sequence']
-
 
             if sequence.slice_dict[slice_id]['acf']:
                 rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
@@ -497,30 +494,18 @@ def radar():
                         beam_phase_dict_list.append(beam_phase_dict)
 
 
+                    # Setup debug samples if in debug mode.
+                    debug_samples = []
                     if __debug__:
-                        def debug_write_samples_to_file():
-                            integration_period_prep_time_start = datetime.utcnow() # ms
-                            for sequence_index, sequence in enumerate(aveperiod.sequences):
-                                debug_samples = write_samples_to_file(experiment.txrate,
-                                              experiment.txctrfreq,
-                                              sequence_dict_list[sequence_index],
-                                              debug_path,
-                                              options.main_antenna_count,
-                                              options.output_sample_rate,
-                                              sequence.ssdelay)
-                            integration_period_prep_time_end = datetime.utcnow()
-                            integration_period_prep_time = integration_period_prep_time_end - integration_period_prep_time_start
-                            print("Time to write samples to file: {}".format(integration_period_prep_time))
-                        # Write the sequences to file for this integration period.
-                        start_thread = datetime.utcnow()
-                        thread = threading.Thread(target=debug_write_samples_to_file)# target=debug_write_samples_to_file(aveperiod.sequences, experiment, debug_path, options, sequence_dict_list))
-                        thread.daemon = True
-                        thread.start()
-                        thread_started = datetime.utcnow()
-                        time_to_start_thread = thread_started - start_thread
-                        print("time to start thread: {}".format(time_to_start_thread))
-                    else:
-                        debug_samples = None
+                        for sequence_index, sequence in enumerate(aveperiod.sequences):
+                            sequence_samples_dict = create_debug_sequence_samples(experiment.txrate,
+                                                  experiment.txctrfreq,
+                                                  sequence_dict_list[sequence_index],
+                                                  debug_path,
+                                                  options.main_antenna_count,
+                                                  options.output_sample_rate,
+                                                  sequence.ssdelay)
+                            debug_samples.append(sequence_samples_dict)
 
                     integration_period_start_time = datetime.utcnow()  # ms
                     # all phases are set up for this averaging period for the beams required. Time to start averaging
