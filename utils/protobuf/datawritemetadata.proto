@@ -33,6 +33,8 @@ message IntegrationTimeMetadata {
       LagTable ltab = 14;
       string comment_buffer = 15;
       string interfacing = 16;
+      repeated uint32 rx_main_antennas = 17; // Main antennas received on for experiment slice.
+      repeated uint32 rx_intf_antennas = 18;
 
       message Beam {
       uint32 beamnum = 1;  // no channel phase data because beamforming already occurred

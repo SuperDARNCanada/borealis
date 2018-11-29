@@ -580,6 +580,24 @@ class DataWrite(object):
             # Pop these so we don't include them in later iteration.
             data_descriptors = pre_bfiq.pop('data_descriptors', None)
 
+            # Parse the antennas from protobuf
+            rx_main_antennas = {}
+            rx_intf_antennas = {}
+            for meta in integration_meta.sequences:
+                for rx_freq in meta.rxchannel:
+                    rx_main_antennas[rx_freq.slice_id] = list(rx_freq.rx_main_antennas)
+                    rx_intf_antennas[rx_freq.slice_id] = list(rx_freq.rx_intf_antennas)
+
+            # Build strings from antennas used in the protobuf. This will be used to know 
+            # what antennas were recorded on since we sample all available USRP channels
+            # and some channels may not be transmitted on, or connected.
+            main_ant_str = lambda x: "antenna_{}".format(x)
+            intf_ant_str = lambda x: "antenna_{}".format(x + self.options.main_antenna_count)
+            for slice_id in rx_main_antennas:
+                rx_main_antennas[slice_id] = [main_ant_str(x) for x in rx_main_antennas[slice_id]]
+                rx_intf_antennas[slice_id] = [intf_ant_str(x) for x in rx_intf_antennas[slice_id]]
+
+
             final_data_params = {}
             for slice_id in pre_bfiq:
                 final_data_params[slice_id] = {}
@@ -590,16 +608,21 @@ class DataWrite(object):
                     parameters['data_descriptors'] = data_descriptors
                     parameters['num_samps'] = np.uint32(
                         pre_bfiq[slice_id][stage].pop('num_samps', None))
+
+
+                    parameters['antenna_arrays_order'] = rx_main_antennas[slice_id] +\
+                                                         rx_intf_antennas[slice_id]
+
                     parameters['data_dimensions'] = np.array([integration_meta.nave,
-                                                              len(pre_bfiq[slice_id][stage].keys()),
+                                                              len(parameters['antenna_arrays_order']),
                                                               parameters['num_samps']],
                                                              dtype=np.uint32)
 
-                    parameters['antenna_arrays_order'] = list(pre_bfiq[slice_id][stage].keys())
 
                     data = []
-                    for data_dict in pre_bfiq[slice_id][stage].values():
-                        data.append(data_dict['data'])
+                    for k, data_dict in pre_bfiq[slice_id][stage].items():
+                        if k in parameters['antenna_arrays_order']:
+                            data.append(data_dict['data'])
 
                     flattened_data = np.concatenate(data)
                     parameters['data'] = flattened_data
@@ -763,8 +786,8 @@ class DataWrite(object):
                 parameters['tau_spacing'] = np.uint32(rx_freq.tau_spacing)
                 parameters['num_pulses'] = np.uint32(len(rx_freq.ptab.pulse_position))
                 parameters['num_lags'] = np.uint32(len(rx_freq.ltab.lag))
-                parameters['main_antenna_count'] = np.uint32(self.options.main_antenna_count)
-                parameters['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
+                parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
+                parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
                 parameters['comment'] = rx_freq.comment_buffer
                 parameters['samples_data_type'] = "complex float"

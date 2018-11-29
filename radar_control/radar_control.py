@@ -346,6 +346,9 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
             rxchan_add.comment_buffer = sequence.slice_dict[slice_id]['comment']
             rxchan_add.interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
 
+            rxchan_add.rx_main_antennas[:] = sequence.slice_dict[slice_id]['rx_main_antennas']
+            rxchan_add.rx_intf_antennas[:] = sequence.slice_dict[slice_id]['rx_int_antennas']
+
     if __debug__:
         printing('Sending metadata to datawrite.')
 
