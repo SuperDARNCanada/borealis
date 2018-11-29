@@ -188,8 +188,8 @@ for file_type in list(file_types_avail):  # copy of file_types_avail so we can m
 # choose a record from the provided file. 
 good_record_found = False
 while not good_record_found:
-    record_name = '1543525820193' 
-    # record_name = random.choice(list(data[type_of_file].keys()))
+    #record_name = '1543525820193' 
+    record_name = random.choice(list(data[type_of_file].keys()))
     print(record_name)
 
     record_data = {}
@@ -215,7 +215,6 @@ while not good_record_found:
             # reshape to nave x number of antennas (M0..... I3) x number_of_samples
             output_samples_iq_data = np.reshape(flat_data, (number_of_antennas, output_samples_iq['num_sequences'], output_samples_iq['num_samps']))
             output_samples_iq['data'] = output_samples_iq_data
-            output_samples_iq['data_descriptors'] = ['num_antennas', 'num_sequences', 'num_samps'] # TODO REMOVE
 
             # for sequence in range(0, output_samples_iq_data.shape[1]):
             #     print('Sequence number: {}'.format(sequence))
@@ -261,7 +260,7 @@ for sequence_num in range(0,nave):
                 decimated_data = record_dict['data'][0][sequence_num][:][0::dm_rate] # grab only main array data, first sequence, all beams.
                 intf_decimated_data = record_dict['data'][1][sequence_num][:][0::dm_rate]
             elif data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
-                decimated_data = record_dict['data'][:][sequence_num][0::dm_rate] # first sequence only, all antennas.
+                decimated_data = record_dict['data'][:,sequence_num,0::dm_rate] # first sequence only, all antennas.
             else:
                 raise Exception('Not sure how to decimate with the dimensions of this data: {}'.format(record_dict['data_descriptors']))
             
@@ -270,7 +269,8 @@ for sequence_num in range(0,nave):
                 decimated_data = record_dict['data'][0][sequence_num][:][:] # only main array
                 intf_decimated_data = record_dict['data'][1][sequence_num][:][:]
             elif data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
-                decimated_data = record_dict['data'][:][sequence_num][:] # first sequence only, all antennas.
+                print(record_dict['data'].shape)
+                decimated_data = record_dict['data'][:,sequence_num,:] # first sequence only, all antennas.
             else:
                 raise Exception('Unexpected data dimensions: {}'.format(record_dict['data_descriptors']))
         
@@ -295,9 +295,10 @@ for sequence_num in range(0,nave):
         if filetype != bfiq_filetype:
             # need to beamform the data. 
             antenna_list = []
+            print(decimated_data.shape)
             if data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
-                for antenna in range(0, record_dict['data'].shape[1]):
-                    antenna_list.append(decimated_data[:][antenna])
+                for antenna in range(0, record_dict['data'].shape[0]):
+                    antenna_list.append(decimated_data[antenna,:])
                 antenna_list = np.array(antenna_list)
             else:
                 raise Exception('Not sure how to beamform with the dimensions of this data: {}'.format(record_dict['data_descriptors']))
@@ -309,7 +310,7 @@ for sequence_num in range(0,nave):
             intf_antennas_mask = (antennas_present >= record_dict['main_antenna_count'])
             decimated_beamformed_data = beamform(antenna_list[main_antennas_mask][:].copy(), record_dict['beam_azms'], record_dict['freq']) 
             intf_decimated_beamformed_data = beamform(antenna_list[intf_antennas_mask][:].copy(), record_dict['beam_azms'], record_dict['freq']) 
-            summed_data = np.sum(antenna_list[main_antennas_mask][:], axis=0)
+            summed_data = np.sum(antenna_list[:][main_antennas_mask], axis=0)
             record_dict['straight_summed_data'] = summed_data
         else:
             decimated_beamformed_data = decimated_data  

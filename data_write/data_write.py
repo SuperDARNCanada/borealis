@@ -613,7 +613,7 @@ class DataWrite(object):
                     parameters['antenna_arrays_order'] = rx_main_antennas[slice_id] +\
                                                          rx_intf_antennas[slice_id]
 
-                    num_ants = parameters['antenna_arrays_order']
+                    num_ants = len(parameters['antenna_arrays_order'])
 
                     parameters['data_dimensions'] = np.array([num_ants,
                                                               integration_meta.nave,
