@@ -147,7 +147,6 @@ class ParseData(object):
                 self._bfiq_available = True
 
                 for beam in data_set.beamformedsamples:
-                    cmplx = np.empty(len(beam.mainsamples), dtype=np.complex64)
                     self._bfiq_accumulator[slice_id]['num_samps'] = len(beam.mainsamples)
 
                     def add_samples(samples, antenna_arr_type):
@@ -158,7 +157,8 @@ class ParseData(object):
                             samples (Protobuf): ProcessedData protobuf samples
                             antenna_arr_type (String): Denotes "Main" or "Intf" arrays.
                         """
-
+                        
+                        cmplx = np.ones(len(beam.mainsamples), dtype=np.complex64)
                         for i, sample in enumerate(samples):
                             cmplx[i] = sample.real + 1.0j * sample.imag
 

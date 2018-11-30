@@ -144,6 +144,93 @@ def find_pulse_indices(data, threshold):
     return pulse_indices
 
 
+def plot_output_samples_iq_data(record_dict, record_filetype):
+    """
+    :param record_dict: a record containing data_dimensions, data_descriptors, antenna_array_names, and data (reshaped)
+    :param record_filetype: a string indicating the type of data being plotted (to be used on the plot legend). Should 
+     be output_samples_iq type, but there might be multiple slices.
+    """
+
+    # data dimensions are num_antennas, num_sequences, num_samps
+
+    antennas_present = [int(i.split('_')[-1]) for i in record_dict['antenna_arrays_order']]
+
+    for sequence in range(0, record_dict['data'].shape[1]):
+        print('Sequence number: {}'.format(sequence))
+         
+        for index in range(0, record_dict['data'].shape[0]):
+            antenna = antennas_present[index]
+            fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+            if antenna < record_dict['main_antenna_count']:
+                ax1.set_title('Main Antennas {}'.format(record_filetype))
+                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].real, label='Real {}'.format(antenna))
+                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].imag, label="Imag {}".format(antenna))
+                ax1.legend()
+            else:
+                ax2.set_title('Intf Antennas {}'.format(record_filetype))
+                ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].real, label='Real {}'.format(antenna))
+                ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].imag, label="Imag {}".format(antenna))
+                ax2.legend()                       
+            plt.show()
+
+
+
+def plot_bf_iq_data(record_dict, record_filetype):
+    """
+    :param record_dict: a record containing data_dimensions, data_descriptors, antenna_array_names, and data (reshaped)
+    :param record_filetype: a string indicating the type of data being plotted (to be used on the plot legend). Should 
+     be bf_iq type, but there might be multiple slices.
+    """
+
+    # data dimensions are num_antenna_arrays, num_sequences, num_beams, num_samps
+
+    beam = 0
+    for sequence in range(0, record_dict['data'].shape[1]):
+        print('Sequence number: {}'.format(sequence))
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+        for index in range(0, record_dict['data'].shape[0]):
+            antenna_array = record_dict['antenna_arrays_order'][index]
+
+            if antenna_array == 'main':
+                ax1.set_title('Main Array {}'.format(record_filetype))
+                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].real, label='Real {}'.format(antenna_array))
+                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].imag, label="Imag {}".format(antenna_array))
+                ax1.legend()
+            else:
+                #ax2.set_title('Intf Array {}'.format(record_filetype))
+                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].real, label='Real {}'.format(antenna_array))
+                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].imag, label="Imag {}".format(antenna_array))
+                ax1.legend()                       
+        plt.show()
+
+
+
+def plot_all_bf_data(record_data):
+    """
+    :param record_data: dictionary with keys = filetypes, each value is a record dictionaries from that filetype, 
+     for the same record identifier. (eg. '1543525820193')
+    """
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+    for filetype, record_dict in record_data.items():
+        # normalized_real = record_dict['main_bf_data'][0].real / max(abs(record_dict['main_bf_data'][0]))
+        # normalized_imag = record_dict['main_bf_data'][0].imag / max(abs(record_dict['main_bf_data'][0]))
+        # ax1.plot(np.arange(record_dict['main_bf_data'].shape[1]), normalized_real, label='Normalized Real {}'.format(filetype))
+        # ax1.plot(np.arange(record_dict['main_bf_data'].shape[1]), normalized_imag, label="Normalized Imag {}".format(filetype))
+        # ax1.legend()
+        # normalized_real = record_dict['intf_bf_data'][0].real / max(abs(record_dict['intf_bf_data'][0]))
+        # normalized_imag = record_dict['intf_bf_data'][0].imag / max(abs(record_dict['intf_bf_data'][0]))
+        # ax2.plot(np.arange(record_dict['intf_bf_data'].shape[1]), normalized_real, label='INTF Normalized Real {}'.format(filetype))
+        # ax2.plot(np.arange(record_dict['intf_bf_data'].shape[1]), normalized_imag, label="INTF Normalized Imag {}".format(filetype))
+        # ax2.legend()
+        print(type(record_dict['main_bf_data'][0]))
+        ax1.plot(np.arange(record_dict['main_bf_data'].shape[1]), record_dict['main_bf_data'][0].real, label='Real {}'.format(filetype))
+        ax1.plot(np.arange(record_dict['main_bf_data'].shape[1]), record_dict['main_bf_data'][0].imag, label="Imag {}".format(filetype))
+        ax2.plot(np.arange(record_dict['intf_bf_data'].shape[1]), record_dict['intf_bf_data'][0].real, label='INTF Real {}'.format(filetype))
+        ax2.plot(np.arange(record_dict['intf_bf_data'].shape[1]), record_dict['intf_bf_data'][0].imag, label="INTF Imag {}".format(filetype))
+    ax1.legend()
+    ax2.legend()
+    plt.show()
+
 parser = testing_parser()
 args = parser.parse_args()
 data_file_path = args.filename
@@ -169,7 +256,8 @@ if file_suffix != 'hdf5':
 output_samples_filetype = slice_id_number + ".output_samples_iq"
 bfiq_filetype = slice_id_number + ".bfiq"
 rawrf_filetype = "rawrf"
-file_types_avail = [output_samples_filetype, bfiq_filetype]
+tx_filetype = "txdata"
+file_types_avail = [output_samples_filetype, bfiq_filetype, rawrf_filetype, tx_filetype]
 
 if type_of_file not in file_types_avail:
     raise Exception('Type of Data Not Incorporated in Script: {}'.format(type_of_file))
@@ -185,60 +273,59 @@ for file_type in list(file_types_avail):  # copy of file_types_avail so we can m
         if file_type == type_of_file:  # if this is the filename you provided.
             raise
 
-# choose a record from the provided file. 
+
+
+# Choose a record from the provided file, and get that record for each filetype to analyze side by side.
+
 good_record_found = False
+record_attempts = 0
 while not good_record_found:
     #record_name = '1543525820193' 
     record_name = random.choice(list(data[type_of_file].keys()))
     print(record_name)
 
     record_data = {}
-    for file_type in file_types_avail:
-        record_data[file_type] = data[file_type][record_name]
 
     try:
-        if bfiq_filetype in file_types_avail:
-            bf_iq = record_data[bfiq_filetype]
-            number_of_beams = len(bf_iq['beam_azms'])
-            number_of_arrays = len(bf_iq['antenna_arrays_order'])
+        for file_type in file_types_avail:
+            record_data[file_type] = data[file_type][record_name]
 
-            flat_data = np.array(bf_iq['data'])  
-            # reshape to 2 (main, intf) x nave x number_of_beams x number_of_samples
-            bf_iq_data = np.reshape(flat_data, (number_of_arrays, bf_iq['num_sequences'], number_of_beams, bf_iq['num_samps']))
-            bf_iq['data'] = bf_iq_data
+            if file_type == bfiq_filetype:
+                bf_iq = record_data[bfiq_filetype]
+                number_of_beams = len(bf_iq['beam_azms'])
+                number_of_arrays = len(bf_iq['antenna_arrays_order'])
 
-        if output_samples_filetype in file_types_avail:
-            output_samples_iq = record_data[output_samples_filetype]
-            number_of_antennas = len(output_samples_iq['antenna_arrays_order'])
+                flat_data = np.array(bf_iq['data'])  
+                # reshape to 2 (main, intf) x nave x number_of_beams x number_of_samples
+                bf_iq_data = np.reshape(flat_data, (number_of_arrays, bf_iq['num_sequences'], number_of_beams, bf_iq['num_samps']))
+                bf_iq['data'] = bf_iq_data
 
-            flat_data = np.array(output_samples_iq['data'])  
-            # reshape to nave x number of antennas (M0..... I3) x number_of_samples
-            output_samples_iq_data = np.reshape(flat_data, (number_of_antennas, output_samples_iq['num_sequences'], output_samples_iq['num_samps']))
-            output_samples_iq['data'] = output_samples_iq_data
+            if file_type == output_samples_filetype:
+                output_samples_iq = record_data[output_samples_filetype]
+                number_of_antennas = len(output_samples_iq['antenna_arrays_order'])
 
-            # for sequence in range(0, output_samples_iq_data.shape[1]):
-            #     print('Sequence number: {}'.format(sequence))
-            #     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-            #     ax1.plot(np.arange(output_samples_iq['num_samps']), output_samples_iq['data'][0][sequence].real, label='Real {}'.format(output_samples_filetype))
-            #     ax1.plot(np.arange(output_samples_iq['num_samps']), output_samples_iq['data'][0][sequence].imag, label="Imag {}".format(output_samples_filetype))
-            #     ax1.legend()
-            #     ax2.plot(np.arange(output_samples_iq['num_samps']), output_samples_iq['data'][1][sequence].real, label='Real {}'.format(output_samples_filetype))
-            #     ax2.plot(np.arange(output_samples_iq['num_samps']), output_samples_iq['data'][1][sequence].imag, label="Imag {}".format(output_samples_filetype))
-            #     ax2.legend()
-            #     plt.show()
+                flat_data = np.array(output_samples_iq['data'])  
+                # reshape to nave x number of antennas (M0..... I3) x number_of_samples
+                output_samples_iq_data = np.reshape(flat_data, (number_of_antennas, output_samples_iq['num_sequences'], output_samples_iq['num_samps']))
+                output_samples_iq['data'] = output_samples_iq_data
 
-        if 'rawrf' in file_types_avail:
-            rawrf = record_data[rawrf_filetype]
-            number_of_antennas = rawrf['main_antenna_count'] + rawrf['intf_antenna_count']
-            flat_data = np.array(rawrf['data'])  
-            # reshape to number_of_antennas x number_of_samples
-            rawrf_data = np.reshape(flat_data, (rawrf['num_sequences'], number_of_antennas, rawrf['num_samps']))
-            rawrf['data'] = rawrf_data
+            if file_type == rawrf_filetype:
+                rawrf = record_data[rawrf_filetype]
+                number_of_antennas = rawrf['main_antenna_count'] + rawrf['intf_antenna_count']
+                flat_data = np.array(rawrf['data'])  
+                # reshape to number_of_antennas x number_of_samples
+                rawrf_data = np.reshape(flat_data, (rawrf['num_sequences'], number_of_antennas, rawrf['num_samps']))
+                rawrf['data'] = rawrf_data
+
+            # tx data does not need to be reshaped.
+
     except ValueError as e:
-        print('Record {} raised an exception:\n'.format(record_name))
+        print('Record {} raised an exception in filetype {}:\n'.format(record_name, file_type))
         traceback.print_exc()
         print('\nA new record will be selected.')
-
+        record_attempts +=1
+        if record_attempts == 3:
+            raise # something is wrong with the files 
     else:  # no errors
         good_record_found = True
 
@@ -266,30 +353,13 @@ for sequence_num in range(0,nave):
             
         else:
             if data_description_list == ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']:
-                decimated_data = record_dict['data'][0][sequence_num][:][:] # only main array
-                intf_decimated_data = record_dict['data'][1][sequence_num][:][:]
+                decimated_data = record_dict['data'][0,sequence_num,:,:] # only main array
+                intf_decimated_data = record_dict['data'][1,sequence_num,:,:]
             elif data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
                 print(record_dict['data'].shape)
                 decimated_data = record_dict['data'][:,sequence_num,:] # first sequence only, all antennas.
             else:
                 raise Exception('Unexpected data dimensions: {}'.format(record_dict['data_descriptors']))
-        
-        # if filetype != bfiq_filetype:
-        #     # need to beamform the data. 
-        #     if data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
-        #         decimated_beamformed_data = [np.array(decimated_data[:][0])]
-        #         decimated_beamformed_data = np.array(decimated_beamformed_data)
-        #         #np.reshape(decimated_beamformed_data, (1, record_dict['num_samps']))
-        #         intf_decimated_beamformed_data = [np.array(decimated_data[:][1])]
-        #         intf_decimated_beamformed_data = np.array(intf_decimated_beamformed_data)
-        #         #np.reshape(intf_decimated_beamformed_data, (1, record_dict['num_samps']))
-        #     else:
-        #         raise Exception('Not sure how to beamform with the dimensions of this data: {}'.format(record_dict['data_descriptors']))
-
-        # else:
-        #     decimated_beamformed_data = decimated_data  
-        #     intf_decimated_beamformed_data = intf_decimated_data
-
 
         # STEP 2: BEAMFORM ANY UNBEAMFORMED DATA
         if filetype != bfiq_filetype:
@@ -319,26 +389,9 @@ for sequence_num in range(0,nave):
         record_dict['main_bf_data'] = decimated_beamformed_data # this has 2 dimensions: num_beams x num_samps
         record_dict['intf_bf_data'] = intf_decimated_beamformed_data
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-    for filetype, record_dict in record_data.items():
-        # normalized_real = record_dict['main_bf_data'][0].real / max(abs(record_dict['main_bf_data'][0]))
-        # normalized_imag = record_dict['main_bf_data'][0].imag / max(abs(record_dict['main_bf_data'][0]))
-        # ax1.plot(np.arange(record_dict['main_bf_data'].shape[1]), normalized_real, label='Normalized Real {}'.format(filetype))
-        # ax1.plot(np.arange(record_dict['main_bf_data'].shape[1]), normalized_imag, label="Normalized Imag {}".format(filetype))
-        # ax1.legend()
-        # normalized_real = record_dict['intf_bf_data'][0].real / max(abs(record_dict['intf_bf_data'][0]))
-        # normalized_imag = record_dict['intf_bf_data'][0].imag / max(abs(record_dict['intf_bf_data'][0]))
-        # ax2.plot(np.arange(record_dict['intf_bf_data'].shape[1]), normalized_real, label='INTF Normalized Real {}'.format(filetype))
-        # ax2.plot(np.arange(record_dict['intf_bf_data'].shape[1]), normalized_imag, label="INTF Normalized Imag {}".format(filetype))
-        # ax2.legend()
-        print(type(record_dict['main_bf_data'][0]))
-        ax1.plot(np.arange(record_dict['main_bf_data'].shape[1]), record_dict['main_bf_data'][0].real, label='Real {}'.format(filetype))
-        ax1.plot(np.arange(record_dict['main_bf_data'].shape[1]), record_dict['main_bf_data'][0].imag, label="Imag {}".format(filetype))
-        ax2.plot(np.arange(record_dict['intf_bf_data'].shape[1]), record_dict['intf_bf_data'][0].real, label='INTF Real {}'.format(filetype))
-        ax2.plot(np.arange(record_dict['intf_bf_data'].shape[1]), record_dict['intf_bf_data'][0].imag, label="INTF Imag {}".format(filetype))
-    ax1.legend()
-    ax2.legend()
-    plt.show()
+
+    #plot_output_samples_iq_data(record_data[output_samples_filetype], output_samples_filetype)
+    #plot_bf_iq_data(record_data[bfiq_filetype], bfiq_filetype)
 
 for sequence_num in range(0,nave):
     for filetype, record_dict in record_data.items():

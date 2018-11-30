@@ -686,7 +686,7 @@ class ExperimentPrototype(object):
                 self._interface[(ind, new_exp_slice['slice_id'])] = interfacing_dict[ind]
                 # update to add interfacing. new slice_id will be greater than all others so
                 # we can add with ind first and maintain interfacing list rule of key1 < key2.
-            except TypeError or IndexError:
+            except (TypeError, IndexError):
                 # if interfacing dictionary was not passed we will have TypeError
                 # if interfacing dictionary was passed but did not include all interfacing
                 # necessary (i.e. ind does not exist in interfacing dictionary), we will have
@@ -710,7 +710,7 @@ class ExperimentPrototype(object):
 
         try:
             del(self.slice_dict[remove_slice_id])
-        except IndexError or TypeError:
+        except (IndexError, TypeError):
             errmsg = 'Cannot remove slice id {} : it does not exist in slice dictionary'.format(remove_slice_id)
             raise ExperimentException(errmsg)
 
@@ -739,7 +739,7 @@ class ExperimentPrototype(object):
 
         try:
             edited_slice = self.slice_dict[edit_slice_id].copy()
-        except IndexError or TypeError:
+        except (IndexError, TypeError):
             # the edit_slice_id is not an index in the slice_dict
             errmsg = 'Trying to edit {} but it does not exist in Slice_IDs' \
                      ' list.'.format(edit_slice_id)
@@ -871,7 +871,7 @@ class ExperimentPrototype(object):
             assert isinstance(exp_slice['pulse_sequence'], list)
             for element in exp_slice['pulse_sequence']:
                 assert isinstance(element, int)
-        except AssertionError or KeyError:
+        except (AssertionError, KeyError):
             errmsg = "Slice must specify pulse_sequence that must be a list of integers"
             raise ExperimentException(errmsg, exp_slice)
 
