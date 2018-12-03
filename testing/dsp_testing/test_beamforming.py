@@ -129,7 +129,9 @@ def get_offsets(samples_a, samples_b):
     :param samples_b: another numpy array of complex samples
     """
     samples_diff = samples_a * np.conj(samples_b)
-    return np.angle(samples_diff)
+    phase_offsets = np.angle(samples_diff)
+    phase_offsets = phase_offsets * 180.0/math.pi
+    return list(phase_offsets)
 
 
 def find_pulse_indices(data, threshold):
@@ -186,23 +188,21 @@ def plot_bf_iq_data(record_dict, record_filetype):
 
     beam = 0
     for sequence in range(0, record_dict['data'].shape[1]):
-        print('Sequence number: {}'.format(sequence))
         fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
         for index in range(0, record_dict['data'].shape[0]):
             antenna_array = record_dict['antenna_arrays_order'][index]
 
             if antenna_array == 'main':
-                ax1.set_title('Main Array {}'.format(record_filetype))
+                ax1.set_title('Main Array {} sequence {}'.format(record_filetype, sequence))
                 ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].real, label='Real {}'.format(antenna_array))
                 ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].imag, label="Imag {}".format(antenna_array))
                 ax1.legend()
             else:
-                #ax2.set_title('Intf Array {}'.format(record_filetype))
-                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].real, label='Real {}'.format(antenna_array))
-                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].imag, label="Imag {}".format(antenna_array))
-                ax1.legend()                       
+                ax2.set_title('Intf Array {} sequence {}'.format(record_filetype, sequence))
+                ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].real, label='Real {}'.format(antenna_array))
+                ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].imag, label="Imag {}".format(antenna_array))
+                ax2.legend()                       
         plt.show()
-
 
 
 def plot_all_bf_data(record_data):
@@ -231,224 +231,268 @@ def plot_all_bf_data(record_data):
     ax2.legend()
     plt.show()
 
-parser = testing_parser()
-args = parser.parse_args()
-data_file_path = args.filename
 
-data_file = os.path.basename(data_file_path)
+def main():
+    parser = testing_parser()
+    args = parser.parse_args()
+    data_file_path = args.filename
 
-data_file_metadata = data_file.split('.')
+    data_file = os.path.basename(data_file_path)
 
-date_of_file = data_file_metadata[0]
-timestamp_of_file = '.'.join(data_file_metadata[0:3])
-station_name = data_file_metadata[3]
-slice_id_number = data_file_metadata[4]
-type_of_file = data_file_metadata[-2]  # XX.hdf5
-if type_of_file == slice_id_number:
-    slice_id_number = 0  # choose the first slice to search for other available files.
-else:
-    type_of_file = slice_id_number + '.' + type_of_file
-file_suffix = data_file_metadata[-1]
+    data_file_metadata = data_file.split('.')
 
-if file_suffix != 'hdf5':
-    raise Exception('Incorrect File Suffix: {}'.format(file_suffix))
+    date_of_file = data_file_metadata[0]
+    timestamp_of_file = '.'.join(data_file_metadata[0:3])
+    station_name = data_file_metadata[3]
+    slice_id_number = data_file_metadata[4]
+    type_of_file = data_file_metadata[-2]  # XX.hdf5
+    if type_of_file == slice_id_number:
+        slice_id_number = '0'  # choose the first slice to search for other available files.
+    else:
+        type_of_file = slice_id_number + '.' + type_of_file
+    file_suffix = data_file_metadata[-1]
 
-output_samples_filetype = slice_id_number + ".output_samples_iq"
-bfiq_filetype = slice_id_number + ".bfiq"
-rawrf_filetype = "rawrf"
-tx_filetype = "txdata"
-file_types_avail = [output_samples_filetype, bfiq_filetype, rawrf_filetype, tx_filetype]
+    if file_suffix != 'hdf5':
+        raise Exception('Incorrect File Suffix: {}'.format(file_suffix))
 
-if type_of_file not in file_types_avail:
-    raise Exception('Type of Data Not Incorporated in Script: {}'.format(type_of_file))
+    output_samples_filetype = slice_id_number + ".output_samples_iq"
+    bfiq_filetype = slice_id_number + ".bfiq"
+    rawrf_filetype = "rawrf"
+    tx_filetype = "txdata"
+    file_types_avail = [bfiq_filetype, output_samples_filetype, tx_filetype, rawrf_filetype]
 
-data = {}
-for file_type in list(file_types_avail):  # copy of file_types_avail so we can modify it within.
-    try:
-        filename = '/data/borealis_data/' + date_of_file + '/' + timestamp_of_file + \
-                    '.' + station_name + '.' + file_type + '.hdf5'
-        data[file_type] = deepdish.io.load(filename)
-    except:
-        file_types_avail.remove(file_type)
-        if file_type == type_of_file:  # if this is the filename you provided.
-            raise
+    if type_of_file not in file_types_avail:
+        raise Exception('Type of Data Not Incorporated in Script: {}'.format(type_of_file))
 
-
-
-# Choose a record from the provided file, and get that record for each filetype to analyze side by side.
-
-good_record_found = False
-record_attempts = 0
-while not good_record_found:
-    #record_name = '1543525820193' 
-    record_name = random.choice(list(data[type_of_file].keys()))
-    print(record_name)
-
-    record_data = {}
-
-    try:
-        for file_type in file_types_avail:
-            record_data[file_type] = data[file_type][record_name]
-
-            if file_type == bfiq_filetype:
-                bf_iq = record_data[bfiq_filetype]
-                number_of_beams = len(bf_iq['beam_azms'])
-                number_of_arrays = len(bf_iq['antenna_arrays_order'])
-
-                flat_data = np.array(bf_iq['data'])  
-                # reshape to 2 (main, intf) x nave x number_of_beams x number_of_samples
-                bf_iq_data = np.reshape(flat_data, (number_of_arrays, bf_iq['num_sequences'], number_of_beams, bf_iq['num_samps']))
-                bf_iq['data'] = bf_iq_data
-
-            if file_type == output_samples_filetype:
-                output_samples_iq = record_data[output_samples_filetype]
-                number_of_antennas = len(output_samples_iq['antenna_arrays_order'])
-
-                flat_data = np.array(output_samples_iq['data'])  
-                # reshape to nave x number of antennas (M0..... I3) x number_of_samples
-                output_samples_iq_data = np.reshape(flat_data, (number_of_antennas, output_samples_iq['num_sequences'], output_samples_iq['num_samps']))
-                output_samples_iq['data'] = output_samples_iq_data
-
-            if file_type == rawrf_filetype:
-                rawrf = record_data[rawrf_filetype]
-                number_of_antennas = rawrf['main_antenna_count'] + rawrf['intf_antenna_count']
-                flat_data = np.array(rawrf['data'])  
-                # reshape to number_of_antennas x number_of_samples
-                rawrf_data = np.reshape(flat_data, (rawrf['num_sequences'], number_of_antennas, rawrf['num_samps']))
-                rawrf['data'] = rawrf_data
-
-            # tx data does not need to be reshaped.
-
-    except ValueError as e:
-        print('Record {} raised an exception in filetype {}:\n'.format(record_name, file_type))
-        traceback.print_exc()
-        print('\nA new record will be selected.')
-        record_attempts +=1
-        if record_attempts == 3:
-            raise # something is wrong with the files 
-    else:  # no errors
-        good_record_found = True
+    data = {}
+    for file_type in list(file_types_avail):  # copy of file_types_avail so we can modify it within.
+        try:
+            filename = '/data/borealis_data/' + date_of_file + '/' + timestamp_of_file + \
+                        '.' + station_name + '.' + file_type + '.hdf5'
+            data[file_type] = deepdish.io.load(filename)
+        except:
+            file_types_avail.remove(file_type)
+            if file_type == type_of_file:  # if this is the filename you provided.
+                raise
 
 
-# find pulse points in data that is decimated. 
-nave = record_data[type_of_file]['num_sequences']
-for sequence_num in range(0,nave):
-    print('SEQUENCE NUMBER {}'.format(sequence_num))
-    for filetype, record_dict in record_data.items():
+    # Choose a record from the provided file, and get that record for each filetype to analyze side by side.
+    # Also reshaping data to correct dimensions - if there is a problem with reshaping, we will also not use that record.
+    good_record_found = False
+    record_attempts = 0
+    while not good_record_found:
+        #record_name = '1543525820193' 
+        record_name = random.choice(list(data[type_of_file].keys()))
+        print(record_name)
 
-        data_description_list = list(record_dict['data_descriptors'])
-        
-        # STEP 1: DECIMATE IF NECESSARY
-        if record_dict['rx_sample_rate'] != 3333.0:
-            # we aren't at 3.3 kHz - need to decimate.
-            dm_rate = int(record_data['rx_sample_rate']/3333.0)
-            print(dm_rate)
-            if data_description_list == ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']:
-                decimated_data = record_dict['data'][0][sequence_num][:][0::dm_rate] # grab only main array data, first sequence, all beams.
-                intf_decimated_data = record_dict['data'][1][sequence_num][:][0::dm_rate]
-            elif data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
-                decimated_data = record_dict['data'][:,sequence_num,0::dm_rate] # first sequence only, all antennas.
-            else:
-                raise Exception('Not sure how to decimate with the dimensions of this data: {}'.format(record_dict['data_descriptors']))
-            
-        else:
-            if data_description_list == ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']:
-                decimated_data = record_dict['data'][0,sequence_num,:,:] # only main array
-                intf_decimated_data = record_dict['data'][1,sequence_num,:,:]
-            elif data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
-                print(record_dict['data'].shape)
-                decimated_data = record_dict['data'][:,sequence_num,:] # first sequence only, all antennas.
-            else:
-                raise Exception('Unexpected data dimensions: {}'.format(record_dict['data_descriptors']))
+        record_data = {}
 
-        # STEP 2: BEAMFORM ANY UNBEAMFORMED DATA
-        if filetype != bfiq_filetype:
-            # need to beamform the data. 
-            antenna_list = []
-            print(decimated_data.shape)
-            if data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
-                for antenna in range(0, record_dict['data'].shape[0]):
-                    antenna_list.append(decimated_data[antenna,:])
-                antenna_list = np.array(antenna_list)
-            else:
-                raise Exception('Not sure how to beamform with the dimensions of this data: {}'.format(record_dict['data_descriptors']))
+        try:
+            for file_type in file_types_avail:
+                record_data[file_type] = data[file_type][record_name]
 
-            # beamform main array antennas only. 
-            print('Main antenna count: {}'.format(record_dict['main_antenna_count']))
-            antennas_present = [int(i.split('_')[-1]) for i in record_dict['antenna_arrays_order']]
-            main_antennas_mask = (antennas_present < record_dict['main_antenna_count'])
-            intf_antennas_mask = (antennas_present >= record_dict['main_antenna_count'])
-            decimated_beamformed_data = beamform(antenna_list[main_antennas_mask][:].copy(), record_dict['beam_azms'], record_dict['freq']) 
-            intf_decimated_beamformed_data = beamform(antenna_list[intf_antennas_mask][:].copy(), record_dict['beam_azms'], record_dict['freq']) 
-            summed_data = np.sum(antenna_list[:][main_antennas_mask], axis=0)
-            record_dict['straight_summed_data'] = summed_data
-        else:
-            decimated_beamformed_data = decimated_data  
-            intf_decimated_beamformed_data = intf_decimated_data
+                if file_type == bfiq_filetype:
+                    bf_iq = record_data[bfiq_filetype]
+                    number_of_beams = len(bf_iq['beam_azms'])
+                    number_of_arrays = len(bf_iq['antenna_arrays_order'])
 
-        record_dict['main_bf_data'] = decimated_beamformed_data # this has 2 dimensions: num_beams x num_samps
-        record_dict['intf_bf_data'] = intf_decimated_beamformed_data
+                    flat_data = np.array(bf_iq['data'])  
+                    # reshape to 2 (main, intf) x nave x number_of_beams x number_of_samples
+                    bf_iq_data = np.reshape(flat_data, (number_of_arrays, bf_iq['num_sequences'], number_of_beams, bf_iq['num_samps']))
+                    bf_iq['data'] = bf_iq_data
+                    beam_azms = bf_iq['beam_azms']
+                    pulses = bf_iq['pulses']
+                    decimated_rate = bf_iq['rx_sample_rate']
+                    tau_spacing = bf_iq['tau_spacing']
+                    freq = bf_iq['freq']
+                    nave = bf_iq['num_sequences']
+                    main_antenna_count = bf_iq['main_antenna_count']
+                    intf_antenna_count = bf_iq['intf_antenna_count']
 
+                if file_type == output_samples_filetype:
+                    output_samples_iq = record_data[output_samples_filetype]
+                    number_of_antennas = len(output_samples_iq['antenna_arrays_order'])
+
+                    flat_data = np.array(output_samples_iq['data'])  
+                    # reshape to nave x number of antennas (M0..... I3) x number_of_samples
+                    output_samples_iq_data = np.reshape(flat_data, (number_of_antennas, output_samples_iq['num_sequences'], output_samples_iq['num_samps']))
+                    output_samples_iq['data'] = output_samples_iq_data
+                    antennas_present = [int(i.split('_')[-1]) for i in output_samples_iq['antenna_arrays_order']]
+                    output_samples_iq['antennas_present'] = antennas_present
+
+                if file_type == rawrf_filetype:
+                    rawrf = record_data[rawrf_filetype]
+                    number_of_antennas = rawrf['main_antenna_count'] + rawrf['intf_antenna_count']
+                    #number_of_antennas = len(rawrf['antenna_arrays_order'])
+                    flat_data = np.array(rawrf['data'])  
+                    # reshape to number_of_antennas x number_of_samples
+                    rawrf_data = np.reshape(flat_data, (rawrf['num_sequences'], number_of_antennas, rawrf['num_samps']))
+                    rawrf['data'] = rawrf_data
+                    rawrf['antennas_present'] = range(0,rawrf['main_antenna_count'] + rawrf['intf_antenna_count'])
+                    rawrf['dm_start_sample'] = 180*10*5 + 180
+
+                # tx data does not need to be reshaped.
+                if file_type == tx_filetype:
+                    tx = record_data[tx_filetype]
+                    tx['rx_sample_rate'] = int(tx['tx_rate'][0]/tx['dm_rate'])
+                    print('Decimation rate error: {}'.format(tx['dm_rate_error']))
+                    print(tx['rx_sample_rate'])
+                    tx['data_descriptors'] = ['num_sequences', 'num_antennas', 'num_samps']
+                    tx['data'] = tx['decimated_tx_samples']
+                    tx['antennas_present'] = tx['decimated_tx_antennas'][0]
+                    tx['dm_start_sample'] = 0
+
+
+        except ValueError as e:
+            print('Record {} raised an exception in filetype {}:\n'.format(record_name, file_type))
+            traceback.print_exc()
+            print('\nA new record will be selected.')
+            record_attempts +=1
+            if record_attempts == 3:
+                print('FILES FAILED WITH 3 FAILED ATTEMPTS TO LOAD RECORDS.')
+                raise # something is wrong with the files 
+        else:  # no errors
+            good_record_found = True
+
+    if bfiq_filetype not in file_types_avail:
+        raise Exception('Cannot do beamforming tests without beamformed iq to compare to.')
+
+    # find pulse points in data that is decimated. 
 
     #plot_output_samples_iq_data(record_data[output_samples_filetype], output_samples_filetype)
     #plot_bf_iq_data(record_data[bfiq_filetype], bfiq_filetype)
 
-for sequence_num in range(0,nave):
-    for filetype, record_dict in record_data.items():
-        # STEP 3: FIND THE PULSES IN THE DATA
-        for beamnum in range(0, record_dict['main_bf_data'].shape[0]):
-
-            len_of_data = record_dict['num_samps']
-            pulse_indices = find_pulse_indices(record_dict['main_bf_data'][beamnum], 0.55)
-            if len(pulse_indices) > len(record_dict['pulses']): # sometimes we get two samples from the same pulse.
-                if math.fmod(len(pulse_indices), len(record_dict['pulses'])) == 0.0:
-                    step_size = int(len(pulse_indices)/len(record_dict['pulses']))
-                    pulse_indices = pulse_indices[step_size-1::step_size]
-            
-            pulse_points = [False if i not in pulse_indices else True for i in range(0,len_of_data)]
-            record_dict['pulse_indices'] = pulse_indices
-
-            # verify pulse indices make sense.
-            num_samples_in_tau_spacing = int(round(record_dict['tau_spacing'] * 1.0e-6 * record_dict['rx_sample_rate']))  # us
-            pulse_spacing = record_dict['pulses'] * num_samples_in_tau_spacing
-            expected_pulse_indices = list(pulse_spacing + pulse_indices[0])
-            if expected_pulse_indices != pulse_indices:
-                print(expected_pulse_indices)
-                print(pulse_indices)
-                raise Exception('Pulse Indices are Not Equal to Expected.')
-
-            # get the phases of the pulses for this data.
-            pulse_data = record_dict['main_bf_data'][beamnum][pulse_points]
-            record_dict['pulse_samples'] = pulse_data
-            pulse_phases = np.angle(pulse_data)
-            record_dict['pulse_phases'] = pulse_phases
+    beamforming_dict = {}
+    for sequence_num in range(0,nave):
+        print('SEQUENCE NUMBER {}'.format(sequence_num))
+        sequence_dict = beamforming_dict[sequence_num] = {}
+        for filetype, record_dict in record_data.items():
             print(filetype)
-            print(pulse_phases)
+            sequence_filetype_dict = sequence_dict[filetype] = {}
+            data_description_list = list(record_dict['data_descriptors'])
+            # STEP 1: DECIMATE IF NECESSARY
+            if record_dict['rx_sample_rate'] != 3333.0:
+                # we aren't at 3.3 kHz - need to decimate.
+                dm_rate = int(record_dict['rx_sample_rate']/3333.0)
+                print(dm_rate)
+                dm_start_sample = record_dict['dm_start_sample']
+                dm_end_sample = -1 - dm_start_sample # this is the filter size 
+                if data_description_list == ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']:
+                    decimated_data = record_dict['data'][0][sequence_num][:][dm_start_sample:dm_end_sample:dm_rate] # grab only main array data, first sequence, all beams.
+                    intf_decimated_data = record_dict['data'][1][sequence_num][:][dm_start_sample:dm_end_sample:dm_rate]
+                elif data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
+                    decimated_data = record_dict['data'][:,sequence_num,dm_start_sample:dm_end_sample:dm_rate] # first sequence only, all antennas.
+                elif data_description_list == ['num_sequences', 'num_antennas', 'num_samps']:
+                    if filetype == tx_filetype:  # tx data has sequence number 0 for all 
+                        decimated_data = record_dict['data'][0,:,dm_start_sample:dm_end_sample:dm_rate]
+                    else:
+                        decimated_data = record_dict['data'][sequence_num,:,dm_start_sample:dm_end_sample:dm_rate]
+                else:
+                    raise Exception('Not sure how to decimate with the dimensions of this data: {}'.format(record_dict['data_descriptors']))
+                
+            else:
+                if data_description_list == ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']:
+                    decimated_data = record_dict['data'][0,sequence_num,:,:] # only main array
+                    intf_decimated_data = record_dict['data'][1,sequence_num,:,:]
+                elif data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
+                    decimated_data = record_dict['data'][:,sequence_num,:] # first sequence only, all antennas.
+                elif data_description_list == ['num_sequences', 'num_antennas', 'num_samps']:
+                    if filetype == tx_filetype:
+                        decimated_data = record_dict['data'][0,:,:] # first sequence only, all antennas.
+                    else:
+                        decimated_data = record_dict['data'][sequence_num,:,:] # first sequence only, all antennas.
+                else:
+                    raise Exception('Unexpected data dimensions: {}'.format(record_dict['data_descriptors']))
+
+            # STEP 2: BEAMFORM ANY UNBEAMFORMED DATA
+            if filetype != bfiq_filetype:
+                # need to beamform the data. 
+                antenna_list = []
+                #print(decimated_data.shape)
+                if data_description_list == ['num_antennas', 'num_sequences', 'num_samps']:
+                    for antenna in range(0, record_dict['data'].shape[0]):
+                        antenna_list.append(decimated_data[antenna,:])
+                    antenna_list = np.array(antenna_list)
+                elif data_description_list == ['num_sequences', 'num_antennas', 'num_samps']:
+                    for antenna in range(0, record_dict['data'].shape[1]):
+                        antenna_list.append(decimated_data[antenna,:])
+                    antenna_list = np.array(antenna_list)
+                else:
+                    raise Exception('Not sure how to beamform with the dimensions of this data: {}'.format(record_dict['data_descriptors']))
+
+                # beamform main array antennas only. 
+                main_antennas_mask = (record_dict['antennas_present'] < main_antenna_count)
+                intf_antennas_mask = (record_dict['antennas_present'] >= main_antenna_count)
+                decimated_beamformed_data = beamform(antenna_list[main_antennas_mask][:].copy(), beam_azms, freq) 
+                intf_decimated_beamformed_data = beamform(antenna_list[intf_antennas_mask][:].copy(), beam_azms, freq) 
+            else:
+                decimated_beamformed_data = decimated_data  
+                intf_decimated_beamformed_data = intf_decimated_data
+
+            sequence_filetype_dict['main_bf_data'] = decimated_beamformed_data # this has 2 dimensions: num_beams x num_samps for this sequence.
+            sequence_filetype_dict['intf_bf_data'] = intf_decimated_beamformed_data
+
+
+            # STEP 3: FIND THE PULSES IN THE DATA
+            for beamnum in range(0, sequence_filetype_dict['main_bf_data'].shape[0]):
+
+                len_of_data = sequence_filetype_dict['main_bf_data'].shape[1]
+                pulse_indices = find_pulse_indices(sequence_filetype_dict['main_bf_data'][beamnum], 0.09)
+                if len(pulse_indices) > len(pulses): # sometimes we get two samples from the same pulse.
+                    if math.fmod(len(pulse_indices), len(pulses)) == 0.0:
+                        step_size = int(len(pulse_indices)/len(pulses))
+                        pulse_indices = pulse_indices[step_size-1::step_size]
+                
+                pulse_points = [False if i not in pulse_indices else True for i in range(0,len_of_data)]
+                sequence_filetype_dict['pulse_indices'] = pulse_indices
+
+                # verify pulse indices make sense.
+                num_samples_in_tau_spacing = int(round(tau_spacing * 1.0e-6 * decimated_rate))  # us
+                pulse_spacing = pulses * num_samples_in_tau_spacing
+                expected_pulse_indices = list(pulse_spacing + pulse_indices[0])
+                if expected_pulse_indices != pulse_indices:
+                    sequence_filetype_dict['calculate_offsets'] = False
+                    print(expected_pulse_indices)
+                    print(pulse_indices)
+                    print('Pulse Indices are Not Equal to Expected for filetype {} sequence {}'.format(filetype, sequence_num))
+                    print('Phase Offsets Cannot be Calculated for this filetype {} sequence {}'.format(filetype, sequence_num))
+                else:
+                    sequence_filetype_dict['calculate_offsets'] = True
+
+                # get the phases of the pulses for this data.
+                pulse_data = sequence_filetype_dict['main_bf_data'][beamnum][pulse_points]
+                sequence_filetype_dict['pulse_samples'] = pulse_data
+                pulse_phases = np.angle(pulse_data)
+                sequence_filetype_dict['pulse_phases'] = pulse_phases
+                print('Pulse Indices:\n{}'.format(pulse_indices))
+                #print(pulse_phases)
 
         # Straight summed pre-bf data has been the same as running beamform() function on the prebf data every time. The below was a test.
-        if filetype == output_samples_filetype:
-            pulse_phases_straight_sum = np.angle(record_dict['straight_summed_data'][pulse_indices])
-            print(pulse_phases_straight_sum)
-            print(np.subtract(pulse_phases, pulse_phases_straight_sum))
-# Compare phases from pulses in the various datasets.
-    beamforming_phase_offset = get_offsets(record_data[output_samples_filetype]['pulse_samples'], record_data[bfiq_filetype]['pulse_samples'])
-    print('There are the following phase offsets between the prebf and bf iq data pulses: {}'.format(beamforming_phase_offset))
+        # if filetype == output_samples_filetype:
+        #     pulse_phases_straight_sum = np.angle(record_dict['straight_summed_data'][pulse_indices])
+        #     print(pulse_phases_straight_sum)
+        #     print(np.subtract(pulse_phases, pulse_phases_straight_sum))
 
 
+        # Compare phases from pulses in the various datasets.
+        if output_samples_filetype in file_types_avail and bfiq_filetype in file_types_avail:
+            if sequence_dict[output_samples_filetype]['calculate_offsets'] and sequence_dict[bfiq_filetype]['calculate_offsets']:
+                beamforming_phase_offset = get_offsets(sequence_dict[output_samples_filetype]['pulse_samples'], sequence_dict[bfiq_filetype]['pulse_samples'])
+                print('There are the following phase offsets (deg) between the prebf and bf iq data pulses on sequence {}: {}'.format(sequence_num, beamforming_phase_offset))
+
+        if rawrf_filetype in file_types_avail and output_samples_filetype in file_types_avail:
+            if sequence_dict[output_samples_filetype]['calculate_offsets'] and sequence_dict[rawrf_filetype]['calculate_offsets']:
+                decimation_phase_offset = get_offsets(sequence_dict[rawrf_filetype]['pulse_samples'], sequence_dict[output_samples_filetype]['pulse_samples'])
+                print('There are the following phase offsets (deg) between the rawrf and prebf iq data pulses on sequence {}: {}'.format(sequence_num, decimation_phase_offset))
+
+        if tx_filetype in file_types_avail and rawrf_filetype in file_types_avail:
+            if sequence_dict[tx_filetype]['calculate_offsets'] and sequence_dict[rawrf_filetype]['calculate_offsets']:
+                decimation_phase_offset = get_offsets(sequence_dict[tx_filetype]['pulse_samples'], sequence_dict[rawrf_filetype]['pulse_samples'])
+                print('There are the following phase offsets (deg) between the tx and rawrf iq data pulses on sequence {}: {}'.format(sequence_num, decimation_phase_offset))
 
 
-#def check_beamforming(bf_iq_record, prebf_iq_record):
-    # """
-    # Combine the pre-beamformed samples to verify the beamformed samples produced.
-
-    # :param bf_iq_record: beamformed record from bfiq file, data reshaped to num_arrays 
-    #  x nave x number_of_beams x number_of_samples
-    # :param prebf_iq_record: unbeamformed record from output_samples_iq file, data reshaped 
-    #  to num_antennas x nave x number_of_beams x number_of_samples
-    # """
-
-    #for antenna in range(0, bf_iq_record['main_antenna_count']):
-
+if __name__ == '__main__':
+    main()
 
 
 #def find_tx_rx_delay_offset():  # use pulse points to do this.
