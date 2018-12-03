@@ -157,7 +157,7 @@ class ParseData(object):
                             samples (Protobuf): ProcessedData protobuf samples
                             antenna_arr_type (String): Denotes "Main" or "Intf" arrays.
                         """
-                        
+
                         cmplx = np.ones(len(beam.mainsamples), dtype=np.complex64)
                         for i, sample in enumerate(samples):
                             cmplx[i] = sample.real + 1.0j * sample.imag
@@ -679,7 +679,8 @@ class DataWrite(object):
             param['data_dimensions'] = np.array([param['num_sequences'], total_ants,
                                                  param['num_samps']],
                                                 dtype=np.uint32)
-
+            param['main_antenna_count'] = np.uint32(self.options.main_antenna_count)
+            param['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
             # These fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
             # this data.
