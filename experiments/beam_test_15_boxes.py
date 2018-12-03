@@ -3,6 +3,7 @@
 import os
 import sys
 import random
+import time
 
 sys.path.append(os.environ['BOREALISPATH'])
 # write an experiment that creates a new control program.
@@ -119,10 +120,8 @@ class BeamTest(ExperimentPrototype):
         """  # TODO update with how acfdata will be passed in
 
         # TODO : docs about what can and cannot be changed. Warning about changing centre frequencies.
-
         time.sleep(10)
-
         beam_angle = random.randint(-85,85)
-        self.next_slice_id = self.edit_slice(0,beam_angle=[beam_angle])
+        self.next_slice_id = self.edit_slice(self.next_slice_id,beam_angle=[beam_angle])
         change_flag = True
         return change_flag

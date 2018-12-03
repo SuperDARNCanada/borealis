@@ -687,7 +687,7 @@ class ExperimentPrototype(object):
                 self._interface[(ind, new_exp_slice['slice_id'])] = interfacing_dict[ind]
                 # update to add interfacing. new slice_id will be greater than all others so
                 # we can add with ind first and maintain interfacing list rule of key1 < key2.
-            except (TypeError, IndexError):
+            except (TypeError, IndexError, KeyError):
                 # if interfacing dictionary was not passed we will have TypeError
                 # if interfacing dictionary was passed but did not include all interfacing
                 # necessary (i.e. ind does not exist in interfacing dictionary), we will have
@@ -715,9 +715,13 @@ class ExperimentPrototype(object):
             errmsg = 'Cannot remove slice id {} : it does not exist in slice dictionary'.format(remove_slice_id)
             raise ExperimentException(errmsg)
 
+        remove_keys = []
         for key1, key2 in self._interface.keys():
             if key1 == remove_slice_id or key2 == remove_slice_id:
-                del self._interface[(key1, key2)]
+                remove_keys.append((key1, key2))            
+        
+        for keyset in remove_keys:
+            del self._interface[keyset]
 
     def edit_slice(self, edit_slice_id, **kwargs):
         """
@@ -747,10 +751,9 @@ class ExperimentPrototype(object):
             raise ExperimentException(errmsg)
 
         for edit_slice_param, edit_slice_value in slice_params_to_edit.items():
-            try:
-                assert edit_slice_param in self.slice_keys
+            if edit_slice_param in self.slice_keys:
                 edited_slice[edit_slice_param] = edit_slice_value
-            except AssertionError:
+            else:
                 errmsg = 'Cannot edit slice: {} not a valid slice parameter'.format(edit_slice_param)
                 raise ExperimentException(errmsg)
 
@@ -761,6 +764,9 @@ class ExperimentPrototype(object):
                 new_interface_values[ifkey[1]] = ifvalue
             elif edit_slice_id == ifkey[1]:
                 new_interface_values[ifkey[0]] = ifvalue
+
+        # This interface value will be removed when the slice is deleted.
+        new_interface_values[edit_slice_id] = None
 
         # checks are done when slice is added.
         new_slice_id = self.add_slice(edited_slice, new_interface_values)
@@ -809,6 +815,7 @@ class ExperimentPrototype(object):
 
         self.__running_experiment.nested_slice_list = self.get_scan_slice_ids()
 
+        self.__scan_objects = []
         for params in self.__running_experiment.prep_for_nested_scan_class():
             self.scan_objects.append(Scan(*params))
 
@@ -1157,13 +1164,17 @@ class ExperimentPrototype(object):
             slice_with_defaults['scanbound'] = None
         elif 'scanboundflag' not in exp_slice:  # but scanbound is
             slice_with_defaults['scanboundflag'] = True
+        elif not exp_slice['scanboundflag']: 
+            slice_with_defaults['scanbound'] = None
 
         if 'scanboundflag' in exp_slice:
-            try:
-                assert 'scanbound' in exp_slice
-            except AssertionError:
-                errmsg = 'ScanboundFlag is set without a Scanbound specified.'
-                raise ExperimentException(errmsg)
+            if exp_slice['scanboundflag']:
+                try:
+                    if exp_slice['scanbound'] is None:
+                        raise KeyError
+                except KeyError:
+                    errmsg = 'ScanboundFlag is set without a Scanbound specified.'
+                    raise ExperimentException(errmsg)
 
         # we only have one of intn or intt because of slice checks already completed in
         # check_slice_minimum_requirements.
@@ -1260,10 +1271,14 @@ class ExperimentPrototype(object):
 
         complete_slice = copy.deepcopy(exp_slice)
 
+        remove_keys = []
         # None values are useless to us - if they do not exist we know they are None.
         for key, value in complete_slice.items():
             if value is None:
-                complete_slice.pop(key)
+                remove_keys.append(key)
+        
+        for key in remove_keys:
+            complete_slice.pop(key)
 
         self.set_slice_identifiers(complete_slice)
         self.check_slice_specific_requirements(complete_slice)
