@@ -141,6 +141,4 @@ class Scan(ScanClassBase):
             params.append(self.nested_beamorder)
             params.append(self.nested_beamdir)
 
-        if __debug__:
-            print(params_list)
         return params_list

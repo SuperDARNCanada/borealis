@@ -673,8 +673,9 @@ class ExperimentPrototype(object):
         new_exp_slice = self.setup_slice(exp_slice)
 
         if __debug__:
-            print('Requested Add {}'.format(exp_slice))
-            print('Adding (with Defaults) {}'.format(new_exp_slice))
+            pass
+            #print('Requested Add {}'.format(exp_slice))
+            #print('Adding (with Defaults) {}'.format(new_exp_slice))
 
         # if there were no errors raised in setup_slice, we will add the slice to the slice_dict.
         self.__slice_dict[new_exp_slice['slice_id']] = new_exp_slice
@@ -794,8 +795,9 @@ class ExperimentPrototype(object):
         # investigating how I might go about using this base class - TODO maybe make a new IterableExperiment class to inherit
 
         if __debug__:
-            print("All experiment slice ids: {}".format(self.slice_ids))
-            print("Scan Slice Id list : {}".format(self.__slice_id_scan_lists))
+            pass
+            #print("All experiment slice ids: {}".format(self.slice_ids))
+            #print("Scan Slice Id list : {}".format(self.__slice_id_scan_lists))
 
 
         # TODO check that the following 7 lines work, remove self.__slice_id_scan_lists from init,
@@ -846,7 +848,8 @@ class ExperimentPrototype(object):
                 scan_combos.append(list(k))
 
         if __debug__:
-            print(scan_combos)
+            pass
+            #print(scan_combos)
 
         combos = self.__running_experiment.slice_combos_sorter(scan_combos, self.slice_ids)
 

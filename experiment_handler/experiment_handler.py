@@ -159,9 +159,10 @@ def experiment_handler(semaphore):
 
     Experiment = retrieve_experiment()
     experiment_update = False
-    for method_name, obj in inspect.getmembers(Experiment, inspect.ismethod):
+    for method_name, obj in inspect.getmembers(Experiment, inspect.isfunction):
         if method_name == 'update':
             experiment_update = True
+
     if __debug__:
         print("Experiment has update method: " + str(experiment_update))
 

@@ -278,7 +278,8 @@ class Sequence(ScanClassBase):
                     pulse['isarepeat'] = True
 
         if __debug__:
-            print('PULSES:\n{}'.format(self.pulses))
+            pass
+            #print('PULSES:\n{}'.format(self.pulses))
 
 
         last_pulse = self.pulses[-1]
