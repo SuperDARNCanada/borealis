@@ -405,6 +405,8 @@ class DataWrite(object):
         :param write_rawacf:        Should rawacfs be written to file? Bool, default True.
         """
 
+
+        start = time.time()
         if file_ext not in ['hdf5', 'json', 'dmap']:
             raise ValueError("File format selection required (hdf5, json, dmap), none given")
 
@@ -471,7 +473,6 @@ class DataWrite(object):
                                                        site=self.options.site_id)
                 self.slice_filenames[slice_id] = two_hr_str
                 self.next_boundary = two_hr_ceiling(time_now)
-
 
 
         def write_file(location, final_data_dict, two_hr_file_with_type):
@@ -847,6 +848,9 @@ class DataWrite(object):
         for proc in procs:
             proc.join()
 
+        end = time.time()
+        printing("Time to write: {} ms".format((end-start)*1000))
+
 
 
 def main():
@@ -894,6 +898,13 @@ def main():
         except KeyboardInterrupt:
             sys.exit()
 
+        if radctrl_to_data_write in socks and socks[radctrl_to_data_write] == zmq.POLLIN:
+            data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, printing)
+
+            integration_meta = datawritemetadata_pb2.IntegrationTimeMetadata()
+            integration_meta.ParseFromString(data)
+
+            final_integration = integration_meta.last_seqn_num
 
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes(dsp_to_data_write, options.dsp_to_dw_identity, printing)
@@ -905,8 +916,7 @@ def main():
                         data_write = DataWrite(options)
                         current_experiment = integration_meta.experiment_string
 
-                    start = time.time()
-                    data_write.output_data(write_bfiq=args.enable_bfiq,
+                    kwargs = dict(write_bfiq=args.enable_bfiq,
                                            write_pre_bfiq=args.enable_pre_bfiq,
                                            write_raw_rf=args.enable_raw_rf,
                                            write_tx=args.enable_tx,
@@ -914,9 +924,8 @@ def main():
                                            integration_meta=integration_meta,
                                            data_parsing=data_parsing,
                                            write_rawacf=False)
-                    end = time.time()
-                    printing("Time to write: {} ms".format((end-start)*1000))
-
+                    proc = mp.Process(target=data_write.output_data, kwargs=kwargs)
+                    proc.start()
                     data_parsing = ParseData()
 
 
@@ -928,13 +937,7 @@ def main():
             printing("Time to parse: {} ms".format((end-start)*1000))
 
 
-        if radctrl_to_data_write in socks and socks[radctrl_to_data_write] == zmq.POLLIN:
-            data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, printing)
 
-            integration_meta = datawritemetadata_pb2.IntegrationTimeMetadata()
-            integration_meta.ParseFromString(data)
-
-            final_integration = integration_meta.last_seqn_num
 
 
 
