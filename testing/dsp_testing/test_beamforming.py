@@ -239,6 +239,7 @@ def main():
 
     data_file = os.path.basename(data_file_path)
 
+
     data_file_metadata = data_file.split('.')
 
     date_of_file = data_file_metadata[0]
@@ -259,7 +260,7 @@ def main():
     bfiq_filetype = slice_id_number + ".bfiq"
     rawrf_filetype = "rawrf"
     tx_filetype = "txdata"
-    file_types_avail = [bfiq_filetype, output_samples_filetype, tx_filetype, rawrf_filetype]
+    file_types_avail = [bfiq_filetype, output_samples_filetype] #, tx_filetype, rawrf_filetype]
 
     if type_of_file not in file_types_avail:
         raise Exception('Type of Data Not Incorporated in Script: {}'.format(type_of_file))
@@ -295,7 +296,6 @@ def main():
                     bf_iq = record_data[bfiq_filetype]
                     number_of_beams = len(bf_iq['beam_azms'])
                     number_of_arrays = len(bf_iq['antenna_arrays_order'])
-
                     flat_data = np.array(bf_iq['data'])  
                     # reshape to 2 (main, intf) x nave x number_of_beams x number_of_samples
                     bf_iq_data = np.reshape(flat_data, (number_of_arrays, bf_iq['num_sequences'], number_of_beams, bf_iq['num_samps']))
@@ -363,18 +363,20 @@ def main():
     #plot_bf_iq_data(record_data[bfiq_filetype], bfiq_filetype)
 
     beamforming_dict = {}
+    print('BEAM AZIMUTHS: {}'.format(beam_azms))
     for sequence_num in range(0,nave):
         print('SEQUENCE NUMBER {}'.format(sequence_num))
         sequence_dict = beamforming_dict[sequence_num] = {}
         for filetype, record_dict in record_data.items():
-            print(filetype)
+            #print(filetype)
             sequence_filetype_dict = sequence_dict[filetype] = {}
             data_description_list = list(record_dict['data_descriptors'])
             # STEP 1: DECIMATE IF NECESSARY
-            if record_dict['rx_sample_rate'] != 3333.0:
+            if not math.isclose(record_dict['rx_sample_rate'], 3333.333, abs_tol=0.001):
                 # we aren't at 3.3 kHz - need to decimate.
-                dm_rate = int(record_dict['rx_sample_rate']/3333.0)
-                print(dm_rate)
+                #print(record_dict['rx_sample_rate'])
+                dm_rate = int(record_dict['rx_sample_rate']/3333.333)
+                #print(dm_rate)
                 dm_start_sample = record_dict['dm_start_sample']
                 dm_end_sample = -1 - dm_start_sample # this is the filter size 
                 if data_description_list == ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']:
@@ -455,7 +457,7 @@ def main():
                     print(expected_pulse_indices)
                     print(pulse_indices)
                     print('Pulse Indices are Not Equal to Expected for filetype {} sequence {}'.format(filetype, sequence_num))
-                    print('Phase Offsets Cannot be Calculated for this filetype {} sequence {}'.format(filetype, sequence_num))
+                    #print('Phase Offsets Cannot be Calculated for this filetype {} sequence {}'.format(filetype, sequence_num))
                 else:
                     sequence_filetype_dict['calculate_offsets'] = True
 
@@ -464,15 +466,8 @@ def main():
                 sequence_filetype_dict['pulse_samples'] = pulse_data
                 pulse_phases = np.angle(pulse_data)
                 sequence_filetype_dict['pulse_phases'] = pulse_phases
-                print('Pulse Indices:\n{}'.format(pulse_indices))
-                #print(pulse_phases)
-
-        # Straight summed pre-bf data has been the same as running beamform() function on the prebf data every time. The below was a test.
-        # if filetype == output_samples_filetype:
-        #     pulse_phases_straight_sum = np.angle(record_dict['straight_summed_data'][pulse_indices])
-        #     print(pulse_phases_straight_sum)
-        #     print(np.subtract(pulse_phases, pulse_phases_straight_sum))
-
+                #print('Pulse Indices:\n{}'.format(pulse_indices))
+                #print('Pulse Phases:\n{}'.format(pulse_phases))
 
         # Compare phases from pulses in the various datasets.
         if output_samples_filetype in file_types_avail and bfiq_filetype in file_types_avail:
@@ -600,12 +595,9 @@ if __name__ == '__main__':
 # #good_snr = np.ma.masked_where(main_beams[0] > 0.3*(np.max(main_beams[0])), main_beams[0])
 
 
-
-
 # #print('Difference between offsets: {} samples'.format(raw_tx_rx_offset - undec_tx_rx_offset/1500))
 # #pulse_points = (aligned_bf_samples != 0.0)
 # #raw_pulse_points = (aligned_to_raw_samples != 0.0)
-
 
 
 # raw_pulse_points = (np.abs(decimated_raw_iq['antenna_0']) > 0.1)
@@ -642,66 +634,6 @@ if __name__ == '__main__':
     
 #     #beamformed_rx_pulses_norm = beamformed_rx_pulses / np.abs(beamformed_rx_pulses)
 #     #samples_diff = np.subtract(beamformed_rx_pulses_norm, beamformed_tx_pulses_norm)
-
-
-# ch0_tx_phase = np.angle(tx_pulse_points_dict['0'])
-# tx_phase = np.angle(beamformed_tx_pulses)
-# raw_rf_ch0_phase = np.angle(raw_ch0_pulse_samples)
-# stage_1_phase = np.angle(stage_1_ch0_pulses)
-# bf_phase_offsets = get_offsets(beamformed_rx_pulses, beamformed_tx_pulses)
-# raw_ch0_phase_offsets = get_offsets(raw_ch0_pulse_samples, tx_pulse_points_dict['0'])
-# stage_1_ch0_offsets = get_offsets(stage_1_ch0_pulses, tx_pulse_points_dict['0'])
-# stage_2_ch0_offsets = get_offsets(stage_2_ch0_pulses, tx_pulse_points_dict['0'])
-
-# stage_1_raw_offsets = get_offsets(stage_1_ch0_pulses, raw_ch0_pulse_samples)
-# #stage_3_ch0_offsets = get_offsets(stage_3_ch0_pulses, tx_pulse_points_dict['0'])
-# iq_ch0_offsets = get_offsets(iq_ch0_pulses, tx_pulse_points_dict['0'])
-
-# tx_pulse_phase_offsets = np.max(np.angle(beamformed_tx_pulses)) - np.min(np.angle(beamformed_tx_pulses))
-# rx_pulse_phase_offsets = np.max(np.angle(beamformed_rx_pulses)) - np.min(np.angle(beamformed_rx_pulses))  
-# raw_pulse_phase_offsets = np.max(np.angle(raw_ch0_pulse_samples)) - np.min(np.angle(raw_ch0_pulse_samples))
-# stage_1_ch0_pulse_offsets = np.max(np.angle(stage_1_ch0_pulses)) - np.min(np.angle(stage_1_ch0_pulses))
-# stage_2_ch0_pulse_offsets = np.max(np.angle(stage_2_ch0_pulses)) - np.min(np.angle(stage_2_ch0_pulses))
-# #stage_3_ch0_pulse_offsets = np.angle(stage_3_ch0_pulses) - np.angle(stage_3_ch0_pulses[0])
-# iq_ch0_pulse_offsets = np.max(np.angle(iq_ch0_pulses)) - np.min(np.angle(iq_ch0_pulses))
-
-# processing_phase_offset = bf_phase_offsets - raw_ch0_phase_offsets
-# processing_phase_error = np.max(processing_phase_offset) - np.min(processing_phase_offset)
-
-# print('Offset to align undec tx and raw Rx (in number of samples): {}'.format(undec_tx_rx_offset))
-# print('Offset to align undec tx and raw (in us): {}\n'.format(undec_tx_rx_offset / 5.0)) # 5.0 MHz is sampling rate
-
-# print('Ch0 TX Phase: {}'.format(ch0_tx_phase))
-# print('Beamformed TX Phases: {}'.format(tx_phase))
-# print('Phase Erro between Transmitted Pulses: {}\n'.format(tx_pulse_phase_offsets))
-
-# print('Raw Channel 0 Phase: {}'.format(raw_rf_ch0_phase))
-# print('Raw Channel 0 Tx/Rx Phase Offsets: {}'.format(raw_ch0_phase_offsets))
-# print('Phase Error between Raw Received Pulses: {}\n'.format(raw_pulse_phase_offsets))
-
-# print('Stage 1 Phase: {}'.format(stage_1_phase))
-# print('Stage 1 Offset from Raw: {}'.format(stage_1_raw_offsets))
-# print('Stage 1 tx/rx Phase Offsets: {}'.format(stage_1_ch0_offsets))
-# print('Phase Error between stage 1 pulses: {}\n'.format(stage_1_ch0_pulse_offsets))
-
-# print('Stage 2 tx/rx Phase Offsets: {}'.format(stage_2_ch0_offsets))
-# print('Phase Error between stage 2 pulses: {}\n'.format(stage_2_ch0_pulse_offsets))
-
-# print('IQ data tx/rx Phase offsets: {}'.format(iq_ch0_offsets))
-# print('Phase Error between Channel 0 IQ Received Pulses: {}\n'.format(iq_ch0_pulse_offsets))
-
-# print('Phase Offset between TX Beamformed and RX Beamformed data: {}'.format(bf_phase_offsets))
-# print('Phase Error between Beamformed Data: {}\n'.format(rx_pulse_phase_offsets))
-
-# print('Processing Phase Offset: {}'.format(processing_phase_offset))
-# print('Error in Processing Phase Offset: {}'.format(processing_phase_error))
-
-
-
-
-
-
-
 
 # fig, ((ax1,ax2),(ax3,ax4),(ax5,ax6),(ax7,ax8)) = plt.subplots(4,2, sharex='col', figsize=(18, 24))
 
