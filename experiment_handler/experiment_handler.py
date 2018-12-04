@@ -94,7 +94,7 @@ def retrieve_experiment():
     args = parser.parse_args()
 
     if __debug__:
-        print("Running the experiment: " + args.experiment_module)
+        printing("Running the experiment: " + args.experiment_module)
     experiment = args.experiment_module
     experiment_mod = importlib.import_module("experiments." + experiment)
 
@@ -177,7 +177,8 @@ def experiment_handler(semaphore):
             experiment_update = True
 
     if __debug__:
-        print("Experiment has update method: " + str(experiment_update))
+        if experiment_update:
+            printing("Experiment has an updated method.")
 
     exp = Experiment()
     global change_flag
@@ -199,7 +200,7 @@ def experiment_handler(semaphore):
         change_flag = exp.update(some_data)
         if change_flag:
             if __debug__:
-                print("REBUILDING EXPERIMENT BECAUSE change_flag = TRUE!!!")
+                printing("Building an updated experiment.")
             exp.build_scans()
         semaphore.release()
 
@@ -245,9 +246,9 @@ def experiment_handler(semaphore):
 
         if experiment_update:
             # check if a thread is already running !!!
-            print('IS ALIVE?? {}'.format(update_thread.isAlive()))
             if not update_thread.isAlive():
-                print("UPDATING EXPERIMENT")
+                if __debug__:
+                    printing("Updating experiment")
                 update_thread = threading.Thread(target=update_experiment)
                 update_thread.daemon = True
                 update_thread.start()

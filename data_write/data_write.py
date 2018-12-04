@@ -15,6 +15,7 @@ import collections
 import mmap
 import warnings
 import time
+import threading
 import multiprocessing as mp
 import subprocess as sp
 import argparse as ap
@@ -924,8 +925,9 @@ def main():
                                            integration_meta=integration_meta,
                                            data_parsing=data_parsing,
                                            write_rawacf=False)
-                    proc = mp.Process(target=data_write.output_data, kwargs=kwargs)
-                    proc.start()
+                    thread = threading.Thread(target=data_write.output_data, kwargs=kwargs)
+                    thread.daemon = True
+                    thread.start()
                     data_parsing = ParseData()
 
 
