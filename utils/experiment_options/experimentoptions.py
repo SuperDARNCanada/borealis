@@ -3,7 +3,7 @@
 # Copyright 2017 SuperDARN Canada
 
 """
-To load the config options to be used by the experiment and radar_control blocks. 
+To load the config options to be used by the experiment and radar_control blocks.
 Config data comes from the config.ini file, the hdw.dat file, and the restrict.dat file.
 """
 
@@ -56,6 +56,7 @@ class ExperimentOptions:
             self.tr_window_time = float(config['tr_window_time'])  # s
             self.atten_window_time_start = float(config['atten_window_time_start'])  # s
             self.atten_window_time_end = float(config['atten_window_time_end'])  # s
+            self.usrp_master_clock_rate = float(config['usrp_master_clock_rate']) # Hz
             self.router_address = config['router_address']
             self.radctrl_to_exphan_identity = str(config["radctrl_to_exphan_identity"])
             self.radctrl_to_dsp_identity = str(config["radctrl_to_dsp_identity"])
