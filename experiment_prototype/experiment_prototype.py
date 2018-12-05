@@ -264,8 +264,8 @@ class ExperimentPrototype(object):
         self.__new_slice_id = 0
 
         # Centre frequencies can be specified in your experiment class using the setter. TODO: make modifiable (with warning that it takes time. Get time estimate for this.
-        self.txctrfreq = 12000  # in kHz.
-        self.rxctrfreq = 12000  # in kHz.
+        self.__txctrfreq = self.txctrfreq = 12000  # in kHz.
+        self.__rxctrfreq = self.rxctrfreq = 12000  # in kHz.
 
         print(self.txctrfreq)
         # Load the config, hardware, and restricted frequency data
