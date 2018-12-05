@@ -267,7 +267,6 @@ class ExperimentPrototype(object):
         self.__txctrfreq = self.txctrfreq = 12000  # in kHz.
         self.__rxctrfreq = self.rxctrfreq = 12000  # in kHz.
 
-        print(self.txctrfreq)
         # Load the config, hardware, and restricted frequency data
 
         self.__txrate = self.__options.tx_sample_rate  # sampling rate, samples per sec, Hz.
