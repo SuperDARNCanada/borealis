@@ -274,9 +274,11 @@ class ExperimentPrototype(object):
 
         self.__new_slice_id = 0
 
-        # Centre frequencies can be specified in your experiment class using the setter. TODO: make modifiable (with warning that it takes time. Get time estimate for this.
-        self.__txctrfreq = 12000  # in kHz.
-        self.__rxctrfreq = 12000  # in kHz.
+        self.__txctrfreq = 12000.0  # in kHz.
+        self.__rxctrfreq = 12000.0  # in kHz.
+        # Note - the txctrfreq and rxctrfreq setters modify the actual centre frequency to a
+        # multiple of the clock divider that is possible by the USRP - this default value set
+        # here is not exact.
 
         # Load the config, hardware, and restricted frequency data
         self.__options = ExperimentOptions()
@@ -670,11 +672,6 @@ class ExperimentPrototype(object):
         # will complete a check_slice and raise any errors found.
         new_exp_slice = self.setup_slice(exp_slice)
 
-        if __debug__:
-            pass
-            #print('Requested Add {}'.format(exp_slice))
-            #print('Adding (with Defaults) {}'.format(new_exp_slice))
-
         # if there were no errors raised in setup_slice, we will add the slice to the slice_dict.
         self.__slice_dict[new_exp_slice['slice_id']] = new_exp_slice
 
@@ -798,12 +795,6 @@ class ExperimentPrototype(object):
 
         # investigating how I might go about using this base class - TODO maybe make a new IterableExperiment class to inherit
 
-        if __debug__:
-            pass
-            #print("All experiment slice ids: {}".format(self.slice_ids))
-            #print("Scan Slice Id list : {}".format(self.__slice_id_scan_lists))
-
-
         # TODO check that the following 7 lines work, remove self.__slice_id_scan_lists from init,
         # consider removing scan_objects from init and making a new Experiment class to inherit
         # from ScanClassBase and having all of this included in there. Then would only need to
@@ -851,10 +842,6 @@ class ExperimentPrototype(object):
         for k, interface_value in self.interface.items():
             if interface_value != "SCAN":
                 scan_combos.append(list(k))
-
-        if __debug__:
-            pass
-            #print(scan_combos)
 
         combos = self.__running_experiment.slice_combos_sorter(scan_combos, self.slice_ids)
 
@@ -1215,9 +1202,9 @@ class ExperimentPrototype(object):
             if 'rsep' in exp_slice:
                 if slice_with_defaults['rsep'] != int(round(slice_with_defaults['pulse_len'] *
                                                             1.0e-6 * speed_of_light/2.0)):
-                    # TODO Log warning that rsep is being changed
                     errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
-                    print(errmsg)
+                    if __debug__:  # TODO change to logging
+                        print(errmsg)
                     pass
 
             slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] * 1.0e-6 *
