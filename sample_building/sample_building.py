@@ -269,7 +269,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
     :param slice_to_beamdir_dict: a dictionary describing the beam directions for the 
      slice_ids.
     :param txctrfreq: the txctrfreq  which determines the wave_freq to build our pulses 
-     at.
+     at, float.
     :param txrate: the tx sample rate.
     :param options: the experiment options from the config, hdw.dat, and restrict.dat 
      files.
@@ -293,7 +293,6 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
             raise ExperimentException(errmsg, pulse, pulse_list[0])
 
     txrate = float(txrate)
-    txctrfreq = float(txctrfreq)
 
     # make the uncombined pulses
     create_uncombined_pulses(pulse_list, power_divider, exp_slices, slice_to_beamdir_dict,

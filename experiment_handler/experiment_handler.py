@@ -137,7 +137,7 @@ def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
     Send the experiment to radar_control module. 
 
     :param exp_handler_to_radar_control: socket to send the experiment on
-    :param iden: ZMQ identitye
+    :param iden: ZMQ identity
     :param serialized_exp: Either a pickled experiment or a None. 
     """
     try:
@@ -181,7 +181,6 @@ def experiment_handler(semaphore):
             printing("Experiment has an updated method.")
 
     exp = Experiment()
-    global change_flag
     change_flag = True
 
     def update_experiment():
@@ -195,7 +194,6 @@ def experiment_handler(semaphore):
 
         some_data = None  # TODO get the data from data socket and pass to update
         
-        global change_flag
         semaphore.acquire()
         change_flag = exp.update(some_data)
         if change_flag:
@@ -204,9 +202,6 @@ def experiment_handler(semaphore):
             exp.build_scans()
         semaphore.release()
 
-        #if __debug__:
-        #    data_output = "Dsp sent -> {}".format(data)
-        #    printing(data_output)
 
     update_thread = threading.Thread(target=update_experiment)
 

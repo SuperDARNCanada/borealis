@@ -55,7 +55,8 @@ class Sequence(ScanClassBase):
         the number of receive samples to take, given the rx rate, during 
         the sstime.
     blanks
-        A list of times when transmitting, samples to not be used for acfs.
+        A list of sample indices that should not be used for acfs because they were samples
+        taken when transmitting.
     
     **Pulses is a list of pulse dictionaries. The pulse dictionary keys are:**
     

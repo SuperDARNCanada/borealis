@@ -14,10 +14,11 @@ from __future__ import print_function
 import sys
 import copy
 import os
+import math
 import numpy as np
 import itertools
 from scipy.constants import speed_of_light
-#import pygit2
+
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -260,12 +261,11 @@ class ExperimentPrototype(object):
         :param cpid: unique id necessary for each control program (experiment)
         """
 
-        try:
-            assert isinstance(cpid, int)  # TODO add check for uniqueness
-        except AssertionError:
+        if not isinstance(cpid, int):  # TODO add check for uniqueness
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
 
+        self.__options = ExperimentOptions()
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
 
         self.__cpid = cpid
@@ -276,12 +276,14 @@ class ExperimentPrototype(object):
 
         self.__new_slice_id = 0
 
-        # Centre frequencies can be specified in your experiment class using the setter. TODO: make modifiable (with warning that it takes time. Get time estimate for this.
-        self.__txctrfreq = 12000  # in kHz.
-        self.__rxctrfreq = 12000  # in kHz.
+        # Note - the txctrfreq and rxctrfreq setters modify the actual centre frequency to a
+        # multiple of the clock divider that is possible by the USRP - this default value set
+        # here is not exact.
+        self.__txctrfreq = self.txctrfreq = 12000.0  # in kHz.
+        self.__rxctrfreq = self.rxctrfreq = 12000.0  # in kHz.
 
         # Load the config, hardware, and restricted frequency data
-        self.__options = ExperimentOptions()
+
         self.__txrate = self.__options.tx_sample_rate  # sampling rate, samples per sec, Hz.
         self.__rxrate = self.__options.rx_sample_rate  # sampling rate for rx in samples per sec
         # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
@@ -495,13 +497,18 @@ class ExperimentPrototype(object):
         """
         Set the transmission centre frequency that USRP is tuned to. 
         
-        This will take tuning time, use with caution.     
-            
+        This will take tuning time, use with caution. The USRP center frequency can only be tuned
+        in steps of the master clock rate / 2^32. We determine the closest value to the desired
+        center frequency and adjust to that.
+
         :param value: int for transmission centre frequency to tune USRP to (kHz).
         """
         # TODO review if this should be modifiable, definitely takes tuning time.
         if isinstance(value, int):
-            self.__txctrfreq = value # TODO return actual value tuned to.
+            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+            clock_multiples = self.options.usrp_master_clock_rate/2**32
+            clock_divider = math.ceil(value*1e3/clock_multiples)
+            self.__txctrfreq = (clock_divider * clock_multiples)/1e3 # TODO return actual value tuned to.
         else:
             pass  # TODO errors / log no change
 
@@ -539,7 +546,6 @@ class ExperimentPrototype(object):
     def rxctrfreq(self):
         """
         The receive centre frequency that USRP is tuned to (kHz).
-        
         If you would like to change this, note that it will take tuning time.
         """
         return self.__rxctrfreq
@@ -547,15 +553,20 @@ class ExperimentPrototype(object):
     @rxctrfreq.setter
     def rxctrfreq(self, value):
         """
-        Set the receive centre frequency that USRP is tuned to (kHz). 
-        
-        This will take tuning time, use with caution.  
-        
-        :param value: int for receive centre frequency to tune USRP to (kHz).
+        Set the receive centre frequency that USRP is tuned to (kHz).
+
+        This will take tuning time, use with caution.
+
+        :param value: int for receive centre frequency to tune USRP to (kHz). The USRP center
+        frequency can only be tuned in steps of the master clock rate / 2^32. We determine the
+        closest value to the desired center frequency and adjust to that.
         """
         # TODO review if this should be modifiable, definitely takes tuning time.
         if isinstance(value, int):
-            self.__rxctrfreq = value  # TODO return actual tuned freq.
+            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+            clock_multiples = self.options.usrp_master_clock_rate/2**32
+            clock_divider = math.ceil(value*1e3/clock_multiples)
+            self.__rxctrfreq = (clock_divider * clock_multiples)/1e3   # TODO return actual tuned freq.
         else:
             pass  # TODO errors
 
@@ -671,11 +682,6 @@ class ExperimentPrototype(object):
         # Now we setup the slice which will check minimum requirements and set defaults, and then
         # will complete a check_slice and raise any errors found.
         new_exp_slice = self.setup_slice(exp_slice)
-
-        if __debug__:
-            pass
-            #print('Requested Add {}'.format(exp_slice))
-            #print('Adding (with Defaults) {}'.format(new_exp_slice))
 
         # if there were no errors raised in setup_slice, we will add the slice to the slice_dict.
         self.__slice_dict[new_exp_slice['slice_id']] = new_exp_slice
@@ -800,12 +806,6 @@ class ExperimentPrototype(object):
 
         # investigating how I might go about using this base class - TODO maybe make a new IterableExperiment class to inherit
 
-        if __debug__:
-            pass
-            #print("All experiment slice ids: {}".format(self.slice_ids))
-            #print("Scan Slice Id list : {}".format(self.__slice_id_scan_lists))
-
-
         # TODO check that the following 7 lines work, remove self.__slice_id_scan_lists from init,
         # consider removing scan_objects from init and making a new Experiment class to inherit
         # from ScanClassBase and having all of this included in there. Then would only need to
@@ -854,10 +854,6 @@ class ExperimentPrototype(object):
             if interface_value != "SCAN":
                 scan_combos.append(list(k))
 
-        if __debug__:
-            pass
-            #print(scan_combos)
-
         combos = self.__running_experiment.slice_combos_sorter(scan_combos, self.slice_ids)
 
         return combos
@@ -875,101 +871,95 @@ class ExperimentPrototype(object):
         """
 
         # TODO: add checks for values that make sense, not just check for types
-        # TODO: move asserts to if, make lists of operations to run and use
-        # ... TODO: if any() to shorten up this code!
-        try:
-            assert isinstance(exp_slice['pulse_sequence'], list)
-            for element in exp_slice['pulse_sequence']:
-                assert isinstance(element, int)
-        except (AssertionError, KeyError):
+        # TODO: make lists of operations to run and use if any() to shorten up this code!
+        if not isinstance(exp_slice['pulse_sequence'], list):
             errmsg = "Slice must specify pulse_sequence that must be a list of integers"
             raise ExperimentException(errmsg, exp_slice)
+        for element in exp_slice['pulse_sequence']:
+            if not isinstance(element, int):
+                errmsg = "Slice must specify pulse_sequence that must be a list of integers"
+                raise ExperimentException(errmsg, exp_slice)
 
-        try:
-            assert 'mpinc' in exp_slice.keys()
-            assert isinstance(exp_slice['mpinc'], int)
-        except AssertionError:
+        if 'mpinc' not in exp_slice.keys() or not isinstance(exp_slice['mpinc'], int):
             errmsg = "Slice must specify mpinc that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
-        try:  # TODO may want to add a field for range_gate which could set this param.
-            assert 'pulse_len' in exp_slice.keys()
-            assert isinstance(exp_slice['pulse_len'], int)
-        except AssertionError:
+        # TODO may want to add a field for range_gate which could set this param.
+        if 'pulse_len' not in exp_slice.keys() or not isinstance(exp_slice['pulse_len'], int):
             errmsg = "Slice must specify pulse_len that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
-        try:
-            assert 'nrang' in exp_slice.keys()
-            assert isinstance(exp_slice['nrang'], int)
-        except AssertionError:
+        if 'nrang' not in exp_slice.keys() or not isinstance(exp_slice['nrang'], int):
             errmsg = "Slice must specify nrang that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
-        try:
-            assert 'frang' in exp_slice.keys()
-            assert isinstance(exp_slice['frang'], int)
-        except AssertionError:
+        if 'frang' not in exp_slice.keys() or not isinstance(exp_slice['frang'], int):
             errmsg = "Slice must specify frang that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
-        try:
-            assert 'intt' in exp_slice.keys()
-        except AssertionError:
-            try:
-                assert 'intn' in exp_slice.keys()
-            except AssertionError:
+        if 'intt' not in exp_slice.keys():
+            if 'intn' not in exp_slice.keys():
                 errmsg = "Slice must specify either an intn or intt"
                 raise ExperimentException(errmsg, exp_slice)
-            else:
-                try:
-                    assert isinstance(exp_slice['intn'], int)
-                except AssertionError:
-                    errmsg = "intn must be an integer"
-                    raise ExperimentException(errmsg, exp_slice)
+            elif not isinstance(exp_slice['intn'], int):
+                errmsg = "intn must be an integer"
+                raise ExperimentException(errmsg, exp_slice)
         else:
-            try:
-                assert isinstance(exp_slice['intt'], float) or isinstance(exp_slice['intt'], int)
-                exp_slice['intt'] = float(exp_slice['intt'])
-            except AssertionError:
+            if not isinstance(exp_slice['intt'], float) and not isinstance(exp_slice['intt'], int):
                 errmsg = "intt must be an number"
                 raise ExperimentException(errmsg, exp_slice)
             else:
-                try:
-                    assert 'intn' in exp_slice.keys()
-                except AssertionError:
-                    pass
                 if 'intn' in exp_slice.keys():
+                    if __debug__:
+                        print('intn is set in experiment slice but will not be used due to intt')
                     # TODO Log warning intn will not be used
                     exp_slice.pop('intn')
+            exp_slice['intt'] = float(exp_slice['intt'])
 
-        try:
-            assert 'beam_angle' in exp_slice.keys(), "beam_angle is a required key"
-            assert isinstance(exp_slice['beam_angle'], list)
-            for element in exp_slice['beam_angle']:
-                assert isinstance(element, float) or isinstance(element, int)
-                if isinstance(element, int):
-                    element = float(element)
-        except AssertionError:
+        if 'beam_angle' not in exp_slice.keys(): # "beam_angle" is a required key
             errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or
                 floats) which are angles of degrees off boresight (positive E of N)"""
             raise ExperimentException(errmsg, exp_slice)
+        if not isinstance(exp_slice['beam_angle'], list):
+            errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or
+                floats) which are angles of degrees off boresight (positive E of N)"""
+            raise ExperimentException(errmsg, exp_slice)
+        for element in exp_slice['beam_angle']:
+            if not isinstance(element, float) and not isinstance(element, int):
+                errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or
+                    floats) which are angles of degrees off boresight (positive E of N)"""
+                raise ExperimentException(errmsg, exp_slice)
+            if isinstance(element, int):
+                element = float(element)
 
-        try:
-            assert 'beam_order' in exp_slice.keys()
-            assert isinstance(exp_slice['beam_order'], list)
-            for element in exp_slice['beam_order']:
-                assert isinstance(element, int) or isinstance(element, list)
-                if isinstance(element, list):
-                    for beamnum in element:
-                        assert isinstance(beamnum, int)
-                        assert beamnum < len(exp_slice['beam_angle'])
-                else:
-                    assert element < len(exp_slice['beam_angle'])
-        except AssertionError:
+        if 'beam_order' not in exp_slice.keys():
             errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
                      corresponding to the order of the angles in the beam_angle list."""
             raise ExperimentException(errmsg, exp_slice)
+        if not isinstance(exp_slice['beam_order'], list):
+            errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
+                     corresponding to the order of the angles in the beam_angle list."""
+            raise ExperimentException(errmsg, exp_slice)
+        for element in exp_slice['beam_order']:
+            if not isinstance(element, int) and not isinstance(element, list):
+                errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
+                         corresponding to the order of the angles in the beam_angle list."""
+                raise ExperimentException(errmsg, exp_slice)
+            if isinstance(element, list):
+                for beamnum in element:
+                    if not isinstance(beamnum, int):
+                        errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
+                                 corresponding to the order of the angles in the beam_angle list."""
+                        raise ExperimentException(errmsg, exp_slice)
+                    if beamnum >= len(exp_slice['beam_angle']):
+                        errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
+                                 corresponding to the order of the angles in the beam_angle list."""
+                        raise ExperimentException(errmsg, exp_slice)
+            else:
+                if element >= len(exp_slice['beam_angle']):
+                    errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
+                             corresponding to the order of the angles in the beam_angle list."""
+                    raise ExperimentException(errmsg, exp_slice)
 
     @staticmethod
     def set_slice_identifiers(exp_slice):
@@ -1030,42 +1020,53 @@ class ExperimentPrototype(object):
         """
         if exp_slice['clrfrqflag']:  # TX and RX mode with clear frequency search.
             # In this mode, clrfrqrange is required along with the other requirements.
-            try:
-                assert isinstance(exp_slice['clrfrqrange'], list)
-                assert len(exp_slice['clrfrqrange']) == 2
-                assert isinstance(exp_slice['clrfrqrange'][0], int)
-                assert isinstance(exp_slice['clrfrqrange'][1], int)
-            except AssertionError:
+            if not isinstance(exp_slice['clrfrqrange'], list):
                 errmsg = 'clrfrqrange must be an integer list of length = 2'
                 raise ExperimentException(errmsg)
-            try:
-                assert exp_slice['clrfrqrange'][0] < exp_slice['clrfrqrange'][1]
-                assert (exp_slice['clrfrqrange'][1] * 1000) < self.tx_maxfreq
-                assert (exp_slice['clrfrqrange'][0] * 1000) > self.tx_minfreq
-                assert (exp_slice['clrfrqrange'][1] * 1000) < self.rx_maxfreq
-                assert (exp_slice['clrfrqrange'][0] * 1000) > self.rx_minfreq
-            except AssertionError:
+            if len(exp_slice['clrfrqrange']) != 2:
+                errmsg = 'clrfrqrange must be an integer list of length = 2'
+                raise ExperimentException(errmsg)
+            if not isinstance(exp_slice['clrfrqrange'][0], int) or not isinstance(exp_slice[\
+                    'clrfrqrange'][1], int):
+                errmsg = 'clrfrqrange must be an integer list of length = 2'
+                raise ExperimentException(errmsg)
+
+            if exp_slice['clrfrqrange'][0] >= exp_slice['clrfrqrange'][1]:
                 errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
                             frequencies {} according to license and/or centre frequencies / sampling
                             rates, and must have lower frequency first.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
+            if (exp_slice['clrfrqrange'][1] * 1000) >= self.tx_maxfreq or \
+                    (exp_slice['clrfrqrange'][1] * 1000) >= self.rx_maxfreq:
+                errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
+                            frequencies {} according to license and/or centre frequencies / sampling
+                            rates, and must have lower frequency first.
+                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                                       (self.rx_minfreq, self.rx_maxfreq))
+                raise ExperimentException(errmsg)
+            if (exp_slice['clrfrqrange'][0] * 1000) <= self.tx_minfreq or \
+                    (exp_slice['clrfrqrange'][0] * 1000) <= self.rx_minfreq:
+                errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
+                            frequencies {} according to license and/or centre frequencies / sampling
+                            rates, and must have lower frequency first.
+                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                                       (self.rx_minfreq, self.rx_maxfreq))
+                raise ExperimentException(errmsg)
+
             still_checking = True
             while still_checking:
                 for freq_range in self.options.restricted_ranges:
-                    try:
-                        assert exp_slice['clrfrqrange'][0] not in range(freq_range[0],
-                                                                        freq_range[1])
-                    except AssertionError:
-                        try:
-                            assert exp_slice['clrfrqrange'][1] not in range(freq_range[0],
-                                                                            freq_range[1])
-                        except AssertionError:
+                    if exp_slice['clrfrqrange'][0] in range(freq_range[0], freq_range[1]):
+                        if exp_slice['clrfrqrange'][1] in range(freq_range[0], freq_range[1]):
                             # the range is entirely within the restricted range.
                             raise ExperimentException('clrfrqrange is entirely within restricted '
                                                       'range {}'.format(freq_range))
                         else:
+                            if __debug__:
+                                print('Clrfrqrange will be modified because it is partially in a ' +
+                                'restricted range.')
                             # TODO Log warning, changing clrfrqrange because lower portion is in a
                             # restricted frequency range.
                             exp_slice['clrfrqrange'][0] = freq_range[1] + 1
@@ -1074,10 +1075,10 @@ class ExperimentPrototype(object):
                             # check in case it's in another range.
                     else:
                         # lower end is not in restricted frequency range.
-                        try:
-                            assert exp_slice['clrfrqrange'][1] not in range(freq_range[0],
-                                                                            freq_range[1])
-                        except AssertionError:
+                        if exp_slice['clrfrqrange'][1] in range(freq_range[0], freq_range[1]):
+                            if __debug__:
+                                print('Clrfrqrange will be modified because it is partially in a ' +
+                                'restricted range.')
                             # TODO Log warning, changing clrfrqrange because upper portion is in a
                             # restricted frequency range.
                             exp_slice['clrfrqrange'][1] = freq_range[0] - 1
@@ -1086,26 +1087,28 @@ class ExperimentPrototype(object):
                             # checking in case it's in another range.
                         else:  # neither end of clrfrqrange is inside the restricted range but
                             # we should check if the range is inside the clrfrqrange.
-                            try:
-                                assert freq_range[0] not in range(exp_slice['clrfrqrange'][0],
-                                                                  exp_slice['clrfrqrange'][1])
-                            except AssertionError:
+                            if freq_range[0] in range(exp_slice['clrfrqrange'][0],
+                                                                  exp_slice['clrfrqrange'][1]):
+                                if __debug__:
+                                    print('There is a restricted range within the clrfrqrange - '
+                                          'STOP.')
                                 # TODO Log a warning that there is a restricted range in the middle
                                 # of the
                                 # clrfrqrange that will be avoided OR could make this an Error.
                                 # Still need to implement clear frequency searching.
-                                pass
                 else:  # no break, so no changes to the clrfrqrange
                     still_checking = False
 
         elif exp_slice['rxonly']:  # RX only mode.
             # In this mode, rxfreq is required.
-            try:
-                assert isinstance(exp_slice['rxfreq'], int) or isinstance(exp_slice['rxfreq'],
-                                                                          float)
-                assert (exp_slice['rxfreq'] * 1000) < self.rx_maxfreq
-                assert (exp_slice['rxfreq'] * 1000) > self.rx_minfreq
-            except AssertionError:
+            if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
+                                                                      float):
+                errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
+                            the radar license and be within range given centre frequency and
+                            sampling rate.""".format((self.rx_minfreq, self.rx_maxfreq))
+                raise ExperimentException(errmsg)
+            if (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
+                                                                   1000) <= self.rx_minfreq:
                 errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
                             the radar license and be within range given centre frequency and
                             sampling rate.""".format((self.rx_minfreq, self.rx_maxfreq))
@@ -1113,14 +1116,24 @@ class ExperimentPrototype(object):
 
         else:  # TX-specific mode , without a clear frequency search.
             # In this mode, txfreq is required along with the other requirements.
-            try:
-                assert isinstance(exp_slice['txfreq'], int) or isinstance(exp_slice['txfreq'],
-                                                                          float)
-                assert (exp_slice['txfreq'] * 1000) < self.tx_maxfreq
-                assert (exp_slice['txfreq'] * 1000) > self.tx_minfreq
-                assert (exp_slice['txfreq'] * 1000) < self.rx_maxfreq
-                assert (exp_slice['txfreq'] * 1000) > self.rx_minfreq
-            except AssertionError:
+            if not isinstance(exp_slice['txfreq'], int) and not isinstance(exp_slice['txfreq'],
+                                                                          float):
+                errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
+                            rx min and max frequencies {} for the radar license and be within range
+                            given centre frequencies and sampling rates.
+                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                                       (self.rx_minfreq, self.rx_maxfreq))
+                raise ExperimentException(errmsg)
+            if (exp_slice['txfreq'] * 1000) >= self.tx_maxfreq or (exp_slice['txfreq'] * 1000) >= \
+                    self.rx_maxfreq:
+                errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
+                            rx min and max frequencies {} for the radar license and be within range
+                            given centre frequencies and sampling rates.
+                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                                       (self.rx_minfreq, self.rx_maxfreq))
+                raise ExperimentException(errmsg)
+            if (exp_slice['txfreq'] * 1000) <= self.tx_minfreq or (exp_slice['txfreq'] * 1000) <= \
+                    self.rx_minfreq:
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
                             given centre frequencies and sampling rates.
@@ -1128,9 +1141,7 @@ class ExperimentPrototype(object):
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             for freq_range in self.options.restricted_ranges:
-                try:
-                    assert exp_slice['txfreq'] not in range(freq_range[0], freq_range[1])
-                except AssertionError:
+                if exp_slice['txfreq'] in range(freq_range[0], freq_range[1]):
                     errmsg = """txfreq is within a restricted frequency range {}
                              """.format(freq_range)
                     raise ExperimentException(errmsg)
@@ -1201,10 +1212,9 @@ class ExperimentPrototype(object):
             if 'rsep' in exp_slice:
                 if slice_with_defaults['rsep'] != int(round(slice_with_defaults['pulse_len'] *
                                                             1.0e-6 * speed_of_light/2.0)):
-                    # TODO Log warning that rsep is being changed
                     errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
-                    print(errmsg)
-                    pass
+                    if __debug__:  # TODO change to logging
+                        print(errmsg)
 
             slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] * 1.0e-6 *
                                                       speed_of_light/2.0))
@@ -1228,8 +1238,10 @@ class ExperimentPrototype(object):
                 slice_with_defaults['lag_table'] = lag_table
 
         else:
-            # TODO record rsep, lag_table, xcf, and acfint will not be used
-            print('Rsep, lag_table, xcf, and acfint will not be used because acf is not True.')
+            # TODO log rsep, lag_table, xcf, and acfint will not be used
+            if __debug__:
+                print('Rsep, lag_table, xcf, and acfint will not be used because acf is '
+                              'not True.')
             if 'rsep' not in exp_slice.keys():
                 slice_with_defaults['rsep'] = None
             if 'lag_table' not in exp_slice.keys():
@@ -1352,9 +1364,7 @@ class ExperimentPrototype(object):
         options = self.options
 
         for param in self.slice_keys:
-            try:
-                assert param in exp_slice.keys()
-            except AssertionError:
+            if param not in exp_slice.keys():
                 if param == 'txfreq' and exp_slice['clrfrqflag']:
                     pass
                 elif param == 'rxfreq' and not exp_slice['rxonly']:
@@ -1365,9 +1375,7 @@ class ExperimentPrototype(object):
                     errmsg = "Slice {} is missing Necessary Parameter {}".format(
                         exp_slice['slice_id'], param)
                     raise ExperimentException(errmsg)
-            try:
-                assert param is not None
-            except AssertionError:
+            if param is None:
                 pass  # TODO may want to check certain params are not None
 
         for param in exp_slice.keys():
