@@ -168,8 +168,10 @@ int main(int argc, char **argv){
       //TODO(keith): handle error
     }
     std::vector<double> rx_freqs;
+    std::vector<uint32_t> slice_ids;
     for(uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
       rx_freqs.push_back(sp_packet.rxchannel(channel).rxfreq());
+      slice_ids.push_back(sp_packet.rxchannel(channel).slice_id());
     }
 
 
@@ -229,7 +231,8 @@ int main(int argc, char **argv){
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
                              sig_options, sp_packet.sequence_num(),
                              rx_freqs, &filters, beam_phases,
-                             beam_direction_counts);
+                             beam_direction_counts, rx_metadata.initialization_time(),
+                             rx_metadata.sequence_start_time(), slice_ids);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
@@ -245,7 +248,8 @@ int main(int argc, char **argv){
     DEBUG_MSG("   Total samples in data message: " << total_samples);
 
     dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
-                                rx_metadata.time_zero(), rx_metadata.start_time(),
+                                rx_metadata.initialization_time(),
+                                rx_metadata.sequence_start_time(),
                                 rx_metadata.ringbuffer_size(), first_stage_dm_rate,
                                 second_stage_dm_rate, ringbuffer_ptrs_start);
     dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());

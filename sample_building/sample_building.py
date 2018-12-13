@@ -501,10 +501,10 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
     return beams_antenna_phases
 
 
-def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
+def create_debug_sequence_samples(txrate, txctrfreq, list_of_pulse_dicts,
                           file_path, main_antenna_count, final_rx_sample_rate, ssdelay):
     """
-    Write the samples and transmitted metadata to a json file for use in testing.
+    Build the samples for the whole sequence, to be recorded in datawrite.
 
     :param txrate: The rate at which these samples will be transmitted at, Hz.
     :param txctrfreq: The centre frequency that the N200 is tuned to (and will mix with
@@ -564,16 +564,16 @@ def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
     dm_rate_error = dm_rate - int(dm_rate)
     dm_rate = int(dm_rate)
 
-    # Create a dictionary to encode as json
+    # Create a dictionary to be written in datawrite
     write_dict = {
         'txrate': txrate,
         'txctrfreq': txctrfreq,
         'pulse_sequence_timing': pulse_sequence_us,
+        'pulse_offset_error': pulse_offset_error,
         'sequence_samples': {},
         'decimated_sequence': {},
-        'pulse_offset_error': pulse_offset_error,
-        'dm_rate_error': dm_rate_error,
-        'dm_rate': dm_rate
+        'dmrate_error': dm_rate_error,
+        'dmrate': dm_rate
     }
 
     for ant, samples in enumerate(sequence_of_samples):
@@ -589,10 +589,5 @@ def write_samples_to_file(txrate, txctrfreq, list_of_pulse_dicts,
             'imag': decimated_samples.imag.tolist()
         }
 
-    write_time = datetime.now()
-    string_time = write_time.strftime('%Y%m%d.%H%M')
-    write_dict['samples_approx_time'] = string_time
-
-    with open(file_path + string_time + '.json', 'w') as outfile:
-        json.dump(write_dict, outfile)
+    return write_dict
 

@@ -235,7 +235,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
           TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " sample unpack time: ",
             [&]() {
-              if (driver_packet.sob() == true) 
+              if (driver_packet.sob() == true)
               {
                 pulses.clear();
               }
@@ -407,8 +407,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
-    samples_metadata.set_time_zero(initialization_time.get_real_secs());
-    samples_metadata.set_start_time(sequence_start_time.get_real_secs());
+    samples_metadata.set_initialization_time(initialization_time.get_real_secs());
+    samples_metadata.set_sequence_start_time(sequence_start_time.get_real_secs());
     samples_metadata.set_ringbuffer_size(ringbuffer_size);
     samples_metadata.set_numberofreceivesamples(num_recv_samples);
     samples_metadata.set_sequence_num(sqn_num);

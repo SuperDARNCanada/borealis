@@ -15,7 +15,10 @@ import sys
 import copy
 import os
 import math
-#import pygit2
+import numpy as np
+import itertools
+from scipy.constants import speed_of_light
+
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -77,16 +80,13 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
                     "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
                     "beam_order", "scanboundflag", "scanbound", "txfreq", "rxfreq",
                     "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
-                    "iwavetable", "qwavetable"])
+                    "iwavetable", "qwavetable", "comment", "rsep", "lag_table"])
 # TODO add scanboundt?
 """
 **Description of Slice Keys**
 
 slice_id
     The ID of this slice object. An experiment can have multiple slices.
-=======
-		    "iwavetable", "qwavetable"]
->>>>>>> master:experiments/experiment_prototype.py
 
 cpid
     The ID of the experiment, consistent with existing radar control programs.
@@ -167,15 +167,6 @@ rxfreq
     receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only
     necessary to specify if you want a receive-only slice.
 
-acf
-    flag for rawacf and generation. The default is True.
-
-xcf
-    flag for cross-correlation data. The default is True.
-
-acfint
-    flag for interferometer autocorrelation data. The default is True.
-
 wavetype
     string for wavetype. The default is SINE. Any other wavetypes not currently supported but
     possible to add in at later date.
@@ -194,12 +185,34 @@ seqoffset
     you can offset one slice's sequence from the other by a certain time value so as to not run both
     frequencies in the same pulse, etc.
 
+comment
+    a comment string that will be placed in the borealis files describing the slice.
+
+acf
+    flag for rawacf and generation. The default is False.
+
+xcf
+    flag for cross-correlation data. The default is True if acf is True, otherwise False.
+
+acfint
+    flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
+    False.
+
+rsep
+    a calculated value from pulse_len. If already set, it will be overwritten to be the correct 
+    value determined by the pulse_len. Used for acfs. This is the range gate separation, 
+    in azimuthal direction, in km.
+
+lag_table
+    used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
+    8-pulse normalscan.
+
 Should add:
 
 scanboundt : time past the hour to start a scan at ?
 """
 
-hidden_key_set = frozenset(['rxonly', 'clrfrqflag'])
+hidden_key_set = frozenset(['rxonly', 'clrfrqflag', 'slice_interfacing'])
 """
 These are used by the build_scans method (called from the experiment_handler every
 time the experiment is run). If set by the user, the values will be overwritten and
@@ -242,7 +255,7 @@ class ExperimentPrototype(object):
 
     __hidden_slice_keys = hidden_key_set
 
-    def __init__(self, cpid):
+    def __init__(self, cpid, comment_string=''):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
@@ -259,11 +272,14 @@ class ExperimentPrototype(object):
 
         self.__cpid = cpid
 
+        self.__comment_string = comment_string
+
         self.__slice_dict = {}
 
         self.__new_slice_id = 0
 
         # Centre frequencies can be specified in your experiment class using the setter. TODO: make modifiable (with warning that it takes time. Get time estimate for this.
+
         self.__txctrfreq = self.txctrfreq = 12000  # in kHz.
         self.__rxctrfreq = self.rxctrfreq = 12000  # in kHz.
 
@@ -278,9 +294,9 @@ class ExperimentPrototype(object):
         #   upon instantiation. These are defaults for all slices, but these values are
         #   slice-specific so if the slice is added with these flags specified, that will override
         #   these values for the specific slice.
-        self._xcf = True  # cross-correlation
-        self._acf = True  # auto-correlation
-        self._acfint = True  # interferometer auto-correlation.
+        self._xcf = False  # cross-correlation
+        self._acf = False  # auto-correlation
+        self._acfint = False  # interferometer auto-correlation.
 
         self._interface = {}  # setup_interfacing(self.num_slices)
         # TODO discuss rephrasing the description of _interface as a graph with defined rules
@@ -310,6 +326,16 @@ class ExperimentPrototype(object):
         """
 
         return self.__cpid
+
+    @property
+    def comment_string(self):
+        """
+        A string related to the experiment, to be placed in the experiment's files.
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__comment_string
 
     @property
     def num_slices(self):
@@ -462,8 +488,7 @@ class ExperimentPrototype(object):
     @property
     def txctrfreq(self):
         """
-        The transmission centre frequency that USRP is tuned to (Hz).
-
+        The transmission centre frequency that USRP is tuned to (kHz).
         If you would like to change this value, note that it will take tuning time.
         """
         return self.__txctrfreq
@@ -471,13 +496,13 @@ class ExperimentPrototype(object):
     @txctrfreq.setter
     def txctrfreq(self, value):
         """
-        Set the transmission centre frequency that USRP is tuned to.
-
+        Set the transmission centre frequency that USRP is tuned to. 
+        
         This will take tuning time, use with caution. The USRP center frequency can only be tuned
         in steps of the master clock rate / 2^32. We determine the closest value to the desired
         center frequency and adjust to that.
 
-        :param value: int for transmission centre frequency to tune USRP to (Hz).
+        :param value: int for transmission centre frequency to tune USRP to (kHz).
         """
         # TODO review if this should be modifiable, definitely takes tuning time.
         if isinstance(value, int):
@@ -521,8 +546,7 @@ class ExperimentPrototype(object):
     @property
     def rxctrfreq(self):
         """
-        The receive centre frequency that USRP is tuned to (Hz).
-
+        The receive centre frequency that USRP is tuned to (kHz).
         If you would like to change this, note that it will take tuning time.
         """
         return self.__rxctrfreq
@@ -530,11 +554,11 @@ class ExperimentPrototype(object):
     @rxctrfreq.setter
     def rxctrfreq(self, value):
         """
-        Set the receive centre frequency that USRP is tuned to (Hz).
+        Set the receive centre frequency that USRP is tuned to (kHz).
 
         This will take tuning time, use with caution.
 
-        :param value: int for receive centre frequency to tune USRP to (Hz). The USRP center
+        :param value: int for receive centre frequency to tune USRP to (kHz). The USRP center
         frequency can only be tuned in steps of the master clock rate / 2^32. We determine the
         closest value to the desired center frequency and adjust to that.
         """
@@ -802,30 +826,6 @@ class ExperimentPrototype(object):
         # # Returns list of scan lists. Each scan list is a list of the slice_ids for the slices
         # # included in that scan.
 
-
-        # for slice_list in self.__slice_id_scan_lists:
-        #     slices_for_scan = {}
-        #     for slice_id in slice_list:
-        #         try:
-        #             slices_for_scan[slice_id] = self.slice_dict[slice_id]
-        #         except KeyError:
-        #             errmsg = 'Error with slice list - slice {} cannot be found.'.format(slice_id)
-        #             raise ExperimentException(errmsg)
-        #
-        #     # Create smaller interfacing dictionary for this scan specifically.
-        #     # This dictionary will only include the slices in this scan, therefore it will not include any SCAN interfacing.
-        #     scan_interface_keys = []
-        #
-        #     nested_class_interface = {}
-        #     for i in itertools.combinations(slice_list, 2):
-        #         # slice_list is sorted so we should have the following effect:
-        #         # combinations([1, 3, 5], 2) --> [1,3], [1,5], [3,5]
-        #         nested_class_interface[tuple(i)] = self.interface[tuple(i)]
-        #
-        #     self.__scan_objects.append(Scan(slice_list, slices_for_scan, nested_class_interface,
-        #                                     self.options))
-        #     # Append a scan instance, passing in the list of slice ids to include in scan.
-
         if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
             print("Number of AveragingPeriods in Scan #1: {}".format(len(self.__scan_objects[
@@ -941,7 +941,7 @@ class ExperimentPrototype(object):
                     assert 'intn' in exp_slice.keys()
                 except AssertionError:
                     pass
-                else:
+                if 'intn' in exp_slice.keys():
                     # TODO Log warning intn will not be used
                     exp_slice.pop('intn')
 
@@ -1183,14 +1183,63 @@ class ExperimentPrototype(object):
 
         if 'acf' not in exp_slice:
             slice_with_defaults['acf'] = self.acf
-        if 'xcf' not in exp_slice:
             slice_with_defaults['xcf'] = self.xcf
-        if 'acfint' not in exp_slice:
             slice_with_defaults['acfint'] = self.acfint
+        elif exp_slice['acf']:
+            if 'xcf' not in exp_slice:
+                slice_with_defaults['xcf'] = True
+            if 'acfint' not in exp_slice:
+                slice_with_defaults['acfint'] = True
+        else:  # acf is False
+            # TODO log that no xcf or acfint will happen if acfs are not set.
+            slice_with_defaults['xcf'] = False
+            slice_with_defaults['acfint'] = False
+
+        if slice_with_defaults['acf']:
+            if 'rsep' in exp_slice:
+                if slice_with_defaults['rsep'] != int(round(slice_with_defaults['pulse_len'] *
+                                                            1.0e-6 * speed_of_light/2.0)):
+                    # TODO Log warning that rsep is being changed
+                    errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
+                    print(errmsg)
+                    pass
+
+            slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] * 1.0e-6 *
+                                                      speed_of_light/2.0))
+            # This is the distance travelled by the wave in the length of the pulse, divided by
+            # two because it's an echo (travels there and back).
+
+            if 'lag_table' in exp_slice:
+                # Check that lags are valid
+                for lag in exp_slice['lag_table']:
+                    if not set(np.array(lag).flatten()).issubset(set(exp_slice['pulse_sequence'])):
+                            errmsg = 'Lag {} not valid; One of the pulses does not exist in the ' \
+                                     'sequence'.format(lag)
+                            raise ExperimentException(errmsg)
+            else:
+                # build lag table from pulse_sequence
+                lag_table = list(itertools.combinations(slice_with_defaults['pulse_sequence'], 2))
+                lag_table.append([slice_with_defaults['pulse_sequence'][0], slice_with_defaults[
+                    'pulse_sequence'][0]])  # lag 0
+                lag_table.append([slice_with_defaults['pulse_sequence'][-1], slice_with_defaults[
+                    'pulse_sequence'][-1]])  # alternate lag 0
+                slice_with_defaults['lag_table'] = lag_table
+
+        else:
+            # TODO record rsep, lag_table, xcf, and acfint will not be used
+            print('Rsep, lag_table, xcf, and acfint will not be used because acf is not True.')
+            if 'rsep' not in exp_slice.keys():
+                slice_with_defaults['rsep'] = None
+            if 'lag_table' not in exp_slice.keys():
+                slice_with_defaults['lag_table'] = []
+
         if 'wavetype' not in exp_slice:
             slice_with_defaults['wavetype'] = 'SINE'
         if 'seqoffset' not in exp_slice:
             slice_with_defaults['seqoffset'] = 0
+
+        if 'comment' not in exp_slice:
+            slice_with_defaults['comment'] = ''
 
         return slice_with_defaults
 
@@ -1298,7 +1347,7 @@ class ExperimentPrototype(object):
 
         for param in self.slice_keys:
             try:
-                 assert param in exp_slice.keys()
+                assert param in exp_slice.keys()
             except AssertionError:
                 if param == 'txfreq' and exp_slice['clrfrqflag']:
                     pass
@@ -1459,7 +1508,8 @@ class ExperimentPrototype(object):
 
     def check_interfacing(self):
         """
-        Check that the keys in the interface are not NONE and are valid.
+        Check that the keys in the interface are not NONE and are valid. If they are valid,
+        update all slices' slice_interfacing key. This function is called whenever scans are built.
         """
 
         for key, interface_type in self.interface.items():
@@ -1479,3 +1529,26 @@ class ExperimentPrototype(object):
                 errmsg = 'Interfacing Not Valid Type between Slice_id {} and Slice_id {}'.format(
                     num1, num2)
                 sys.exit(errmsg)  # TODO for error handling. Perhaps use exceptions instead.
+
+        # Interfacing is valid - set the slice dictionary's slice_interfacing key.
+        for slice_id in self.slice_ids:
+            self.__slice_dict[slice_id]['slice_interfacing'] = self.get_slice_interfacing(slice_id)
+
+    def get_slice_interfacing(self, slice_id):
+        """
+        Check the experiment's interfacing dictionary for all interfacing that pertains to a
+        given slice, and return the interfacing information in a dictionary.
+        :param slice_id: Slice ID to search the
+        :return: interfacing dictionary for the slice.
+        """
+
+        slice_interface = {}
+        for keys, interfacing_type in self.interface.items():
+            num1 = keys[0]
+            num2 = keys[1]
+            if num1 == slice_id:
+                slice_interface[num2] = interfacing_type
+            elif num2 == slice_id:
+                slice_interface[num1] = interfacing_type
+
+        return slice_interface

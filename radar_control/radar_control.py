@@ -3,11 +3,11 @@
 """
     radar_control process
     ~~~~~~~~~~~~~~~~~~~~~
-    
+
     Radar_control is the process that runs the radar (sends pulses to the driver with
     timing information and sends processing information to the signal processing process).
     Experiment_handler provides the experiment for radar_control to run. It iterates
-    through the scan_class_base objects to control the radar. 
+    through the scan_class_base objects to control the radar.
 
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
@@ -36,8 +36,9 @@ else:
 
 from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
+from datawritemetadata_pb2 import IntegrationTimeMetadata
 
-from sample_building.sample_building import azimuth_to_antenna_offset, write_samples_to_file
+from sample_building.sample_building import azimuth_to_antenna_offset, create_debug_sequence_samples
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from radar_status.radar_status import RadarStatus
@@ -89,7 +90,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
     driverpacket.sequence_num = seqnum
     driverpacket.numberofreceivesamples = numberofreceivesamples
 
-    
+
     if repeat:
         # antennas empty
         # samples empty
@@ -116,7 +117,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
         if __debug__:
             print("NOT A REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3}"
                   ";".format(timing, SOB, EOB, antennas))
-    
+
    # txsocket.send(driverpacket.SerializeToString())
     socket_operations.send_pulse(radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString())
 
@@ -152,6 +153,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     packet.sequence_num = seqnum
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
+        chan_add.slice_id = slice_id
         if slice_dict[slice_id]['rxonly']:
             chan_add.rxfreq = slice_dict[slice_id]['rxfreq'] * 1.0e3
         elif slice_dict[slice_id]['clrfrqflag']:
@@ -175,7 +177,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     # to receive on that channel. ** make this update phase = 0 on channels not included.
 
     # Brian requests sequence metadata for timeouts
-   
+
     request = socket_operations.recv_request(radctrl_to_brian, brian_radctrl_iden,
                                              printing)
     if __debug__:
@@ -185,7 +187,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     bytes_packet = packet.SerializeToString()
 
     socket_operations.send_obj(radctrl_to_brian, brian_radctrl_iden, bytes_packet)
-    
+
     #Radar control receives request for metadata from DSP
     # request = socket_operations.recv_request(radctrl_to_dsp, dsp_radctrl_iden, printing)
     if __debug__:
@@ -245,32 +247,141 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 
 
+def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
+                            seqnum, nave, scan_flag, inttime, sequences, beamdir_dict,
+                            experiment_id, experiment_string, debug_samples=None):
+    """
+    Send the metadata about this integration time to datawrite so that it can be recorded.
+    :param packet: The IntegrationTimeMetadata protobuf packet.
+    :param radctrl_to_datawrite: The socket to send the packet on.
+    :param datawrite_radctrl_iden: Identity of datawrite on the socket.
+    :param seqnum: The last sequence number (identifier) that is valid for this integration
+    period. Used to verify and synchronize driver, dsp, datawrite.
+    :param nave: The number of sequences that were sent in this integration period. (number of
+    averages).
+    :param scan_flag: True if this integration period is the first in a scan.
+    :param inttime: The time that expired during this integration period.
+    :param sequences: The sequences of class Sequence for this integration period (
+    AveragingPeriod).
+    :param beamdir_dict: Dictionary where each slice_id key corresponds to a list of beam
+    directions for that slice for this integration period.
+    :param experiment_id: the ID of the experiment that is running
+    :param experiment_string: the experiment string to be placed in the data files.
+    :param debug_samples: the debug samples for this integration period, to be written to the
+    file if debug is set. This is a list of dictionaries for each Sequence in the
+    AveragingPeriod. The dictionary is set up in the sample_building module function
+    create_debug_sequence_samples. The keys are 'txrate', 'txctrfreq', 'pulse_sequence_timing',
+    'pulse_offset_error', 'sequence_samples', 'decimated_sequence', 'dmrate_error', and 'dmrate'.
+    The 'sequence_samples' and 'decimated_sequence' values are themselves dictionaries, where the
+    keys are the antenna numbers (there is a sample set for each transmit antenna).
+    """
+
+    packet.Clear()
+    packet.experiment_id = experiment_id
+    packet.experiment_string = experiment_string
+    packet.nave = nave
+    packet.last_seqn_num = seqnum
+    packet.scan_flag = scan_flag
+
+    packet.integration_time = inttime.total_seconds()
+
+    for sequence_index, sequence in enumerate(sequences):
+        sequence_add = packet.sequences.add()
+        sequence_add.blanks[:] = sequence.blanks
+        if debug_samples:
+            sequence_add.tx_data.txrate = debug_samples[sequence_index]['txrate']
+            sequence_add.tx_data.txctrfreq = debug_samples[sequence_index]['txctrfreq']
+            sequence_add.tx_data.pulse_sequence_timing_us[:] = debug_samples[sequence_index][
+                'pulse_sequence_timing']
+            sequence_add.tx_data.pulse_offset_error_us[:] = debug_samples[sequence_index][
+                'pulse_offset_error']
+            for ant, ant_samples in debug_samples[sequence_index]['sequence_samples'].items():
+                tx_samples_add = sequence_add.tx_data.tx_samples.add()
+                tx_samples_add.real[:] = ant_samples['real']
+                tx_samples_add.imag[:] = ant_samples['imag']
+                tx_samples_add.tx_antenna_number = ant
+            sequence_add.tx_data.dmrate = debug_samples[sequence_index]['dmrate']
+            sequence_add.tx_data.dmrate_error = debug_samples[sequence_index]['dmrate_error']
+            for ant, ant_samples in debug_samples[sequence_index]['decimated_sequence'].items():
+                tx_samples_add = sequence_add.tx_data.decimated_tx_samples.add()
+                tx_samples_add.real[:] = ant_samples['real']
+                tx_samples_add.imag[:] = ant_samples['imag']
+                tx_samples_add.tx_antenna_number = ant
+        for slice_id in sequence.slice_ids:
+            rxchan_add = sequence_add.rxchannel.add()
+            rxchan_add.slice_id = slice_id
+            rxchan_add.frang = sequence.slice_dict[slice_id]['frang']
+            rxchan_add.nrang = sequence.slice_dict[slice_id]['nrang']
+
+            beamdirs = beamdir_dict[slice_id]
+            for index, beamdir in enumerate(beamdirs):
+                beam = rxchan_add.beams.add()
+                beam.beamnum = sequence.slice_dict[slice_id]["beam_angle"].index(beamdir)
+                beam.beamazimuth = beamdir
+
+            rxchan_add.rx_only = sequence.slice_dict[slice_id]['rxonly']
+            rxchan_add.pulse_len = sequence.slice_dict[slice_id]['pulse_len']
+            rxchan_add.tau_spacing = sequence.slice_dict[slice_id]['mpinc']
+            if sequence.slice_dict[slice_id]['rxonly']:
+                rxchan_add.rxfreq = sequence.slice_dict[slice_id]['rxfreq']
+            else:
+                rxchan_add.rxfreq = sequence.slice_dict[slice_id]['txfreq']
+
+            rxchan_add.ptab.pulse_position[:] = sequence.slice_dict[slice_id]['pulse_sequence']
+
+            if sequence.slice_dict[slice_id]['acf']:
+                rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
+                rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
+                rxchan_add.acfint = sequence.slice_dict[slice_id]['acfint']
+                rxchan_add.rsep = sequence.slice_dict[slice_id]['rsep']
+                for lag in sequence.slice_dict[slice_id]['lag_table']:
+                    lag_add = rxchan_add.ltab.lag.add()
+                    lag_add.pulse_position = lag
+                    lag_add.lag_num = int(lag[1] - lag[0])
+
+            rxchan_add.comment = sequence.slice_dict[slice_id]['comment']
+            rxchan_add.interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
+
+            rxchan_add.rx_main_antennas[:] = sequence.slice_dict[slice_id]['rx_main_antennas']
+            rxchan_add.rx_intf_antennas[:] = sequence.slice_dict[slice_id]['rx_int_antennas']
+
+    if __debug__:
+        printing('Sending metadata to datawrite.')
+
+    socket_operations.send_bytes(radctrl_to_datawrite, datawrite_radctrl_iden,
+                                 packet.SerializeToString())
+
+
+
 def radar():
     """
     Run the radar with the experiment supplied by experiment_handler.
-    
-    Receives an instance of an experiment. Iterates through the Scans, 
+
+    Receives an instance of an experiment. Iterates through the Scans,
     AveragingPeriods, Sequences, and pulses of the experiment.
-    
+
     For every pulse, samples and other control information are sent to the n200_driver.
-    
-    For every pulse sequence, processing information is sent to the signal processing 
+
+    For every pulse sequence, processing information is sent to the signal processing
     block.
-    
-    After every integration time (AveragingPeriod), the experiment block is given the 
-    opportunity to change the experiment (not currently implemented). If a new 
+
+    After every integration time (AveragingPeriod), the experiment block is given the
+    opportunity to change the experiment (not currently implemented). If a new
     experiment is sent, radar will halt the old one and begin with the new experiment.
     """
 
     # Initialize driverpacket.
     driverpacket = DriverPacket()
+    sigprocpacket = SigProcPacket()
+    integration_time_packet = IntegrationTimeMetadata()
 
     # Get config options.
     options = ExperimentOptions()
 
     # The socket identities for radar_control, retrieved from options
     ids = [options.radctrl_to_exphan_identity, options.radctrl_to_dsp_identity,
-           options.radctrl_to_driver_identity, options.radctrl_to_brian_identity]
+           options.radctrl_to_driver_identity, options.radctrl_to_brian_identity,
+           options.radctrl_to_dw_identity]
 
     # Setup sockets.
     # Socket to send pulse samples over.
@@ -285,8 +396,8 @@ def radar():
     radar_control_to_dsp = sockets_list[1]
     radar_control_to_driver = sockets_list[2]
     radar_control_to_brian = sockets_list[3]
+    radar_control_to_dw = sockets_list[4]
 
-    sigprocpacket = SigProcPacket()
     # seqnum is used as a identifier in all packets while
     # radar is running so set it up here.
     # seqnum will get increased by nave (number of averages or sequences in the integration period)
@@ -307,6 +418,7 @@ def radar():
         # TODO : further documentation throughout in comments (high level) and in separate documentation.
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
         for scan in experiment.scan_objects:
+
             # if a new experiment was received during the last scan, it finished the integration period it was on and
             # returned here with new_experiment_flag set to True. Now change experiment_prototype if necessary.
             if new_experiment_flag:  # start anew on first scan if we have a new experiment.
@@ -336,7 +448,7 @@ def radar():
                     # get new experiment here, before starting a new integration.
                     # if new_experiment_flag is set here, we will implement the new_experiment after this integration
                     # period.
-		    # TODO: This needs a timeout, or we'll just get stuck here... 
+		    # TODO: This needs a timeout, or we'll just get stuck here...
                     new_experiment_flag, new_experiment = search_for_experiment(
                         radar_control_to_exp_handler,
                         options.exphan_to_radctrl_identity, 'NOERROR')
@@ -345,7 +457,7 @@ def radar():
                     if aveperiod in aveperiods_done_list:
                         continue  # beam_iter index is past the end of the beam_order list for this aveperiod, but other aveperiods must still contain a beam at index beam_iter in the beam_order list.
                     else:
-                        if beam_iter == len(scan.scan_beams[aveperiod.slice_ids[0]]):  # REVIEW #3 We just don't understand this. REPLY: fixed up, tried to make more clear
+                        if beam_iter == len(scan.scan_beams[aveperiod.slice_ids[0]]):
                             # All slices in the aveperiod have the same length beam_order.
                             # Check if we are at the end of the beam_order list (scan) for this aveperiod instance.
                             # If we are, we still might not be done all of the beams in another aveperiod,
@@ -359,7 +471,7 @@ def radar():
 
                     if __debug__:
                         print("New AveragingPeriod")
-                    
+
                     slice_to_beamdir_dict = aveperiod.set_beamdirdict(beam_iter)
 
                     # Build an ordered list of sequences
@@ -385,45 +497,37 @@ def radar():
                         beam_phase_dict_list.append(beam_phase_dict)
 
 
+                    # Setup debug samples if in debug mode.
+                    debug_samples = []
                     if __debug__:
-                        def debug_write_samples_to_file():
-                            integration_period_prep_time_start = datetime.utcnow() # ms
-                            for sequence_index, sequence in enumerate(aveperiod.sequences):
-                                write_samples_to_file(experiment.txrate,
-                                              experiment.txctrfreq,
-                                              sequence_dict_list[sequence_index],
-                                              debug_path,
-                                              options.main_antenna_count,
-                                              options.output_sample_rate,
-                                              sequence.ssdelay)
-                            integration_period_prep_time_end = datetime.utcnow() 
-                            integration_period_prep_time = integration_period_prep_time_end - integration_period_prep_time_start
-                            print("Time to write samples to file: {}".format(integration_period_prep_time))
-                        # Write the sequences to file for this integration period.
-                        start_thread = datetime.utcnow()
-                        thread = threading.Thread(target=debug_write_samples_to_file)# target=debug_write_samples_to_file(aveperiod.sequences, experiment, debug_path, options, sequence_dict_list))
-                        thread.daemon = True
-                        thread.start()
-                        thread_started = datetime.utcnow()
-                        time_to_start_thread = thread_started - start_thread
-                        print("time to start thread: {}".format(time_to_start_thread))
-                    
+                        for sequence_index, sequence in enumerate(aveperiod.sequences):
+                            sequence_samples_dict = create_debug_sequence_samples(experiment.txrate,
+                                                  experiment.txctrfreq,
+                                                  sequence_dict_list[sequence_index],
+                                                  debug_path,
+                                                  options.main_antenna_count,
+                                                  options.output_sample_rate,
+                                                  sequence.ssdelay)
+                            debug_samples.append(sequence_samples_dict)
+
                     integration_period_start_time = datetime.utcnow()  # ms
                     # all phases are set up for this averaging period for the beams required. Time to start averaging
                     # in the below loop.
+
                     nave = 0
                     time_remains = True
                     integration_period_done_time = integration_period_start_time + \
                         timedelta(milliseconds=(float(aveperiod.intt)))  # ms
-
                     first_sequence_out = False
 
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
 
                             # Alternating sequences if there are multiple in the averaging_period.
-                            if datetime.utcnow() >= integration_period_done_time:
+                            time_now = datetime.utcnow()
+                            if time_now >= integration_period_done_time:
                                 time_remains = False
+                                integration_period_time = time_now - integration_period_start_time
                                 break
                                 # TODO add a break for nave == intn if going for number of averages instead of
                                 # integration time
@@ -436,7 +540,7 @@ def radar():
                                            seqnum_start + nave,
                                            sequence.slice_ids, experiment.slice_dict,
                                            beam_phase_dict, sequence.seqtime)
-                            
+
                             # beam_phase_dict is slice_id : list of beamdirs, where beamdir = list
                             # of antenna phase offsets for all antennas for that direction ordered
                             # [0 ... main_antenna_count, 0 ... interferometer_antenna_count]
@@ -471,15 +575,32 @@ def radar():
                                                    repeat=pulse_dict['isarepeat'])
                                 first_sequence_out = True
 
+
                             # TODO: Make sure you can have a slice that doesn't transmit, only receives on a frequency. # REVIEW #1 what do you mean, what is this TODO for? REPLY : driver acks wouldn't be required etc need to make sure this is possible
                             # Sequence is done
                             nave = nave + 1
-                            
+
                     #if __debug__:
                     print("Number of integrations: {}".format(nave))
+
+                    if beam_iter == 0:  # The first integration time in the scan.
+                        scan_flag = True
+                    else:
+                        scan_flag = False
+
+                    last_sequence_num = seqnum_start + nave - 1
+                    send_datawrite_metadata(integration_time_packet, radar_control_to_dw,
+                                            options.dw_to_radctrl_identity, last_sequence_num, nave,
+                                            scan_flag, integration_period_time,
+                                            aveperiod.sequences, slice_to_beamdir_dict,
+                                            experiment.cpid, experiment.comment_string,
+                                            debug_samples)
+
+                    # end of the averaging period loop - move onto the next averaging period.
+                    # Increment the sequence number by the number of sequences that were in this
+                    # averaging period.
                     seqnum_start += nave
-                    # end of the averaging period loop - move onto the next averaging period. Increment the sequence
-                    # number by the number of sequences that were in this averaging period.
+
                 beam_iter = beam_iter + 1
 
 

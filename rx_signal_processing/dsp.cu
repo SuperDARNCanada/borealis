@@ -369,12 +369,15 @@ namespace {
       add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
         num_samples_after_dropping);
 
-      pd.set_rf_samples_location(dp->get_shared_memory_name());
-      pd.set_sequence_num(dp->get_sequence_num());
-      pd.set_processing_time(dp->get_decimate_timing());
+      dataset->set_slice_id(dp->get_slice_ids()[i]);
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     } // close loop over frequencies.
 
+    pd.set_rf_samples_location(dp->get_shared_memory_name());
+    pd.set_sequence_num(dp->get_sequence_num());
+    pd.set_processing_time(dp->get_decimate_timing());
+    pd.set_initialization_time(dp->get_driver_initialization_time());
+    pd.set_sequence_start_time(dp->get_sequence_start_time());
   }
 
   /**
@@ -497,7 +500,9 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
 DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::socket_t *data_socket,
                   SignalProcessingOptions &sig_options, uint32_t sequence_num,
                   std::vector<double> rx_freqs, Filtering *dsp_filters,
-                  std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts) :
+                  std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
+                  double driver_initialization_time, double sequence_start_time,
+                  std::vector<uint32_t> slice_ids) :
   sequence_num(sequence_num),
   ack_socket(ack_socket),
   timing_socket(timing_socket),
@@ -506,7 +511,10 @@ DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::s
   sig_options(sig_options),
   dsp_filters(dsp_filters),
   beam_phases(beam_phases),
-  beam_direction_counts(beam_direction_counts)
+  beam_direction_counts(beam_direction_counts),
+  driver_initialization_time(driver_initialization_time),
+  sequence_start_time(sequence_start_time),
+  slice_ids(slice_ids)
 {
 
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
@@ -792,9 +800,9 @@ void DSPCore::stop_timing()
   gpuErrchk(cudaEventElapsedTime(&total_process_timing_ms, initial_start, stop));
   gpuErrchk(cudaEventElapsedTime(&decimate_kernel_timing_ms, kernel_start, stop));
   gpuErrchk(cudaEventElapsedTime(&mem_time_ms, initial_start, mem_transfer_end));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Cuda memcpy time: " 
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Cuda memcpy time: "
     << COLOR_GREEN(mem_time_ms) << "ms");
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimate time: " 
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimate time: "
     << COLOR_GREEN(decimate_kernel_timing_ms) << "ms");
 
 }
@@ -1164,4 +1172,34 @@ std::vector<uint32_t> DSPCore::get_beam_direction_counts()
 std::string DSPCore::get_shared_memory_name()
 {
   return shm.get_region_name();
+}
+
+/**
+ * @brief      Gets the driver initialization timestamp.
+ *
+ * @return     The driver initialization timestamp.
+ */
+double DSPCore::get_driver_initialization_time()
+{
+  return driver_initialization_time;
+}
+
+/**
+ * @brief      Gets the sequence start timestamp.
+ *
+ * @return     The sequence start timestamp.
+ */
+double DSPCore::get_sequence_start_time()
+{
+  return sequence_start_time;
+}
+
+/**
+ * @brief      Gets the vector of slice identifiers.
+ *
+ * @return     The vector of slice identifiers.
+ */
+std::vector<uint32_t> DSPCore::get_slice_ids()
+{
+  return slice_ids;
 }
