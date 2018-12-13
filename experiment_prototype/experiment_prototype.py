@@ -14,10 +14,11 @@ from __future__ import print_function
 import sys
 import copy
 import os
+import math
 import numpy as np
 import itertools
 from scipy.constants import speed_of_light
-#import pygit2
+
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -266,6 +267,7 @@ class ExperimentPrototype(object):
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
 
+        self.__options = ExperimentOptions()
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
 
         self.__cpid = cpid
@@ -277,11 +279,12 @@ class ExperimentPrototype(object):
         self.__new_slice_id = 0
 
         # Centre frequencies can be specified in your experiment class using the setter. TODO: make modifiable (with warning that it takes time. Get time estimate for this.
-        self.__txctrfreq = 12000  # in kHz.
-        self.__rxctrfreq = 12000  # in kHz.
+
+        self.__txctrfreq = self.txctrfreq = 12000  # in kHz.
+        self.__rxctrfreq = self.rxctrfreq = 12000  # in kHz.
 
         # Load the config, hardware, and restricted frequency data
-        self.__options = ExperimentOptions()
+
         self.__txrate = self.__options.tx_sample_rate  # sampling rate, samples per sec, Hz.
         self.__rxrate = self.__options.rx_sample_rate  # sampling rate for rx in samples per sec
         # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
@@ -495,13 +498,18 @@ class ExperimentPrototype(object):
         """
         Set the transmission centre frequency that USRP is tuned to. 
         
-        This will take tuning time, use with caution.     
-            
+        This will take tuning time, use with caution. The USRP center frequency can only be tuned
+        in steps of the master clock rate / 2^32. We determine the closest value to the desired
+        center frequency and adjust to that.
+
         :param value: int for transmission centre frequency to tune USRP to (kHz).
         """
         # TODO review if this should be modifiable, definitely takes tuning time.
         if isinstance(value, int):
-            self.__txctrfreq = value # TODO return actual value tuned to.
+            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+            clock_multiples = self.options.usrp_master_clock_rate/2**32
+            clock_divider = math.ceil(value*1e3/clock_multiples)
+            self.__txctrfreq = (clock_divider * clock_multiples)/1e3 # TODO return actual value tuned to.
         else:
             pass  # TODO errors / log no change
 
@@ -539,7 +547,6 @@ class ExperimentPrototype(object):
     def rxctrfreq(self):
         """
         The receive centre frequency that USRP is tuned to (kHz).
-        
         If you would like to change this, note that it will take tuning time.
         """
         return self.__rxctrfreq
@@ -547,15 +554,20 @@ class ExperimentPrototype(object):
     @rxctrfreq.setter
     def rxctrfreq(self, value):
         """
-        Set the receive centre frequency that USRP is tuned to (kHz). 
-        
-        This will take tuning time, use with caution.  
-        
-        :param value: int for receive centre frequency to tune USRP to (kHz).
+        Set the receive centre frequency that USRP is tuned to (kHz).
+
+        This will take tuning time, use with caution.
+
+        :param value: int for receive centre frequency to tune USRP to (kHz). The USRP center
+        frequency can only be tuned in steps of the master clock rate / 2^32. We determine the
+        closest value to the desired center frequency and adjust to that.
         """
         # TODO review if this should be modifiable, definitely takes tuning time.
         if isinstance(value, int):
-            self.__rxctrfreq = value  # TODO return actual tuned freq.
+            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+            clock_multiples = self.options.usrp_master_clock_rate/2**32
+            clock_divider = math.ceil(value*1e3/clock_multiples)
+            self.__rxctrfreq = (clock_divider * clock_multiples)/1e3   # TODO return actual tuned freq.
         else:
             pass  # TODO errors
 
