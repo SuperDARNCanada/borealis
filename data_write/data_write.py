@@ -23,7 +23,8 @@ import numpy as np
 import deepdish as dd
 import posix_ipc as ipc
 import zmq
-import data_file_classes
+from scipy.constants import speed_of_light
+
 
 borealis_path = os.environ['BOREALISPATH']
 if not borealis_path:
@@ -45,7 +46,7 @@ from zmq_borealis_helpers import socket_operations as so
 def printing(msg):
     """
     Pretty print function for the Data Write module.
-    :param msg: The string to format nicely for printingw
+    :param msg: The string to format nicely for printing
     """
     DATA_WRITE = "\033[96m" + "DATA WRITE: " + "\033[0m"
     sys.stdout.write(DATA_WRITE + msg + "\n")
@@ -56,30 +57,29 @@ DATA_TEMPLATE = {
     "experiment_id" : None, # Number used to identify experiment.
     "experiment_string" : None, # Name of the experiment file.
     "station" : None, # Three letter radar identifier.
-    "timestamp_of_sampling_period" : None, # GPS timestamp of when the sampling period began.
-                                           # Seconds since epoch.
     "num_sequences": None, # Number of sampling periods in the integration time.
     "first_range_rtt" : None, # Round trip time of flight to first range in microseconds.
     "first_range" : None, # Distance to first range in km.
-    "rx_sample_rate" : None, # Sampling rate of the output samples in Hz.
+    "rx_sample_rate" : None, # Sampling rate of the samples being written to file in Hz.
     "scan_start_marker" : None, # Designates if the record is the first in a scan.
     "int_time" : None, # Integration time in seconds.
     "tx_pulse_len" : None, # Length of the pulse in microseconds.
-    "tau_spacing" : None, # Length of fundamental lag spacing in microseconds.
+    "tau_spacing" : None, # The minimum spacing between pulses, spacing between pulses is always a
+                          # multiple of this in microseconds.
     "num_pulses" : None, # Number of pulses in sequence.
     "num_lags" : None, # Number of lags in the lag table.
     "main_antenna_count" : None, # Number of main array antennas.
-    "intf_antenna_count" : None, # Number of intf array antennas.
+    "intf_antenna_count" : None, # Number of interferometer array antennas.
     "freq" : None, # The frequency used for this experiment slice in kHz.
-    "comment" : None, # Additional text comment in the experiment.
+    "comment" : None, # Additional text comment that describes the slice.
     "num_samps" : None, # Number of samples in the sampling period.
-    "antenna_arrays_order" : None, # States what order the antennas are in.
-    "samples_data_type" : None, # C data type of the samples.
+    "antenna_arrays_order" : None, # States what order the data is in. Describes the data layout.
+    "samples_data_type" : None, # C data type of the samples such as complex float.
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
     "lags" : None, # The lags created from combined pulses.
     "blanked_samples" : None, # Samples that have been blanked during TR switching.
-    "sqn_timestamps" : None, # A list of GPS timestamps of each sampling period in the integration
-                             # time. Seconds since epoch.
+    "sqn_timestamps" : None, # A list of GPS timestamps of the beginning of transmission for each
+                             # sampling period in the integration time. Seconds since epoch.
     "beam_nums" : None, # A list of beam numbers used in this slice.
     "beam_azms" : None, # A list of the beams azimuths for each beam in degrees.
     "data_descriptors" : None, # Denotes what each data dimension represents.
@@ -89,7 +89,7 @@ DATA_TEMPLATE = {
 
 TX_TEMPLATE = {
     "tx_rate" : [],
-    "tx_center_freq" : [],
+    "tx_centre_freq" : [],
     "pulse_sequence_timing_us" : [],
     "pulse_offset_error_us" : [],
     "tx_samples" : [],
@@ -106,7 +106,8 @@ class ParseData(object):
 
     Attributes:
         nested_dict (Python default nested dictionary): alias to a nested defaultdict
-        processed_data (Protobuf packet): Contains a packet from a socket in protobuf_pb2 format
+        processed_data (Protobuf packet): Contains a processeddata protobuf from dsp socket in
+                                          protobuf_pb2 format.
     """
 
     def __init__(self):
@@ -130,10 +131,10 @@ class ParseData(object):
 
         self._rawrf_locations = []
 
-    def do_bfiq(self):
+    def parse_bfiq(self):
         """
-        Parses out any possible beamformed IQ data from the protobuf and writes it to file.
-        All variables are captured.
+        Parses out any possible beamformed IQ data from the protobuf. Runs on every processeddata
+        packet(contains all sampling period data). All variables are captured from outer scope.
 
         """
 
@@ -160,10 +161,12 @@ class ParseData(object):
                         """
 
                         cmplx = np.ones(len(beam.mainsamples), dtype=np.complex64)
+                        # builds complex samples from protobuf sample (which contains real and
+                        # imag floats)
                         for i, sample in enumerate(samples):
                             cmplx[i] = sample.real + 1.0j * sample.imag
 
-                        # only need to test either real or imag to see if data exists
+                        # Assign if data does not exist, else concatenate to whats already there.
                         if 'data' not in self._bfiq_accumulator[slice_id][antenna_arr_type]:
                             self._bfiq_accumulator[slice_id][antenna_arr_type]['data'] = cmplx
                         else:
@@ -177,10 +180,10 @@ class ParseData(object):
 
 
 
-    def do_pre_bfiq(self):
+    def parse_pre_bfiq(self):
         """
-        Parses out any pre-beamformed IQ if available and writes it out to file.
-        All variables are captured.
+        Parses out any pre-beamformed IQ if available. Runs on every processeddata
+        packet(contains all sampling period data). All variables are captured from outer scope.
         """
 
         self._pre_bfiq_accumulator['data_descriptors'] = ['num_antennas', 'num_sequences',
@@ -236,10 +239,11 @@ class ParseData(object):
 
         self._rawrf_locations.append(self.processed_data.rf_samples_location)
 
+        # TODO(keith): Parallelize?
         procs = []
 
-        self.do_bfiq()
-        self.do_pre_bfiq()
+        self.parse_bfiq()
+        self.parse_pre_bfiq()
 
         for proc in procs:
             proc.start()
@@ -250,47 +254,48 @@ class ParseData(object):
 
     @property
     def sequence_num(self):
-        """Summary
+        """ Gets the sequence num of the latest processeddata packet.
 
         Returns:
-            TYPE: Description
+            TYPE: Int
         """
         return self.processed_data.sequence_num
 
     @property
     def bfiq_available(self):
-        """Summary
+        """ Gets the bfiq available flag.
 
         Returns:
-            TYPE: Description
+            TYPE: Bool
         """
         return self._bfiq_available
 
     @property
     def pre_bfiq_available(self):
-        """Summary
+        """ Gets the pre-bfiq available flag.
 
         Returns:
-            TYPE: Description
+            TYPE: Bool
         """
         return self._pre_bfiq_available
 
     @property
     def bfiq_accumulator(self):
-        """Summary
+        """ Returns the nested default dictionary with complex stage data for each antenna array as
+        well as some metadata.
 
         Returns:
-            TYPE: Description
+            TYPE: Nested default dict: Contains beamform data for each slice.
         """
         return self._bfiq_accumulator
 
     @property
     def pre_bfiq_accumulator(self):
         """Returns the nested default dictionary with complex stage data for each antenna as well
-        as some metadata
+        as some metadata for each slice.
 
         Returns:
-            Nested default dict: Contains stage data for each antenna
+            Nested default dict: Contains stage data for each antenna and slice.
         """
         return self._pre_bfiq_accumulator
 
@@ -315,6 +320,11 @@ class ParseData(object):
 
     @property
     def rawrf_locations(self):
+        """ Gets the list of raw rf memory locations.
+
+        Returns:
+            TYPE: List of strings.
+        """
         return self._rawrf_locations
 
 
@@ -322,24 +332,37 @@ class ParseData(object):
 class DataWrite(object):
     """This class contains the functions used to write out processed data to files.
 
+    Args:
+        data_write_options (DataWriteOptions): The data write options from config.
     """
     def __init__(self, data_write_options):
         super(DataWrite, self).__init__()
+
+        # Used for getting info from config.
         self.options = data_write_options
 
+        # String format used for output files names that have slice data.
         self.two_hr_format = "{dt}.{site}.{sliceid}.{{ext}}"
 
+        # Special name and format for rawrf. Contains no slice info.
         self.raw_rf_two_hr_format = "{dt}.{site}.rawrf"
         self.raw_rf_two_hr_name = None
 
+        # Special name and format for tx data. Contains no slice info
         self.tx_data_two_hr_format = "{dt}.{site}.txdata"
-        self.raw_rf_two_hr_name = None
+        self.tx_data_two_hr_name = None
 
+        # A dict to hold filenames for all available slices in the experiment as they are received.
         self.slice_filenames = {}
 
+        # The git hash used to identify what version of Borealis is running.
         self.git_hash = sp.check_output("git describe --always".split()).strip()
 
+        # The next two hour boundary for files.
         self.next_boundary = None
+
+        # Default this to true so we know if we are running for the first time.
+        self.first_time = True
 
     def write_json_file(self, filename, data_dict):
         """
@@ -356,13 +379,14 @@ class DataWrite(object):
         Write out data to an HDF5 file. If the file already exists it will be overwritten.
         :param filename: The path to the file to write out. String
         :param data_dict: Python dictionary to write out to the HDF5 file.
+        :param dt_str: A datetime timestamp of the first transmission time in the record as string.
         """
 
         def convert_to_numpy(dd):
-            """Converts an input dictionary type into numpy array. Recursive.
+            """Converts lists stored in dict into numpy array. Recursive.
 
             Args:
-                dd (Python dictionary): Dictionary to convert to numpy array, can contain nested dicts.
+                dd (Python dictionary): Dictionary with lists to convert to numpy arrays.
             """
             for k, v in dd.items():
                 if isinstance(v, dict):
@@ -377,6 +401,7 @@ class DataWrite(object):
         time_stamped_dd = {}
         time_stamped_dd[dt_str] = data_dict
 
+        # TODO(keith): Investigate warning.
         warnings.simplefilter("ignore") #ignore NaturalNameWarning
         dd.io.save(filename, time_stamped_dd, compression=None)
 
@@ -398,11 +423,12 @@ class DataWrite(object):
         A file will be created using the file extention for each requested data product.
 
         :param write_bfiq:          Should beamformed IQ be written to file? Bool.
-        :param write_pre_bfiq:     Should pre-beamformed IQ be written to file? Bool.
+        :param write_pre_bfiq:      Should pre-beamformed IQ be written to file? Bool.
         :param write_raw_rf:        Should raw rf samples be written to file? Bool.
         :param file_ext:            Type of file extention to use. String
         :param integration_meta:    Metadata from radar control about integration period. Protobuf
-        :param data_parsing:        All parsed and concatenated data from integration period. Dict
+        :param data_parsing:        All parsed and concatenated data from integration period stored
+                                    in DataParsing object.
         :param write_rawacf:        Should rawacfs be written to file? Bool, default True.
         """
 
@@ -412,7 +438,9 @@ class DataWrite(object):
             raise ValueError("File format selection required (hdf5, json, dmap), none given")
 
         # Format the name and location for the dataset
-        time_now = datetime.datetime.utcnow()
+        write_time = datetime.datetime.utcnow()
+        time_now = datetime.datetime.fromtimestamp(data_parsing.timestamps[0])
+
         today_string = time_now.strftime("%Y%m%d")
         datetime_string = time_now.strftime("%Y%m%d.%H%M.%S.%f")
         epoch = datetime.datetime.utcfromtimestamp(0)
@@ -443,15 +471,15 @@ class DataWrite(object):
 
             return boundary_time
 
-        time_now = datetime.datetime.utcnow()
-
-        if self.raw_rf_two_hr_name is None:
+        if self.first_time:
             self.raw_rf_two_hr_name = self.raw_rf_two_hr_format.format(
                 dt=time_now.strftime("%Y%m%d.%H%M.%S"),
                 site=self.options.site_id)
             self.tx_data_two_hr_name = self.tx_data_two_hr_format.format(
                 dt=time_now.strftime("%Y%m%d.%H%M.%S"),
                 site=self.options.site_id)
+            self.next_boundary = two_hr_ceiling(time_now)
+            self.first_time = False
 
         for slice_id in data_parsing.slice_ids:
             if slice_id not in self.slice_filenames:
@@ -459,7 +487,6 @@ class DataWrite(object):
                                                        sliceid=slice_id, site=self.options.site_id)
                 self.slice_filenames[slice_id] = two_hr_str
 
-                self.next_boundary = two_hr_ceiling(time_now)
 
         if time_now > self.next_boundary:
             self.raw_rf_two_hr_name = self.raw_rf_two_hr_format.format(
@@ -473,23 +500,23 @@ class DataWrite(object):
                                                        sliceid=slice_id,
                                                        site=self.options.site_id)
                 self.slice_filenames[slice_id] = two_hr_str
-                self.next_boundary = two_hr_ceiling(time_now)
 
-
-        def write_file(location, final_data_dict, two_hr_file_with_type):
+            self.next_boundary = two_hr_ceiling(time_now)
+            
+            
+        def write_file(tmp_file, final_data_dict, two_hr_file_with_type):
             """
-            Writes the final data out to the location based on the type of file extention required
+            Writes the final data out to the location based on the type of file extension required
 
-            :param location:                File path and name to write to. String
+            :param tmp_file:                File path and name to write single record. String
             :param final_data_dict:         Data dict parsed out from protobuf. Dict
             :param two_hr_file_with_type:   Name of the two hour file with data type added. String
 
             """
             if not os.path.exists(dataset_directory):
-                try:
-                    os.makedirs(dataset_directory)
-                except os.error:
-                    pass
+                # Don't try-catch this, because we want it to fail hard if we can't write files 
+                os.makedirs(dataset_directory)
+
 
             if file_ext == 'hdf5':
                 full_two_hr_file = "{0}/{1}.hdf5".format(dataset_directory, two_hr_file_with_type)
@@ -500,18 +527,20 @@ class DataWrite(object):
                 except FileExistsError:
                     pass
 
-                self.write_hdf5_file(location, final_data_dict, epoch_milliseconds)
+                self.write_hdf5_file(tmp_file, final_data_dict, epoch_milliseconds)
 
                 # use external h5copy utility to move new record into 2hr file.
                 cmd = 'h5copy -i {newfile} -o {twohr} -s {dtstr} -d {dtstr}'
-                cmd = cmd.format(newfile=location, twohr=full_two_hr_file, dtstr=epoch_milliseconds)
+                cmd = cmd.format(newfile=tmp_file, twohr=full_two_hr_file, dtstr=epoch_milliseconds)
+
+                # TODO(keith): improve call to subprocess.
                 sp.call(cmd.split())
-                os.remove(location)
+                os.remove(tmp_file)
 
             elif file_ext == 'json':
-                self.write_json_file(location, final_data_dict)
+                self.write_json_file(tmp_file, final_data_dict)
             elif file_ext == 'dmap':
-                self.write_dmap_file(location, final_data_dict)
+                self.write_dmap_file(tmp_file, final_data_dict)
 
         def do_acf():
             """
@@ -524,10 +553,13 @@ class DataWrite(object):
 
 
 
-        def do_bfiq(parameters_holder):
+        def write_bfiq_params(parameters_holder):
             """
-            Parses out any possible beamformed IQ data from the protobuf and writes it to file.
-            All variables are captured.
+            write out any possible beamformed IQ data that has been parsed. Adds additional slice
+            info to each parameter dict. Some variables are captured from outer scope.
+
+            Args:
+                parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
 
             """
 
@@ -541,25 +573,23 @@ class DataWrite(object):
 
                 parameters['data_descriptors'] = data_descriptors
                 parameters['antenna_arrays_order'] = []
+
+                flattened_data = []
                 if "main" in bfiq[slice_id]:
                     parameters['antenna_arrays_order'].append("main")
+                    flattened_data.append(bfiq[slice_id]['main']['data'])
                 if "intf" in bfiq[slice_id]:
                     parameters['antenna_arrays_order'].append("intf")
+                    flattened_data.append(bfiq[slice_id]['intf']['data'])
 
+                flattened_data = np.concatenate(flattened_data)
+                parameters['data'] = flattened_data
 
                 parameters['num_samps'] = np.uint32(bfiq[slice_id].pop('num_samps', None))
                 parameters['data_dimensions'] = np.array([len(bfiq[slice_id].keys()),
                                                           integration_meta.nave,
                                                           len(parameters['beam_nums']),
                                                           parameters['num_samps']], dtype=np.uint32)
-
-                if bfiq[slice_id]['intf']:
-                    flattened_data = np.concatenate((bfiq[slice_id]['main']['data'],
-                                                     bfiq[slice_id]['intf']['data']))
-                else:
-                    flattened_data = bfiq[slice_id]['main']['data']
-
-                parameters['data'] = flattened_data
 
 
             for slice_id, parameters in parameters_holder.items():
@@ -571,10 +601,14 @@ class DataWrite(object):
                 write_file(output_file, parameters, two_hr_file_with_type)
 
 
-        def do_pre_bfiq(parameters_holder):
+        def write_pre_bfiq_params(parameters_holder):
             """
-            Parses out any pre-beamformed IQ if available and writes it out to file. Some
-            variables are captured in scope.
+            Writes out any pre-beamformed IQ that has been parsed. Adds additional slice info
+            to each paramater dict. Some variables are captured from outer scope.
+
+            Args:
+                parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
+
             """
 
             pre_bfiq = data_parsing.pre_bfiq_accumulator
@@ -634,8 +668,8 @@ class DataWrite(object):
                     final_data_params[slice_id][stage] = parameters
 
 
-            for slice_id, slices in final_data_params.items():
-                for stage, params in slices.items():
+            for slice_id, slice_ in final_data_params.items():
+                for stage, params in slice_.items():
                     name = dataset_name.format(sliceid=slice_id, dformat="{}_iq".format(stage))
                     output_file = dataset_location.format(name=name)
 
@@ -645,11 +679,18 @@ class DataWrite(object):
                     write_file(output_file, params, two_hr_file_with_type)
 
 
-        def do_raw_rf(param):
+        def write_raw_rf_params(param):
             """
             Opens the shared memory location in the protobuf and writes the samples out to file.
             Write medium must be able to sustain high write bandwidth. Shared memory is destroyed
-            after write. Some variables are captured in scope.
+            after write. Some variables are captured in scope. Some new members are added to the
+            parameter dict.
+
+
+            Args:
+                param (Dict): A dict of parameters to write. Some will be removed.
+
+
             """
             raw_rf = data_parsing.rawrf_locations
 
@@ -670,7 +711,7 @@ class DataWrite(object):
                 shms.append(shm)
                 mapfiles.append(mapfile)
 
-            rf_samples = np.concatenate(samples_list)
+            param['data'] = np.concatenate(samples_list)
 
             param['rx_sample_rate'] = np.float32(self.options.rx_sample_rate)
 
@@ -693,7 +734,6 @@ class DataWrite(object):
             for field in unneeded_fields:
                 param.pop(field, None)
 
-            param['data'] = rf_samples
 
             write_file(output_file, param, self.raw_rf_two_hr_name)
 
@@ -703,8 +743,9 @@ class DataWrite(object):
                 shm.unlink()
                 mapfile.close()
 
-        def do_tx_data():
+        def write_tx_data():
             """Writes out the tx samples and metadata for debugging purposes.
+
             """
             tx_data = None
             for meta in integration_meta.sequences:
@@ -716,7 +757,7 @@ class DataWrite(object):
             if tx_data is not None:
                 for meta in integration_meta.sequences:
                     tx_data['tx_rate'].append(meta.tx_data.txrate)
-                    tx_data['tx_center_freq'].append(meta.tx_data.txctrfreq)
+                    tx_data['tx_centre_freq'].append(meta.tx_data.txctrfreq)
                     tx_data['pulse_sequence_timing_us'].append(
                         meta.tx_data.pulse_sequence_timing_us)
                     tx_data['pulse_offset_error_us'].append(meta.tx_data.pulse_offset_error_us)
@@ -758,7 +799,7 @@ class DataWrite(object):
                 tx_data['decimated_tx_samples'] = np.array(tx_data['decimated_tx_samples'],
                                                            dtype=np.complex64)
 
-                name = name = dataset_name.replace('{sliceid}.', '').format(dformat='txdata')
+                name = dataset_name.replace('{sliceid}.', '').format(dformat='txdata')
                 output_file = dataset_location.format(name=name)
 
                 write_file(output_file, tx_data, self.tx_data_two_hr_name)
@@ -772,18 +813,16 @@ class DataWrite(object):
                 parameters = DATA_TEMPLATE.copy()
                 parameters['borealis_git_hash'] = self.git_hash.decode('utf-8')
 
-                parameters['timestamp_of_write'] = (time_now - epoch).total_seconds()
+                parameters['timestamp_of_write'] = (write_time - epoch).total_seconds()
                 parameters['experiment_id'] = np.uint32(integration_meta.experiment_id)
                 parameters['experiment_string'] = integration_meta.experiment_string
                 parameters['station'] = self.options.site_id
-                parameters['timestamp_of_sampling_period'] = data_parsing.timestamps[0]
                 parameters['num_sequences'] = integration_meta.nave
 
-                speed_of_light = 299792458 #m/s
                 #time to first range and back. convert to meters, div by c then convert to us
                 rtt = (rx_freq.frang * 2 * 1.0e3 / speed_of_light) * 1.0e6
-                parameters['first_range_rtt'] = np.uint32(rtt)
-                parameters['first_range'] = np.uint32(rx_freq.frang)
+                parameters['first_range_rtt'] = np.float32(rtt)
+                parameters['first_range'] = np.float32(rx_freq.frang)
                 parameters['rx_sample_rate'] = np.float32(self.options.third_stage_sample_rate)
                 parameters['scan_start_marker'] = integration_meta.scan_flag # Should this change to scan_start_marker?
                 parameters['int_time'] = np.float32(integration_meta.integration_time)
@@ -825,15 +864,16 @@ class DataWrite(object):
             procs.append(mp.Process(target=do_acf))
 
         if write_bfiq and data_parsing.bfiq_available:
-            procs.append(mp.Process(target=do_bfiq, args=(parameters_holder.copy(), )))
+            procs.append(mp.Process(target=write_bfiq_params, args=(parameters_holder.copy(), )))
 
         if write_pre_bfiq and data_parsing.pre_bfiq_available:
-            procs.append(mp.Process(target=do_pre_bfiq, args=(parameters_holder.copy(), )))
+            procs.append(mp.Process(target=write_pre_bfiq_params,
+                                    args=(parameters_holder.copy(), )))
 
         if write_raw_rf:
-            # Just need first available param
-            any_param = next(iter(parameters_holder.values())).copy()
-            procs.append(mp.Process(target=do_raw_rf, args=(any_param, )))
+            # Just need first available slice paramaters.
+            one_slice_params = next(iter(parameters_holder.values())).copy()
+            procs.append(mp.Process(target=write_raw_rf_params, args=(one_slice_params, )))
         else:
             for rf_samples_location in data_parsing.rawrf_locations:
                 shm = ipc.SharedMemory(rf_samples_location)
@@ -841,7 +881,7 @@ class DataWrite(object):
                 shm.unlink()
 
         if write_tx:
-            procs.append(mp.Process(target=do_tx_data))
+            procs.append(mp.Process(target=write_tx_data))
 
         for proc in procs:
             proc.start()
@@ -892,9 +932,8 @@ def main():
     data_write = None
     first_time = True
     while True:
+
         try:
-            # Send a request for data to dsp. The actual message doesn't matter, so use 'Request'
-            # After that, receive the processed data from dsp, blocking.
             socks = dict(poller.poll())
         except KeyboardInterrupt:
             sys.exit()

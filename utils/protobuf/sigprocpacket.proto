@@ -12,7 +12,7 @@ message SigProcPacket {
         uint32 slice_id = 1;
         double rxfreq = 2; // REVIEW #28 Does this need to be a double?
         uint32 nrang = 3; // REVIEW #1 What is rxfreq? From 0 or from centre freq?
-        uint32 frang = 4;
+        float frang = 4;
         repeated BeamDirections beam_directions = 5;
 
         message BeamDirections {

@@ -3,7 +3,7 @@
 # Copyright 2017 SuperDARN Canada
 
 """
-To load the config options to be used by the experiment and radar_control blocks. 
+To load the config options to be used by the experiment and radar_control blocks.
 Config data comes from the config.ini file, the hdw.dat file, and the restrict.dat file.
 """
 
@@ -53,6 +53,7 @@ class ExperimentOptions:
             # Minimum pulse separation is the minimum before the experiment treats it as a single
             # pulse (transmitting zeroes or no receiving between the pulses)
             # 125 us is approx two TX/RX times
+
             self._minimum_pulse_separation = float(config['minimum_pulse_separation'])  # us
             self._atten_window_time_start = float(config['atten_window_time_start'])  # s
             self._atten_window_time_end = float(config['atten_window_time_end'])  # s
@@ -82,6 +83,7 @@ class ExperimentOptions:
 
             # TODO add appropriate signal process maximum time here after timing is changed - can
             # use to check for pulse spacing minimums, pace the driver
+
         except ValueError as e:
             # TODO: error
             raise e
