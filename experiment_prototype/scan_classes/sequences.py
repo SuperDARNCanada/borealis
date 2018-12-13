@@ -55,7 +55,8 @@ class Sequence(ScanClassBase):
         the number of receive samples to take, given the rx rate, during 
         the sstime.
     blanks
-        A list of times when transmitting, samples to not be used for acfs.
+        A list of sample indices that should not be used for acfs because they were samples
+        taken when transmitting.
     
     **Pulses is a list of pulse dictionaries. The pulse dictionary keys are:**
     
@@ -278,7 +279,8 @@ class Sequence(ScanClassBase):
                     pulse['isarepeat'] = True
 
         if __debug__:
-            print('PULSES:\n{}'.format(self.pulses))
+            pass
+            #print('PULSES:\n{}'.format(self.pulses))
 
 
         last_pulse = self.pulses[-1]
@@ -303,24 +305,6 @@ class Sequence(ScanClassBase):
         self.seqtime = 2*self.options.tr_window_time + self.pulses[-1]['pulse_timing_us'] + \
                        self.last_pulse_len
 
-        blanks = []
-        sample_time = 1.0/float(self.options.output_sample_rate)
-        first_sample_time = sample_time/2.0  # TODO this needs to be calculated appropriately
-        # given number of samples added on the front when filtering occurs
-        pulses_time = []
-        for pulse in self.pulses:
-            pulse_start_stop = [pulse['pulse_timing_us'], pulse['pulse_timing_us'] + pulse[
-                'pulse_len']]
-            pulses_time.append(pulse_start_stop)
-        output_samples_in_sequence = int(self.seqtime * 1.0e-6/sample_time)
-        sample_times = [first_sample_time + i*sample_time for i in range(0,output_samples_in_sequence)]
-        for sample_num, time_s in enumerate(sample_times):
-            for pulse_start_stop in pulses_time:
-                if pulse_start_stop[0] <= time_s <= pulse_start_stop[1]:
-                    blanks.append(sample_num)
-        self.blanks = blanks
-        print(self.blanks)
-
         # FIND the total scope sync time and number of samples to receive.
         self.sstime = self.seqtime + self.ssdelay
         # number of receive samples will round down
@@ -329,6 +313,24 @@ class Sequence(ScanClassBase):
         # end of the scope sync delay which is there for the amount of time necessary to get
         # the echoes from the specified number of ranges.
         self.numberofreceivesamples = int(self.options.rx_sample_rate * self.sstime * 1e-6)
+
+        blanks = []
+        sample_time = 1.0/float(self.options.output_sample_rate)
+        first_sample_time = sample_time/2.0  # TODO this needs to be calculated appropriately
+        # given number of samples added on the front when filtering occurs
+        pulses_time = []
+        for pulse in self.pulses:
+            pulse_start_stop = [pulse['pulse_timing_us'] * 1.0e-6, (pulse['pulse_timing_us'] + pulse[
+                'pulse_len']) * 1.0e-6] 
+            pulses_time.append(pulse_start_stop)
+        output_samples_in_sequence = int(self.sstime * 1.0e-6/sample_time)
+        sample_times = [first_sample_time + i*sample_time for i in range(0,output_samples_in_sequence)]
+        for sample_num, time_s in enumerate(sample_times):
+            for pulse_start_stop in pulses_time:
+                if pulse_start_stop[0] <= time_s <= pulse_start_stop[1]:
+                    blanks.append(sample_num)
+        self.blanks = blanks
+
 
     def build_pulse_transmit_data(self, slice_to_beamdir_dict, txctrfreq, txrate, options):
         #TODO only take in things you need or add needed params from options in the init function.

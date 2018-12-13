@@ -1,5 +1,5 @@
 chdir $BOREALISPATH
-
+defscrollback 10000
 layout autosave on
 layout new borealis
 screen -t "Brian" bash -c "START_BRIAN"

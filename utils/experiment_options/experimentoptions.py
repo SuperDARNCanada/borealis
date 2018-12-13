@@ -31,57 +31,59 @@ class ExperimentOptions:
             errmsg = 'Cannot open config file at {}'.format(config_file)
             raise ExperimentException(errmsg)
         try:
-            self.main_antenna_count = int(config['main_antenna_count'])
-            self.interferometer_antenna_count = int(config['interferometer_antenna_count'])
-            self.main_antenna_spacing = float(config['main_antenna_spacing'])
-            self.interferometer_antenna_spacing = float(config['interferometer_antenna_spacing'])
-            self.tx_sample_rate = float(config['tx_sample_rate'])
-            self.rx_sample_rate = float(config['rx_sample_rate'])
-            self.max_usrp_dac_amplitude = float(config['max_usrp_dac_amplitude'])
-            self.pulse_ramp_time = float(config['pulse_ramp_time'])  # in seconds
-            self.tr_window_time = float(config['tr_window_time'])
-            self.output_sample_rate = float(
+            self._main_antenna_count = int(config['main_antenna_count'])
+            self._interferometer_antenna_count = int(config['interferometer_antenna_count'])
+            self._main_antenna_spacing = float(config['main_antenna_spacing'])
+            self._interferometer_antenna_spacing = float(config['interferometer_antenna_spacing'])
+            self._tx_sample_rate = float(config['tx_sample_rate'])
+            self._rx_sample_rate = float(config['rx_sample_rate'])
+            self._max_usrp_dac_amplitude = float(config['max_usrp_dac_amplitude'])
+            self._pulse_ramp_time = float(config['pulse_ramp_time'])  # in seconds
+            self._tr_window_time = float(config['tr_window_time'])
+            self._output_sample_rate = float(
                 config['third_stage_sample_rate'])  # should use to check iqdata samples
             # when adjusting the experiment during operations.
-            self.filter_description = {'filter_cutoff': config['third_stage_filter_cutoff'],
+            self._filter_description = {'filter_cutoff': config['third_stage_filter_cutoff'],
                                        'filter_transition': config['third_stage_filter_transition']}
-            self.site_id = config['site_id']
-            self.max_freq = float(config['max_freq'])  # Hz
-            self.min_freq = float(config['min_freq'])  # Hz
-            self.minimum_pulse_length = float(config['minimum_pulse_length'])  # us
-            self.minimum_mpinc_length = float(config['minimum_mpinc_length'])  # us
-            # Minimum pulse separation is the minimum before the experiment treats it as a single pulse (transmitting zeroes or no receiving between the pulses)
+            self._site_id = config['site_id']
+            self._max_freq = float(config['max_freq'])  # Hz
+            self._min_freq = float(config['min_freq'])  # Hz
+            self._minimum_pulse_length = float(config['minimum_pulse_length'])  # us
+            self._minimum_mpinc_length = float(config['minimum_mpinc_length'])  # us
+            # Minimum pulse separation is the minimum before the experiment treats it as a single
+            # pulse (transmitting zeroes or no receiving between the pulses)
             # 125 us is approx two TX/RX times
-            self.minimum_pulse_separation = float(config['minimum_pulse_separation'])  # us
-            self.tr_window_time = float(config['tr_window_time'])  # s
-            self.atten_window_time_start = float(config['atten_window_time_start'])  # s
-            self.atten_window_time_end = float(config['atten_window_time_end'])  # s
-            self.usrp_master_clock_rate = float(config['usrp_master_clock_rate']) # Hz
-            self.router_address = config['router_address']
-            self.radctrl_to_exphan_identity = str(config["radctrl_to_exphan_identity"])
-            self.radctrl_to_dsp_identity = str(config["radctrl_to_dsp_identity"])
-            self.radctrl_to_driver_identity = str(config["radctrl_to_driver_identity"])
-            self.radctrl_to_brian_identity = str(config["radctrl_to_brian_identity"])
-            self.radctrl_to_dw_identity = str(config["radctrl_to_dw_identity"])
-            self.driver_to_radctrl_identity = str(config["driver_to_radctrl_identity"])
-            self.driver_to_dsp_identity = str(config["driver_to_dsp_identity"])
-            self.driver_to_brian_identity = str(config["driver_to_brian_identity"])
-            self.exphan_to_radctrl_identity = str(config["exphan_to_radctrl_identity"])
-            self.exphan_to_dsp_identity = str(config["exphan_to_dsp_identity"])
-            self.dsp_to_radctrl_identity = str(config["dsp_to_radctrl_identity"])
-            self.dsp_to_driver_identity = str(config["dsp_to_driver_identity"])
-            self.dsp_to_exphan_identity = str(config["dsp_to_exphan_identity"])
-            self.dsp_to_dw_identity = str(config["dsp_to_dw_identity"])
-            self.dspbegin_to_brian_identity = str(config["dspbegin_to_brian_identity"])
-            self.dspend_to_brian_identity = str(config["dspend_to_brian_identity"])
-            self.dw_to_dsp_identity = str(config["dw_to_dsp_identity"])
-            self.dw_to_radctrl_identity = str(config["dw_to_radctrl_identity"])
-            self.brian_to_radctrl_identity = str(config["brian_to_radctrl_identity"])
-            self.brian_to_driver_identity = str(config["brian_to_driver_identity"])
-            self.brian_to_dspbegin_identity = str(config["brian_to_dspbegin_identity"])
-            self.brian_to_dspend_identity = str(config["brian_to_dspend_identity"])
 
-            # TODO add appropriate signal process maximum time here after timing is changed - can use to check for pulse spacing minimums, pace the driver
+            self._minimum_pulse_separation = float(config['minimum_pulse_separation'])  # us
+            self._atten_window_time_start = float(config['atten_window_time_start'])  # s
+            self._atten_window_time_end = float(config['atten_window_time_end'])  # s
+            self._router_address = config['router_address']
+            self._radctrl_to_exphan_identity = str(config["radctrl_to_exphan_identity"])
+            self._radctrl_to_dsp_identity = str(config["radctrl_to_dsp_identity"])
+            self._radctrl_to_driver_identity = str(config["radctrl_to_driver_identity"])
+            self._radctrl_to_brian_identity = str(config["radctrl_to_brian_identity"])
+            self._radctrl_to_dw_identity = str(config["radctrl_to_dw_identity"])
+            self._driver_to_radctrl_identity = str(config["driver_to_radctrl_identity"])
+            self._driver_to_dsp_identity = str(config["driver_to_dsp_identity"])
+            self._driver_to_brian_identity = str(config["driver_to_brian_identity"])
+            self._exphan_to_radctrl_identity = str(config["exphan_to_radctrl_identity"])
+            self._exphan_to_dsp_identity = str(config["exphan_to_dsp_identity"])
+            self._dsp_to_radctrl_identity = str(config["dsp_to_radctrl_identity"])
+            self._dsp_to_driver_identity = str(config["dsp_to_driver_identity"])
+            self._dsp_to_exphan_identity = str(config["dsp_to_exphan_identity"])
+            self._dsp_to_dw_identity = str(config["dsp_to_dw_identity"])
+            self._dspbegin_to_brian_identity = str(config["dspbegin_to_brian_identity"])
+            self._dspend_to_brian_identity = str(config["dspend_to_brian_identity"])
+            self._dw_to_dsp_identity = str(config["dw_to_dsp_identity"])
+            self._dw_to_radctrl_identity = str(config["dw_to_radctrl_identity"])
+            self._brian_to_radctrl_identity = str(config["brian_to_radctrl_identity"])
+            self._brian_to_driver_identity = str(config["brian_to_driver_identity"])
+            self._brian_to_dspbegin_identity = str(config["brian_to_dspbegin_identity"])
+            self._brian_to_dspend_identity = str(config["brian_to_dspend_identity"])
+
+            # TODO add appropriate signal process maximum time here after timing is changed - can
+            # use to check for pulse spacing minimums, pace the driver
+
         except ValueError as e:
             # TODO: error
             raise e
@@ -133,23 +135,25 @@ class ExperimentOptions:
             errmsg = 'Found {} parameters in hardware file, expected 19'.format(len(params))
             raise ExperimentException(errmsg)
 
-        self.geo_lat = params[3]  # decimal degrees, S = negative
-        self.geo_long = params[4]  # decimal degrees, W = negative
-        self.altitude = params[5]  # metres
-        self.boresight = params[6]  # degrees from geographic north, CCW = negative.
-        self.beam_sep = params[7]  # degrees TODO is this necessary, or is this a min. - for post-processing software in RST? check with others.
-        self.velocity_sign = params[8]  # +1.0 or -1.0
-        self.analog_rx_attenuator = params[9]  # dB
-        self.tdiff = params[10] # ns
-        self.phase_sign = params[11]
-        self.intf_offset = [float(params[12]), float(params[13]), float(params[14])]  # interferometer offset from
+        self._geo_lat = params[3]  # decimal degrees, S = negative
+        self._geo_long = params[4]  # decimal degrees, W = negative
+        self._altitude = params[5]  # metres
+        self._boresight = params[6]  # degrees from geographic north, CCW = negative.
+        self._beam_sep = params[7]  # degrees TODO is this necessary, or is this a min. - for
+        # post-processing software in RST? check with others.
+        self._velocity_sign = params[8]  # +1.0 or -1.0
+        self._analog_rx_attenuator = params[9]  # dB
+        self._tdiff = params[10] # ns
+        self._phase_sign = params[11]
+        self._intf_offset = [float(params[12]), float(params[13]), float(params[14])]  #
+        # interferometer offset from
         # midpoint of main, metres [x, y, z] where x is along line of antennas, y is along array
         # normal and z is altitude difference.
-        self.analog_rx_rise = params[15]  # us
-        self.analog_atten_stages = params[16]  # number of stages
-        self.max_range_gates = params[17]
-        self.max_beams = params[18]  # so a beam number always points in a certain direction
-                        # TODO Is this last one necessary - why don't we specify directions in angle. - also for post-processing so check if it applies to Borealis
+        self._analog_rx_rise = params[15]  # us
+        self._analog_atten_stages = params[16]  # number of stages
+        self._max_range_gates = params[17]
+        self._max_beams = params[18]  # so a beam number always points in a certain direction
+        # TODO Is this last one necessary - why don't we specify directions in angle. - also for post-processing so check if it applies to Borealis
 
         try:
             with open(restricted_freq_file + self.site_id) as restricted_freq_data:
@@ -166,13 +170,13 @@ class ExperimentOptions:
             splitup = line.split("=")
             if len(splitup) == 2:
                 if splitup[0] == 'default' or splitup[0] == 'default ':
-                    self.default_freq = int(splitup[1]) # kHz
+                    self.__default_freq = int(splitup[1])  # kHz
                     restricted.remove(line)
                     break
         else: #no break
             raise Exception('No Default Frequency Found in Restrict.dat')
 
-        self.restricted_ranges = []
+        self.__restricted_ranges = []
         for line in restricted:
             splitup = line.split()
             if len(splitup) != 2:
@@ -182,7 +186,7 @@ class ExperimentOptions:
             except ValueError:
                 raise ValueError('Error parsing Restrict.Dat Frequency Ranges, Invalid Literal')
             restricted_range = tuple(splitup)
-            self.restricted_ranges.append(restricted_range)
+            self.__restricted_ranges.append(restricted_range)
 
     def __repr__(self):
         return_str = """\n    main_antenna_count = {} \
@@ -236,4 +240,246 @@ class ExperimentOptions:
                                 self.atten_window_time_start, self.atten_window_time_end,
                                 self.default_freq, self.restricted_ranges)
         return return_str
+
+    @property
+    def main_antenna_count(self):
+        return self._main_antenna_count
+
+    @property
+    def interferometer_antenna_count(self):
+        return self._interferometer_antenna_count
+
+    @property
+    def main_antenna_spacing(self):
+        return self._main_antenna_spacing
+
+    @property
+    def interferometer_antenna_spacing(self):
+        return self._interferometer_antenna_spacing
+
+    @property
+    def tx_sample_rate(self):
+        return self._tx_sample_rate
+
+    @property
+    def rx_sample_rate(self):
+        return self._rx_sample_rate
+
+    @property
+    def max_usrp_dac_amplitude(self):
+        return self._max_usrp_dac_amplitude
+
+    @property
+    def pulse_ramp_time(self):
+        return self._pulse_ramp_time  # in seconds
+
+    @property
+    def tr_window_time(self):
+        return self._tr_window_time  # in seconds
+
+    @property
+    def output_sample_rate(self):
+        return self._output_sample_rate  # Hz
+
+    @property
+    def filter_description(self):
+        return self._filter_description
+
+    @property
+    def site_id(self):
+        return self._site_id
+
+    @property
+    def max_freq(self):
+        return self._max_freq  # Hz
+
+    @property
+    def min_freq(self):
+        return self._min_freq  # Hz
+
+    @property
+    def minimum_pulse_length(self):
+        return self._minimum_pulse_length  # us
+
+    @property
+    def minimum_mpinc_length(self):
+        return self._minimum_mpinc_length  # us
+
+    @property
+    def minimum_pulse_separation(self):
+        """
+        Minimum pulse separation is the minimum before the experiment treats it as a single pulse
+        (transmitting zeroes or no receiving between the pulses)
+        """
+        return self._minimum_pulse_separation  # us
+
+    @property
+    def atten_window_time_start(self):
+        return self._atten_window_time_start  # s
+
+    @property
+    def atten_window_time_end(self):
+        return self._atten_window_time_end  # s
+
+    @property
+    def router_address(self):
+        return self._router_address
+
+    @property
+    def radctrl_to_exphan_identity(self):
+        return self._radctrl_to_exphan_identity
+
+    @property
+    def radctrl_to_dsp_identity(self):
+        return self._radctrl_to_dsp_identity
+
+    @property
+    def radctrl_to_driver_identity(self):
+        return self._radctrl_to_driver_identity
+
+    @property
+    def radctrl_to_brian_identity(self):
+        return self._radctrl_to_brian_identity
+
+    @property
+    def radctrl_to_dw_identity(self):
+        return self._radctrl_to_dw_identity
+
+    @property
+    def driver_to_radctrl_identity(self):
+        return self._driver_to_radctrl_identity
+
+    @property
+    def driver_to_dsp_identity(self):
+        return self._driver_to_dsp_identity
+
+    @property
+    def driver_to_brian_identity(self):
+        return self._driver_to_brian_identity
+
+    @property
+    def exphan_to_radctrl_identity(self):
+        return self._exphan_to_radctrl_identity
+
+    @property
+    def exphan_to_dsp_identity(self):
+        return self._exphan_to_dsp_identity
+
+    @property
+    def dsp_to_radctrl_identity(self):
+        return self._dsp_to_radctrl_identity
+
+    @property
+    def dsp_to_driver_identity(self):
+        return self._dsp_to_driver_identity
+
+    @property
+    def dsp_to_exphan_identity(self):
+        return self._dsp_to_exphan_identity
+
+    @property
+    def dsp_to_dw_identity(self):
+        return self._dsp_to_dw_identity
+
+    @property
+    def dspbegin_to_brian_identity(self):
+        return self._dspbegin_to_brian_identity
+
+    @property
+    def dspend_to_brian_identity(self):
+        return self._dspend_to_brian_identity
+
+    @property
+    def dw_to_dsp_identity(self):
+        return self._dw_to_dsp_identity
+
+    @property
+    def dw_to_radctrl_identity(self):
+        return self._dw_to_radctrl_identity
+
+    @property
+    def brian_to_radctrl_identity(self):
+        return self._brian_to_radctrl_identity
+
+    @property
+    def brian_to_driver_identity(self):
+        return self._brian_to_driver_identity
+
+    @property
+    def brian_to_dspbegin_identity(self):
+        return self._brian_to_dspbegin_identity
+
+    @property
+    def brian_to_dspend_identity(self):
+        return self._brian_to_dspend_identity
+
+    @property
+    def geo_lat(self):
+        return self._geo_lat  # decimal degrees, S = negative
+
+    @property
+    def geo_long(self):
+        return self._geo_long  # decimal degrees, W = negative
+
+    @property
+    def altitude(self):
+        return self._altitude  # metres
+
+    @property
+    def boresight(self):
+        return self._boresight  # degrees from geographic north, CCW = negative.
+
+    @property
+    def beam_sep(self):
+        return self._beam_sep  # degrees TODO is this necessary, or is this a min. - for
+                        # post-processing software in RST? check with others.
+
+    @property
+    def velocity_sign(self):
+        return self._velocity_sign   # +1.0 or -1.0
+
+    @property
+    def analog_rx_attenuator(self):
+        return self._analog_rx_attenuator  # dB
+
+    @property
+    def tdiff(self):
+        return self._tdiff  # ns
+
+    @property
+    def phase_sign(self):
+        return self._phase_sign
+
+    @property
+    def intf_offset(self):
+        return self._intf_offset # interferometer offset from
+    # midpoint of main, metres [x, y, z] where x is along line of antennas, y is along array
+    # normal and z is altitude difference.
+
+    @property
+    def analog_rx_rise(self):
+        return self._analog_rx_rise  # us
+
+    @property
+    def analog_atten_stages(self):
+        return self._analog_atten_stages  # number of stages
+
+    @property
+    def max_range_gates(self):
+        return self._max_range_gates
+
+    @property
+    def max_beams(self):
+        return self._max_beams  # so a beam number always points in a certain direction
+
+    @property
+    def default_freq(self):
+        return self.__default_freq  # kHz
+
+    @property
+    def restricted_ranges(self):
+        """
+        given in tuples of kHz
+        """
+        return self.__restricted_ranges
 

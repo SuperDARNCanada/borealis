@@ -127,7 +127,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
 
 def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                    brian_radctrl_iden, seqnum, slice_ids,
-                   slice_dict, beam_dict, sequence_time):
+                   slice_dict, beam_dict, sequence_time, main_antenna_count):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
         :param radctrl_to_dsp: The sender socket for sending data to dsp
@@ -143,6 +143,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
         :param beam_dict: The dictionary containing beam directions for each slice.
         :param sequence_time: entire duration of sequence, including receive time after all
         transmissions.
+        :param main_antenna_count: number of main array antennas, from the config file.
 
     """
 
@@ -166,9 +167,12 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
             beam_add = chan_add.beam_directions.add()
             # beamdir is a list (len = total antennas, main and interferometer) with phase for each
             # antenna for that beam direction
-            for phi in beamdir:
-                phase = cmath.exp(phi * 1j)
+            for antenna_num, phi in enumerate(beamdir):
                 phase_add = beam_add.phase.add()
+                if antenna_num in slice_dict[slice_id]['rx_main_antennas'] or antenna_num - main_antenna_count in slice_dict[slice_id]['rx_int_antennas']:
+                    phase = cmath.exp(-1 * phi * 1j)
+                else:
+                    phase = 0.0 + 0.0j
                 phase_add.real_phase = phase.real
                 phase_add.imag_phase = phase.imag
 
@@ -404,40 +408,45 @@ def radar():
     # at the end of every integration time.
     seqnum_start = 0
 
-    new_experiment_flag = False
+    new_experiment_waiting = False
 
-    while not new_experiment_flag:  #  Wait for experiment handler at the start until we have an experiment to run.
-        new_experiment_flag, experiment = search_for_experiment(
+    while not new_experiment_waiting:  #  Wait for experiment handler at the start until we have an experiment to run.
+        new_experiment_waiting, experiment = search_for_experiment(
             radar_control_to_exp_handler, options.exphan_to_radctrl_identity,
             'EXPNEEDED')
 
-    new_experiment_flag = False
+    new_experiment_waiting = False
+    new_experiment_loaded = True
 
     while True:
         # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.
         # TODO : further documentation throughout in comments (high level) and in separate documentation.
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
+
+        if new_experiment_waiting:  # start anew on first scan if we have a new experiment.
+            try:
+                experiment = new_experiment
+            except NameError:
+                # new_experiment does not exist, should never happen as flag only gets set when
+                # there is a new experiment.
+                errmsg = 'Experiment could not be found'
+                raise ExperimentException(errmsg)
+            new_experiment_waiting = False
+            new_experiment = None
+            new_experiment_loaded = True
+
         for scan in experiment.scan_objects:
 
             # if a new experiment was received during the last scan, it finished the integration period it was on and
-            # returned here with new_experiment_flag set to True. Now change experiment_prototype if necessary.
-            if new_experiment_flag:  # start anew on first scan if we have a new experiment.
-                try:
-                    experiment = new_experiment
-                except NameError:
-                    # new_experiment does not exist, should never happen as flag only gets set when
-                    # there is a new experiment.
-                    errmsg = 'Experiment could not be found'
-                    raise ExperimentException(errmsg)
-                new_experiment_flag = False
-                new_experiment = None
+            # returned here with new_experiment_waiting set to True. Break to load new experiment.
+            if new_experiment_waiting:  # start anew on first scan if we have a new experiment.
                 break
             beam_remaining = True  # started a new scan, therefore this must be True.
 
             # Make iterator for cycling through beam numbers
             aveperiods_done_list = []
             beam_iter = 0
-            while beam_remaining and not new_experiment_flag:
+            while beam_remaining and not new_experiment_waiting:
                 for aveperiod in scan.aveperiods:
 
                     # If there are multiple aveperiods in a scan they are alternated
@@ -446,12 +455,8 @@ def radar():
                     #   iterator to the next beam in each scan.
 
                     # get new experiment here, before starting a new integration.
-                    # if new_experiment_flag is set here, we will implement the new_experiment after this integration
+                    # if new_experiment_waiting is set here, we will implement the new_experiment after this integration
                     # period.
-		    # TODO: This needs a timeout, or we'll just get stuck here...
-                    new_experiment_flag, new_experiment = search_for_experiment(
-                        radar_control_to_exp_handler,
-                        options.exphan_to_radctrl_identity, 'NOERROR')
 
                     # Check if there are beams remaining in this aveperiod, or in any aveperiods.
                     if aveperiod in aveperiods_done_list:
@@ -468,6 +473,13 @@ def radar():
                                 beam_remaining = False  # all aveperiods are at the end of their beam_order list - must restart scan of alternating aveperiod types.
                                 break
                             continue
+
+                    if not new_experiment_waiting and not new_experiment_loaded: # there could already be a new experiment waiting, or we could have just loaded a new experiment.
+                        new_experiment_waiting, new_experiment = search_for_experiment(
+                            radar_control_to_exp_handler,
+                            options.exphan_to_radctrl_identity, 'NOERROR')
+                    elif new_experiment_loaded:
+                        new_experiment_loaded = False
 
                     if __debug__:
                         print("New AveragingPeriod")
@@ -539,7 +551,7 @@ def radar():
                                            options.brian_to_radctrl_identity,
                                            seqnum_start + nave,
                                            sequence.slice_ids, experiment.slice_dict,
-                                           beam_phase_dict, sequence.seqtime)
+                                           beam_phase_dict, sequence.seqtime, options.main_antenna_count)
 
                             # beam_phase_dict is slice_id : list of beamdirs, where beamdir = list
                             # of antenna phase offsets for all antennas for that direction ordered

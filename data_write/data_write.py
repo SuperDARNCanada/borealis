@@ -15,6 +15,7 @@ import collections
 import mmap
 import warnings
 import time
+import threading
 import multiprocessing as mp
 import subprocess as sp
 import argparse as ap
@@ -148,7 +149,6 @@ class ParseData(object):
                 self._bfiq_available = True
 
                 for beam in data_set.beamformedsamples:
-                    cmplx = np.empty(len(beam.mainsamples), dtype=np.complex64)
                     self._bfiq_accumulator[slice_id]['num_samps'] = len(beam.mainsamples)
 
                     def add_samples(samples, antenna_arr_type):
@@ -160,6 +160,7 @@ class ParseData(object):
                             antenna_arr_type (String): Denotes "Main" or "Intf" arrays.
                         """
 
+                        cmplx = np.ones(len(beam.mainsamples), dtype=np.complex64)
                         # builds complex samples from protobuf sample (which contains real and
                         # imag floats)
                         for i, sample in enumerate(samples):
@@ -431,6 +432,8 @@ class DataWrite(object):
         :param write_rawacf:        Should rawacfs be written to file? Bool, default True.
         """
 
+
+        start = time.time()
         if file_ext not in ['hdf5', 'json', 'dmap']:
             raise ValueError("File format selection required (hdf5, json, dmap), none given")
 
@@ -499,9 +502,8 @@ class DataWrite(object):
                 self.slice_filenames[slice_id] = two_hr_str
 
             self.next_boundary = two_hr_ceiling(time_now)
-
-
-
+            
+            
         def write_file(tmp_file, final_data_dict, two_hr_file_with_type):
             """
             Writes the final data out to the location based on the type of file extension required
@@ -720,7 +722,8 @@ class DataWrite(object):
             param['data_dimensions'] = np.array([param['num_sequences'], total_ants,
                                                  param['num_samps']],
                                                 dtype=np.uint32)
-
+            param['main_antenna_count'] = np.uint32(self.options.main_antenna_count)
+            param['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
             # These fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
             # this data.
@@ -886,6 +889,9 @@ class DataWrite(object):
         for proc in procs:
             proc.join()
 
+        end = time.time()
+        printing("Time to write: {} ms".format((end-start)*1000))
+
 
 
 def main():
@@ -932,6 +938,13 @@ def main():
         except KeyboardInterrupt:
             sys.exit()
 
+        if radctrl_to_data_write in socks and socks[radctrl_to_data_write] == zmq.POLLIN:
+            data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, printing)
+
+            integration_meta = datawritemetadata_pb2.IntegrationTimeMetadata()
+            integration_meta.ParseFromString(data)
+
+            final_integration = integration_meta.last_seqn_num
 
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes(dsp_to_data_write, options.dsp_to_dw_identity, printing)
@@ -943,8 +956,7 @@ def main():
                         data_write = DataWrite(options)
                         current_experiment = integration_meta.experiment_string
 
-                    start = time.time()
-                    data_write.output_data(write_bfiq=args.enable_bfiq,
+                    kwargs = dict(write_bfiq=args.enable_bfiq,
                                            write_pre_bfiq=args.enable_pre_bfiq,
                                            write_raw_rf=args.enable_raw_rf,
                                            write_tx=args.enable_tx,
@@ -952,9 +964,9 @@ def main():
                                            integration_meta=integration_meta,
                                            data_parsing=data_parsing,
                                            write_rawacf=False)
-                    end = time.time()
-                    printing("Time to write: {} ms".format((end-start)*1000))
-
+                    thread = threading.Thread(target=data_write.output_data, kwargs=kwargs)
+                    thread.daemon = True
+                    thread.start()
                     data_parsing = ParseData()
 
 
@@ -966,13 +978,7 @@ def main():
             printing("Time to parse: {} ms".format((end-start)*1000))
 
 
-        if radctrl_to_data_write in socks and socks[radctrl_to_data_write] == zmq.POLLIN:
-            data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, printing)
 
-            integration_meta = datawritemetadata_pb2.IntegrationTimeMetadata()
-            integration_meta.ParseFromString(data)
-
-            final_integration = integration_meta.last_seqn_num
 
 
 

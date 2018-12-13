@@ -77,7 +77,7 @@ void call_decimate(cuComplex* input_samples,
 
 
   if (type == DecimationType::bandpass) {
-    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running bandpass")
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running bandpass");
     //For now we have a kernel that will process 2 samples per thread if need be
     if (num_taps_per_filter * num_freqs > 2 * gpu_properties[0].maxThreadsPerBlock) {
       //TODO(Keith) : handle error
@@ -92,7 +92,7 @@ void call_decimate(cuComplex* input_samples,
     }
   }
   else if (type == DecimationType::lowpass){
-    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running lowpass")
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running lowpass");
     if (num_taps_per_filter > 2 * gpu_properties[0].maxThreadsPerBlock) {
       //TODO(Keith) : handle error
     }
