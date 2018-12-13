@@ -271,7 +271,7 @@ class ParseData(object):
 
     @property
     def pre_bfiq_available(self):
-        """ Gets the bfiq available flag.
+        """ Gets the pre-bfiq available flag.
 
         Returns:
             TYPE: Bool
@@ -378,7 +378,7 @@ class DataWrite(object):
         Write out data to an HDF5 file. If the file already exists it will be overwritten.
         :param filename: The path to the file to write out. String
         :param data_dict: Python dictionary to write out to the HDF5 file.
-        :param dt_str: A datetime timestamp as string.
+        :param dt_str: A datetime timestamp of the first transmission time in the record as string.
         """
 
         def convert_to_numpy(dd):
@@ -512,6 +512,7 @@ class DataWrite(object):
 
             """
             if not os.path.exists(dataset_directory):
+                # Don't try-catch this, because we want it to fail hard if we can't write files 
                 os.makedirs(dataset_directory)
 
 
@@ -580,7 +581,7 @@ class DataWrite(object):
                     flattened_data.append(bfiq[slice_id]['intf']['data'])
 
                 flattened_data = np.concatenate(flattened_data)
-
+                parameters['data'] = flattened_data
 
                 parameters['num_samps'] = np.uint32(bfiq[slice_id].pop('num_samps', None))
                 parameters['data_dimensions'] = np.array([len(bfiq[slice_id].keys()),
