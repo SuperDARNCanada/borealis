@@ -55,6 +55,7 @@ class ExperimentOptions:
             # 125 us is approx two TX/RX times
 
             self._minimum_pulse_separation = float(config['minimum_pulse_separation'])  # us
+            self._usrp_master_clock_rate = float(config['usrp_master_clock_rate']) # Hz
             self._atten_window_time_start = float(config['atten_window_time_start'])  # s
             self._atten_window_time_end = float(config['atten_window_time_end'])  # s
             self._router_address = config['router_address']
@@ -312,6 +313,10 @@ class ExperimentOptions:
         (transmitting zeroes or no receiving between the pulses)
         """
         return self._minimum_pulse_separation  # us
+
+    @property
+    def usrp_master_clock_rate(self):
+        return self._usrp_master_clock_rate
 
     @property
     def atten_window_time_start(self):
