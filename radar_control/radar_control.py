@@ -339,7 +339,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                     lag_add.pulse_position = lag
                     lag_add.lag_num = int(lag[1] - lag[0])
 
-            rxchan_add.comment_buffer = sequence.slice_dict[slice_id]['comment']
+            rxchan_add.comment = sequence.slice_dict[slice_id]['comment']
             rxchan_add.interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
 
             rxchan_add.rx_main_antennas[:] = sequence.slice_dict[slice_id]['rx_main_antennas']

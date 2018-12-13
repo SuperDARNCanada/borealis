@@ -46,7 +46,6 @@ class DataWriteOptions(object):
         self._max_usrp_dac_amplitude = float(raw_config["max_usrp_dac_amplitude"])
         self._pulse_ramp_time = float(raw_config["pulse_ramp_time"])
         self._tr_window_time = float(raw_config["tr_window_time"])
-        self._output_sample_rate = float(raw_config["third_stage_sample_rate"])
         self._atten_window_time_start = float(raw_config["atten_window_time_start"])  # s
         self._atten_window_time_end = float(raw_config["atten_window_time_end"])  # s
         self._router_address = raw_config["router_address"]
@@ -78,7 +77,7 @@ class DataWriteOptions(object):
         """Gets the identity used for the radar control to data write socket.
 
         Returns: The identity used for radar control/data write socket.
-        TYPE: Description
+        TYPE: str
         """
         return self._radctrl_to_dw_identity
 
@@ -87,7 +86,7 @@ class DataWriteOptions(object):
         """Gets the identity used for the data write to radar control socket.
 
         Returns: The identity used for data write/radar control socket.
-        TYPE: Description
+        TYPE: str
         """
         return self._dw_to_radctrl_identity
 
@@ -161,16 +160,6 @@ class DataWriteOptions(object):
         :rtype:     float
         """
         return self._tr_window_time
-
-    @property
-    def output_sample_rate(self):
-        """
-        Gets the sample rate of the output of the final filter stage in samples per second
-
-        :return:    sample rate of the output of the final filter stage in samples per second
-        :rtype:     float
-        """
-        return self._output_sample_rate
 
     @property
     def atten_window_time_start(self):

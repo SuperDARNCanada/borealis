@@ -222,10 +222,10 @@ class DSPCore {
   //! A handler for a shared memory section.
   SharedMemoryHandler shm;
 
-  //! Timestamp of when the driver began sampling.
+  //! Timestamp of when the driver began sampling. Seconds since epoch.
   double driver_initialization_time;
 
-  //! Timestamp of when the sequence began.
+  //! Timestamp of when the sequence began. Seconds since epoch.
   double sequence_start_time;
 
   //! Identifiers for each slice
