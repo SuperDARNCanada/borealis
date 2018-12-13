@@ -108,6 +108,8 @@ def beamform(antennas_data, beamdirs, rxfreq, antenna_spacing):
     from the same array and are assumed to be side by side with antenna spacing 15.24 m, pulse_shift = 0.0
     :param beamdirs: list of azimuthal beam directions in degrees off boresite
     :param rxfreq: frequency to beamform at.
+    :param antenna_spacing: spacing in metres between antennas, used to get the phase shift that
+    corresponds to an azimuthal direction.
     """
 
     beamformed_data = []
@@ -345,7 +347,7 @@ def main():
                     number_of_antennas = rawrf['main_antenna_count'] + rawrf['intf_antenna_count']
                     #number_of_antennas = len(rawrf['antenna_arrays_order'])
                     flat_data = np.array(rawrf['data'])  
-                    # reshape to number_of_antennas x number_of_samples x num_sequences
+                    # reshape to num_sequences x number_of_antennas x number_of_samples
                     rawrf_data = np.reshape(flat_data, (rawrf['num_sequences'], number_of_antennas, rawrf['num_samps']))
                     rawrf['data'] = rawrf_data
                     rawrf['antennas_present'] = range(0,rawrf['main_antenna_count'] + rawrf['intf_antenna_count'])

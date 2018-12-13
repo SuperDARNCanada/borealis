@@ -900,7 +900,7 @@ class ExperimentPrototype(object):
             else:
                 if 'intn' in exp_slice.keys():
                     if __debug__:
-                        print('INTN is set in experiment slice but will not be used due to INTT')
+                        print('intn is set in experiment slice but will not be used due to intt')
                     # TODO Log warning intn will not be used
                     exp_slice.pop('intn')
             exp_slice['intt'] = float(exp_slice['intt'])
@@ -1085,7 +1085,6 @@ class ExperimentPrototype(object):
                                 # of the
                                 # clrfrqrange that will be avoided OR could make this an Error.
                                 # Still need to implement clear frequency searching.
-                                pass
                 else:  # no break, so no changes to the clrfrqrange
                     still_checking = False
 
@@ -1205,7 +1204,6 @@ class ExperimentPrototype(object):
                     errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
                     if __debug__:  # TODO change to logging
                         print(errmsg)
-                    pass
 
             slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] * 1.0e-6 *
                                                       speed_of_light/2.0))

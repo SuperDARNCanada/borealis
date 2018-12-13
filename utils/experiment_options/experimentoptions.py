@@ -277,8 +277,7 @@ class ExperimentOptions:
 
     @property
     def output_sample_rate(self):
-        return self._output_sample_rate  # should use to check iqdata samples
-    # when adjusting the experiment during operations.
+        return self._output_sample_rate  # Hz
 
     @property
     def filter_description(self):
@@ -303,11 +302,13 @@ class ExperimentOptions:
     @property
     def minimum_mpinc_length(self):
         return self._minimum_mpinc_length  # us
-    # Minimum pulse separation is the minimum before the experiment treats it as a single pulse (transmitting zeroes or no receiving between the pulses)
-    # 125 us is approx two TX/RX times
 
     @property
     def minimum_pulse_separation(self):
+        """
+        Minimum pulse separation is the minimum before the experiment treats it as a single pulse
+        (transmitting zeroes or no receiving between the pulses)
+        """
         return self._minimum_pulse_separation  # us
 
     @property
@@ -475,5 +476,8 @@ class ExperimentOptions:
 
     @property
     def restricted_ranges(self):
+        """
+        given in tuples of kHz
+        """
         return self.__restricted_ranges
 
