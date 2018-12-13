@@ -19,7 +19,7 @@ class Twofsound(ExperimentPrototype):
         tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
         rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
         rx_int_ant = [0, 1, 2, 3]
-        self.add_slice({  # slice_id = 0, the first slice
+        slice_1 = {  # slice_id = 0, the first slice
             "tx_antennas": tx_ant,
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
@@ -44,9 +44,9 @@ class Twofsound(ExperimentPrototype):
             # range.
             #"xcf": True,  # cross-correlation processing
             #"acfint": True,  # interferometer acfs
-        })
+        }
 
-        self.add_slice({  # slice_id = 1
+        slice_2 = {  # slice_id = 1
             "tx_antennas": tx_ant,
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
@@ -68,14 +68,26 @@ class Twofsound(ExperimentPrototype):
             "txfreq": 14500,
             #"xcf": True,  # cross-correlation processing
             #"acfint": True,  # interferometer acfs
-        }, interfacing_dict={0: 'SCAN'})
+        }
+
+        list_of_slices = [slice_1, slice_2]
+        sum_of_freq = 0
+        for slice in list_of_slices:
+            sum_of_freq += slice['txfreq']# kHz, oscillator mixer frequency on the USRP for TX
+        self.rxctrfreq = self.txctrfreq = int(sum_of_freq/len(list_of_slices))
+
+        print(self.txctrfreq)
+
+        self.add_slice(slice_1)
+
+        self.add_slice(slice_2, interfacing_dict={0: 'SCAN'})
 
         # Other things you can change if you wish. You may want to discuss with us about
         # it beforehand.
         # These apply to the experiment and all slices as a whole.
-        # self.txctrfreq = 12000 # kHz, oscillator mixer frequency on the USRP for TX
+
+
         # self.txrate = 12000000 # Hz, sample rate fed to DAC
-        # self.rxctrfreq = 12000 # kHz, mixer frequency on the USRP for RX
 
         # Update the following interface dictionary if you have more than one slice
         # dictionary in your slice_list and you did not specify the interfacing when

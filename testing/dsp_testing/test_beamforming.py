@@ -59,7 +59,8 @@ def fft_and_plot(samples, rate):
     #xf = xf[halfway-200:halfway+200]
     #fft_to_plot = fft_to_plot[halfway-200:halfway+200]
     smpplt.plot(xf, 1.0/num_samps * np.abs(fft_to_plot))
-    return fig
+    plt.show()
+    #return fig
 
 
 def align_tx_samples(tx_samples, offset, array_len):
@@ -176,6 +177,24 @@ def plot_output_samples_iq_data(record_dict, record_filetype):
             plt.show()
 
 
+def plot_antenna_data(array_of_data, list_of_antennas, record_filetype):
+    """
+    :param record_dict: a numpy array of data, dimensions num_antennas x num_samps
+    :param list_of_antennas: list of antennas present, for legend
+    :param record_filetype: a string indicating the type of data being plotted (to be used on the plot legend). Should 
+     be txdata type, but there might be multiple slices.
+    """
+
+    antennas_present = list_of_antennas
+    for index in range(0, array_of_data.shape[0]):
+        antenna = antennas_present[index]
+        fig, ax1 = plt.subplots(1, 1, sharex=True)
+        ax1.set_title('Samples {}'.format(record_filetype))
+        ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].real, label='Real {}'.format(antenna))
+        ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
+        ax1.legend()                   
+        plt.show()
+
 
 def plot_bf_iq_data(record_dict, record_filetype):
     """
@@ -260,7 +279,7 @@ def main():
     bfiq_filetype = slice_id_number + ".bfiq"
     rawrf_filetype = "rawrf"
     tx_filetype = "txdata"
-    file_types_avail = [bfiq_filetype, output_samples_filetype] #, tx_filetype, rawrf_filetype]
+    file_types_avail = [bfiq_filetype, output_samples_filetype, tx_filetype] #, tx_filetype, rawrf_filetype]
 
     if type_of_file not in file_types_avail:
         raise Exception('Type of Data Not Incorporated in Script: {}'.format(type_of_file))
@@ -282,7 +301,7 @@ def main():
     good_record_found = False
     record_attempts = 0
     while not good_record_found:
-        #record_name = '1543525820193' 
+        #record_name = '1544113558544' 
         record_name = random.choice(list(data[type_of_file].keys()))
         print(record_name)
 
@@ -361,6 +380,10 @@ def main():
 
     #plot_output_samples_iq_data(record_data[output_samples_filetype], output_samples_filetype)
     #plot_bf_iq_data(record_data[bfiq_filetype], bfiq_filetype)
+    #plot_antenna_data(record_data[tx_filetype]['tx_samples'][0,:,:], record_data[tx_filetype]['tx_antennas'][0], tx_filetype)
+    plot_antenna_data(record_data[output_samples_filetype]['data'][0,:,:], record_data[output_samples_filetype]['antenna_arrays_order'], output_samples_filetype)
+    #for antenna in range(0,record_data[tx_filetype]['tx_samples'].shape[1]):
+    #    fft_and_plot(record_data[tx_filetype]['tx_samples'][0,antenna,:], 5000000.0)
 
     beamforming_dict = {}
     print('BEAM AZIMUTHS: {}'.format(beam_azms))
