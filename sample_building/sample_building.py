@@ -66,8 +66,12 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
     beamrad = math.pi * float(beamdir) / 180.0
     # Pointing to right of boresight, use point in middle (hypothetically antenna 7.5) as phshift=0
     #   so all channels have a non-zero phase shift
-    phshift = 2 * math.pi * freq * ((num_antennas-1)/2.0 - antenna) * antenna_spacing * math.cos(
-        math.pi / 2 - beamrad) / speed_of_light
+    if num_antennas % 2 == 1:
+        phshift = 2 * math.pi * freq * ((num_antennas-1)/2.0 - antenna) * antenna_spacing * math.cos(
+            math.pi / 2.0 - beamrad) / speed_of_light
+    else:
+        phshift = 2 * math.pi * freq * (num_antennas/2.0 - antenna) * antenna_spacing * math.cos(
+            math.pi / 2.0 - beamrad) / speed_of_light
 
     # Add an extra phase shift if there is any specified
     phshift = phshift + pulse_shift

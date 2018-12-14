@@ -171,10 +171,11 @@ def plot_output_samples_iq_data(record_dict, record_filetype):
 
     for sequence in range(0, record_dict['data'].shape[1]):
         print('Sequence number: {}'.format(sequence))
-         
+
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)         
         for index in range(0, record_dict['data'].shape[0]):
             antenna = antennas_present[index]
-            fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
+
             if antenna < record_dict['main_antenna_count']:
                 ax1.set_title('Main Antennas {}'.format(record_filetype))
                 ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].real, label='Real {}'.format(antenna))
@@ -185,10 +186,10 @@ def plot_output_samples_iq_data(record_dict, record_filetype):
                 ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].real, label='Real {}'.format(antenna))
                 ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].imag, label="Imag {}".format(antenna))
                 ax2.legend()                       
-            plt.show()
+        plt.show()
 
 
-def plot_antenna_data(array_of_data, list_of_antennas, record_filetype):
+def plot_antenna_data(array_of_data, list_of_antennas, record_filetype, main_antenna_count, separate_plots=True):
     """
     :param record_dict: a numpy array of data, dimensions num_antennas x num_samps
     :param list_of_antennas: list of antennas present, for legend
@@ -197,13 +198,29 @@ def plot_antenna_data(array_of_data, list_of_antennas, record_filetype):
     """
 
     antennas_present = list_of_antennas
-    for index in range(0, array_of_data.shape[0]):
-        antenna = antennas_present[index]
-        fig, ax1 = plt.subplots(1, 1, sharex=True)
-        ax1.set_title('Samples {}'.format(record_filetype))
-        ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].real, label='Real {}'.format(antenna))
-        ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
-        ax1.legend()                   
+    if separate_plots:
+        for index in range(0, array_of_data.shape[0]):
+            antenna = antennas_present[index]
+            fig, ax1 = plt.subplots(1, 1, sharex=True)
+            ax1.set_title('Samples {}'.format(record_filetype))
+            ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].real, label='Real {}'.format(antenna))
+            ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
+            ax1.legend()                   
+            plt.show()
+    else:
+        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)    
+        ax1.set_title('Main Antennas {}'.format(record_filetype))
+        ax2.set_title('Intf Antennas {}'.format(record_filetype))     
+        for index in range(0, array_of_data.shape[0]):
+            antenna = antennas_present[index]
+            if index < main_antenna_count:
+                ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].real, label='Real {}'.format(antenna))
+                ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
+                ax1.legend()
+            else:
+                ax2.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].real, label='Real {}'.format(antenna))
+                ax2.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
+                ax2.legend()                       
         plt.show()
 
 
@@ -276,8 +293,8 @@ def main():
         raise Exception(errmsg)
 
     data_directory = config['data_directory']
-    antenna_spacing = config['main_antenna_spacing']
-    intf_antenna_spacing = config['interferometer_antenna_spacing']
+    antenna_spacing = float(config['main_antenna_spacing'])
+    intf_antenna_spacing = float(config['interferometer_antenna_spacing'])
 
     data_file_metadata = data_file.split('.')
 
@@ -299,7 +316,7 @@ def main():
     bfiq_filetype = slice_id_number + ".bfiq"
     rawrf_filetype = "rawrf"
     tx_filetype = "txdata"
-    file_types_avail = [bfiq_filetype, output_samples_filetype, tx_filetype] #, tx_filetype, rawrf_filetype]
+    file_types_avail = [bfiq_filetype, output_samples_filetype, tx_filetype, rawrf_filetype]
 
     if type_of_file not in file_types_avail:
         raise Exception(
@@ -384,7 +401,7 @@ def main():
                 # tx data does not need to be reshaped.
                 if file_type == tx_filetype:
                     tx = record_data[tx_filetype]
-                    tx['rx_sample_rate'] = int(tx['tx_rate'][0]/tx['dm_rate'])
+                    tx['rx_sample_rate'] = tx['tx_rate'][0]/tx['dm_rate']
                     print('Decimation rate error: {}'.format(tx['dm_rate_error']))
                     print(tx['rx_sample_rate'])
                     tx['data_descriptors'] = ['num_sequences', 'num_antennas', 'num_samps']
@@ -411,8 +428,8 @@ def main():
 
     #plot_output_samples_iq_data(record_data[output_samples_filetype], output_samples_filetype)
     #plot_bf_iq_data(record_data[bfiq_filetype], bfiq_filetype)
-    #plot_antenna_data(record_data[tx_filetype]['tx_samples'][0,:,:], record_data[tx_filetype]['tx_antennas'][0], tx_filetype)
-    plot_antenna_data(record_data[output_samples_filetype]['data'][0,:,:], record_data[output_samples_filetype]['antenna_arrays_order'], output_samples_filetype)
+    #plot_antenna_data(record_data[tx_filetype]['tx_samples'][0,:,:], record_data[tx_filetype]['tx_antennas'][0], tx_filetype, main_antenna_count)
+    plot_antenna_data(record_data[output_samples_filetype]['data'][:,0,:], record_data[output_samples_filetype]['antenna_arrays_order'], output_samples_filetype, main_antenna_count)
     #for antenna in range(0,record_data[tx_filetype]['tx_samples'].shape[1]):
     #    fft_and_plot(record_data[tx_filetype]['tx_samples'][0,antenna,:], 5000000.0)
 
@@ -422,15 +439,17 @@ def main():
         print('SEQUENCE NUMBER {}'.format(sequence_num))
         sequence_dict = beamforming_dict[sequence_num] = {}
         for filetype, record_dict in record_data.items():
-            #print(filetype)
+            print(filetype)
             sequence_filetype_dict = sequence_dict[filetype] = {}
             data_description_list = list(record_dict['data_descriptors'])
             # STEP 1: DECIMATE IF NECESSARY
             if not math.isclose(record_dict['rx_sample_rate'], decimated_rate, abs_tol=0.001):
+                print(decimated_rate)
+                print(record_dict['rx_sample_rate'])
                 # we aren't at 3.3 kHz - need to decimate.
                 #print(record_dict['rx_sample_rate'])
                 dm_rate = int(record_dict['rx_sample_rate']/decimated_rate)
-                #print(dm_rate)
+                print(dm_rate)
                 dm_start_sample = record_dict['dm_start_sample']
                 dm_end_sample = -1 - dm_start_sample # this is the filter size 
                 if data_description_list == ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']:
@@ -461,6 +480,8 @@ def main():
                 else:
                     raise Exception('Unexpected data dimensions: {}'.format(record_dict['data_descriptors']))
 
+            sequence_filetype_dict['decimated_data'] = decimated_data
+
             # STEP 2: BEAMFORM ANY UNBEAMFORMED DATA
             if filetype != bfiq_filetype:
                 # need to beamform the data. 
@@ -480,11 +501,11 @@ def main():
                 # beamform main array antennas only. 
                 main_antennas_mask = (record_dict['antennas_present'] < main_antenna_count)
                 intf_antennas_mask = (record_dict['antennas_present'] >= main_antenna_count)
-                decimated_beamformed_data = beamform(antenna_list[main_antennas_mask][:],
+                decimated_beamformed_data = beamform(antenna_list[main_antennas_mask][:].copy(),
                                                      beam_azms, freq, antenna_spacing) # TODO test
                 # without
                 # .copy()
-                intf_decimated_beamformed_data = beamform(antenna_list[intf_antennas_mask][:],
+                intf_decimated_beamformed_data = beamform(antenna_list[intf_antennas_mask][:].copy(),
                                                           beam_azms, freq, intf_antenna_spacing)
             else:
                 decimated_beamformed_data = decimated_data  
@@ -526,8 +547,11 @@ def main():
                 sequence_filetype_dict['pulse_samples'] = pulse_data
                 pulse_phases = np.angle(pulse_data) * 180.0/math.pi
                 sequence_filetype_dict['pulse_phases'] = pulse_phases
-                #print('Pulse Indices:\n{}'.format(pulse_indices))
-                #print('Pulse Phases:\n{}'.format(pulse_phases))
+                print('Pulse Indices:\n{}'.format(pulse_indices))
+                print('Pulse Phases:\n{}'.format(pulse_phases))
+
+        #plot_antenna_data(record_data[tx_filetype]['tx_samples'][sequence_num,:,:], record_data[tx_filetype]['tx_antennas'][0], tx_filetype, main_antenna_count)
+        #plot_antenna_data(sequence_dict[rawrf_filetype]['decimated_data'], record_data[rawrf_filetype]['antennas_present'], rawrf_filetype, main_antenna_count, separate_plots=False)
 
         # Compare phases from pulses in the various datasets.
         if output_samples_filetype in file_types_avail and bfiq_filetype in file_types_avail:
