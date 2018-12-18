@@ -439,7 +439,7 @@ class DataWrite(object):
 
         # Format the name and location for the dataset
         write_time = datetime.datetime.utcnow()
-        time_now = datetime.datetime.fromtimestamp(data_parsing.timestamps[0])
+        time_now = datetime.datetime.utcfromtimestamp(data_parsing.timestamps[0])
 
         today_string = time_now.strftime("%Y%m%d")
         datetime_string = time_now.strftime("%Y%m%d.%H%M.%S.%f")
