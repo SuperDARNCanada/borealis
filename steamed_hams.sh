@@ -15,6 +15,8 @@ echo "Project Borealis Booter"
 echo "v2.3-Alpha Season 1 Episode 3"
 echo "-----------------------------------------------------------------------------------"
 
+rm -r /dev/shm/*
+
 # These are the commands to in each window.
 if [ "$2" = "release" ]; then
     start_brian="python3 -O brian/brian.py; bash"
@@ -37,7 +39,7 @@ elif [ "$2" = "debug" ] || [ "$2" = "engineeringdebug" ]; then
     start_exphan="sleep 0.001s; python3 experiment_handler/experiment_handler.py "$1" ; bash"
     start_radctrl="sleep 0.001s; python3 radar_control/radar_control.py; bash"
     start_datawrite="sleep 0.001s; python3 data_write/data_write.py --enable-bfiq --enable-pre-bfiq --enable-tx --enable-raw-rf; bash"
-    start_n200driver="sleep 0.001s; source mode "$2" ; gdb -ex start n200_driver; bash"
+    start_n200driver="sleep 0.001s; source mode "$2" ; gdb -ex start n200_driver 2>n200_output.txt; bash"
     start_dsp="sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
     start_tids="sleep 0.001s; python3 usrp_drivers/n200/set_affinity.py; bash"
 else
