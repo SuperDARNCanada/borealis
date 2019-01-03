@@ -88,8 +88,8 @@ cd ../../../ || exit
 #kernel_variant=`uname -r | awk -F'-' '{print $NF}'`
 #zypper install -y kernel-${kernel_variant}-devel=${kernel_version}
 zypper install -y kernel-devel
-wget http://developer.download.nvidia.com/compute/cuda/repos/opensuse422/x86_64/cuda-repo-opensuse422-9.0.176-1.x86_64.rpm
-rpm -i cuda-repo-opensuse422-9.0.176-1.x86_64.rpm
+wget https://developer.nvidia.com/compute/cuda/10.0/Prod/local_installers/cuda-repo-opensuse15-10-0-local-10.0.130-410.48-1.0-1.x86_64
+rpm -i cuda-repo-opensuse15-10-0-local-10.0.130-410.48-1.0-1.x86_64
 zypper refresh
 zypper install -y cuda
 zypper install -y cuda # Seems to fail the first time due to 'no space left on device' error
