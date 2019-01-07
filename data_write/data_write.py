@@ -23,6 +23,7 @@ import numpy as np
 import deepdish as dd
 import posix_ipc as ipc
 import zmq
+import faulthandler
 from scipy.constants import speed_of_light
 
 
@@ -858,22 +859,26 @@ class DataWrite(object):
 
         # Use multiprocessing to speed up writing. Each data type can be parsed and written by a
         # separate process in order to parallelize the work.
-        procs = []
+        #procs = []
 
         if write_rawacf:
-            procs.append(mp.Process(target=do_acf))
+            #procs.append(threading.Thread(target=do_acf))
+            pass
 
         if write_bfiq and data_parsing.bfiq_available:
-            procs.append(mp.Process(target=write_bfiq_params, args=(parameters_holder.copy(), )))
+            #procs.append(threading.Thread(target=write_bfiq_params, args=(parameters_holder.copy(), )))
+            write_bfiq_params(parameters_holder.copy())
 
         if write_pre_bfiq and data_parsing.pre_bfiq_available:
-            procs.append(mp.Process(target=write_pre_bfiq_params,
-                                    args=(parameters_holder.copy(), )))
+            #procs.append(threading.Thread(target=write_pre_bfiq_params,
+            #                        args=(parameters_holder.copy(), )))
+            write_pre_bfiq_params(parameters_holder.copy())
 
         if write_raw_rf:
             # Just need first available slice paramaters.
             one_slice_params = next(iter(parameters_holder.values())).copy()
-            procs.append(mp.Process(target=write_raw_rf_params, args=(one_slice_params, )))
+            #procs.append(threading.Thread(target=write_raw_rf_params, args=(one_slice_params, )))
+            write_raw_rf_params(one_slice_params)
         else:
             for rf_samples_location in data_parsing.rawrf_locations:
                 shm = ipc.SharedMemory(rf_samples_location)
@@ -881,13 +886,14 @@ class DataWrite(object):
                 shm.unlink()
 
         if write_tx:
-            procs.append(mp.Process(target=write_tx_data))
+            #procs.append(threading.Thread(target=write_tx_data))
+            write_tx_data()
 
-        for proc in procs:
-            proc.start()
+        # for proc in procs:
+        #     proc.start()
 
-        for proc in procs:
-            proc.join()
+        # for proc in procs:
+        #     proc.join()
 
         end = time.time()
         printing("Time to write: {} ms".format((end-start)*1000))
@@ -896,6 +902,7 @@ class DataWrite(object):
 
 def main():
 
+    faulthandler.enable()
     parser = ap.ArgumentParser(description='Write processed SuperDARN data to file')
     parser.add_argument('--file-type', help='Type of output file: hdf5, json, or dmap',
                         default='hdf5')
