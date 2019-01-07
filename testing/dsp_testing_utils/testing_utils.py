@@ -1,10 +1,14 @@
 
+import numpy as np
+import matplotlib
+import scipy
+
 
 
 
 def fft_and_plot(samples, rate):
 	"""
-	Plot the fft of the samples, given the rate.
+	Plot the fft of the samples, given the rate. Shows the plot.
 	This provides a two-sided FFT. 
 	:param samples: time domain samples to provide the FFT of. 
 	:param rate: the rate that the samples were taken at. 
@@ -55,6 +59,7 @@ def align_tx_samples(tx_samples, offset, array_len):
 
 def correlate_and_align_tx_samples(tx_samples, some_other_samples):
     """
+
     :param tx_samples: array of tx samples
     :param some_other_samples: an arry of other samples at same sampling rate as tx_samples
     """

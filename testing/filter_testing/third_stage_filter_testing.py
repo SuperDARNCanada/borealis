@@ -37,12 +37,11 @@ def plot_fft(samplesa, rate):
 #    plt.xlim([-2500000,-2000000])
     return fig
 
-def get_samples(rate,wave_freq,filter_len):
+def get_samples(rate,wave_freq,sampleslen):
     rate = float(rate)
     wave_freq = float(wave_freq)
 
     sampling_freq=2*math.pi*wave_freq/rate
-    sampleslen=filter_len
     samples=np.empty([sampleslen],dtype=complex)
     for i in range(0,sampleslen):
         amp=1
@@ -51,49 +50,179 @@ def get_samples(rate,wave_freq,filter_len):
     return samples
 
 
+def get_num_taps_for_remez_filter(freq_s, transition_band, k):
+    """
+    Calculates number of filter taps according to Lyon's Understanding Digital
+    Signal Processing(1st edition). Uses Eqn 7-6 to calculate how many filter taps should be used
+    for a given stage. The choice in k=3 was used in the book seems to minimize the amount of
+    ripple in filter. The number of taps will always truncate down to an int.
+    :param freq_s: sampling frequency of the current data to be filtered.
+    :param transition_band: desired transition band for the filter
+    :param k: a const multiplier to increase FIR filter order, if desired to reduce ripple. 
+    """
+    return int(k * (freq_s/transition_band))
 
 
+def create_remez_filter(num_taps, freq_s, cutoff, transition, maxiteration=5000000):
+    """
+    Create a remez filter using scipy and return the filter taps. If decimating, cutoff must be 
+    at or below the new sampling frequency after decimation in order to avoid aliasing (with complex samples).
+    If the samples are not complex, then the cutoff should be the new sampling frequency /2. 
+    :param num_taps: number of taps for the filter, int
+    :param freq_s: current sampling frequency of the data
+    :param cutoff: cutoff for the filter, where the passband for the low pass filter ends. 
+    :param transition: transition bandwidth from cutoff of passband to stopband
+    :param maxiteration: max iteration, optional, default 5000000.
+    :returns filter_taps: the filter taps of the resolved remez filter. 
+    """
+    filter_taps = signal.remez(num_taps, [x * freq_s for x in [0.0, cutoff/freq_s, (cutoff+ transition)/freq_s, 0.5]], [1,0], Hz=freq_s, maxiter=maxiteration)
+    return filter_taps
 
-filter_len=60
-lpass = signal.remez(filter_len, [x * 10000 for x in [0, .1, .15, .5]], [1,0], Hz=10000, maxiter=50000000)
-lpass = np.concatenate((lpass,np.array([0,0,0,0])))
-shift_wave = get_samples(10000,-1000,filter_len)
-bpass = np.array([l*i for l,i in zip(lpass,shift_wave)])
+
+def create_impulse_boxcar(decimation_rates, offset):
+    """
+    Create a boxcar function to evaluate the impulse response of cascading filters and decimation. 
+    The boxcar is the impulse (once decimated) The offset typically determined by the 
+    max lengths of the filters. 
+    :param decimation_rates: list of decimation rates, to determine boxcar length
+    :param offset: number of zeros to pad at the beginning and end for full convolution response.
+    :returns signal: real only signal with boxcar. 
+    """
+    length_of_impulse = 1
+    for decimation in decimation_rates:
+        length_of_impulse  = length_of_impulse * decimation
+    boxcar = [0.0] * offset
+    boxcar.extend([1.0] * length_of_impulse)
+    boxcar.extend([0.0] * offset)
+    return boxcar
+
+def create_original_filter_plots():
+    k = 3
+    rx_rate = 5000000.0
+    decimation = [5, 10, 30]
+    print('Decimation: {}'.format(decimation))
+    num_stages = len(decimation)
+    decimation_total = 1
+    total_decimation_per_stage = []
+    for stage in range(0, num_stages):
+        total_decimation_per_stage.append(decimation_total)
+        decimation_total = decimation_total * decimation[stage]
+    freq_s = [rx_rate/i for i in total_decimation_per_stage]
+    print('Sampling Freq per stage: {}'.format(freq_s))
+    cutoff =     [1.0e6,   100.0e3,  3.333e3]
+    transition = [500.0e3, 50.0e3,   0.833e3]
+
+    numtaps = [get_num_taps_for_remez_filter(freq_s[0], transition[0], 3)]
+    numtaps.append(get_num_taps_for_remez_filter(freq_s[1], transition[1], 3))
+    numtaps.append(get_num_taps_for_remez_filter(freq_s[2], transition[2], 3))
+
+    filter_taps = []
+    for i in range(0, num_stages):
+        filter_taps.append(create_remez_filter(numtaps[i], freq_s[i], cutoff[i], transition[i]))
+
+    boxcar = create_impulse_boxcar(decimation, numtaps[0]) #numtaps[2] * decimation[0] * decimation[1])
+
+    output = [boxcar]
+    all_decimated_filter_outputs = []
+    for i in range(0, num_stages):
+        print('stage: {}'.format(i))
+        print(len(output[i]), len(filter_taps[i]))
+        filter_out = signal.convolve(output[i],filter_taps[i],mode='full')
+        decimated_filter_out = []
+        for start_sample in range(0, decimation[i]):
+            decimated_output = filter_out[start_sample::decimation[i]]
+            if start_sample == 0:
+                # align samples, take this as the correct length (the max length)
+                decimated_length = len(decimated_output)
+            if len(decimated_output) != decimated_length:
+                decimated_output = np.concatenate((np.array([0.0]), decimated_output))
+            decimated_filter_out.append(decimated_output)
+        output.append(decimated_filter_out[0]) # take the first one for now to carry over to next stage.
+        all_decimated_filter_outputs.append(decimated_filter_out)
+
+    fig, [[ax1, ax2, ax3], [ax4, ax5, ax6]] = plt.subplots(2, 3)
+    ax1.plot(np.arange(numtaps[0]), filter_taps[0])
+    ax2.plot(np.arange(numtaps[1]), filter_taps[1])
+    ax3.plot(np.arange(numtaps[2]), filter_taps[2])
+    ax1.set_title('Filter Response Stage 1')
+    ax2.set_title('Filter Response Stage 2')
+    ax3.set_title('Filter Response Stage 3')
+
+    ax4.set_title('After Stage 1')
+    ax5.set_title('After Stage 2')
+    ax6.set_title('After Stage 3')
+
+    output_plots = [ax4, ax5, ax6]
+
+    for i in range(0, num_stages):
+        for start_sample in range(0, decimation[i]):
+            decimated_output = all_decimated_filter_outputs[i][start_sample]
+            output_plots[i].plot(np.arange(len(decimated_output)), decimated_output)
+
+    # get all possible scenarios depending on the location of the pulse echo in the data
 
 
-# w,h = signal.freqz(bpass, whole=True)
+    plt.show()
 
-# fig4 = plt.figure()
-# plt.plot(np.arange(len(bpass)),bpass)
-# plt.plot(np.arange(len(lpass)),lpass)
-# fig = plt.figure()
-# plt.title('Digital filter frequency response')
-# ax1 = fig.add_subplot(111)
-# plt.plot(w, 20 * np.log10(abs(h)), 'b')
-# plt.ylabel('Amplitude [dB]', color='b')
-# plt.xlabel('Frequency [rad/sample]')
-# ax2 = ax1.twinx()
-# angles = np.unwrap(np.angle(h))
-# plt.plot(w, angles, 'g')
-# plt.ylabel('Angle (radians)', color='g')
-# plt.grid()
-# plt.axis('tight')
 
-# fig2 = plot_fft(bpass,22050)
-# fig3 = plot_fft(lpass,22050)
+rx_rate = 5000000.0
+decimation = [10, 15, 10]
+print('Decimation: {}'.format(decimation))
+num_stages = len(decimation)
+decimation_total = 1
+total_decimation_per_stage = [1]
+for stage in range(0, num_stages):
+    decimation_total = decimation_total * decimation[stage]
+    total_decimation_per_stage.append(decimation_total)
+freq_s = [rx_rate/i for i in total_decimation_per_stage[:-1]]
+print('Sampling Freq per stage: {}'.format(freq_s))
+#cutoff =     [1.0e6,   100.0e3,  3.333e3]
+cutoff = [rx_rate/total_decimation_per_stage[1], rx_rate/total_decimation_per_stage[2], rx_rate/total_decimation_per_stage[3]]
+#transition = [500.0e3,  50.0e3,  0.833e3]
+transition = [cutoff[0]/2.0, cutoff[1]/2.0, cutoff[2]/4.0]
 
-# plt.show()
+numtaps = [get_num_taps_for_remez_filter(freq_s[0], transition[0], 3)]
+numtaps.append(get_num_taps_for_remez_filter(freq_s[1], transition[1], 3))
+numtaps.append(get_num_taps_for_remez_filter(freq_s[2], transition[2], 3))
 
-boxcar = [0.0] * 360
-boxcar.extend([1.0] * 30)
-boxcar.extend([0.0] * 360)
+filter_taps = []
+for i in range(0, num_stages):
+    filter_taps.append(create_remez_filter(numtaps[i], freq_s[i], cutoff[i], transition[i]))
 
-output = signal.convolve(boxcar,filter_taps,mode='full')
+boxcar = create_impulse_boxcar(decimation, numtaps[0]) #numtaps[2] * decimation[0] * decimation[1])
+cw_lp_wave = get_samples(rx_rate, cutoff[2], len(boxcar))
+input_signal = np.array(cw_lp_wave) * np.array(boxcar)
+output = [input_signal]
+all_decimated_filter_outputs = []
+for i in range(0, num_stages):
+    print('stage: {}'.format(i))
+    print(len(output[i]), len(filter_taps[i]))
+    filter_out = signal.convolve(output[i],filter_taps[i],mode='full')
+    decimated_filter_out = []
+    for start_sample in range(0, decimation[i]):
+        decimated_output = filter_out[start_sample::decimation[i]]
+        # if start_sample == 0:
+        #     # align samples, take this as the correct length (the max length)
+        #     decimated_length = len(decimated_output)
+        # if len(decimated_output) != decimated_length:
+        #     decimated_output = np.concatenate((np.array([0.0]), decimated_output))
+        decimated_filter_out.append(decimated_output)
+    output.append(decimated_filter_out[0]) # take the first one for now to carry over to next stage.
+    all_decimated_filter_outputs.append(decimated_filter_out)
+
+fig, [filter_response_plots, output_plots] = plt.subplots(2, num_stages)
+
+for stage in range(0, num_stages):
+    filter_response_plots[stage].plot(np.arange(numtaps[stage]), filter_taps[stage])
+    filter_response_plots[stage].set_title('Filter Response Stage {}'.format(stage+1))
+
+for i in range(0, num_stages):
+    for start_sample in range(0, decimation[i]):
+        decimated_output = all_decimated_filter_outputs[i][start_sample]
+        output_plots[i].plot(np.arange(len(decimated_output)), decimated_output)
+    output_plots[i].set_title('After Stage {}'.format(stage+1))
 
 # get all possible scenarios depending on the location of the pulse echo in the data
-for start_sample in range(0, 30):
-    decimated_output = output[start_sample::30]
-    plt.plot(np.arange(len(decimated_output)), decimated_output)
 
-plt.title('Decimated Pulse Response')
+
 plt.show()
