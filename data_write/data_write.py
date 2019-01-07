@@ -61,6 +61,7 @@ DATA_TEMPLATE = {
     "first_range_rtt" : None, # Round trip time of flight to first range in microseconds.
     "first_range" : None, # Distance to first range in km.
     "rx_sample_rate" : None, # Sampling rate of the samples being written to file in Hz.
+    "range_separation" : None, # Range gate separation in km.
     "scan_start_marker" : None, # Designates if the record is the first in a scan.
     "int_time" : None, # Integration time in seconds.
     "tx_pulse_len" : None, # Length of the pulse in microseconds.
@@ -68,6 +69,7 @@ DATA_TEMPLATE = {
                           # multiple of this in microseconds.
     "num_pulses" : None, # Number of pulses in sequence.
     "num_lags" : None, # Number of lags in the lag table.
+    "num_ranges" : None, # Number of ranges.
     "main_antenna_count" : None, # Number of main array antennas.
     "intf_antenna_count" : None, # Number of interferometer array antennas.
     "freq" : None, # The frequency used for this experiment slice in kHz.
@@ -502,8 +504,8 @@ class DataWrite(object):
                 self.slice_filenames[slice_id] = two_hr_str
 
             self.next_boundary = two_hr_ceiling(time_now)
-            
-            
+
+
         def write_file(tmp_file, final_data_dict, two_hr_file_with_type):
             """
             Writes the final data out to the location based on the type of file extension required
@@ -514,7 +516,7 @@ class DataWrite(object):
 
             """
             if not os.path.exists(dataset_directory):
-                # Don't try-catch this, because we want it to fail hard if we can't write files 
+                # Don't try-catch this, because we want it to fail hard if we can't write files
                 os.makedirs(dataset_directory)
 
 
@@ -729,7 +731,8 @@ class DataWrite(object):
             # this data.
             unneeded_fields = ['first_range', 'first_range_rtt', 'tx_pulse_len', 'tau_spacing',
                                'num_pulses', 'num_lags', 'freq', 'pulses', 'lags',
-                               'blanked_samples', 'beam_nums', 'beam_azms', 'antenna_arrays_order']
+                               'blanked_samples', 'beam_nums', 'beam_azms', 'antenna_arrays_order',
+                               'range_separation', 'nrang']
 
             for field in unneeded_fields:
                 param.pop(field, None)
@@ -824,11 +827,13 @@ class DataWrite(object):
                 parameters['first_range_rtt'] = np.float32(rtt)
                 parameters['first_range'] = np.float32(rx_freq.frang)
                 parameters['rx_sample_rate'] = np.float32(self.options.third_stage_sample_rate)
+                parameters['range_separation'] = np.float32(rx_freq.rsep)
                 parameters['scan_start_marker'] = integration_meta.scan_flag # Should this change to scan_start_marker?
                 parameters['int_time'] = np.float32(integration_meta.integration_time)
                 parameters['tx_pulse_len'] = np.uint32(rx_freq.pulse_len)
                 parameters['tau_spacing'] = np.uint32(rx_freq.tau_spacing)
                 parameters['num_pulses'] = np.uint32(len(rx_freq.ptab.pulse_position))
+                parameters['num_ranges'] = np.uint32(rx_freq.nrang)
                 parameters['num_lags'] = np.uint32(len(rx_freq.ltab.lag))
                 parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
