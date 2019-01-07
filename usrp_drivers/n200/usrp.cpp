@@ -338,6 +338,15 @@ void USRP::check_ref_locked()
 }
 
 /**
+ * @brief       Sets a time at which the USRPs should all synchronize their commands too.
+ *
+ * @param[in]   UHD time spec struct with the future command time.
+ */
+void USRP::set_command_time(uhd::time_spec_t cmd_time) {
+  usrp_->set_command_time(cmd_time);
+}
+
+/**
  * @brief      Sets the scope sync GPIO to high.
  *
  * @param[in]  scope_high  The timespec for when in the future to set the scope sync pin.
@@ -406,7 +415,7 @@ void USRP::clear_tr(uhd::time_spec_t tr_low)
 /**
  * @brief      Clears any timed USRP commands.
  */
-void USRP::clear_command_times()
+void USRP::clear_command_time()
 {
   usrp_->clear_command_time();
 }
@@ -469,6 +478,7 @@ uhd::tx_streamer::sptr USRP::get_usrp_tx_stream(uhd::stream_args_t stream_args)
 {
   return usrp_->get_tx_stream(stream_args);
 }
+
 
 // REVIEW #6 TODO create a set and clear for new method of timing that is a hybrid between atten and t/r (we are only using one pin for both and breaking off on separate board)
 

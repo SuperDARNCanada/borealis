@@ -38,7 +38,8 @@ class USRP{
     void clear_scope_sync(uhd::time_spec_t scope_low);
     void clear_atten(uhd::time_spec_t atten_low);
     void clear_tr(uhd::time_spec_t tr_low);
-    void clear_command_times();
+    void set_command_time(uhd::time_spec_t cmd_time);
+    void clear_command_time();
     uhd::time_spec_t get_current_usrp_time();
     uhd::rx_streamer::sptr get_usrp_rx_stream(uhd::stream_args_t stream_args);
     uhd::tx_streamer::sptr get_usrp_tx_stream(uhd::stream_args_t stream_args);

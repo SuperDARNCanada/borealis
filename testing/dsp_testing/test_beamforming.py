@@ -44,6 +44,7 @@ def testing_parser():
     parser.add_argument("filename", help="The name of a file that you want to analyze. This \
                                           can be a bfiq, iq, or testing file. The script will use the \
                                           timestamp to find the other related files, if they exist.")
+    parser.add_argument("--record", help="The record to look at, if you don't want a random record.")
 
     return parser
 
@@ -215,11 +216,11 @@ def plot_antenna_data(array_of_data, list_of_antennas, record_filetype, main_ant
             antenna = antennas_present[index]
             if index < main_antenna_count:
                 ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].real, label='Real {}'.format(antenna))
-                ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
+                #ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
                 ax1.legend()
             else:
                 ax2.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].real, label='Real {}'.format(antenna))
-                ax2.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
+                #ax2.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
                 ax2.legend()                       
         plt.show()
 
@@ -276,6 +277,41 @@ def plot_all_bf_data(record_data):
     ax1.legend()
     ax2.legend()
     plt.show()
+
+
+def check_for_equal_samples_across_channels(record_dict, start_sample, end_sample, max_absolute_error, main_antenna_count):
+    """
+    :param record_dict: has a key 'data' with all the data from all the channels to check
+     """
+
+    antennas = record_dict['antennas_present']
+
+    sequence_to_antenna_problem_dict = {}
+    data_dimensions_list = record_dict['data_descriptors']
+    if all(data_dimensions_list == ['num_sequences', 'num_antennas', 'num_samps']):
+        data = record_dict['data'][:,0:main_antenna_count,start_sample:end_sample]
+        average_sequence_data = np.mean(data, axis=1)
+        for sequence in range(0,data.shape[0]):
+            antennas_out = []
+            for antenna in range(0,data.shape[1]):
+                equality = [math.isclose(x,y,abs_tol=max_absolute_error) for x,y in zip(data[sequence,antenna,:], average_sequence_data[sequence,:])]
+                if not all(equality):
+                    antennas_out.append(antenna)
+            sequence_to_antenna_problem_dict[sequence] = antennas_out
+    elif all(data_dimensions_list == ['num_antennas', 'num_sequences', 'num_samps']):
+        data = record_dict['data'][0:main_antenna_count,:,start_sample:end_sample]
+        average_sequence_data = np.mean(data, axis=0)
+        for sequence in range(0, data.shape[1]):
+            antennas_out = []
+            for antenna in range(0, data.shape[0]):
+                equality = [math.isclose(x,y,abs_tol=max_absolute_error) for x,y in zip(data[antenna,sequence,:], average_sequence_data[sequence,:])]
+                if not all(equality):
+                    antennas_out.append(antenna)       
+            sequence_to_antenna_problem_dict[sequence] = antennas_out
+    else:
+        print('Do not know how to compare data with dimensions = {}'.format(data_dimensions_list))
+    print('Sequence to Antenna Problem Dictionary: {}'.format(sequence_to_antenna_problem_dict))
+    return sequence_to_antenna_problem_dict
 
 
 def main():
@@ -340,8 +376,10 @@ def main():
     good_record_found = False
     record_attempts = 0
     while not good_record_found:
-        #record_name = '1544113558544' 
-        record_name = random.choice(list(data[type_of_file].keys()))
+        if args.record:
+            record_name = args.record
+        else:
+            record_name = random.choice(list(data[type_of_file].keys()))
         print('Record Name: {}'.format(record_name))
 
         record_data = {}
@@ -429,27 +467,30 @@ def main():
     #plot_output_samples_iq_data(record_data[output_samples_filetype], output_samples_filetype)
     #plot_bf_iq_data(record_data[bfiq_filetype], bfiq_filetype)
     #plot_antenna_data(record_data[tx_filetype]['tx_samples'][0,:,:], record_data[tx_filetype]['tx_antennas'][0], tx_filetype, main_antenna_count)
-    plot_antenna_data(record_data[output_samples_filetype]['data'][:,0,:], record_data[output_samples_filetype]['antenna_arrays_order'], output_samples_filetype, main_antenna_count)
+    #plot_antenna_data(record_data[output_samples_filetype]['data'][:,0,:], record_data[output_samples_filetype]['antenna_arrays_order'], output_samples_filetype, main_antenna_count, separate_plots=False)
+    plot_antenna_data(record_data[rawrf_filetype]['data'][0,:,18000:20000], record_data[rawrf_filetype]['antennas_present'], rawrf_filetype, main_antenna_count,separate_plots=False)
     #for antenna in range(0,record_data[tx_filetype]['tx_samples'].shape[1]):
     #    fft_and_plot(record_data[tx_filetype]['tx_samples'][0,antenna,:], 5000000.0)
 
+
+
     beamforming_dict = {}
-    print('BEAM AZIMUTHS: {}'.format(beam_azms))
+    #print('BEAM AZIMUTHS: {}'.format(beam_azms))
     for sequence_num in range(0,nave):
-        print('SEQUENCE NUMBER {}'.format(sequence_num))
+        #print('SEQUENCE NUMBER {}'.format(sequence_num))
         sequence_dict = beamforming_dict[sequence_num] = {}
         for filetype, record_dict in record_data.items():
-            print(filetype)
+            #print(filetype)
             sequence_filetype_dict = sequence_dict[filetype] = {}
             data_description_list = list(record_dict['data_descriptors'])
             # STEP 1: DECIMATE IF NECESSARY
             if not math.isclose(record_dict['rx_sample_rate'], decimated_rate, abs_tol=0.001):
-                print(decimated_rate)
-                print(record_dict['rx_sample_rate'])
+                #print(decimated_rate)
+                #print(record_dict['rx_sample_rate'])
                 # we aren't at 3.3 kHz - need to decimate.
                 #print(record_dict['rx_sample_rate'])
                 dm_rate = int(record_dict['rx_sample_rate']/decimated_rate)
-                print(dm_rate)
+                #print(dm_rate)
                 dm_start_sample = record_dict['dm_start_sample']
                 dm_end_sample = -1 - dm_start_sample # this is the filter size 
                 if data_description_list == ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']:
@@ -535,9 +576,9 @@ def main():
                 expected_pulse_indices = list(pulse_spacing + pulse_indices[0])
                 if expected_pulse_indices != pulse_indices:
                     sequence_filetype_dict['calculate_offsets'] = False
-                    print(expected_pulse_indices)
-                    print(pulse_indices)
-                    print('Pulse Indices are Not Equal to Expected for filetype {} sequence {}'.format(filetype, sequence_num))
+                    #print(expected_pulse_indices)
+                    #print(pulse_indices)
+                    #print('Pulse Indices are Not Equal to Expected for filetype {} sequence {}'.format(filetype, sequence_num))
                     #print('Phase Offsets Cannot be Calculated for this filetype {} sequence {}'.format(filetype, sequence_num))
                 else:
                     sequence_filetype_dict['calculate_offsets'] = True
@@ -547,8 +588,8 @@ def main():
                 sequence_filetype_dict['pulse_samples'] = pulse_data
                 pulse_phases = np.angle(pulse_data) * 180.0/math.pi
                 sequence_filetype_dict['pulse_phases'] = pulse_phases
-                print('Pulse Indices:\n{}'.format(pulse_indices))
-                print('Pulse Phases:\n{}'.format(pulse_phases))
+                #print('Pulse Indices:\n{}'.format(pulse_indices))
+                #print('Pulse Phases:\n{}'.format(pulse_phases))
 
         #plot_antenna_data(record_data[tx_filetype]['tx_samples'][sequence_num,:,:], record_data[tx_filetype]['tx_antennas'][0], tx_filetype, main_antenna_count)
         #plot_antenna_data(sequence_dict[rawrf_filetype]['decimated_data'], record_data[rawrf_filetype]['antennas_present'], rawrf_filetype, main_antenna_count, separate_plots=False)
@@ -557,18 +598,22 @@ def main():
         if output_samples_filetype in file_types_avail and bfiq_filetype in file_types_avail:
             if sequence_dict[output_samples_filetype]['calculate_offsets'] and sequence_dict[bfiq_filetype]['calculate_offsets']:
                 beamforming_phase_offset = get_offsets(sequence_dict[output_samples_filetype]['pulse_samples'], sequence_dict[bfiq_filetype]['pulse_samples'])
-                print('There are the following phase offsets (deg) between the prebf and bf iq data pulses on sequence {}: {}'.format(sequence_num, beamforming_phase_offset))
+                #print('There are the following phase offsets (deg) between the prebf and bf iq data pulses on sequence {}: {}'.format(sequence_num, beamforming_phase_offset))
 
         if rawrf_filetype in file_types_avail and output_samples_filetype in file_types_avail:
             if sequence_dict[output_samples_filetype]['calculate_offsets'] and sequence_dict[rawrf_filetype]['calculate_offsets']:
                 decimation_phase_offset = get_offsets(sequence_dict[rawrf_filetype]['pulse_samples'], sequence_dict[output_samples_filetype]['pulse_samples'])
-                print('There are the following phase offsets (deg) between the rawrf and prebf iq data pulses on sequence {}: {}'.format(sequence_num, decimation_phase_offset))
+                #print('There are the following phase offsets (deg) between the rawrf and prebf iq data pulses on sequence {}: {}'.format(sequence_num, decimation_phase_offset))
 
         if tx_filetype in file_types_avail and rawrf_filetype in file_types_avail:
             if sequence_dict[tx_filetype]['calculate_offsets'] and sequence_dict[rawrf_filetype]['calculate_offsets']:
                 decimation_phase_offset = get_offsets(sequence_dict[tx_filetype]['pulse_samples'], sequence_dict[rawrf_filetype]['pulse_samples'])
-                print('There are the following phase offsets (deg) between the tx and rawrf iq data pulses on sequence {}: {}'.format(sequence_num, decimation_phase_offset))
+                #print('There are the following phase offsets (deg) between the tx and rawrf iq data pulses on sequence {}: {}'.format(sequence_num, decimation_phase_offset))
 
+    print('Raw RF')
+    check_for_equal_samples_across_channels(record_data[rawrf_filetype], 18000, 20000, 0.02, main_antenna_count)
+    print('Output Samples Iq')
+    check_for_equal_samples_across_channels(record_data[output_samples_filetype], 0, record_data[output_samples_filetype]['num_samps'] - 1, 0.002, main_antenna_count)
 
 if __name__ == '__main__':
     main()
