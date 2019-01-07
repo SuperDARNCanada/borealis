@@ -45,6 +45,10 @@ Filtering::Filtering(double initial_rx_sample_rate, const SignalProcessingOption
                                               sig_options.get_third_stage_filter_cutoff(),
                                               sig_options.get_third_stage_filter_transition(),
                                               sig_options.get_second_stage_sample_rate());
+
+  for(auto &tap: third_stage_lowpass_taps) {
+  	tap = tap * std::complex<float>(12.0,0);
+  }
 }
 
 
