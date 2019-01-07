@@ -386,31 +386,37 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir, txc
 
     for pulse in pulse_list:
         # print exp_slices[pulse['slice_id']]
-        wave_freq = float(exp_slices[pulse['slice_id']]['txfreq']) - txctrfreq  # TODO error will occur here if clrfrqrange because clrfrq search isn't completed yet. (when clrfrq, no txfreq)
-        phase_array = []
-        pulse['samples'] = []
+        if not exp_slices[pulse['slice_id']]['rxonly']:
+            wave_freq = float(exp_slices[pulse['slice_id']]['txfreq']) - txctrfreq  # TODO error will occur here if clrfrqrange because clrfrq search isn't completed yet. (when clrfrq, no txfreq)
+            phase_array = []
+            pulse['samples'] = []
 
-        if len(beamdir[pulse['slice_id']]) > 1:  # todo move this somwhere for each slice_id, not pulse as unnecessary repetition
-            # we have imaging. We need to figure out the direction and amplitude to give
-            # each antenna
-            beamdirs_for_antennas, amps_for_antennas = \
-                resolve_imaging_directions(beamdir[pulse['slice_id']], options.main_antenna_count,
-                                           options.main_antenna_spacing)
-        else:  # not imaging, all antennas transmitting same direction.
-            beamdirs_for_antennas = [beamdir[pulse['slice_id']][0] for ant in
-                                     range(0, options.main_antenna_count)]
-            amps_for_antennas = [1.0 for ant in range(0, options.main_antenna_count)]
+            if len(beamdir[pulse['slice_id']]) > 1:  # todo move this somwhere for each slice_id, not pulse as unnecessary repetition
+                # we have imaging. We need to figure out the direction and amplitude to give
+                # each antenna
+                beamdirs_for_antennas, amps_for_antennas = \
+                    resolve_imaging_directions(beamdir[pulse['slice_id']], options.main_antenna_count,
+                                               options.main_antenna_spacing)
+            else:  # not imaging, all antennas transmitting same direction.
+                beamdirs_for_antennas = [beamdir[pulse['slice_id']][0] for ant in
+                                         range(0, options.main_antenna_count)]
+                amps_for_antennas = [1.0 for ant in range(0, options.main_antenna_count)]
 
-        amplitude_array = [amplitude / float(power_divider) for amplitude in amps_for_antennas]
-        # also adjust amplitudes for number of pulses transmitted at once. # TODO : review this as
-        for antenna in range(0, options.main_antenna_count):
-            # Get phase shifts for all channels off centre of array being phase = 0.
-            phase_for_antenna = \
-                get_phshift(beamdirs_for_antennas[antenna], exp_slices[pulse['slice_id']]['txfreq'],
-                            antenna,
-                            exp_slices[pulse['slice_id']]['pulse_shift'][pulse['slice_pulse_index']],
-                            options.main_antenna_count, options.main_antenna_spacing)
-            phase_array.append(phase_for_antenna)
+            amplitude_array = [amplitude / float(power_divider) for amplitude in amps_for_antennas]
+            # also adjust amplitudes for number of pulses transmitted at once. # TODO : review this as
+            for antenna in range(0, options.main_antenna_count):
+                # Get phase shifts for all channels off centre of array being phase = 0.
+                phase_for_antenna = \
+                    get_phshift(beamdirs_for_antennas[antenna], exp_slices[pulse['slice_id']]['txfreq'],
+                                antenna,
+                                exp_slices[pulse['slice_id']]['pulse_shift'][pulse['slice_pulse_index']],
+                                options.main_antenna_count, options.main_antenna_spacing)
+                phase_array.append(phase_for_antenna)
+        else: # rxonly operation.
+            pulse['samples'] = []
+            amplitude_array = [0.0 for ant in range(0, options.main_antenna_count)]
+            wave_freq = float(exp_slices[pulse['slice_id']]['rxfreq']) - txctrfreq
+            phase_array = [0.0 for ant in range(0, options.main_antenna_count)]
 
         wave_freq_hz = wave_freq * 1000
 
@@ -437,7 +443,7 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir, txc
             else:
                 pulse_samples = np.zeros([len(basic_samples)], dtype=np.complex64)
                 pulse['samples'].append(pulse_samples)
-                # Will be an empty array for that channel.
+                # Will be an empty array for that channel
 
 
 def calculated_combined_pulse_samples_length(pulse_list, txrate):

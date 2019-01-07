@@ -493,10 +493,17 @@ def radar():
                                                                    experiment.txctrfreq,
                                                                    experiment.txrate, options)  # TODO pass in only options needed.
 
+
                     beam_phase_dict_list = []
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
                         beam_phase_dict = {}
                         for slice_id in sequence.slice_ids:
+
+                            if experiment.slice_dict[slice_id]['rxonly']:
+                                receive_freq = experiment.slice_dict[slice_id]['rxfreq']
+                            else:
+                                receive_freq = experiment.slice_dict[slice_id]['txfreq']
+                            # TODO add clrfrqsearch result freq.
 
                             beamdir = slice_to_beamdir_dict[slice_id]
                             beam_phase_dict[slice_id] = \
@@ -504,7 +511,7 @@ def radar():
                                                           options.interferometer_antenna_count,
                                                           options.main_antenna_spacing,
                                                           options.interferometer_antenna_spacing,
-                                                          experiment.slice_dict[slice_id]['txfreq'])
+                                                          receive_freq)
 
                         beam_phase_dict_list.append(beam_phase_dict)
 
