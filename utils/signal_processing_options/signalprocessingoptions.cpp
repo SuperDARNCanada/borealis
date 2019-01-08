@@ -30,6 +30,12 @@ SignalProcessingOptions::SignalProcessingOptions() {
                 config_pt.get<std::string>("third_stage_filter_cutoff"));
   third_stage_filter_transition = boost::lexical_cast<double>(
                 config_pt.get<std::string>("third_stage_filter_transition"));
+  first_stage_scaling_factor = boost::lexical_cast<double>(
+                config_pt.get<std::string>("first_stage_scaling_factor"));
+  second_stage_scaling_factor = boost::lexical_cast<double>(
+                config_pt.get<std::string>("second_stage_scaling_factor"));
+  third_stage_scaling_factor = boost::lexical_cast<double>(
+                config_pt.get<std::string>("third_stage_scaling_factor"));
   main_antenna_count = boost::lexical_cast<uint32_t>(
                 config_pt.get<std::string>("main_antenna_count"));
   interferometer_antenna_count = boost::lexical_cast<uint32_t>(
@@ -107,6 +113,21 @@ double SignalProcessingOptions::get_third_stage_filter_cutoff() const
 double SignalProcessingOptions::get_third_stage_filter_transition() const
 {
   return third_stage_filter_transition;
+}
+
+double SignalProcessingOptions::get_first_stage_scaling_factor() const
+{
+  return first_stage_scaling_factor;
+}
+
+double SignalProcessingOptions::get_second_stage_scaling_factor() const
+{
+  return second_stage_scaling_factor;
+}
+
+double SignalProcessingOptions::get_third_stage_scaling_factor() const
+{
+  return third_stage_scaling_factor;
 }
 
 std::string SignalProcessingOptions::get_router_address() const

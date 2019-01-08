@@ -36,15 +36,18 @@ Filtering::Filtering(double initial_rx_sample_rate, const SignalProcessingOption
   first_stage_lowpass_taps = create_filter(num_first_stage_taps,
                                               sig_options.get_first_stage_filter_cutoff(),
                                               sig_options.get_first_stage_filter_transition(),
-                                              initial_rx_sample_rate);
+                                              initial_rx_sample_rate,
+                                              sig_options.get_first_stage_scaling_factor());
   second_stage_lowpass_taps = create_filter(num_second_stage_taps,
                                               sig_options.get_second_stage_filter_cutoff(),
                                               sig_options.get_second_stage_filter_transition(),
-                                              sig_options.get_first_stage_sample_rate());
+                                              sig_options.get_first_stage_sample_rate(),
+                                              sig_options.get_second_stage_scaling_factor());
   third_stage_lowpass_taps = create_filter(num_third_stage_taps,
                                               sig_options.get_third_stage_filter_cutoff(),
                                               sig_options.get_third_stage_filter_transition(),
-                                              sig_options.get_second_stage_sample_rate());
+                                              sig_options.get_second_stage_sample_rate(),
+                                              sig_options.get_third_stage_scaling_factor());
 }
 
 
@@ -96,6 +99,7 @@ uint32_t Filtering::calculate_num_filter_taps(double rate, double transition_ban
  * @param[in]  filter_cutoff    Cutoff frequency in Hz for the lowpass filter.
  * @param[in]  transition_band  Width of transition of band of the filter in Hz.
  * @param[in]  rate             Sampling rate of input samples.
+ * @param[in]  scaling_factor   Multiplier used to scale the filter gain.
  *
  * @return     A vector of filter taps. Filter is real, but represented using complex<float> form
  *             R + i0 for each tap.
@@ -105,7 +109,8 @@ uint32_t Filtering::calculate_num_filter_taps(double rate, double transition_ban
  * doing operations on complex numbers.
  */
 std::vector<std::complex<float>> Filtering::create_filter(uint32_t num_taps, double filter_cutoff,
-                                                            double transition_band, double rate) {
+                                                            double transition_band, double rate,
+                                                            double scaling_factor) {
   // TODO(Keith): explain filter algorithm
   std::vector<double> desired_band_gain = {1.0,1.0,0.0,0.0};
   std::vector<double> weight = {1.0,1.0};//{1 /(1 - pow(10,-0.3/20)),1/pow(10,static_cast<double>(-60)/20)};
@@ -115,7 +120,7 @@ std::vector<std::complex<float>> Filtering::create_filter(uint32_t num_taps, dou
 
   //remez returns number of taps + 1.
   //TODO(Keith): Investigate number of taps behaviour - does this depend on num_taps being odd or even?
-  std::vector<double> filter_taps(num_taps + 1,0.0);
+  std::vector<double> filter_taps(num_taps + 1, 0.0);
   auto num_filter_band_edges = filter_bands.size()/2;
   //TODO(keith): test args are right maybe?
   auto converges = remez(filter_taps.data(), num_taps+1, num_filter_band_edges,
@@ -130,7 +135,7 @@ std::vector<std::complex<float>> Filtering::create_filter(uint32_t num_taps, dou
   //Adding a 0 for the imaginary part to be able to handle complex math in CUDA
   std::vector<std::complex<float>> complex_taps;
   for (auto &i : filter_taps) {
-    auto complex_tap = std::complex<float>(i,0.0);
+    auto complex_tap = std::complex<float>(scaling_factor * i,0.0);
     complex_taps.push_back(complex_tap);
   }
 

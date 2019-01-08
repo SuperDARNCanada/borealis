@@ -61,7 +61,8 @@ class Filtering {
                                                                 double transition_band,
                                                                 double Fs);
     std::vector<std::complex<float>> create_filter(uint32_t num_taps, double filter_cutoff,
-                                                    double transition_band, double rate);
+                                                    double transition_band, double rate,
+                                                    double scaling_factor);
 
 };
 
