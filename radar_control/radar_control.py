@@ -27,9 +27,6 @@ from experiment_prototype.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
 if __debug__:
-    debug_path = os.environ["BOREALISPATH"] + '/testing/tmp/'
-    if not os.path.isdir(debug_path):
-        os.mkdir(debug_path)
     sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')
 else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
@@ -516,7 +513,6 @@ def radar():
                             sequence_samples_dict = create_debug_sequence_samples(experiment.txrate,
                                                   experiment.txctrfreq,
                                                   sequence_dict_list[sequence_index],
-                                                  debug_path,
                                                   options.main_antenna_count,
                                                   options.output_sample_rate,
                                                   sequence.ssdelay)
