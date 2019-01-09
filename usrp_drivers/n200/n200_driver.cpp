@@ -35,6 +35,7 @@
 
 //Delay needed for before any set_time_commands will work.
 #define SET_TIME_COMMAND_DELAY 5e-3 // seconds
+#define TUNING_DELAY 300e-3 // seconds
 
 // GPS clock variable. Gets updated every time an RX packet is recvd.
 uhd::time_spec_t box_time;
@@ -210,7 +211,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 {
                   DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx center freq to " <<
                               driver_packet.txcenterfreq());
+                  auto tune_time = box_time + uhd::time_spec_t(TUNING_DELAY);
+                  usrp_d.set_command_time(tune_time);
                   usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), tx_channels);
+                  usrp_d.clear_command_time();
                   tx_center_freq_set = true;
                   tx_center_freq = driver_packet.txcenterfreq();
                 }
@@ -222,7 +226,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 {
                   DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting rx center freq to " <<
                               driver_packet.rxcenterfreq());
+                  auto tune_time = box_time + uhd::time_spec_t(TUNING_DELAY);
+                  usrp_d.set_command_time(tune_time);
                   usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), receive_channels);
+                  usrp_d.clear_command_time();
                   rx_center_freq_set = true;
                   rx_center_freq = driver_packet.rxcenterfreq();
                 }
@@ -452,9 +459,11 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
   auto rx_rate_hz = driver_options.get_rx_rate();
 
+
   auto receive_channels = driver_options.get_receive_channels();
   stream_args.channels = receive_channels;
 
+  //usrp_d.set_rx_center_freq(12e6, receive_channels);
 
   uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream(stream_args);  // ~44ms
 

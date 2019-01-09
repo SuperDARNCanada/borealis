@@ -15,6 +15,8 @@ echo "Project Borealis Booter"
 echo "v2.3-Alpha Season 1 Episode 3"
 echo "-----------------------------------------------------------------------------------"
 
+rm -r /dev/shm/*
+
 # These are the commands to in each window.
 if [ "$2" = "release" ]; then
     start_brian="python3 -O brian/brian.py; bash"

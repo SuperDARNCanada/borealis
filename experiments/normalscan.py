@@ -28,7 +28,7 @@ class Normalscan(ExperimentPrototype):
             "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
             "scanboundflag": True,  # there is a scan boundary
             "scanbound": 60000,  # ms
-            "txfreq": 13300,
+            "txfreq": 10500,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         })
