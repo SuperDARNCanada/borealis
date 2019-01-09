@@ -124,7 +124,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
 
 def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                    brian_radctrl_iden, seqnum, slice_ids,
-                   slice_dict, beam_dict, sequence_time, main_antenna_count):
+                   slice_dict, beam_dict, sequence_time, first_rx_sample, main_antenna_count):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
         :param radctrl_to_dsp: The sender socket for sending data to dsp
@@ -140,6 +140,9 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
         :param beam_dict: The dictionary containing beam directions for each slice.
         :param sequence_time: entire duration of sequence, including receive time after all
         transmissions.
+        :param first_rx_sample: The sample offset from the start of the first pulse of TX samples
+        sent to the driver, where the first RX sample should occur in the output data. This is
+        equal to the sample offset to the centre of the first pulse.
         :param main_antenna_count: number of main array antennas, from the config file.
 
     """
@@ -149,6 +152,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     packet.Clear()
     packet.sequence_time = sequence_time
     packet.sequence_num = seqnum
+    packet.first_rx_sample_from_tx_start = first_rx_sample
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
         chan_add.slice_id = slice_id
@@ -547,7 +551,8 @@ def radar():
                                            options.brian_to_radctrl_identity,
                                            seqnum_start + nave,
                                            sequence.slice_ids, experiment.slice_dict,
-                                           beam_phase_dict, sequence.seqtime, options.main_antenna_count)
+                                           beam_phase_dict, sequence.seqtime,
+                                           sequence.first_rx_sample, options.main_antenna_count)
 
                             # beam_phase_dict is slice_id : list of beamdirs, where beamdir = list
                             # of antenna phase offsets for all antennas for that direction ordered
