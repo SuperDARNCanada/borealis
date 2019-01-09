@@ -402,7 +402,7 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir, txc
                                          range(0, options.main_antenna_count)]
                 amps_for_antennas = [1.0 for ant in range(0, options.main_antenna_count)]
 
-            amplitude_array = [amplitude / float(power_divider) for amplitude in amps_for_antennas]
+            amplitude_list = [amplitude / float(power_divider) for amplitude in amps_for_antennas]
             # also adjust amplitudes for number of pulses transmitted at once. # TODO : review this as
             for antenna in range(0, options.main_antenna_count):
                 # Get phase shifts for all channels off centre of array being phase = 0.
@@ -414,7 +414,7 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir, txc
                 phase_array.append(phase_for_antenna)
         else: # rxonly operation.
             pulse['samples'] = []
-            amplitude_array = [0.0 for ant in range(0, options.main_antenna_count)]
+            amplitude_list = [0.0 for ant in range(0, options.main_antenna_count)]
             wave_freq = float(exp_slices[pulse['slice_id']]['rxfreq']) - txctrfreq
             phase_array = [0.0 for ant in range(0, options.main_antenna_count)]
 
