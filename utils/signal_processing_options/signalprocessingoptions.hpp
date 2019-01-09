@@ -50,12 +50,6 @@ class SignalProcessingOptions: public Options {
   double second_stage_filter_transition;
   double third_stage_filter_cutoff;
   double third_stage_filter_transition;
-/*  std::string driver_socket_address;
-  std::string radar_control_socket_address;
-  std::string ack_socket_address;
-  std::string timing_socket_address;
-  std::string data_write_address;
-*/
   std::string router_address;
   std::string dsp_to_radctrl_identity;
   std::string dsp_driver_identity;
