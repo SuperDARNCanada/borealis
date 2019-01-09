@@ -96,6 +96,69 @@ def create_impulse_boxcar(decimation_rates, offset):
     boxcar.extend([0.0] * offset)
     return boxcar
 
+
+def plot_filter_response(filter_taps, title_identifier, sampling_freq):
+    """
+    Plot filter response given filter taps
+    sampling_freq : Hz
+    """
+
+    w,h = signal.freqz(filter_taps, whole=True)
+
+    w = w * sampling_freq/(2 * math.pi) # w now in Hz
+
+    fig = plt.figure()
+    plt.title('Digital filter frequency response {}'.format(title_identifier))
+    ax1 = fig.add_subplot(111)
+    plt.plot(w, 20 * np.log10(abs(h)), 'b')
+    plt.ylabel('Amplitude [dB]', color='b')
+    plt.xlabel('Frequency [rad/sample]')
+    ax2 = ax1.twinx()
+    angles = np.unwrap(np.angle(h))
+    plt.plot(w, angles, 'g')
+    plt.ylabel('Angle (radians)', color='g')
+    plt.grid()
+    plt.axis('tight')
+
+    plt.show()
+
+
+def create_blackman_window(N):
+    """
+    N = length of window
+    """
+    M=(N-1)/2
+    blackman = []
+    for n in range(0, N): 
+        blackman.append(0.42 + 0.5*math.cos((2*math.pi*(n-M))/(2*M+1) ) + 0.08*math.cos((4*math.pi*(n-M))/(2*M-1)))
+    return blackman
+
+
+def plot_decimated_impulse_response(num_stages, numtaps, filter_taps, decimation):
+    """
+    num_stages: int
+    numtaps: list, of ints of number of taps in each filter
+    filter_taps: list of list, of filter taps for each stage
+    decimation: list of ints of decimation for each stage.
+    """
+
+    fig, [filter_response_plots, output_plots] = plt.subplots(2, num_stages)
+
+    for stage in range(0, num_stages):
+        filter_response_plots[stage].plot(np.arange(numtaps[stage]), filter_taps[stage])
+        filter_response_plots[stage].set_title('Filter Response Stage {}'.format(stage+1))
+
+    for i in range(0, num_stages):
+        for start_sample in range(0, decimation[i]):
+            decimated_output = all_decimated_filter_outputs[i][start_sample]
+            output_plots[i].plot(np.arange(len(decimated_output)), decimated_output)
+        output_plots[i].set_title('After Stage {}'.format(stage+1))
+
+    # get all possible scenarios depending on the location of the pulse echo in the data
+
+    plt.show()
+
+
 def create_original_filter_plots():
     k = 3
     rx_rate = 5000000.0
@@ -166,7 +229,7 @@ def create_original_filter_plots():
 
 
 rx_rate = 5000000.0
-decimation = [10, 15, 10]
+decimation = [5, 10, 30]
 print('Decimation: {}'.format(decimation))
 num_stages = len(decimation)
 decimation_total = 1
@@ -210,19 +273,58 @@ for i in range(0, num_stages):
     output.append(decimated_filter_out[0]) # take the first one for now to carry over to next stage.
     all_decimated_filter_outputs.append(decimated_filter_out)
 
-fig, [filter_response_plots, output_plots] = plt.subplots(2, num_stages)
+
+#plot_decimated_impulse_response(num_stages, numtaps, filter_taps, decimation)
 
 for stage in range(0, num_stages):
-    filter_response_plots[stage].plot(np.arange(numtaps[stage]), filter_taps[stage])
-    filter_response_plots[stage].set_title('Filter Response Stage {}'.format(stage+1))
+    plot_filter_response(filter_taps[stage], stage, freq_s[stage])
 
-for i in range(0, num_stages):
-    for start_sample in range(0, decimation[i]):
-        decimated_output = all_decimated_filter_outputs[i][start_sample]
-        output_plots[i].plot(np.arange(len(decimated_output)), decimated_output)
-    output_plots[i].set_title('After Stage {}'.format(stage+1))
+ros_cfir_filter = [-24, 74, 494, 548, -977, -3416, -3672, 1525, 13074, 26547, 32767] 
+ros_cfir_filter = ros_cfir_filter + list(reversed(ros_cfir_filter.copy()[:-1]))
+ros_cfir_freq = 40625000
 
-# get all possible scenarios depending on the location of the pulse echo in the data
+plot_filter_response(ros_cfir_filter, "ROS CFIR", ros_cfir_freq)
 
+ros_pfir_filter = [14, 30, 41, 27, -29, -118, -200, -212, -95, 150,
+                     435, 598, 475, 5, -680, -1256, -1330, -653, 669,
+                     2112, 2880, 2269, 101, -2996, -5632, 6103,
+                     -3091, 3666, 13042, 22747, 30053, 32767]
+ros_pfir_filter = ros_pfir_filter + list(reversed(ros_pfir_filter.copy()[:-1]))
+ros_pfir_freq = ros_cfir_freq/2031.0
 
-plt.show()
+#plot_filter_response(ros_pfir_filter, "PFIR no window")
+
+blackman = create_blackman_window(63)
+
+def calculate_pfir(window):
+    Fpass=Fstop=3333
+    freq_in = 10000
+    wp=math.pi*float(Fpass)/float(freq_in)
+    ws=math.pi*float(Fstop)/float(freq_in)
+    wc=(wp+ws)/2
+    PFIRgain = 0
+    pfircoeffs = []
+    for n in range(0,31):
+        pfircoeffs.append(int(32767*window[n]*(math.pi/wc)*math.sin(wc*(float(n-31)))/(math.pi*(float(n-31)))+.49999))
+        PFIRgain = PFIRgain + pfircoeffs[n]
+
+    pfircoeffs.append(32767)
+    PFIRgain=2*PFIRgain+pfircoeffs[31] # this is the total sum of the coefficients once reversed list is concatenated to itself for full filter.
+    PFIRgain=PFIRgain/65536
+
+    if PFIRgain > 1:
+        gaintemp=PFIRgain
+        PFIRgain=0
+        for n in range(0, 31):
+            pfircoeffs[n]=int((1/gaintemp)*float(pfircoeffs[n])+0.499999)
+    PFIRgain=PFIRgain+pfircoeffs[n]
+    pfircoeffs[31]=int((1/gaintemp)*float(pfircoeffs[31])+0.49999 )
+    PFIRgain=2*PFIRgain+pfircoeffs[31];
+    PFIRgain=PFIRgain/65536;
+    print('PFIR gain: {}'.format(PFIRgain))
+    return pfircoeffs
+
+calculated_pfir = calculate_pfir(blackman)
+calculated_pfir = calculated_pfir + list(reversed(calculated_pfir.copy()[:-1]))
+
+plot_filter_response(calculated_pfir, 'calculated blackman pfir', ros_pfir_freq)

@@ -23,7 +23,7 @@ def plot_fft(samplesa, rate):
             fft_to_plot[sample+halfway-1]=fft_samps[sample]
             # Move positive samples at end
     else:
-        halfway=num_samps/2
+        halfway=int(num_samps/2)
         for sample in range(halfway,num_samps):
             fft_to_plot[sample-halfway]=fft_samps[sample]
             # Move negative samples to start for plot
@@ -59,6 +59,8 @@ w,h = signal.freqz(bpass, whole=True)
 fig4 = plt.figure()
 plt.plot(np.arange(len(bpass)),bpass)
 plt.plot(np.arange(len(lpass)),lpass)
+
+
 fig = plt.figure()
 plt.title('Digital filter frequency response')
 ax1 = fig.add_subplot(111)
@@ -72,8 +74,8 @@ plt.ylabel('Angle (radians)', color='g')
 plt.grid()
 plt.axis('tight')
 
-fig2 = plot_fft(bpass,22050)
-fig3 = plot_fft(lpass,22050)
+#fig2 = plot_fft(bpass,22050)
+#fig3 = plot_fft(lpass,22050)
 
 plt.show()
 
