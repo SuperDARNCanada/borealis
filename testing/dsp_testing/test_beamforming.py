@@ -465,10 +465,10 @@ def main():
     # find pulse points in data that is decimated. 
 
     #plot_output_samples_iq_data(record_data[output_samples_filetype], output_samples_filetype)
-    #plot_bf_iq_data(record_data[bfiq_filetype], bfiq_filetype)
+    plot_bf_iq_data(record_data[bfiq_filetype], bfiq_filetype)
     #plot_antenna_data(record_data[tx_filetype]['tx_samples'][0,:,:], record_data[tx_filetype]['tx_antennas'][0], tx_filetype, main_antenna_count)
     #plot_antenna_data(record_data[output_samples_filetype]['data'][:,0,:], record_data[output_samples_filetype]['antenna_arrays_order'], output_samples_filetype, main_antenna_count, separate_plots=False)
-    plot_antenna_data(record_data[rawrf_filetype]['data'][0,:,18000:20000], record_data[rawrf_filetype]['antennas_present'], rawrf_filetype, main_antenna_count,separate_plots=False)
+    #plot_antenna_data(record_data[rawrf_filetype]['data'][0,:,18000:20000], record_data[rawrf_filetype]['antennas_present'], rawrf_filetype, main_antenna_count,separate_plots=False)
     #for antenna in range(0,record_data[tx_filetype]['tx_samples'].shape[1]):
     #    fft_and_plot(record_data[tx_filetype]['tx_samples'][0,antenna,:], 5000000.0)
 
@@ -608,12 +608,11 @@ def main():
         if tx_filetype in file_types_avail and rawrf_filetype in file_types_avail:
             if sequence_dict[tx_filetype]['calculate_offsets'] and sequence_dict[rawrf_filetype]['calculate_offsets']:
                 decimation_phase_offset = get_offsets(sequence_dict[tx_filetype]['pulse_samples'], sequence_dict[rawrf_filetype]['pulse_samples'])
-                #print('There are the following phase offsets (deg) between the tx and rawrf iq data pulses on sequence {}: {}'.format(sequence_num, decimation_phase_offset))
-
-    print('Raw RF')
-    check_for_equal_samples_across_channels(record_data[rawrf_filetype], 18000, 20000, 0.02, main_antenna_count)
-    print('Output Samples Iq')
-    check_for_equal_samples_across_channels(record_data[output_samples_filetype], 0, record_data[output_samples_filetype]['num_samps'] - 1, 0.002, main_antenna_count)
+                print('There are the following phase offsets (deg) between the tx and rawrf iq data pulses on sequence {}: {}'.format(sequence_num, decimation_phase_offset))
+    #print('Raw RF')
+    #check_for_equal_samples_across_channels(record_data[rawrf_filetype], 18000, 20000, 0.02, main_antenna_count)
+    #print('Output Samples Iq')
+    #check_for_equal_samples_across_channels(record_data[output_samples_filetype], 0, record_data[output_samples_filetype]['num_samps'] - 1, 0.002, main_antenna_count)
 
 if __name__ == '__main__':
     main()

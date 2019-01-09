@@ -1365,7 +1365,7 @@ class ExperimentPrototype(object):
 
         for param in self.slice_keys:
             if param not in exp_slice.keys():
-                if param == 'txfreq' and exp_slice['clrfrqflag']:
+                if param == 'txfreq' and (exp_slice['clrfrqflag'] or exp_slice['rxonly']):
                     pass
                 elif param == 'rxfreq' and not exp_slice['rxonly']:
                     pass
