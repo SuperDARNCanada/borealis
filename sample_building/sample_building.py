@@ -437,7 +437,7 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir, txc
         for antenna in range(0, options.main_antenna_count):
             if antenna in exp_slices[pulse['slice_id']]['tx_antennas']:
                 pulse_samples = shift_samples(basic_samples, phase_array[antenna],
-                                              amplitude_array[antenna])
+                                              amplitude_list[antenna])
                 pulse['samples'].append(pulse_samples)
                 # pulse['samples'] is a list of numpy arrays now.
             else:
