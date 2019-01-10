@@ -62,8 +62,8 @@ class DSPCore {
   ~DSPCore(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
   void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
-                                uint32_t offset_to_first_pulse,
-                                int64_t extra_samples, double time_zero, double start_time,
+                                int64_t extra_samples, uint32_t offset_to_first_pulse,
+                                double time_zero, double start_time,
                                 uint64_t ringbuffer_size, uint32_t first_stage_dm_rate,
                                 uint32_t second_stage_dm_rate,
                                 std::vector<cuComplex*> &ringbuffer_ptrs_start);
