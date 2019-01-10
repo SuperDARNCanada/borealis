@@ -563,6 +563,7 @@ DSPCore::~DSPCore()
  * @param[in]  total_antennas         The total number of antennas.
  * @param[in]  num_samples_needed     The number of samples needed from each antenna ringbuffer.
  * @param[in]  extra_samples          The number of extra samples needed for filter propagation.
+ * @param[in]  offset_to_first_pulse  Offset from sequence start to center of first pulse.
  * @param[in]  time_zero              The time the driver began collecting samples. seconds since
  *                                    epoch.
  * @param[in]  start_time             The start time of the pulse sequence. seconds since epoch.
@@ -577,7 +578,8 @@ DSPCore::~DSPCore()
  * work with the raw RF samples.
  */
 void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
-                                int64_t extra_samples, double time_zero, double start_time,
+                                int64_t extra_samples, uint32_t offset_to_first_pulse,
+                                double time_zero, double start_time,
                                 uint64_t ringbuffer_size, uint32_t first_stage_dm_rate,
                                 uint32_t second_stage_dm_rate,
                                 std::vector<cuComplex*> &ringbuffer_ptrs_start)
@@ -589,16 +591,10 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
   gpuErrchk(cudaMalloc(&rf_samples_d, rf_samples_size));
 
   auto sample_time_diff = start_time - time_zero;
-  auto diff_sample = sample_time_diff * sig_options.get_rx_rate();
-  auto start_sample = int64_t(std::fmod(diff_sample, ringbuffer_size));
-
-  // We need to sample early to account for propagating samples through filters.
-  // We cannot index using negative numbers so we have to roll back from ringbuffer size.
-  if (start_sample - extra_samples < 0) {
-      start_sample = ringbuffer_size - (extra_samples - start_sample);
-  } else {
-      start_sample -= extra_samples;
-  }
+  auto sample_in_time = (sample_time_diff * sig_options.get_rx_rate()) +
+                      offset_to_first_pulse -
+                      extra_samples;
+  auto start_sample = int64_t(std::fmod(sample_in_time, ringbuffer_size));
 
   if ((start_sample + num_samples_needed) > ringbuffer_size) {
     for (uint32_t i=0; i<total_antennas; i++) {
