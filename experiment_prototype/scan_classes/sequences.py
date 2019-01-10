@@ -18,7 +18,7 @@ import math
 
 from operator import itemgetter
 
-from sample_building.sample_building import make_pulse_samples, calculate_first_rx_sample_index
+from sample_building.sample_building import make_pulse_samples, calculate_first_rx_sample_time
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 
 class Sequence(ScanClassBase):
@@ -55,9 +55,9 @@ class Sequence(ScanClassBase):
     numberofreceivesamples
         the number of receive samples to take, given the rx rate, during 
         the sstime.
-    first_rx_sample
-        The location of the first sample for the RX data, referenced from the start of the TX data.
-        If none is given, this will be calculated as the centre sample of the first pulse.
+    first_rx_sample_time
+        The location of the first sample for the RX data, in time, from the start of the TX data.
+        This will be calculated as the time at centre sample of the first pulse.
     blanks
         A list of sample indices that should not be used for acfs because they were samples
         taken when transmitting.
@@ -318,7 +318,7 @@ class Sequence(ScanClassBase):
         # the echoes from the specified number of ranges.
         self.numberofreceivesamples = int(self.options.rx_sample_rate * self.sstime * 1e-6)
 
-        self.first_rx_sample = 0  # initialized only but set in build_pulse_transmit_data
+        self.first_rx_sample_time = 0  # initilized only but set in build_pulse_transmit_data
         self.blanks = []
 
 
@@ -396,7 +396,8 @@ class Sequence(ScanClassBase):
                                        txrate, options))
                 if pulse_index == 0:
                     # calculate the first rx sample and set the value.
-                    self.first_rx_sample = calculate_first_rx_sample_index(pulse_samples.shape[1])
+                    self.first_rx_sample_time = calculate_first_rx_sample_time(
+                        pulse_samples.shape[1], txrate)
                 # Can plot for testing here
                 # plot_samples('channel0.png', pulse_samples[0])
                 # plot_fft('fftplot.png', pulse_samples[0], prog.txrate)
@@ -419,8 +420,9 @@ class Sequence(ScanClassBase):
 
     def find_blanks(self):
         """
-        Sets the blanks. Must be run after first_rx_sample is set inside the
-        build_pulse_transmit_data function. Called from inside this function.
+        Sets the blanks. Must be run after first_rx_sample_time is set inside the
+        build_pulse_transmit_data function. Called from inside the build_pulse_transmit_data
+        function.
         """
         blanks = []
         sample_time = 1.0/float(self.options.output_sample_rate)
@@ -430,7 +432,7 @@ class Sequence(ScanClassBase):
                 'pulse_len']) * 1.0e-6]
             pulses_time.append(pulse_start_stop)
         output_samples_in_sequence = int(self.sstime * 1.0e-6/sample_time)
-        sample_times = [self.first_rx_sample + i*sample_time for i in
+        sample_times = [self.first_rx_sample_time + i*sample_time for i in
                         range(0, output_samples_in_sequence)]
         for sample_num, time_s in enumerate(sample_times):
             for pulse_start_stop in pulses_time:
