@@ -602,7 +602,7 @@ def calculate_first_rx_sample_time(first_pulse_num_samples_with_tr, txrate):
     decimated data. Assumes window time for TR is the same at front and end of actual non-zero
     samples.
     :param first_pulse_num_samples_with_tr: number of samples in the first pulse.
-    :param txrate: The transmitting sample rate.
+    :param txrate: The transmitting sample rate, in Hz.
     :return: first_rx_sample_time, time to centre of first pulse.
     """
 

@@ -141,7 +141,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
         transmissions.
         :param first_rx_sample_time: Time between start of tx data and where the first RX sample
         should occur in the output data. This is equal to the time to the centre of the
-        first pulse.
+        first pulse. In seconds.
         :param main_antenna_count: number of main array antennas, from the config file.
 
     """
