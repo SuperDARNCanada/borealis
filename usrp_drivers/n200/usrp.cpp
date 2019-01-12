@@ -34,7 +34,7 @@ USRP::USRP(const DriverOptions& driver_options)
   tr_mask_ = driver_options.get_tr_mask();
   usrp_ = uhd::usrp::multi_usrp::make(driver_options.get_device_args());
   // Set first four GPIO on gpio_bank_ to output, the rest are input
-  usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x000F, 0xFFFF);
+  //usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x000F, 0xFFFF);
   set_usrp_clock_source(driver_options.get_ref());
   set_tx_subdev(driver_options.get_tx_subdev());
   set_main_rx_subdev(driver_options.get_main_rx_subdev());

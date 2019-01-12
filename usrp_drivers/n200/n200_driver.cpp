@@ -191,10 +191,13 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             [&]() {
               //On start of new sequence, check if there are new USRP channels and if so
               //set what USRP TX channels and rate(Hz) to use.
-              if (driver_packet.channels_size() > 0 && driver_packet.sob() == true)
+              if (driver_packet.channels_size() > 0 && driver_packet.sob() == true && usrp_channels_set == false)
               {
                 DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " starting something new");
                 stream_args.channels = tx_channels;
+                if (usrp_channels_set == true) {
+                  tx_stream.reset();
+                }
                 tx_stream = usrp_d.get_usrp_tx_stream(stream_args);  // ~10ms per channel
 
                 usrp_channels_set = true;
