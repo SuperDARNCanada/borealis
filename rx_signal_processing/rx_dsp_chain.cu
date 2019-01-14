@@ -247,8 +247,9 @@ int main(int argc, char **argv){
 
     DEBUG_MSG("   Total samples in data message: " << total_samples);
 
+    auto offset_to_first_rx_sample = uint32_t(sp_packet.offset_to_first_rx_sample() * rx_rate);
     dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
-                                sp_packet.first_rx_sample_from_tx_start(),
+                                offset_to_first_rx_sample,
                                 rx_metadata.initialization_time(),
                                 rx_metadata.sequence_start_time(),
                                 rx_metadata.ringbuffer_size(), first_stage_dm_rate,
