@@ -255,10 +255,17 @@ class ExperimentPrototype(object):
 
     __hidden_slice_keys = hidden_key_set
 
-    def __init__(self, cpid, comment_string=''):
+    def __init__(self, cpid, output_rx_rate=3.333333e3, rx_bandwidth=5.0e6,
+                 tx_bandwidth=5.0e6, comment_string=''):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
+        :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz.
+        :param rx_bandwidth: The desired bandwidth for the experiment. Directly determines rx
+        sampling rate of the USRPs.
+        :param rx_bandwidth: The desired tx bandwidth for the experiment. Directly determines tx
+        sampling rate of the USRPs.
+        :param comment_string: description of experiment for data files.
         """
 
         if not isinstance(cpid, int):  # TODO add check for uniqueness
@@ -269,6 +276,28 @@ class ExperimentPrototype(object):
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
 
         self.__cpid = cpid
+
+        self.__output_rx_rate = output_rx_rate
+
+        if self.output_rx_rate > self.options.max_output_sample_rate:
+            errmsg = "Experiment's output sample rate is too high: {} greater than max " \
+                     "{}.".format(self.output_rx_rate, self.options.max_output_sample_rate)
+            raise ExperimentException(errmsg)
+
+        self.__txrate = tx_bandwidth  # sampling rate, samples per sec, Hz.
+        self.__rxrate = rx_bandwidth # sampling rate for rx in samples per sec
+        # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
+        # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
+
+        if self.txrate > self.options.max_tx_sample_rate:
+            errmsg = "Experiment's transmit bandwidth is too large: {} greater than max " \
+                     "{}.".format(self.txrate, self.options.max_tx_sample_rate)
+            raise ExperimentException(errmsg)
+
+        if self.rxrate > self.options.max_rx_sample_rate:
+            errmsg = "Experiment's receive bandwidth is too large: {} greater than max " \
+                     "{}.".format(self.rxrate, self.options.max_rx_sample_rate)
+            raise ExperimentException(errmsg)
 
         self.__comment_string = comment_string
 
@@ -284,10 +313,7 @@ class ExperimentPrototype(object):
 
         # Load the config, hardware, and restricted frequency data
 
-        self.__txrate = self.__options.tx_sample_rate  # sampling rate, samples per sec, Hz.
-        self.__rxrate = self.__options.rx_sample_rate  # sampling rate for rx in samples per sec
-        # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
-        # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
+
 
         # The following are processing defaults. These can be set by the experiment using the setter
         #   upon instantiation. These are defaults for all slices, but these values are
@@ -310,11 +336,10 @@ class ExperimentPrototype(object):
         # These are used internally to build iterable objects out of the slice using the
         # interfacing specified.
 
-        self.__slice_id_scan_lists = None
         self.__scan_objects = []
 
         # TODO Remove above two variables after adding this type below
-        self.__running_experiment = None # this will be of ScanClassBase type
+        self.__running_experiment = None  # this will be of ScanClassBase type
 
     @property
     def cpid(self):
@@ -325,6 +350,57 @@ class ExperimentPrototype(object):
         """
 
         return self.__cpid
+
+    @property
+    def output_rx_rate(self):
+        """
+        The output receive rate of the data.
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__output_rx_rate
+
+    @property
+    def tx_bandwidth(self):
+        """
+        The transmission sample rate to the DAC (Hz), and the transmit bandwidth.
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__txrate
+
+    @property
+    def txrate(self):
+        """
+        The transmission sample rate to the DAC (Hz).
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__txrate
+
+    @property
+    def rx_bandwidth(self):
+        """
+        The receive bandwidth for this experiment, in Hz.
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__rxrate
+
+    @property
+    def rxrate(self):
+        """
+        The receive bandwidth for this experiment, or the receive sampling rate (of I and Q samples)
+        In Hz.
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__rxrate
 
     @property
     def comment_string(self):
@@ -474,15 +550,6 @@ class ExperimentPrototype(object):
         else:
             pass  # TODO log no change
 
-    @property
-    def txrate(self):
-        """
-        The transmission sample rate to the DAC (Hz).
-
-        This is not modifiable and comes from the config options.
-        """
-
-        return self.__txrate
 
     @property
     def txctrfreq(self):
@@ -571,15 +638,6 @@ class ExperimentPrototype(object):
             pass  # TODO errors
 
     @property
-    def rxrate(self):
-        """
-        The receive sampling rate in samples per sec.
-
-        This comes from the config file and cannot be changed in the experiment.
-        """
-        return self.__rxrate
-
-    @property
     def rx_maxfreq(self):
         """
         The maximum receive frequency.
@@ -620,15 +678,6 @@ class ExperimentPrototype(object):
 
         """
         return self._interface
-
-    @property
-    def slice_id_scan_lists(self):
-        """
-        The list of scan slice ids (a list of lists of slice_ids, organized by scan).
-
-        This cannot be modified by the user.
-        """
-        return self.__slice_id_scan_lists
 
     @property
     def scan_objects(self):
@@ -797,17 +846,15 @@ class ExperimentPrototype(object):
         Sequence instances needed to run this experiment.
 
         Will be run by experiment handler, to build iterable objects for radar_control to
-        use. Creates scan_objects and slice_id_scan_lists in the experiment for
-        identifying which slices are in the scans.
+        use. Creates scan_objects in the experiment for identifying which slices are in the scans.
         """
 
-        # Check interfacing
+        # Check interfacing and other experiment-wide settings.
         self.self_check()
 
         # investigating how I might go about using this base class - TODO maybe make a new IterableExperiment class to inherit
 
-        # TODO check that the following 7 lines work, remove self.__slice_id_scan_lists from init,
-        # consider removing scan_objects from init and making a new Experiment class to inherit
+        # TODO consider removing scan_objects from init and making a new Experiment class to inherit
         # from ScanClassBase and having all of this included in there. Then would only need to
         # pass the running experiment to the radar control (would be returned from build_scans)
         self.__running_experiment = ScanClassBase(self.slice_ids, self.slice_dict, self.interface,
@@ -818,10 +865,6 @@ class ExperimentPrototype(object):
         self.__scan_objects = []
         for params in self.__running_experiment.prep_for_nested_scan_class():
             self.scan_objects.append(Scan(*params))
-
-        # self.__slice_id_scan_lists = self.get_scan_slice_ids()
-        # # Returns list of scan lists. Each scan list is a list of the slice_ids for the slices
-        # # included in that scan.
 
         if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
@@ -1319,7 +1362,7 @@ class ExperimentPrototype(object):
         """
 
         if self.num_slices < 1:
-            errmsg = "Error: Invalid num_slices less than 1"
+            errmsg = "Invalid num_slices less than 1"
             raise ExperimentException(errmsg)
 
         # TODO: check if self.cpid is not unique - incorporate known cpids from git repo
