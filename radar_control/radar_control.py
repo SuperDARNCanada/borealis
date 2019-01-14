@@ -52,9 +52,8 @@ def printing(msg):
 
 
 def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, antennas, samples_array,
-                   txctrfreq, rxctrfreq, txrate,
-                   numberofreceivesamples, SOB, EOB, timing, seqnum,
-                   repeat=False):
+                   txctrfreq, rxctrfreq, txrate, rxrate, numberofreceivesamples, SOB, EOB, timing,
+                   seqnum, repeat=False):
     """ Place data in the driver packet and send it via zeromq to the driver.
         :param driverpacket: the protobuf packet to fill and pass over zmq
         :param radctrl_to_driver: the sender socket for sending the driverpacket
@@ -67,7 +66,8 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
         :param txctrfreq: the transmit centre frequency to tune to.
         :param rxctrfreq: the receive centre frequency to tune to. With rx_sample_rate from config.ini file, this
             determines the received signal band.
-        :param txrate: the tx sampling rate.
+        :param txrate: the tx sampling rate (Hz).
+        :param rxrate: the rx sampling rate (Hz).
         :param numberofreceivesamples: number of samples to receive at the rx_sample_rate from config.ini file. This
             determines length of Scope Sync GPIO being high for this sequence.
         :param SOB: start of burst boolean, true for first pulse in sequence.
@@ -109,6 +109,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
         driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
         driverpacket.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
         driverpacket.txrate = txrate
+        driverpacket.rxrate = rxrate
         driverpacket.numberofreceivesamples = numberofreceivesamples
         if __debug__:
             print("NOT A REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3}"
@@ -122,12 +123,13 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
 
 
 def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
-                   brian_radctrl_iden, seqnum, slice_ids,
+                   brian_radctrl_iden, rxrate, seqnum, slice_ids,
                    slice_dict, beam_dict, sequence_time, first_rx_sample_time, main_antenna_count):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
         :param radctrl_to_dsp: The sender socket for sending data to dsp
 	    :param dsp_radctrl_iden: The reciever socket identity on the dsp side
+	    :param rxrate: The receive sampling rate (Hz).
         :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
             with increasing sequences while radar_control is running. It is only reset when program restarts.
         :param slice_ids: The identifiers of the slices that are combined in this sequence. These IDs tell us where to
@@ -152,6 +154,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     packet.sequence_time = sequence_time
     packet.sequence_num = seqnum
     packet.offset_to_first_rx_sample = first_rx_sample_time
+    packet.rxrate = rxrate
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
         chan_add.slice_id = slice_id
@@ -265,8 +268,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     averages).
     :param scan_flag: True if this integration period is the first in a scan.
     :param inttime: The time that expired during this integration period.
-    :param sequences: The sequences of class Sequence for this integration period (
-    AveragingPeriod).
+    :param sequences: The sequences of class Sequence for this integration period (AveragingPeriod).
     :param beamdir_dict: Dictionary where each slice_id key corresponds to a list of beam
     directions for that slice for this integration period.
     :param experiment_id: the ID of the experiment that is running
@@ -489,9 +491,7 @@ def radar():
                     # Build an ordered list of sequences
                     # A sequence is a list of pulses in order
                     # A pulse is a dictionary with all required information for that pulse.
-                    sequence_dict_list = aveperiod.build_sequences(slice_to_beamdir_dict,
-                                                                   experiment.txctrfreq,
-                                                                   experiment.txrate, options)  # TODO pass in only options needed.
+                    sequence_dict_list = aveperiod.build_sequences(slice_to_beamdir_dict)
 
 
                     beam_phase_dict_list = []
@@ -524,7 +524,7 @@ def radar():
                                                   experiment.txctrfreq,
                                                   sequence_dict_list[sequence_index],
                                                   options.main_antenna_count,
-                                                  options.output_sample_rate,
+                                                  experiment.output_rx_rate,
                                                   sequence.ssdelay)
                             debug_samples.append(sequence_samples_dict)
 
