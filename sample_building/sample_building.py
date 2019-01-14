@@ -601,15 +601,17 @@ def create_debug_sequence_samples(txrate, txctrfreq, list_of_pulse_dicts,
     return write_dict
 
 
-def calculate_first_rx_sample_index(first_pulse_num_samples_with_tr):
+def calculate_first_rx_sample_time(first_pulse_num_samples_with_tr, txrate):
     """
     The first rx sample time is in the centre of the first pulse, so find the sample number of
     that time in the TX data so we can align the samples and offset appropriately in the RX
     decimated data. Assumes window time for TR is the same at front and end of actual non-zero
     samples.
     :param first_pulse_num_samples_with_tr: number of samples in the first pulse.
-    :return: first_rx_sample_index, sample index of centre of first pulse.
+    :param txrate: The transmitting sample rate, in Hz.
+    :return: first_rx_sample_time, time to centre of first pulse.
     """
 
     first_rx_sample_index = int(first_pulse_num_samples_with_tr/2)
-    return first_rx_sample_index
+    first_rx_sample_time = float(first_rx_sample_index)/txrate
+    return first_rx_sample_time
