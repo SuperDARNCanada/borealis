@@ -256,7 +256,7 @@ class ExperimentPrototype(object):
     __hidden_slice_keys = hidden_key_set
 
     def __init__(self, cpid, output_rx_rate=3.333333e3, rx_bandwidth=5.0e6,
-                 tx_bandwidth=5.0e6, comment_string=''):
+                 tx_bandwidth=5.0e6, txctrfreq=12000.0, rxctrfreq=12000.0, comment_string=''):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
@@ -265,6 +265,8 @@ class ExperimentPrototype(object):
         sampling rate of the USRPs.
         :param rx_bandwidth: The desired tx bandwidth for the experiment. Directly determines tx
         sampling rate of the USRPs.
+        :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with.
+        :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
         :param comment_string: description of experiment for data files.
         """
 
@@ -277,15 +279,15 @@ class ExperimentPrototype(object):
 
         self.__cpid = cpid
 
-        self.__output_rx_rate = output_rx_rate
+        self.__output_rx_rate = float(output_rx_rate)
 
         if self.output_rx_rate > self.options.max_output_sample_rate:
             errmsg = "Experiment's output sample rate is too high: {} greater than max " \
                      "{}.".format(self.output_rx_rate, self.options.max_output_sample_rate)
             raise ExperimentException(errmsg)
 
-        self.__txrate = tx_bandwidth  # sampling rate, samples per sec, Hz.
-        self.__rxrate = rx_bandwidth # sampling rate for rx in samples per sec
+        self.__txrate = float(tx_bandwidth)  # sampling rate, samples per sec, Hz.
+        self.__rxrate = float(rx_bandwidth) # sampling rate for rx in samples per sec
         # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
         # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
 
@@ -307,13 +309,27 @@ class ExperimentPrototype(object):
 
         # Note - the txctrfreq and rxctrfreq setters modify the actual centre frequency to a
         # multiple of the clock divider that is possible by the USRP - this default value set
-        # here is not exact.
-        self.__txctrfreq = self.txctrfreq = 12000.0  # in kHz.
-        self.__rxctrfreq = self.rxctrfreq = 12000.0  # in kHz.
+        # here is not exact (centre freq is never exactly 12 MHz).
+        self.__txctrfreq = self.txctrfreq = float(txctrfreq)  # in kHz.
+        self.__rxctrfreq = self.rxctrfreq = float(rxctrfreq)  # in kHz.
 
         # Load the config, hardware, and restricted frequency data
 
-
+        # This is experiment-wide transmit metadata necessary to build the pulses. This data
+        # cannot change within the experiment and is used in the scan classes to pass information
+        # to where the samples are built.
+        self.__transmit_metadata = {
+            'output_rx_rate': self.output_rx_rate,
+            'main_antenna_count': self.options.main_antenna_count,
+            'tr_window_time': self.options.tr_window_time,
+            'main_antenna_spacing': self.options.main_antenna_spacing,
+            'pulse_ramp_time': self.options.pulse_ramp_time,
+            'max_usrp_dac_amplitude': self.options.max_usrp_dac_amplitude,
+            'rx_sample_rate': self.rxrate,
+            'minimum_pulse_separation': self.options.minimum_pulse_separation,
+            'txctrfreq': self.txctrfreq,
+            'txrate': self.txrate
+        }
 
         # The following are processing defaults. These can be set by the experiment using the setter
         #   upon instantiation. These are defaults for all slices, but these values are
@@ -482,6 +498,16 @@ class ExperimentPrototype(object):
         return self.__options
 
     @property
+    def transmit_metadata(self):
+        """
+        A dictionary of config options and experiment-set values that cannot change in the
+        experiment, that will be used to build pulse sequences.
+        """
+
+        return self.__transmit_metadata
+
+
+    @property
     def xcf(self):
         """
         The default cross-correlation flag boolean.
@@ -570,14 +596,18 @@ class ExperimentPrototype(object):
 
         :param value: int for transmission centre frequency to tune USRP to (kHz).
         """
-        # TODO review if this should be modifiable, definitely takes tuning time.
-        if isinstance(value, int):
-            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-            clock_multiples = self.options.usrp_master_clock_rate/2**32
-            clock_divider = math.ceil(value*1e3/clock_multiples)
-            self.__txctrfreq = (clock_divider * clock_multiples)/1e3 # TODO return actual value tuned to.
+        try:
+            self.__txctrfreq
+        except NameError:
+            if isinstance(value, int):
+                # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+                clock_multiples = self.options.usrp_master_clock_rate/2**32
+                clock_divider = math.ceil(value*1e3/clock_multiples)
+                self.__txctrfreq = (clock_divider * clock_multiples)/1e3 # TODO return actual value tuned to.
+            else:
+                pass  # TODO errors / log no change
         else:
-            pass  # TODO errors / log no change
+            print('Transmit centre frequency has already been set so will not be changed.')
 
     @property
     def tx_maxfreq(self):
@@ -628,14 +658,19 @@ class ExperimentPrototype(object):
         frequency can only be tuned in steps of the master clock rate / 2^32. We determine the
         closest value to the desired center frequency and adjust to that.
         """
-        # TODO review if this should be modifiable, definitely takes tuning time.
-        if isinstance(value, int):
-            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-            clock_multiples = self.options.usrp_master_clock_rate/2**32
-            clock_divider = math.ceil(value*1e3/clock_multiples)
-            self.__rxctrfreq = (clock_divider * clock_multiples)/1e3   # TODO return actual tuned freq.
+        try:
+            self.__rxctrfreq
+        except NameError:
+            if isinstance(value, int):
+                # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+                clock_multiples = self.options.usrp_master_clock_rate/2**32
+                clock_divider = math.ceil(value*1e3/clock_multiples)
+                self.__rxctrfreq = (clock_divider * clock_multiples)/1e3   # TODO return actual tuned freq.
+            else:
+                pass  # TODO errors
         else:
-            pass  # TODO errors
+            print('Receive centre frequency has already been set so will not be changed.')
+
 
     @property
     def rx_maxfreq(self):
@@ -858,7 +893,7 @@ class ExperimentPrototype(object):
         # from ScanClassBase and having all of this included in there. Then would only need to
         # pass the running experiment to the radar control (would be returned from build_scans)
         self.__running_experiment = ScanClassBase(self.slice_ids, self.slice_dict, self.interface,
-                                                  self.options)
+                                                  self.transmit_metadata)
 
         self.__running_experiment.nested_slice_list = self.get_scan_slice_ids()
 
