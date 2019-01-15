@@ -43,8 +43,7 @@ class ExperimentOptions:
             self._max_output_sample_rate = float(
                 config['max_output_sample_rate'])  # should use to check iqdata samples
             # when adjusting the experiment during operations.
-            self._filter_description = {'filter_cutoff': config['third_stage_filter_cutoff'],
-                                       'filter_transition': config['third_stage_filter_transition']}
+            self._number_of_filtering_stages = int(config['number_of_filtering_stages'])
             self._site_id = config['site_id']
             self._max_freq = float(config['max_freq'])  # Hz
             self._min_freq = float(config['min_freq'])  # Hz
@@ -200,7 +199,7 @@ class ExperimentOptions:
                     \n    pulse_ramp_time = {} s\
                     \n    tr_window_time = {} s\
                     \n    max_output_sample_rate = {} Hz\
-                    \n    filter_description = {} \
+                    \n    number_of_filtering_stages = {} \
                     \n    site_id = {} \
                     \n    geo_lat = {} degrees \
                     \n    geo_long = {} degrees\
@@ -231,7 +230,7 @@ class ExperimentOptions:
                                 self.max_tx_sample_rate, self.max_rx_sample_rate,
                                 self.max_usrp_dac_amplitude, self.pulse_ramp_time,
                                 self.tr_window_time, self.max_output_sample_rate,
-                                self.filter_description, self.site_id, self.geo_lat, self.geo_long,
+                                self.number_of_filtering_stages, self.site_id, self.geo_lat, self.geo_long,
                                 self.altitude, self.boresight, self.beam_sep, self.velocity_sign,
                                 self.analog_rx_attenuator, self.tdiff, self.phase_sign,
                                 self.intf_offset, self.analog_rx_rise, self.analog_atten_stages,
@@ -283,8 +282,8 @@ class ExperimentOptions:
         return self._max_output_sample_rate  # Hz
 
     @property
-    def filter_description(self):
-        return self._filter_description
+    def number_of_filtering_stages(self):
+        return self._number_of_filtering_stages
 
     @property
     def site_id(self):
