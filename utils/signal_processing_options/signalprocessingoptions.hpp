@@ -56,7 +56,6 @@ class SignalProcessingOptions: public Options {
   double first_stage_scaling_factor;
   double second_stage_scaling_factor;
   double third_stage_scaling_factor;
-
   std::string router_address;
   std::string dsp_to_radctrl_identity;
   std::string dsp_driver_identity;

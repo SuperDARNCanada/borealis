@@ -128,7 +128,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   std::vector<size_t> tx_channels = driver_options.get_transmit_channels();
 
   uhd::tx_streamer::sptr tx_stream;
-  uhd::stream_args_t stream_args("fc32", "sc16");
+  uhd::stream_args_t stream_args(driver_options.get_cpu(), driver_options.get_otw());
 
 
   std::vector<std::vector<std::vector<std::complex<float>>>> pulses;
@@ -455,7 +455,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.bind("inproc://thread"));
 
-  uhd::stream_args_t stream_args("fc32", "sc16");
+  uhd::stream_args_t stream_args(driver_options.get_cpu(), driver_options.get_otw());
   uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
   auto rx_rate_hz = driver_options.get_rx_rate();
 
