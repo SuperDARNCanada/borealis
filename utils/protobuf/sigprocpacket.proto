@@ -7,7 +7,7 @@ message SigProcPacket {
     uint32 sequence_num = 2;
     double kerneltime = 3;
     float sequence_time = 4;
-    uint32 offset_to_first_rx_sample = 5;
+    float offset_to_first_rx_sample = 5;
 
     message RXChan {
         uint32 slice_id = 1;
