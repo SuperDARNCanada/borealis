@@ -336,7 +336,7 @@ void USRP::check_ref_locked()
 /**
  * @brief      Clears any timed USRP commands.
  */
-void USRP::clear_command_times()
+void USRP::clear_command_time()
 {
   usrp_->clear_command_time();
 }
@@ -403,6 +403,7 @@ uhd::tx_streamer::sptr USRP::get_usrp_tx_stream(uhd::stream_args_t stream_args)
 {
   return usrp_->get_tx_stream(stream_args);
 }
+
 
 // REVIEW #6 TODO create a set and clear for new method of timing that is a hybrid between atten and t/r (we are only using one pin for both and breaking off on separate board)
 

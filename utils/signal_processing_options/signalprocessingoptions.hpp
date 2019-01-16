@@ -19,6 +19,9 @@ class SignalProcessingOptions: public Options {
   double get_second_stage_filter_transition() const;
   double get_third_stage_filter_cutoff() const;
   double get_third_stage_filter_transition() const;
+  double get_first_stage_scaling_factor() const;
+  double get_second_stage_scaling_factor() const;
+  double get_third_stage_scaling_factor() const;
   uint32_t get_main_antenna_count() const;
   uint32_t get_interferometer_antenna_count() const;
 
@@ -50,6 +53,9 @@ class SignalProcessingOptions: public Options {
   double second_stage_filter_transition;
   double third_stage_filter_cutoff;
   double third_stage_filter_transition;
+  double first_stage_scaling_factor;
+  double second_stage_scaling_factor;
+  double third_stage_scaling_factor;
   std::string router_address;
   std::string dsp_to_radctrl_identity;
   std::string dsp_driver_identity;

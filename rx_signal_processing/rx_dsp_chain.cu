@@ -75,11 +75,11 @@ int main(int argc, char **argv){
 
 
 
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "1st stage dm rate: " 
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "1st stage dm rate: "
     << COLOR_YELLOW(first_stage_dm_rate));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "2nd stage dm rate: " 
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "2nd stage dm rate: "
     << COLOR_YELLOW(second_stage_dm_rate));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "3rd stage dm rate: " 
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "3rd stage dm rate: "
     << COLOR_YELLOW(third_stage_dm_rate));
 
 
@@ -87,11 +87,11 @@ int main(int argc, char **argv){
 
   Filtering filters(rx_rate,sig_options);
 
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 1st stage taps: " 
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 1st stage taps: "
     << COLOR_YELLOW(filters.get_num_first_stage_taps()));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 2nd stage taps: " 
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 2nd stage taps: "
     << COLOR_YELLOW(filters.get_num_second_stage_taps()));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 3rd stage taps: " 
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 3rd stage taps: "
     << COLOR_YELLOW(filters.get_num_third_stage_taps()));
 
   RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 1st stage taps after padding: "
@@ -104,7 +104,7 @@ int main(int argc, char **argv){
   auto filter_timing_end = std::chrono::steady_clock::now();
   auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(filter_timing_end -
                                                                        filter_timing_start).count();
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Time to create 3 filters: " 
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Time to create 3 filters: "
     << COLOR_MAGENTA(time_diff) << "us");
 
   //FIXME(Keith): fix saving filter to file
@@ -137,7 +137,7 @@ int main(int argc, char **argv){
       //TODO(keith): handle error
     }
 
-    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Got driver request for sequence #" 
+    RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Got driver request for sequence #"
       << COLOR_RED(rx_metadata.sequence_num()));
 
     auto total_antennas = sig_options.get_main_antenna_count() +
@@ -158,8 +158,8 @@ int main(int argc, char **argv){
     //Verify driver and radar control packets align
     if (sp_packet.sequence_num() != rx_metadata.sequence_num()) {
       //TODO(keith): handle error
-      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") <<"SEQUENCE NUMBER mismatch radar_control: " 
-        << COLOR_RED(sp_packet.sequence_num()) << " usrp_driver: " 
+      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") <<"SEQUENCE NUMBER mismatch radar_control: "
+        << COLOR_RED(sp_packet.sequence_num()) << " usrp_driver: "
         << COLOR_RED(rx_metadata.sequence_num()));
     }
 
@@ -247,7 +247,9 @@ int main(int argc, char **argv){
 
     DEBUG_MSG("   Total samples in data message: " << total_samples);
 
+    auto offset_to_first_rx_sample = uint32_t(sp_packet.offset_to_first_rx_sample() * rx_rate);
     dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
+                                offset_to_first_rx_sample,
                                 rx_metadata.initialization_time(),
                                 rx_metadata.sequence_start_time(),
                                 rx_metadata.ringbuffer_size(), first_stage_dm_rate,

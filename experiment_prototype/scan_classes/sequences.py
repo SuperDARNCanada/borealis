@@ -14,11 +14,12 @@
     :author: Marci Detwiller
 """
 
+import math
+
 from operator import itemgetter
 
-from sample_building.sample_building import make_pulse_samples
+from sample_building.sample_building import make_pulse_samples, calculate_first_rx_sample_time
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
-
 
 class Sequence(ScanClassBase):
     """  
@@ -54,6 +55,9 @@ class Sequence(ScanClassBase):
     numberofreceivesamples
         the number of receive samples to take, given the rx rate, during 
         the sstime.
+    first_rx_sample_time
+        The location of the first sample for the RX data, in time, from the start of the TX data.
+        This will be calculated as the time at centre sample of the first pulse. In seconds.
     blanks
         A list of sample indices that should not be used for acfs because they were samples
         taken when transmitting.
@@ -314,22 +318,8 @@ class Sequence(ScanClassBase):
         # the echoes from the specified number of ranges.
         self.numberofreceivesamples = int(self.options.rx_sample_rate * self.sstime * 1e-6)
 
-        blanks = []
-        sample_time = 1.0/float(self.options.output_sample_rate)
-        first_sample_time = sample_time/2.0  # TODO this needs to be calculated appropriately
-        # given number of samples added on the front when filtering occurs
-        pulses_time = []
-        for pulse in self.pulses:
-            pulse_start_stop = [pulse['pulse_timing_us'] * 1.0e-6, (pulse['pulse_timing_us'] + pulse[
-                'pulse_len']) * 1.0e-6] 
-            pulses_time.append(pulse_start_stop)
-        output_samples_in_sequence = int(self.sstime * 1.0e-6/sample_time)
-        sample_times = [first_sample_time + i*sample_time for i in range(0,output_samples_in_sequence)]
-        for sample_num, time_s in enumerate(sample_times):
-            for pulse_start_stop in pulses_time:
-                if pulse_start_stop[0] <= time_s <= pulse_start_stop[1]:
-                    blanks.append(sample_num)
-        self.blanks = blanks
+        self.first_rx_sample_time = 0  # initilized only but set in build_pulse_transmit_data
+        self.blanks = []
 
 
     def build_pulse_transmit_data(self, slice_to_beamdir_dict, txctrfreq, txrate, options):
@@ -392,6 +382,8 @@ class Sequence(ScanClassBase):
             repeat = one_pulse_list[0]['isarepeat']
             timing = one_pulse_list[0]['pulse_timing_us']
             pulse_samples = []
+
+
             if repeat:
                 pulse_antennas = []
             else:
@@ -402,6 +394,10 @@ class Sequence(ScanClassBase):
                     make_pulse_samples(one_pulse_list, self.power_divider, self.slice_dict,
                                        slice_to_beamdir_dict, txctrfreq,
                                        txrate, options))
+                if pulse_index == 0:
+                    # calculate the first rx sample and set the value.
+                    self.first_rx_sample_time = calculate_first_rx_sample_time(
+                        pulse_samples[0].shape[0], txrate)
                 # Can plot for testing here
                 # plot_samples('channel0.png', pulse_samples[0])
                 # plot_fft('fftplot.png', pulse_samples[0], prog.txrate)
@@ -417,4 +413,29 @@ class Sequence(ScanClassBase):
             # Add pulse dictionary pulse_transmit_data at last place in sequence list
             sequence_list.append(pulse_transmit_data)
 
+        self.find_blanks()
+
         return sequence_list
+
+
+    def find_blanks(self):
+        """
+        Sets the blanks. Must be run after first_rx_sample_time is set inside the
+        build_pulse_transmit_data function. Called from inside the build_pulse_transmit_data
+        function.
+        """
+        blanks = []
+        sample_time = 1.0/float(self.options.output_sample_rate)
+        pulses_time = []
+        for pulse in self.pulses:
+            pulse_start_stop = [pulse['pulse_timing_us'] * 1.0e-6, (pulse['pulse_timing_us'] + pulse[
+                'pulse_len']) * 1.0e-6]
+            pulses_time.append(pulse_start_stop)
+        output_samples_in_sequence = int(self.sstime * 1.0e-6/sample_time)
+        sample_times = [self.first_rx_sample_time + i*sample_time for i in
+                        range(0, output_samples_in_sequence)]
+        for sample_num, time_s in enumerate(sample_times):
+            for pulse_start_stop in pulses_time:
+                if pulse_start_stop[0] <= time_s <= pulse_start_stop[1]:
+                    blanks.append(sample_num)
+        self.blanks = blanks
