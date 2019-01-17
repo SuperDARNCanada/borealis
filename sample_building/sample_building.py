@@ -284,7 +284,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
      zeroes.
     :returns pulse_channels: The antennas to actually send the corresponding array. If 
      not all transmit antennas, then we will know that we are transmitting zeroes on 
-     that antenna.
+     any antennas not listed in this list but available as identified in the config file.
     """
 
 
