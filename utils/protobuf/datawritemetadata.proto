@@ -10,6 +10,8 @@ message IntegrationTimeMetadata {
   uint32 last_seqn_num = 5;
   bool scan_flag  = 6;
   double integration_time  = 7;
+  double tx_center_freq = 8;
+  double rx_center_freq = 9;
 
   message SequenceType {
     repeated RXChan rxchannel = 1;

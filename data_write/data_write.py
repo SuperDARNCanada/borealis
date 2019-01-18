@@ -73,6 +73,8 @@ DATA_TEMPLATE = {
     "main_antenna_count" : None, # Number of main array antennas.
     "intf_antenna_count" : None, # Number of interferometer array antennas.
     "freq" : None, # The frequency used for this experiment slice in kHz.
+    "tx_center_freq" : None, # The center frequency the USRP uses for digital up conversion in Hz.
+    "rx_center_freq" : None, # The center frequency the USRP uses for digital down conversion in Hz.
     "comment" : None, # Additional text comment that describes the slice.
     "num_samps" : None, # Number of samples in the sampling period.
     "antenna_arrays_order" : None, # States what order the data is in. Describes the data layout.
@@ -241,17 +243,9 @@ class ParseData(object):
 
         self._rawrf_locations.append(self.processed_data.rf_samples_location)
 
-        # TODO(keith): Parallelize?
-        procs = []
-
         self.parse_bfiq()
         self.parse_pre_bfiq()
 
-        for proc in procs:
-            proc.start()
-
-        for proc in procs:
-            proc.join()
 
 
     @property
@@ -681,7 +675,7 @@ class DataWrite(object):
                     write_file(output_file, params, two_hr_file_with_type)
 
 
-        def write_raw_rf_params(param):
+        def write_raw_rf_params(param, freqs):
             """
             Opens the shared memory location in the protobuf and writes the samples out to file.
             Write medium must be able to sustain high write bandwidth. Shared memory is destroyed
@@ -691,6 +685,7 @@ class DataWrite(object):
 
             Args:
                 param (Dict): A dict of parameters to write. Some will be removed.
+                freqs (List): A list of the slice frequencies contained in this data.
 
 
             """
@@ -726,6 +721,7 @@ class DataWrite(object):
                                                 dtype=np.uint32)
             param['main_antenna_count'] = np.uint32(self.options.main_antenna_count)
             param['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
+            param['rx_frequencies'] = np.array(freqs, dtype=np.uint32)
             # These fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
             # this data.
@@ -838,6 +834,8 @@ class DataWrite(object):
                 parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
+                parameters['tx_center_freq'] = np.float32(integration_meta.tx_center_freq)
+                parameters['rx_center_freq'] = np.float32(integration_meta.rx_center_freq)
                 parameters['comment'] = rx_freq.comment
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
@@ -877,8 +875,13 @@ class DataWrite(object):
 
         if write_raw_rf:
             # Just need first available slice paramaters.
+            freqs = []
+            for meta in integration_meta.sequences:
+                for rx_freq in meta.rxchannel:
+                    freqs.append(rx_freq.rxfreq)
+
             one_slice_params = next(iter(parameters_holder.values())).copy()
-            procs.append(mp.Process(target=write_raw_rf_params, args=(one_slice_params, )))
+            procs.append(mp.Process(target=write_raw_rf_params, args=(one_slice_params, freqs)))
         else:
             for rf_samples_location in data_parsing.rawrf_locations:
                 shm = ipc.SharedMemory(rf_samples_location)
