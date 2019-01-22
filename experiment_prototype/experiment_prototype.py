@@ -29,7 +29,7 @@ from experiment_prototype import list_tests
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
-from experiment_prototype.filtering.filtering import DecimationScheme, DecimationStage
+from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, DecimationStage
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
