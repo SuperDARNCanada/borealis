@@ -1,4 +1,4 @@
-#!/usr/bin/python
+# !/usr/bin/python3
 # Copyright 2015 The Ostrich / by Itamar O
 # Copyright 2016 SuperDARN
 
@@ -143,7 +143,7 @@ def main():
             items = [_BIN_SUBDIR]
         # print out the item values
         for val in items:
-            print val
+            print(val)
 
 if '__main__' == __name__:
     main()
