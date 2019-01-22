@@ -39,9 +39,9 @@ def sprint(message, *args):
     """Silent-mode-aware SCons message printer."""
     if not GetOption('silent'):
         if args:
-            print 'scons:', message % (args)
+            print('scons:', message % (args))
         else:
-            print 'scons:', message
+            print('scons:', message)
 
 def listify(args):
     """Return args as a list.

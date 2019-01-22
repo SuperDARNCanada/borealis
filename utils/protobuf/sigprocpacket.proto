@@ -8,7 +8,7 @@ message SigProcPacket {
     uint32 sequence_num = 3;
     double kerneltime = 4;
     float sequence_time = 5;
-    uint32 offset_to_first_rx_sample = 6;
+    float offset_to_first_rx_sample = 6;
     double rxrate = 7;
     double output_sample_rate = 8;
 

@@ -400,7 +400,7 @@ class Sequence(ScanClassBase):
                 if pulse_index == 0:
                     # calculate the first rx sample and set the value.
                     self.first_rx_sample_time = calculate_first_rx_sample_time(
-                        pulse_samples.shape[1], txrate)
+                        pulse_samples[0].shape[0], txrate)
                 # Can plot for testing here
                 # plot_samples('channel0.png', pulse_samples[0])
                 # plot_fft('fftplot.png', pulse_samples[0], prog.txrate)

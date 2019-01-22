@@ -14,6 +14,7 @@ DriverOptions::DriverOptions() {
     Options::parse_config_file();
 
     devices_ = config_pt.get<std::string>("devices");
+    clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
     /*Remove whitespace/new lines from device list*/
     boost::remove_erase_if (devices_, boost::is_any_of(" \n\f\t\v"));
 
@@ -29,16 +30,6 @@ DriverOptions::DriverOptions() {
                                 config_pt.get<std::string>("rx_sample_rate"));
     tx_sample_rate_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("tx_sample_rate"));
-    scope_sync_mask_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("scope_sync_mask"));
-    atten_mask_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("atten_mask"));
-    tr_mask_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("tr_mask"));
-    atten_window_time_start_ = boost::lexical_cast<double>(
-                                config_pt.get<std::string>("atten_window_time_start"));
-    atten_window_time_end_ = boost::lexical_cast<double>(
-                                config_pt.get<std::string>("atten_window_time_end"));
     tr_window_time_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("tr_window_time"));
     main_antenna_count_ = boost::lexical_cast<uint32_t>(
@@ -65,7 +56,7 @@ DriverOptions::DriverOptions() {
     auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
     auto ma_tx_str = config_pt.get<std::string>("main_antenna_usrp_tx_channels");
-    
+
     receive_channels_ = make_channels(total_recv_chs_str);
     transmit_channels_ = make_channels(ma_tx_str);
 
@@ -100,6 +91,11 @@ double DriverOptions::get_rx_rate() const
 std::string DriverOptions::get_device_args() const
 {
     return devices_;
+}
+
+std::string DriverOptions::get_clk_addr() const
+{
+    return clk_addr_;
 }
 
 std::string DriverOptions::get_tx_subdev() const
@@ -140,31 +136,6 @@ std::string DriverOptions::get_otw() const
 std::string DriverOptions::get_gpio_bank() const
 {
     return gpio_bank_;
-}
-
-uint32_t DriverOptions::get_scope_sync_mask() const
-{
-    return scope_sync_mask_;
-}
-
-uint32_t DriverOptions::get_atten_mask() const
-{
-    return atten_mask_;
-}
-
-uint32_t DriverOptions::get_tr_mask() const
-{
-    return tr_mask_;
-}
-
-double DriverOptions::get_atten_window_time_start() const
-{
-    return atten_window_time_start_;
-}
-
-double DriverOptions::get_atten_window_time_end() const
-{
-    return atten_window_time_end_;
 }
 
 double DriverOptions::get_tr_window_time() const
