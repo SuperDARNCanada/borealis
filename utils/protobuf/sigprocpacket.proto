@@ -4,11 +4,13 @@ package sigprocpacket;
 
 message SigProcPacket {
     repeated RXChan rxchannel = 1; // REVIEW #28 spec?
-    uint32 sequence_num = 2;
-    double kerneltime = 3;
-    float sequence_time = 4;
-    uint32 offset_to_first_rx_sample = 5;
-    double rxrate = 6;
+    repeated DMStage decimation_stages = 2;
+    uint32 sequence_num = 3;
+    double kerneltime = 4;
+    float sequence_time = 5;
+    uint32 offset_to_first_rx_sample = 6;
+    double rxrate = 7;
+    double output_sample_rate = 8;
 
     message RXChan {
         uint32 slice_id = 1;
@@ -25,6 +27,13 @@ message SigProcPacket {
                 double imag_phase = 2;
             }
         }
+    }
+
+    message DMStage {
+        uint32 stage_num = 1;
+        double input_rate = 2
+        uint32 dm_rate = 3;
+        repeated float filter_taps = 4;
     }
 
 }

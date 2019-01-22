@@ -123,13 +123,15 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
 
 
 def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
-                   brian_radctrl_iden, rxrate, seqnum, slice_ids,
-                   slice_dict, beam_dict, sequence_time, first_rx_sample_time, main_antenna_count):
+                   brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
+                   slice_dict, beam_dict, sequence_time, first_rx_sample_time,
+                   main_antenna_count, decimation_scheme):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
         :param radctrl_to_dsp: The sender socket for sending data to dsp
 	    :param dsp_radctrl_iden: The reciever socket identity on the dsp side
 	    :param rxrate: The receive sampling rate (Hz).
+	    :param output_sample_rate: The output sample rate desired for the output data (Hz).
         :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
             with increasing sequences while radar_control is running. It is only reset when program restarts.
         :param slice_ids: The identifiers of the slices that are combined in this sequence. These IDs tell us where to
@@ -145,6 +147,8 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
         should occur in the output data. This is equal to the time to the centre of the
         first pulse. In seconds.
         :param main_antenna_count: number of main array antennas, from the config file.
+        :param decimation_scheme: object of type DecimationScheme that has all decimation and
+            filtering data.
 
     """
 
@@ -155,6 +159,15 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     packet.sequence_num = seqnum
     packet.offset_to_first_rx_sample = first_rx_sample_time
     packet.rxrate = rxrate
+    packet.output_sample_rate = output_sample_rate
+
+    for stage in decimation_scheme.stages:
+        dm_stage_add = packet.decimation_stages.add()
+        dm_stage_add.stage_num = stage.stage_num
+        dm_stage_add.input_rate = stage.input_rate
+        dm_stage_add.dm_rate = stage.dm_rate
+        dm_stage_add.filter_taps.extend(stage.filter_taps)
+
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
         chan_add.slice_id = slice_id
@@ -178,10 +191,6 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                     phase = 0.0 + 0.0j
                 phase_add.real_phase = phase.real
                 phase_add.imag_phase = phase.imag
-
-    # Don't need to send channel numbers, will always send with length = total antennas.
-    # TODO : Beam directions will be formated e^i*phi so that a 0 will indicate not
-    # to receive on that channel. ** make this update phase = 0 on channels not included.
 
     # Brian requests sequence metadata for timeouts
 
@@ -256,7 +265,8 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, nave, scan_flag, inttime, sequences, beamdir_dict,
-                            experiment_id, experiment_string, debug_samples=None):
+                            experiment_id, experiment_string, output_sample_rate,
+                            debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
     :param packet: The IntegrationTimeMetadata protobuf packet.
@@ -273,6 +283,8 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     directions for that slice for this integration period.
     :param experiment_id: the ID of the experiment that is running
     :param experiment_string: the experiment string to be placed in the data files.
+    :param output_sample_rate: The output sample rate of the output data, defined by the
+    experiment, in Hz.
     :param debug_samples: the debug samples for this integration period, to be written to the
     file if debug is set. This is a list of dictionaries for each Sequence in the
     AveragingPeriod. The dictionary is set up in the sample_building module function
@@ -288,8 +300,8 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     packet.nave = nave
     packet.last_seqn_num = seqnum
     packet.scan_flag = scan_flag
-
     packet.integration_time = inttime.total_seconds()
+    packet.output_sample_rate = output_sample_rate
 
     for sequence_index, sequence in enumerate(sequences):
         sequence_add = packet.sequences.add()
@@ -555,11 +567,13 @@ def radar():
                                            options.dsp_to_radctrl_identity,
                                            radar_control_to_brian,
                                            options.brian_to_radctrl_identity,
+                                           experiment.rxrate,
+                                           experiment.output_rx_rate,
                                            seqnum_start + nave,
                                            sequence.slice_ids, experiment.slice_dict,
                                            beam_phase_dict, sequence.seqtime,
                                            sequence.first_rx_sample_time,
-                                          options.main_antenna_count)
+                                           options.main_antenna_count, experiment.decimation_scheme)
 
                             # beam_phase_dict is slice_id : list of beamdirs, where beamdir = list
                             # of antenna phase offsets for all antennas for that direction ordered
@@ -614,7 +628,8 @@ def radar():
                                             scan_flag, integration_period_time,
                                             aveperiod.sequences, slice_to_beamdir_dict,
                                             experiment.cpid, experiment.comment_string,
-                                            debug_samples)
+                                            experiment.output_rx_rate,
+                                            debug_samples=debug_samples)
 
                     # end of the averaging period loop - move onto the next averaging period.
                     # Increment the sequence number by the number of sequences that were in this

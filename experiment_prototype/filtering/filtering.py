@@ -14,17 +14,18 @@ from functools import reduce
 
 class DecimationStage(object):
 
-    def __init__(self, stage, input_rate, dm_rate, filter_taps):
+    def __init__(self, stage_num, input_rate, dm_rate, filter_taps):
         """
         Create a decimation stage with given decimation rate, input sample rate, and filter taps.
-        :param stage: the index of this filter/decimate stage to all stages (beginning with stage 0)
+        :param stage_num: the index of this filter/decimate stage to all stages (beginning with
+        stage 0)
         :param input_rate: the input sampling rate, in Hz.
         :param dm_rate: the decimation rate. Must be an integer.
         :param filter_taps: a list of filter taps (numeric) to be convolved with the data before the
         decimation is done.
         :raises ExperimentException: if types are not correct for signal processing module to use
         """
-        self.stage = stage
+        self.stage_num = stage_num
         self.input_rate = input_rate
         if not isinstance(dm_rate, int):
             raise ExperimentException('Decimation Rate is not an Integer')
@@ -32,11 +33,11 @@ class DecimationStage(object):
         self.dm_rate = dm_rate
         if not isinstance(filter_taps, list):
             errmsg = 'Filter taps {} must be a list in decimation stage {}'.format(filter_taps,
-                                                                                   stage)
+                                                                                   stage_num)
             raise ExperimentException(errmsg)
         for x in filter_taps:
-            if not isinstance(x, (int, float, complex)):
-                errmsg = 'Filter tap {} is not numeric in decimation stage {}'.format(x, stage)
+            if not isinstance(x, (int, float)):  # TODO should complex be included here?
+                errmsg = 'Filter tap {} is not numeric in decimation stage {}'.format(x, stage_num)
                 raise ExperimentException(errmsg)
         self.filter_taps = filter_taps
 
@@ -54,7 +55,7 @@ class DecimationScheme(object):
         :param stages: a list of DecimationStages, or None, if they will be set up as default here.
         """
         options = ExperimentOptions()
-        self.num_stages = options.number_of_filtering_stages
+        self.__num_stages = options.number_of_filtering_stages
         self.rxrate = rxrate
         self.output_sample_rate = output_sample_rate
 
@@ -110,7 +111,8 @@ class DecimationScheme(object):
             self.input_rates = []
             self.filter_scaling_factors = []
 
-            for dec_stage in stages:
+            self.stages = stages
+            for dec_stage in self.stages:
                 self.dm_rates.append(dec_stage.dm_rate)
                 self.output_rates.append(dec_stage.output_rate)
                 self.input_rates.append(dec_stage.input_rate)
@@ -138,6 +140,19 @@ class DecimationScheme(object):
                                                                 self.output_sample_rate)
                 raise ExperimentException(errmsg)
 
+    def __repr__(self):
+        repr_str = 'Decimation Scheme with {} stages:\n'.format(self.num_stages)
+        for stage in self.stages:
+            repr_str.append('\nStage {}:'.format(stage.stage_num))
+            repr_str.append('\nInput Rate: {} Hz'.format(stage.input_rate))
+            repr_str.append('\nDecimation by: {}'.format(stage.dm_rate))
+            repr_str.append('\nOutput Rate: {} Hz'.format(stage.output_rate))
+            repr_str.append('\nFilter Taps: {}\n'.format(stage.filter_taps))
+        return repr_str
+
+    @property
+    def num_stages(self):
+        return self.__num_stages
 
 def calculate_num_filter_taps(sampling_freq, trans_width, k):
     """

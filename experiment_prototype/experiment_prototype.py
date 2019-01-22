@@ -29,6 +29,7 @@ from experiment_prototype import list_tests
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
+from experiment_prototype.filtering.filtering import DecimationScheme, DecimationStage
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
@@ -219,6 +220,9 @@ time the experiment is run). If set by the user, the values will be overwritten 
 therefore ignored.
 """
 
+default_rx_bandwidth = 5.0e6
+default_output_rx_rate = 3.333333e3
+
 class ExperimentPrototype(object):
     """
     The base class for all experiments.
@@ -254,9 +258,14 @@ class ExperimentPrototype(object):
     __slice_keys = slice_key_set
 
     __hidden_slice_keys = hidden_key_set
+    __default_output_rx_rate = default_output_rx_rate
+    __default_rx_bandwidth = default_rx_bandwidth
 
-    def __init__(self, cpid, output_rx_rate=3.333333e3, rx_bandwidth=5.0e6,
-                 tx_bandwidth=5.0e6, txctrfreq=12000.0, rxctrfreq=12000.0, comment_string=''):
+    def __init__(self, cpid, output_rx_rate=default_output_rx_rate,
+                 rx_bandwidth=default_rx_bandwidth, tx_bandwidth=5.0e6, txctrfreq=12000.0,
+                 rxctrfreq=12000.0,
+                 decimation_scheme=DecimationScheme(default_rx_bandwidth, default_output_rx_rate),
+                 comment_string=''):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
@@ -267,6 +276,9 @@ class ExperimentPrototype(object):
         sampling rate of the USRPs.
         :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with.
         :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
+        :param decimation_scheme: an object defining the decimation and filtering stages for the
+        signal processing module. If you would like something other than the default, you will
+        need to build an object of the DecimationScheme type before initiating your experiment.
         :param comment_string: description of experiment for data files.
         """
 
@@ -300,6 +312,8 @@ class ExperimentPrototype(object):
             errmsg = "Experiment's receive bandwidth is too large: {} greater than max " \
                      "{}.".format(self.rxrate, self.options.max_rx_sample_rate)
             raise ExperimentException(errmsg)
+
+        self.__decimation_scheme = decimation_scheme
 
         self.__comment_string = comment_string
 
@@ -417,6 +431,16 @@ class ExperimentPrototype(object):
         """
 
         return self.__rxrate
+
+    @property
+    def decimation_scheme(self):
+        """
+        The decimation scheme, of type DecimationScheme from the filtering module. Includes all
+        filtering and decimating information for the signal processing module.
+
+        This is read-only once established in instantiation.
+        """
+        return self.__decimation_scheme
 
     @property
     def comment_string(self):
