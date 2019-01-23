@@ -50,14 +50,14 @@ uhd::time_spec_t box_time;
  * Values in a protobuffer have no contiguous underlying storage so values need to be
  * parsed into a vector.
  */
-std::vector<size_t> make_tx_channels(const driverpacket::DriverPacket &driver_packet)
+/*std::vector<size_t> make_tx_channels(const driverpacket::DriverPacket &driver_packet)
 {
   std::vector<size_t> channels(driver_packet.channels_size());
   for (uint32_t i=0; i<driver_packet.channels_size(); i++) {
     channels[i] = driver_packet.channels(i);
   }
   return channels;
-}
+}*/
 
 /**
  * @brief      Makes a set of vectors of the samples for each TX channel from the driver packet.
