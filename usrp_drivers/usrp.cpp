@@ -16,7 +16,7 @@ See LICENSE for details.
 #include <cmath>
 #include <thread>
 #include <sstream>
-#include "usrp_drivers/n200/usrp.hpp"
+#include "usrp_drivers/usrp.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
 
