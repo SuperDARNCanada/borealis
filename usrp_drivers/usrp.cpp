@@ -39,7 +39,8 @@ USRP::USRP(const DriverOptions& driver_options)
   set_tx_rate(driver_options.get_tx_rate(), driver_options.get_transmit_channels());
   set_time_source(driver_options.get_pps(), driver_options.get_clk_addr());
   check_ref_locked();
-  set_atr_gpios();
+  set_atr_gpios(driver_options.get_atr_rx(), driver_options.get_atr_tx(),
+                driver_options.get_atr_xx(), driver_options.get_atr_0x());
 
 }
 
@@ -339,6 +340,16 @@ void USRP::set_command_time(uhd::time_spec_t cmd_time)
 }
 
 /**
+ * @brief      Sets the command time.
+ *
+ * @param[in]  cmd_time  The command time to run a timed command.
+ */
+void USRP::set_command_time(uhd::time_spec_t cmd_time)
+{
+  usrp_->set_command_time(cmd_time);
+}
+
+/**
  * @brief      Clears any timed USRP commands.
  */
 void USRP::clear_command_time()
@@ -347,32 +358,30 @@ void USRP::clear_command_time()
 }
 
 /**
- * @brief      Sets the USRP automatic transmit/receive states on GPIO
- *             for the given daughtercard bank.
+ * @brief      Sets the USRP automatic transmit/receive states on GPIO for the given daughtercard
+ *             bank.
+ *
+ * @param[in]  atr_rx  ATR rx only pin mask.
+ * @param[in]  atr_tx  ATR tx only pin mask.
+ * @param[in]  atr_xx  ATR full duplex pin mask.
+ * @param[in]  atr_0x  ATR idle pin mask.
  */
-void USRP::set_atr_gpios()
+void USRP::set_atr_gpios(uint32_t atr_rx, uint32_t atr_tx, uint32_t atr_xx, uint32_t atr_0x)
 {
   for (int i=0; i<usrp_->get_num_mboards(); i++){
     usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0xFFFF, 0b11111111, i);
     usrp_->set_gpio_attr(gpio_bank_, "DDR", 0xFFFF, 0b11111111, i);
 
-    //Mirror pins along bank for easier scoping.
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, 0b000000010, i);
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, 0b000000100, i);
-
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, 0b000001000, i);
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, 0b000010000, i);
-
     //XX is the actual TR signal
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, 0b000100000, i);
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, 0b001000000, i);
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, atr_xx, i);
 
-    //0X acts as 'scope sync'
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, 0b010000000, i);
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, 0b100000000, i);
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, atr_rx, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, atr_tx, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, atr_0x, i);
+
   }
-
-
 }
 
 /**

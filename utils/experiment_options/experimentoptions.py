@@ -56,8 +56,11 @@ class ExperimentOptions:
 
             self._minimum_pulse_separation = float(config['minimum_pulse_separation'])  # us
             self._usrp_master_clock_rate = float(config['usrp_master_clock_rate']) # Hz
+<<<<<<< HEAD
             #self._atten_window_time_start = float(config['atten_window_time_start'])  # s
             #self._atten_window_time_end = float(config['atten_window_time_end'])  # s
+=======
+>>>>>>> config_atr
             self._router_address = config['router_address']
             self._radctrl_to_exphan_identity = str(config["radctrl_to_exphan_identity"])
             self._radctrl_to_dsp_identity = str(config["radctrl_to_dsp_identity"])
@@ -317,14 +320,6 @@ class ExperimentOptions:
     @property
     def usrp_master_clock_rate(self):
         return self._usrp_master_clock_rate
-
-    # @property
-    # def atten_window_time_start(self):
-    #     return self._atten_window_time_start  # s
-
-    # @property
-    # def atten_window_time_end(self):
-    #     return self._atten_window_time_end  # s
 
     @property
     def router_address(self):
