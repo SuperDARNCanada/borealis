@@ -40,12 +40,27 @@ std::vector<cudaDeviceProp> get_gpu_properties();
 void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties);
 
 
+
+typedef struct rx_slice
+{
+  double rx_freq;
+  uint32_t slice_id;
+  uint32_t nrange;
+  std::vector<uint32_t> lags;
+
+  rx_slice(double rx_freq, uint32_t slice_id, uint32_t nrange, std::vector<uint32_t> lags) :
+    rx_freq(rx_freq),
+    slice_id(slice_id),
+    nrange(nrange),
+    lags(lags){}
+}rx_slice;
+
 /**
  * @brief      Contains the core DSP work done on the GPU.
  */
 class DSPCore {
  public:
-  void cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
+  void cuda_postprocessing_callback(uint32_t total_antennas,
                       uint32_t num_samples_rf,
                       uint32_t num_output_samples_per_antenna_1,
                       uint32_t num_output_samples_per_antenna_2,
@@ -53,11 +68,10 @@ class DSPCore {
   void initial_memcpy_callback();
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
-                    SignalProcessingOptions &options, uint32_t sq_num,
-                    std::vector<double> freqs, Filtering *filters,
+                    SignalProcessingOptions &options, uint32_t sq_num, Filtering *filters,
                     std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
                     double driver_initialization_time, double sequence_start_time,
-                    std::vector<uint32_t> slice_ids);
+                    std::vector<rx_slice> slice_info);
 
   ~DSPCore(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
@@ -89,7 +103,7 @@ class DSPCore {
   cuComplex* get_second_stage_output_h();
   cuComplex* get_third_stage_output_h();
   cuComplex* get_host_output_h();
-  std::vector<double> get_rx_freqs();
+  //std::vector<double> get_rx_freqs();
   float get_total_timing();
   float get_decimate_timing();
   uint32_t get_num_antennas();
@@ -100,7 +114,8 @@ class DSPCore {
   uint32_t get_sequence_num();
   double get_driver_initialization_time();
   double get_sequence_start_time();
-  std::vector<uint32_t> get_slice_ids();
+  //std::vector<uint32_t> get_slice_ids();
+  std::vector<rx_slice> get_slice_info();
   cudaStream_t get_cuda_stream();
   std::vector<cuComplex> get_beam_phases();
   std::vector<uint32_t> get_beam_direction_counts();
@@ -196,9 +211,9 @@ class DSPCore {
   //! A host side pointer to the third stage output.
   cuComplex *third_stage_output_h;
 
-  //! A vector containing the host side rx frequencies.
+/*  //! A vector containing the host side rx frequencies.
   std::vector<double> rx_freqs;
-
+*/
   //! The number of total antennas.
   uint32_t num_antennas;
 
@@ -229,8 +244,11 @@ class DSPCore {
   //! Timestamp of when the sequence began. Seconds since epoch.
   double sequence_start_time;
 
-  //! Identifiers for each slice
-  std::vector<uint32_t> slice_ids;
+/*  //! Identifiers for each slice
+  std::vector<uint32_t> slice_ids;*/
+
+  std::vector<rx_slice> slice_info;
+
 
   void allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples);
   void allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples);

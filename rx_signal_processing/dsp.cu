@@ -247,11 +247,11 @@ namespace {
                                             dp->dsp_filters->get_num_third_stage_taps()};
 
     drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
-                     dp->get_num_antennas(), dp->get_rx_freqs().size());
+                     dp->get_num_antennas(), dp->get_slice_info().size());
 
     // For each antenna, for each frequency.
     auto num_samples_after_dropping = output_samples.size()/
-                                      (dp->get_num_antennas()*dp->get_rx_freqs().size());
+                                      (dp->get_num_antennas()*dp->get_slice_info().size());
 
 
 
@@ -280,6 +280,9 @@ namespace {
 
 
 
+
+
+
     // We have a lambda to extract the starting pointers of each set of output samples so that
     // we can use a consistent function to write either rf samples or stage data.
     auto make_ptrs_vec = [](cuComplex* output_p, uint32_t num_freqs, uint32_t num_antennas,
@@ -301,21 +304,21 @@ namespace {
     };
 
     #ifdef ENGINEERING_DEBUG
-      auto stage_1_ptrs = make_ptrs_vec(dp->get_first_stage_output_h(), dp->get_rx_freqs().size(),
+      auto stage_1_ptrs = make_ptrs_vec(dp->get_first_stage_output_h(), dp->get_slice_info().size(),
                             dp->get_num_antennas(),dp->get_num_first_stage_samples_per_antenna());
 
-      auto stage_2_ptrs = make_ptrs_vec(dp->get_second_stage_output_h(), dp->get_rx_freqs().size(),
+      auto stage_2_ptrs = make_ptrs_vec(dp->get_second_stage_output_h(), dp->get_slice_info().size(),
                             dp->get_num_antennas(),dp->get_num_second_stage_samples_per_antenna());
 
-      auto stage_3_ptrs = make_ptrs_vec(dp->get_third_stage_output_h(), dp->get_rx_freqs().size(),
+      auto stage_3_ptrs = make_ptrs_vec(dp->get_third_stage_output_h(), dp->get_slice_info().size(),
                               dp->get_num_antennas(),dp->get_num_third_stage_samples_per_antenna());
     #endif
 
-    auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_rx_freqs().size(),
+    auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_slice_info().size(),
                           dp->get_num_antennas(), num_samples_after_dropping);
 
     auto beamformed_offset = 0;
-    for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
+    for(uint32_t i=0; i<dp->get_slice_info().size(); i++) {
       auto dataset = pd.add_outputdataset();
       // This lambda adds the stage data to the processed data for debug purposes.
       auto add_debug_data = [dataset,i](std::string stage_name, std::vector<cuComplex*> &data_ptrs,
@@ -369,7 +372,7 @@ namespace {
       add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
         num_samples_after_dropping);
 
-      dataset->set_slice_id(dp->get_slice_ids()[i]);
+      dataset->set_slice_id(dp->get_slice_info()[i].slice_id);
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     } // close loop over frequencies.
 
@@ -497,24 +500,22 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * The constructor creates a new CUDA stream and initializes the timing events. It then opens
  * the shared memory with the received RF samples for a pulse sequence.
  */
-DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::socket_t *data_socket,
-                  SignalProcessingOptions &sig_options, uint32_t sequence_num,
-                  std::vector<double> rx_freqs, Filtering *dsp_filters,
-                  std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
-                  double driver_initialization_time, double sequence_start_time,
-                  std::vector<uint32_t> slice_ids) :
+DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket,
+                  zmq::socket_t *data_socket, SignalProcessingOptions &sig_options,
+                  uint32_t sequence_num,Filtering *dsp_filters, std::vector<cuComplex> beam_phases,
+                  std::vector<uint32_t> beam_direction_counts, double driver_initialization_time,
+                  double sequence_start_time, std::vector<rx_slice> slice_info) :
   sequence_num(sequence_num),
   ack_socket(ack_socket),
   timing_socket(timing_socket),
   data_socket(data_socket),
-  rx_freqs(rx_freqs),
   sig_options(sig_options),
   dsp_filters(dsp_filters),
   beam_phases(beam_phases),
   beam_direction_counts(beam_direction_counts),
   driver_initialization_time(driver_initialization_time),
   sequence_start_time(sequence_start_time),
-  slice_ids(slice_ids)
+  slice_info(slice_info)
 {
 
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
@@ -830,18 +831,18 @@ void DSPCore::send_timing()
  * @brief      Add the postprocessing callback to the stream.
  *
  */
-void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
+void DSPCore::cuda_postprocessing_callback(uint32_t total_antennas,
                                             uint32_t num_samples_rf,
                                             uint32_t num_output_samples_per_antenna_1,
                                             uint32_t num_output_samples_per_antenna_2,
                                             uint32_t num_output_samples_per_antenna_3)
 {
     #ifdef ENGINEERING_DEBUG
-      auto total_output_samples_1 = num_output_samples_per_antenna_1 * rx_freqs.size() *
+      auto total_output_samples_1 = num_output_samples_per_antenna_1 * slice_info.size() *
                                       total_antennas;
-      auto total_output_samples_2 = num_output_samples_per_antenna_2 * rx_freqs.size() *
+      auto total_output_samples_2 = num_output_samples_per_antenna_2 * slice_info.size() *
                                       total_antennas;
-      auto total_output_samples_3 = num_output_samples_per_antenna_3 * rx_freqs.size() *
+      auto total_output_samples_3 = num_output_samples_per_antenna_3 * slice_info.size() *
                                       total_antennas;
 
 
@@ -851,7 +852,7 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
 
     #endif
 
-    rx_freqs = freqs;
+    //rx_freqs = freqs;
     num_rf_samples = num_samples_rf;
     num_antennas = total_antennas;
     num_first_stage_samples_per_antenna = num_output_samples_per_antenna_1;
@@ -1017,10 +1018,10 @@ cuComplex* DSPCore::get_host_output_h() {
  *
  * @return     The receive freqs vector.
  */
-std::vector<double> DSPCore::get_rx_freqs()
+/*std::vector<double> DSPCore::get_rx_freqs()
 {
   return rx_freqs;
-}
+}*/
 /**
  * @brief      Gets the CUDA stream this DSPCore's work is associated to.
  *
@@ -1195,7 +1196,13 @@ double DSPCore::get_sequence_start_time()
  *
  * @return     The vector of slice identifiers.
  */
-std::vector<uint32_t> DSPCore::get_slice_ids()
+/*std::vector<uint32_t> DSPCore::get_slice_ids()
 {
   return slice_ids;
 }
+*/
+
+ std::vector<rx_slice> DSPCore::get_slice_info()
+ {
+  return slice_info;
+ }

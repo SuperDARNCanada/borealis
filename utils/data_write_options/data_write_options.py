@@ -38,7 +38,7 @@ class DataWriteOptions(object):
         self._dw_to_dsp_identity = raw_config["dw_to_dsp_identity"]
         self._radctrl_to_dw_identity = raw_config["radctrl_to_dw_identity"]
         self._dw_to_radctrl_identity = raw_config["dw_to_radctrl_identity"]
-        self._debug_file = raw_config["filter_outputs_debug_file"]
+        #self._debug_file = raw_config["filter_outputs_debug_file"]
         self._data_directory = raw_config["data_directory"]
         self._site_id = raw_config["site_id"]
         self._rx_sample_rate = float(raw_config["rx_sample_rate"])
@@ -46,8 +46,8 @@ class DataWriteOptions(object):
         self._max_usrp_dac_amplitude = float(raw_config["max_usrp_dac_amplitude"])
         self._pulse_ramp_time = float(raw_config["pulse_ramp_time"])
         self._tr_window_time = float(raw_config["tr_window_time"])
-        self._atten_window_time_start = float(raw_config["atten_window_time_start"])  # s
-        self._atten_window_time_end = float(raw_config["atten_window_time_end"])  # s
+        # self._atten_window_time_start = float(raw_config["atten_window_time_start"])  # s
+        # self._atten_window_time_end = float(raw_config["atten_window_time_end"])  # s
         self._router_address = raw_config["router_address"]
         self._main_antenna_count = int(raw_config["main_antenna_count"])
         self._intf_antenna_count = int(raw_config["interferometer_antenna_count"])
@@ -91,15 +91,15 @@ class DataWriteOptions(object):
         return self._dw_to_radctrl_identity
 
 
-    @property
-    def debug_file(self):
-        """
-        Gets the name of the file to output debug data to.
+    # @property
+    # def debug_file(self):
+    #     """
+    #     Gets the name of the file to output debug data to.
 
-        :returns:   debug file name
-        :rtype:     str
-        """
-        return self._debug_file
+    #     :returns:   debug file name
+    #     :rtype:     str
+    #     """
+    #     return self._debug_file
 
     @property
     def data_directory(self):
@@ -161,25 +161,25 @@ class DataWriteOptions(object):
         """
         return self._tr_window_time
 
-    @property
-    def atten_window_time_start(self):
-        """
-        Gets the time before the RF pulse that the atten signal is active for in seconds.
+    # @property
+    # def atten_window_time_start(self):
+    #     """
+    #     Gets the time before the RF pulse that the atten signal is active for in seconds.
 
-        :return:    time before the RF pulse that the atten signal is active for in seconds.
-        :rtype:     float
-        """
-        return self._atten_window_time_start
+    #     :return:    time before the RF pulse that the atten signal is active for in seconds.
+    #     :rtype:     float
+    #     """
+    #     return self._atten_window_time_start
 
-    @property
-    def atten_window_time_end(self):
-        """
-        Gets the time after the RF pulse that the atten signal is active for in seconds.
+    # @property
+    # def atten_window_time_end(self):
+    #     """
+    #     Gets the time after the RF pulse that the atten signal is active for in seconds.
 
-        :return:    time after the RF pulse that the atten signal is active for in seconds.
-        :rtype:     float
-        """
-        return self._atten_window_time_end
+    #     :return:    time after the RF pulse that the atten signal is active for in seconds.
+    #     :rtype:     float
+    #     """
+    #     return self._atten_window_time_end
 
     @property
     def router_address(self):

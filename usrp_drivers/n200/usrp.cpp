@@ -333,6 +333,11 @@ void USRP::check_ref_locked()
   }
 }
 
+void USRP::set_command_time(uhd::time_spec_t cmd_time)
+{
+  usrp_->set_command_time(cmd_time);
+}
+
 /**
  * @brief      Clears any timed USRP commands.
  */

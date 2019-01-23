@@ -176,6 +176,11 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                 phase_add.real_phase = phase.real
                 phase_add.imag_phase = phase.imag
 
+        for lag in slice_dict[slice_id]['lag_table']:
+            lag_add = chan_add.lags.add()
+            lag_add.pulse_1 = lag[0]
+            lag_add.pulse_2 = lag[1]
+            lag_add.lag_num = int(lag[1] - lag[0])
     # Don't need to send channel numbers, will always send with length = total antennas.
     # TODO : Beam directions will be formated e^i*phi so that a 0 will indicate not
     # to receive on that channel. ** make this update phase = 0 on channels not included.

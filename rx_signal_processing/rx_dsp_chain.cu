@@ -167,12 +167,28 @@ int main(int argc, char **argv){
     if (sp_packet.rxchannel_size() == 0) {
       //TODO(keith): handle error
     }
-    std::vector<double> rx_freqs;
+
+    std::vector<rx_slice> slice_info;
+    for(uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
+      std::vector<uint32_t> lags;
+      auto num_lags = sp_packet.rxchannel(channel).lags_size();
+      for (uint32_t lag_counter=0; lag_counter<num_lags; lag_counter++) {
+        lags.push_back(sp_packet.rxchannel(channel).lags(lag_counter).lag_num());
+      }
+      auto rx_freq = sp_packet.rxchannel(channel).rxfreq();
+      auto slice_id = sp_packet.rxchannel(channel).slice_id();
+      auto nrange = sp_packet.rxchannel(channel).nrang();
+      slice_info.push_back(rx_slice(rx_freq, slice_id, nrange, lags));
+    }
+
+/*    std::vector<double> rx_freqs;
     std::vector<uint32_t> slice_ids;
+    std::vector<uint32_t> nranges;
     for(uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
       rx_freqs.push_back(sp_packet.rxchannel(channel).rxfreq());
       slice_ids.push_back(sp_packet.rxchannel(channel).slice_id());
-    }
+      nranges.push_back(sp_packet.rxchannel(channel).nrang());
+    }*/
 
 
     // Parse out the beam phases from the radar control signal proc packet.
@@ -211,16 +227,20 @@ int main(int argc, char **argv){
         }
       }
 
-    // Combine the separated antenna phases back into a flat vector.
-    for (auto &phase : main_phases) {
-      beam_phases.push_back(phase);
+      // Combine the separated antenna phases back into a flat vector.
+      for (auto &phase : main_phases) {
+        beam_phases.push_back(phase);
+      }
+
+      for (auto &phase : intf_phases) {
+        beam_phases.push_back(phase);
+      }
     }
 
-    for (auto &phase : intf_phases) {
-      beam_phases.push_back(phase);
+    std::vector<double> rx_freqs;
+    for (auto &s : slice_info) {
+      rx_freqs.push_back(s.rx_freq);
     }
-  }
-
     TIMEIT_IF_TRUE_OR_DEBUG(false, "   NCO mix timing: ",
       [&]() {
         filters.mix_first_stage_to_bandpass(rx_freqs,rx_rate);
@@ -229,10 +249,9 @@ int main(int argc, char **argv){
 
 
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
-                             sig_options, sp_packet.sequence_num(),
-                             rx_freqs, &filters, beam_phases,
+                             sig_options, sp_packet.sequence_num(), &filters, beam_phases,
                              beam_direction_counts, rx_metadata.initialization_time(),
-                             rx_metadata.sequence_start_time(), slice_ids);
+                             rx_metadata.sequence_start_time(), slice_info);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
@@ -315,7 +334,7 @@ int main(int argc, char **argv){
 
     dp->allocate_and_copy_host_output(total_output_samples_3);
 
-    dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
+    dp->cuda_postprocessing_callback(total_antennas,
                                       samples_needed,
                                       num_output_samples_per_antenna_1,
                                       num_output_samples_per_antenna_2,
