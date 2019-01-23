@@ -7,16 +7,17 @@ message SigProcPacket {
     uint32 sequence_num = 2;
     double kerneltime = 3;
     float sequence_time = 4;
+    float offset_to_first_rx_sample = 5;
 
     message RXChan {
         uint32 slice_id = 1;
         double rxfreq = 2; // REVIEW #28 Does this need to be a double?
-        uint32 nrang = 3; // REVIEW #1 What is rxfreq? From 0 or from centre freq?
+        uint32 nrang = 3;
         float frang = 4;
         repeated BeamDirections beam_directions = 5;
 
         message BeamDirections {
-            repeated Phase phase = 1; /* must be length 20 */
+            repeated Phase phase = 1; /* must be length = number main + intf antennas */
 
             message Phase {
                 double real_phase = 1;

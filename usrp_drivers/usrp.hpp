@@ -12,7 +12,7 @@ See LICENSE for details.
 
 #include <uhd/usrp/multi_usrp.hpp>
 #include "utils/driver_options/driveroptions.hpp"
-
+#include "utils/shared_macros/shared_macros.hpp"
 
 /**
  * @brief      Contains an abstract wrapper for the USRP object.
@@ -30,7 +30,7 @@ class USRP{
                                         uint32_t interferometer_antenna_count);
     double set_rx_rate(double rx_rate, std::vector<size_t> rx_chs);
     double set_rx_center_freq(double freq, std::vector<size_t> chs);
-    void set_time_source(std::string source);
+    void set_time_source(std::string source, std::string clk_addr);
     void check_ref_locked();
     void set_scope_sync(uhd::time_spec_t scope_high);
     void set_atten(uhd::time_spec_t atten_high);

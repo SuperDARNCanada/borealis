@@ -29,9 +29,6 @@ USRP::USRP(const DriverOptions& driver_options)
 {
   mboard_ = 0;
   gpio_bank_ = driver_options.get_gpio_bank();
-  scope_sync_mask_ = driver_options.get_scope_sync_mask();
-  atten_mask_ = driver_options.get_atten_mask();
-  tr_mask_ = driver_options.get_tr_mask();
   usrp_ = uhd::usrp::multi_usrp::make(driver_options.get_device_args());
   set_usrp_clock_source(driver_options.get_ref());
   set_tx_subdev(driver_options.get_tx_subdev());
@@ -40,7 +37,7 @@ USRP::USRP(const DriverOptions& driver_options)
                                 driver_options.get_interferometer_antenna_count());
   set_rx_rate(driver_options.get_rx_rate(), driver_options.get_receive_channels());
   set_tx_rate(driver_options.get_tx_rate(), driver_options.get_transmit_channels());
-  set_time_source(driver_options.get_pps());
+  set_time_source(driver_options.get_pps(), driver_options.get_clk_addr());
   check_ref_locked();
   set_atr_gpios(driver_options.get_atr_rx(), driver_options.get_atr_tx(),
                 driver_options.get_atr_xx(), driver_options.get_atr_0x());
@@ -238,7 +235,8 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
 /**
  * @brief      Sets the USRP time source.
  *
- * @param[in]  source   A string with the time source the USRP will use.
+ * @param[in]  source    A string with the time source the USRP will use.
+ * @param[in]  clk_addr  IP address of the octoclock for gps timing.
  *
  * Uses the method Ettus suggests for setting time on the x300.
  * https://files.ettus.com/manual/page_gpsdo_x3x0.html
@@ -246,7 +244,7 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
  * time is in a stable place past the second if no gps is available.
  * The USRP is then set to this time.
  */
-void USRP::set_time_source(std::string source)
+void USRP::set_time_source(std::string source, std::string clk_addr)
 {
   auto tt =  std::chrono::high_resolution_clock::now();
   auto tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(tt.time_since_epoch());
@@ -259,7 +257,7 @@ void USRP::set_time_source(std::string source)
   }
   if (source == "external"){
     uhd::usrp_clock::multi_usrp_clock::sptr clock;
-    clock = uhd::usrp_clock::multi_usrp_clock::make(std::string("addr=192.168.10.131"));
+    clock = uhd::usrp_clock::multi_usrp_clock::make(clk_addr);
 
     //Make sure Clock configuration is correct
     if(clock->get_sensor("gps_detected").value == "false"){
@@ -274,7 +272,7 @@ void USRP::set_time_source(std::string source)
 
     while(! (clock->get_sensor("gps_locked").to_bool())) {
       std::this_thread::sleep_for(std::chrono::seconds(2));
-      std::cout << "Waiting for gps lock..." << std::endl;
+      RUNTIME_MSG("Waiting for gps lock...");
     }
     usrp_->set_time_source(source);
 
@@ -301,8 +299,8 @@ void USRP::set_time_source(std::string source)
       auto usrp_time = usrp_->get_time_last_pps(board);
       auto time_diff = clock_time - usrp_time;
 
-      std::cout << "Time difference between USRPs and gps clock for board " << board
-                << " " << time_diff.get_real_secs() << std::endl;
+      RUNTIME_MSG("Time difference between USRPs and gps clock for board " << board
+                << " " << time_diff.get_real_secs());
     }
 
   }
@@ -337,78 +335,13 @@ void USRP::check_ref_locked()
 }
 
 /**
- * @brief       Sets a time at which the USRPs should all synchronize their commands too.
+ * @brief      Sets the command time.
  *
- * @param[in]   UHD time spec struct with the future command time.
+ * @param[in]  cmd_time  The command time to run a timed command.
  */
-void USRP::set_command_time(uhd::time_spec_t cmd_time) {
+void USRP::set_command_time(uhd::time_spec_t cmd_time)
+{
   usrp_->set_command_time(cmd_time);
-}
-
-/**
- * @brief      Sets the scope sync GPIO to high.
- *
- * @param[in]  scope_high  The timespec for when in the future to set the scope sync pin.
- */
-void USRP::set_scope_sync(uhd::time_spec_t scope_high)
-{
-  usrp_->set_command_time(scope_high);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0xFFFF, scope_sync_mask_, mboard_);
-}
-
-/**
- * @brief      Sets the attenuator GPIO to high.
- *
- * @param[in]  atten_high  The timespec for when in the future to set the attenuator pin.
- */
-void USRP::set_atten(uhd::time_spec_t atten_high)
-{
-  usrp_->set_command_time(atten_high);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0xFFFF, atten_mask_, mboard_);
-}
-
-/**
- * @brief      Sets the t/r GPIO to high.
- *
- * @param[in]  tr_high  The timespec for when in the future to set the TR pin.
- */
-void USRP::set_tr(uhd::time_spec_t tr_high)
-{
-  usrp_->set_command_time(tr_high);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0xFFFF, tr_mask_, mboard_);
-}
-
-/**
- * @brief      Clears the scope sync GPIO to low.
- *
- * @param[in]  scope_low  The timespec for when in the future to clear the scope sync pin.
- */
-void USRP::clear_scope_sync(uhd::time_spec_t scope_low)
-{
-  usrp_->set_command_time(scope_low);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0x0000, scope_sync_mask_, mboard_);
-}
-
-/**
- * @brief      Clears the attenuator GPIO to low.
- *
- * @param[in]  atten_low  The timespec for when in the future to clear the attenuator pin.
- */
-void USRP::clear_atten(uhd::time_spec_t atten_low)
-{
-  usrp_->set_command_time(atten_low);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0x0000, atten_mask_, mboard_);
-}
-
-/**
- * @brief      Clears the t/r GPIO to low.
- *
- * @param[in]  tr_low  The timespec for when in the future to clear the TR pin.
- */
-void USRP::clear_tr(uhd::time_spec_t tr_low)
-{
-  usrp_->set_command_time(tr_low);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0x0000, tr_mask_, mboard_);
 }
 
 /**
@@ -418,7 +351,6 @@ void USRP::clear_command_time()
 {
   usrp_->clear_command_time();
 }
-
 
 /**
  * @brief      Sets the USRP automatic transmit/receive states on GPIO for the given daughtercard
@@ -430,7 +362,6 @@ void USRP::clear_command_time()
  * @param[in]  atr_0x  ATR idle pin mask.
  */
 void USRP::set_atr_gpios(uint32_t atr_rx, uint32_t atr_tx, uint32_t atr_xx, uint32_t atr_0x)
-
 {
   for (int i=0; i<usrp_->get_num_mboards(); i++){
     usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0xFFFF, 0b11111111, i);
@@ -446,8 +377,6 @@ void USRP::set_atr_gpios(uint32_t atr_rx, uint32_t atr_tx, uint32_t atr_xx, uint
     usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, atr_0x, i);
 
   }
-
-
 }
 
 /**
