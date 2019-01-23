@@ -25,7 +25,7 @@
 #include <cmath>
 #include <tuple>
 #include "utils/driver_options/driveroptions.hpp"
-#include "usrp_drivers/n200/usrp.hpp"
+#include "usrp_drivers/usrp.hpp"
 #include "utils/protobuf/driverpacket.pb.h"
 #include "utils/protobuf/rxsamplesmetadata.pb.h"
 #include "utils/shared_memory/shared_memory.hpp"
@@ -40,24 +40,6 @@
 // GPS clock variable. Gets updated every time an RX packet is recvd.
 uhd::time_spec_t box_time;
 
-/**
- * @brief      Makes a vector of USRP TX channels from a driver packet.
- *
- * @param[in]  driver_packet    A received driver packet from radar_control.
- *
- * @return     A vector of TX channels to use.
- *
- * Values in a protobuffer have no contiguous underlying storage so values need to be
- * parsed into a vector.
- */
-std::vector<size_t> make_tx_channels(const driverpacket::DriverPacket &driver_packet)
-{
-  std::vector<size_t> channels(driver_packet.channels_size());
-  for (uint32_t i=0; i<driver_packet.channels_size(); i++) {
-    channels[i] = driver_packet.channels(i);
-  }
-  return channels;
-}
 
 /**
  * @brief      Makes a set of vectors of the samples for each TX channel from the driver packet.
@@ -99,6 +81,7 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
   return samples;
 }
 
+
 void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver_options)
 {
   DEBUG_MSG("Enter transmit thread");
@@ -120,7 +103,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.connect("inproc://thread"))
 
-  auto usrp_channels_set = false;
   auto tx_center_freq_set = false;
   auto rx_center_freq_set = false;
   auto samples_set = false;
@@ -131,12 +113,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   uhd::stream_args_t stream_args(driver_options.get_cpu(), driver_options.get_otw());
 
 
+  uhd::tx_streamer::sptr tx_stream;
+  tx_stream = usrp_d.get_usrp_tx_stream(stream_args);
+
   std::vector<std::vector<std::vector<std::complex<float>>>> pulses;
   std::vector<std::vector<std::complex<float>>> last_pulse_sent;
 
   uint32_t sqn_num = 0;
   uint32_t expected_sqn_num = 0;
-
 
 
   uint32_t num_recv_samples;
@@ -187,21 +171,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
           DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " burst flags: SOB "  << driver_packet.sob() <<
                       " EOB " << driver_packet.eob());
 
-          TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " stream set up time: ",
-            [&]() {
-              //On start of new sequence, check if there are new USRP channels and if so
-              //set what USRP TX channels and rate(Hz) to use.
-              if (driver_packet.channels_size() > 0 && driver_packet.sob() == true)
-              {
-                DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " starting something new");
-                stream_args.channels = tx_channels;
-                tx_stream = usrp_d.get_usrp_tx_stream(stream_args);  // ~10ms per channel
-
-                usrp_channels_set = true;
-
-              }
-            }()
-          );
 
           TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " center freq ",
             [&]() {
@@ -271,10 +240,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
 
     //In order to transmit, these parameters need to be set at least once.
-    if ((usrp_channels_set == false) ||
-      (tx_center_freq_set == false) ||
-      (rx_center_freq_set == false) ||
-      (samples_set == false))
+    if ((tx_center_freq_set == false) || (rx_center_freq_set == false) || (samples_set == false))
     {
       // TODO(keith): throw error
       continue;

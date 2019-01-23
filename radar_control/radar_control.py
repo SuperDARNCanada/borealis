@@ -51,7 +51,7 @@ def printing(msg):
     sys.stdout.write(RADAR_CONTROL + msg + "\n")
 
 
-def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, antennas, samples_array,
+def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samples_array,
                    txctrfreq, rxctrfreq, txrate,
                    numberofreceivesamples, SOB, EOB, timing, seqnum,
                    repeat=False):
@@ -59,7 +59,6 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
         :param driverpacket: the protobuf packet to fill and pass over zmq
         :param radctrl_to_driver: the sender socket for sending the driverpacket
 	    :param driver_to_radctrl_iden: the reciever socket identity on the driver side
-        :param antennas: the antennas to transmit on.
         :param samples_array: this is a list of length main_antenna_count from the config file. It contains one
             numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
             numpy array of zeros of the same length as the rest. All arrays will have the same length according to
@@ -97,11 +96,10 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, ante
                   ";".format(timing, SOB, EOB, antennas))
     else:
         # SETUP data to send to driver for transmit.
-        for ant in antennas:
-            driverpacket.channels.append(ant)
         for samples in samples_array:
             sample_add = driverpacket.channel_samples.add()
-            # Add one Samples message for each channel.
+            # Add one Samples message for each channel possible in config.
+            # Any unused channels will be sent zeros.
             # Protobuf expects types: int, long, or float, will reject numpy types and
             # throw a TypeError so we must convert the numpy arrays to lists
             sample_add.real.extend(samples.real.tolist())
@@ -184,6 +182,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     # Don't need to send channel numbers, will always send with length = total antennas.
     # TODO : Beam directions will be formated e^i*phi so that a 0 will indicate not
     # to receive on that channel. ** make this update phase = 0 on channels not included.
+
 
     # Brian requests sequence metadata for timeouts
 
@@ -579,7 +578,6 @@ def radar():
                                         enumerate(sequence_dict_list[sequence_index]):
                                     data_to_driver(driverpacket, radar_control_to_driver,
                                                    options.driver_to_radctrl_identity,
-                                                   pulse_dict['pulse_antennas'],
                                                    pulse_dict['samples_array'], experiment.txctrfreq,
                                                    experiment.rxctrfreq, experiment.txrate,
                                                    sequence.numberofreceivesamples,
@@ -591,7 +589,6 @@ def radar():
                                         enumerate(sequence_dict_list[sequence_index]):
                                     data_to_driver(driverpacket, radar_control_to_driver,
                                                    options.driver_to_radctrl_identity,
-                                                   pulse_dict['pulse_antennas'],
                                                    pulse_dict['samples_array'], experiment.txctrfreq,
                                                    experiment.rxctrfreq, experiment.txrate,
                                                    sequence.numberofreceivesamples,
