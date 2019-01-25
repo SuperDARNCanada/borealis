@@ -363,9 +363,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
         // TODO: Account for offset btw TX/RX (seems to change with sampling rate at least)
 
         auto time_diff = sequence_start_time - initialization_time;
-        auto rate = driver_options.get_rx_rate();
-        double future_start_sample = std::floor(time_diff.get_real_secs() * rate);
-        auto time_from_initialization = uhd::time_spec_t((future_start_sample/rate));
+        double future_start_sample = std::floor(time_diff.get_real_secs() * rx_rate);
+        auto time_from_initialization = uhd::time_spec_t((future_start_sample/rx_rate));
 
         sequence_start_time = initialization_time + time_from_initialization;
 
@@ -453,7 +452,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     ); // full usrp function timeit macro
 
 
-    auto seqn_sampling_time = num_recv_samples/driver_options.get_rx_rate();
+    auto seqn_sampling_time = num_recv_samples/rx_rate;
 
     auto end_time = box_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
@@ -511,7 +510,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   uhd::stream_args_t stream_args(driver_options.get_cpu(), driver_options.get_otw());
   uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
-  auto rx_rate_hz = driver_options.get_rx_rate();
+  auto rx_rate_hz = rx_rate;  // ASKKEITH how to get rx_rate here from transmit thread
 
 
   auto receive_channels = driver_options.get_receive_channels();
@@ -645,7 +644,6 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   DriverOptions driver_options;
 
   DEBUG_MSG(driver_options.get_device_args());
-  DEBUG_MSG(driver_options.get_tx_rate());
   DEBUG_MSG(driver_options.get_pps());
   DEBUG_MSG(driver_options.get_ref());
   DEBUG_MSG(driver_options.get_tx_subdev());
