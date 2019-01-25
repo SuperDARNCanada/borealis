@@ -26,6 +26,25 @@ DriverOptions::DriverOptions() {
     cpu_ = config_pt.get<std::string>("cpu");
     otw_ = config_pt.get<std::string>("overthewire");
     gpio_bank_ = config_pt.get<std::string>("gpio_bank");
+
+    std::stringstream ss;
+
+    ss << std::hex << config_pt.get<std::string>("atr_rx");
+    ss >> atr_rx_;
+    ss.clear();
+
+    ss << std::hex << config_pt.get<std::string>("atr_tx");
+    ss >> atr_tx_;
+    ss.clear();
+
+    ss << std::hex << config_pt.get<std::string>("atr_xx");
+    ss >> atr_xx_;
+    ss.clear();
+
+    ss << std::hex << config_pt.get<std::string>("atr_0x");
+    ss >> atr_0x_;
+    ss.clear();
+
     rx_sample_rate_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("rx_sample_rate"));
     tx_sample_rate_ = boost::lexical_cast<double>(
@@ -136,6 +155,27 @@ std::string DriverOptions::get_otw() const
 std::string DriverOptions::get_gpio_bank() const
 {
     return gpio_bank_;
+}
+
+uint32_t DriverOptions::get_atr_rx() const
+{
+    return atr_rx_;
+}
+
+uint32_t DriverOptions::get_atr_tx() const
+{
+    return atr_tx_;
+}
+
+uint32_t DriverOptions::get_atr_xx() const
+{
+    return atr_xx_;
+}
+
+uint32_t DriverOptions::get_atr_0x() const
+{
+    return atr_0x_;
+
 }
 
 double DriverOptions::get_tr_window_time() const

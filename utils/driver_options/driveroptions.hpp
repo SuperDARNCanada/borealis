@@ -21,6 +21,10 @@ class DriverOptions: public Options {
         std::string get_cpu() const;
         std::string get_otw() const;
         std::string get_gpio_bank() const;
+        uint32_t get_atr_rx() const;
+        uint32_t get_atr_tx() const;
+        uint32_t get_atr_xx() const;
+        uint32_t get_atr_0x() const;
         double get_tr_window_time() const;
         uint32_t get_main_antenna_count() const;
         uint32_t get_interferometer_antenna_count() const;
@@ -61,6 +65,10 @@ class DriverOptions: public Options {
         uint32_t main_antenna_count_;
         uint32_t interferometer_antenna_count_;
         double ringbuffer_size_bytes_;
+        uint32_t atr_rx_;
+        uint32_t atr_tx_;
+        uint32_t atr_xx_;
+        uint32_t atr_0x_;
         std::string router_address_;
         std::string driver_to_radctrl_identity_;
         std::string driver_to_dsp_identity_;

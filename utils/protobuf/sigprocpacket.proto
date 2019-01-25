@@ -20,7 +20,7 @@ message SigProcPacket {
         repeated BeamDirections beam_directions = 5;
 
         message BeamDirections {
-            repeated Phase phase = 1; /* must be length 20 */
+            repeated Phase phase = 1; /* must be length = number main + intf antennas */
 
             message Phase {
                 double real_phase = 1;
