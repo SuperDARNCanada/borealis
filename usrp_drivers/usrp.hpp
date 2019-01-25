@@ -65,7 +65,7 @@ class USRP{
     //! The bitmask to use for the TR GPIO.
     uint32_t tr_mask_;
 
-    void set_atr_gpios();
+    void set_atr_gpios(uint32_t atr_rx, uint32_t atr_tx, uint32_t atr_xx, uint32_t atr_0x);
 
 };
 

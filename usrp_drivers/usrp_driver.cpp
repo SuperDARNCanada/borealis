@@ -111,9 +111,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   uhd::tx_streamer::sptr tx_stream;
   uhd::stream_args_t stream_args(driver_options.get_cpu(), driver_options.get_otw());
-
-
-  uhd::tx_streamer::sptr tx_stream;
   tx_stream = usrp_d.get_usrp_tx_stream(stream_args);
 
   std::vector<std::vector<std::vector<std::complex<float>>>> pulses;
