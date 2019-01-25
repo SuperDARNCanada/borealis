@@ -99,6 +99,12 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   zmq::socket_t &driver_to_dsp = sockets_vector[1];
   zmq::socket_t &driver_to_brian = sockets_vector[2];
 
+  // This exchange signals to radar control that the devices are ready to go so that it can
+  // begin processing experiments without low averages in the first integration period.
+  auto driver_ready_msg = std::string("DRIVER_READY");
+  RECV_REQUEST(driver_to_radar_control, driver_options.get_radctrl_to_driver_identity());
+  SEND_REPLY(driver_to_radar_control, driver_options.get_radctrl_to_driver_identity(),
+    driver_ready_msg);
 
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.connect("inproc://thread"))
@@ -589,6 +595,7 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   SEND_REQUEST(driver_to_mainaffinity,
                               driver_options.get_mainaffinity_to_driver_identity(), set_tid_msg);
   RECV_REPLY(driver_to_mainaffinity, driver_options.get_mainaffinity_to_driver_identity());
+
 
   for (auto& th : threads) {
     th.join();

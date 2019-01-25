@@ -402,9 +402,17 @@ def radar():
     # at the end of every integration time.
     seqnum_start = 0
 
+
+    # Wait for driver to be ready setting up.
+    socket_operations.send_data(radar_control_to_driver, options.driver_to_radctrl_identity,
+                                    "BE_READY")
+    socket_operations.recv_data(radar_control_to_driver, options.driver_to_radctrl_identity,
+                                    printing)
+
+    #  Wait for experiment handler at the start until we have an experiment to run.
     new_experiment_waiting = False
 
-    while not new_experiment_waiting:  #  Wait for experiment handler at the start until we have an experiment to run.
+    while not new_experiment_waiting:  
         new_experiment_waiting, experiment = search_for_experiment(
             radar_control_to_exp_handler, options.exphan_to_radctrl_identity,
             'EXPNEEDED')
