@@ -51,6 +51,30 @@ def printing(msg):
     sys.stdout.write(RADAR_CONTROL + msg + "\n")
 
 
+def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq, 
+                 txrate, rxrate):
+    """ First packet sent to driver for setup. 
+        :param driverpacket: the protobuf packet to fill and pass over zmq
+        :param radctrl_to_driver: the sender socket for sending the driverpacket
+        :param driver_to_radctrl_iden: the reciever socket identity on the driver side
+        :param txctrfreq: the transmit centre frequency to tune to, kHz.
+        :param rxctrfreq: the receive centre frequency to tune to. With rx_sample_rate from config.ini file, this
+            determines the received signal band, kHz.
+        :param txrate: the tx sampling rate (Hz).
+        :param rxrate: the rx sampling rate (Hz).
+    """
+
+    driverpacket.Clear()
+    driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
+    driverpacket.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
+    driverpacket.txrate = txrate
+    driverpacket.rxrate = rxrate
+
+    socket_operations.send_pulse(radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString())
+
+    socket_operations.recv_data(radctrl_to_driver, driver_to_radctrl_iden, printing)
+
+
 def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samples_array,
                    txctrfreq, rxctrfreq, txrate, rxrate, numberofreceivesamples, SOB, EOB, timing,
                    seqnum, repeat=False):
@@ -113,7 +137,6 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
             print("NOT A REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3}"
                   ";".format(timing, SOB, EOB, antennas))
 
-   # txsocket.send(driverpacket.SerializeToString())
     socket_operations.send_pulse(radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString())
 
     del driverpacket.channel_samples[:]  # TODO find out - Is this necessary in conjunction with .Clear()?
@@ -420,13 +443,6 @@ def radar():
     # at the end of every integration time.
     seqnum_start = 0
 
-
-    # Wait for driver to be ready setting up.
-    socket_operations.send_data(radar_control_to_driver, options.driver_to_radctrl_identity,
-                                    "BE_READY")
-    socket_operations.recv_data(radar_control_to_driver, options.driver_to_radctrl_identity,
-                                    printing)
-
     #  Wait for experiment handler at the start until we have an experiment to run.
     new_experiment_waiting = False
 
@@ -437,6 +453,12 @@ def radar():
 
     new_experiment_waiting = False
     new_experiment_loaded = True
+
+    # Send driver initial setup data - rates and centre frequency from experiment.
+    # Wait for acknowledgment that USRP object is set up. 
+    setup_driver(driverpacket, radar_control_to_driver, options.driver_to_radctrl_identity,
+                 experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
+                 experiment.rxrate)
 
     while True:
         # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.

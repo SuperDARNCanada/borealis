@@ -35,8 +35,6 @@ USRP::USRP(const DriverOptions& driver_options)
   set_main_rx_subdev(driver_options.get_main_rx_subdev());
   set_interferometer_rx_subdev(driver_options.get_interferometer_rx_subdev(),
                                 driver_options.get_interferometer_antenna_count());
-  set_rx_rate(driver_options.get_rx_rate(), driver_options.get_receive_channels());
-  set_tx_rate(driver_options.get_tx_rate(), driver_options.get_transmit_channels());
   set_time_source(driver_options.get_pps(), driver_options.get_clk_addr());
   check_ref_locked();
   set_atr_gpios(driver_options.get_atr_rx(), driver_options.get_atr_tx(),
