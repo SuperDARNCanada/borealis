@@ -278,7 +278,8 @@ class ExperimentPrototype(object):
         :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
         :param decimation_scheme: an object defining the decimation and filtering stages for the
         signal processing module. If you would like something other than the default, you will
-        need to build an object of the DecimationScheme type before initiating your experiment.
+        need to build an object of the DecimationScheme type before initiating your experiment. 
+        This cannot be changed after instantiation.
         :param comment_string: description of experiment for data files.
         """
 
