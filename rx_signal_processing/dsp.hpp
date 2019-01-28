@@ -46,12 +46,15 @@ typedef struct rx_slice
   double rx_freq;
   uint32_t slice_id;
   uint32_t nrange;
+  uint32_t beam_count;
   std::vector<uint32_t> lags;
 
-  rx_slice(double rx_freq, uint32_t slice_id, uint32_t nrange, std::vector<uint32_t> lags) :
+  rx_slice(double rx_freq, uint32_t slice_id, uint32_t nrange, uint32_t beam_count,
+            std::vector<uint32_t> lags) :
     rx_freq(rx_freq),
     slice_id(slice_id),
     nrange(nrange),
+    beam_count(beam_count),
     lags(lags){}
 }rx_slice;
 
@@ -69,7 +72,7 @@ class DSPCore {
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num, Filtering *filters,
-                    std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
+                    std::vector<cuComplex> beam_phases,
                     double driver_initialization_time, double sequence_start_time,
                     std::vector<rx_slice> slice_info);
 
@@ -118,7 +121,7 @@ class DSPCore {
   std::vector<rx_slice> get_slice_info();
   cudaStream_t get_cuda_stream();
   std::vector<cuComplex> get_beam_phases();
-  std::vector<uint32_t> get_beam_direction_counts();
+  //std::vector<uint32_t> get_beam_direction_counts();
   std::string get_shared_memory_name();
   void start_decimate_timing();
   void stop_timing();
@@ -233,7 +236,7 @@ class DSPCore {
   std::vector<cuComplex> beam_phases;
 
   //! Each entry holds the number of beam directions for an RX frequency.
-  std::vector<uint32_t> beam_direction_counts;
+  //std::vector<uint32_t> beam_direction_counts;
 
   //! A handler for a shared memory section.
   SharedMemoryHandler shm;

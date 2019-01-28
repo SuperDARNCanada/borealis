@@ -123,19 +123,19 @@ namespace {
    *                                      exponential.
    * @param      num_main_ants            The number of main antennas.
    * @param      num_intf_ants            The number of intf antennas.
-   * @param      beam_direction_counts    A vector containing the number of beam directions for each
-   *                                      RX frequency.
+   * @param[in]  rx_slice_info            A vector of needed slice metadata.
    * @param      num_samples              The number of samples per antenna.
    *
-   * This method extracts the offsets to the phases and samples needed for the beam directions of
-   * each RX frequency. The Eigen library is then used to multiply the matrices to yield the final
-   * beamformed samples. The main array and interferometer array are beamformed separately.
+   *             This method extracts the offsets to the phases and samples needed for the beam
+   *             directions of each RX frequency. The Eigen library is then used to multiply the
+   *             matrices to yield the final beamformed samples. The main array and interferometer
+   *             array are beamformed separately.
    */
   void beamform_samples(std::vector<cuComplex> &filtered_samples,
-                        std::vector<cuComplex> &beamformed_samples_main,
-                        std::vector<cuComplex> &beamformed_samples_intf,
+                        std::vector<std::vector<cuComplex>> &beamformed_samples_main,
+                        std::vector<std::vector<cuComplex>> &beamformed_samples_intf,
                         std::vector<cuComplex> &phases, uint32_t num_main_ants,
-                        uint32_t num_intf_ants, std::vector<uint32_t> beam_direction_counts,
+                        uint32_t num_intf_ants, std::vector<rx_slice> rx_slice_info,
                         uint32_t num_samples)
   {
 
@@ -179,15 +179,14 @@ namespace {
     };
 
     auto main_phase_offset = 0;
-    auto main_results_offset = 0;
 
     // Now we calculate the offsets into the samples, phases, and results vector for each
     // RX frequency. Each RX frequency could have a different number of beams, so we increment
     // the phase and results offsets based off the accumulated number of beams. Once we have the
     // offsets, we can call the beamforming lambda.
-    for (uint32_t rx_freq_num=0; rx_freq_num<beam_direction_counts.size(); rx_freq_num++) {
+    for (uint32_t rx_freq_num=0; rx_freq_num<rx_slice_info.size(); rx_freq_num++) {
 
-      auto num_beams = beam_direction_counts[rx_freq_num];
+      auto num_beams = rx_slice_info[rx_freq_num].beam_count;;
 
       // Increment to start of new frequency dataset.
       auto main_sample_offset = num_samples * (num_main_ants + num_intf_ants) * rx_freq_num;
@@ -195,7 +194,7 @@ namespace {
 
       auto main_phase_ptr = phases.data() + main_phase_offset;
 
-      auto main_results_ptr = beamformed_samples_main.data() + main_results_offset;
+      auto main_results_ptr = beamformed_samples_main[rx_freq_num].data();
 
       beamform_from_offsets(main_sample_ptr, main_phase_ptr, main_results_ptr,
                             num_main_ants, num_beams);
@@ -212,8 +211,7 @@ namespace {
 
         // Result offsets will be the same. Each main and intf will have one set of samples for
         // each beam.
-        auto intf_results_offset = main_results_offset;
-        auto intf_results_ptr = beamformed_samples_intf.data() + intf_results_offset;
+        auto intf_results_ptr = beamformed_samples_intf[rx_freq_num].data();
 
         beamform_from_offsets(intf_sample_ptr, intf_phase_ptr, intf_results_ptr,
                               num_intf_ants, num_beams);
@@ -221,8 +219,74 @@ namespace {
 
       //Possibly non uniform striding means we incremement the offset as we go.
       main_phase_offset += num_beams * (num_main_ants + num_intf_ants);
-      main_results_offset += num_beams * num_samples;
+
     }
+
+  }
+
+  /**
+   * @brief      Finds correlations from two sets of samples.
+   *
+   * @param      beamformed_samples_1   The first set of beamformed samples for each beam.
+   * @param      beamformed_samples_2   The second set of beamformed samples for each beam.
+   * @param[in]  rx_slice_info          A vector of the info needed from each slice.
+   * @param[in]  num_samples            The number samples for each beam.
+
+   */
+  void correlations_from_samples(std::vector<std::vector<cuComplex>> &beamformed_samples_1,
+                          std::vector<std::vector<cuComplex>> &beamformed_samples_2,
+                          std::vector<rx_slice> rx_slice_info, uint32_t num_samples)
+  {
+
+      std::vector<std::vector<cuComplex>> slice_correlations;
+      for (uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
+          auto num_beams = rx_slice_info[slice_num].beam_count;
+          auto num_ranges = rx_slice_info[slice_num].nrange;
+          auto num_lags = rx_slice_info[slice_num].lags.size();
+
+          std::vector<cuComplex> correlations(num_ranges * num_lags * num_beams);
+
+          for (uint32_t beam_count=0; beam_count<num_beams; beam_count++) {
+              auto samples_ptr_1 = beamformed_samples_1[slice_num].data();
+              auto samples_ptr_2 = beamformed_samples_2[slice_num].data();
+              samples_ptr_1 += (beam_count * num_samples);
+              samples_ptr_2 += (beam_count * num_samples);
+
+              auto samples_cast_1 = reinterpret_cast<std::complex<float>*>(samples_ptr_1);
+              auto samples_cast_2 = reinterpret_cast<std::complex<float>*>(samples_ptr_2);
+
+              Eigen::MatrixXcf samps_1 = Eigen::Map<Eigen::Matrix<std::complex<float>,
+                                                              Eigen::Dynamic,
+                                                              Eigen::Dynamic,
+                                                              Eigen::RowMajor>>(samples_cast_1,
+                                                                                  num_samples,
+                                                                                  1);
+
+              Eigen::MatrixXcf samps_2 = Eigen::Map<Eigen::Matrix<std::complex<float>,
+                                                              Eigen::Dynamic,
+                                                              Eigen::Dynamic,
+                                                              Eigen::RowMajor>>(samples_cast_2,
+                                                                                  num_samples,
+                                                                                  1);
+
+              auto correlation_matrix = samps_1 * samps_2.adjoint();
+
+              auto beam_offset = beam_count * num_ranges * num_lags;
+              for(uint32_t range=0; range<num_ranges; range++) {
+                  for(uint32_t lag=0; lag<num_lags; lag++) {
+                      auto range_lag_offset = (range * num_lags) + lag;
+                      auto total_offset = beam_offset + range_lag_offset;
+                      auto val = correlation_matrix(range,
+                                                    range + rx_slice_info[slice_num].lags[lag]);
+                      correlations[total_offset].x = val.real();
+                      correlations[total_offset].y = val.imag();
+                  }
+              }
+
+          }
+
+          slice_correlations.push_back(correlations);
+      }
 
   }
   /**
@@ -256,14 +320,18 @@ namespace {
 
 
 
-    auto total_beam_dirs = 0;
-    auto beam_direction_counts = dp->get_beam_direction_counts();
-    for(auto &beam_count : beam_direction_counts) {
-      total_beam_dirs += beam_count;
+    //auto total_beam_dirs = 0;
+    //auto beam_direction_counts = dp->get_beam_direction_counts();
+    std::vector<std::vector<cuComplex>> beamformed_samples_main;
+    std::vector<std::vector<cuComplex>> beamformed_samples_intf;
+    for(auto &rx_slice_info : dp->get_slice_info()) {
+      std::vector<cuComplex> main_beam(rx_slice_info.beam_count * num_samples_after_dropping);
+      std::vector<cuComplex> intf_beam(rx_slice_info.beam_count * num_samples_after_dropping);
+      beamformed_samples_main.push_back(main_beam);
+      beamformed_samples_intf.push_back(intf_beam);
     }
 
-    std::vector<cuComplex> beamformed_samples_main(total_beam_dirs * num_samples_after_dropping);
-    std::vector<cuComplex> beamformed_samples_intf(total_beam_dirs * num_samples_after_dropping);
+
 
     TIMEIT_IF_TRUE_OR_DEBUG(false,"Beamforming time: ",
       {
@@ -272,12 +340,10 @@ namespace {
                         beam_phases,
                         dp->sig_options.get_main_antenna_count(),
                         dp->sig_options.get_interferometer_antenna_count(),
-                        beam_direction_counts,
+                        dp->get_slice_info(),
                         num_samples_after_dropping);
       }
     );
-
-
 
 
 
@@ -338,26 +404,27 @@ namespace {
       };
 
       // Add our beamformed IQ data to the processed data packet that gets sent to data_write.
-      for (uint32_t beam_count=0; beam_count<beam_direction_counts[i]; beam_count++) {
+      for (uint32_t beam_count=0; beam_count<dp->get_slice_info()[i].beam_count; beam_count++) {
         auto beam = dataset->add_beamformedsamples();
         beam->set_beamnum(beam_count);
 
         for (uint32_t sample=0; sample<num_samples_after_dropping; sample++){
           auto main_sample = beam->add_mainsamples();
-          main_sample->set_real(beamformed_samples_main[beamformed_offset + sample].x);
-          main_sample->set_imag(beamformed_samples_main[beamformed_offset + sample].y);
+          auto beam_start = beam_count * num_samples_after_dropping;
+          main_sample->set_real(beamformed_samples_main[i][beam_start + sample].x);
+          main_sample->set_imag(beamformed_samples_main[i][beam_start + sample].y);
 
           if (dp->sig_options.get_interferometer_antenna_count() > 0) {
             auto intf_sample = beam->add_intfsamples();
-            intf_sample->set_real(beamformed_samples_intf[beamformed_offset + sample].x);
-            intf_sample->set_imag(beamformed_samples_intf[beamformed_offset + sample].y);
+            intf_sample->set_real(beamformed_samples_intf[i][beam_start + sample].x);
+            intf_sample->set_imag(beamformed_samples_intf[i][beam_start + sample].y);
           }
         } // close loop over samples.
       } // close loop over beams.
 
       // Keep track of offsets as we move along frequencies. Different frequencies can have
       // different beams.
-      beamformed_offset += beam_direction_counts[i];
+      beamformed_offset += dp->get_slice_info()[i].beam_count;
 
 
       #ifdef ENGINEERING_DEBUG
@@ -503,7 +570,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
 DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket,
                   zmq::socket_t *data_socket, SignalProcessingOptions &sig_options,
                   uint32_t sequence_num,Filtering *dsp_filters, std::vector<cuComplex> beam_phases,
-                  std::vector<uint32_t> beam_direction_counts, double driver_initialization_time,
+                  double driver_initialization_time,
                   double sequence_start_time, std::vector<rx_slice> slice_info) :
   sequence_num(sequence_num),
   ack_socket(ack_socket),
@@ -512,7 +579,7 @@ DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket,
   sig_options(sig_options),
   dsp_filters(dsp_filters),
   beam_phases(beam_phases),
-  beam_direction_counts(beam_direction_counts),
+  //beam_direction_counts(beam_direction_counts),
   driver_initialization_time(driver_initialization_time),
   sequence_start_time(sequence_start_time),
   slice_info(slice_info)
@@ -1156,10 +1223,10 @@ std::vector<cuComplex> DSPCore::get_beam_phases()
  *
  * @return    The beam direction counts.
  */
-std::vector<uint32_t> DSPCore::get_beam_direction_counts()
+/*std::vector<uint32_t> DSPCore::get_beam_direction_counts()
 {
   return beam_direction_counts;
-}
+}*/
 
 /**
  * @brief     Gets the name of the shared memory section.

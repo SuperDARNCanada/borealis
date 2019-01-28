@@ -118,8 +118,6 @@ int main(int argc, char **argv){
   auto first_time = true;
   for(;;){
     //Receive packet from radar control
-    //auto message =  std::string("Need metadata");
-    //SEND_REQUEST(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity(), message);
     auto reply = RECV_REPLY(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity());
 
     sigprocpacket::SigProcPacket sp_packet;
@@ -168,39 +166,29 @@ int main(int argc, char **argv){
       //TODO(keith): handle error
     }
 
-    std::vector<rx_slice> slice_info;
-    for(uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
-      std::vector<uint32_t> lags;
-      auto num_lags = sp_packet.rxchannel(channel).lags_size();
-      for (uint32_t lag_counter=0; lag_counter<num_lags; lag_counter++) {
-        lags.push_back(sp_packet.rxchannel(channel).lags(lag_counter).lag_num());
-      }
-      auto rx_freq = sp_packet.rxchannel(channel).rxfreq();
-      auto slice_id = sp_packet.rxchannel(channel).slice_id();
-      auto nrange = sp_packet.rxchannel(channel).nrang();
-      slice_info.push_back(rx_slice(rx_freq, slice_id, nrange, lags));
-    }
 
-/*    std::vector<double> rx_freqs;
-    std::vector<uint32_t> slice_ids;
-    std::vector<uint32_t> nranges;
-    for(uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
-      rx_freqs.push_back(sp_packet.rxchannel(channel).rxfreq());
-      slice_ids.push_back(sp_packet.rxchannel(channel).slice_id());
-      nranges.push_back(sp_packet.rxchannel(channel).nrang());
-    }*/
-
-
-    // Parse out the beam phases from the radar control signal proc packet.
+    // Parse out the beam phases and other relevant info from the radar control signal proc packet.
     std::vector<cuComplex> beam_phases;
-    std::vector<uint32_t> beam_direction_counts;
+    std::vector<rx_slice> slice_info;
+    //std::vector<uint32_t> beam_direction_counts;
 
     for (uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
       // In this case each channel is the info for a new RX frequency
       auto rx_channel = sp_packet.rxchannel(channel);
 
+      std::vector<uint32_t> lags;
+      auto num_lags = sp_packet.rxchannel(channel).lags_size();
+      for (uint32_t lag_counter=0; lag_counter<num_lags; lag_counter++) {
+        lags.push_back(sp_packet.rxchannel(channel).lags(lag_counter).lag_num());
+      }
+      auto rx_freq = rx_channel.rxfreq();
+      auto slice_id = rx_channel.slice_id();
+      auto nrange = rx_channel.nrang();
+      auto beam_count = rx_channel.beam_directions_size();
+      slice_info.push_back(rx_slice(rx_freq, slice_id, nrange, beam_count, lags));
+
       // Keep track of the number of beams each RX freq has. We will need this for beamforming.
-      beam_direction_counts.push_back(rx_channel.beam_directions_size());
+      //beam_direction_counts.push_back(rx_channel.beam_directions_size());
 
       // We are going to use two intermediate vectors here to rearrange the phase data so that
       // all M data comes first, followed by all I data. This way can we directly treat each
@@ -250,14 +238,14 @@ int main(int argc, char **argv){
 
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
                              sig_options, sp_packet.sequence_num(), &filters, beam_phases,
-                             beam_direction_counts, rx_metadata.initialization_time(),
+                             rx_metadata.initialization_time(),
                              rx_metadata.sequence_start_time(), slice_info);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
     }
 
-      //We need to sample early to account for propagating samples through filters.
+    //We need to sample early to account for propagating samples through filters.
     int64_t extra_samples = (first_stage_dm_rate * second_stage_dm_rate *
                         filters.get_num_third_stage_taps());
 
