@@ -49,7 +49,7 @@ class DSPCore {
                       uint32_t num_samples_rf,
                       uint32_t num_output_samples_per_antenna_1,
                       uint32_t num_output_samples_per_antenna_2,
-                      uint32_t num_output_samples_per_antenna_3
+                      uint32_t num_output_samples_per_antenna_3,
                       uint32_t num_output_samples_per_antenna_4);
   void initial_memcpy_callback();
   //http://en.cppreference.com/w/cpp/language/explicit

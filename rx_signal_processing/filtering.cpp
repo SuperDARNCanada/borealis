@@ -53,12 +53,12 @@ Filtering::Filtering(std::vector<float> &first_stage_taps,
  *             that is a power of 2 for processing.
  *
  */
-std::vector<std::complex<float>> Filtering::fill_filter(std::vector<std::complex<float>> &filter_taps) {
+std::vector<std::complex<float>> Filtering::fill_filter(std::vector<float> &filter_taps) {
 
   //Adding a 0 for the imaginary part to be able to handle complex math in CUDA
   std::vector<std::complex<float>> complex_taps;
   for (auto &i : filter_taps) {
-    auto complex_tap = std::complex<float>(scaling_factor * i,0.0);
+    auto complex_tap = std::complex<float>(i,0.0);
     complex_taps.push_back(complex_tap);
   }
 

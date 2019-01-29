@@ -179,13 +179,13 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   if ((tx_rate_set == false) || (rx_rate_set == false))
   {
     // TODO(keith): throw error
-    continue;
+    //continue;
   }
 
   if ((tx_rate != driver_packet.txrate()) || (rx_rate != driver_packet.rxrate()))
   {
     // TODO : throw error because returned values are unexpected which could lead to, at worst, wrong transmit frequency.
-    continue;
+    //continue;
   }
 
   auto driver_ready_msg = std::string("DRIVER_READY");

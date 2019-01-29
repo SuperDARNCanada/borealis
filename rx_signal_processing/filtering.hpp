@@ -66,7 +66,7 @@ class Filtering {
     //! A host side vector that holds the taps for all first stage bandpass filters.
     std::vector<std::complex<float>> first_stage_bandpass_taps_h;
 
-    std::vector<std::complex<float>> fill_filter(std::vector<std::complex<float>> &filter_taps);
+    std::vector<std::complex<float>> fill_filter(std::vector<float> &filter_taps);
 
 };
 
