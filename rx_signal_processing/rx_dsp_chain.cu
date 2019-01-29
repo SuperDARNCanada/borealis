@@ -170,7 +170,6 @@ int main(int argc, char **argv){
     // Parse out the beam phases and other relevant info from the radar control signal proc packet.
     std::vector<cuComplex> beam_phases;
     std::vector<rx_slice> slice_info;
-    //std::vector<uint32_t> beam_direction_counts;
 
     for (uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
       // In this case each channel is the info for a new RX frequency
@@ -184,11 +183,11 @@ int main(int argc, char **argv){
       auto rx_freq = rx_channel.rxfreq();
       auto slice_id = rx_channel.slice_id();
       auto nrange = rx_channel.nrang();
+      auto frange = rx_channel.frang();
+      auto rsep = rx_channel.rsep();
       auto beam_count = rx_channel.beam_directions_size();
-      slice_info.push_back(rx_slice(rx_freq, slice_id, nrange, beam_count, lags));
 
-      // Keep track of the number of beams each RX freq has. We will need this for beamforming.
-      //beam_direction_counts.push_back(rx_channel.beam_directions_size());
+      slice_info.push_back(rx_slice(rx_freq, slice_id, nrange, beam_count, frange, rsep, lags));
 
       // We are going to use two intermediate vectors here to rearrange the phase data so that
       // all M data comes first, followed by all I data. This way can we directly treat each

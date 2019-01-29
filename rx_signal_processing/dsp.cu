@@ -238,57 +238,62 @@ namespace {
                           std::vector<rx_slice> rx_slice_info, uint32_t num_samples)
   {
 
-      std::vector<std::vector<cuComplex>> slice_correlations;
-      for (uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
-          auto num_beams = rx_slice_info[slice_num].beam_count;
-          auto num_ranges = rx_slice_info[slice_num].nrange;
-          auto num_lags = rx_slice_info[slice_num].lags.size();
 
-          std::vector<cuComplex> correlations(num_ranges * num_lags * num_beams);
+    std::vector<std::vector<cuComplex>> slice_correlations;
+    for (uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
+        auto num_beams = rx_slice_info[slice_num].beam_count;
+        auto num_ranges = rx_slice_info[slice_num].num_ranges;
+        auto num_lags = rx_slice_info[slice_num].lags.size();
 
-          for (uint32_t beam_count=0; beam_count<num_beams; beam_count++) {
-              auto samples_ptr_1 = beamformed_samples_1[slice_num].data();
-              auto samples_ptr_2 = beamformed_samples_2[slice_num].data();
-              samples_ptr_1 += (beam_count * num_samples);
-              samples_ptr_2 += (beam_count * num_samples);
+        std::vector<cuComplex> correlations(num_ranges * num_lags * num_beams);
 
-              auto samples_cast_1 = reinterpret_cast<std::complex<float>*>(samples_ptr_1);
-              auto samples_cast_2 = reinterpret_cast<std::complex<float>*>(samples_ptr_2);
+        for (uint32_t beam_count=0; beam_count<num_beams; beam_count++) {
+            auto samples_ptr_1 = beamformed_samples_1[slice_num].data();
+            auto samples_ptr_2 = beamformed_samples_2[slice_num].data();
+            samples_ptr_1 += (beam_count * num_samples);
+            samples_ptr_2 += (beam_count * num_samples);
 
-              Eigen::MatrixXcf samps_1 = Eigen::Map<Eigen::Matrix<std::complex<float>,
-                                                              Eigen::Dynamic,
-                                                              Eigen::Dynamic,
-                                                              Eigen::RowMajor>>(samples_cast_1,
-                                                                                  num_samples,
-                                                                                  1);
+            auto samples_cast_1 = reinterpret_cast<std::complex<float>*>(samples_ptr_1);
+            auto samples_cast_2 = reinterpret_cast<std::complex<float>*>(samples_ptr_2);
 
-              Eigen::MatrixXcf samps_2 = Eigen::Map<Eigen::Matrix<std::complex<float>,
-                                                              Eigen::Dynamic,
-                                                              Eigen::Dynamic,
-                                                              Eigen::RowMajor>>(samples_cast_2,
-                                                                                  num_samples,
-                                                                                  1);
+            Eigen::MatrixXcf samps_1 = Eigen::Map<Eigen::Matrix<std::complex<float>,
+                                                            Eigen::Dynamic,
+                                                            Eigen::Dynamic,
+                                                            Eigen::RowMajor>>(samples_cast_1,
+                                                                                num_samples,
+                                                                                1);
 
-              auto correlation_matrix = samps_1 * samps_2.adjoint();
+            Eigen::MatrixXcf samps_2 = Eigen::Map<Eigen::Matrix<std::complex<float>,
+                                                            Eigen::Dynamic,
+                                                            Eigen::Dynamic,
+                                                            Eigen::RowMajor>>(samples_cast_2,
+                                                                                num_samples,
+                                                                                1);
 
-              auto beam_offset = beam_count * num_ranges * num_lags;
-              for(uint32_t range=0; range<num_ranges; range++) {
-                  for(uint32_t lag=0; lag<num_lags; lag++) {
-                      auto range_lag_offset = (range * num_lags) + lag;
-                      auto total_offset = beam_offset + range_lag_offset;
-                      auto val = correlation_matrix(range,
-                                                    range + rx_slice_info[slice_num].lags[lag]);
-                      correlations[total_offset].x = val.real();
-                      correlations[total_offset].y = val.imag();
-                  }
-              }
+            auto correlation_matrix = samps_1 * samps_2.adjoint();
 
-          }
+            auto beam_offset = beam_count * num_ranges * num_lags;
+            auto first_range_offset = uint32_t(rx_slice_info[slice_num].first_range /
+                                  rx_slice_info[slice_num].range_sep);
+            for(uint32_t range=0; range<num_ranges; range++) {
+                for(uint32_t lag=0; lag<num_lags; lag++) {
+                    auto range_lag_offset = (range * num_lags) + lag;
+                    auto total_offset = beam_offset + range_lag_offset;
+                    auto val = correlation_matrix(range + first_range_offset,
+                                                  range + first_range_offset +
+                                                  rx_slice_info[slice_num].lags[lag]);
+                    correlations[total_offset].x = val.real();
+                    correlations[total_offset].y = val.imag();
+                }
+            }
 
-          slice_correlations.push_back(correlations);
-      }
+        }
+
+        slice_correlations.push_back(correlations);
+    }
 
   }
+
   /**
    * @brief      Creates a data packet of processed data.
    *

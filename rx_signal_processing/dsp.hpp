@@ -45,16 +45,20 @@ typedef struct rx_slice
 {
   double rx_freq;
   uint32_t slice_id;
-  uint32_t nrange;
+  uint32_t num_ranges;
   uint32_t beam_count;
+  float first_range; // km
+  float range_sep; // km
   std::vector<uint32_t> lags;
 
-  rx_slice(double rx_freq, uint32_t slice_id, uint32_t nrange, uint32_t beam_count,
-            std::vector<uint32_t> lags) :
+  rx_slice(double rx_freq, uint32_t slice_id, uint32_t num_ranges, uint32_t beam_count,
+            float first_range, float range_sep, std::vector<uint32_t> lags) :
     rx_freq(rx_freq),
     slice_id(slice_id),
-    nrange(nrange),
+    num_ranges(num_ranges),
     beam_count(beam_count),
+    first_range(first_range),
+    range_sep(range_sep),
     lags(lags){}
 }rx_slice;
 

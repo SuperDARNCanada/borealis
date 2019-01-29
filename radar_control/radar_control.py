@@ -161,6 +161,7 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
             chan_add.rxfreq = slice_dict[slice_id]['txfreq'] * 1.0e3
         chan_add.nrang = slice_dict[slice_id]['nrang']
         chan_add.frang = slice_dict[slice_id]['frang']
+        chan_add.rsep = slice_dict[slice_id]['rsep']
         for beamdir in beam_dict[slice_id]:
             beam_add = chan_add.beam_directions.add()
             # beamdir is a list (len = total antennas, main and interferometer) with phase for each

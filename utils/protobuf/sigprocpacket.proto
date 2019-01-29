@@ -14,8 +14,9 @@ message SigProcPacket {
         double rxfreq = 2; // REVIEW #28 Does this need to be a double?
         uint32 nrang = 3;
         float frang = 4;
-        repeated BeamDirections beam_directions = 5;
-        repeated LagPair lags = 6;
+        float rsep = 5;
+        repeated BeamDirections beam_directions = 6;
+        repeated LagPair lags = 7;
 
         message BeamDirections {
             repeated Phase phase = 1; /* must be length = number main + intf antennas */
