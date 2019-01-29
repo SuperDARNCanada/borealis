@@ -32,8 +32,6 @@ int main(int argc, char **argv){
 
   //TODO(keith): verify config options.
   auto sig_options = SignalProcessingOptions();
-  auto rx_rate = sig_options.get_rx_rate(); //Hz
-
 
   zmq::context_t context(1); // 1 is context num. Only need one per program as per examples
   auto identities = {sig_options.get_dsp_radctrl_identity(),
@@ -55,63 +53,6 @@ int main(int argc, char **argv){
   auto gpu_properties = get_gpu_properties();
   print_gpu_properties(gpu_properties);
 
-  uint32_t first_stage_dm_rate = 0, second_stage_dm_rate = 0, third_stage_dm_rate = 0;
-  //Check for non integer dm rates
-  if (fmod(rx_rate,sig_options.get_first_stage_sample_rate()) > 0.0) {
-    //TODO(keith): handle error
-  }
-  else{
-    auto float_dm_rate = rx_rate/sig_options.get_first_stage_sample_rate();
-    first_stage_dm_rate = static_cast<uint32_t>(float_dm_rate);
-
-    float_dm_rate = sig_options.get_first_stage_sample_rate()/
-          sig_options.get_second_stage_sample_rate();
-    second_stage_dm_rate = static_cast<uint32_t>(float_dm_rate);
-
-    float_dm_rate = sig_options.get_second_stage_sample_rate()/
-          sig_options.get_third_stage_sample_rate();
-    third_stage_dm_rate = static_cast<uint32_t>(float_dm_rate);
-  }
-
-
-
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "1st stage dm rate: "
-    << COLOR_YELLOW(first_stage_dm_rate));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "2nd stage dm rate: "
-    << COLOR_YELLOW(second_stage_dm_rate));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "3rd stage dm rate: "
-    << COLOR_YELLOW(third_stage_dm_rate));
-
-
-  auto filter_timing_start = std::chrono::steady_clock::now();
-
-  Filtering filters(rx_rate,sig_options);
-
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 1st stage taps: "
-    << COLOR_YELLOW(filters.get_num_first_stage_taps()));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 2nd stage taps: "
-    << COLOR_YELLOW(filters.get_num_second_stage_taps()));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 3rd stage taps: "
-    << COLOR_YELLOW(filters.get_num_third_stage_taps()));
-
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 1st stage taps after padding: "
-              << COLOR_YELLOW(filters.get_first_stage_lowpass_taps().size()));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 2nd stage taps after padding: "
-              << COLOR_YELLOW(filters.get_second_stage_lowpass_taps().size()));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of 3rd stage taps after padding: "
-              << COLOR_YELLOW(filters.get_third_stage_lowpass_taps().size()));
-
-  auto filter_timing_end = std::chrono::steady_clock::now();
-  auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(filter_timing_end -
-                                                                       filter_timing_start).count();
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Time to create 3 filters: "
-    << COLOR_MAGENTA(time_diff) << "us");
-
-  //FIXME(Keith): fix saving filter to file
-  filters.save_filter_to_file(filters.get_first_stage_lowpass_taps(),"filter1coefficients.dat");
-  filters.save_filter_to_file(filters.get_second_stage_lowpass_taps(),"filter2coefficients.dat");
-  filters.save_filter_to_file(filters.get_third_stage_lowpass_taps(),"filter3coefficients.dat");
-
   SharedMemoryHandler shrmem(sig_options.get_ringbuffer_name());
   std::vector<cuComplex*> ringbuffer_ptrs_start;
 
@@ -127,6 +68,68 @@ int main(int argc, char **argv){
       //TODO(keith): handle error
     }
 
+    if (first_time) {
+
+      auto total_antennas = sig_options.get_main_antenna_count() +
+                  sig_options.get_interferometer_antenna_count();
+
+      auto rx_rate = sp_packet.rxrate(); //Hz
+
+      uint32_t first_stage_dm_rate = 0, second_stage_dm_rate = 0, third_stage_dm_rate = 0, fourth_stage_dm_rate = 0;
+
+      first_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[0].dm_rate());
+      second_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[1].dm_rate());
+      third_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[2].dm_rate());
+      fourth_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[3].dm_rate());      
+
+      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimation rates: "
+        << COLOR_YELLOW(first_stage_dm_rate) << ", "
+        << COLOR_YELLOW(second_stage_dm_rate) << ", "
+        << COLOR_YELLOW(third_stage_dm_rate) << ", "
+        << COLOR_YELLOW(fourth_stage_dm_rate));
+
+      auto filter_timing_start = std::chrono::steady_clock::now();
+
+      Filtering filters(sp_packet.decimation_stages()[0].filter_taps(),
+                        sp_packet.decimation_stages()[1].filter_taps(), 
+                        sp_packet.decimation_stages()[2].filter_taps(),
+                        sp_packet.decimation_stages()[3].filter_taps());
+
+      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of taps per stage: "
+        << COLOR_YELLOW(filters.get_num_first_stage_taps()) << ", "
+        << COLOR_YELLOW(filters.get_num_second_stage_taps()) << ", "
+        << COLOR_YELLOW(filters.get_num_third_stage_taps()) << ", "
+        << COLOR_YELLOW(filters.get_num_fourth_stage_taps()));
+
+      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of taps per stage after padding: "
+                  << COLOR_YELLOW(filters.get_first_stage_lowpass_taps().size()) << ", "
+                  << COLOR_YELLOW(filters.get_second_stage_lowpass_taps().size()) << ", "
+                  << COLOR_YELLOW(filters.get_third_stage_lowpass_taps().size()) << ", "
+                  << COLOR_YELLOW(filters.get_fourth_stage_lowpass_taps().size()));
+
+      auto filter_timing_end = std::chrono::steady_clock::now();
+      auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(filter_timing_end -
+                                                                           filter_timing_start).count();
+      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Time to create 3 filters: "
+        << COLOR_MAGENTA(time_diff) << "us");
+
+      //FIXME(Keith): fix saving filter to file
+      filters.save_filter_to_file(filters.get_first_stage_lowpass_taps(),"filter1coefficients.dat");
+      filters.save_filter_to_file(filters.get_second_stage_lowpass_taps(),"filter2coefficients.dat");
+      filters.save_filter_to_file(filters.get_third_stage_lowpass_taps(),"filter3coefficients.dat");
+
+      shrmem.open_shr_mem();
+      if (rx_metadata.ringbuffer_size() == 0) {
+        //TODO(keith): handle error
+      }
+      for(uint32_t i=0; i<total_antennas; i++){
+        auto ptr = static_cast<cuComplex*>(shrmem.get_shrmem_addr()) +
+                                              (i * rx_metadata.ringbuffer_size());
+        ringbuffer_ptrs_start.push_back(ptr);
+      }
+      first_time = false;
+    }
+
     //Then receive packet from driver
     auto message = std::string("Need data to process");
     SEND_REQUEST(dsp_to_driver, sig_options.get_driver_dsp_identity(), message);
@@ -140,21 +143,6 @@ int main(int argc, char **argv){
     RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Got driver request for sequence #"
       << COLOR_RED(rx_metadata.sequence_num()));
 
-    auto total_antennas = sig_options.get_main_antenna_count() +
-                sig_options.get_interferometer_antenna_count();
-
-    if (first_time) {
-      shrmem.open_shr_mem();
-      if (rx_metadata.ringbuffer_size() == 0) {
-        //TODO(keith): handle error
-      }
-      for(uint32_t i=0; i<total_antennas; i++){
-        auto ptr = static_cast<cuComplex*>(shrmem.get_shrmem_addr()) +
-                                              (i * rx_metadata.ringbuffer_size());
-        ringbuffer_ptrs_start.push_back(ptr);
-      }
-      first_time = false;
-    }
     //Verify driver and radar control packets align
     if (sp_packet.sequence_num() != rx_metadata.sequence_num()) {
       //TODO(keith): handle error
@@ -239,8 +227,21 @@ int main(int argc, char **argv){
     }
 
       //We need to sample early to account for propagating samples through filters.
-    int64_t extra_samples = (first_stage_dm_rate * second_stage_dm_rate *
-                        filters.get_num_third_stage_taps());
+    int64_t extra_samples = (first_stage_dm_rate * second_stage_dm_rate * third_stage_dm_rate *
+                        filters.get_num_fourth_stage_taps());
+
+    if extra_samples < (first_stage_dm_rate * second_stage_dm_rate * 
+                        filters.get_num_third_stage_taps()) {
+      extra_samples = first_stage_dm_rate * second_stage_dm_rate * filters.get_num_third_stage_taps();
+    }
+
+    if extra_samples < (first_stage_dm_rate * filters.get_num_second_stage_taps()) {
+      extra_samples = first_stage_dm_rate * filters.get_num_second_stage_taps();
+    }
+
+    if extra_samples < (filters.get_num_first_stage_taps()) {
+      extra_samples = filters.get_num_first_stage_taps();
+    }
 
     auto samples_needed = rx_metadata.numberofreceivesamples() + 2 * extra_samples;
     auto total_samples = samples_needed * total_antennas;
@@ -252,8 +253,7 @@ int main(int argc, char **argv){
                                 offset_to_first_rx_sample,
                                 rx_metadata.initialization_time(),
                                 rx_metadata.sequence_start_time(),
-                                rx_metadata.ringbuffer_size(), first_stage_dm_rate,
-                                second_stage_dm_rate, ringbuffer_ptrs_start);
+                                rx_metadata.ringbuffer_size(), ringbuffer_ptrs_start);
     dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
     dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),
                                                 filters.get_first_stage_bandpass_taps_h().size());
@@ -313,13 +313,30 @@ int main(int argc, char **argv){
       total_antennas, rx_rate, dp->get_frequencies_p(), "Third stage of decimation",
       dp->get_cuda_stream());
 
-    dp->allocate_and_copy_host_output(total_output_samples_3);
+    dp->allocate_and_copy_fourth_stage_filter(filters.get_fourth_stage_lowpass_taps().data(),
+                                               filters.get_fourth_stage_lowpass_taps().size());
+
+    auto num_output_samples_per_antenna_4 = num_output_samples_per_antenna_3 / fourth_stage_dm_rate;
+    auto total_output_samples_4 = rx_freqs.size() * num_output_samples_per_antenna_4 *
+                                    total_antennas;
+
+    dp->allocate_fourth_stage_output(total_output_samples_4);
+
+    auto samples_per_antenna_4 = samples_per_antenna_3/third_stage_dm_rate;
+    call_decimate<DecimationType::lowpass>(dp->get_third_stage_output_p(),
+      dp->get_fourth_stage_output_p(), dp->get_fourth_stage_filter_p(), fourth_stage_dm_rate,
+      samples_per_antenna_4, filters.get_fourth_stage_lowpass_taps().size(), rx_freqs.size(),
+      total_antennas, rx_rate, dp->get_frequencies_p(), "Fourth stage of decimation",
+      dp->get_cuda_stream());
+
+    dp->allocate_and_copy_host_output(total_output_samples_4);
 
     dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
                                       samples_needed,
                                       num_output_samples_per_antenna_1,
                                       num_output_samples_per_antenna_2,
-                                      num_output_samples_per_antenna_3);
+                                      num_output_samples_per_antenna_3
+                                      num_output_samples_per_antenna_4);
 
 
 
