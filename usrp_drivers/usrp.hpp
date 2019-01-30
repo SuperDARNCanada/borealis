@@ -19,30 +19,27 @@ See LICENSE for details.
  */
 class USRP{
   public:
-    explicit USRP(const DriverOptions& driver_options);
+    explicit USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate);
     void set_usrp_clock_source(std::string source);
     void set_tx_subdev(std::string tx_subdev);
-    double set_tx_rate(double tx_rate, std::vector<size_t> chs);
+    double set_tx_rate(std::vector<size_t> chs);
     double get_tx_rate(uint32_t channel=0);
-    double set_tx_center_freq(double freq, std::vector<size_t> chs);
+    double set_tx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay);
     void set_main_rx_subdev(std::string main_subdev);
     void set_interferometer_rx_subdev(std::string interferometer_subdev,
                                         uint32_t interferometer_antenna_count);
-    double set_rx_rate(double rx_rate, std::vector<size_t> rx_chs);
-    double set_rx_center_freq(double freq, std::vector<size_t> chs);
+    double set_rx_rate(std::vector<size_t> rx_chs);
+    double get_rx_rate(uint32_t channel=0);
+    double set_rx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay);
     void set_time_source(std::string source, std::string clk_addr);
     void check_ref_locked();
-    void set_scope_sync(uhd::time_spec_t scope_high);
-    void set_atten(uhd::time_spec_t atten_high);
-    void set_tr(uhd::time_spec_t tr_high);
-    void clear_scope_sync(uhd::time_spec_t scope_low);
-    void clear_atten(uhd::time_spec_t atten_low);
-    void clear_tr(uhd::time_spec_t tr_low);
+    void create_usrp_rx_stream(std::string cpu_fmt, std::string otw_fmt, std::vector<size_t> chs);
+    void create_usrp_tx_stream(std::string cpu_fmt, std::string otw_fmt, std::vector<size_t> chs);
     void set_command_time(uhd::time_spec_t cmd_time);
     void clear_command_time();
     uhd::time_spec_t get_current_usrp_time();
-    uhd::rx_streamer::sptr get_usrp_rx_stream(uhd::stream_args_t stream_args);
-    uhd::tx_streamer::sptr get_usrp_tx_stream(uhd::stream_args_t stream_args);
+    uhd::rx_streamer::sptr get_usrp_rx_stream();
+    uhd::tx_streamer::sptr get_usrp_tx_stream();
     uhd::usrp::multi_usrp::sptr get_usrp();
     std::string to_string(std::vector<size_t> tx_chs, std::vector<size_t> rx_chs);
 
@@ -53,9 +50,6 @@ class USRP{
     //! A string representing what GPIO bank to use on the USRPs.
     std::string gpio_bank_;
 
-    //! The motherboard for which to use GPIOs for high speed I/O.
-    uint32_t mboard_;
-
     //! The bitmask to use for the scope sync GPIO.
     uint32_t scope_sync_mask_;
 
@@ -65,7 +59,29 @@ class USRP{
     //! The bitmask to use for the TR GPIO.
     uint32_t tr_mask_;
 
-    void set_atr_gpios(uint32_t atr_rx, uint32_t atr_tx, uint32_t atr_xx, uint32_t atr_0x);
+    //! Bitmask used for full duplex ATR.
+    uint32_t atr_xx_;
+
+    //! Bitmask used for rx only ATR.
+    uint32_t atr_rx_;
+
+    //! Bitmask used for tx only ATR.
+    uint32_t atr_tx_;
+
+    //! Bitmask used for idle ATR.
+    uint32_t atr_0x_;
+
+    //! The tx rate in Hz.
+    float tx_rate_;
+
+    //! The rx rate in Hz.
+    float rx_rate_;
+
+    uhd::tx_streamer::sptr tx_stream_;
+
+    uhd::rx_streamer::sptr rx_stream_;
+
+    void set_atr_gpios();
 
 };
 

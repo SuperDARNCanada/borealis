@@ -99,109 +99,22 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   zmq::socket_t &driver_to_dsp = sockets_vector[1];
   zmq::socket_t &driver_to_brian = sockets_vector[2];
 
-  // Begin setup process.
-  // This exchange signals to radar control that the devices are ready to go so that it can
-  // begin processing experiments without low averages in the first integration period.
-
   double tx_center_freq = 0.0, rx_center_freq = 0.0;
-  double tx_rate = 0.0, rx_rate = 0.0;
 
   auto tx_center_freq_set = false;
   auto rx_center_freq_set = false;
-  auto tx_rate_set = false;
-  auto rx_rate_set = false;
 
-  auto setup_data = recv_data(driver_to_radar_control,
-                                driver_options.get_radctrl_to_driver_identity());
+  auto samples_set = false;
+
+  auto rx_rate = usrp_d.get_rx_rate();
 
   driverpacket::DriverPacket driver_packet;
-
-  // Initial setup commands completed 
-  TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " initial total setup time: ",
-    [&]() {
-      if (driver_packet.ParseFromString(setup_data) == false)
-      {
-        //TODO(keith): handle error
-      }
-
-      TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " rates ",
-        [&]() {
-          //Set sampling rates for each USRP TX channel.
-          if (driver_packet.txrate() > 0.0)
-            {
-              DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx rate to " <<
-                          driver_packet.txrate());
-              tx_rate = usrp_d.set_tx_rate(driver_packet.txrate(), driver_options.get_transmit_channels());
-              tx_rate_set = true;
-            }
-
-          if (driver_packet.rxrate() > 0.0)
-            {
-              DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting rx rate to " <<
-                          driver_packet.rxrate());
-              rx_rate = usrp_d.set_rx_rate(driver_packet.rxrate(), driver_options.get_receive_channels());
-              rx_rate_set = true;
-            }
-          }
-        )
-
-      TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " center freq ",
-        [&]() {
-          //Set TX center frequency for each USRP TX channel.
-          if (driver_packet.txcenterfreq() > 0.0)
-          {
-            DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx center freq to " <<
-                        driver_packet.txcenterfreq());
-            auto tune_time = box_time + uhd::time_spec_t(TUNING_DELAY);
-            usrp_d.set_command_time(tune_time);
-            tx_center_freq = usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), driver_options.get_transmit_channels());
-            usrp_d.clear_command_time();
-            tx_center_freq_set = true;
-          }
-
-          // rxcenterfreq() will return 0 if it hasn't changed, so check for changes here
-          if (driver_packet.rxcenterfreq() > 0.0)
-          {
-            DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting rx center freq to " <<
-                        driver_packet.rxcenterfreq());
-            auto tune_time = box_time + uhd::time_spec_t(TUNING_DELAY);
-            usrp_d.set_command_time(tune_time);
-            rx_center_freq = usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), driver_options.get_receive_channels());
-            usrp_d.clear_command_time();
-            rx_center_freq_set = true;
-          }
-
-        }()
-      );
-    }();
-  );
-
-  if ((tx_rate_set == false) || (rx_rate_set == false))
-  {
-    // TODO(keith): throw error
-    //continue;
-  }
-
-  if ((tx_rate != driver_packet.txrate()) || (rx_rate != driver_packet.rxrate()))
-  {
-    // TODO : throw error because returned values are unexpected which could lead to, at worst, wrong transmit frequency.
-    //continue;
-  }
-
-  auto driver_ready_msg = std::string("DRIVER_READY");
-  SEND_REPLY(driver_to_radar_control, driver_options.get_radctrl_to_driver_identity(),
-    driver_ready_msg);
 
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.connect("inproc://thread"))
 
-  auto samples_set = false;
-
   std::vector<size_t> tx_channels = driver_options.get_transmit_channels();
-
-  uhd::tx_streamer::sptr tx_stream;
-  uhd::stream_args_t stream_args(driver_options.get_cpu(), driver_options.get_otw());
-  tx_stream = usrp_d.get_usrp_tx_stream(stream_args);
+  auto tx_stream = usrp_d.get_usrp_tx_stream();
 
   std::vector<std::vector<std::vector<std::complex<float>>>> pulses;
   std::vector<std::vector<std::complex<float>>> last_pulse_sent;
@@ -264,11 +177,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 {
                   DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting tx center freq to " <<
                               driver_packet.txcenterfreq());
-                  auto tune_time = box_time + uhd::time_spec_t(TUNING_DELAY);
-                  usrp_d.set_command_time(tune_time);
-                  tx_center_freq = usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), tx_channels);
-                  usrp_d.clear_command_time();
-                  tx_center_freq_set = true;
+                  tx_center_freq = usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(),
+                                                             tx_channels,
+                                                             uhd::time_spec_t(TUNING_DELAY));
                 }
               }
 
@@ -278,19 +189,15 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 {
                   DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " setting rx center freq to " <<
                               driver_packet.rxcenterfreq());
-                  auto tune_time = box_time + uhd::time_spec_t(TUNING_DELAY);
-                  usrp_d.set_command_time(tune_time);
-                  rx_center_freq = usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), receive_channels);  // ASKKEITH receive_channels is setup in rx thread, how does this work
-                  usrp_d.clear_command_time();
-                  rx_center_freq_set = true;
-
+                  rx_center_freq = usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(),
+                                                              receive_channels,
+                                                              uhd::time_spec_t(TUNING_DELAY));
                 }
               }
 
             }()
 
           );
-
 
           TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " sample unpack time: ",
             [&]() {
@@ -321,14 +228,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       );
     }
 
-    if ((tx_center_freq != driver_packet.tx_center_freq()) || (rx_center_freq != driver_packet.rx_center_freq()))
-    {
-      // TODO : throw error because returned values are unexpected which could lead to, at worst, wrong transmit frequency.
-      continue;
-    }
-
     //In order to transmit, these parameters need to be set at least once.
-    if ((tx_center_freq_set == false) || (rx_center_freq_set == false) || (samples_set == false))
+    if(samples_set == false)
     {
       // TODO(keith): throw error
       continue;
@@ -508,17 +409,9 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   zmq::socket_t start_trigger(driver_c, ZMQ_PAIR);
   ERR_CHK_ZMQ(start_trigger.bind("inproc://thread"));
 
-  uhd::stream_args_t stream_args(driver_options.get_cpu(), driver_options.get_otw());
-  uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
-  auto rx_rate_hz = rx_rate;  // ASKKEITH how to get rx_rate here from transmit thread
-
 
   auto receive_channels = driver_options.get_receive_channels();
-  stream_args.channels = receive_channels;
-
-  //usrp_d.set_rx_center_freq(12e6, receive_channels);
-
-  uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream(stream_args);  // ~44ms
+  uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream();
 
   auto usrp_buffer_size = rx_stream->get_max_num_samps();
   /* The ringbuffer_size is calculated this way because it's first truncated (size_t)
@@ -541,6 +434,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   std::vector<std::complex<float>*> buffer_ptrs = buffer_ptrs_start;
 
+  uhd::stream_cmd_t stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
   stream_cmd.stream_now = false;
   stream_cmd.num_samps = 0;
   stream_cmd.time_spec = usrp_d.get_current_usrp_time() + uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
@@ -557,6 +451,8 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   uint32_t bchain_count = 0;
   uint32_t align_count = 0;
   uint32_t badp_count = 0;
+
+  auto rx_rate = usrp_d.get_rx_rate();
 
 
   zmq::message_t ring_size(sizeof(ringbuffer_size));
@@ -615,7 +511,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
     }
 
     auto rx_packet_time_diff = meta.time_spec.get_real_secs()-stream_cmd.time_spec.get_real_secs();
-    auto diff_sample = rx_packet_time_diff * rx_rate_hz;
+    auto diff_sample = rx_packet_time_diff * rx_rate;
     auto true_sample = (int64_t(diff_sample/usrp_buffer_size) + 1) * usrp_buffer_size;
     auto ringbuffer_idx = true_sample % ringbuffer_size;
 
@@ -639,7 +535,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
  */
 int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
-  //uhd::set_thread_priority_safe(1.0,true);
 
   DriverOptions driver_options;
 
@@ -648,16 +543,37 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   DEBUG_MSG(driver_options.get_ref());
   DEBUG_MSG(driver_options.get_tx_subdev());
 
-  USRP usrp_d(driver_options);
-
   //  Prepare our context
   zmq::context_t driver_context(1);
-  auto identities = {driver_options.get_driver_to_mainaffinity_identity()};
+  auto identities = {driver_options.get_driver_to_mainaffinity_identity(),
+                      driver_options.get_driver_to_radctrl_identity()};
 
   auto sockets_vector = create_sockets(driver_context, identities,
                                         driver_options.get_router_address());
 
   zmq::socket_t &driver_to_mainaffinity = sockets_vector[0];
+  zmq::socket_t &driver_to_radar_control = sockets_vector[1];
+
+  // Begin setup process.
+  // This exchange signals to radar control that the devices are ready to go so that it can
+  // begin processing experiments without low averages in the first integration period.
+
+  auto setup_data = recv_data(driver_to_radar_control,
+                                driver_options.get_radctrl_to_driver_identity());
+
+  driverpacket::DriverPacket driver_packet;
+  if (driver_packet.ParseFromString(setup_data) == false)
+  {
+        //TODO(keith): handle error
+  }
+
+  USRP usrp_d(driver_options, driver_packet.txrate(), driver_packet.rxrate());
+  auto tune_delay = uhd::time_spec_t(TUNING_DELAY);
+  usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), driver_options.get_transmit_channels(),
+                            tune_delay);
+  usrp_d.set_rx_center_freq(driver_packet.txcenterfreq(), driver_options.get_transmit_channels(),
+                            tune_delay);
+
 
   std::vector<std::thread> threads;
 
@@ -671,6 +587,10 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
 
   threads.push_back(std::move(transmit_t));
   threads.push_back(std::move(receive_t));
+
+  auto driver_ready_msg = std::string("DRIVER_READY");
+  SEND_REPLY(driver_to_radar_control, driver_options.get_radctrl_to_driver_identity(),
+    driver_ready_msg);
 
   auto set_tid_msg = std::string("SET_TIDS");
   SEND_REQUEST(driver_to_mainaffinity,
