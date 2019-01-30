@@ -24,8 +24,8 @@ See LICENSE for details.
  * @brief      Creates the multiUSRP abstraction with the options from the config file.
  *
  * @param[in]  driver_options  The driver options parsed from config
- * @param[in]  tx_rate         The transmit rate in Sps.
- * @param[in]  rx_rate         The receive rate in Sps.
+ * @param[in]  tx_rate         The transmit rate in Sps  (samples per second, Hz).
+ * @param[in]  rx_rate         The receive rate in Sps (samples per second, Hz).
  */
 USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
 {
@@ -104,6 +104,11 @@ double USRP::set_tx_rate(std::vector<size_t> chs)
     if (actual_rate != rate_1) {
       /*TODO(keith): error*/
     }
+
+    if (actual_rate != tx_rate_) {
+      /*TODO(keith): error - fail because experiment will assume and we will transmit different than expected*/
+    }
+
   }
 
   return usrp_->get_tx_rate(chs[0]);
@@ -132,7 +137,7 @@ double USRP::get_tx_rate(uint32_t channel)
  * The USRP uses a numbered channel mapping system to identify which data streams come from which
  * USRP and its daughterboard frontends. With the daughtboard frontends connected to the
  * transmitters, controlling what USRP channels are selected will control what antennas are
- * used and what order they are in. The synchronize tuning of all boxes, timed commands are used so
+ * used and what order they are in. To synchronize tuning of all boxes, timed commands are used so
  * that everything is done at once.
  */
 double USRP::set_tx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay)
@@ -215,15 +220,19 @@ double USRP::set_rx_rate(std::vector<size_t> rx_chs)
 
   //check for varying USRPs
   for (auto &channel : rx_chs) {
-    auto actual_freq = usrp_->get_rx_freq(channel);
-    auto freq_1 = usrp_->get_rx_freq(rx_chs[0]);
+    auto actual_rate = usrp_->get_rx_rate(channel);
+    auto rate_1 = usrp_->get_rx_rate(rx_chs[0]);
 
-    if (actual_freq != freq_1) {
+    if (actual_rate != rate_1) {
         //TODO(keith): throw error.
+    }
+
+    if (actual_rate != rx_rate_) {
+        //TODO(keith): throw error. Fail because will be receiving unknown freqs.
     }
   }
 
-  return usrp_->get_rx_freq(rx_chs[0]);
+  return usrp_->get_rx_rate(rx_chs[0]);
 }
 
 /**
@@ -248,7 +257,7 @@ double USRP::get_rx_rate(uint32_t channel)
  * USRP and its daughterboard frontends. With the daughtboard frontends connected to the
  * transmitters, controlling what USRP channels are selected will control what antennas are
  * used and what order they are in. To simplify data processing, all antenna mapped channels are
- * used. The synchronize tuning of all boxes, timed commands are used so that everything is done at
+ * used. To synchronize tuning of all boxes, timed commands are used so that everything is done at
  * once.
  */
 double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay)
