@@ -231,11 +231,16 @@ namespace {
    * @param      beamformed_samples_2   The second set of beamformed samples for each beam.
    * @param[in]  rx_slice_info          A vector of the info needed from each slice.
    * @param[in]  num_samples            The number samples for each beam.
-
+   *
+   * For each slice a correlation matrix is build for all the beams in that slice. Values
+   * corresponding to particular lags and range gates are selected from the final data. This
+   * function does not compute the expectation value for the correlations. That part is done in
+   * data write.
    */
-  void correlations_from_samples(std::vector<std::vector<cuComplex>> &beamformed_samples_1,
-                          std::vector<std::vector<cuComplex>> &beamformed_samples_2,
-                          std::vector<rx_slice> rx_slice_info, uint32_t num_samples)
+  std::vector<std::vector<cuComplex>> correlations_from_samples(
+                                          std::vector<std::vector<cuComplex>> &beamformed_samples_1,
+                                          std::vector<std::vector<cuComplex>> &beamformed_samples_2,
+                                          std::vector<rx_slice> rx_slice_info, uint32_t num_samples)
   {
 
 
@@ -270,11 +275,14 @@ namespace {
                                                                                 num_samples,
                                                                                 1);
 
+            // correlation = E(XY^H) where X and Y are random vectors and H is the conjugate
+            // transpose.
             auto correlation_matrix = samps_1 * samps_2.adjoint();
 
             auto beam_offset = beam_count * num_ranges * num_lags;
             auto first_range_offset = uint32_t(rx_slice_info[slice_num].first_range /
                                   rx_slice_info[slice_num].range_sep);
+            // Select out the lags for each range gate.
             for(uint32_t range=0; range<num_ranges; range++) {
                 for(uint32_t lag=0; lag<num_lags; lag++) {
                     auto range_lag_offset = (range * num_lags) + lag;
@@ -292,6 +300,7 @@ namespace {
         slice_correlations.push_back(correlations);
     }
 
+    return slice_correlations;
   }
 
   /**
@@ -325,8 +334,6 @@ namespace {
 
 
 
-    //auto total_beam_dirs = 0;
-    //auto beam_direction_counts = dp->get_beam_direction_counts();
     std::vector<std::vector<cuComplex>> beamformed_samples_main;
     std::vector<std::vector<cuComplex>> beamformed_samples_intf;
     for(auto &rx_slice_info : dp->get_slice_info()) {
@@ -338,7 +345,7 @@ namespace {
 
 
 
-    TIMEIT_IF_TRUE_OR_DEBUG(false,"Beamforming time: ",
+    TIMEIT_IF_TRUE_OR_DEBUG(false, "Beamforming time: ",
       {
       auto beam_phases = dp->get_beam_phases();
       beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf,
@@ -351,6 +358,23 @@ namespace {
     );
 
 
+
+    std::vector<std::vector<cuComplex>> main_acfs;
+    std::vector<std::vector<cuComplex>> xcfs;
+    std::vector<std::vector<cuComplex>> intf_acfs;
+
+    TIMEIT_IF_TRUE_OR_DEBUG(true, "ACF/XCF time: ",
+      {
+        main_acfs = correlations_from_samples(beamformed_samples_main, beamformed_samples_main,
+                                          dp->get_slice_info(), num_samples_after_dropping);
+        if (dp->sig_options.get_interferometer_antenna_count() > 0) {
+          xcfs = correlations_from_samples(beamformed_samples_main, beamformed_samples_intf,
+                                          dp->get_slice_info(), num_samples_after_dropping);
+          intf_acfs = correlations_from_samples(beamformed_samples_intf, beamformed_samples_intf,
+                                          dp->get_slice_info(), num_samples_after_dropping);
+        }
+      }
+    );
 
 
 
@@ -388,7 +412,6 @@ namespace {
     auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_slice_info().size(),
                           dp->get_num_antennas(), num_samples_after_dropping);
 
-    auto beamformed_offset = 0;
     for(uint32_t i=0; i<dp->get_slice_info().size(); i++) {
       auto dataset = pd.add_outputdataset();
       // This lambda adds the stage data to the processed data for debug purposes.
@@ -427,10 +450,36 @@ namespace {
         } // close loop over samples.
       } // close loop over beams.
 
-      // Keep track of offsets as we move along frequencies. Different frequencies can have
-      // different beams.
-      beamformed_offset += dp->get_slice_info()[i].beam_count;
 
+      auto num_lags = dp->get_slice_info()[i].lags.size();
+      auto num_ranges = dp->get_slice_info()[i].num_ranges;
+      for (uint32_t beam_count=0; beam_count<dp->get_slice_info()[i].beam_count; beam_count++) {
+        auto beam_offset = beam_count * (num_ranges * num_lags);
+
+        for (uint32_t range=0; range<num_ranges; range++) {
+          auto range_offset = range * num_lags;
+
+          for (uint32_t lag=0; lag<num_lags; lag++) {
+            auto mainacf = dataset->add_mainacf();
+            auto val = main_acfs[i][beam_offset + range_offset + lag];
+            mainacf->set_real(val.x);
+            mainacf->set_imag(val.y);
+
+            if (dp->sig_options.get_interferometer_antenna_count() > 0) {
+              auto xcf = dataset->add_xcf();
+              auto intfacf = dataset->add_intacf();
+
+              val = xcfs[i][beam_offset + range_offset + lag];
+              xcf->set_real(val.x);
+              xcf->set_imag(val.y);
+
+              val = intf_acfs[i][beam_offset + range_offset + lag];
+              intfacf->set_real(val.x);
+              intfacf->set_imag(val.y);
+            } // close intf scope
+          } // close lag scope
+        } // close range scope
+      } // close beam scope
 
       #ifdef ENGINEERING_DEBUG
         add_debug_data("stage_1",stage_1_ptrs[i],dp->get_num_antennas(),
@@ -445,6 +494,8 @@ namespace {
         num_samples_after_dropping);
 
       dataset->set_slice_id(dp->get_slice_info()[i].slice_id);
+      dataset->set_numberofranges(dp->get_slice_info()[i].num_ranges);
+      dataset->set_numberoflags(dp->get_slice_info()[i].lags.size());
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     } // close loop over frequencies.
 
@@ -479,7 +530,7 @@ namespace {
 
       processeddata::ProcessedData pd;
 
-      TIMEIT_IF_TRUE_OR_DEBUG(false, "Fill + send processed data time ",
+      TIMEIT_IF_TRUE_OR_DEBUG(true, "Fill + send processed data time ",
         [&]() {
           create_processed_data_packet(pd,dp);
           dp->send_processed_data(pd);
