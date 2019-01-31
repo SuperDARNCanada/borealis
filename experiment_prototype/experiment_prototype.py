@@ -315,7 +315,15 @@ class ExperimentPrototype(object):
                      "{}.".format(self.rxrate, self.options.max_rx_sample_rate)
             raise ExperimentException(errmsg)
 
-        # TODO check txrate and rxrate are 100MHz divisible as required by USRPs (use usrp_master_clock_rate)
+        if round(self.options.usrp_master_clock_rate / self.txrate, 3) % 2.0 != 0.0:
+            errmsg = "Experiment's transmit bandwidth {} is not possible as it must be an integer divisor of " \
+                     " USRP master clock rate {}".format(self.txrate, self.options.usrp_master_clock_rate)
+            raise ExperimentException(errmsg)
+
+        if round(self.options.usrp_master_clock_rate / self.rxrate, 3) % 2.0 != 0.0:
+            errmsg = "Experiment's receive bandwidth {} is not possible as it must be an integer divisor of " \
+                     " USRP master clock rate {}".format(self.rxrate, self.options.usrp_master_clock_rate)
+            raise ExperimentException(errmsg)
 
         self.__decimation_scheme = decimation_scheme
 
