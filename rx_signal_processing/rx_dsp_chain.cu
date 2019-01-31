@@ -56,9 +56,18 @@ int main(int argc, char **argv){
   SharedMemoryHandler shrmem(sig_options.get_ringbuffer_name());
   std::vector<cuComplex*> ringbuffer_ptrs_start;
 
+  Filtering filters;
+  uint32_t first_stage_dm_rate = 0, second_stage_dm_rate = 0, third_stage_dm_rate = 0, 
+    fourth_stage_dm_rate = 0;
+
+  double rx_rate;
+  uint32_t total_antennas;
+  double output_sample_rate;
+
   auto first_time = true;
-  for(;;){
-    //Receive packet from radar control
+  for(;;) {
+
+    //Receive first packet from radar control
     //auto message =  std::string("Need metadata");
     //SEND_REQUEST(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity(), message);
     auto reply = RECV_REPLY(dsp_to_radar_control, sig_options.get_radctrl_dsp_identity());
@@ -69,18 +78,26 @@ int main(int argc, char **argv){
     }
 
     if (first_time) {
-
-      auto total_antennas = sig_options.get_main_antenna_count() +
+      total_antennas = sig_options.get_main_antenna_count() +
                   sig_options.get_interferometer_antenna_count();
 
-      auto rx_rate = sp_packet.rxrate(); //Hz
-
-      uint32_t first_stage_dm_rate = 0, second_stage_dm_rate = 0, third_stage_dm_rate = 0, fourth_stage_dm_rate = 0;
+      // First time - set up rx rate and filters.
+      rx_rate = sp_packet.rxrate(); //Hz
+      output_sample_rate = sp_packet.output_sample_rate(); //Hz
 
       first_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[0].dm_rate());
       second_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[1].dm_rate());
       third_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[2].dm_rate());
       fourth_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[3].dm_rate());      
+
+      std::vector<float> first_stage_taps(sp_packet.decimation_stages()[0].filter_taps().begin(), 
+        sp_packet.decimation_stages()[0].filter_taps().end());
+      std::vector<float> second_stage_taps(sp_packet.decimation_stages()[1].filter_taps().begin(), 
+        sp_packet.decimation_stages()[1].filter_taps().end());
+      std::vector<float> third_stage_taps(sp_packet.decimation_stages()[2].filter_taps().begin(), 
+        sp_packet.decimation_stages()[2].filter_taps().end());
+      std::vector<float> fourth_stage_taps(sp_packet.decimation_stages()[3].filter_taps().begin(), 
+        sp_packet.decimation_stages()[3].filter_taps().end());
 
       RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimation rates: "
         << COLOR_YELLOW(first_stage_dm_rate) << ", "
@@ -90,10 +107,8 @@ int main(int argc, char **argv){
 
       auto filter_timing_start = std::chrono::steady_clock::now();
 
-      Filtering filters(sp_packet.decimation_stages()[0].filter_taps(),
-                        sp_packet.decimation_stages()[1].filter_taps(), 
-                        sp_packet.decimation_stages()[2].filter_taps(),
-                        sp_packet.decimation_stages()[3].filter_taps());
+      filters = Filtering(first_stage_taps, second_stage_taps,
+                    third_stage_taps, fourth_stage_taps);
 
       RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of taps per stage: "
         << COLOR_YELLOW(filters.get_num_first_stage_taps()) << ", "
@@ -117,7 +132,20 @@ int main(int argc, char **argv){
       filters.save_filter_to_file(filters.get_first_stage_lowpass_taps(),"filter1coefficients.dat");
       filters.save_filter_to_file(filters.get_second_stage_lowpass_taps(),"filter2coefficients.dat");
       filters.save_filter_to_file(filters.get_third_stage_lowpass_taps(),"filter3coefficients.dat");
+    }
 
+    //Then receive first packet from driver
+    auto message = std::string("Need data to process");
+    SEND_REQUEST(dsp_to_driver, sig_options.get_driver_dsp_identity(), message);
+    reply = RECV_REPLY(dsp_to_driver, sig_options.get_driver_dsp_identity());
+
+    rxsamplesmetadata::RxSamplesMetadata rx_metadata;
+    if (rx_metadata.ParseFromString(reply) == false) {
+      //TODO(keith): handle error
+    }
+
+    if (first_time) {
+      // First time - set up memory 
       shrmem.open_shr_mem();
       if (rx_metadata.ringbuffer_size() == 0) {
         //TODO(keith): handle error
@@ -130,16 +158,6 @@ int main(int argc, char **argv){
       first_time = false;
     }
 
-    //Then receive packet from driver
-    auto message = std::string("Need data to process");
-    SEND_REQUEST(dsp_to_driver, sig_options.get_driver_dsp_identity(), message);
-    reply = RECV_REPLY(dsp_to_driver, sig_options.get_driver_dsp_identity());
-
-    rxsamplesmetadata::RxSamplesMetadata rx_metadata;
-    if (rx_metadata.ParseFromString(reply) == false) {
-      //TODO(keith): handle error
-    }
-
     RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Got driver request for sequence #"
       << COLOR_RED(rx_metadata.sequence_num()));
 
@@ -149,6 +167,10 @@ int main(int argc, char **argv){
       RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") <<"SEQUENCE NUMBER mismatch radar_control: "
         << COLOR_RED(sp_packet.sequence_num()) << " usrp_driver: "
         << COLOR_RED(rx_metadata.sequence_num()));
+    }
+
+    if (rx_metadata.rx_rate() != rx_rate) {
+      //TODO handle error
     }
 
     //Parse needed packet values now
@@ -199,15 +221,15 @@ int main(int argc, char **argv){
         }
       }
 
-    // Combine the separated antenna phases back into a flat vector.
-    for (auto &phase : main_phases) {
-      beam_phases.push_back(phase);
-    }
+      // Combine the separated antenna phases back into a flat vector.
+      for (auto &phase : main_phases) {
+        beam_phases.push_back(phase);
+      }
 
-    for (auto &phase : intf_phases) {
-      beam_phases.push_back(phase);
+      for (auto &phase : intf_phases) {
+        beam_phases.push_back(phase);
+      }
     }
-  }
 
     TIMEIT_IF_TRUE_OR_DEBUG(false, "   NCO mix timing: ",
       [&]() {
@@ -217,7 +239,7 @@ int main(int argc, char **argv){
 
 
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
-                             sig_options, sp_packet.sequence_num(),
+                             sig_options, sp_packet.sequence_num(), rx_rate, output_sample_rate,
                              rx_freqs, &filters, beam_phases,
                              beam_direction_counts, rx_metadata.initialization_time(),
                              rx_metadata.sequence_start_time(), slice_ids);
@@ -230,16 +252,15 @@ int main(int argc, char **argv){
     int64_t extra_samples = (first_stage_dm_rate * second_stage_dm_rate * third_stage_dm_rate *
                         filters.get_num_fourth_stage_taps());
 
-    if extra_samples < (first_stage_dm_rate * second_stage_dm_rate * 
-                        filters.get_num_third_stage_taps()) {
+    if (extra_samples < (first_stage_dm_rate * second_stage_dm_rate * filters.get_num_third_stage_taps())) {
       extra_samples = first_stage_dm_rate * second_stage_dm_rate * filters.get_num_third_stage_taps();
     }
 
-    if extra_samples < (first_stage_dm_rate * filters.get_num_second_stage_taps()) {
+    if (extra_samples < (first_stage_dm_rate * filters.get_num_second_stage_taps())) {
       extra_samples = first_stage_dm_rate * filters.get_num_second_stage_taps();
     }
 
-    if extra_samples < (filters.get_num_first_stage_taps()) {
+    if (extra_samples < (filters.get_num_first_stage_taps())) {
       extra_samples = filters.get_num_first_stage_taps();
     }
 
@@ -335,11 +356,8 @@ int main(int argc, char **argv){
                                       samples_needed,
                                       num_output_samples_per_antenna_1,
                                       num_output_samples_per_antenna_2,
-                                      num_output_samples_per_antenna_3
+                                      num_output_samples_per_antenna_3,
                                       num_output_samples_per_antenna_4);
 
-
-
   }
-
 }
