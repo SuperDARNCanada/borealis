@@ -277,9 +277,6 @@ namespace {
       }
     );
 
-
-
-
     // We have a lambda to extract the starting pointers of each set of output samples so that
     // we can use a consistent function to write either rf samples or stage data.
     auto make_ptrs_vec = [](cuComplex* output_p, uint32_t num_freqs, uint32_t num_antennas,
@@ -375,6 +372,8 @@ namespace {
 
     pd.set_rf_samples_location(dp->get_shared_memory_name());
     pd.set_sequence_num(dp->get_sequence_num());
+    pd.set_rx_sample_rate(dp->get_rx_rate());
+    pd.set_output_sample_rate(dp->get_output_sample_rate());
     pd.set_processing_time(dp->get_decimate_timing());
     pd.set_initialization_time(dp->get_driver_initialization_time());
     pd.set_sequence_start_time(dp->get_sequence_start_time());
@@ -499,11 +498,13 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  */
 DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::socket_t *data_socket,
                   SignalProcessingOptions &sig_options, uint32_t sequence_num,
-                  std::vector<double> rx_freqs, Filtering *dsp_filters,
+                  double rx_rate, double output_sample_rate, std::vector<double> rx_freqs, Filtering *dsp_filters,
                   std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
                   double driver_initialization_time, double sequence_start_time,
                   std::vector<uint32_t> slice_ids) :
   sequence_num(sequence_num),
+  rx_rate(rx_rate),
+  output_sample_rate(output_sample_rate),
   ack_socket(ack_socket),
   timing_socket(timing_socket),
   data_socket(data_socket),
@@ -591,7 +592,7 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
   gpuErrchk(cudaMalloc(&rf_samples_d, rf_samples_size));
 
   auto sample_time_diff = start_time - time_zero;
-  auto sample_in_time = (sample_time_diff * sig_options.get_rx_rate()) +
+  auto sample_in_time = (sample_time_diff * rx_rate) +
                       offset_to_first_pulse -
                       extra_samples;
   auto start_sample = int64_t(std::fmod(sample_in_time, ringbuffer_size));
@@ -873,7 +874,7 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
                                             uint32_t num_samples_rf,
                                             uint32_t num_output_samples_per_antenna_1,
                                             uint32_t num_output_samples_per_antenna_2,
-                                            uint32_t num_output_samples_per_antenna_3
+                                            uint32_t num_output_samples_per_antenna_3,
                                             uint32_t num_output_samples_per_antenna_4)
 {
     #ifdef ENGINEERING_DEBUG
@@ -1219,6 +1220,26 @@ uint32_t DSPCore::get_num_fourth_stage_samples_per_antenna()
 uint32_t DSPCore::get_sequence_num()
 {
   return sequence_num;
+}
+
+/**
+ * @brief      Gets the rx sample rate.
+ *
+ * @return     The rx sampling rate (samples per second).
+ */
+double DSPCore::get_rx_rate()
+{
+  return rx_rate;
+}
+
+/**
+ * @brief      Gets the output sample rate.
+ *
+ * @return     The output decimated and filtered rate (samples per second).
+ */
+double DSPCore::get_output_sample_rate()
+{
+  return output_sample_rate;
 }
 
 /**

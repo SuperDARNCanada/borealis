@@ -55,8 +55,9 @@ class DSPCore {
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num,
-                    std::vector<double> freqs, Filtering *filters,
-                    std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
+                    double rx_rate, double output_sample_rate, std::vector<double> freqs, 
+                    Filtering *filters, std::vector<cuComplex> beam_phases, 
+                    std::vector<uint32_t> beam_direction_counts,
                     double driver_initialization_time, double sequence_start_time,
                     std::vector<uint32_t> slice_ids);
 
@@ -104,6 +105,8 @@ class DSPCore {
   uint32_t get_num_third_stage_samples_per_antenna();
   uint32_t get_num_fourth_stage_samples_per_antenna();
   uint32_t get_sequence_num();
+  double get_rx_rate();
+  double get_output_sample_rate();
   double get_driver_initialization_time();
   double get_sequence_start_time();
   std::vector<uint32_t> get_slice_ids();
@@ -129,6 +132,12 @@ class DSPCore {
 
   //! Sequence number used to identify and acknowledge a pulse sequence.
   uint32_t sequence_num;
+
+  //! Rx sampling rate for the data being processed.
+  double rx_rate;
+
+  //! Output sampling rate of the filtered, decimated, processed data.
+  double output_sample_rate;
 
   //! Pointer to the socket used to acknowledge the RF samples have been copied to device.
   zmq::socket_t *ack_socket;
