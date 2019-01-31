@@ -314,7 +314,7 @@ void USRP::set_time_source(std::string source, std::string clk_addr)
   }
   if (source == "external"){
     uhd::usrp_clock::multi_usrp_clock::sptr clock;
-    clock = uhd::usrp_clock::multi_usrp_clock::make(clk_addr);
+    clock = uhd::usrp_clock::multi_usrp_clock::make(uhd::device_addr_t(clk_addr));
 
     //Make sure Clock configuration is correct
     if(clock->get_sensor("gps_detected").value == "false"){
