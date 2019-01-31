@@ -269,11 +269,12 @@ class ExperimentPrototype(object):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
-        :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz.
+        :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz. 
+         Cannot be changed after instantiation.
         :param rx_bandwidth: The desired bandwidth for the experiment. Directly determines rx
-        sampling rate of the USRPs.
+        sampling rate of the USRPs. Cannot be changed.
         :param rx_bandwidth: The desired tx bandwidth for the experiment. Directly determines tx
-        sampling rate of the USRPs.
+        sampling rate of the USRPs. Cannot be changed.
         :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with.
         :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
         :param decimation_scheme: an object defining the decimation and filtering stages for the
@@ -313,6 +314,8 @@ class ExperimentPrototype(object):
             errmsg = "Experiment's receive bandwidth is too large: {} greater than max " \
                      "{}.".format(self.rxrate, self.options.max_rx_sample_rate)
             raise ExperimentException(errmsg)
+
+        # TODO check txrate and rxrate are 100MHz divisible as required by USRPs (use usrp_master_clock_rate)
 
         self.__decimation_scheme = decimation_scheme
 
