@@ -45,10 +45,6 @@ DriverOptions::DriverOptions() {
     ss >> atr_0x_;
     ss.clear();
 
-    rx_sample_rate_ = boost::lexical_cast<double>(
-                                config_pt.get<std::string>("rx_sample_rate"));
-    tx_sample_rate_ = boost::lexical_cast<double>(
-                                config_pt.get<std::string>("tx_sample_rate"));
     tr_window_time_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("tr_window_time"));
     main_antenna_count_ = boost::lexical_cast<uint32_t>(
@@ -95,16 +91,6 @@ DriverOptions::DriverOptions() {
     ringbuffer_name_ = config_pt.get<std::string>("ringbuffer_name");
     ringbuffer_size_bytes_ = boost::lexical_cast<double>(
                                     config_pt.get<std::string>("ringbuffer_size_bytes"));
-}
-
-double DriverOptions::get_tx_rate() const
-{
-    return tx_sample_rate_;
-}
-
-double DriverOptions::get_rx_rate() const
-{
-    return rx_sample_rate_;
 }
 
 std::string DriverOptions::get_device_args() const
