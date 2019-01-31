@@ -101,9 +101,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   double tx_center_freq = 0.0, rx_center_freq = 0.0;
 
-  auto tx_center_freq_set = false;
-  auto rx_center_freq_set = false;
-
   auto samples_set = false;
 
   auto rx_rate = usrp_d.get_rx_rate();
@@ -368,6 +365,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
+    samples_metadata.set_rx_rate(rx_rate);
     samples_metadata.set_initialization_time(initialization_time.get_real_secs());
     samples_metadata.set_sequence_start_time(sequence_start_time.get_real_secs());
     samples_metadata.set_ringbuffer_size(ringbuffer_size);
@@ -575,6 +573,11 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
                             tune_delay);
 
 
+  auto driver_ready_msg = std::string("DRIVER_READY");
+  SEND_REPLY(driver_to_radar_control, driver_options.get_radctrl_to_driver_identity(),
+    driver_ready_msg);
+
+  driver_to_radar_control.close();
   std::vector<std::thread> threads;
 
   // std::ref http://stackoverflow.com/a/15530639/1793295
@@ -587,10 +590,6 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
 
   threads.push_back(std::move(transmit_t));
   threads.push_back(std::move(receive_t));
-
-  auto driver_ready_msg = std::string("DRIVER_READY");
-  SEND_REPLY(driver_to_radar_control, driver_options.get_radctrl_to_driver_identity(),
-    driver_ready_msg);
 
   auto set_tid_msg = std::string("SET_TIDS");
   SEND_REQUEST(driver_to_mainaffinity,
