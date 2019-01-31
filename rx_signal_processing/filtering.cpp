@@ -13,10 +13,6 @@ See LICENSE for details
 
 #include "filtering.hpp"
 
-extern "C" {
-  #include "remez.h"
-}
-
 #include <cmath>
 /**
  * @brief      The constructor finds the number of filter taps for each stage and then a lowpass

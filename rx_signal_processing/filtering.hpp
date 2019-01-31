@@ -20,6 +20,7 @@ See LICENSE for details
 class Filtering {
   public:
     //http://en.cppreference.com/w/cpp/language/explicit
+    Filtering() = default;
     explicit Filtering(std::vector<float> &first_stage_taps, 
                        std::vector<float> &second_stage_taps, 
                        std::vector<float> &third_stage_taps, 
