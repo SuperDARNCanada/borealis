@@ -143,11 +143,12 @@ class DecimationScheme(object):
     def __repr__(self):
         repr_str = 'Decimation Scheme with {} stages:\n'.format(self.num_stages)
         for stage in self.stages:
-            repr_str.append('\nStage {}:'.format(stage.stage_num))
-            repr_str.append('\nInput Rate: {} Hz'.format(stage.input_rate))
-            repr_str.append('\nDecimation by: {}'.format(stage.dm_rate))
-            repr_str.append('\nOutput Rate: {} Hz'.format(stage.output_rate))
-            repr_str.append('\nFilter Taps: {}\n'.format(stage.filter_taps))
+            repr_str += '\nStage {}:'.format(stage.stage_num)
+            repr_str += '\nInput Rate: {} Hz'.format(stage.input_rate)
+            repr_str += '\nDecimation by: {}'.format(stage.dm_rate)
+            repr_str += '\nOutput Rate: {} Hz'.format(stage.output_rate)
+            repr_str += '\nNum taps: {}'.format(len(stage.filter_taps))
+            #repr_str += '\nFilter Taps: {}\n'.format(stage.filter_taps)
         return repr_str
 
     @property

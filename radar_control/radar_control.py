@@ -41,6 +41,7 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 from radar_status.radar_status import RadarStatus
 from utils.zmq_borealis_helpers import socket_operations
 
+TIME_PROFILE = False
 
 def printing(msg):
     """
@@ -146,7 +147,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
 def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                    brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
                    slice_dict, beam_dict, sequence_time, first_rx_sample_time,
-                   main_antenna_count, decimation_scheme):
+                   main_antenna_count, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
         :param radctrl_to_dsp: The sender socket for sending data to dsp
@@ -182,12 +183,13 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     packet.rxrate = rxrate
     packet.output_sample_rate = output_sample_rate
 
-    for stage in decimation_scheme.stages:
-        dm_stage_add = packet.decimation_stages.add()
-        dm_stage_add.stage_num = stage.stage_num
-        dm_stage_add.input_rate = stage.input_rate
-        dm_stage_add.dm_rate = stage.dm_rate
-        dm_stage_add.filter_taps.extend(stage.filter_taps)
+    if decimation_scheme is not None:
+        for stage in decimation_scheme.stages:
+            dm_stage_add = packet.decimation_stages.add()
+            dm_stage_add.stage_num = stage.stage_num
+            dm_stage_add.input_rate = stage.input_rate
+            dm_stage_add.dm_rate = stage.dm_rate
+            dm_stage_add.filter_taps.extend(stage.filter_taps)
 
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
@@ -460,6 +462,8 @@ def radar():
                  experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
                  experiment.rxrate)
 
+    first_integration = True
+    decimation_scheme = experiment.decimation_scheme
     while True:
         # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.
         # TODO : further documentation throughout in comments (high level) and in separate documentation.
@@ -490,7 +494,8 @@ def radar():
             beam_iter = 0
             while beam_remaining and not new_experiment_waiting:
                 for aveperiod in scan.aveperiods:
-
+                    if TIME_PROFILE:
+                        time_start_of_aveperiod = datetime.utcnow()
                     # If there are multiple aveperiods in a scan they are alternated
                     #   beam by beam. So we need to iterate through
                     # Go through each aveperiod once then increase the beam
@@ -578,6 +583,10 @@ def radar():
                         timedelta(milliseconds=(float(aveperiod.intt)))  # ms
                     first_sequence_out = False
 
+                    if TIME_PROFILE:
+                        time_to_prep_aveperiod = datetime.utcnow() - time_start_of_aveperiod
+                        print('Time to prep aveperiod: {}'.format(time_to_prep_aveperiod))
+
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
 
@@ -601,8 +610,16 @@ def radar():
                                            sequence.slice_ids, experiment.slice_dict,
                                            beam_phase_dict, sequence.seqtime,
                                            sequence.first_rx_sample_time,
-                                           options.main_antenna_count, experiment.decimation_scheme)
+                                           options.main_antenna_count, decimation_scheme)
+                            if first_integration:
+                                decimation_scheme = None
+                                first_integration = False
 
+                            if TIME_PROFILE:
+                                time_after_sequence_metadata = datetime.utcnow() 
+                                sequence_metadata_time = time_after_sequence_metadata - time_now
+                                print('Sequence Metadata time: {}'.format(sequence_metadata_time))
+                            
                             # beam_phase_dict is slice_id : list of beamdirs, where beamdir = list
                             # of antenna phase offsets for all antennas for that direction ordered
                             # [0 ... main_antenna_count, 0 ... interferometer_antenna_count]
@@ -642,6 +659,13 @@ def radar():
                             # Sequence is done
                             nave = nave + 1
 
+                            if TIME_PROFILE:
+                                pulses_to_driver_time = datetime.utcnow() - time_after_sequence_metadata
+                                print('Time for pulses to driver: {}'.format(pulses_to_driver_time))
+
+                    if TIME_PROFILE:
+                        time_at_end_aveperiod = datetime.utcnow()
+
                     #if __debug__:
                     print("Number of integrations: {}".format(nave))
 
@@ -663,6 +687,10 @@ def radar():
                     # Increment the sequence number by the number of sequences that were in this
                     # averaging period.
                     seqnum_start += nave
+
+                    if TIME_PROFILE:
+                        time_to_finish_aveperiod = datetime.utcnow() - time_at_end_aveperiod
+                        print('Time to finish aveperiod: {}'.format(time_to_finish_aveperiod))
 
                 beam_iter = beam_iter + 1
 
