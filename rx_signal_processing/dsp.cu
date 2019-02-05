@@ -241,10 +241,12 @@ namespace {
     std::vector<uint32_t> samps_per_stage = {dp->get_num_rf_samples(),
                                              dp->get_num_first_stage_samples_per_antenna(),
                                              dp->get_num_second_stage_samples_per_antenna(),
-                                             dp->get_num_third_stage_samples_per_antenna()};
+                                             dp->get_num_third_stage_samples_per_antenna(),
+                                             dp->get_num_fourth_stage_samples_per_antenna()};
     std::vector<uint32_t> taps_per_stage = {dp->dsp_filters->get_num_first_stage_taps(),
                                             dp->dsp_filters->get_num_second_stage_taps(),
-                                            dp->dsp_filters->get_num_third_stage_taps()};
+                                            dp->dsp_filters->get_num_third_stage_taps(),
+                                            dp->dsp_filters->get_num_fourth_stage_taps()};
 
     drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
                      dp->get_num_antennas(), dp->get_rx_freqs().size());
@@ -306,6 +308,9 @@ namespace {
 
       auto stage_3_ptrs = make_ptrs_vec(dp->get_third_stage_output_h(), dp->get_rx_freqs().size(),
                               dp->get_num_antennas(),dp->get_num_third_stage_samples_per_antenna());
+
+      auto stage_4_ptrs = make_ptrs_vec(dp->get_fourth_stage_output_h(), dp->get_rx_freqs().size(),
+                              dp->get_num_antennas(),dp->get_num_fourth_stage_samples_per_antenna());
     #endif
 
     auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_rx_freqs().size(),
@@ -361,6 +366,8 @@ namespace {
                     dp->get_num_second_stage_samples_per_antenna());
         add_debug_data("stage_3",stage_3_ptrs[i],dp->get_num_antennas(),
                     dp->get_num_third_stage_samples_per_antenna());
+        add_debug_data("stage_4",stage_4_ptrs[i],dp->get_num_antennas(),
+            dp->get_num_fourth_stage_samples_per_antenna());
       #endif
 
       add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
