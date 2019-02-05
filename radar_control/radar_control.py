@@ -57,7 +57,7 @@ def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrf
     """ First packet sent to driver for setup. 
         :param driverpacket: the protobuf packet to fill and pass over zmq
         :param radctrl_to_driver: the sender socket for sending the driverpacket
-        :param driver_to_radctrl_iden: the reciever socket identity on the driver side
+        :param driver_to_radctrl_iden: the receiver socket identity on the driver side
         :param txctrfreq: the transmit centre frequency to tune to, kHz.
         :param rxctrfreq: the receive centre frequency to tune to. With rx_sample_rate from config.ini file, this
             determines the received signal band, kHz.
@@ -144,11 +144,12 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
 
 
 
-def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
+def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                    brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
                    slice_dict, beam_dict, sequence_time, first_rx_sample_time,
                    main_antenna_count, decimation_scheme=None):
-    """ Place data in the receiver packet and send it via zeromq to the signal processing unit.
+    """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian. 
+        Happens every sequence.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
         :param radctrl_to_dsp: The sender socket for sending data to dsp
 	    :param dsp_radctrl_iden: The reciever socket identity on the dsp side
@@ -599,7 +600,7 @@ def radar():
                                 # TODO add a break for nave == intn if going for number of averages instead of
                                 # integration time
                             beam_phase_dict = beam_phase_dict_list[sequence_index]
-                            send_metadata(sigprocpacket,
+                            send_dsp_metadata(sigprocpacket,
                                            radar_control_to_dsp,
                                            options.dsp_to_radctrl_identity,
                                            radar_control_to_brian,
