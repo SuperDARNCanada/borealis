@@ -61,7 +61,7 @@ class DecimationScheme(object):
 
         if stages is None:  # create the default filters, using remez.
             # Currently only creating default filters if sampling rate and output rate are set
-            # up as per original design.
+            # up as per original design. TODO: make this more general.
             if rxrate != 5.0e6 or round(output_sample_rate, 0) != 3.333e3:
                 errmsg = 'Default filters not defined for rxrate {} and output rate {}'.format(
                     rxrate, output_sample_rate)
@@ -116,7 +116,7 @@ class DecimationScheme(object):
                 self.dm_rates.append(dec_stage.dm_rate)
                 self.output_rates.append(dec_stage.output_rate)
                 self.input_rates.append(dec_stage.input_rate)
-                filter_scaling_factor = reduce((lambda a, b: a + b), dec_stage.filter_taps)
+                filter_scaling_factor = sum(dec_stage.filter_taps)
                 self.filter_scaling_factors.append(filter_scaling_factor)
 
             # check rates are appropriate given rxrate and output_sample_rate, and

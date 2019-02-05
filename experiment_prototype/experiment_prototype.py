@@ -221,7 +221,7 @@ therefore ignored.
 """
 
 default_rx_bandwidth = 5.0e6
-default_output_rx_rate = 3.333333e3
+default_output_rx_rate = 10.0e3/3 
 
 class ExperimentPrototype(object):
     """

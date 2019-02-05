@@ -248,7 +248,10 @@ int main(int argc, char **argv){
       //TODO(keith): handle error for missing number of samples.
     }
 
-      //We need to sample early to account for propagating samples through filters.
+    //We need to sample early to account for propagating samples through filters. The number of 
+    //required early samples is equal to the largest filter length in time (based on the rate at
+    //that stage.) The following lines find the max filter length in time and convert that to 
+    //number of samples at the input rate.
     int64_t extra_samples = (first_stage_dm_rate * second_stage_dm_rate * third_stage_dm_rate *
                         filters.get_num_fourth_stage_taps());
 
