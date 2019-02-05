@@ -32,6 +32,8 @@ import experimentoptions as options
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/zmq_borealis_helpers')
 import socket_operations as so
 
+TIME_PROFILE = False
+
 def router(opts):
     """The router is responsible for moving traffic between modules by routing traffic using
     named sockets.
@@ -129,6 +131,8 @@ def sequence_timing(opts):
         # The last flag is actually a counter because on the first run it is 2 sequences
         # behind the current sequence and then after that its only 1 sequence behind. The dsp
         # is always processing the work while a new sequence is being collected.
+        if TIME_PROFILE:
+            time_now = datetime.utcnow()
         while True:
             if want_to_start and good_to_start and dsp_finish_counter:
                 #Acknowledge new sequence can begin to Radar Control by requesting new sequence
@@ -143,12 +147,21 @@ def sequence_timing(opts):
 
             message = start_new.recv_string()
             if message == "want_to_start":
+                if TIME_PROFILE:
+                    print('Driver ready: {}'.format(datetime.utcnow() - time_now))
+                    time_now = datetime.utcnow()
                 want_to_start = True
 
             if message == "good_to_start":
+                if TIME_PROFILE:
+                    print('Copied to GPU: {}'.format(datetime.utcnow() - time_now))
+                    time_now = datetime.utcnow()
                 good_to_start = True
 
             if message == "extra_good_to_start":
+                if TIME_PROFILE:
+                    print('DSP finished w/ data: {}'.format(datetime.utcnow() - time_now))
+                    time_now = datetime.utcnow()
                 dsp_finish_counter = 1;
 
     thread = threading.Thread(target=start_new)
