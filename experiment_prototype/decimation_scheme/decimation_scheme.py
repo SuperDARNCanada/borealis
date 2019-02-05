@@ -183,4 +183,3 @@ def create_remez_filter(sampling_freq, cutoff_freq, trans_width):
                                     0.5 * sampling_freq], [1, 0], Hz=sampling_freq)
 
     return lpass
-    
