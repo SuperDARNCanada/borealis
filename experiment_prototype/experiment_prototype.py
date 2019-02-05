@@ -333,11 +333,17 @@ class ExperimentPrototype(object):
 
         self.__new_slice_id = 0
 
-        # Note - the txctrfreq and rxctrfreq setters modify the actual centre frequency to a
+        # Note - txctrfreq and rxctrfreq are set here and modify the actual centre frequency to a
         # multiple of the clock divider that is possible by the USRP - this default value set
         # here is not exact (centre freq is never exactly 12 MHz).
-        self.__txctrfreq = self.txctrfreq = float(txctrfreq)  # in kHz.
-        self.__rxctrfreq = self.rxctrfreq = float(rxctrfreq)  # in kHz.
+
+        # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+        clock_multiples = self.options.usrp_master_clock_rate/2**32
+        clock_divider = math.ceil(txctrfreq*1e3/clock_multiples)
+        self.__txctrfreq = (clock_divider * clock_multiples)/1e3 
+
+        clock_divider = math.ceil(rxctrfreq*1e3/clock_multiples)
+        self.__rxctrfreq = (clock_divider * clock_multiples)/1e3 
 
         # Load the config, hardware, and restricted frequency data
 
@@ -621,30 +627,6 @@ class ExperimentPrototype(object):
         """
         return self.__txctrfreq
 
-    @txctrfreq.setter
-    def txctrfreq(self, value):
-        """
-        Set the transmission centre frequency that USRP is tuned to. 
-        
-        This will take tuning time, use with caution. The USRP center frequency can only be tuned
-        in steps of the master clock rate / 2^32. We determine the closest value to the desired
-        center frequency and adjust to that.
-
-        :param value: int for transmission centre frequency to tune USRP to (kHz).
-        """
-        try:
-            self.__txctrfreq
-        except NameError:
-            if isinstance(value, int):
-                # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-                clock_multiples = self.options.usrp_master_clock_rate/2**32
-                clock_divider = math.ceil(value*1e3/clock_multiples)
-                self.__txctrfreq = (clock_divider * clock_multiples)/1e3 # TODO return actual value tuned to.
-            else:
-                pass  # TODO errors / log no change
-        else:
-            print('Transmit centre frequency has already been set so will not be changed.')
-
     @property
     def tx_maxfreq(self):
         """
@@ -682,31 +664,6 @@ class ExperimentPrototype(object):
         If you would like to change this, note that it will take tuning time.
         """
         return self.__rxctrfreq
-
-    @rxctrfreq.setter
-    def rxctrfreq(self, value):
-        """
-        Set the receive centre frequency that USRP is tuned to (kHz).
-
-        This will take tuning time, use with caution.
-
-        :param value: int for receive centre frequency to tune USRP to (kHz). The USRP center
-        frequency can only be tuned in steps of the master clock rate / 2^32. We determine the
-        closest value to the desired center frequency and adjust to that.
-        """
-        try:
-            self.__rxctrfreq
-        except NameError:
-            if isinstance(value, int):
-                # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-                clock_multiples = self.options.usrp_master_clock_rate/2**32
-                clock_divider = math.ceil(value*1e3/clock_multiples)
-                self.__rxctrfreq = (clock_divider * clock_multiples)/1e3   # TODO return actual tuned freq.
-            else:
-                pass  # TODO errors
-        else:
-            print('Receive centre frequency has already been set so will not be changed.')
-
 
     @property
     def rx_maxfreq(self):

@@ -216,9 +216,16 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                 phase_add.imag_phase = phase.imag
 
     # Brian requests sequence metadata for timeouts
+    if TIME_PROFILE:
+        time_waiting = datetime.utcnow()
 
     request = socket_operations.recv_request(radctrl_to_brian, brian_radctrl_iden,
                                              printing)
+
+    if TIME_PROFILE:
+        time_done = datetime.utcnow() - time_waiting
+        print('Time waiting for Brian request to send metadata: {}'.format(time_done))
+
     if __debug__:
         request_output = "Brian requested -> {}".format(request)
         printing(request_output)
@@ -226,12 +233,6 @@ def send_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
     bytes_packet = packet.SerializeToString()
 
     socket_operations.send_obj(radctrl_to_brian, brian_radctrl_iden, bytes_packet)
-
-    #Radar control receives request for metadata from DSP
-    # request = socket_operations.recv_request(radctrl_to_dsp, dsp_radctrl_iden, printing)
-    if __debug__:
-        request_output = "DSP requested -> {}".format(request)
-        printing(request_output)
 
     socket_operations.send_obj(radctrl_to_dsp, dsp_radctrl_iden, packet.SerializeToString())
     # TODO : is it necessary to do a del packet.rxchannel[:] - test

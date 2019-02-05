@@ -170,6 +170,16 @@ double USRP::set_tx_center_freq(double freq, std::vector<size_t> chs, uhd::time_
 }
 
 /**
+ * @brief      Gets the transmit center frequency.
+ *
+ * @return     The actual center frequency that the USRPs are tuned to.
+ */
+double USRP::get_tx_center_freq(uint32_t channel)
+{
+  return usrp_->get_tx_freq(channel);
+}
+
+/**
  * @brief      Sets the receive subdev for the main array antennas.
  *
  * @param[in]  main_subdev  A string for a valid receive subdev.
@@ -286,9 +296,17 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs, uhd::time_
     }
   }
 
-  return usrp_->get_tx_freq(chs[0]);
+  return usrp_->get_rx_freq(chs[0]);
 }
-
+/**
+ * @brief      Gets the receive center frequency.
+ *
+ * @return     The actual center frequency that the USRPs are tuned to.
+ */
+double USRP::get_rx_center_freq(uint32_t channel)
+{
+  return usrp_->get_rx_freq(channel);
+}
 /**
  * @brief      Sets the USRP time source.
  *

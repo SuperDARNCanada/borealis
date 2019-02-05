@@ -99,8 +99,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   zmq::socket_t &driver_to_dsp = sockets_vector[1];
   zmq::socket_t &driver_to_brian = sockets_vector[2];
 
-  double tx_center_freq = 0.0, rx_center_freq = 0.0;
-
   auto samples_set = false;
 
   auto rx_rate = usrp_d.get_rx_rate();
@@ -115,6 +113,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   std::vector<std::vector<std::vector<std::complex<float>>>> pulses;
   std::vector<std::vector<std::complex<float>>> last_pulse_sent;
+
+  double tx_center_freq = usrp_d.get_tx_center_freq(tx_channels[0]); 
+  double rx_center_freq = usrp_d.get_rx_center_freq(receive_channels[0]); 
 
   uint32_t sqn_num = 0;
   uint32_t expected_sqn_num = 0;
@@ -375,7 +376,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);
-
 
     // Here we wait for a request from dsp for the samples metadata, then send it, bro!
     // https://www.youtube.com/watch?v=WIrWyr3HgXI
