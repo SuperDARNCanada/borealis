@@ -32,8 +32,7 @@ class DecimationStage(object):
         self.output_rate = input_rate/dm_rate
         self.dm_rate = dm_rate
         if not isinstance(filter_taps, list):
-            errmsg = 'Filter taps {} must be a list in decimation stage {}'.format(filter_taps,
-                                                                                   stage_num)
+            errmsg = 'Filter taps {} of type {} must be a list in decimation stage {}'.format(filter_taps, type(filter_taps), stage_num)
             raise ExperimentException(errmsg)
         for x in filter_taps:
             if not isinstance(x, (int, float)):  # TODO should complex be included here?
