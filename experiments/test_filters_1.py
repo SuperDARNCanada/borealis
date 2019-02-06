@@ -15,7 +15,7 @@ class OneBox(ExperimentPrototype):
         cpid = 100000000
         output_rx_rate = 10.0e3/3
         rxrate = 5.0e6
-        super(OneBox, self).__init__(cpid, output_rx_rate=output_rx_rate, rxbandwidth=rxrate, decimation_scheme=create_test_scheme_1())
+        super(OneBox, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate, decimation_scheme=create_test_scheme_1())
 
         pulse_sequence = [0, 14, 22, 24, 27, 31, 42, 43]
         #pulse_sequence = [0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553]
