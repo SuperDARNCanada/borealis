@@ -1398,10 +1398,14 @@ class ExperimentPrototype(object):
 
         # check that the number of slices can be accommodated by the decimation scheme.
         for stage in self.decimation_scheme.stages:
-            if len(stage.filter_taps) * self.num_slices > self.options.max_number_of_filter_taps_per_stage:
-                errmsg = "Length of filter taps {} in decimation stage {} with this many slices ({}) \
-                    is too large for GPU max {}".format(len(stage.filter_taps), stage.stage_num, 
-                        self.num_slices, self.options.max_number_of_filter_taps_per_stage)
+            power_2 = 0
+            while (2 ** power_2 < len(stage.filter_taps)):
+                power_2 += 1
+            effective_length = 2 ** power_2
+            if effective_length * self.num_slices > self.options.max_number_of_filter_taps_per_stage:
+                errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with \
+                    this many slices ({}) is too large for GPU max {}".format(len(stage.filter_taps), 
+                        stage.stage_num, self.num_slices, self.options.max_number_of_filter_taps_per_stage)
 
         # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
         # any time after setup. We run it now in case the user has changed something
