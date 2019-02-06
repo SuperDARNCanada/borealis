@@ -7,7 +7,7 @@ sys.path.append(os.environ['BOREALISPATH'])
 # write an experiment that creates a new control program.
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
-from experiments.test_decimation_schemes import create_test_scheme
+from experiments.test_decimation_schemes import create_test_scheme_1
 
 class OneBox(ExperimentPrototype):
 
@@ -15,7 +15,7 @@ class OneBox(ExperimentPrototype):
         cpid = 100000000
         output_rx_rate = 10.0e3/3
         rxrate = 5.0e6
-        super(OneBox, self).__init__(cpid, output_rx_rate=output_rx_rate, rxbandwidth=rxrate, decimation_scheme=create_test_scheme(rxrate, output_rx_rate))
+        super(OneBox, self).__init__(cpid, output_rx_rate=output_rx_rate, rxbandwidth=rxrate, decimation_scheme=create_test_scheme_1())
 
         pulse_sequence = [0, 14, 22, 24, 27, 31, 42, 43]
         #pulse_sequence = [0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553]
@@ -73,9 +73,9 @@ class OneBox(ExperimentPrototype):
         # }, interfacing_dict={0: 'PULSE'})
         # Other things you can change if you wish. You may want to discuss with us about it beforehand.
         # These apply to the experiment and all slices as a whole.
-        self.txctrfreq = 10000 # kHz, oscillator mixer frequency on the USRP for TX
+        #self.txctrfreq = 10000 # kHz, oscillator mixer frequency on the USRP for TX
         # self.txrate = 12000000 # Hz, sample rate fed to DAC
-        self.rxctrfreq = 10000 # kHz, mixer frequency on the USRP for RX
+        #self.rxctrfreq = 10000 # kHz, mixer frequency on the USRP for RX
 
         """ 
         INTERFACING TYPES:
@@ -107,7 +107,7 @@ class OneBox(ExperimentPrototype):
     #            (0,1) : 'PULSE'
     #        })
 
-    def update(self, acfdata):
+    #def update(self, acfdata):
         """
         Use this function to change your experiment based on ACF data retrieved from the rx_signal_processing block. 
         This function is called after every integration period so that your experiment can be changed to adjust to 
@@ -121,5 +121,5 @@ class OneBox(ExperimentPrototype):
 
         # TODO : docs about what can and cannot be changed. Warning about changing centre frequencies.
 
-        change_flag = False
-        return change_flag
+        #change_flag = False
+        #return change_flag

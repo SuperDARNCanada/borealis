@@ -8,7 +8,7 @@ sys.path.append(os.environ['BOREALISPATH'])
 
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
 
-def create_test_scheme(rxrate, output_sample_rate):
+def create_test_scheme_1():
 	"""
 	Create four stages of FIR filters and a decimation scheme. Returns a decimation scheme of type DecimationScheme. 
 	:return DecimationScheme: a decimation scheme for use in experiment.
