@@ -2,7 +2,7 @@
 
 import os
 import sys
-from scipy.signal import firwin, remez, kaiserord
+from scipy.signal import firwin, remez, kaiserord, kaiser_beta
 
 sys.path.append(os.environ['BOREALISPATH'])
 
@@ -23,7 +23,7 @@ def create_test_scheme_1():
 
 	all_stages = []
 	for stage in range(0,4):
-		filter_taps = list(create_firwin_filter(rates[stage], transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
+		filter_taps = list(create_firwin_filter_by_attenuation(rates[stage], transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
 		all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], filter_taps))
 
 	return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
@@ -43,13 +43,33 @@ def create_test_scheme_2():
 
 	all_stages = []
 	for stage in range(0,4):
-		filter_taps = list(create_firwin_filter(rates[stage], transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
+		filter_taps = list(create_firwin_filter_by_attenuation(rates[stage], transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
 		all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], filter_taps))
 
 	return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
 
 
-def create_firwin_filter(sample_rate, transition_width, cutoff_hz, ripple_db, 
+def create_test_scheme_3():
+	"""
+	Create four stages of FIR filters and a decimation scheme. Returns a decimation scheme of type DecimationScheme. 
+	:return DecimationScheme: a decimation scheme for use in experiment.
+	"""
+
+	rates = [5.0e6, 500.0e3, 50.0e3, 10.0e3]
+	dm_rates = [10, 10, 5, 3]
+	transition_widths = [50.0e3, 5.0e3, 3.0e3, 1.0e3]
+	cutoffs = [460.0e3, 46.0e3, 8.0e3, 2.0e3]
+	num_taps = [512, 512, 512, 256]
+
+	all_stages = []
+	for stage in range(0,4):
+		filter_taps = list(create_firwin_filter_by_num_taps(rates[stage], transition_widths[stage], cutoffs[stage], num_taps[stage]))
+		all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], filter_taps))
+
+	return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
+
+
+def create_firwin_filter_by_attenuation(sample_rate, transition_width, cutoff_hz, ripple_db, 
 	window_type='kaiser'):
 	"""
 	Create a firwin filter. 
@@ -75,5 +95,25 @@ def create_firwin_filter(sample_rate, transition_width, cutoff_hz, ripple_db,
 		window = window_type
 
 	taps = firwin(N, cutoff_hz/nyq_rate, window=window)
+
+	return taps
+
+
+def create_firwin_filter_by_num_taps(sample_rate, transition_width, cutoff_hz, num_taps, 
+	window_type=('kaiser', 8.0)):
+	"""
+	Create a firwin filter. 
+
+	:param ripple_db: The desired attenuation in the stop band, in dB.
+	"""
+
+	# The Nyquist rate of the signal.
+	nyq_rate = sample_rate  # because we have complex sampled data. 
+
+	# The desired width of the transition from pass to stop,
+	# relative to the Nyquist rate. '
+	width_ratio = transition_width/nyq_rate
+
+	taps = firwin(num_taps, cutoff_hz/nyq_rate, window=window_type)
 
 	return taps
