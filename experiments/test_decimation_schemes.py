@@ -8,8 +8,6 @@ sys.path.append(os.environ['BOREALISPATH'])
 
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
 
-from testing.dsp_testing_utils.filter_tools.filter_tools import plot_filter_response
-
 def create_test_scheme(rxrate, output_sample_rate):
 	"""
 	Create four stages of FIR filters and a decimation scheme. Returns a decimation scheme of type DecimationScheme. 

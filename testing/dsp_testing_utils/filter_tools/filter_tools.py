@@ -6,7 +6,7 @@
 from scipy import signal
 import numpy as np
 import matplotlib
-matplotlib.use("TkAgg")
+#matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft
 import math
@@ -139,8 +139,8 @@ def plot_filter_response(filter_taps, title_identifier, sampling_freq):
     ax1 = fig.add_subplot(111)
     plt.plot(w, 20 * np.log10(abs(h)), 'b')
     plt.ylabel('Amplitude [dB]', color='b')
-    plt.xlabel('Frequency [rad/sample]')
-    ax2 = ax1.twinx()
+    plt.xlabel('Frequency [Hz]')
+    ax2 = ax1.twinx() #fig.add_subplot(111)
     angles = np.unwrap(np.angle(h))
     plt.plot(w, angles, 'g')
     plt.ylabel('Angle (radians)', color='g')
