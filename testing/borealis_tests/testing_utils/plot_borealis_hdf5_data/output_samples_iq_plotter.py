@@ -28,11 +28,10 @@ def plot_output_samples_iq_data(record_dict, record_filetype):
             antenna = antennas_present[index]
 
             if antenna < record_dict['main_antenna_count']:
-                if antenna == 7 or antenna == 8:
-                    ax1.set_title('Main Antennas {}'.format(record_filetype))
-                    ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].real, label='Real {}'.format(antenna))
-                    #ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].imag, label="Imag {}".format(antenna))
-                    ax1.legend()
+                ax1.set_title('Main Antennas {}'.format(record_filetype))
+                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].real, label='Real {}'.format(antenna))
+                #ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].imag, label="Imag {}".format(antenna))
+                ax1.legend()
             # else:
             #     ax2.set_title('Intf Antennas {}'.format(record_filetype))
             #     ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].real, label='Real {}'.format(antenna))
