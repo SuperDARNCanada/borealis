@@ -28,6 +28,8 @@ import traceback
 
 sys.path.append(os.environ["BOREALISPATH"])
 
+from testing.borealis_tests.testing_utils.plotting_borealis_data_utils import plot_bf_iq_data
+
 borealis_path = os.environ['BOREALISPATH']
 config_file = borealis_path + '/config.ini'
 from sample_building.sample_building import get_phshift, shift_samples
@@ -221,34 +223,6 @@ def plot_antenna_data(array_of_data, list_of_antennas, record_filetype, main_ant
             else:
                 ax2.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].real, label='Real {}'.format(antenna))
                 #ax2.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
-                ax2.legend()                       
-        plt.show()
-
-
-def plot_bf_iq_data(record_dict, record_filetype):
-    """
-    :param record_dict: a record containing data_dimensions, data_descriptors, antenna_array_names, and data (reshaped)
-    :param record_filetype: a string indicating the type of data being plotted (to be used on the plot legend). Should 
-     be bf_iq type, but there might be multiple slices.
-    """
-
-    # data dimensions are num_antenna_arrays, num_sequences, num_beams, num_samps
-
-    beam = 0
-    for sequence in range(0, record_dict['data'].shape[1]):
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-        for index in range(0, record_dict['data'].shape[0]):
-            antenna_array = record_dict['antenna_arrays_order'][index]
-
-            if antenna_array == 'main':
-                ax1.set_title('Main Array {} sequence {}'.format(record_filetype, sequence))
-                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].real, label='Real {}'.format(antenna_array))
-                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].imag, label="Imag {}".format(antenna_array))
-                ax1.legend()
-            else:
-                ax2.set_title('Intf Array {} sequence {}'.format(record_filetype, sequence))
-                ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].real, label='Real {}'.format(antenna_array))
-                ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].imag, label="Imag {}".format(antenna_array))
                 ax2.legend()                       
         plt.show()
 
