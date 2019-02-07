@@ -19,7 +19,7 @@ See LICENSE for details
 #include <chrono>
 #include <thread>
 #include <complex>
-#include <eigen3/Eigen/Dense>
+#include <armadillo>
 #include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 #include "utils/protobuf/sigprocpacket.pb.h"
@@ -101,8 +101,12 @@ namespace {
 
     for (uint32_t freq_index=0; freq_index < num_freqs; freq_index++) {
       for (int i=0; i<num_antennas; i++){
-        auto dest = output_samples.data() + freq_index*samples_per_frequency + i*samps_per_stage.back();
-        auto src = input_samples + freq_index*original_samples_per_frequency + i*original_undropped_sample_count;
+        auto dest = output_samples.data() +
+                    freq_index*samples_per_frequency +
+                    (i * samps_per_stage.back());
+        auto src = input_samples +
+                   (freq_index * original_samples_per_frequency) +
+                   (i * original_undropped_sample_count);
         auto num_bytes =  sizeof(cuComplex) * samps_per_stage.back();
         memcpy(dest, src, num_bytes);
       }
@@ -127,7 +131,7 @@ namespace {
    * @param      num_samples              The number of samples per antenna.
    *
    *             This method extracts the offsets to the phases and samples needed for the beam
-   *             directions of each RX frequency. The Eigen library is then used to multiply the
+   *             directions of each RX frequency. The Armadillo library is then used to multiply the
    *             matrices to yield the final beamformed samples. The main array and interferometer
    *             array are beamformed separately.
    */
@@ -147,35 +151,26 @@ namespace {
                                       uint32_t num_antennas, uint32_t num_beams)
     {
 
-      // We work with cuComplex type for most DSP, but Eigen only knows the equivalent std lib type
-      // so we cast to it for this context.
+      // We work with cuComplex type for most DSP, but Armadillo only knows the equivalent std lib
+      // type so we cast to it for this context.
       auto samples_cast = reinterpret_cast<std::complex<float>*>(samples_ptr);
       auto phases_cast = reinterpret_cast<std::complex<float>*>(phases_ptr);
 
-      // All we do here is map an existing set of memory to a structure that Eigen uses.
-      Eigen::MatrixXcf samps = Eigen::Map<Eigen::Matrix<std::complex<float>,
-                                                        Eigen::Dynamic,
-                                                        Eigen::Dynamic,
-                                                        Eigen::RowMajor>>(samples_cast,
-                                                                          num_antennas,
-                                                                          num_samples);
-      Eigen::MatrixXcf phases = Eigen::Map<Eigen::Matrix<std::complex<float>,
-                                                          Eigen::Dynamic,
-                                                          Eigen::Dynamic,
-                                                          Eigen::RowMajor>>(phases_cast,
-                                                                            num_beams,
-                                                                            num_antennas);
+      // All we do here is map an existing set of memory to a structure that Armadillo uses.
+      arma::cx_fmat samps(samples_cast, num_samples, num_antennas, false, true);
+      arma::cx_fmat phases(phases_cast, num_antennas, num_beams, false, true);
 
-      // Result matrix has dimensions beams x num_samples. This means one set of samples for
-      // each beam dir. Eigen overloads the * operator so we dont need to implement any matrix
+      // Result matrix has dimensions num_samples x num_beams. This means one set of samples for
+      // each beam dir. Armadillo overloads the * operator so we dont need to implement any matrix
       // work ourselves.
-      auto result = phases * samps;
+      arma::cx_fmat result = samps * phases;
 
-      // This piece of code just transforms the Eigen result back into our flat vector.
+      // This piece of code just transforms the Armadillo result back into our flat vector.
+      // Armadillo uses column-major ordering, while we use row-major everywhere else. This means
+      // that our data will actually be num_beams x num_samps.
       auto beamformed_cast = reinterpret_cast<std::complex<float>*>(result_ptr);
-      Eigen::Map<Eigen::Matrix<std::complex<float>, Eigen::Dynamic,
-                                Eigen::Dynamic, Eigen::RowMajor>>(beamformed_cast, result.rows(),
-                                                                  result.cols()) = result;
+      memcpy(beamformed_cast, result.memptr(), sizeof(std::complex<float>) *
+                                        result.n_rows * result.n_cols);
     };
 
     auto main_phase_offset = 0;
@@ -229,6 +224,7 @@ namespace {
    *
    * @param      beamformed_samples_1   The first set of beamformed samples for each beam.
    * @param      beamformed_samples_2   The second set of beamformed samples for each beam.
+   * @param      corr_results           A set of vectors where correlation results are stored.
    * @param[in]  rx_slice_info          A vector of the info needed from each slice.
    * @param[in]  num_samples            The number samples for each beam.
    *
@@ -237,70 +233,55 @@ namespace {
    * function does not compute the expectation value for the correlations. That part is done in
    * data write.
    */
-  std::vector<std::vector<cuComplex>> correlations_from_samples(
-                                          std::vector<std::vector<cuComplex>> &beamformed_samples_1,
-                                          std::vector<std::vector<cuComplex>> &beamformed_samples_2,
-                                          std::vector<rx_slice> rx_slice_info, uint32_t num_samples)
+  void correlations_from_samples(std::vector<std::vector<cuComplex>> &beamformed_samples_1,
+                                  std::vector<std::vector<cuComplex>> &beamformed_samples_2,
+                                  std::vector<std::vector<cuComplex>> &corr_results,
+                                  std::vector<rx_slice> rx_slice_info, uint32_t num_samples)
   {
-
-
-    std::vector<std::vector<cuComplex>> slice_correlations;
     for (uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
-        auto num_beams = rx_slice_info[slice_num].beam_count;
-        auto num_ranges = rx_slice_info[slice_num].num_ranges;
-        auto num_lags = rx_slice_info[slice_num].lags.size();
+      auto num_beams = rx_slice_info[slice_num].beam_count;
+      auto num_ranges = rx_slice_info[slice_num].num_ranges;
+      auto num_lags = rx_slice_info[slice_num].lags.size();
 
-        std::vector<cuComplex> correlations(num_ranges * num_lags * num_beams);
+      // No need to compute this if there are no lags.
+      if (num_lags == 0) {
+        continue;
+      }
 
-        for (uint32_t beam_count=0; beam_count<num_beams; beam_count++) {
-            auto samples_ptr_1 = beamformed_samples_1[slice_num].data();
-            auto samples_ptr_2 = beamformed_samples_2[slice_num].data();
-            samples_ptr_1 += (beam_count * num_samples);
-            samples_ptr_2 += (beam_count * num_samples);
+      for (uint32_t beam_count=0; beam_count<num_beams; beam_count++) {
+        auto samples_ptr_1 = beamformed_samples_1[slice_num].data();
+        auto samples_ptr_2 = beamformed_samples_2[slice_num].data();
+        samples_ptr_1 += (beam_count * num_samples);
+        samples_ptr_2 += (beam_count * num_samples);
 
-            auto samples_cast_1 = reinterpret_cast<std::complex<float>*>(samples_ptr_1);
-            auto samples_cast_2 = reinterpret_cast<std::complex<float>*>(samples_ptr_2);
+        auto samples_cast_1 = reinterpret_cast<std::complex<float>*>(samples_ptr_1);
+        auto samples_cast_2 = reinterpret_cast<std::complex<float>*>(samples_ptr_2);
 
-            Eigen::MatrixXcf samps_1 = Eigen::Map<Eigen::Matrix<std::complex<float>,
-                                                            Eigen::Dynamic,
-                                                            Eigen::Dynamic,
-                                                            Eigen::RowMajor>>(samples_cast_1,
-                                                                                num_samples,
-                                                                                1);
+        // Convert existing memory to Armadillo vectors.
+        arma::cx_frowvec samps_1_matrix(samples_cast_1, num_samples, false, true);
+        arma::cx_frowvec samps_2_matrix(samples_cast_2, num_samples, false, true);
 
-            Eigen::MatrixXcf samps_2 = Eigen::Map<Eigen::Matrix<std::complex<float>,
-                                                            Eigen::Dynamic,
-                                                            Eigen::Dynamic,
-                                                            Eigen::RowMajor>>(samples_cast_2,
-                                                                                num_samples,
-                                                                                1);
+        // correlation = E(XY^H) where X and Y are random vectors and H is the conjugate
+        arma::cx_fmat correlation_matrix = samps_1_matrix.t() * samps_2_matrix;
 
-            // correlation = E(XY^H) where X and Y are random vectors and H is the conjugate
-            // transpose.
-            auto correlation_matrix = samps_1 * samps_2.adjoint();
-
-            auto beam_offset = beam_count * num_ranges * num_lags;
-            auto first_range_offset = uint32_t(rx_slice_info[slice_num].first_range /
-                                  rx_slice_info[slice_num].range_sep);
-            // Select out the lags for each range gate.
-            for(uint32_t range=0; range<num_ranges; range++) {
-                for(uint32_t lag=0; lag<num_lags; lag++) {
-                    auto range_lag_offset = (range * num_lags) + lag;
-                    auto total_offset = beam_offset + range_lag_offset;
-                    auto val = correlation_matrix(range + first_range_offset,
-                                                  range + first_range_offset +
-                                                  rx_slice_info[slice_num].lags[lag]);
-                    correlations[total_offset].x = val.real();
-                    correlations[total_offset].y = val.imag();
-                }
-            }
-
-        }
-
-        slice_correlations.push_back(correlations);
-    }
-
-    return slice_correlations;
+        auto beam_offset = beam_count * num_ranges * num_lags;
+        auto first_range_offset = uint32_t(rx_slice_info[slice_num].first_range /
+                              rx_slice_info[slice_num].range_sep);
+        // Select out the lags for each range gate.
+        for(uint32_t range=0; range<num_ranges; range++) {
+          for(uint32_t lag=0; lag<num_lags; lag++) {
+              auto range_lag_offset = (range * num_lags) + lag;
+              auto total_offset = beam_offset + range_lag_offset;
+              // use column major indexing.
+              auto val = correlation_matrix(range + first_range_offset +
+                                            rx_slice_info[slice_num].lags[lag],
+                                            range + first_range_offset);
+              corr_results[slice_num][total_offset].x = val.real();
+              corr_results[slice_num][total_offset].y = val.imag();
+          } // close lags scope
+        } // close ranges scope
+      } // close beams scope
+    } // close slices scope
   }
 
   /**
@@ -315,6 +296,7 @@ namespace {
   {
 
     std::vector<cuComplex> output_samples;
+    auto rx_slice_info = dp->get_slice_info();
 
     std::vector<uint32_t> samps_per_stage = {dp->get_num_rf_samples(),
                                              dp->get_num_first_stage_samples_per_antenna(),
@@ -325,18 +307,18 @@ namespace {
                                             dp->dsp_filters->get_num_third_stage_taps()};
 
     drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
-                     dp->get_num_antennas(), dp->get_slice_info().size());
+                     dp->get_num_antennas(), rx_slice_info.size());
 
     // For each antenna, for each frequency.
     auto num_samples_after_dropping = output_samples.size()/
-                                      (dp->get_num_antennas()*dp->get_slice_info().size());
+                                      (dp->get_num_antennas()*rx_slice_info.size());
 
 
 
 
     std::vector<std::vector<cuComplex>> beamformed_samples_main;
     std::vector<std::vector<cuComplex>> beamformed_samples_intf;
-    for(auto &rx_slice_info : dp->get_slice_info()) {
+    for(auto &rx_slice_info : rx_slice_info) {
       std::vector<cuComplex> main_beam(rx_slice_info.beam_count * num_samples_after_dropping);
       std::vector<cuComplex> intf_beam(rx_slice_info.beam_count * num_samples_after_dropping);
       beamformed_samples_main.push_back(main_beam);
@@ -345,35 +327,51 @@ namespace {
 
 
 
-    TIMEIT_IF_TRUE_OR_DEBUG(false, "Beamforming time: ",
+    TIMEIT_IF_TRUE_OR_DEBUG(true, "Beamforming time: ",
       {
       auto beam_phases = dp->get_beam_phases();
       beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf,
                         beam_phases,
                         dp->sig_options.get_main_antenna_count(),
                         dp->sig_options.get_interferometer_antenna_count(),
-                        dp->get_slice_info(),
+                        rx_slice_info,
                         num_samples_after_dropping);
       }
     );
 
 
-
+    // set up the vectors ahead of time. Seems to be faster this way.
     std::vector<std::vector<cuComplex>> main_acfs;
     std::vector<std::vector<cuComplex>> xcfs;
     std::vector<std::vector<cuComplex>> intf_acfs;
+    for (uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
+      auto total_elements = rx_slice_info[slice_num].beam_count *
+                            rx_slice_info[slice_num].num_ranges *
+                            rx_slice_info[slice_num].lags.size();
+      std::vector<cuComplex> v1(total_elements);
+      main_acfs.push_back(v1);
+
+      std::vector<cuComplex> v2(total_elements);
+      xcfs.push_back(v2);
+
+      std::vector<cuComplex> v3(total_elements);
+      intf_acfs.push_back(v3);
+    }
 
     TIMEIT_IF_TRUE_OR_DEBUG(true, "ACF/XCF time: ",
       {
-        main_acfs = correlations_from_samples(beamformed_samples_main, beamformed_samples_main,
-                                          dp->get_slice_info(), num_samples_after_dropping);
+        correlations_from_samples(beamformed_samples_main, beamformed_samples_main,
+                                          main_acfs, rx_slice_info,
+                                          num_samples_after_dropping);
         if (dp->sig_options.get_interferometer_antenna_count() > 0) {
-          xcfs = correlations_from_samples(beamformed_samples_main, beamformed_samples_intf,
-                                          dp->get_slice_info(), num_samples_after_dropping);
-          intf_acfs = correlations_from_samples(beamformed_samples_intf, beamformed_samples_intf,
-                                          dp->get_slice_info(), num_samples_after_dropping);
+          correlations_from_samples(beamformed_samples_main, beamformed_samples_intf,
+                                          xcfs, rx_slice_info, num_samples_after_dropping);
+          correlations_from_samples(beamformed_samples_intf, beamformed_samples_intf,
+                                          intf_acfs, rx_slice_info,
+                                          num_samples_after_dropping);
         }
       }
+
     );
 
 
@@ -399,20 +397,20 @@ namespace {
     };
 
     #ifdef ENGINEERING_DEBUG
-      auto stage_1_ptrs = make_ptrs_vec(dp->get_first_stage_output_h(), dp->get_slice_info().size(),
+      auto stage_1_ptrs = make_ptrs_vec(dp->get_first_stage_output_h(), rx_slice_info.size(),
                             dp->get_num_antennas(),dp->get_num_first_stage_samples_per_antenna());
 
-      auto stage_2_ptrs = make_ptrs_vec(dp->get_second_stage_output_h(), dp->get_slice_info().size(),
+      auto stage_2_ptrs = make_ptrs_vec(dp->get_second_stage_output_h(), rx_slice_info.size(),
                             dp->get_num_antennas(),dp->get_num_second_stage_samples_per_antenna());
 
-      auto stage_3_ptrs = make_ptrs_vec(dp->get_third_stage_output_h(), dp->get_slice_info().size(),
+      auto stage_3_ptrs = make_ptrs_vec(dp->get_third_stage_output_h(), rx_slice_info.size(),
                               dp->get_num_antennas(),dp->get_num_third_stage_samples_per_antenna());
     #endif
 
-    auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_slice_info().size(),
+    auto output_ptrs = make_ptrs_vec(output_samples.data(), rx_slice_info.size(),
                           dp->get_num_antennas(), num_samples_after_dropping);
 
-    for(uint32_t i=0; i<dp->get_slice_info().size(); i++) {
+    for(uint32_t i=0; i<rx_slice_info.size(); i++) {
       auto dataset = pd.add_outputdataset();
       // This lambda adds the stage data to the processed data for debug purposes.
       auto add_debug_data = [dataset,i](std::string stage_name, std::vector<cuComplex*> &data_ptrs,
@@ -432,7 +430,7 @@ namespace {
       };
 
       // Add our beamformed IQ data to the processed data packet that gets sent to data_write.
-      for (uint32_t beam_count=0; beam_count<dp->get_slice_info()[i].beam_count; beam_count++) {
+      for (uint32_t beam_count=0; beam_count<rx_slice_info[i].beam_count; beam_count++) {
         auto beam = dataset->add_beamformedsamples();
         beam->set_beamnum(beam_count);
 
@@ -451,9 +449,9 @@ namespace {
       } // close loop over beams.
 
 
-      auto num_lags = dp->get_slice_info()[i].lags.size();
-      auto num_ranges = dp->get_slice_info()[i].num_ranges;
-      for (uint32_t beam_count=0; beam_count<dp->get_slice_info()[i].beam_count; beam_count++) {
+      auto num_lags = rx_slice_info[i].lags.size();
+      auto num_ranges = rx_slice_info[i].num_ranges;
+      for (uint32_t beam_count=0; beam_count<rx_slice_info[i].beam_count; beam_count++) {
         auto beam_offset = beam_count * (num_ranges * num_lags);
 
         for (uint32_t range=0; range<num_ranges; range++) {
@@ -493,9 +491,9 @@ namespace {
       add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
         num_samples_after_dropping);
 
-      dataset->set_slice_id(dp->get_slice_info()[i].slice_id);
-      dataset->set_numberofranges(dp->get_slice_info()[i].num_ranges);
-      dataset->set_numberoflags(dp->get_slice_info()[i].lags.size());
+      dataset->set_slice_id(rx_slice_info[i].slice_id);
+      dataset->set_numberofranges(rx_slice_info[i].num_ranges);
+      dataset->set_numberoflags(rx_slice_info[i].lags.size());
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     } // close loop over frequencies.
 

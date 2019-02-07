@@ -92,8 +92,8 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
         # ctrfreq empty
         # rxrate and txrate empty
         if __debug__:
-            print("REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3}"
-                  ";".format(timing, SOB, EOB, antennas))
+            print("REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}"
+                  ";".format(timing, SOB, EOB))
     else:
         # SETUP data to send to driver for transmit.
         for samples in samples_array:
@@ -109,8 +109,8 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
         driverpacket.txrate = txrate
         driverpacket.numberofreceivesamples = numberofreceivesamples
         if __debug__:
-            print("NOT A REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}; ANTENNAS: {3}"
-                  ";".format(timing, SOB, EOB, antennas))
+            print("NOT A REPEAT; TIMING: {0}; SOB: {1}; EOB: {2}"
+                  ";".format(timing, SOB, EOB))
 
    # txsocket.send(driverpacket.SerializeToString())
     socket_operations.send_pulse(radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString())

@@ -127,10 +127,58 @@ class ParseData(object):
         self._pre_bfiq_accumulator = self.nested_dict()
         self._pre_bfiq_available = False
 
+        self._mainacfs_available = False
+        self._mainacfs_accumulator = self.nested_dict()
+
+        self._xcfs_available = False
+        self._xcfs_accumulator = self.nested_dict()
+
+        self._intfacfs_available = False
+        self._intfacfs_accumulator = self.nested_dict()
+
         self._slice_ids = set()
         self._timestamps = []
 
         self._rawrf_locations = []
+
+
+    def parse_correlations(self):
+        """
+        Parses out the possible correlation data from the protobuf. Runs on every new processeddata
+        packet(contains all sampling period data). The expectation value is calculated at the end
+        of a sampling period by a different function.
+        """
+
+        for data_set in self.processed_data.outputdataset:
+            slice_id = data_set.slice_id
+
+            def accumulate_data(holder, proto_data):
+                cmplx = np.ones(len(proto_data), dtype=np.complex64)
+
+                for i, cf in enumerate(proto_data):
+                    cmplx[i] = cf.real + 1.0j * cf.imag
+
+                if 'data' not in holder[slice_id]:
+                    holder[slice_id]['data'] = []
+                holder[slice_id]['data'].append(cmplx)
+
+
+            if data_set.mainacf:
+                self._mainacfs_available = True
+                print('have mainacfs')
+                accumulate_data(self._mainacfs_accumulator, data_set.mainacf)
+
+            if data_set.xcf:
+                self._xcfs_available = True
+                accumulate_data(self._xcfs_accumulator, data_set.xcf)
+
+            if data_set.intacf:
+                self._intfacfs_available = True
+                accumulate_data(self._intfacfs_accumulator, data_set.intacf)
+
+
+
+
 
     def parse_bfiq(self):
         """
@@ -243,6 +291,7 @@ class ParseData(object):
         # TODO(keith): Parallelize?
         procs = []
 
+        self.parse_correlations()
         self.parse_bfiq()
         self.parse_pre_bfiq()
 
@@ -281,6 +330,34 @@ class ParseData(object):
         return self._pre_bfiq_available
 
     @property
+    def mainacfs_available(self):
+        """Gets the mainacfs available flag.
+
+        Returns:
+            TYPE: Bool
+        """
+        return self._mainacfs_available
+
+    @property
+    def xcfs_available(self):
+        """Gets the xcfs available flag.
+
+        Returns:
+            TYPE: Bool
+        """
+        return self._xcfs_available
+
+    @property
+    def intfacfs_available(self):
+        """Gets the intfacfs available flag.
+
+        Returns:
+            TYPE: Bool
+        """
+        return self._intfacfs_available
+
+
+    @property
     def bfiq_accumulator(self):
         """ Returns the nested default dictionary with complex stage data for each antenna array as
         well as some metadata.
@@ -299,6 +376,36 @@ class ParseData(object):
             Nested default dict: Contains stage data for each antenna and slice.
         """
         return self._pre_bfiq_accumulator
+
+    @property
+    def mainacfs_accumulator(self):
+        """Returns the default dict containing a list of main acf data for each slice. There is an
+        array of data for each sampling period.
+
+        Returns:
+            TYPE: Default dict: Contains acf data for each slice.
+        """
+        return self._mainacfs_accumulator
+
+    @property
+    def xcfs_accumulator(self):
+        """Returns the default dict containing a list of xcf data for each slice. There is an
+        array of data for each sampling period.
+
+        Returns:
+            TYPE: Default dict: Contains xcf data for each slice.
+        """
+        return self._xcfs_accumulator
+
+    @property
+    def intfacfs_accumulator(self):
+        """Returns the default dict containing a list of intf acf data for each slice. There is an
+        array of data for each sampling period.
+
+        Returns:
+            TYPE: Default dict: Contains intf acf data for each slice.
+        """
+        return self._intfacfs_accumulator
 
     @property
     def timestamps(self):
@@ -503,8 +610,8 @@ class DataWrite(object):
                 self.slice_filenames[slice_id] = two_hr_str
 
             self.next_boundary = two_hr_ceiling(time_now)
-            
-            
+
+
         def write_file(tmp_file, final_data_dict, two_hr_file_with_type):
             """
             Writes the final data out to the location based on the type of file extension required
@@ -515,7 +622,7 @@ class DataWrite(object):
 
             """
             if not os.path.exists(dataset_directory):
-                # Don't try-catch this, because we want it to fail hard if we can't write files 
+                # Don't try-catch this, because we want it to fail hard if we can't write files
                 os.makedirs(dataset_directory)
 
 
@@ -543,16 +650,50 @@ class DataWrite(object):
             elif file_ext == 'dmap':
                 self.write_dmap_file(tmp_file, final_data_dict)
 
-        def do_acf():
+        def write_correlations(parameters_holder):
             """
-            Parses out any possible ACF data from protobuf and writes to file. All variables are
-            captured.
+            Parses out any possible correlation data from protobuf and writes to file. Some variables
+            are captured from outer scope.
 
             """
 
-            # TODO
+            main_acfs = data_parsing.mainacfs_accumulator
+            xcfs = data_parsing.xcfs_accumulator
+            intf_acfs = data_parsing.intfacfs_accumulator
+
+            def find_expectation_value(x, parameters, field_name):
+                array_2d = np.array(x, dtype=np.complex64)
+                array_expectation_value = np.median(array_2d, axis=0)
+
+                parameters[field_name] = array_expectation_value
+
+            for slice_id in main_acfs:
+                parameters = parameters_holder[slice_id]
+                find_expectation_value(main_acfs[slice_id]['data'], parameters, 'main_acfs')
+
+            for slice_id in xcfs:
+                parameters = parameters_holder[slice_id]
+                find_expectation_value(xcfs[slice_id]['data'], parameters, 'xcfs')
+
+            for slice_id in intf_acfs:
+                parameters = parameters_holder[slice_id]
+                find_expectation_value(intf_acfs[slice_id]['data'], parameters, 'intf_acfs')
 
 
+            unneeded_fields = ['antenna_arrays_order', 'data']
+
+            for slice_id, parameters in parameters_holder.items():
+                parameters['data_descriptors'] = ['num_ranges', "num_lags"]
+                parameters['data_dimensions'] = np.array([0,0],dtype=np.uint32) #TODO
+                for field in unneeded_fields:
+                    parameters.pop(field, None)
+
+                name = dataset_name.format(sliceid=slice_id, dformat="rawacf")
+                output_file = dataset_location.format(name=name)
+
+                two_hr_file_with_type = self.slice_filenames[slice_id].format(ext="rawacf")
+
+                write_file(output_file, parameters, two_hr_file_with_type)
 
         def write_bfiq_params(parameters_holder):
             """
@@ -863,6 +1004,7 @@ class DataWrite(object):
 
         if write_rawacf:
             #procs.append(threading.Thread(target=do_acf))
+            write_correlations(parameters_holder.copy())
             pass
 
         if write_bfiq and data_parsing.bfiq_available:
@@ -906,6 +1048,8 @@ def main():
     parser = ap.ArgumentParser(description='Write processed SuperDARN data to file')
     parser.add_argument('--file-type', help='Type of output file: hdf5, json, or dmap',
                         default='hdf5')
+    parser.add_argument('--enable-raw-acfs', help='Enable raw acf writing',
+                        action='store_true')
     parser.add_argument('--enable-bfiq', help='Enable beamformed iq writing',
                         action='store_true')
     parser.add_argument('--enable-pre-bfiq', help='Enable individual antenna iq writing',
@@ -970,7 +1114,7 @@ def main():
                                            file_ext=args.file_type,
                                            integration_meta=integration_meta,
                                            data_parsing=data_parsing,
-                                           write_rawacf=False)
+                                           write_rawacf=args.enable_raw_acfs)
                     thread = threading.Thread(target=data_write.output_data, kwargs=kwargs)
                     thread.daemon = True
                     thread.start()
