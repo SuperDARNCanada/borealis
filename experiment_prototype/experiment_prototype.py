@@ -1411,7 +1411,7 @@ class ExperimentPrototype(object):
         # any time after setup. We run it now in case the user has changed something
         # inappropriately (ie, any way other than using edit_slice, add_slice, or del_slice).
         # "Private" instance variables with leading underscores are not actually private in
-        # python they just have a bit of a mangled name so they are not readily availabe but give
+        # python they just have a bit of a mangled name so they are not readily available but give
         # the user notice that they should be left alone. If the __slice_dict has been changed
         # improperly, we should check it for problems here.
         for a_slice in self.slice_ids:
