@@ -34,9 +34,9 @@ class Scan(ScanClassBase):
         The time (not implemented) at which to start scans. To be implemented.
     """
 
-    def __init__(self, scan_keys, scan_slice_dict, scan_interface, options):
+    def __init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata):
 
-        ScanClassBase.__init__(self, scan_keys, scan_slice_dict, scan_interface, options)
+        ScanClassBase.__init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata)
 
         # scan metadata - must be the same between all slices combined in scan.  Metadata includes:
         self.scanboundflag = self.slice_dict[self.slice_ids[0]]['scanboundflag']

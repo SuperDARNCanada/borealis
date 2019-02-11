@@ -49,13 +49,15 @@ class DSPCore {
                       uint32_t num_samples_rf,
                       uint32_t num_output_samples_per_antenna_1,
                       uint32_t num_output_samples_per_antenna_2,
-                      uint32_t num_output_samples_per_antenna_3);
+                      uint32_t num_output_samples_per_antenna_3,
+                      uint32_t num_output_samples_per_antenna_4);
   void initial_memcpy_callback();
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num,
-                    std::vector<double> freqs, Filtering *filters,
-                    std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
+                    double rx_rate, double output_sample_rate, std::vector<double> freqs, 
+                    Filtering *filters, std::vector<cuComplex> beam_phases, 
+                    std::vector<uint32_t> beam_direction_counts,
                     double driver_initialization_time, double sequence_start_time,
                     std::vector<uint32_t> slice_ids);
 
@@ -64,16 +66,17 @@ class DSPCore {
   void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
                                 int64_t extra_samples, uint32_t offset_to_first_pulse,
                                 double time_zero, double start_time,
-                                uint64_t ringbuffer_size, uint32_t first_stage_dm_rate,
-                                uint32_t second_stage_dm_rate,
+                                uint64_t ringbuffer_size, 
                                 std::vector<cuComplex*> &ringbuffer_ptrs_start);
   void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
   void allocate_and_copy_second_stage_filter(void *taps, uint32_t total_taps);
   void allocate_and_copy_third_stage_filter(void *taps, uint32_t total_taps);
+  void allocate_and_copy_fourth_stage_filter(void *taps, uint32_t total_taps);
   void allocate_and_copy_device_rf(uint32_t num_rf_samples);
   void allocate_first_stage_output(uint32_t num_first_stage_output_samples);
   void allocate_second_stage_output(uint32_t num_second_stage_output_samples);
   void allocate_third_stage_output(uint32_t num_third_stage_output_samples);
+  void allocate_fourth_stage_output(uint32_t num_fourth_stage_output_samples);
   void allocate_and_copy_host_output(uint32_t num_host_samples);
   void clear_device_and_destroy();
   cuComplex* get_rf_samples_p();
@@ -82,12 +85,15 @@ class DSPCore {
   cuComplex* get_first_stage_bp_filters_p();
   cuComplex* get_second_stage_filter_p();
   cuComplex* get_third_stage_filter_p();
+  cuComplex* get_fourth_stage_filter_p();
   cuComplex* get_first_stage_output_p();
   cuComplex* get_second_stage_output_p();
   cuComplex* get_third_stage_output_p();
+  cuComplex* get_fourth_stage_output_p();
   cuComplex* get_first_stage_output_h();
   cuComplex* get_second_stage_output_h();
   cuComplex* get_third_stage_output_h();
+  cuComplex* get_fourth_stage_output_h();
   cuComplex* get_host_output_h();
   std::vector<double> get_rx_freqs();
   float get_total_timing();
@@ -97,7 +103,10 @@ class DSPCore {
   uint32_t get_num_first_stage_samples_per_antenna();
   uint32_t get_num_second_stage_samples_per_antenna();
   uint32_t get_num_third_stage_samples_per_antenna();
+  uint32_t get_num_fourth_stage_samples_per_antenna();
   uint32_t get_sequence_num();
+  double get_rx_rate();
+  double get_output_sample_rate();
   double get_driver_initialization_time();
   double get_sequence_start_time();
   std::vector<uint32_t> get_slice_ids();
@@ -123,6 +132,12 @@ class DSPCore {
 
   //! Sequence number used to identify and acknowledge a pulse sequence.
   uint32_t sequence_num;
+
+  //! Rx sampling rate for the data being processed.
+  double rx_rate;
+
+  //! Output sampling rate of the filtered, decimated, processed data.
+  double output_sample_rate;
 
   //! Pointer to the socket used to acknowledge the RF samples have been copied to device.
   zmq::socket_t *ack_socket;
@@ -154,6 +169,9 @@ class DSPCore {
   //! Pointer to the third stage filters on device.
   cuComplex *third_stage_filter_d;
 
+  //! Pointer to the fourth stage filters on device.
+  cuComplex *fourth_stage_filter_d;
+
   //! Pointer to the output of the first stage decimation on device.
   cuComplex *first_stage_output_d;
 
@@ -162,6 +180,9 @@ class DSPCore {
 
   //! Pointer to the output of the third stage decimation on device.
   cuComplex *third_stage_output_d;
+
+  //! Pointer to the output of the fourth stage decimation on device.
+  cuComplex *fourth_stage_output_d;
 
   //! Pointer to the host output samples.
   cuComplex *host_output_h;
@@ -196,6 +217,9 @@ class DSPCore {
   //! A host side pointer to the third stage output.
   cuComplex *third_stage_output_h;
 
+  //! A host side pointer to the third stage output.
+  cuComplex *fourth_stage_output_h;
+
   //! A vector containing the host side rx frequencies.
   std::vector<double> rx_freqs;
 
@@ -213,6 +237,9 @@ class DSPCore {
 
   //! The number of third stage samples per antenna.
   uint32_t num_third_stage_samples_per_antenna;
+
+  //! The number of fourth stage samples per antenna.
+  uint32_t num_fourth_stage_samples_per_antenna;
 
   //! A set of beam angle phases for each beam direction.
   std::vector<cuComplex> beam_phases;
@@ -235,6 +262,7 @@ class DSPCore {
   void allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples);
   void allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples);
   void allocate_and_copy_third_stage_host(uint32_t num_third_stage_output_samples);
+  void allocate_and_copy_fourth_stage_host(uint32_t num_fourth_stage_output_samples);
   void allocate_and_copy_rf_from_device(uint32_t num_rf_samples);
 
 };

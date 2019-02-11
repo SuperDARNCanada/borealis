@@ -9,8 +9,6 @@
 class DriverOptions: public Options {
  public:
         explicit DriverOptions();
-        double get_tx_rate() const;
-        double get_rx_rate() const;
         std::string get_device_args() const;
         std::string get_clk_addr() const;
         std::string get_tx_subdev() const;
@@ -56,8 +54,6 @@ class DriverOptions: public Options {
         std::string interferometer_rx_subdev_;
         std::string pps_;
         std::string ref_;
-        double tx_sample_rate_;
-        double rx_sample_rate_;
         std::string cpu_;
         std::string otw_;
         std::string gpio_bank_;

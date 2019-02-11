@@ -29,6 +29,7 @@ from experiment_prototype import list_tests
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
+from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, DecimationStage
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
@@ -219,6 +220,9 @@ time the experiment is run). If set by the user, the values will be overwritten 
 therefore ignored.
 """
 
+default_rx_bandwidth = 5.0e6
+default_output_rx_rate = 10.0e3/3 
+
 class ExperimentPrototype(object):
     """
     The base class for all experiments.
@@ -254,11 +258,30 @@ class ExperimentPrototype(object):
     __slice_keys = slice_key_set
 
     __hidden_slice_keys = hidden_key_set
+    __default_output_rx_rate = default_output_rx_rate
+    __default_rx_bandwidth = default_rx_bandwidth
 
-    def __init__(self, cpid, comment_string=''):
+    def __init__(self, cpid, output_rx_rate=default_output_rx_rate,
+                 rx_bandwidth=default_rx_bandwidth, tx_bandwidth=5.0e6, txctrfreq=12000.0,
+                 rxctrfreq=12000.0,
+                 decimation_scheme=DecimationScheme(default_rx_bandwidth, default_output_rx_rate),
+                 comment_string=''):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
+        :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz. 
+         Cannot be changed after instantiation.
+        :param rx_bandwidth: The desired bandwidth for the experiment. Directly determines rx
+        sampling rate of the USRPs. Cannot be changed.
+        :param rx_bandwidth: The desired tx bandwidth for the experiment. Directly determines tx
+        sampling rate of the USRPs. Cannot be changed.
+        :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with.
+        :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
+        :param decimation_scheme: an object defining the decimation and filtering stages for the
+        signal processing module. If you would like something other than the default, you will
+        need to build an object of the DecimationScheme type before initiating your experiment. 
+        This cannot be changed after instantiation.
+        :param comment_string: description of experiment for data files.
         """
 
         if not isinstance(cpid, int):  # TODO add check for uniqueness
@@ -270,24 +293,75 @@ class ExperimentPrototype(object):
 
         self.__cpid = cpid
 
+        self.__output_rx_rate = float(output_rx_rate)
+
+        if self.output_rx_rate > self.options.max_output_sample_rate:
+            errmsg = "Experiment's output sample rate is too high: {} greater than max " \
+                     "{}.".format(self.output_rx_rate, self.options.max_output_sample_rate)
+            raise ExperimentException(errmsg)
+
+        self.__txrate = float(tx_bandwidth)  # sampling rate, samples per sec, Hz.
+        self.__rxrate = float(rx_bandwidth) # sampling rate for rx in samples per sec
+        # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
+        # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
+
+        if self.txrate > self.options.max_tx_sample_rate:
+            errmsg = "Experiment's transmit bandwidth is too large: {} greater than max " \
+                     "{}.".format(self.txrate, self.options.max_tx_sample_rate)
+            raise ExperimentException(errmsg)
+
+        if self.rxrate > self.options.max_rx_sample_rate:
+            errmsg = "Experiment's receive bandwidth is too large: {} greater than max " \
+                     "{}.".format(self.rxrate, self.options.max_rx_sample_rate)
+            raise ExperimentException(errmsg)
+
+        if round(self.options.usrp_master_clock_rate / self.txrate, 3) % 2.0 != 0.0:
+            errmsg = "Experiment's transmit bandwidth {} is not possible as it must be an integer divisor of " \
+                     " USRP master clock rate {}".format(self.txrate, self.options.usrp_master_clock_rate)
+            raise ExperimentException(errmsg)
+
+        if round(self.options.usrp_master_clock_rate / self.rxrate, 3) % 2.0 != 0.0:
+            errmsg = "Experiment's receive bandwidth {} is not possible as it must be an integer divisor of " \
+                     " USRP master clock rate {}".format(self.rxrate, self.options.usrp_master_clock_rate)
+            raise ExperimentException(errmsg)
+
+        self.__decimation_scheme = decimation_scheme
+
         self.__comment_string = comment_string
 
         self.__slice_dict = {}
 
         self.__new_slice_id = 0
 
-        # Note - the txctrfreq and rxctrfreq setters modify the actual centre frequency to a
+        # Note - txctrfreq and rxctrfreq are set here and modify the actual centre frequency to a
         # multiple of the clock divider that is possible by the USRP - this default value set
-        # here is not exact.
-        self.__txctrfreq = self.txctrfreq = 12000.0  # in kHz.
-        self.__rxctrfreq = self.rxctrfreq = 12000.0  # in kHz.
+        # here is not exact (centre freq is never exactly 12 MHz).
+
+        # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+        clock_multiples = self.options.usrp_master_clock_rate/2**32
+        clock_divider = math.ceil(txctrfreq*1e3/clock_multiples)
+        self.__txctrfreq = (clock_divider * clock_multiples)/1e3 
+
+        clock_divider = math.ceil(rxctrfreq*1e3/clock_multiples)
+        self.__rxctrfreq = (clock_divider * clock_multiples)/1e3 
 
         # Load the config, hardware, and restricted frequency data
 
-        self.__txrate = self.__options.tx_sample_rate  # sampling rate, samples per sec, Hz.
-        self.__rxrate = self.__options.rx_sample_rate  # sampling rate for rx in samples per sec
-        # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
-        # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
+        # This is experiment-wide transmit metadata necessary to build the pulses. This data
+        # cannot change within the experiment and is used in the scan classes to pass information
+        # to where the samples are built.
+        self.__transmit_metadata = {
+            'output_rx_rate': self.output_rx_rate,
+            'main_antenna_count': self.options.main_antenna_count,
+            'tr_window_time': self.options.tr_window_time,
+            'main_antenna_spacing': self.options.main_antenna_spacing,
+            'pulse_ramp_time': self.options.pulse_ramp_time,
+            'max_usrp_dac_amplitude': self.options.max_usrp_dac_amplitude,
+            'rx_sample_rate': self.rxrate,
+            'minimum_pulse_separation': self.options.minimum_pulse_separation,
+            'txctrfreq': self.txctrfreq,
+            'txrate': self.txrate
+        }
 
         # The following are processing defaults. These can be set by the experiment using the setter
         #   upon instantiation. These are defaults for all slices, but these values are
@@ -310,11 +384,10 @@ class ExperimentPrototype(object):
         # These are used internally to build iterable objects out of the slice using the
         # interfacing specified.
 
-        self.__slice_id_scan_lists = None
         self.__scan_objects = []
 
         # TODO Remove above two variables after adding this type below
-        self.__running_experiment = None # this will be of ScanClassBase type
+        self.__running_experiment = None  # this will be of ScanClassBase type
 
     @property
     def cpid(self):
@@ -325,6 +398,67 @@ class ExperimentPrototype(object):
         """
 
         return self.__cpid
+
+    @property
+    def output_rx_rate(self):
+        """
+        The output receive rate of the data.
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__output_rx_rate
+
+    @property
+    def tx_bandwidth(self):
+        """
+        The transmission sample rate to the DAC (Hz), and the transmit bandwidth.
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__txrate
+
+    @property
+    def txrate(self):
+        """
+        The transmission sample rate to the DAC (Hz).
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__txrate
+
+    @property
+    def rx_bandwidth(self):
+        """
+        The receive bandwidth for this experiment, in Hz.
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__rxrate
+
+    @property
+    def rxrate(self):
+        """
+        The receive bandwidth for this experiment, or the receive sampling rate (of I and Q samples)
+        In Hz.
+
+        This is read-only once established in instantiation.
+        """
+
+        return self.__rxrate
+
+    @property
+    def decimation_scheme(self):
+        """
+        The decimation scheme, of type DecimationScheme from the filtering module. Includes all
+        filtering and decimating information for the signal processing module.
+
+        This is read-only once established in instantiation.
+        """
+        return self.__decimation_scheme
 
     @property
     def comment_string(self):
@@ -406,6 +540,16 @@ class ExperimentPrototype(object):
         return self.__options
 
     @property
+    def transmit_metadata(self):
+        """
+        A dictionary of config options and experiment-set values that cannot change in the
+        experiment, that will be used to build pulse sequences.
+        """
+
+        return self.__transmit_metadata
+
+
+    @property
     def xcf(self):
         """
         The default cross-correlation flag boolean.
@@ -474,15 +618,6 @@ class ExperimentPrototype(object):
         else:
             pass  # TODO log no change
 
-    @property
-    def txrate(self):
-        """
-        The transmission sample rate to the DAC (Hz).
-
-        This is not modifiable and comes from the config options.
-        """
-
-        return self.__txrate
 
     @property
     def txctrfreq(self):
@@ -491,26 +626,6 @@ class ExperimentPrototype(object):
         If you would like to change this value, note that it will take tuning time.
         """
         return self.__txctrfreq
-
-    @txctrfreq.setter
-    def txctrfreq(self, value):
-        """
-        Set the transmission centre frequency that USRP is tuned to. 
-        
-        This will take tuning time, use with caution. The USRP center frequency can only be tuned
-        in steps of the master clock rate / 2^32. We determine the closest value to the desired
-        center frequency and adjust to that.
-
-        :param value: int for transmission centre frequency to tune USRP to (kHz).
-        """
-        # TODO review if this should be modifiable, definitely takes tuning time.
-        if isinstance(value, int):
-            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-            clock_multiples = self.options.usrp_master_clock_rate/2**32
-            clock_divider = math.ceil(value*1e3/clock_multiples)
-            self.__txctrfreq = (clock_divider * clock_multiples)/1e3 # TODO return actual value tuned to.
-        else:
-            pass  # TODO errors / log no change
 
     @property
     def tx_maxfreq(self):
@@ -549,35 +664,6 @@ class ExperimentPrototype(object):
         If you would like to change this, note that it will take tuning time.
         """
         return self.__rxctrfreq
-
-    @rxctrfreq.setter
-    def rxctrfreq(self, value):
-        """
-        Set the receive centre frequency that USRP is tuned to (kHz).
-
-        This will take tuning time, use with caution.
-
-        :param value: int for receive centre frequency to tune USRP to (kHz). The USRP center
-        frequency can only be tuned in steps of the master clock rate / 2^32. We determine the
-        closest value to the desired center frequency and adjust to that.
-        """
-        # TODO review if this should be modifiable, definitely takes tuning time.
-        if isinstance(value, int):
-            # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-            clock_multiples = self.options.usrp_master_clock_rate/2**32
-            clock_divider = math.ceil(value*1e3/clock_multiples)
-            self.__rxctrfreq = (clock_divider * clock_multiples)/1e3   # TODO return actual tuned freq.
-        else:
-            pass  # TODO errors
-
-    @property
-    def rxrate(self):
-        """
-        The receive sampling rate in samples per sec.
-
-        This comes from the config file and cannot be changed in the experiment.
-        """
-        return self.__rxrate
 
     @property
     def rx_maxfreq(self):
@@ -620,15 +706,6 @@ class ExperimentPrototype(object):
 
         """
         return self._interface
-
-    @property
-    def slice_id_scan_lists(self):
-        """
-        The list of scan slice ids (a list of lists of slice_ids, organized by scan).
-
-        This cannot be modified by the user.
-        """
-        return self.__slice_id_scan_lists
 
     @property
     def scan_objects(self):
@@ -797,31 +874,25 @@ class ExperimentPrototype(object):
         Sequence instances needed to run this experiment.
 
         Will be run by experiment handler, to build iterable objects for radar_control to
-        use. Creates scan_objects and slice_id_scan_lists in the experiment for
-        identifying which slices are in the scans.
+        use. Creates scan_objects in the experiment for identifying which slices are in the scans.
         """
 
-        # Check interfacing
+        # Check interfacing and other experiment-wide settings.
         self.self_check()
 
         # investigating how I might go about using this base class - TODO maybe make a new IterableExperiment class to inherit
 
-        # TODO check that the following 7 lines work, remove self.__slice_id_scan_lists from init,
-        # consider removing scan_objects from init and making a new Experiment class to inherit
+        # TODO consider removing scan_objects from init and making a new Experiment class to inherit
         # from ScanClassBase and having all of this included in there. Then would only need to
         # pass the running experiment to the radar control (would be returned from build_scans)
         self.__running_experiment = ScanClassBase(self.slice_ids, self.slice_dict, self.interface,
-                                                  self.options)
+                                                  self.transmit_metadata)
 
         self.__running_experiment.nested_slice_list = self.get_scan_slice_ids()
 
         self.__scan_objects = []
         for params in self.__running_experiment.prep_for_nested_scan_class():
             self.scan_objects.append(Scan(*params))
-
-        # self.__slice_id_scan_lists = self.get_scan_slice_ids()
-        # # Returns list of scan lists. Each scan list is a list of the slice_ids for the slices
-        # # included in that scan.
 
         if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
@@ -1319,17 +1390,28 @@ class ExperimentPrototype(object):
         """
 
         if self.num_slices < 1:
-            errmsg = "Error: Invalid num_slices less than 1"
+            errmsg = "Invalid num_slices less than 1"
             raise ExperimentException(errmsg)
 
         # TODO: check if self.cpid is not unique - incorporate known cpids from git repo
         # TODO: use pygit2 for this
 
+        # check that the number of slices can be accommodated by the decimation scheme.
+        for stage in self.decimation_scheme.stages:
+            power_2 = 0
+            while (2 ** power_2 < len(stage.filter_taps)):
+                power_2 += 1
+            effective_length = 2 ** power_2
+            if effective_length * self.num_slices > self.options.max_number_of_filter_taps_per_stage:
+                errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with \
+                    this many slices ({}) is too large for GPU max {}".format(len(stage.filter_taps), 
+                        stage.stage_num, self.num_slices, self.options.max_number_of_filter_taps_per_stage)
+
         # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
         # any time after setup. We run it now in case the user has changed something
         # inappropriately (ie, any way other than using edit_slice, add_slice, or del_slice).
         # "Private" instance variables with leading underscores are not actually private in
-        # python they just have a bit of a mangled name so they are not readily availabe but give
+        # python they just have a bit of a mangled name so they are not readily available but give
         # the user notice that they should be left alone. If the __slice_dict has been changed
         # improperly, we should check it for problems here.
         for a_slice in self.slice_ids:
