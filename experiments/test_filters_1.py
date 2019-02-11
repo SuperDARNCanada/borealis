@@ -7,7 +7,7 @@ sys.path.append(os.environ['BOREALISPATH'])
 # write an experiment that creates a new control program.
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
-from experiments.test_decimation_schemes import create_test_scheme_1
+from experiments.test_decimation_schemes import create_test_scheme_1, create_test_scheme_2, create_test_scheme_3
 
 class OneBox(ExperimentPrototype):
 
@@ -15,7 +15,7 @@ class OneBox(ExperimentPrototype):
         cpid = 100000000
         output_rx_rate = 10.0e3/3
         rxrate = 5.0e6
-        super(OneBox, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate, decimation_scheme=create_test_scheme_1())
+        super(OneBox, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate, decimation_scheme=create_test_scheme_3())
 
         pulse_sequence = [0, 14, 22, 24, 27, 31, 42, 43]
         #pulse_sequence = [0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553]

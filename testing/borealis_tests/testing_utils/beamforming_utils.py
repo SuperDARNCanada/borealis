@@ -4,8 +4,6 @@ import matplotlib
 import scipy
 
 
-
-
 def fft_and_plot(samples, rate):
 	"""
 	Plot the fft of the samples, given the rate. Shows the plot.
@@ -135,36 +133,6 @@ def find_pulse_indices(data, threshold):  # TODO change to not normalized
     return pulse_indices
 
 
-def plot_output_samples_iq_data(record_dict, record_filetype):
-    """
-    :param record_dict: a record containing data_dimensions, data_descriptors, antenna_array_names, and data (reshaped)
-    :param record_filetype: a string indicating the type of data being plotted (to be used on the plot legend). Should 
-     be output_samples_iq type, but there might be multiple slices.
-    """
-
-    # data dimensions are num_antennas, num_sequences, num_samps
-
-    antennas_present = [int(i.split('_')[-1]) for i in record_dict['antenna_arrays_order']]
-
-    for sequence in range(0, record_dict['data'].shape[1]):
-        print('Sequence number: {}'.format(sequence))
-         
-        for index in range(0, record_dict['data'].shape[0]):
-            antenna = antennas_present[index]
-            fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-            if antenna < record_dict['main_antenna_count']:
-                ax1.set_title('Main Antennas {}'.format(record_filetype))
-                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].real, label='Real {}'.format(antenna))
-                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].imag, label="Imag {}".format(antenna))
-                ax1.legend()
-            else:
-                ax2.set_title('Intf Antennas {}'.format(record_filetype))
-                ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].real, label='Real {}'.format(antenna))
-                ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][antenna,sequence,:].imag, label="Imag {}".format(antenna))
-                ax2.legend()                       
-            plt.show()
-
-
 def plot_antenna_data(array_of_data, list_of_antennas, record_filetype):
     """
     :param record_dict: a numpy array of data, dimensions num_antennas x num_samps
@@ -181,34 +149,6 @@ def plot_antenna_data(array_of_data, list_of_antennas, record_filetype):
         ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].real, label='Real {}'.format(antenna))
         ax1.plot(np.arange(array_of_data.shape[1]), array_of_data[index,:].imag, label="Imag {}".format(antenna))
         ax1.legend()                   
-        plt.show()
-
-
-def plot_bf_iq_data(record_dict, record_filetype):
-    """
-    :param record_dict: a record containing data_dimensions, data_descriptors, antenna_array_names, and data (reshaped)
-    :param record_filetype: a string indicating the type of data being plotted (to be used on the plot legend). Should 
-     be bf_iq type, but there might be multiple slices.
-    """
-
-    # data dimensions are num_antenna_arrays, num_sequences, num_beams, num_samps
-
-    beam = 0
-    for sequence in range(0, record_dict['data'].shape[1]):
-        fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-        for index in range(0, record_dict['data'].shape[0]):
-            antenna_array = record_dict['antenna_arrays_order'][index]
-
-            if antenna_array == 'main':
-                ax1.set_title('Main Array {} sequence {}'.format(record_filetype, sequence))
-                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].real, label='Real {}'.format(antenna_array))
-                ax1.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].imag, label="Imag {}".format(antenna_array))
-                ax1.legend()
-            else:
-                ax2.set_title('Intf Array {} sequence {}'.format(record_filetype, sequence))
-                ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].real, label='Real {}'.format(antenna_array))
-                ax2.plot(np.arange(record_dict['num_samps']), record_dict['data'][index,sequence,beam,:].imag, label="Imag {}".format(antenna_array))
-                ax2.legend()                       
         plt.show()
 
 
@@ -236,3 +176,38 @@ def plot_all_bf_data(record_data):
     ax1.legend()
     ax2.legend()
     plt.show()
+
+
+def check_for_equal_samples_across_channels(record_dict, start_sample, end_sample, max_absolute_error, main_antenna_count):
+    """
+    :param record_dict: has a key 'data' with all the data from all the channels to check
+     """
+
+    antennas = record_dict['antennas_present']
+
+    sequence_to_antenna_problem_dict = {}
+    data_dimensions_list = record_dict['data_descriptors']
+    if all(data_dimensions_list == ['num_sequences', 'num_antennas', 'num_samps']):
+        data = record_dict['data'][:,0:main_antenna_count,start_sample:end_sample]
+        average_sequence_data = np.mean(data, axis=1)
+        for sequence in range(0,data.shape[0]):
+            antennas_out = []
+            for antenna in range(0,data.shape[1]):
+                equality = [math.isclose(x,y,abs_tol=max_absolute_error) for x,y in zip(data[sequence,antenna,:], average_sequence_data[sequence,:])]
+                if not all(equality):
+                    antennas_out.append(antenna)
+            sequence_to_antenna_problem_dict[sequence] = antennas_out
+    elif all(data_dimensions_list == ['num_antennas', 'num_sequences', 'num_samps']):
+        data = record_dict['data'][0:main_antenna_count,:,start_sample:end_sample]
+        average_sequence_data = np.mean(data, axis=0)
+        for sequence in range(0, data.shape[1]):
+            antennas_out = []
+            for antenna in range(0, data.shape[0]):
+                equality = [math.isclose(x,y,abs_tol=max_absolute_error) for x,y in zip(data[antenna,sequence,:], average_sequence_data[sequence,:])]
+                if not all(equality):
+                    antennas_out.append(antenna)       
+            sequence_to_antenna_problem_dict[sequence] = antennas_out
+    else:
+        print('Do not know how to compare data with dimensions = {}'.format(data_dimensions_list))
+    print('Sequence to Antenna Problem Dictionary: {}'.format(sequence_to_antenna_problem_dict))
+    return sequence_to_antenna_problem_dict
