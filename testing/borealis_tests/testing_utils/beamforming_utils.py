@@ -1,16 +1,17 @@
 
+import math
 import numpy as np
 import matplotlib
 import scipy
-
+from sample_building.sample_building import get_phshift, shift_samples
 
 def fft_and_plot(samples, rate):
-	"""
-	Plot the fft of the samples, given the rate. Shows the plot.
-	This provides a two-sided FFT. 
-	:param samples: time domain samples to provide the FFT of. 
-	:param rate: the rate that the samples were taken at. 
-	"""
+    """
+    Plot the fft of the samples, given the rate. Shows the plot.
+    This provides a two-sided FFT. 
+    :param samples: time domain samples to provide the FFT of. 
+    :param rate: the rate that the samples were taken at. 
+    """
 
     fft_samps = fft(samples)
     T = 1.0/float(rate)
@@ -30,16 +31,16 @@ def fft_and_plot(samples, rate):
 
 
 def align_tx_samples(tx_samples, offset, array_len):
-	"""
-	To align tx samples to received samples, provide an offset value 
-	according to where the signal best correlated and provide the length so that
-	zeros can be padded around the signal in order to line it up with the received samples.
-	:param tx_samples: samples to offset
-	:param offset: number of zeros to place before the samples
-	:array_len: new length that you would like the samples to be
-	:returns aligned_ant_samples: sample array containing tx_samples with  the offset number 
-	of zeros at the front and with the length array_len.
-	"""
+    """
+    To align tx samples to received samples, provide an offset value 
+    according to where the signal best correlated and provide the length so that
+    zeros can be padded around the signal in order to line it up with the received samples.
+    :param tx_samples: samples to offset
+    :param offset: number of zeros to place before the samples
+    :array_len: new length that you would like the samples to be
+    :returns aligned_ant_samples: sample array containing tx_samples with  the offset number 
+    of zeros at the front and with the length array_len.
+    """
 
     zeros_offset = np.array([0.0]*(offset))
     #print('Shapes of arrays:{}, {}'.format(zeros_offset.shape, ant_samples[0].shape))
@@ -121,7 +122,7 @@ def get_offsets(samples_a, samples_b):
     return list(phase_offsets)
 
 
-def find_pulse_indices(data, threshold):  # TODO change to not normalized
+def find_pulse_indices(data, threshold):  # TODO change to not normalized and change to only have one sample if many sequential samples pass (from the same pulse)
     """
     :param data: a numpy array of complex values to find the pulses within. 
     :param threshold: a magnitude valude threshold (absolute value) that pulses will be defined as being greater than.

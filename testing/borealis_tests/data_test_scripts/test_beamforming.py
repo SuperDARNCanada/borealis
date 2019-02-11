@@ -33,7 +33,7 @@ from testing.borealis_tests.testing_utils.beamforming_utils import *
 
 borealis_path = os.environ['BOREALISPATH']
 config_file = borealis_path + '/config.ini'
-from sample_building.sample_building import get_phshift, shift_samples
+
 
 
 def testing_parser():
@@ -177,7 +177,12 @@ def main():
                 # tx data does not need to be reshaped.
                 if file_type == tx_filetype:
                     tx = record_data[tx_filetype]
-                    tx['rx_sample_rate'] = tx['tx_rate'][0]/tx['dm_rate']
+                    try:
+                        tx['tx_rate'] = tx['tx_rate'][0]
+                        tx['dm_rate'] = tx['dm_rate'][0]
+                    except IndexError:
+                        pass
+                    tx['rx_sample_rate'] = tx['tx_rate']/tx['dm_rate']
                     print('Decimation rate error: {}'.format(tx['dm_rate_error']))
                     print(tx['rx_sample_rate'])
                     tx['data_descriptors'] = ['num_sequences', 'num_antennas', 'num_samps']
@@ -200,6 +205,7 @@ def main():
     if bfiq_filetype not in file_types_avail:
         raise Exception('Cannot do beamforming tests without beamformed iq to compare to.')
 
+    print(file_types_avail)
     # find pulse points in data that is decimated. 
 
     #plot_output_samples_iq_data(record_data[output_samples_filetype], output_samples_filetype)
@@ -218,7 +224,7 @@ def main():
         #print('SEQUENCE NUMBER {}'.format(sequence_num))
         sequence_dict = beamforming_dict[sequence_num] = {}
         for filetype, record_dict in record_data.items():
-            #print(filetype)
+            print(filetype)
             sequence_filetype_dict = sequence_dict[filetype] = {}
             data_description_list = list(record_dict['data_descriptors'])
             # STEP 1: DECIMATE IF NECESSARY
@@ -298,7 +304,7 @@ def main():
             for beamnum in range(0, sequence_filetype_dict['main_bf_data'].shape[0]):
 
                 len_of_data = sequence_filetype_dict['main_bf_data'].shape[1]
-                pulse_indices = find_pulse_indices(sequence_filetype_dict['main_bf_data'][beamnum], 0.09)
+                pulse_indices = find_pulse_indices(sequence_filetype_dict['main_bf_data'][beamnum], 0.3)
                 if len(pulse_indices) > len(pulses): # sometimes we get two samples from the same pulse.
                     if math.fmod(len(pulse_indices), len(pulses)) == 0.0:
                         step_size = int(len(pulse_indices)/len(pulses))
@@ -314,10 +320,10 @@ def main():
                 expected_pulse_indices = list(pulse_spacing + pulse_indices[0])
                 if expected_pulse_indices != pulse_indices:
                     sequence_filetype_dict['calculate_offsets'] = False
-                    #print(expected_pulse_indices)
-                    #print(pulse_indices)
-                    #print('Pulse Indices are Not Equal to Expected for filetype {} sequence {}'.format(filetype, sequence_num))
-                    #print('Phase Offsets Cannot be Calculated for this filetype {} sequence {}'.format(filetype, sequence_num))
+                    print(expected_pulse_indices)
+                    print(pulse_indices)
+                    print('Pulse Indices are Not Equal to Expected for filetype {} sequence {}'.format(filetype, sequence_num))
+                    print('Phase Offsets Cannot be Calculated for this filetype {} sequence {}'.format(filetype, sequence_num))
                 else:
                     sequence_filetype_dict['calculate_offsets'] = True
 
@@ -336,12 +342,12 @@ def main():
         if output_samples_filetype in file_types_avail and bfiq_filetype in file_types_avail:
             if sequence_dict[output_samples_filetype]['calculate_offsets'] and sequence_dict[bfiq_filetype]['calculate_offsets']:
                 beamforming_phase_offset = get_offsets(sequence_dict[output_samples_filetype]['pulse_samples'], sequence_dict[bfiq_filetype]['pulse_samples'])
-                #print('There are the following phase offsets (deg) between the prebf and bf iq data pulses on sequence {}: {}'.format(sequence_num, beamforming_phase_offset))
+                print('There are the following phase offsets (deg) between the prebf and bf iq data pulses on sequence {}: {}'.format(sequence_num, beamforming_phase_offset))
 
         if rawrf_filetype in file_types_avail and output_samples_filetype in file_types_avail:
             if sequence_dict[output_samples_filetype]['calculate_offsets'] and sequence_dict[rawrf_filetype]['calculate_offsets']:
                 decimation_phase_offset = get_offsets(sequence_dict[rawrf_filetype]['pulse_samples'], sequence_dict[output_samples_filetype]['pulse_samples'])
-                #print('There are the following phase offsets (deg) between the rawrf and prebf iq data pulses on sequence {}: {}'.format(sequence_num, decimation_phase_offset))
+                print('There are the following phase offsets (deg) between the rawrf and prebf iq data pulses on sequence {}: {}'.format(sequence_num, decimation_phase_offset))
 
         if tx_filetype in file_types_avail and rawrf_filetype in file_types_avail:
             if sequence_dict[tx_filetype]['calculate_offsets'] and sequence_dict[rawrf_filetype]['calculate_offsets']:
