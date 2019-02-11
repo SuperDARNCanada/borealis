@@ -20,9 +20,9 @@ class OneBox(ExperimentPrototype):
         pulse_sequence = [0, 14, 22, 24, 27, 31, 42, 43]
         #pulse_sequence = [0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553]
         self.add_slice({  # slice_id = 0, there is only one slice.
-            "tx_antennas": [0],
-            "rx_main_antennas": [0],
-            "rx_int_antennas": [0],
+            #"tx_antennas": [0],
+            #"rx_main_antennas": [0],
+            #"rx_int_antennas": [0],
             "pulse_sequence":pulse_sequence,#[0, 14, 22, 24, 27, 31, 42, 43],
             "pulse_shift": [0] * len(pulse_sequence),
             "mpinc": 1500,  # us
