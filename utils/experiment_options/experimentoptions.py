@@ -35,16 +35,16 @@ class ExperimentOptions:
             self._interferometer_antenna_count = int(config['interferometer_antenna_count'])
             self._main_antenna_spacing = float(config['main_antenna_spacing'])
             self._interferometer_antenna_spacing = float(config['interferometer_antenna_spacing'])
-            self._tx_sample_rate = float(config['tx_sample_rate'])
-            self._rx_sample_rate = float(config['rx_sample_rate'])
+            self._max_tx_sample_rate = float(config['max_tx_sample_rate'])
+            self._max_rx_sample_rate = float(config['max_rx_sample_rate'])
             self._max_usrp_dac_amplitude = float(config['max_usrp_dac_amplitude'])
             self._pulse_ramp_time = float(config['pulse_ramp_time'])  # in seconds
             self._tr_window_time = float(config['tr_window_time'])
-            self._output_sample_rate = float(
-                config['third_stage_sample_rate'])  # should use to check iqdata samples
+            self._max_output_sample_rate = float(
+                config['max_output_sample_rate'])  # should use to check iqdata samples
             # when adjusting the experiment during operations.
-            self._filter_description = {'filter_cutoff': config['third_stage_filter_cutoff'],
-                                       'filter_transition': config['third_stage_filter_transition']}
+            self._number_of_filtering_stages = int(config['number_of_filtering_stages'])
+            self._max_number_of_filter_taps_per_stage = int(config['max_number_of_filter_taps_per_stage'])
             self._site_id = config['site_id']
             self._max_freq = float(config['max_freq'])  # Hz
             self._min_freq = float(config['min_freq'])  # Hz
@@ -192,13 +192,14 @@ class ExperimentOptions:
                     \n    interferometer_antenna_count = {} \
                     \n    main_antenna_spacing = {} metres \
                     \n    interferometer_antenna_spacing = {} metres \
-                    \n    tx_sample_rate = {} Hz (samples/sec)\
-                    \n    rx_sample_rate = {} Hz (samples/sec)\
+                    \n    max_tx_sample_rate = {} Hz (samples/sec)\
+                    \n    max_rx_sample_rate = {} Hz (samples/sec)\
                     \n    max_usrp_dac_amplitude = {} : 1\
                     \n    pulse_ramp_time = {} s\
                     \n    tr_window_time = {} s\
-                    \n    output_sample_rate = {} Hz\
-                    \n    filter_description = {} \
+                    \n    max_output_sample_rate = {} Hz\
+                    \n    number_of_filtering_stages = {} \
+                    \n    max_number_of_filter_taps_per_stage = {} \
                     \n    site_id = {} \
                     \n    geo_lat = {} degrees \
                     \n    geo_long = {} degrees\
@@ -226,10 +227,11 @@ class ExperimentOptions:
                     \n    restricted_ranges = {} \
                      """.format(self.main_antenna_count, self.interferometer_antenna_count,
                                 self.main_antenna_spacing, self.interferometer_antenna_spacing,
-                                self.tx_sample_rate, self.rx_sample_rate,
+                                self.max_tx_sample_rate, self.max_rx_sample_rate,
                                 self.max_usrp_dac_amplitude, self.pulse_ramp_time,
-                                self.tr_window_time, self.output_sample_rate,
-                                self.filter_description, self.site_id, self.geo_lat, self.geo_long,
+                                self.tr_window_time, self.max_output_sample_rate,
+                                self.number_of_filtering_stages, self.max_number_of_filter_taps_per_stage,
+                                self.site_id, self.geo_lat, self.geo_long,
                                 self.altitude, self.boresight, self.beam_sep, self.velocity_sign,
                                 self.analog_rx_attenuator, self.tdiff, self.phase_sign,
                                 self.intf_offset, self.analog_rx_rise, self.analog_atten_stages,
@@ -257,12 +259,12 @@ class ExperimentOptions:
         return self._interferometer_antenna_spacing
 
     @property
-    def tx_sample_rate(self):
-        return self._tx_sample_rate
+    def max_tx_sample_rate(self):
+        return self._max_tx_sample_rate
 
     @property
-    def rx_sample_rate(self):
-        return self._rx_sample_rate
+    def max_rx_sample_rate(self):
+        return self._max_rx_sample_rate
 
     @property
     def max_usrp_dac_amplitude(self):
@@ -277,13 +279,17 @@ class ExperimentOptions:
         return self._tr_window_time  # in seconds
 
     @property
-    def output_sample_rate(self):
-        return self._output_sample_rate  # Hz
+    def max_output_sample_rate(self):
+        return self._max_output_sample_rate  # Hz
 
     @property
-    def filter_description(self):
-        return self._filter_description
+    def number_of_filtering_stages(self):
+        return self._number_of_filtering_stages
 
+    @property
+    def max_number_of_filter_taps_per_stage(self):
+        return self._max_number_of_filter_taps_per_stage
+  
     @property
     def site_id(self):
         return self._site_id

@@ -4,11 +4,13 @@ package processeddata;
 
 message ProcessedData {
     uint32 sequence_num = 1;
-    repeated OutputDataSet outputdataset = 2; // 1 set for every frequency
-    double processing_time = 3;
-    double initialization_time = 4;
-    double sequence_start_time = 5;
-    string rf_samples_location = 6;
+    double rx_sample_rate = 2;
+    double output_sample_rate = 3;
+    repeated OutputDataSet outputdataset = 4; // 1 set for every frequency
+    double processing_time = 5;
+    double initialization_time = 6;
+    double sequence_start_time = 7;
+    string rf_samples_location = 8;
 
     message OutputDataSet {
         repeated ComplexData mainacf = 1;

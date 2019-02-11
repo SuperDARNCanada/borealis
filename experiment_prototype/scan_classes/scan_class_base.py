@@ -34,11 +34,11 @@ class ScanClassBase(object):
      slices that are included in this scan_class_base type. Keys are tuples of format
      (slice_id_1, slice_id_2) and values are of interface_types set up in 
      experiment_prototype.
-    :param options: the options from config, hdw.dat, and restrict.dat, of class
-     ExperimentOptions
+    :param transmit_metadata: a dictionary of the experiment-wide transmit metadata for building
+    pulse sequences.
     """
 
-    def __init__(self, object_keys, object_slice_dict, object_interface, options):
+    def __init__(self, object_keys, object_slice_dict, object_interface, transmit_metadata):
 
         # list of slice_ids included in this scan_class_base
         self.slice_ids = object_keys
@@ -57,8 +57,8 @@ class ScanClassBase(object):
         # ex. number of sequences within averagingperiods)
         self.nested_slice_list = []
 
-        # options of class ExperimentOptions
-        self.options = options
+        # all necessary experiment-wide transmit metadata
+        self.transmit_metadata = transmit_metadata
 
     def prep_for_nested_scan_class(self):
         """
@@ -95,7 +95,7 @@ class ScanClassBase(object):
                 nested_class_interface[tuple(i)] = self.interface[tuple(i)]
 
             nested_class_param_lists.append([slice_list, slices_for_nested_class,
-                                             nested_class_interface, self.options])
+                                             nested_class_interface, self.transmit_metadata])
 
         return nested_class_param_lists
 

@@ -111,7 +111,7 @@ namespace {
  * https://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/
  * http://docs.nvidia.com/cuda/cuda-c-programming-guide/#warp-shuffle-functions
  */
-__device__ inline cuComplex __shfl_down(cuComplex var, unsigned int srcLane, int width=32){
+__device__ inline cuComplex __shfl_down_sync(cuComplex var, unsigned int srcLane, int width=32){
   float2 a = *reinterpret_cast<float2*>(&var);
   a.x = __shfl_down_sync(0xFFFFFFFF, a.x, srcLane, width);
   a.y = __shfl_down_sync(0xFFFFFFFF, a.y, srcLane, width);
@@ -177,7 +177,7 @@ __device__ cuComplex parallel_reduce(cuComplex* data, uint32_t tap_offset) {
     // values from upper threads to lower threads without needing __syncthreads().
     for (int offset = warpSize/2; offset > 0; offset /= 2)
     {
-      total_sum = cuCaddf(total_sum,__shfl_down(total_sum, offset));
+      total_sum = cuCaddf(total_sum,__shfl_down_sync(total_sum, offset));
     }
   }
 

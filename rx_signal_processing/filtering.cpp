@@ -13,129 +13,48 @@ See LICENSE for details
 
 #include "filtering.hpp"
 
-extern "C" {
-  #include "remez.h"
-}
-
 #include <cmath>
 /**
  * @brief      The constructor finds the number of filter taps for each stage and then a lowpass
  *             filter for each stage.
  *
- * @param[in]  initial_rx_sample_rate  The USRP RX sampling rate in Hz.
- * @param[in]  sig_options             A reference to the signal processing config options.
+ * @param[in]  first_stage_taps            A reference to the first stage filter taps.
+ * @param[in]  second_stage_taps           A reference to the second stage filter taps.
+ * @param[in]  third_stage_taps            A reference to the third stage filter taps.
+ * @param[in]  fourth_stage_taps           A reference to the fourth stage filter taps. 
  */
-Filtering::Filtering(double initial_rx_sample_rate, const SignalProcessingOptions &sig_options) {
-  num_first_stage_taps = calculate_num_filter_taps(initial_rx_sample_rate,
-                  sig_options.get_first_stage_filter_transition());
-  num_second_stage_taps = calculate_num_filter_taps(sig_options.get_first_stage_sample_rate(),
-                  sig_options.get_second_stage_filter_transition());
-  num_third_stage_taps = calculate_num_filter_taps(sig_options.get_second_stage_sample_rate(),
-                  sig_options.get_third_stage_filter_transition());
+Filtering::Filtering(std::vector<float> &first_stage_taps, 
+                     std::vector<float> &second_stage_taps, 
+                     std::vector<float> &third_stage_taps, 
+                     std::vector<float> &fourth_stage_taps) {
+  num_first_stage_taps = first_stage_taps.size();
+  num_second_stage_taps = second_stage_taps.size();
+  num_third_stage_taps = third_stage_taps.size();
+  num_fourth_stage_taps = fourth_stage_taps.size();
 
-  first_stage_lowpass_taps = create_filter(num_first_stage_taps,
-                                              sig_options.get_first_stage_filter_cutoff(),
-                                              sig_options.get_first_stage_filter_transition(),
-                                              initial_rx_sample_rate,
-                                              sig_options.get_first_stage_scaling_factor());
-  second_stage_lowpass_taps = create_filter(num_second_stage_taps,
-                                              sig_options.get_second_stage_filter_cutoff(),
-                                              sig_options.get_second_stage_filter_transition(),
-                                              sig_options.get_first_stage_sample_rate(),
-                                              sig_options.get_second_stage_scaling_factor());
-  third_stage_lowpass_taps = create_filter(num_third_stage_taps,
-                                              sig_options.get_third_stage_filter_cutoff(),
-                                              sig_options.get_third_stage_filter_transition(),
-                                              sig_options.get_second_stage_sample_rate(),
-                                              sig_options.get_third_stage_scaling_factor());
+  first_stage_lowpass_taps = fill_filter(first_stage_taps);
+  second_stage_lowpass_taps = fill_filter(second_stage_taps);
+  third_stage_lowpass_taps = fill_filter(third_stage_taps);
+  fourth_stage_lowpass_taps = fill_filter(fourth_stage_taps);
 }
 
 
 /**
- * @brief      Creates the band edges needed to create lowpass filter with remez.
+ * @brief      Fills the lowpass filter taps with zero to a size that is a power of 2.
  *
- * @param[in]  cutoff           Cutoff frequency for the lowpass filter in Hz.
- * @param[in]  transition_band  Width of transition from passband to stopband in Hz.
- * @param[in]  Fs               Sampling frequency in Hz.
- *
- * @return     A vector of calculated lowpass filter bands
- */
-std::vector<double> Filtering::create_normalized_lowpass_filter_bands(double cutoff,
-                                                                        double transition_band,
-                                                                        double Fs) {
-  std::vector<double> filterbands; //TODO(keith): describe band edges in documentation
-  filterbands.push_back(0.0);
-  filterbands.push_back(cutoff/Fs);
-  filterbands.push_back((cutoff + transition_band)/Fs);
-  filterbands.push_back(0.5);
-
-  return filterbands;
-}
-
-/**
- * @brief      Calculates the number filter taps.
- *
- * @param[in]  rate             The sampling rate of the input samples to the filter in Hz.
- * @param[in]  transition_band  Width of transition of band of the filter in Hz.
- *
- * @return     Number of calculated filter taps.
- *
- * Calculates number of filter taps according to Lyon's Understanding Digital
- * Signal Processing(1st edition). Uses Eqn 7-6 to calculate how many filter taps should be used
- * for a given stage. The choice in k=3 was used in the book seems to minimize the amount of
- * ripple in filter. The number of taps will always truncate down to an int.
- */
-uint32_t Filtering::calculate_num_filter_taps(double rate, double transition_band) {
-  auto k = 3;
-  auto num_taps = k * (rate/transition_band);
-
-  return num_taps;
-}
-
-/**
- * @brief      Creates and returns a set of lowpass filter taps using the remez exchange method.
- *
- * @param[in]  num_taps         Number of taps the filter should have.
- * @param[in]  filter_cutoff    Cutoff frequency in Hz for the lowpass filter.
- * @param[in]  transition_band  Width of transition of band of the filter in Hz.
- * @param[in]  rate             Sampling rate of input samples.
- * @param[in]  scaling_factor   Multiplier used to scale the filter gain.
+ * @param[in]  filter_taps          The filter taps provided, will be real.
  *
  * @return     A vector of filter taps. Filter is real, but represented using complex<float> form
- *             R + i0 for each tap.
+ *             R + i0 for each tap. The vector is filled with zeros at the end to reach a length 
+ *             that is a power of 2 for processing.
  *
- * The GNU Octive remez algorithm being used always returns number of taps + 1. The filter is real,
- * but converted to complex<float> with imaginary part being zero since the CUDA kernels will be
- * doing operations on complex numbers.
  */
-std::vector<std::complex<float>> Filtering::create_filter(uint32_t num_taps, double filter_cutoff,
-                                                            double transition_band, double rate,
-                                                            double scaling_factor) {
-  // TODO(Keith): explain filter algorithm
-  std::vector<double> desired_band_gain = {1.0,1.0,0.0,0.0};
-  std::vector<double> weight = {1.0,1.0};//{1 /(1 - pow(10,-0.3/20)),1/pow(10,static_cast<double>(-60)/20)};
-
-  auto filter_bands = create_normalized_lowpass_filter_bands(filter_cutoff,transition_band,
-              rate);
-
-  //remez returns number of taps + 1.
-  //TODO(Keith): Investigate number of taps behaviour - does this depend on num_taps being odd or even?
-  std::vector<double> filter_taps(num_taps + 1, 0.0);
-  auto num_filter_band_edges = filter_bands.size()/2;
-  //TODO(keith): test args are right maybe?
-  auto converges = remez(filter_taps.data(), num_taps+1, num_filter_band_edges,
-    filter_bands.data(),desired_band_gain.data(),weight.data(),BANDPASS,GRIDDENSITY);
-  if (converges < 0){
-    std::cerr << "Filter failed to converge with cutoff of " << filter_cutoff
-      << "Hz, transition width " << transition_band << "Hz, and rate "
-      << rate << "Hz" << std::endl;
-    //TODO(keith): throw error
-  }
+std::vector<std::complex<float>> Filtering::fill_filter(std::vector<float> &filter_taps) {
 
   //Adding a 0 for the imaginary part to be able to handle complex math in CUDA
   std::vector<std::complex<float>> complex_taps;
   for (auto &i : filter_taps) {
-    auto complex_tap = std::complex<float>(scaling_factor * i,0.0);
+    auto complex_tap = std::complex<float>(i,0.0);
     complex_taps.push_back(complex_tap);
   }
 
@@ -171,6 +90,7 @@ std::vector<std::complex<float>> Filtering::create_filter(uint32_t num_taps, dou
 
   return complex_taps;
 }
+
 
 /**
  * @brief      Mixes the first stage lowpass filter to bandpass filters for each RX frequency.
@@ -253,6 +173,15 @@ uint32_t Filtering::get_num_third_stage_taps() {
 }
 
 /**
+ * @brief      Gets the number of fourth stage taps.
+ *
+ * @return     The number of fourth stage taps.
+ */
+uint32_t Filtering::get_num_fourth_stage_taps() {
+  return num_fourth_stage_taps;
+}
+
+/**
  * @brief      Gets the vector of the first stage lowpass filter taps.
  *
  * @return     The first stage lowpass taps.
@@ -277,6 +206,15 @@ std::vector<std::complex<float>> Filtering::get_second_stage_lowpass_taps() {
  */
 std::vector<std::complex<float>> Filtering::get_third_stage_lowpass_taps() {
   return third_stage_lowpass_taps;
+}
+
+/**
+ * @brief      Gets the vector of the fourth stage lowpass taps.
+ *
+ * @return     The fourth stage lowpass taps.
+ */
+std::vector<std::complex<float>> Filtering::get_fourth_stage_lowpass_taps() {
+  return fourth_stage_lowpass_taps;
 }
 
 /**

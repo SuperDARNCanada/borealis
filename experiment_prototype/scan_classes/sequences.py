@@ -98,13 +98,13 @@ class Sequence(ScanClassBase):
         have the same combined_pulse_index. 
     """
 
-    def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, options):
+    def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
 
         # TODO make diagram(s) for pulse combining algorithm
         # TODO make diagram for pulses that are repeats, showing clearly what intra_pulse_start_time,
         # and pulse_shift are.
         ScanClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface,
-                               options)
+                               transmit_metadata)
 
         # TODO: pass clear frequencies to pass to pulses
 
@@ -156,7 +156,7 @@ class Sequence(ScanClassBase):
 
             while combine_pulses:
                 if self.pulses[next_pulse_index]['pulse_timing_us'] <= pulse['pulse_timing_us']\
-                         + pulse['pulse_len'] + self.options.minimum_pulse_separation:
+                         + pulse['pulse_len'] + self.transmit_metadata['minimum_pulse_separation']:
                     # combine pulse and next_pulse
                     next_pulse = self.pulses[next_pulse_index]
 
@@ -306,8 +306,8 @@ class Sequence(ScanClassBase):
 
         # FIND the sequence time. Time before the first pulse is 70 us when RX and TR set up for the first pulse. The
         # timing to the last pulse is added, as well as its pulse length and the RX/TR delay at the end of last pulse.
-        self.seqtime = 2*self.options.tr_window_time + self.pulses[-1]['pulse_timing_us'] + \
-                       self.last_pulse_len
+        self.seqtime = 2*self.transmit_metadata['tr_window_time'] + self.pulses[-1][
+            'pulse_timing_us'] + self.last_pulse_len
 
         # FIND the total scope sync time and number of samples to receive.
         self.sstime = self.seqtime + self.ssdelay
@@ -316,17 +316,14 @@ class Sequence(ScanClassBase):
         # sequence and afterwards. This starts before first pulse is sent and goes until the
         # end of the scope sync delay which is there for the amount of time necessary to get
         # the echoes from the specified number of ranges.
-        self.numberofreceivesamples = int(self.options.rx_sample_rate * self.sstime * 1e-6)
+        self.numberofreceivesamples = int(self.transmit_metadata['rx_sample_rate'] * self.sstime *
+                                          1e-6)
 
         self.first_rx_sample_time = 0  # initilized only but set in build_pulse_transmit_data
         self.blanks = []
 
 
-    def build_pulse_transmit_data(self, slice_to_beamdir_dict, txctrfreq, txrate, options):
-        #TODO only take in things you need or add needed params from options in the init function.
-        # hese params would be main_antenna_count, main_antenna_spacing and some pulse
-        # building
-        # parameters needed for basic_samples function in sample_mapping.
+    def build_pulse_transmit_data(self, slice_to_beamdir_dict):
         # TODO consider rewriting options to have a mapping of transmit antennas and their
         # TODO ... orientation (do not assume main array all in a line at certain spacing.
         # TODO ... this orientation would also then be passed to signal processing.
@@ -336,9 +333,6 @@ class Sequence(ScanClassBase):
         
         :param: slice_to_beamdir_dict: dictionary of slice id to beam direction(s) for 
          a single averaging period (i.e. if the list len > 1, we're imaging).
-        :param: txctrfreq: Centre frequency the USRP is tuned to.
-        :param: txrate: The transmit sample rate
-        :param: options: The config options.
         :returns sequence_list: list of combined pulse dictionaries in correct order. 
          The keys in the ready-to-transmit pulse dictionary are:
          
@@ -363,6 +357,14 @@ class Sequence(ScanClassBase):
         """
 
         sequence_list = []
+        txrate = self.transmit_metadata['txrate']
+        txctrfreq = self.transmit_metadata['txctrfreq']
+        main_antenna_count = self.transmit_metadata['main_antenna_count']
+        main_antenna_spacing = self.transmit_metadata['main_antenna_spacing']
+        pulse_ramp_time = self.transmit_metadata['pulse_ramp_time']
+        max_usrp_dac_amplitude = self.transmit_metadata['max_usrp_dac_amplitude']
+        tr_window_time = self.transmit_metadata['tr_window_time']
+
         for pulse_index in range(0, self.total_combined_pulses):
             pulse_transmit_data = {}
             # Pulses are in order
@@ -392,8 +394,9 @@ class Sequence(ScanClassBase):
                 # simple power_divider integer
                 pulse_samples, pulse_antennas = (
                     make_pulse_samples(one_pulse_list, self.power_divider, self.slice_dict,
-                                       slice_to_beamdir_dict, txctrfreq,
-                                       txrate, options))
+                                       slice_to_beamdir_dict, txrate, txctrfreq,
+                                       main_antenna_count, main_antenna_spacing, pulse_ramp_time,
+                                       max_usrp_dac_amplitude, tr_window_time))
                 if pulse_index == 0:
                     # calculate the first rx sample and set the value.
                     self.first_rx_sample_time = calculate_first_rx_sample_time(
@@ -425,7 +428,7 @@ class Sequence(ScanClassBase):
         function.
         """
         blanks = []
-        sample_time = 1.0/float(self.options.output_sample_rate)
+        sample_time = 1.0/float(self.transmit_metadata['output_rx_rate'])
         pulses_time = []
         for pulse in self.pulses:
             pulse_start_stop = [pulse['pulse_timing_us'] * 1.0e-6, (pulse['pulse_timing_us'] + pulse[

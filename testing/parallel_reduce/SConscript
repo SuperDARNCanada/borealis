@@ -29,4 +29,4 @@ import os
 
 Import('*')
 
-Prog('test_parallel_reduce', Glob("./parallel_reduce.cu"), with_libs='utils::utils')
+#Prog('test_parallel_reduce', Glob("./parallel_reduce.cu"), with_libs='utils::utils')
