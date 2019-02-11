@@ -600,9 +600,13 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
 
   auto sample_time_diff = start_time - time_zero;
   auto sample_in_time = (sample_time_diff * rx_rate) +
-                      offset_to_first_pulse -
+                      offset_to_first_pulse - 
                       extra_samples;
   auto start_sample = int64_t(std::fmod(sample_in_time, ringbuffer_size));
+
+  if ((start_sample) < 0) {
+   start_sample += ringbuffer_size;
+  }
 
   if ((start_sample + num_samples_needed) > ringbuffer_size) {
     for (uint32_t i=0; i<total_antennas; i++) {

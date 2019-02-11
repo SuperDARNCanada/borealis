@@ -44,6 +44,7 @@ class ExperimentOptions:
                 config['max_output_sample_rate'])  # should use to check iqdata samples
             # when adjusting the experiment during operations.
             self._number_of_filtering_stages = int(config['number_of_filtering_stages'])
+            self._max_number_of_filter_taps_per_stage = int(config['max_number_of_filter_taps_per_stage'])
             self._site_id = config['site_id']
             self._max_freq = float(config['max_freq'])  # Hz
             self._min_freq = float(config['min_freq'])  # Hz
@@ -198,6 +199,7 @@ class ExperimentOptions:
                     \n    tr_window_time = {} s\
                     \n    max_output_sample_rate = {} Hz\
                     \n    number_of_filtering_stages = {} \
+                    \n    max_number_of_filter_taps_per_stage = {} \
                     \n    site_id = {} \
                     \n    geo_lat = {} degrees \
                     \n    geo_long = {} degrees\
@@ -228,7 +230,8 @@ class ExperimentOptions:
                                 self.max_tx_sample_rate, self.max_rx_sample_rate,
                                 self.max_usrp_dac_amplitude, self.pulse_ramp_time,
                                 self.tr_window_time, self.max_output_sample_rate,
-                                self.number_of_filtering_stages, self.site_id, self.geo_lat, self.geo_long,
+                                self.number_of_filtering_stages, self.max_number_of_filter_taps_per_stage,
+                                self.site_id, self.geo_lat, self.geo_long,
                                 self.altitude, self.boresight, self.beam_sep, self.velocity_sign,
                                 self.analog_rx_attenuator, self.tdiff, self.phase_sign,
                                 self.intf_offset, self.analog_rx_rise, self.analog_atten_stages,
@@ -283,6 +286,10 @@ class ExperimentOptions:
     def number_of_filtering_stages(self):
         return self._number_of_filtering_stages
 
+    @property
+    def max_number_of_filter_taps_per_stage(self):
+        return self._max_number_of_filter_taps_per_stage
+  
     @property
     def site_id(self):
         return self._site_id

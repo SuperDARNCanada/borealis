@@ -1396,11 +1396,22 @@ class ExperimentPrototype(object):
         # TODO: check if self.cpid is not unique - incorporate known cpids from git repo
         # TODO: use pygit2 for this
 
+        # check that the number of slices can be accommodated by the decimation scheme.
+        for stage in self.decimation_scheme.stages:
+            power_2 = 0
+            while (2 ** power_2 < len(stage.filter_taps)):
+                power_2 += 1
+            effective_length = 2 ** power_2
+            if effective_length * self.num_slices > self.options.max_number_of_filter_taps_per_stage:
+                errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with \
+                    this many slices ({}) is too large for GPU max {}".format(len(stage.filter_taps), 
+                        stage.stage_num, self.num_slices, self.options.max_number_of_filter_taps_per_stage)
+
         # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
         # any time after setup. We run it now in case the user has changed something
         # inappropriately (ie, any way other than using edit_slice, add_slice, or del_slice).
         # "Private" instance variables with leading underscores are not actually private in
-        # python they just have a bit of a mangled name so they are not readily availabe but give
+        # python they just have a bit of a mangled name so they are not readily available but give
         # the user notice that they should be left alone. If the __slice_dict has been changed
         # improperly, we should check it for problems here.
         for a_slice in self.slice_ids:

@@ -661,6 +661,9 @@ def radar():
                             # Sequence is done
                             nave = nave + 1
 
+                            if __debug__:
+                                time.sleep(1)
+
                             if TIME_PROFILE:
                                 pulses_to_driver_time = datetime.utcnow() - time_after_sequence_metadata
                                 print('Time for pulses to driver: {}'.format(pulses_to_driver_time))
