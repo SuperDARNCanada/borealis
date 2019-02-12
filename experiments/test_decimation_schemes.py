@@ -154,6 +154,27 @@ def create_test_scheme_7():
 	return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
 
 
+def create_test_scheme_8(): 
+	"""
+	Create four stages of FIR filters and a decimation scheme. Returns a decimation scheme of type DecimationScheme. 
+	:return DecimationScheme: a decimation scheme for use in experiment.
+	"""
+
+	rates = [5.0e6, 500.0e3, 100.0e3, 50.0e3/3]
+	dm_rates = [10, 5, 6, 5]
+	transition_widths = [200.0e3, 49.0e3, 15.0e3, 1.0e3]
+	cutoffs = [2.0e3, 1.0e3, 1.0e3, 1.0e3] # bandwidth is double this
+	ripple_dbs = [150.0, 80.0, 35.0, 9.0]
+
+	all_stages = []
+
+	for stage in range(0,4):
+		filter_taps = list(create_firwin_filter_by_attenuation(rates[stage], transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
+		all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], filter_taps))
+
+	return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
+
+
 def create_firwin_filter_by_attenuation(sample_rate, transition_width, cutoff_hz, ripple_db, 
 	window_type='kaiser'):
 	"""
