@@ -36,7 +36,7 @@ class OneBox(ExperimentPrototype):
             "beam_order": [0],
             #"scanboundflag": True,  # there is a scan boundary
             #"scanbound": 60000,  # ms
-            "txfreq": 11500,
+            "txfreq": 10500,
             #"clrfrqflag": True,  # search for clear frequency before transmitting
             #"clrfrqrange": [13200, 13500],  # frequency range for clear frequency search, kHz
             # including a clrfrqrange overrides rxfreq and txfreq so these are no longer necessary
