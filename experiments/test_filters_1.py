@@ -7,7 +7,7 @@ sys.path.append(os.environ['BOREALISPATH'])
 # write an experiment that creates a new control program.
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
-from experiments.test_decimation_schemes import create_test_scheme_1, create_test_scheme_2, create_test_scheme_3, create_test_scheme_4
+from experiments.test_decimation_schemes import *
 
 class OneBox(ExperimentPrototype):
 
