@@ -40,6 +40,31 @@ class OneBox(ExperimentPrototype):
             # as they will be set by the frequency chosen from the range.
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
+            "rsep": 45,
+            "lag_table" : [[0,      0],
+                [42,     43],
+                [22,     24],
+                [24,     27],
+                [27,     31],
+                [22,     27],
+                [24,     31],
+                [14,     22],
+                [22,     31],
+                [14,     24],
+                [31,     42],
+                [31,     43],
+                [14,     27],
+                [0,      14],
+                [27,     42],
+                [27,     43],
+                [14,     31],
+                [24,     42],
+                [24,     43],
+                [22,     42],
+                [22,     43],
+                [0,      22],
+                [0,      24],
+                [43,     43],]
         })
 
         # USED THE FOLLOWING FOR TESTING SECOND SLICE
@@ -74,25 +99,25 @@ class OneBox(ExperimentPrototype):
         # self.txrate = 12000000 # Hz, sample rate fed to DAC
         self.rxctrfreq = 10000 # kHz, mixer frequency on the USRP for RX
 
-        """ 
+        """
         INTERFACING TYPES:
-        
+
         NONE : Only the default, must be changed.
         SCAN : Scan by scan interfacing. Experiment slice 1 will scan first  followed by slice 2 and subsequent slices.
-        INTTIME : integration time interfacing (full integration time of one sequence, then the next). Time/number of 
-            sequences dependent on intt and intn in the slice. Effectively simultaneous scan interfacing, interleaving 
-            each integration time in the scans. Slice 1 first inttime or beam direction will run followed by slice 
-            2's first inttime, etc. If slice 1's len(beam_order) is greater than slice 2's, slice 2's last 
-            integration will run and then all the rest of slice 1's will continue until the full scan is over. 
-            Experiment slice 1 and 2 must have the same scan boundary, if any boundary. 
-        INTEGRATION : pulse sequence or integration interfacing (one sequence of one slice, then the next). Experiment 
-            slice 1 and 2 must have same intt and intn. Integrations will switch between one and the other slice until 
+        INTTIME : integration time interfacing (full integration time of one sequence, then the next). Time/number of
+            sequences dependent on intt and intn in the slice. Effectively simultaneous scan interfacing, interleaving
+            each integration time in the scans. Slice 1 first inttime or beam direction will run followed by slice
+            2's first inttime, etc. If slice 1's len(beam_order) is greater than slice 2's, slice 2's last
+            integration will run and then all the rest of slice 1's will continue until the full scan is over.
+            Experiment slice 1 and 2 must have the same scan boundary, if any boundary.
+        INTEGRATION : pulse sequence or integration interfacing (one sequence of one slice, then the next). Experiment
+            slice 1 and 2 must have same intt and intn. Integrations will switch between one and the other slice until
             time is up or the required number of averages is reached.
-        PULSE : Simultaneous sequence interfacing, pulse by pulse creates a single sequence. Experiment Slice 1 and 2 
-            might have different frequencies and/or may have different pulse length, mpinc, sequence. They must also 
-            have same len(scan), although they may use different directions in scan. They must have the same scan 
-            boundary if any. A time offset between the pulses starting may be set (seq_timer in the slice). Slice 1 
-            and 2 will have integrations that run at the same time. 
+        PULSE : Simultaneous sequence interfacing, pulse by pulse creates a single sequence. Experiment Slice 1 and 2
+            might have different frequencies and/or may have different pulse length, mpinc, sequence. They must also
+            have same len(scan), although they may use different directions in scan. They must have the same scan
+            boundary if any. A time offset between the pulses starting may be set (seq_timer in the slice). Slice 1
+            and 2 will have integrations that run at the same time.
         """
 
         # Update the following interface dictionary if you have more than one slice dictionary in your slice_list.
@@ -106,10 +131,10 @@ class OneBox(ExperimentPrototype):
 
     def update(self, acfdata):
         """
-        Use this function to change your experiment based on ACF data retrieved from the rx_signal_processing block. 
-        This function is called after every integration period so that your experiment can be changed to adjust to 
-        existing conditions. Talk to us if you have something specific in mind that you're not sure if you can 
-        implement here. 
+        Use this function to change your experiment based on ACF data retrieved from the rx_signal_processing block.
+        This function is called after every integration period so that your experiment can be changed to adjust to
+        existing conditions. Talk to us if you have something specific in mind that you're not sure if you can
+        implement here.
 
         :param acfdata ??? TBD
         :rtype boolean

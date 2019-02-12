@@ -2,6 +2,8 @@ chdir $BOREALISPATH
 
 layout autosave on
 layout new borealis
+defscrollback 10000
+
 screen -t "Brian" bash -c "START_BRIAN"
 split
 

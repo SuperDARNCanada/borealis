@@ -74,14 +74,16 @@ namespace {
                         std::vector<uint32_t> &taps_per_stage,
                         uint32_t num_antennas, uint32_t num_freqs)
   {
-    std::vector<uint32_t> decimation_rates = {samps_per_stage[0]/samps_per_stage[1],
-                                              samps_per_stage[1]/samps_per_stage[2],
-                                              samps_per_stage[2]/samps_per_stage[3]};
+    std::vector<uint32_t> decimation_rates(samps_per_stage.size() - 1);
+
+    for (uint32_t i=0; i<samps_per_stage.size()-1; i++) {
+      decimation_rates[i] = samps_per_stage[i]/samps_per_stage[i+1];
+    }
 
     auto original_undropped_sample_count = samps_per_stage.back();
     auto original_samples_per_frequency = num_antennas * original_undropped_sample_count;
     auto num_bad_samples = 0;
-    for (int i=0; i<3 ;i++) {
+    for (int i=0; i<decimation_rates.size(); i++) {
       if (num_bad_samples >= decimation_rates[i]) {
         num_bad_samples = floor(num_bad_samples/decimation_rates[i]);
       }
@@ -552,7 +554,7 @@ DSPCore::~DSPCore()
   gpuErrchk(cudaFree(first_stage_bp_filters_d));
   gpuErrchk(cudaFree(second_stage_filter_d));
   gpuErrchk(cudaFree(third_stage_filter_d));
-  gpuErrchk(cudaFree(fourth_stage_filter_d));  
+  gpuErrchk(cudaFree(fourth_stage_filter_d));
   gpuErrchk(cudaFree(first_stage_output_d));
   gpuErrchk(cudaFree(second_stage_output_d));
   gpuErrchk(cudaFree(third_stage_output_d));
@@ -589,7 +591,7 @@ DSPCore::~DSPCore()
 void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
                                 int64_t extra_samples, uint32_t offset_to_first_pulse,
                                 double time_zero, double start_time,
-                                uint64_t ringbuffer_size, 
+                                uint64_t ringbuffer_size,
                                 std::vector<cuComplex*> &ringbuffer_ptrs_start)
 {
 
@@ -600,7 +602,7 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
 
   auto sample_time_diff = start_time - time_zero;
   auto sample_in_time = (sample_time_diff * rx_rate) +
-                      offset_to_first_pulse - 
+                      offset_to_first_pulse -
                       extra_samples;
   auto start_sample = int64_t(std::fmod(sample_in_time, ringbuffer_size));
 
