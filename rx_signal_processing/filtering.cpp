@@ -141,6 +141,6 @@ void Filtering::save_filter_to_file(const std::vector<std::complex<float>> &filt
  */
 std::vector<std::vector<std::complex<float>>> Filtering::get_filter_taps() {
   auto temp_taps = filter_taps;
-  temps_taps[0] = bandpass_taps;
+  temp_taps[0] = bandpass_taps;
   return temp_taps;
 }
