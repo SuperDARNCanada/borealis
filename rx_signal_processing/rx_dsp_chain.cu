@@ -218,6 +218,7 @@ int main(int argc, char **argv){
     );
 
 
+
     auto complex_taps = filters.get_filter_taps();
 
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
@@ -329,6 +330,8 @@ int main(int argc, char **argv){
         dm_rates[i], samples_per_antenna[i-1], complex_taps[i].size(), rx_freqs.size(),
         total_antennas, rx_rate, dp->get_frequencies_p(), " stage of decimation",
         dp->get_cuda_stream());
+
+      prev_output = last_filter_output;
     }
 
     dp->cuda_postprocessing_callback(rx_freqs, total_antennas,

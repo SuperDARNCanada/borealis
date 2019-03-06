@@ -240,9 +240,9 @@ namespace {
 
     auto samples_per_antenna = dp->get_samples_per_antenna();
 
-    std::vector<uint32_t> samps_per_stage(dp->get_samples_per_antenna().size() + 1);
-    samps_per_stage[0] = dp->get_num_rf_samples();
-    samps_per_stage.insert(samps_per_stage.begin() + 1,
+    std::vector<uint32_t> samps_per_stage;
+    samps_per_stage.push_back(dp->get_num_rf_samples());
+    samps_per_stage.insert(samps_per_stage.end(),
                            samples_per_antenna.begin(),
                            samples_per_antenna.end());
 
@@ -308,7 +308,7 @@ namespace {
     std::vector<std::vector<std::vector<cuComplex*>>> stage_ptrs;
     #ifdef ENGINEERING_DEBUG
       for (uint32_t i=0; i<filter_outputs_h.size(); i++) {
-        auto ptrs = make_ptrs_vec(filter_outputs_h[0], dp->get_rx_freqs().size(),
+        auto ptrs = make_ptrs_vec(filter_outputs_h[i], dp->get_rx_freqs().size(),
                             dp->get_num_antennas(), samples_per_antenna[i]);
         stage_ptrs.push_back(ptrs);
       }
@@ -360,13 +360,11 @@ namespace {
       // different beams.
       beamformed_offset += beam_direction_counts[i];
 
-
-
       #ifdef ENGINEERING_DEBUG
         for (uint32_t j=0; j<stage_ptrs.size()-1; j++){
-          auto stage_str = "stage_" + std::to_string(i);
-          add_debug_data("output_ptrs", stage_ptrs[j][i], dp->get_num_antennas(),
-            samples_per_antenna[i]);
+          auto stage_str = "stage_" + std::to_string(j);
+          add_debug_data(stage_str, stage_ptrs[j][i], dp->get_num_antennas(),
+            samples_per_antenna[j]);
         }
       #endif
 
