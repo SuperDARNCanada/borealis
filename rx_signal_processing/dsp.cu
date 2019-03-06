@@ -65,32 +65,30 @@ namespace {
    * @param      output_samples   The output samples.
    * @param      samps_per_stage  The number of output samples per stage.
    * @param      taps_per_stage   The number of filter taps per stage.
+   * @param      dm_rates         The decimation rates of each stage.
    * @param[in]  num_antennas     The number of antennas.
    * @param[in]  num_freqs        The number of freqs.
-   *
    */
   void drop_bad_samples(cuComplex *input_samples, std::vector<cuComplex> &output_samples,
                         std::vector<uint32_t> &samps_per_stage,
                         std::vector<uint32_t> &taps_per_stage,
+                        std::vector<uint32_t> &dm_rates,
                         uint32_t num_antennas, uint32_t num_freqs)
   {
-    std::vector<uint32_t> decimation_rates = {samps_per_stage[0]/samps_per_stage[1],
-                                              samps_per_stage[1]/samps_per_stage[2],
-                                              samps_per_stage[2]/samps_per_stage[3]};
 
     auto original_undropped_sample_count = samps_per_stage.back();
     auto original_samples_per_frequency = num_antennas * original_undropped_sample_count;
     auto num_bad_samples = 0;
-    for (int i=0; i<3 ;i++) {
-      if (num_bad_samples >= decimation_rates[i]) {
-        num_bad_samples = floor(num_bad_samples/decimation_rates[i]);
+    for (int i=0; i<dm_rates.size(); i++) {
+      if (num_bad_samples >= dm_rates[i]) {
+        num_bad_samples = floor(num_bad_samples/dm_rates[i]);
       }
       else {
         num_bad_samples = 0;
       }
 
-      num_bad_samples += floor(taps_per_stage[i]/decimation_rates[i]);
-      if (taps_per_stage[i] % decimation_rates[i] > samps_per_stage[i] % decimation_rates[i]){
+      num_bad_samples += floor(taps_per_stage[i]/dm_rates[i]);
+      if (taps_per_stage[i] % dm_rates[i] > samps_per_stage[i] % dm_rates[i]){
           num_bad_samples++;
       }
       samps_per_stage[i+1] -= num_bad_samples;
@@ -101,8 +99,10 @@ namespace {
 
     for (uint32_t freq_index=0; freq_index < num_freqs; freq_index++) {
       for (int i=0; i<num_antennas; i++){
-        auto dest = output_samples.data() + freq_index*samples_per_frequency + i*samps_per_stage.back();
-        auto src = input_samples + freq_index*original_samples_per_frequency + i*original_undropped_sample_count;
+        auto dest = output_samples.data() + (freq_index * samples_per_frequency) +
+                    (i * samps_per_stage.back());
+        auto src = input_samples + freq_index * (original_samples_per_frequency) +
+                    (i * original_undropped_sample_count);
         auto num_bytes =  sizeof(cuComplex) * samps_per_stage.back();
         memcpy(dest, src, num_bytes);
       }
@@ -238,18 +238,24 @@ namespace {
 
     std::vector<cuComplex> output_samples;
 
-    std::vector<uint32_t> samps_per_stage = {dp->get_num_rf_samples(),
-                                             dp->get_num_first_stage_samples_per_antenna(),
-                                             dp->get_num_second_stage_samples_per_antenna(),
-                                             dp->get_num_third_stage_samples_per_antenna(),
-                                             dp->get_num_fourth_stage_samples_per_antenna()};
-    std::vector<uint32_t> taps_per_stage = {dp->dsp_filters->get_num_first_stage_taps(),
-                                            dp->dsp_filters->get_num_second_stage_taps(),
-                                            dp->dsp_filters->get_num_third_stage_taps(),
-                                            dp->dsp_filters->get_num_fourth_stage_taps()};
+    auto samples_per_antenna = dp->get_samples_per_antenna();
 
-    drop_bad_samples(dp->get_host_output_h(), output_samples, samps_per_stage, taps_per_stage,
-                     dp->get_num_antennas(), dp->get_rx_freqs().size());
+    std::vector<uint32_t> samps_per_stage(dp->get_samples_per_antenna().size() + 1);
+    samps_per_stage[0] = dp->get_num_rf_samples();
+    samps_per_stage.insert(samps_per_stage.begin() + 1,
+                           samples_per_antenna.begin(),
+                           samples_per_antenna.end());
+
+    auto filter_taps = dp->get_filter_taps();
+    std::vector<uint32_t> taps_per_stage(filter_taps.size());
+    for (uint32_t i=0; i<filter_taps.size(); i++) {
+      taps_per_stage[i] = filter_taps[i].size();
+    }
+
+    auto filter_outputs_h = dp->get_filter_outputs_h();
+    auto dm_rates = dp->get_dm_rates();
+    drop_bad_samples(filter_outputs_h.back(), output_samples, samps_per_stage, taps_per_stage,
+                     dm_rates, dp->get_num_antennas(), dp->get_rx_freqs().size());
 
     // For each antenna, for each frequency.
     auto num_samples_after_dropping = output_samples.size()/
@@ -299,22 +305,18 @@ namespace {
       return ptrs;
     };
 
+    std::vector<std::vector<std::vector<cuComplex*>>> stage_ptrs;
     #ifdef ENGINEERING_DEBUG
-      auto stage_1_ptrs = make_ptrs_vec(dp->get_first_stage_output_h(), dp->get_rx_freqs().size(),
-                            dp->get_num_antennas(),dp->get_num_first_stage_samples_per_antenna());
-
-      auto stage_2_ptrs = make_ptrs_vec(dp->get_second_stage_output_h(), dp->get_rx_freqs().size(),
-                            dp->get_num_antennas(),dp->get_num_second_stage_samples_per_antenna());
-
-      auto stage_3_ptrs = make_ptrs_vec(dp->get_third_stage_output_h(), dp->get_rx_freqs().size(),
-                              dp->get_num_antennas(),dp->get_num_third_stage_samples_per_antenna());
-
-      auto stage_4_ptrs = make_ptrs_vec(dp->get_fourth_stage_output_h(), dp->get_rx_freqs().size(),
-                              dp->get_num_antennas(),dp->get_num_fourth_stage_samples_per_antenna());
+      for (uint32_t i=0; i<filter_outputs_h.size(); i++) {
+        auto ptrs = make_ptrs_vec(filter_outputs_h[0], dp->get_rx_freqs().size(),
+                            dp->get_num_antennas(), samples_per_antenna[i]);
+        stage_ptrs.push_back(ptrs);
+      }
     #endif
 
     auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_rx_freqs().size(),
                           dp->get_num_antennas(), num_samples_after_dropping);
+    stage_ptrs.push_back(output_ptrs);
 
     auto beamformed_offset = 0;
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
@@ -359,18 +361,16 @@ namespace {
       beamformed_offset += beam_direction_counts[i];
 
 
+
       #ifdef ENGINEERING_DEBUG
-        add_debug_data("stage_1",stage_1_ptrs[i],dp->get_num_antennas(),
-                    dp->get_num_first_stage_samples_per_antenna());
-        add_debug_data("stage_2",stage_2_ptrs[i],dp->get_num_antennas(),
-                    dp->get_num_second_stage_samples_per_antenna());
-        add_debug_data("stage_3",stage_3_ptrs[i],dp->get_num_antennas(),
-                    dp->get_num_third_stage_samples_per_antenna());
-        add_debug_data("stage_4",stage_4_ptrs[i],dp->get_num_antennas(),
-            dp->get_num_fourth_stage_samples_per_antenna());
+        for (uint32_t j=0; j<stage_ptrs.size()-1; j++){
+          auto stage_str = "stage_" + std::to_string(i);
+          add_debug_data("output_ptrs", stage_ptrs[j][i], dp->get_num_antennas(),
+            samples_per_antenna[i]);
+        }
       #endif
 
-      add_debug_data("output_samples", output_ptrs[i], dp->get_num_antennas(),
+      add_debug_data("output_ptrs", stage_ptrs.back()[i], dp->get_num_antennas(),
         num_samples_after_dropping);
 
       dataset->set_slice_id(dp->get_slice_ids()[i]);
@@ -398,6 +398,7 @@ namespace {
    */
   void CUDART_CB postprocess(cudaStream_t stream, cudaError_t status, void *processing_data)
   {
+
     gpuErrchk(status);
 
     auto pp = [processing_data]()
@@ -489,26 +490,39 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
 }
 
 
-///TODO(keith): update docstring
 /**
  * @brief      Initializes the parameters needed in order to do asynchronous DSP processing.
  *
- * @param      ack_s         A pointer to the socket used for acknowledging when the transfer of RF
- *                           samples has completed.
- * @param[in]  timing_s      A pointer to the socket used for reporting GPU kernel timing.
- * @param[in]  sq_num        The pulse sequence number for which will be acknowledged.
- * @param[in]  shr_mem_name  The char string used to open a section of shared memory with RF
- *                           samples.
+ * @param      ack_socket                  A pointer to the socket used for acknowledging when the
+ *                                         transfer of RF samples has completed.
+ * @param[in]  timing_socket               A pointer to the socket used for reporting GPU kernel
+ *                                         timing.
+ * @param      data_socket                 The data socket.
+ * @param      sig_options                 The signal processing options.
+ * @param[in]  sequence_num                The pulse sequence number for which will be acknowledged.
+ * @param[in]  rx_rate                     The USRP sampling rate.
+ * @param[in]  output_sample_rate          The final decimated output sample rate.
+ * @param[in]  rx_freqs                    The receive freqs.
+ * @param[in]  filter_taps                 The filter taps for each stage.
+ * @param[in]  beam_phases                 The beam phases.
+ * @param[in]  beam_direction_counts       The beam direction counts.
+ * @param[in]  driver_initialization_time  The driver initialization time.
+ * @param[in]  sequence_start_time         The sequence start time.
+ * @param[in]  slice_ids                   The slice identifiers.
+ * @param[in]  dm_rates                    The decimation rates.
+ * @param[in]  shr_mem_name                The char string used to open a section of shared memory
+ *                                         with RF samples.
  *
- * The constructor creates a new CUDA stream and initializes the timing events. It then opens
- * the shared memory with the received RF samples for a pulse sequence.
+ * The constructor creates a new CUDA stream and initializes the timing events. It then opens the
+ * shared memory with the received RF samples for a pulse sequence.
  */
 DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::socket_t *data_socket,
                   SignalProcessingOptions &sig_options, uint32_t sequence_num,
-                  double rx_rate, double output_sample_rate, std::vector<double> rx_freqs, Filtering *dsp_filters,
+                  double rx_rate, double output_sample_rate, std::vector<double> rx_freqs,
+                  std::vector<std::vector<std::complex<float>>> filter_taps,
                   std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
                   double driver_initialization_time, double sequence_start_time,
-                  std::vector<uint32_t> slice_ids) :
+                  std::vector<uint32_t> slice_ids, std::vector<uint32_t> dm_rates) :
   sequence_num(sequence_num),
   rx_rate(rx_rate),
   output_sample_rate(output_sample_rate),
@@ -517,12 +531,13 @@ DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::s
   data_socket(data_socket),
   rx_freqs(rx_freqs),
   sig_options(sig_options),
-  dsp_filters(dsp_filters),
+  filter_taps(filter_taps),
   beam_phases(beam_phases),
   beam_direction_counts(beam_direction_counts),
   driver_initialization_time(driver_initialization_time),
   sequence_start_time(sequence_start_time),
-  slice_ids(slice_ids)
+  slice_ids(slice_ids),
+  dm_rates(dm_rates)
 {
 
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
@@ -549,21 +564,19 @@ DSPCore::~DSPCore()
   gpuErrchk(cudaEventDestroy(stop));
   gpuErrchk(cudaFree(freqs_d));
   gpuErrchk(cudaFree(rf_samples_d));
-  gpuErrchk(cudaFree(first_stage_bp_filters_d));
-  gpuErrchk(cudaFree(second_stage_filter_d));
-  gpuErrchk(cudaFree(third_stage_filter_d));
-  gpuErrchk(cudaFree(fourth_stage_filter_d));  
-  gpuErrchk(cudaFree(first_stage_output_d));
-  gpuErrchk(cudaFree(second_stage_output_d));
-  gpuErrchk(cudaFree(third_stage_output_d));
-  gpuErrchk(cudaFree(fourth_stage_output_d));
-  #ifdef ENGINEERING_DEBUG
-    gpuErrchk(cudaFreeHost(first_stage_output_h));
-    gpuErrchk(cudaFreeHost(second_stage_output_h));
-    gpuErrchk(cudaFreeHost(third_stage_output_h));
-    gpuErrchk(cudaFreeHost(fourth_stage_output_h));
-  #endif
-  gpuErrchk(cudaFreeHost(host_output_h));
+  gpuErrchk(cudaFree(bp_filters_d));
+  for (auto &filter : lp_filters_d) {
+    gpuErrchk(cudaFree(filter));
+  }
+
+  for (auto &filter_output : filter_outputs_d) {
+    gpuErrchk(cudaFree(filter_output));
+  }
+
+  for (auto &filter_output : filter_outputs_h) {
+    gpuErrchk(cudaFreeHost(filter_output));
+  }
+
   gpuErrchk(cudaStreamDestroy(stream));
 
 }
@@ -589,7 +602,7 @@ DSPCore::~DSPCore()
 void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
                                 int64_t extra_samples, uint32_t offset_to_first_pulse,
                                 double time_zero, double start_time,
-                                uint64_t ringbuffer_size, 
+                                uint64_t ringbuffer_size,
                                 std::vector<cuComplex*> &ringbuffer_ptrs_start)
 {
 
@@ -600,7 +613,7 @@ void DSPCore::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num
 
   auto sample_time_diff = start_time - time_zero;
   auto sample_in_time = (sample_time_diff * rx_rate) +
-                      offset_to_first_pulse - 
+                      offset_to_first_pulse -
                       extra_samples;
   auto start_sample = int64_t(std::fmod(sample_in_time, ringbuffer_size));
 
@@ -663,177 +676,102 @@ void DSPCore::allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs) {
 }
 
 /**
- * @brief      Allocates device memory for the first stage filters and then copies them to the
- *             device.
+ * @brief      Allocate and copy bandpass filters to gpu.
  *
- * @param[in]  taps        A pointer to the first stage filter taps.
- * @param[in]  total_taps  The total number of taps for all filters.
+ * @param      taps        A pointer to the filter taps.
+ * @param[in]  total_taps  The total amount of filter taps.
  */
-void DSPCore::allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps)
+void DSPCore::allocate_and_copy_bandpass_filters(void *taps, uint32_t total_taps)
 {
-  size_t first_stage_bp_filters_size = total_taps * sizeof(cuComplex);
-  gpuErrchk(cudaMalloc(&first_stage_bp_filters_d, first_stage_bp_filters_size));
-  gpuErrchk(cudaMemcpyAsync(first_stage_bp_filters_d, taps,
-        first_stage_bp_filters_size, cudaMemcpyHostToDevice, stream));
+  size_t bp_filters_size = total_taps * sizeof(cuComplex);
+  gpuErrchk(cudaMalloc(&bp_filters_d, bp_filters_size));
+  gpuErrchk(cudaMemcpyAsync(bp_filters_d, taps, bp_filters_size, cudaMemcpyHostToDevice, stream));
 }
 
 /**
- * @brief      Allocates device memory for the second stage filter and then copies it to the
- *             device.
+ * @brief      Allocate and copy a lowpass filter to the gpu.
  *
- * @param[in]  taps        A pointer to the second stage filter taps.
- * @param[in]  total_taps  The total number of taps for all filters.
+ * @param      taps        A pointer to the filter taps.
+ * @param[in]  total_taps  The total amount of filter taps.
  */
-void DSPCore::allocate_and_copy_second_stage_filter(void *taps, uint32_t total_taps)
+void DSPCore::allocate_and_copy_lowpass_filter(void *taps, uint32_t total_taps)
 {
-  size_t second_stage_filter_size = total_taps * sizeof(cuComplex);
-  gpuErrchk(cudaMalloc(&second_stage_filter_d, second_stage_filter_size));
-  gpuErrchk(cudaMemcpyAsync(second_stage_filter_d, taps,
-         second_stage_filter_size, cudaMemcpyHostToDevice, stream));
+  cuComplex *ptr_d = NULL;
+  lp_filters_d.push_back(ptr_d);
+
+  size_t filter_size = total_taps * sizeof(cuComplex);
+  gpuErrchk(cudaMalloc(&lp_filters_d.back(), filter_size));
+  gpuErrchk(cudaMemcpyAsync(lp_filters_d.back(), taps, filter_size, cudaMemcpyHostToDevice, stream));
+
 }
 
 /**
- * @brief      Allocates device memory for the third stage filter and then copies it to the
- *             device.
+ * @brief      Gets the last filter output d.
  *
- * @param[in]  taps        A pointer to the third stage filters.
- * @param[in]  total_taps  The total number of taps for all filters.
+ * @return     The last filter output d.
  */
-void DSPCore::allocate_and_copy_third_stage_filter(void *taps, uint32_t total_taps)
+cuComplex* DSPCore::get_last_filter_output_d()
 {
-  size_t third_stage_filter_size = total_taps * sizeof(cuComplex);
-  gpuErrchk(cudaMalloc(&third_stage_filter_d, third_stage_filter_size));
-  gpuErrchk(cudaMemcpyAsync(third_stage_filter_d, taps,
-        third_stage_filter_size, cudaMemcpyHostToDevice, stream));
+  return filter_outputs_d.back();
 }
 
 /**
- * @brief      Allocates device memory for the fourth stage filter and then copies it to the
- *             device.
+ * @brief      Gets the last pointer stored in the lowpass filters vector.
  *
- * @param[in]  taps        A pointer to the fourth stage filters.
- * @param[in]  total_taps  The total number of taps for all filters.
+ * @return     The last lowpass filter pointer inserted into the vector.
  */
-void DSPCore::allocate_and_copy_fourth_stage_filter(void *taps, uint32_t total_taps)
-{
-  size_t fourth_stage_filter_size = total_taps * sizeof(cuComplex);
-  gpuErrchk(cudaMalloc(&fourth_stage_filter_d, fourth_stage_filter_size));
-  gpuErrchk(cudaMemcpyAsync(fourth_stage_filter_d, taps,
-        fourth_stage_filter_size, cudaMemcpyHostToDevice, stream));
+cuComplex* DSPCore::get_last_lowpass_filter_d() {
+  return lp_filters_d.back();
 }
 
 /**
- * @brief      Allocates device memory for the output of the first stage filters.
+ * @brief      Gets the samples per antenna vector.
  *
- * @param[in]  num_first_stage_output_samples  The total number of output samples from first
- *                                             stage.
+ * @return     The samples per antenna vector.
  */
-void DSPCore::allocate_first_stage_output(uint32_t num_first_stage_output_samples)
-{
-  size_t first_stage_output_size = num_first_stage_output_samples * sizeof(cuComplex);
-  gpuErrchk(cudaMalloc(&first_stage_output_d, first_stage_output_size));
+std::vector<uint32_t> DSPCore::get_samples_per_antenna() {
+  return samples_per_antenna;
 }
 
 /**
- * @brief      Allocates device memory for the output of the second stage filters.
+ * @brief      The vector containing vectors of filter taps for each stage.
  *
- * @param[in]  num_second_stage_output_samples  The total number of output samples from second
- *             stage.
+ * @return     The filter taps vectors for each stage.
  */
-void DSPCore::allocate_second_stage_output(uint32_t num_second_stage_output_samples)
-{
-  size_t second_stage_output_size = num_second_stage_output_samples * sizeof(cuComplex);
-  gpuErrchk(cudaMalloc(&second_stage_output_d, second_stage_output_size));
+std::vector<std::vector<std::complex<float>>> DSPCore::get_filter_taps() {
+  return filter_taps;
 }
 
 /**
- * @brief      Allocates device memory for the output of the third stage filters.
+ * @brief      Allocate a filter output on the GPU.
  *
- * @param[in]  num_third_stage_output_samples  The total number of output samples from third
- *                                             stage.
+ * @param[in]  num_output_samples  The number output samples
  */
-void DSPCore::allocate_third_stage_output(uint32_t num_third_stage_output_samples)
+void DSPCore::allocate_output(uint32_t num_output_samples)
 {
-  size_t third_stage_output_size = num_third_stage_output_samples * sizeof(cuComplex);
-  gpuErrchk(cudaMalloc(&third_stage_output_d, third_stage_output_size));
+  cuComplex *ptr_d;
+  filter_outputs_d.push_back(ptr_d);
+  size_t output_size = num_output_samples * sizeof(cuComplex);
+  gpuErrchk(cudaMalloc(&filter_outputs_d.back(), output_size));
+
 }
 
 /**
- * @brief      Allocates device memory for the output of the fourth stage filters.
+ * @brief      Allocate a host pointer for decimation stage output and then copy data.
  *
- * @param[in]  num_fourth_stage_output_samples The total number of output samples from fourth
- *                                             stage.
+ * @param[in]  num_output_samples  The number output samples needed.
+ * @param      output_d            The device pointer from which to copy from.
  */
-void DSPCore::allocate_fourth_stage_output(uint32_t num_fourth_stage_output_samples)
+void DSPCore::allocate_and_copy_host(uint32_t num_output_samples, cuComplex *output_d)
 {
-  size_t fourth_stage_output_size = num_fourth_stage_output_samples * sizeof(cuComplex);
-  gpuErrchk(cudaMalloc(&fourth_stage_output_d, fourth_stage_output_size));
-}
+  cuComplex *ptr_h;
+  filter_outputs_h.push_back(ptr_h);
 
-/**
- * @brief      Allocates host memory for final decimated samples and copies from device to host.
- *
- * @param[in]  num_host_samples  Number of host samples to copy back from device.
- */
-void DSPCore::allocate_and_copy_host_output(uint32_t num_host_samples)
-{
-  size_t host_output_size = num_host_samples * sizeof(cuComplex);
-  gpuErrchk(cudaHostAlloc(&host_output_h, host_output_size, cudaHostAllocDefault));
-  gpuErrchk(cudaMemcpyAsync(host_output_h, fourth_stage_output_d,
-        host_output_size, cudaMemcpyDeviceToHost,stream));
-}
+  size_t output_size = num_output_samples * sizeof(cuComplex);
+  gpuErrchk(cudaMallocHost(&filter_outputs_h.back(), output_size));
+  gpuErrchk(cudaMemcpyAsync(filter_outputs_h.back(), output_d,
+        output_size, cudaMemcpyDeviceToHost,stream));
 
-
-/**
- * @brief      Allocates host memory for the first stage samples and copies from device to host.
- *
- * @param[in]  num_first_stage_output_samples  The number of first stage output samples.
- */
-void DSPCore::allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples)
-{
-  size_t host_output_size = num_first_stage_output_samples * sizeof(cuComplex);
-  gpuErrchk(cudaHostAlloc(&first_stage_output_h, host_output_size, cudaHostAllocDefault));
-  gpuErrchk(cudaMemcpyAsync(first_stage_output_h, first_stage_output_d,
-        host_output_size, cudaMemcpyDeviceToHost,stream));
-}
-
-/**
- * @brief      Allocates host memory for the second stage samples and copies from device to host.
- *
- * @param[in]  num_second_stage_output_samples  The number of second stage output samples.
- */
-void DSPCore::allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples)
-{
-  size_t host_output_size = num_second_stage_output_samples * sizeof(cuComplex);
-  gpuErrchk(cudaHostAlloc(&second_stage_output_h, host_output_size, cudaHostAllocDefault));
-  gpuErrchk(cudaMemcpyAsync(second_stage_output_h, second_stage_output_d,
-        host_output_size, cudaMemcpyDeviceToHost,stream));
-}
-
-/**
- * @brief      Allocates host memory for the third stage samples and copies from device to host.
- *
- * @param[in]  num_third_stage_output_samples  The number of third stage output samples.
- */
-void DSPCore::allocate_and_copy_third_stage_host(uint32_t num_third_stage_output_samples)
-{
-  size_t host_output_size = num_third_stage_output_samples * sizeof(cuComplex);
-  gpuErrchk(cudaHostAlloc(&third_stage_output_h, host_output_size, cudaHostAllocDefault));
-  gpuErrchk(cudaMemcpyAsync(third_stage_output_h, third_stage_output_d,
-        host_output_size, cudaMemcpyDeviceToHost,stream));
-}
-
-/**
- * @brief      Allocates host memory for the fourth stage samples and copies from device to host.
- *
- * @param[in]  num_fourth_stage_output_samples  The number of fourth stage output samples.
- */
-void DSPCore::allocate_and_copy_fourth_stage_host(uint32_t num_fourth_stage_output_samples)
-{
-  size_t host_output_size = num_fourth_stage_output_samples * sizeof(cuComplex);
-  gpuErrchk(cudaHostAlloc(&fourth_stage_output_h, host_output_size, cudaHostAllocDefault));
-  gpuErrchk(cudaMemcpyAsync(fourth_stage_output_h, fourth_stage_output_d,
-        host_output_size, cudaMemcpyDeviceToHost,stream));
 }
 
 /**
@@ -883,39 +821,25 @@ void DSPCore::send_timing()
  */
 void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
                                             uint32_t num_samples_rf,
-                                            uint32_t num_output_samples_per_antenna_1,
-                                            uint32_t num_output_samples_per_antenna_2,
-                                            uint32_t num_output_samples_per_antenna_3,
-                                            uint32_t num_output_samples_per_antenna_4)
+                                            std::vector<uint32_t> samples_per_antenna,
+                                            std::vector<uint32_t> total_output_samples)
 {
-    #ifdef ENGINEERING_DEBUG
-      auto total_output_samples_1 = num_output_samples_per_antenna_1 * rx_freqs.size() *
-                                      total_antennas;
-      auto total_output_samples_2 = num_output_samples_per_antenna_2 * rx_freqs.size() *
-                                      total_antennas;
-      auto total_output_samples_3 = num_output_samples_per_antenna_3 * rx_freqs.size() *
-                                      total_antennas;
-      auto total_output_samples_4 = num_output_samples_per_antenna_4 * rx_freqs.size() *
-                                      total_antennas;
+  #ifdef ENGINEERING_DEBUG
+    for (uint32_t i=0; i<filter_outputs_d.size()-1; i++) {
+      allocate_and_copy_host(total_output_samples[i], filter_outputs_d[i]);
+    }
+  #endif
 
-      allocate_and_copy_first_stage_host(total_output_samples_1);
-      allocate_and_copy_second_stage_host(total_output_samples_2);
-      allocate_and_copy_third_stage_host(total_output_samples_3);
-      allocate_and_copy_fourth_stage_host(total_output_samples_4);
+  allocate_and_copy_host(total_output_samples.back(), filter_outputs_d.back());
 
-    #endif
+  rx_freqs = freqs;
+  num_rf_samples = num_samples_rf;
+  num_antennas = total_antennas;
+  this->samples_per_antenna = samples_per_antenna;
 
-    rx_freqs = freqs;
-    num_rf_samples = num_samples_rf;
-    num_antennas = total_antennas;
-    num_first_stage_samples_per_antenna = num_output_samples_per_antenna_1;
-    num_second_stage_samples_per_antenna = num_output_samples_per_antenna_2;
-    num_third_stage_samples_per_antenna = num_output_samples_per_antenna_3;
-    num_fourth_stage_samples_per_antenna = num_output_samples_per_antenna_4;
+  gpuErrchk(cudaStreamAddCallback(stream, postprocess, this, 0));
 
-    gpuErrchk(cudaStreamAddCallback(stream, postprocess, this, 0));
-
-    DEBUG_MSG(COLOR_RED("Added stream callback for sequence #" << sequence_num));
+  DEBUG_MSG(COLOR_RED("Added stream callback for sequence #" << sequence_num));
 }
 
 /**
@@ -1004,85 +928,34 @@ double* DSPCore::get_frequencies_p() {
   return freqs_d;
 }
 
+
 /**
- * @brief      Gets the device pointer to the first stage bandpass filters.
+ * @brief      Gets the bandpass filters device pointer.
  *
- * @return     The first stage bandpass filters device pointer.
+ * @return     The bandpass filter pointer.
  */
-cuComplex* DSPCore::get_first_stage_bp_filters_p(){
-  return first_stage_bp_filters_d;
+cuComplex* DSPCore::get_bp_filters_p(){
+  return bp_filters_d;
 }
 
 /**
- * @brief      Gets the device pointer to the second stage filters.
+ * @brief      Gets the vector of decimation rates.
  *
- * @return     The second stage filter device pointer.
+ * @return     The dm rates.
  */
-cuComplex* DSPCore::get_second_stage_filter_p(){
-  return second_stage_filter_d;
+std::vector<uint32_t> DSPCore::get_dm_rates()
+{
+  return dm_rates;
 }
 
 /**
- * @brief      Gets the device pointer to the third stage filters.
+ * @brief      Gets the vector of host side filter outputs.
  *
- * @return     The third stage filter device pointer.
+ * @return     The filter outputs host vector.
  */
-cuComplex* DSPCore::get_third_stage_filter_p(){
-  return third_stage_filter_d;
-}
-
-/**
- * @brief      Gets the device pointer to the fourth stage filters.
- *
- * @return     The fourth stage filter device pointer.
- */
-cuComplex* DSPCore::get_fourth_stage_filter_p(){
-  return fourth_stage_filter_d;
-}
-
-/**
- * @brief      Gets the device pointer to output of the first stage decimation.
- *
- * @return     The first stage output device pointer.
- */
-cuComplex* DSPCore::get_first_stage_output_p(){
-  return first_stage_output_d;
-}
-
-/**
- * @brief      Gets the device pointer to output of the second stage decimation.
- *
- * @return     The second stage output device pointer.
- */
-cuComplex* DSPCore::get_second_stage_output_p(){
-  return second_stage_output_d;
-}
-
-/**
- * @brief      Gets the device pointer to output of the third stage decimation.
- *
- * @return     The third stage output device pointer.
- */
-cuComplex* DSPCore::get_third_stage_output_p(){
-  return third_stage_output_d;
-}
-
-/**
- * @brief      Gets the device pointer to output of the fourth stage decimation.
- *
- * @return     The fourth stage output device pointer.
- */
-cuComplex* DSPCore::get_fourth_stage_output_p(){
-  return fourth_stage_output_d;
-}
-
-/**
- * @brief      Gets the host pointer to the output samples.
- *
- * @return     The host output pointer.
- */
-cuComplex* DSPCore::get_host_output_h() {
-  return host_output_h;
+std::vector<cuComplex*> DSPCore::get_filter_outputs_h()
+{
+  return filter_outputs_h;
 }
 
 /**
@@ -1124,46 +997,6 @@ float DSPCore::get_decimate_timing()
 }
 
 /**
- * @brief      Gets the host pointer for first stage output.
- *
- * @return     The first stage output host pointer.
- */
-cuComplex* DSPCore::get_first_stage_output_h()
-{
-  return first_stage_output_h;
-}
-
-/**
- * @brief      Gets the host pointer for the second stage output.
- *
- * @return     The second stage output host pointer.
- */
-cuComplex* DSPCore::get_second_stage_output_h()
-{
-  return second_stage_output_h;
-}
-
-/**
- * @brief      Gets the host pointer for the third stage output.
- *
- * @return     The third stage output host pointer.
- */
-cuComplex* DSPCore::get_third_stage_output_h()
-{
-  return third_stage_output_h;
-}
-
-/**
- * @brief      Gets the host pointer for the fourth stage output.
- *
- * @return     The fourth stage output host pointer.
- */
-cuComplex* DSPCore::get_fourth_stage_output_h()
-{
-  return fourth_stage_output_h;
-}
-
-/**
  * @brief      Gets the number of antennas.
  *
  * @return     The number of antennas.
@@ -1181,46 +1014,6 @@ uint32_t DSPCore::get_num_antennas()
 uint32_t DSPCore::get_num_rf_samples()
 {
   return num_rf_samples;
-}
-
-/**
- * @brief      Gets the number first stage samples per antenna.
- *
- * @return     The number first stage samples per antenna.
- */
-uint32_t DSPCore::get_num_first_stage_samples_per_antenna()
-{
-  return num_first_stage_samples_per_antenna;
-}
-
-/**
- * @brief      Gets the number second stage samples per antenna.
- *
- * @return     The number second stage samples per antenna.
- */
-uint32_t DSPCore::get_num_second_stage_samples_per_antenna()
-{
-  return num_second_stage_samples_per_antenna;
-}
-
-/**
- * @brief      Gets the number third stage samples per antenna.
- *
- * @return     The number third stage samples per antenna.
- */
-uint32_t DSPCore::get_num_third_stage_samples_per_antenna()
-{
-  return num_third_stage_samples_per_antenna;
-}
-
-/**
- * @brief      Gets the number fourth stage samples per antenna.
- *
- * @return     The number fourth stage samples per antenna.
- */
-uint32_t DSPCore::get_num_fourth_stage_samples_per_antenna()
-{
-  return num_fourth_stage_samples_per_antenna;
 }
 
 /**

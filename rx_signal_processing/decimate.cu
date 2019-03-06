@@ -24,11 +24,11 @@ namespace {
    */
   dim3 create_bandpass_grid(uint32_t num_samples, uint32_t dm_rate, uint32_t num_antennas)
   {
-    auto num_blocks_x = num_samples/dm_rate;
+    auto num_blocks_x = uint32_t(std::floor(float(num_samples)/float(dm_rate)));
     auto num_blocks_y = num_antennas;
     auto num_blocks_z = 1;
-    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Grid size: " << num_blocks_x << " x " 
-      << num_blocks_y << " x "<< num_blocks_z);    
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Grid size: " << num_blocks_x << " x "
+      << num_blocks_y << " x "<< num_blocks_z);
     dim3 dimGrid(num_blocks_x,num_blocks_y,num_blocks_z);
 
     return dimGrid;
@@ -47,8 +47,8 @@ namespace {
     auto num_threads_x = num_taps_per_filter;
     auto num_threads_y = num_freqs;
     auto num_threads_z = 1;
-    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Block size: " << num_threads_x << " x " 
-      << num_threads_y << " x " << num_threads_z);      
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Block size: " << num_threads_x << " x "
+      << num_threads_y << " x " << num_threads_z);
     dim3 dimBlock(num_threads_x,num_threads_y,num_threads_z);
 
     return dimBlock;
@@ -67,11 +67,11 @@ namespace {
   dim3 create_lowpass_grid(uint32_t num_samples, uint32_t dm_rate, uint32_t num_antennas,
                            uint32_t num_freqs)
   {
-    auto num_blocks_x = num_samples/dm_rate;
+    auto num_blocks_x = uint32_t(std::floor(float(num_samples)/float(dm_rate)));
     auto num_blocks_y = num_antennas;
     auto num_blocks_z = num_freqs;
-    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Grid size: " << num_blocks_x << " x " 
-      << num_blocks_y << " x "<< num_blocks_z);   
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Grid size: " << num_blocks_x << " x "
+      << num_blocks_y << " x "<< num_blocks_z);
     dim3 dimGrid(num_blocks_x,num_blocks_y,num_blocks_z);
 
     return dimGrid;
@@ -89,8 +89,8 @@ namespace {
     auto num_threads_x = num_taps_per_filter;
     auto num_threads_y = 1;
     auto num_threads_z = 1;
-    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Block size: " << num_threads_x << " x " 
-      << num_threads_y << " x " << num_threads_z);   
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Block size: " << num_threads_x << " x "
+      << num_threads_y << " x " << num_threads_z);
     dim3 dimBlock(num_threads_x,num_threads_y,num_threads_z);
 
     return dimBlock;
@@ -474,7 +474,7 @@ void bandpass_decimate2048_wrapper(cuComplex* original_samples,
 
   //Allocate shared memory on device for all filter taps.
   auto shr_mem_taps = num_freqs * num_taps_per_filter * sizeof(cuComplex);
-  DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_taps);  
+  DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_taps);
 
   auto dimGrid = create_bandpass_grid(samples_per_antenna, dm_rate, num_antennas);
   auto dimBlock = create_bandpass_block(num_taps_per_filter/2, num_freqs);
@@ -702,7 +702,7 @@ void lowpass_decimate1024_wrapper(cuComplex* original_samples,
 
   //Allocate shared memory on device for all filter taps.
   auto shr_mem_taps = num_freqs * num_taps_per_filter * sizeof(cuComplex);
-  DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_taps);  
+  DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_taps);
 
   auto dimGrid = create_lowpass_grid(samples_per_antenna, dm_rate, num_antennas, num_freqs);
   auto dimBlock = create_lowpass_block(num_taps_per_filter);
