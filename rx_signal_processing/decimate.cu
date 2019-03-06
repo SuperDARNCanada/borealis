@@ -24,7 +24,7 @@ namespace {
    */
   dim3 create_bandpass_grid(uint32_t num_samples, uint32_t dm_rate, uint32_t num_antennas)
   {
-    auto num_blocks_x = uint32_t(std::floor(float(num_samples)/float(dm_rate)));
+    auto num_blocks_x = num_samples/dm_rate;
     auto num_blocks_y = num_antennas;
     auto num_blocks_z = 1;
     DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Grid size: " << num_blocks_x << " x "
@@ -67,7 +67,7 @@ namespace {
   dim3 create_lowpass_grid(uint32_t num_samples, uint32_t dm_rate, uint32_t num_antennas,
                            uint32_t num_freqs)
   {
-    auto num_blocks_x = uint32_t(std::floor(float(num_samples)/float(dm_rate)));
+    auto num_blocks_x = num_samples/dm_rate;
     auto num_blocks_y = num_antennas;
     auto num_blocks_z = num_freqs;
     DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Grid size: " << num_blocks_x << " x "
