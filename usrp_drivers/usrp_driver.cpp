@@ -114,8 +114,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   std::vector<std::vector<std::vector<std::complex<float>>>> pulses;
   std::vector<std::vector<std::complex<float>>> last_pulse_sent;
 
-  double tx_center_freq = usrp_d.get_tx_center_freq(tx_channels[0]); 
-  double rx_center_freq = usrp_d.get_rx_center_freq(receive_channels[0]); 
+  double tx_center_freq = usrp_d.get_tx_center_freq(tx_channels[0]);
+  double rx_center_freq = usrp_d.get_rx_center_freq(receive_channels[0]);
 
   uint32_t sqn_num = 0;
   uint32_t expected_sqn_num = 0;
@@ -569,7 +569,7 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   auto tune_delay = uhd::time_spec_t(TUNING_DELAY);
   usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), driver_options.get_transmit_channels(),
                             tune_delay);
-  usrp_d.set_rx_center_freq(driver_packet.txcenterfreq(), driver_options.get_transmit_channels(),
+  usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), driver_options.get_receive_channels(),
                             tune_delay);
 
 
