@@ -126,7 +126,7 @@ class DecimationScheme(object):
                 raise ExperimentException(errmsg)
 
             for stage_num in range(0, self.num_stages -1):
-                if self.output_rates[stage_num] != self.input_rates[stage_num + 1]:
+                if not math.isclose(self.output_rates[stage_num], self.input_rates[stage_num + 1], abs_tol=0.001):
                     errmsg = 'Decimation stage {} output rate {} does not equal next stage {} ' \
                              'input rate {}'.format(stage_num, self.output_rates[stage_num],
                                                     stage_num + 1, self.input_rates[stage_num + 1])
