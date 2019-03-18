@@ -112,7 +112,7 @@ int main(int argc, char **argv){
       for (auto &taps : filters.get_filter_taps()) {
         RUNTIME_MSG("   " << COLOR_MAGENTA(taps.size()));
       }
-    }
+    } // if (first_time)
 
     //Then receive first packet from driver
     auto message = std::string("Need data to process");
@@ -244,25 +244,24 @@ int main(int argc, char **argv){
     // problem with this if you have too few stages. Need to figure this out.
 
     for (int32_t i=complex_taps.size()-2; i>=0; i--) {
+      auto dm_index = dm_rates.size() - 2 - i;
       if (i == 0) {
         if (extra_samples < complex_taps[0].size()) {
           extra_samples = complex_taps[0].size();
         }
-        else if (i == 1) {
-          auto dm_index = dm_rates.size() - 2 - i;
-          if (extra_samples < (dm_rates[0] * complex_taps[1].size())) {
-            extra_samples = dm_rates[0] * complex_taps[1].size();
-          }
+      }
+      else if (i == 1) {
+        if (extra_samples < (dm_rates[0] * complex_taps[1].size())) {
+          extra_samples = dm_rates[0] * complex_taps[1].size();
         }
-        else {
-          auto dm_index = dm_rates.size() - 2 - i;
-          auto total_dm_rate = std::accumulate(dm_rates.begin(),
-                                            dm_rates.end()-2-i,
-                                            1,
-                                            std::multiplies<uint32_t>());
-          if (extra_samples < total_dm_rate * complex_taps[i].size()) {
-            extra_samples = total_dm_rate * complex_taps[i].size();
-          }
+      }
+      else {
+        auto total_dm_rate = std::accumulate(dm_rates.begin(),
+                                          dm_rates.end()-2-i,
+                                          1,
+                                          std::multiplies<uint32_t>());
+        if (extra_samples < total_dm_rate * complex_taps[i].size()) {
+          extra_samples = total_dm_rate * complex_taps[i].size();
         }
       }
     }
@@ -337,5 +336,5 @@ int main(int argc, char **argv){
     dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
                                       samples_needed, samples_per_antenna, total_output_samples);
 
-  }
+  } //for(;;)
 }
