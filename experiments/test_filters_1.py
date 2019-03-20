@@ -15,7 +15,7 @@ class OneBox(ExperimentPrototype):
         cpid = 100000000
         output_rx_rate = 10.0e3/3
         rxrate = 5.0e6
-        super(OneBox, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate, decimation_scheme=create_test_scheme_8())
+        super(OneBox, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate, decimation_scheme=create_test_scheme_3())
 
         pulse_sequence = [0, 14, 22, 24, 27, 31, 42, 43]
         #pulse_sequence = [0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553]
@@ -36,7 +36,7 @@ class OneBox(ExperimentPrototype):
             "beam_order": [0],
             #"scanboundflag": True,  # there is a scan boundary
             #"scanbound": 60000,  # ms
-            "txfreq": 10500,
+            "txfreq": self.txctrfreq,
             #"clrfrqflag": True,  # search for clear frequency before transmitting
             #"clrfrqrange": [13200, 13500],  # frequency range for clear frequency search, kHz
             # including a clrfrqrange overrides rxfreq and txfreq so these are no longer necessary
