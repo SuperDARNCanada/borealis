@@ -14,7 +14,7 @@ message SigProcPacket {
 
     message RXChan {
         uint32 slice_id = 1;
-        double rxfreq = 2; // REVIEW #28 Does this need to be a double?
+        double rxfreq = 2; // this is offset frequency from centre freq
         uint32 nrang = 3;
         float frang = 4;
         repeated BeamDirections beam_directions = 5;
