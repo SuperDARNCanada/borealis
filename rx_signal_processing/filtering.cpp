@@ -89,7 +89,7 @@ void Filtering::mix_first_stage_to_bandpass(const std::vector<double> &rx_freqs,
                                               double initial_rx_sample_rate) {
     bandpass_taps.clear(); //clear any previously mixed filter taps.
     for (uint32_t i=0; i<rx_freqs.size(); i++) {
-    // TODO(keith): comment the protobuf with what rx freqs are. Offset or center.
+    // TODO(keith): comment the protobuf with what rx freqs are. Offset from centre frequency.
       auto sampling_freq = 2 * M_PI * rx_freqs[i]/initial_rx_sample_rate; //radians per sample
 
       for(int j=0;j < filter_taps[0].size(); j++) {
