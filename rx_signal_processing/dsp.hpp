@@ -147,7 +147,7 @@ class DSPCore {
   //! Pointer to the first stage bandpass filters on device.
   cuComplex *bp_filters_d;
 
-  //! Vector of lowpass filter device pointers.
+  //! Vector of device side lowpass filter pointers.
   std::vector<cuComplex*> lp_filters_d;
 
   //! Vector of device side filter output pointers.

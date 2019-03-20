@@ -93,7 +93,7 @@ ENV_EXTENSIONS = {
         CCFLAGS = ['-Wall'],
         CXXFLAGS = ['-std=c++11'],
         CFLAGS = ['-std=c99'],
-        NVCCFLAGS = ['-gencode', 'arch=compute_30,code=sm_30','-gencode', 'arch=compute_50,code=sm_50','-gencode','arch=compute_61,code=sm_61','-gencode','arch=compute_75,code=sm_75'],
+        NVCCFLAGS = ['-gencode', 'arch=compute_30,code=sm_30','-gencode', 'arch=compute_50,code=sm_50','-gencode','arch=compute_61,code=sm_61'],
         # Modules should be able to include relative to build root dir
         CPPPATH = ['#$BUILDROOT'],
     ),

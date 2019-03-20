@@ -240,6 +240,8 @@ namespace {
 
     auto samples_per_antenna = dp->get_samples_per_antenna();
 
+    // create a new vector with the number of input rf samples included. Basically the equivalent
+    // of a list concat in Python.
     std::vector<uint32_t> samps_per_stage;
     samps_per_stage.push_back(dp->get_num_rf_samples());
     samps_per_stage.insert(samps_per_stage.end(),
@@ -305,18 +307,17 @@ namespace {
       return ptrs;
     };
 
-    std::vector<std::vector<std::vector<cuComplex*>>> stage_ptrs;
+    std::vector<std::vector<std::vector<cuComplex*>>> all_stage_ptrs;
     #ifdef ENGINEERING_DEBUG
       for (uint32_t i=0; i<filter_outputs_h.size(); i++) {
         auto ptrs = make_ptrs_vec(filter_outputs_h[i], dp->get_rx_freqs().size(),
                             dp->get_num_antennas(), samples_per_antenna[i]);
-        stage_ptrs.push_back(ptrs);
+        all_stage_ptrs.push_back(ptrs);
       }
     #endif
 
     auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_rx_freqs().size(),
                           dp->get_num_antennas(), num_samples_after_dropping);
-    stage_ptrs.push_back(output_ptrs);
 
     auto beamformed_offset = 0;
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
@@ -361,14 +362,14 @@ namespace {
       beamformed_offset += beam_direction_counts[i];
 
       #ifdef ENGINEERING_DEBUG
-        for (uint32_t j=0; j<stage_ptrs.size()-1; j++){
+        for (uint32_t j=0; j<all_stage_ptrs.size()-1; j++){
           auto stage_str = "stage_" + std::to_string(j);
-          add_debug_data(stage_str, stage_ptrs[j][i], dp->get_num_antennas(),
+          add_debug_data(stage_str, all_stage_ptrs[j][i], dp->get_num_antennas(),
             samples_per_antenna[j]);
         }
       #endif
 
-      add_debug_data("output_ptrs", stage_ptrs.back()[i], dp->get_num_antennas(),
+      add_debug_data("output_ptrs", output_ptrs[i], dp->get_num_antennas(),
         num_samples_after_dropping);
 
       dataset->set_slice_id(dp->get_slice_ids()[i]);
@@ -495,12 +496,13 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  *                                         transfer of RF samples has completed.
  * @param[in]  timing_socket               A pointer to the socket used for reporting GPU kernel
  *                                         timing.
- * @param      data_socket                 The data socket.
+ * @param      data_socket                 A pointer to the data socket used to sending processed
+ *                                         data.
  * @param      sig_options                 The signal processing options.
  * @param[in]  sequence_num                The pulse sequence number for which will be acknowledged.
  * @param[in]  rx_rate                     The USRP sampling rate.
  * @param[in]  output_sample_rate          The final decimated output sample rate.
- * @param[in]  rx_freqs                    The receive freqs.
+ * @param[in]  rx_freqs                    The receive freqs in Hz.
  * @param[in]  filter_taps                 The filter taps for each stage.
  * @param[in]  beam_phases                 The beam phases.
  * @param[in]  beam_direction_counts       The beam direction counts.
@@ -508,8 +510,6 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * @param[in]  sequence_start_time         The sequence start time.
  * @param[in]  slice_ids                   The slice identifiers.
  * @param[in]  dm_rates                    The decimation rates.
- * @param[in]  shr_mem_name                The char string used to open a section of shared memory
- *                                         with RF samples.
  *
  * The constructor creates a new CUDA stream and initializes the timing events. It then opens the
  * shared memory with the received RF samples for a pulse sequence.
@@ -674,7 +674,7 @@ void DSPCore::allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs) {
 }
 
 /**
- * @brief      Allocate and copy bandpass filters to gpu.
+ * @brief      Allocate and copy bandpass filters for all rx freqs to gpu.
  *
  * @param      taps        A pointer to the filter taps.
  * @param[in]  total_taps  The total amount of filter taps.
@@ -694,7 +694,7 @@ void DSPCore::allocate_and_copy_bandpass_filters(void *taps, uint32_t total_taps
  */
 void DSPCore::allocate_and_copy_lowpass_filter(void *taps, uint32_t total_taps)
 {
-  cuComplex *ptr_d = NULL;
+  cuComplex *ptr_d;
   lp_filters_d.push_back(ptr_d);
 
   size_t filter_size = total_taps * sizeof(cuComplex);
@@ -723,7 +723,7 @@ cuComplex* DSPCore::get_last_lowpass_filter_d() {
 }
 
 /**
- * @brief      Gets the samples per antenna vector.
+ * @brief      Gets the samples per antenna vector. Vector contains an element for each stage.
  *
  * @return     The samples per antenna vector.
  */
@@ -816,6 +816,10 @@ void DSPCore::send_timing()
 /**
  * @brief      Add the postprocessing callback to the stream.
  *
+ * This function allocates the host space needed for filter stage data and then copies the data
+ * from GPU into the allocated space. Certain DSPCore members needed for post processing are
+ * assigned such as the rx freqs, the number of rf samples, the total antennas and the vector
+ * of samples per antenna(each stage).
  */
 void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
                                             uint32_t num_samples_rf,

@@ -109,10 +109,10 @@ int main(int argc, char **argv){
 
       RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") <<
                   "Number of taps per stage after padding: ");
-      for (auto &taps : filters.get_filter_taps()) {
+      for (auto &taps : filters.get_unmixed_filter_taps()) {
         RUNTIME_MSG("   " << COLOR_MAGENTA(taps.size()));
       }
-    }
+    } // if (first_time)
 
     //Then receive first packet from driver
     auto message = std::string("Need data to process");
@@ -219,7 +219,7 @@ int main(int argc, char **argv){
 
 
 
-    auto complex_taps = filters.get_filter_taps();
+    auto complex_taps = filters.get_mixed_filter_taps();
 
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
                              sig_options, sp_packet.sequence_num(), rx_rate, output_sample_rate,
@@ -244,25 +244,24 @@ int main(int argc, char **argv){
     // problem with this if you have too few stages. Need to figure this out.
 
     for (int32_t i=complex_taps.size()-2; i>=0; i--) {
+      auto dm_index = dm_rates.size() - 2 - i;
       if (i == 0) {
         if (extra_samples < complex_taps[0].size()) {
           extra_samples = complex_taps[0].size();
         }
-        else if (i == 1) {
-          auto dm_index = dm_rates.size() - 2 - i;
-          if (extra_samples < (dm_rates[0] * complex_taps[1].size())) {
-            extra_samples = dm_rates[0] * complex_taps[1].size();
-          }
+      }
+      else if (i == 1) {
+        if (extra_samples < (dm_rates[0] * complex_taps[1].size())) {
+          extra_samples = dm_rates[0] * complex_taps[1].size();
         }
-        else {
-          auto dm_index = dm_rates.size() - 2 - i;
-          auto total_dm_rate = std::accumulate(dm_rates.begin(),
-                                            dm_rates.end()-2-i,
-                                            1,
-                                            std::multiplies<uint32_t>());
-          if (extra_samples < total_dm_rate * complex_taps[i].size()) {
-            extra_samples = total_dm_rate * complex_taps[i].size();
-          }
+      }
+      else {
+        auto total_dm_rate = std::accumulate(dm_rates.begin(),
+                                          dm_rates.end()-2-i,
+                                          1,
+                                          std::multiplies<uint32_t>());
+        if (extra_samples < total_dm_rate * complex_taps[i].size()) {
+          extra_samples = total_dm_rate * complex_taps[i].size();
         }
       }
     }
@@ -323,10 +322,10 @@ int main(int argc, char **argv){
       dp->allocate_and_copy_lowpass_filter(complex_taps[i].data(), complex_taps[i].size());
       dp->allocate_output(total_output_samples[i]);
 
-      auto last_lp_filter = dp->get_last_lowpass_filter_d();
+      auto allocated_lp_filter = dp->get_last_lowpass_filter_d();
       last_filter_output = dp->get_last_filter_output_d();
 
-      call_decimate<DecimationType::lowpass>(prev_output, last_filter_output, last_lp_filter,
+      call_decimate<DecimationType::lowpass>(prev_output, last_filter_output, allocated_lp_filter,
         dm_rates[i], samples_per_antenna[i-1], complex_taps[i].size(), rx_freqs.size(),
         total_antennas, rx_rate, dp->get_frequencies_p(), " stage of decimation",
         dp->get_cuda_stream());
@@ -337,5 +336,5 @@ int main(int argc, char **argv){
     dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
                                       samples_needed, samples_per_antenna, total_output_samples);
 
-  }
+  } //for(;;)
 }

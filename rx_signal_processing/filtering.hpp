@@ -27,7 +27,8 @@ class Filtering {
     void mix_first_stage_to_bandpass(const std::vector<double> &rx_freqs,
                                       double initial_rx_rate);
 
-    std::vector<std::vector<std::complex<float>>> get_filter_taps();
+    std::vector<std::vector<std::complex<float>>> get_mixed_filter_taps();
+    std::vector<std::vector<std::complex<float>>> get_unmixed_filter_taps();
 
   private:
     //! Vector that holds the vectors of filter taps at each stage.
