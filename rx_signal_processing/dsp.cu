@@ -318,7 +318,6 @@ namespace {
 
     auto output_ptrs = make_ptrs_vec(output_samples.data(), dp->get_rx_freqs().size(),
                           dp->get_num_antennas(), num_samples_after_dropping);
-    all_stage_ptrs.push_back(output_ptrs);
 
     auto beamformed_offset = 0;
     for(uint32_t i=0; i<dp->get_rx_freqs().size(); i++) {
@@ -370,7 +369,7 @@ namespace {
         }
       #endif
 
-      add_debug_data("output_ptrs", all_stage_ptrs.back()[i], dp->get_num_antennas(),
+      add_debug_data("output_ptrs", output_ptrs[i], dp->get_num_antennas(),
         num_samples_after_dropping);
 
       dataset->set_slice_id(dp->get_slice_ids()[i]);
@@ -511,8 +510,6 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * @param[in]  sequence_start_time         The sequence start time.
  * @param[in]  slice_ids                   The slice identifiers.
  * @param[in]  dm_rates                    The decimation rates.
- * @param[in]  shr_mem_name                The char string used to open a section of shared memory
- *                                         with RF samples.
  *
  * The constructor creates a new CUDA stream and initializes the timing events. It then opens the
  * shared memory with the received RF samples for a pulse sequence.
@@ -677,7 +674,7 @@ void DSPCore::allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs) {
 }
 
 /**
- * @brief      Allocate and copy bandpass filters to gpu.
+ * @brief      Allocate and copy bandpass filters for all rx freqs to gpu.
  *
  * @param      taps        A pointer to the filter taps.
  * @param[in]  total_taps  The total amount of filter taps.
@@ -726,7 +723,7 @@ cuComplex* DSPCore::get_last_lowpass_filter_d() {
 }
 
 /**
- * @brief      Gets the samples per antenna vector.
+ * @brief      Gets the samples per antenna vector. Vector contains an element for each stage.
  *
  * @return     The samples per antenna vector.
  */
@@ -819,6 +816,10 @@ void DSPCore::send_timing()
 /**
  * @brief      Add the postprocessing callback to the stream.
  *
+ * This function allocates the host space needed for filter stage data and then copies the data
+ * from GPU into the allocated space. Certain DSPCore members needed for post processing are
+ * assigned such as the rx freqs, the number of rf samples, the total antennas and the vector
+ * of samples per antenna(each stage).
  */
 void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
                                             uint32_t num_samples_rf,

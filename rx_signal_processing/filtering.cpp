@@ -46,9 +46,6 @@ std::vector<std::complex<float>> Filtering::fill_filter(std::vector<float> &filt
     complex_taps.push_back(complex_tap);
   }
 
-  //TODO(keith): either pad to pwr of 2 or make pwr of 2 filter len
-  //Pads to at least len 32 or next pwr of 2 to stop seg fault for now.
-
   //Quick and small lambda to get the next power of 2. Returns the same
   //number if already power of two.
   auto next_pwr2 = [](uint32_t n) -> uint32_t {
@@ -95,7 +92,6 @@ void Filtering::mix_first_stage_to_bandpass(const std::vector<double> &rx_freqs,
     // TODO(keith): comment the protobuf with what rx freqs are. Offset or center.
       auto sampling_freq = 2 * M_PI * rx_freqs[i]/initial_rx_sample_rate; //radians per sample
 
-      //TODO(keith): verify that this is okay.
       for(int j=0;j < filter_taps[0].size(); j++) {
         auto radians = fmod(sampling_freq * j,2 * M_PI);
         auto amplitude = std::abs(filter_taps[0][j]);
@@ -133,14 +129,25 @@ void Filtering::save_filter_to_file(const std::vector<std::complex<float>> &filt
 }
 
 /**
- * @brief      Gets the filter taps at each stage.
+ * @brief      Gets the mixed filter taps at each stage.
  *
- * @return     The filter taps.
+ * @return     The mixed filter taps.
  *
  * A temp vector is created. The first stage taps are replaced with the bandpass taps.
  */
-std::vector<std::vector<std::complex<float>>> Filtering::get_filter_taps() {
+std::vector<std::vector<std::complex<float>>> Filtering::get_mixed_filter_taps() {
   auto temp_taps = filter_taps;
   temp_taps[0] = bandpass_taps;
   return temp_taps;
+}
+
+/**
+ * @brief      Gets the unmixed filter taps at each stage.
+ *
+ * @return     The unmixed filter taps.
+ *
+ * The unmixed filter taps are returned.
+ */
+std::vector<std::vector<std::complex<float>>> Filtering::get_unmixed_filter_taps() {
+  return filter_taps;
 }
