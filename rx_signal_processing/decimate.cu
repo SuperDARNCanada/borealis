@@ -284,7 +284,7 @@ __global__ void bandpass_decimate1024(cuComplex* original_samples,
     auto freq_idx = threadIdx.y;
     auto unwrapped_phase = 2.0 * M_PI * (freqs[freq_idx]/F_s) * dec_sample_num * dm_rate;
     auto phase = fmod(unwrapped_phase, 2.0 * M_PI);
-    auto filter_phase = _exp(make_cuComplex(0.0f, -1 * phase));
+    auto filter_phase = _exp(make_cuComplex(0.0f, 1 * phase));
     calculated_output_sample = cuCmulf(calculated_output_sample,filter_phase);
 
     antenna_offset = antenna_num * gridDim.x;
@@ -394,7 +394,7 @@ __global__ void bandpass_decimate2048(cuComplex* original_samples,
     auto freq_idx = threadIdx.y;
     auto unwrapped_phase = 2.0 * M_PI * (freqs[freq_idx]/F_s) * dec_sample_num * dm_rate;
     auto phase = fmod(unwrapped_phase, 2.0 * M_PI);
-    auto filter_phase = _exp(make_cuComplex(0.0f, -1 * phase));
+    auto filter_phase = _exp(make_cuComplex(0.0f, 1 * phase));
     calculated_output_sample = cuCmulf(calculated_output_sample,filter_phase);
 
     antenna_offset = antenna_num * gridDim.x;

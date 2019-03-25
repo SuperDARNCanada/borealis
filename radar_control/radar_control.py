@@ -147,7 +147,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
 def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                    brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
                    slice_dict, beam_dict, sequence_time, first_rx_sample_time,
-                   main_antenna_count, decimation_scheme=None):
+                   main_antenna_count, rxctrfreq, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian. 
         Happens every sequence.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
@@ -170,6 +170,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         should occur in the output data. This is equal to the time to the centre of the
         first pulse. In seconds.
         :param main_antenna_count: number of main array antennas, from the config file.
+        :param rxctrfreq: the centre frequency of receiving, to send the translation frequency from centre to dsp.
         :param decimation_scheme: object of type DecimationScheme that has all decimation and
             filtering data.
 
@@ -195,12 +196,13 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
         chan_add.slice_id = slice_id
+        # send the translational frequencies to dsp in order to bandpass filter correctly.
         if slice_dict[slice_id]['rxonly']:
-            chan_add.rxfreq = slice_dict[slice_id]['rxfreq'] * 1.0e3
+            chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['rxfreq'] * 1.0e3
         elif slice_dict[slice_id]['clrfrqflag']:
             pass  # TODO - get freq from clear frequency search.
         else:
-            chan_add.rxfreq = slice_dict[slice_id]['txfreq'] * 1.0e3
+            chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['txfreq'] * 1.0e3
         chan_add.nrang = slice_dict[slice_id]['nrang']
         chan_add.frang = slice_dict[slice_id]['frang']
         for beamdir in beam_dict[slice_id]:
@@ -612,7 +614,7 @@ def radar():
                                            sequence.slice_ids, experiment.slice_dict,
                                            beam_phase_dict, sequence.seqtime,
                                            sequence.first_rx_sample_time,
-                                           options.main_antenna_count, decimation_scheme)
+                                           options.main_antenna_count, experiment.rxctrfreq, decimation_scheme)
                             if first_integration:
                                 decimation_scheme = None
                                 first_integration = False
