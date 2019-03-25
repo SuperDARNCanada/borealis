@@ -12,6 +12,7 @@
 #include <math.h>
 #include <numeric>
 #include <functional>
+#include <algorithm>
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 #include <thrust/complex.h>
@@ -236,34 +237,15 @@ int main(int argc, char **argv){
     //required early samples is equal to the largest filter length in time (based on the rate at
     //that stage.) The following lines find the max filter length in time and convert that to
     //number of samples at the input rate.
-
-    int64_t extra_samples = std::accumulate(dm_rates.begin(), dm_rates.end()-1, 1,
-                                            std::multiplies<int64_t>()) *
-                            complex_taps.back().size();
-
-    // problem with this if you have too few stages. Need to figure this out.
-
-    for (int32_t i=complex_taps.size()-2; i>=0; i--) {
-      auto dm_index = dm_rates.size() - 2 - i;
-      if (i == 0) {
-        if (extra_samples < complex_taps[0].size()) {
-          extra_samples = complex_taps[0].size();
-        }
-      }
-      else if (i == 1) {
-        if (extra_samples < (dm_rates[0] * complex_taps[1].size())) {
-          extra_samples = dm_rates[0] * complex_taps[1].size();
-        }
-      }
-      else {
-        auto total_dm_rate = std::accumulate(dm_rates.begin(),
-                                          dm_rates.end()-2-i,
-                                          1,
-                                          std::multiplies<uint32_t>());
-        if (extra_samples < total_dm_rate * complex_taps[i].size()) {
-          extra_samples = total_dm_rate * complex_taps[i].size();
-        }
-      }
+    int64_t extra_samples = 0;
+    for (int32_t i=0; i<dm_rates.size(); i++) {
+      auto iter = dm_rates.begin();
+      int64_t stage_extra_samples = (i == 0 ? 1 : std::accumulate(iter,
+                                                    iter+(i),
+                                                    1,
+                                                    std::multiplies<int64_t>())) *
+                                    complex_taps[i].size();
+      extra_samples = std::max(extra_samples, stage_extra_samples);
     }
 
     auto total_dm_rate = std::accumulate(dm_rates.begin(), dm_rates.end(), 1,
