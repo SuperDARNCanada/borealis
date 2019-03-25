@@ -47,6 +47,7 @@ class DSPCore {
  public:
   void cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
                                             uint32_t num_samples_rf,
+                                            uint32_t extra_samples,
                                             std::vector<uint32_t> samples_per_antenna,
                                             std::vector<uint32_t> total_output_samples);
   void initial_memcpy_callback();
@@ -54,7 +55,7 @@ class DSPCore {
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num,
                     double rx_rate, double output_sample_rate, std::vector<double> freqs,
-                    std::vector<std::vector<std::complex<float>>> filter_taps,
+                    std::vector<std::vector<float>> filter_taps,
                     std::vector<cuComplex> beam_phases,
                     std::vector<uint32_t> beam_direction_counts,
                     double driver_initialization_time, double sequence_start_time,
@@ -74,10 +75,11 @@ class DSPCore {
   cuComplex* get_last_lowpass_filter_d();
   std::vector<uint32_t> get_samples_per_antenna();
   std::vector<uint32_t> get_dm_rates();
+  uint32_t get_filter_rolloff_samples();
   cuComplex* get_bp_filters_p();
   void allocate_and_copy_lowpass_filter(void *taps, uint32_t total_taps);
   void allocate_output(uint32_t num_output_samples);
-  std::vector<std::vector<std::complex<float>>> get_filter_taps();
+  std::vector<std::vector<float>> get_filter_taps();
   uint32_t get_num_antennas();
   std::vector<double> get_rx_freqs();
   float get_total_timing();
@@ -159,11 +161,14 @@ class DSPCore {
   //! Vector of the samples per antenna at each stage of decimation.
   std::vector<uint32_t> samples_per_antenna;
 
+  //! Extra samples needed to account for filter rolloff.
+  uint32_t filter_rolloff_samples;
+
   //! Vector of decimation rates at each stage.
   std::vector<uint32_t> dm_rates;
 
   //! Vector that holds the vectors of filter taps at each stage.
-  std::vector<std::vector<std::complex<float>>> filter_taps;
+  std::vector<std::vector<float>> filter_taps;
 
   //! CUDA event to timestamp when the GPU processing begins.
   cudaEvent_t initial_start;

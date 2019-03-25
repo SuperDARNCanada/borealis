@@ -18,6 +18,7 @@ See LICENSE for details
 #include <cuComplex.h>
 #include <chrono>
 #include <thread>
+#include <numeric>
 #include <complex>
 #include <eigen3/Eigen/Dense>
 #include "utils/zmq_borealis_helpers/zmq_borealis_helpers.hpp"
@@ -68,33 +69,43 @@ namespace {
    * @param      dm_rates         The decimation rates of each stage.
    * @param[in]  num_antennas     The number of antennas.
    * @param[in]  num_freqs        The number of freqs.
+   * @param[in]  extra_samples    The extra samples needed to account for filter rolloff.
    */
   void drop_bad_samples(cuComplex *input_samples, std::vector<cuComplex> &output_samples,
                         std::vector<uint32_t> &samps_per_stage,
                         std::vector<uint32_t> &taps_per_stage,
                         std::vector<uint32_t> &dm_rates,
-                        uint32_t num_antennas, uint32_t num_freqs)
+                        uint32_t num_antennas, uint32_t num_freqs, uint32_t extra_samples)
   {
 
     auto original_undropped_sample_count = samps_per_stage.back();
     auto original_samples_per_frequency = num_antennas * original_undropped_sample_count;
-    auto num_bad_samples = 0;
-    for (int i=0; i<dm_rates.size(); i++) {
-      if (num_bad_samples >= dm_rates[i]) {
-        num_bad_samples = floor(num_bad_samples/dm_rates[i]);
-      }
-      else {
-        num_bad_samples = 0;
-      }
 
-      num_bad_samples += floor(taps_per_stage[i]/dm_rates[i]);
-      if (taps_per_stage[i] % dm_rates[i] > samps_per_stage[i] % dm_rates[i]){
-          num_bad_samples++;
-      }
-      samps_per_stage[i+1] -= num_bad_samples;
+    // This accounts for the length of the filter extending past the length of input samples while
+    // decimating.
+    std::vector<uint32_t> bad_samples_per_stage;
+    for (uint32_t i=0; i<dm_rates.size(); i++) {
+      bad_samples_per_stage.push_back(uint32_t(std::floor(float(taps_per_stage[i]) /
+                                                 float(dm_rates[i]))));
     }
 
+    // Propagate the number of bad samples from the first stage through to the last stage.
+    for (uint32_t i=1; i<bad_samples_per_stage.size(); i++) {
+      bad_samples_per_stage[i] += std::ceil(float(bad_samples_per_stage[i-1])/(dm_rates[i]));
+    }
+
+
+    // Account for time to the middle of the first pulse. We drop everything that comes before.
+    auto samples_to_first_pulse = extra_samples;
+    for (uint32_t i=0; i<taps_per_stage.size(); i++) {
+      samples_to_first_pulse = uint32_t(std::ceil((samples_to_first_pulse -
+                                                  float(taps_per_stage[i] / 2)) /
+                                        dm_rates[i]));
+    }
+
+    samps_per_stage.back() -= bad_samples_per_stage.back() + samples_to_first_pulse;
     auto samples_per_frequency = samps_per_stage.back() * num_antennas;
+
     output_samples.resize(num_freqs * samples_per_frequency);
 
     for (uint32_t freq_index=0; freq_index < num_freqs; freq_index++) {
@@ -102,7 +113,7 @@ namespace {
         auto dest = output_samples.data() + (freq_index * samples_per_frequency) +
                     (i * samps_per_stage.back());
         auto src = input_samples + freq_index * (original_samples_per_frequency) +
-                    (i * original_undropped_sample_count);
+                    (i * original_undropped_sample_count) + samples_to_first_pulse;
         auto num_bytes =  sizeof(cuComplex) * samps_per_stage.back();
         memcpy(dest, src, num_bytes);
       }
@@ -257,7 +268,8 @@ namespace {
     auto filter_outputs_h = dp->get_filter_outputs_h();
     auto dm_rates = dp->get_dm_rates();
     drop_bad_samples(filter_outputs_h.back(), output_samples, samps_per_stage, taps_per_stage,
-                     dm_rates, dp->get_num_antennas(), dp->get_rx_freqs().size());
+                     dm_rates, dp->get_num_antennas(), dp->get_rx_freqs().size(),
+                     dp->get_filter_rolloff_samples());
 
     // For each antenna, for each frequency.
     auto num_samples_after_dropping = output_samples.size()/
@@ -362,7 +374,7 @@ namespace {
       beamformed_offset += beam_direction_counts[i];
 
       #ifdef ENGINEERING_DEBUG
-        for (uint32_t j=0; j<all_stage_ptrs.size()-1; j++){
+        for (uint32_t j=0; j<all_stage_ptrs.size(); j++){
           auto stage_str = "stage_" + std::to_string(j);
           add_debug_data(stage_str, all_stage_ptrs[j][i], dp->get_num_antennas(),
             samples_per_antenna[j]);
@@ -517,7 +529,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
 DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::socket_t *data_socket,
                   SignalProcessingOptions &sig_options, uint32_t sequence_num,
                   double rx_rate, double output_sample_rate, std::vector<double> rx_freqs,
-                  std::vector<std::vector<std::complex<float>>> filter_taps,
+                  std::vector<std::vector<float>> filter_taps,
                   std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
                   double driver_initialization_time, double sequence_start_time,
                   std::vector<uint32_t> slice_ids, std::vector<uint32_t> dm_rates) :
@@ -736,8 +748,18 @@ std::vector<uint32_t> DSPCore::get_samples_per_antenna() {
  *
  * @return     The filter taps vectors for each stage.
  */
-std::vector<std::vector<std::complex<float>>> DSPCore::get_filter_taps() {
+std::vector<std::vector<float>> DSPCore::get_filter_taps() {
   return filter_taps;
+}
+
+
+/**
+ * @brief      Gets the filter rolloff samples.
+ *
+ * @return     The filter rolloff samples.
+ */
+uint32_t DSPCore::get_filter_rolloff_samples() {
+  return filter_rolloff_samples;
 }
 
 /**
@@ -823,6 +845,7 @@ void DSPCore::send_timing()
  */
 void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
                                             uint32_t num_samples_rf,
+                                            uint32_t extra_samples,
                                             std::vector<uint32_t> samples_per_antenna,
                                             std::vector<uint32_t> total_output_samples)
 {
@@ -838,6 +861,7 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
   num_rf_samples = num_samples_rf;
   num_antennas = total_antennas;
   this->samples_per_antenna = samples_per_antenna;
+  filter_rolloff_samples = extra_samples;
 
   gpuErrchk(cudaStreamAddCallback(stream, postprocess, this, 0));
 

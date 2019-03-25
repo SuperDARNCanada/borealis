@@ -59,6 +59,7 @@ int main(int argc, char **argv){
   SharedMemoryHandler shrmem(sig_options.get_ringbuffer_name());
   std::vector<cuComplex*> ringbuffer_ptrs_start;
 
+  std::vector<std::vector<float>> filter_taps;
   Filtering filters;
 
   std::vector<uint32_t> dm_rates;
@@ -87,7 +88,6 @@ int main(int argc, char **argv){
       rx_rate = sp_packet.rxrate(); //Hz
       output_sample_rate = sp_packet.output_sample_rate(); //Hz
 
-      std::vector<std::vector<float>> filter_taps;
       for (uint32_t i=0; i<sp_packet.decimation_stages_size(); i++) {
         dm_rates.push_back(sp_packet.decimation_stages(i).dm_rate());
 
@@ -224,7 +224,7 @@ int main(int argc, char **argv){
 
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
                              sig_options, sp_packet.sequence_num(), rx_rate, output_sample_rate,
-                             rx_freqs, complex_taps, beam_phases,
+                             rx_freqs, filter_taps, beam_phases,
                              beam_direction_counts, rx_metadata.initialization_time(),
                              rx_metadata.sequence_start_time(), slice_ids, dm_rates);
 
@@ -244,10 +244,11 @@ int main(int argc, char **argv){
                                                     iter+(i),
                                                     1,
                                                     std::multiplies<int64_t>())) *
-                                    complex_taps[i].size();
+                                    filter_taps[i].size();
       extra_samples = std::max(extra_samples, stage_extra_samples);
     }
 
+    //extra_samples = 0;
     auto total_dm_rate = std::accumulate(dm_rates.begin(), dm_rates.end(), 1,
                                             std::multiplies<int64_t>());
 
@@ -261,6 +262,7 @@ int main(int argc, char **argv){
     dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
 
     auto offset_to_first_rx_sample = uint32_t(sp_packet.offset_to_first_rx_sample() * rx_rate);
+    //offset_to_first_rx_sample = 0;
     dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
                                 offset_to_first_rx_sample,
                                 rx_metadata.initialization_time(),
@@ -315,8 +317,8 @@ int main(int argc, char **argv){
       prev_output = last_filter_output;
     }
 
-    dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
-                                      samples_needed, samples_per_antenna, total_output_samples);
+    dp->cuda_postprocessing_callback(rx_freqs, total_antennas, samples_needed, extra_samples,
+                                      samples_per_antenna, total_output_samples);
 
   } //for(;;)
 }

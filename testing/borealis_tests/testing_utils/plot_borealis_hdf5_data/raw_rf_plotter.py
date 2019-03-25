@@ -17,4 +17,4 @@ record_name = random.choice(list(data.keys()))
 print(record_name)
 raw_rf_data = data[record_name]
 
-plot_output_raw_data(raw_rf_data, 'raw_rf_data')
+plot_output_raw_data(raw_rf_data, 'raw_rf_data',start_sample=0, end_sample=430000)

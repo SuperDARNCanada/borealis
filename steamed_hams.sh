@@ -22,7 +22,7 @@ if [ "$2" = "release" ]; then
     start_brian="python3 -O brian/brian.py; bash"
     start_exphan="sleep 0.001s; python3 -O experiment_handler/experiment_handler.py "$1" ; bash;"
     start_radctrl="sleep 0.001s; python3 -O radar_control/radar_control.py; bash;"
-    start_datawrite="sleep 0.001s;python3 -O data_write/data_write.py --file-type=hdf5 --enable-bfiq; bash;"
+    start_datawrite="sleep 0.001s;python3 -O data_write/data_write.py --file-type=hdf5 --enable-pre-bfiq --enable-bfiq; bash;"
     start_usrp_driver="sleep 0.001s; source mode "$2"; usrp_driver; bash"
     start_dsp="sleep 0.001s; source mode "$2"; signal_processing; bash;"
     start_tids="sleep 0.001s; python3 -O usrp_drivers/set_affinity.py; bash;"
