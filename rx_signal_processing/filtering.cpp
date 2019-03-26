@@ -18,24 +18,12 @@ See LICENSE for details
  * @brief      The constructor finds the number of filter taps for each stage and then a lowpass
  *             filter for each stage.
  *
- * @param[in]  first_stage_taps            A reference to the first stage filter taps.
- * @param[in]  second_stage_taps           A reference to the second stage filter taps.
- * @param[in]  third_stage_taps            A reference to the third stage filter taps.
- * @param[in]  fourth_stage_taps           A reference to the fourth stage filter taps. 
+ * @param[in]  input_filter_taps  The filter taps sent from radar control.
  */
-Filtering::Filtering(std::vector<float> &first_stage_taps, 
-                     std::vector<float> &second_stage_taps, 
-                     std::vector<float> &third_stage_taps, 
-                     std::vector<float> &fourth_stage_taps) {
-  num_first_stage_taps = first_stage_taps.size();
-  num_second_stage_taps = second_stage_taps.size();
-  num_third_stage_taps = third_stage_taps.size();
-  num_fourth_stage_taps = fourth_stage_taps.size();
-
-  first_stage_lowpass_taps = fill_filter(first_stage_taps);
-  second_stage_lowpass_taps = fill_filter(second_stage_taps);
-  third_stage_lowpass_taps = fill_filter(third_stage_taps);
-  fourth_stage_lowpass_taps = fill_filter(fourth_stage_taps);
+Filtering::Filtering(std::vector<std::vector<float>> input_filter_taps) {
+  for (auto &taps : input_filter_taps) {
+    filter_taps.push_back(fill_filter(taps));
+  }
 }
 
 
@@ -45,7 +33,7 @@ Filtering::Filtering(std::vector<float> &first_stage_taps,
  * @param[in]  filter_taps          The filter taps provided, will be real.
  *
  * @return     A vector of filter taps. Filter is real, but represented using complex<float> form
- *             R + i0 for each tap. The vector is filled with zeros at the end to reach a length 
+ *             R + i0 for each tap. The vector is filled with zeros at the end to reach a length
  *             that is a power of 2 for processing.
  *
  */
@@ -57,9 +45,6 @@ std::vector<std::complex<float>> Filtering::fill_filter(std::vector<float> &filt
     auto complex_tap = std::complex<float>(i,0.0);
     complex_taps.push_back(complex_tap);
   }
-
-  //TODO(keith): either pad to pwr of 2 or make pwr of 2 filter len
-  //Pads to at least len 32 or next pwr of 2 to stop seg fault for now.
 
   //Quick and small lambda to get the next power of 2. Returns the same
   //number if already power of two.
@@ -102,18 +87,17 @@ std::vector<std::complex<float>> Filtering::fill_filter(std::vector<float> &filt
  */
 void Filtering::mix_first_stage_to_bandpass(const std::vector<double> &rx_freqs,
                                               double initial_rx_sample_rate) {
-    first_stage_bandpass_taps_h.clear(); //clear any previously mixed filter taps.
+    bandpass_taps.clear(); //clear any previously mixed filter taps.
     for (uint32_t i=0; i<rx_freqs.size(); i++) {
-    // TODO(keith): comment the protobuf with what rx freqs are. Offset or center.
+    // TODO(keith): comment the protobuf with what rx freqs are. Offset from centre frequency.
       auto sampling_freq = 2 * M_PI * rx_freqs[i]/initial_rx_sample_rate; //radians per sample
 
-      //TODO(keith): verify that this is okay.
-      for(int j=0;j < first_stage_lowpass_taps.size(); j++) {
+      for(int j=0;j < filter_taps[0].size(); j++) {
         auto radians = fmod(sampling_freq * j,2 * M_PI);
-        auto amplitude = std::abs(first_stage_lowpass_taps[j]);
+        auto amplitude = std::abs(filter_taps[0][j]);
         auto I = amplitude * cos(radians);
         auto Q = amplitude * sin(radians);
-        first_stage_bandpass_taps_h.push_back(std::complex<float>(I,Q));
+        bandpass_taps.push_back(std::complex<float>(I,Q));
       }
     }
 }
@@ -144,87 +128,26 @@ void Filtering::save_filter_to_file(const std::vector<std::complex<float>> &filt
   filter.close();
 }
 
-
 /**
- * @brief      Gets the number of first stage taps.
+ * @brief      Gets the mixed filter taps at each stage.
  *
- * @return     The number of first stage taps.
+ * @return     The mixed filter taps.
+ *
+ * A temp vector is created. The first stage taps are replaced with the bandpass taps.
  */
-uint32_t Filtering::get_num_first_stage_taps() {
-  return num_first_stage_taps;
+std::vector<std::vector<std::complex<float>>> Filtering::get_mixed_filter_taps() {
+  auto temp_taps = filter_taps;
+  temp_taps[0] = bandpass_taps;
+  return temp_taps;
 }
 
 /**
- * @brief      Gets the number of second stage taps.
+ * @brief      Gets the unmixed filter taps at each stage.
  *
- * @return     The number of second stage taps.
+ * @return     The unmixed filter taps.
+ *
+ * The unmixed filter taps are returned.
  */
-uint32_t Filtering::get_num_second_stage_taps() {
-  return num_second_stage_taps;
-}
-
-/**
- * @brief      Gets the number of third stage taps.
- *
- * @return     The number of third stage taps.
- */
-uint32_t Filtering::get_num_third_stage_taps() {
-  return num_third_stage_taps;
-}
-
-/**
- * @brief      Gets the number of fourth stage taps.
- *
- * @return     The number of fourth stage taps.
- */
-uint32_t Filtering::get_num_fourth_stage_taps() {
-  return num_fourth_stage_taps;
-}
-
-/**
- * @brief      Gets the vector of the first stage lowpass filter taps.
- *
- * @return     The first stage lowpass taps.
- */
-std::vector<std::complex<float>> Filtering::get_first_stage_lowpass_taps() {
-  return first_stage_lowpass_taps;
-}
-
-/**
- * @brief      Gets the vector of the second stage lowpass filter taps.
- *
- * @return     The second stage lowpass taps.
- */
-std::vector<std::complex<float>> Filtering::get_second_stage_lowpass_taps() {
-  return second_stage_lowpass_taps;
-}
-
-/**
- * @brief      Gets the vector of the third stage lowpass taps.
- *
- * @return     The third stage lowpass taps.
- */
-std::vector<std::complex<float>> Filtering::get_third_stage_lowpass_taps() {
-  return third_stage_lowpass_taps;
-}
-
-/**
- * @brief      Gets the vector of the fourth stage lowpass taps.
- *
- * @return     The fourth stage lowpass taps.
- */
-std::vector<std::complex<float>> Filtering::get_fourth_stage_lowpass_taps() {
-  return fourth_stage_lowpass_taps;
-}
-
-/**
- * @brief      Gets the vector containing bandpass filter taps for all RX frequencies.
- *
- * @return     The first stage bandpass taps.
- *
- * As an example, if there are 3 Rx frequency filters with 32 taps each, this vector will be 96 taps in size.
- */
-std::vector<std::complex<float>> Filtering::get_first_stage_bandpass_taps_h() {
-  //TODO(keith): maybe rename this?
-  return first_stage_bandpass_taps_h;
+std::vector<std::vector<std::complex<float>>> Filtering::get_unmixed_filter_taps() {
+  return filter_taps;
 }

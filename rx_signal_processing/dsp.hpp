@@ -46,64 +46,48 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties);
 class DSPCore {
  public:
   void cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
-                      uint32_t num_samples_rf,
-                      uint32_t num_output_samples_per_antenna_1,
-                      uint32_t num_output_samples_per_antenna_2,
-                      uint32_t num_output_samples_per_antenna_3,
-                      uint32_t num_output_samples_per_antenna_4);
+                                            uint32_t num_samples_rf,
+                                            std::vector<uint32_t> samples_per_antenna,
+                                            std::vector<uint32_t> total_output_samples);
   void initial_memcpy_callback();
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num,
-                    double rx_rate, double output_sample_rate, std::vector<double> freqs, 
-                    Filtering *filters, std::vector<cuComplex> beam_phases, 
+                    double rx_rate, double output_sample_rate, std::vector<double> freqs,
+                    std::vector<std::vector<float>> filter_taps,
+                    std::vector<cuComplex> beam_phases,
                     std::vector<uint32_t> beam_direction_counts,
                     double driver_initialization_time, double sequence_start_time,
-                    std::vector<uint32_t> slice_ids);
+                    std::vector<uint32_t> slice_ids, std::vector<uint32_t> dm_rates);
 
   ~DSPCore(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
   void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
                                 int64_t extra_samples, uint32_t offset_to_first_pulse,
                                 double time_zero, double start_time,
-                                uint64_t ringbuffer_size, 
+                                uint64_t ringbuffer_size,
                                 std::vector<cuComplex*> &ringbuffer_ptrs_start);
-  void allocate_and_copy_first_stage_filters(void *taps, uint32_t total_taps);
-  void allocate_and_copy_second_stage_filter(void *taps, uint32_t total_taps);
-  void allocate_and_copy_third_stage_filter(void *taps, uint32_t total_taps);
-  void allocate_and_copy_fourth_stage_filter(void *taps, uint32_t total_taps);
-  void allocate_and_copy_device_rf(uint32_t num_rf_samples);
-  void allocate_first_stage_output(uint32_t num_first_stage_output_samples);
-  void allocate_second_stage_output(uint32_t num_second_stage_output_samples);
-  void allocate_third_stage_output(uint32_t num_third_stage_output_samples);
-  void allocate_fourth_stage_output(uint32_t num_fourth_stage_output_samples);
-  void allocate_and_copy_host_output(uint32_t num_host_samples);
+  void allocate_and_copy_bandpass_filters(void *taps, uint32_t total_taps);
+  std::vector<cuComplex*> get_filter_outputs_h();
+  cuComplex* get_last_filter_output_d();
+  std::vector<cuComplex*> get_lowpass_filters_d();
+  cuComplex* get_last_lowpass_filter_d();
+  std::vector<uint32_t> get_samples_per_antenna();
+  std::vector<uint32_t> get_dm_rates();
+  cuComplex* get_bp_filters_p();
+  void allocate_and_copy_lowpass_filter(void *taps, uint32_t total_taps);
+  void allocate_output(uint32_t num_output_samples);
+  std::vector<std::vector<float>> get_filter_taps();
+  uint32_t get_num_antennas();
+  std::vector<double> get_rx_freqs();
+  float get_total_timing();
+  float get_decimate_timing();
+  void allocate_and_copy_host(uint32_t num_output_samples, cuComplex *output_d);
   void clear_device_and_destroy();
   cuComplex* get_rf_samples_p();
   std::vector<cuComplex> get_rf_samples_h();
   double* get_frequencies_p();
-  cuComplex* get_first_stage_bp_filters_p();
-  cuComplex* get_second_stage_filter_p();
-  cuComplex* get_third_stage_filter_p();
-  cuComplex* get_fourth_stage_filter_p();
-  cuComplex* get_first_stage_output_p();
-  cuComplex* get_second_stage_output_p();
-  cuComplex* get_third_stage_output_p();
-  cuComplex* get_fourth_stage_output_p();
-  cuComplex* get_first_stage_output_h();
-  cuComplex* get_second_stage_output_h();
-  cuComplex* get_third_stage_output_h();
-  cuComplex* get_fourth_stage_output_h();
-  cuComplex* get_host_output_h();
-  std::vector<double> get_rx_freqs();
-  float get_total_timing();
-  float get_decimate_timing();
-  uint32_t get_num_antennas();
   uint32_t get_num_rf_samples();
-  uint32_t get_num_first_stage_samples_per_antenna();
-  uint32_t get_num_second_stage_samples_per_antenna();
-  uint32_t get_num_third_stage_samples_per_antenna();
-  uint32_t get_num_fourth_stage_samples_per_antenna();
   uint32_t get_sequence_num();
   double get_rx_rate();
   double get_output_sample_rate();
@@ -161,31 +145,25 @@ class DSPCore {
   cuComplex *rf_samples_d;
 
   //! Pointer to the first stage bandpass filters on device.
-  cuComplex *first_stage_bp_filters_d;
+  cuComplex *bp_filters_d;
 
-  //! Pointer to the second stage filters on device.
-  cuComplex *second_stage_filter_d;
+  //! Vector of device side lowpass filter pointers.
+  std::vector<cuComplex*> lp_filters_d;
 
-  //! Pointer to the third stage filters on device.
-  cuComplex *third_stage_filter_d;
+  //! Vector of device side filter output pointers.
+  std::vector<cuComplex*> filter_outputs_d;
 
-  //! Pointer to the fourth stage filters on device.
-  cuComplex *fourth_stage_filter_d;
+  //! Vector of host side filter output pointers.
+  std::vector<cuComplex*> filter_outputs_h;
 
-  //! Pointer to the output of the first stage decimation on device.
-  cuComplex *first_stage_output_d;
+  //! Vector of the samples per antenna at each stage of decimation.
+  std::vector<uint32_t> samples_per_antenna;
 
-  //! Pointer to the output of the second stage decimation on device.
-  cuComplex *second_stage_output_d;
+  //! Vector of decimation rates at each stage.
+  std::vector<uint32_t> dm_rates;
 
-  //! Pointer to the output of the third stage decimation on device.
-  cuComplex *third_stage_output_d;
-
-  //! Pointer to the output of the fourth stage decimation on device.
-  cuComplex *fourth_stage_output_d;
-
-  //! Pointer to the host output samples.
-  cuComplex *host_output_h;
+  //! Vector that holds the vectors of filter taps at each stage.
+  std::vector<std::vector<float>> filter_taps;
 
   //! CUDA event to timestamp when the GPU processing begins.
   cudaEvent_t initial_start;
@@ -208,18 +186,6 @@ class DSPCore {
   //! A host side vector for the rf samples.
   std::vector<cuComplex> rf_samples_h;
 
-  //! A host side pointer to the first stage output.
-  cuComplex *first_stage_output_h;
-
-  //! A host side pointer to the second stage output.
-  cuComplex *second_stage_output_h;
-
-  //! A host side pointer to the third stage output.
-  cuComplex *third_stage_output_h;
-
-  //! A host side pointer to the third stage output.
-  cuComplex *fourth_stage_output_h;
-
   //! A vector containing the host side rx frequencies.
   std::vector<double> rx_freqs;
 
@@ -228,18 +194,6 @@ class DSPCore {
 
   //! The number of rf samples per antenna.
   uint32_t num_rf_samples;
-
-  //! The number of first stage samples per antenna.
-  uint32_t num_first_stage_samples_per_antenna;
-
-  //! The number of second stage samples per antenna.
-  uint32_t num_second_stage_samples_per_antenna;
-
-  //! The number of third stage samples per antenna.
-  uint32_t num_third_stage_samples_per_antenna;
-
-  //! The number of fourth stage samples per antenna.
-  uint32_t num_fourth_stage_samples_per_antenna;
 
   //! A set of beam angle phases for each beam direction.
   std::vector<cuComplex> beam_phases;
@@ -259,10 +213,6 @@ class DSPCore {
   //! Identifiers for each slice
   std::vector<uint32_t> slice_ids;
 
-  void allocate_and_copy_first_stage_host(uint32_t num_first_stage_output_samples);
-  void allocate_and_copy_second_stage_host(uint32_t num_second_stage_output_samples);
-  void allocate_and_copy_third_stage_host(uint32_t num_third_stage_output_samples);
-  void allocate_and_copy_fourth_stage_host(uint32_t num_fourth_stage_output_samples);
   void allocate_and_copy_rf_from_device(uint32_t num_rf_samples);
 
 };

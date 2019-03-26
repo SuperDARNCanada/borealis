@@ -10,6 +10,9 @@
 #include <signal.h>
 #include <cstdlib>
 #include <math.h>
+#include <numeric>
+#include <functional>
+#include <algorithm>
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 #include <thrust/complex.h>
@@ -56,10 +59,10 @@ int main(int argc, char **argv){
   SharedMemoryHandler shrmem(sig_options.get_ringbuffer_name());
   std::vector<cuComplex*> ringbuffer_ptrs_start;
 
+  std::vector<std::vector<float>> filter_taps;
   Filtering filters;
-  uint32_t first_stage_dm_rate = 0, second_stage_dm_rate = 0, third_stage_dm_rate = 0, 
-    fourth_stage_dm_rate = 0;
 
+  std::vector<uint32_t> dm_rates;
   double rx_rate;
   uint32_t total_antennas;
   double output_sample_rate;
@@ -85,54 +88,32 @@ int main(int argc, char **argv){
       rx_rate = sp_packet.rxrate(); //Hz
       output_sample_rate = sp_packet.output_sample_rate(); //Hz
 
-      first_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[0].dm_rate());
-      second_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[1].dm_rate());
-      third_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[2].dm_rate());
-      fourth_stage_dm_rate = static_cast<uint32_t>(sp_packet.decimation_stages()[3].dm_rate());      
+      for (uint32_t i=0; i<sp_packet.decimation_stages_size(); i++) {
+        dm_rates.push_back(sp_packet.decimation_stages(i).dm_rate());
 
-      std::vector<float> first_stage_taps(sp_packet.decimation_stages()[0].filter_taps().begin(), 
-        sp_packet.decimation_stages()[0].filter_taps().end());
-      std::vector<float> second_stage_taps(sp_packet.decimation_stages()[1].filter_taps().begin(), 
-        sp_packet.decimation_stages()[1].filter_taps().end());
-      std::vector<float> third_stage_taps(sp_packet.decimation_stages()[2].filter_taps().begin(), 
-        sp_packet.decimation_stages()[2].filter_taps().end());
-      std::vector<float> fourth_stage_taps(sp_packet.decimation_stages()[3].filter_taps().begin(), 
-        sp_packet.decimation_stages()[3].filter_taps().end());
+        std::vector<float> taps(sp_packet.decimation_stages(i).filter_taps().begin(),
+        sp_packet.decimation_stages(i).filter_taps().end());
+        filter_taps.push_back(taps);
+      }
 
-      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimation rates: "
-        << COLOR_YELLOW(first_stage_dm_rate) << ", "
-        << COLOR_YELLOW(second_stage_dm_rate) << ", "
-        << COLOR_YELLOW(third_stage_dm_rate) << ", "
-        << COLOR_YELLOW(fourth_stage_dm_rate));
+      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimation rates: ");
+      for (auto &rate : dm_rates) {
+        RUNTIME_MSG("   " << rate);
+      }
 
-      auto filter_timing_start = std::chrono::steady_clock::now();
+      filters = Filtering(filter_taps);
 
-      filters = Filtering(first_stage_taps, second_stage_taps,
-                    third_stage_taps, fourth_stage_taps);
+      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of taps per stage: ");
+      for (auto &taps : filter_taps) {
+        RUNTIME_MSG("   " << COLOR_MAGENTA(taps.size()));
+      }
 
-      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of taps per stage: "
-        << COLOR_YELLOW(filters.get_num_first_stage_taps()) << ", "
-        << COLOR_YELLOW(filters.get_num_second_stage_taps()) << ", "
-        << COLOR_YELLOW(filters.get_num_third_stage_taps()) << ", "
-        << COLOR_YELLOW(filters.get_num_fourth_stage_taps()));
-
-      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Number of taps per stage after padding: "
-                  << COLOR_YELLOW(filters.get_first_stage_lowpass_taps().size()) << ", "
-                  << COLOR_YELLOW(filters.get_second_stage_lowpass_taps().size()) << ", "
-                  << COLOR_YELLOW(filters.get_third_stage_lowpass_taps().size()) << ", "
-                  << COLOR_YELLOW(filters.get_fourth_stage_lowpass_taps().size()));
-
-      auto filter_timing_end = std::chrono::steady_clock::now();
-      auto time_diff = std::chrono::duration_cast<std::chrono::microseconds>(filter_timing_end -
-                                                                           filter_timing_start).count();
-      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Time to create 3 filters: "
-        << COLOR_MAGENTA(time_diff) << "us");
-
-      //FIXME(Keith): fix saving filter to file
-      filters.save_filter_to_file(filters.get_first_stage_lowpass_taps(),"filter1coefficients.dat");
-      filters.save_filter_to_file(filters.get_second_stage_lowpass_taps(),"filter2coefficients.dat");
-      filters.save_filter_to_file(filters.get_third_stage_lowpass_taps(),"filter3coefficients.dat");
-    }
+      RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") <<
+                  "Number of taps per stage after padding: ");
+      for (auto &taps : filters.get_unmixed_filter_taps()) {
+        RUNTIME_MSG("   " << COLOR_MAGENTA(taps.size()));
+      }
+    } // if (first_time)
 
     //Then receive first packet from driver
     auto message = std::string("Need data to process");
@@ -145,7 +126,7 @@ int main(int argc, char **argv){
     }
 
     if (first_time) {
-      // First time - set up memory 
+      // First time - set up memory
       shrmem.open_shr_mem();
       if (rx_metadata.ringbuffer_size() == 0) {
         //TODO(keith): handle error
@@ -238,129 +219,102 @@ int main(int argc, char **argv){
     );
 
 
+
+    auto complex_taps = filters.get_mixed_filter_taps();
+
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
                              sig_options, sp_packet.sequence_num(), rx_rate, output_sample_rate,
-                             rx_freqs, &filters, beam_phases,
+                             rx_freqs, filter_taps, beam_phases,
                              beam_direction_counts, rx_metadata.initialization_time(),
-                             rx_metadata.sequence_start_time(), slice_ids);
+                             rx_metadata.sequence_start_time(), slice_ids, dm_rates);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
     }
 
-    //We need to sample early to account for propagating samples through filters. The number of 
-    //required early samples is equal to the largest filter length in time (based on the rate at
-    //that stage.) The following lines find the max filter length in time and convert that to 
-    //number of samples at the input rate.
-    int64_t extra_samples = (first_stage_dm_rate * second_stage_dm_rate * third_stage_dm_rate *
-                        filters.get_num_fourth_stage_taps());
 
-    if (extra_samples < (first_stage_dm_rate * second_stage_dm_rate * filters.get_num_third_stage_taps())) {
-      extra_samples = first_stage_dm_rate * second_stage_dm_rate * filters.get_num_third_stage_taps();
+    //We need to sample early to account for propagating samples through filters. The number of
+    //required early samples is equal to adding half the filter length of each stage, starting with
+    //the last stage so that the center point of the filter(point of highest gain) aligns with the
+    //center of the pulse. This is the exact number of extra samples needed so that the output
+    //data after decimation correctly aligns to the center of the first pulse.
+    int64_t extra_samples = 0;
+
+    for (int32_t i=dm_rates.size()-1; i>=0; i--) {
+      extra_samples = (extra_samples * dm_rates[i]) + (filter_taps[i].size()/2);
     }
 
-    if (extra_samples < (first_stage_dm_rate * filters.get_num_second_stage_taps())) {
-      extra_samples = first_stage_dm_rate * filters.get_num_second_stage_taps();
-    }
 
-    if (extra_samples < (filters.get_num_first_stage_taps())) {
-      extra_samples = filters.get_num_first_stage_taps();
-    }
+    auto total_dm_rate = std::accumulate(dm_rates.begin(), dm_rates.end(), 1,
+                                            std::multiplies<int64_t>());
 
     auto samples_needed = rx_metadata.numberofreceivesamples() + 2 * extra_samples;
+    samples_needed = uint32_t(std::ceil(float(samples_needed)/float(total_dm_rate)) *
+                              total_dm_rate);
     auto total_samples = samples_needed * total_antennas;
 
     DEBUG_MSG("   Total samples in data message: " << total_samples);
 
+    dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
+
     auto offset_to_first_rx_sample = uint32_t(sp_packet.offset_to_first_rx_sample() * rx_rate);
+    //offset_to_first_rx_sample = 0;
     dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
                                 offset_to_first_rx_sample,
                                 rx_metadata.initialization_time(),
                                 rx_metadata.sequence_start_time(),
                                 rx_metadata.ringbuffer_size(), ringbuffer_ptrs_start);
-    dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
-    dp->allocate_and_copy_first_stage_filters(filters.get_first_stage_bandpass_taps_h().data(),
-                                                filters.get_first_stage_bandpass_taps_h().size());
 
-    auto num_output_samples_per_antenna_1 = samples_needed / first_stage_dm_rate;
-    auto total_output_samples_1 = rx_freqs.size() * num_output_samples_per_antenna_1 *
+    dp->allocate_and_copy_bandpass_filters(complex_taps[0].data(), complex_taps[0].size());
+
+    auto num_output_samples_per_antenna = samples_needed / dm_rates[0];
+    auto total_output_samples_1 = rx_freqs.size() * num_output_samples_per_antenna *
                                    total_antennas;
 
-    dp->allocate_first_stage_output(total_output_samples_1);
+    dp->allocate_output(total_output_samples_1);
 
     dp->initial_memcpy_callback();
 
+    auto last_filter_output = dp->get_last_filter_output_d();
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
-      dp->get_first_stage_output_p(), dp->get_first_stage_bp_filters_p(), first_stage_dm_rate,
-      samples_needed, filters.get_first_stage_lowpass_taps().size(),
+      last_filter_output, dp->get_bp_filters_p(), dm_rates[0],
+      samples_needed, complex_taps[0].size(),
       rx_freqs.size(), total_antennas, rx_rate, dp->get_frequencies_p(),
-      "First stage of decimation", dp->get_cuda_stream());
+      "Bandpass stage of decimation", dp->get_cuda_stream());
 
 
+    std::vector<uint32_t> samples_per_antenna(complex_taps.size());
+    std::vector<uint32_t> total_output_samples(complex_taps.size());
+
+    samples_per_antenna[0] = num_output_samples_per_antenna;
+    total_output_samples[0] = total_output_samples_1;
 
     // When decimating, we go from one set of samples for each antenna in the first stage
     // to multiple sets of reduced samples for each frequency in further stages. Output samples are
     // grouped by frequency with all samples for each antenna following each other
     // before samples of another frequency start. In the first stage need a filter for each
     // frequency, but in the next stages we only need one filter for all data sets.
-    dp->allocate_and_copy_second_stage_filter(filters.get_second_stage_lowpass_taps().data(),
-                                                filters.get_second_stage_lowpass_taps().size());
+    cuComplex* prev_output = last_filter_output;
+    for (uint32_t i=1; i<complex_taps.size(); i++) {
+      samples_per_antenna[i] = samples_per_antenna[i-1]/dm_rates[i];
+      total_output_samples[i] = rx_freqs.size() * samples_per_antenna[i] * total_antennas;
 
-    auto num_output_samples_per_antenna_2 = num_output_samples_per_antenna_1 / second_stage_dm_rate;
-    auto total_output_samples_2 = rx_freqs.size() * num_output_samples_per_antenna_2 *
-                                    total_antennas;
+      dp->allocate_and_copy_lowpass_filter(complex_taps[i].data(), complex_taps[i].size());
+      dp->allocate_output(total_output_samples[i]);
 
-    dp->allocate_second_stage_output(total_output_samples_2);
+      auto allocated_lp_filter = dp->get_last_lowpass_filter_d();
+      last_filter_output = dp->get_last_filter_output_d();
 
-    // each antenna has a data set for each frequency after filtering.
-    auto samples_per_antenna_2 = total_output_samples_1/total_antennas/rx_freqs.size();
-    call_decimate<DecimationType::lowpass>(dp->get_first_stage_output_p(),
-      dp->get_second_stage_output_p(), dp->get_second_stage_filter_p(), second_stage_dm_rate,
-      samples_per_antenna_2, filters.get_second_stage_lowpass_taps().size(), rx_freqs.size(),
-      total_antennas, rx_rate, dp->get_frequencies_p(), "Second stage of decimation",
-      dp->get_cuda_stream());
+      call_decimate<DecimationType::lowpass>(prev_output, last_filter_output, allocated_lp_filter,
+        dm_rates[i], samples_per_antenna[i-1], complex_taps[i].size(), rx_freqs.size(),
+        total_antennas, rx_rate, dp->get_frequencies_p(), " stage of decimation",
+        dp->get_cuda_stream());
 
+      prev_output = last_filter_output;
+    }
 
-    dp->allocate_and_copy_third_stage_filter(filters.get_third_stage_lowpass_taps().data(),
-                                               filters.get_third_stage_lowpass_taps().size());
+    dp->cuda_postprocessing_callback(rx_freqs, total_antennas, samples_needed, samples_per_antenna,
+                                      total_output_samples);
 
-    auto num_output_samples_per_antenna_3 = num_output_samples_per_antenna_2 / third_stage_dm_rate;
-    auto total_output_samples_3 = rx_freqs.size() * num_output_samples_per_antenna_3 *
-                                    total_antennas;
-
-    dp->allocate_third_stage_output(total_output_samples_3);
-
-    auto samples_per_antenna_3 = samples_per_antenna_2/second_stage_dm_rate;
-    call_decimate<DecimationType::lowpass>(dp->get_second_stage_output_p(),
-      dp->get_third_stage_output_p(), dp->get_third_stage_filter_p(), third_stage_dm_rate,
-      samples_per_antenna_3, filters.get_third_stage_lowpass_taps().size(), rx_freqs.size(),
-      total_antennas, rx_rate, dp->get_frequencies_p(), "Third stage of decimation",
-      dp->get_cuda_stream());
-
-    dp->allocate_and_copy_fourth_stage_filter(filters.get_fourth_stage_lowpass_taps().data(),
-                                               filters.get_fourth_stage_lowpass_taps().size());
-
-    auto num_output_samples_per_antenna_4 = num_output_samples_per_antenna_3 / fourth_stage_dm_rate;
-    auto total_output_samples_4 = rx_freqs.size() * num_output_samples_per_antenna_4 *
-                                    total_antennas;
-
-    dp->allocate_fourth_stage_output(total_output_samples_4);
-
-    auto samples_per_antenna_4 = samples_per_antenna_3/third_stage_dm_rate;
-    call_decimate<DecimationType::lowpass>(dp->get_third_stage_output_p(),
-      dp->get_fourth_stage_output_p(), dp->get_fourth_stage_filter_p(), fourth_stage_dm_rate,
-      samples_per_antenna_4, filters.get_fourth_stage_lowpass_taps().size(), rx_freqs.size(),
-      total_antennas, rx_rate, dp->get_frequencies_p(), "Fourth stage of decimation",
-      dp->get_cuda_stream());
-
-    dp->allocate_and_copy_host_output(total_output_samples_4);
-
-    dp->cuda_postprocessing_callback(rx_freqs, total_antennas,
-                                      samples_needed,
-                                      num_output_samples_per_antenna_1,
-                                      num_output_samples_per_antenna_2,
-                                      num_output_samples_per_antenna_3,
-                                      num_output_samples_per_antenna_4);
-
-  }
+  } //for(;;)
 }
