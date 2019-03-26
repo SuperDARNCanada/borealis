@@ -234,21 +234,17 @@ int main(int argc, char **argv){
 
 
     //We need to sample early to account for propagating samples through filters. The number of
-    //required early samples is equal to the largest filter length in time (based on the rate at
-    //that stage.) The following lines find the max filter length in time and convert that to
-    //number of samples at the input rate.
+    //required early samples is equal to adding half the filter length of each stage, starting with
+    //the last stage so that the center point of the filter(point of highest gain) aligns with the
+    //center of the pulse. This is the exact number of extra samples needed so that the output
+    //data after decimation correctly aligns to the center of the first pulse.
     int64_t extra_samples = 0;
-    for (int32_t i=0; i<dm_rates.size(); i++) {
-      auto iter = dm_rates.begin();
-      int64_t stage_extra_samples = (i == 0 ? 1 : std::accumulate(iter,
-                                                    iter+(i),
-                                                    1,
-                                                    std::multiplies<int64_t>())) *
-                                    filter_taps[i].size();
-      extra_samples = std::max(extra_samples, stage_extra_samples);
+
+    for (int32_t i=dm_rates.size()-1; i>=0; i--) {
+      extra_samples = (extra_samples * dm_rates[i]) + (filter_taps[i].size()/2);
     }
 
-    //extra_samples = 0;
+
     auto total_dm_rate = std::accumulate(dm_rates.begin(), dm_rates.end(), 1,
                                             std::multiplies<int64_t>());
 
@@ -317,8 +313,8 @@ int main(int argc, char **argv){
       prev_output = last_filter_output;
     }
 
-    dp->cuda_postprocessing_callback(rx_freqs, total_antennas, samples_needed, extra_samples,
-                                      samples_per_antenna, total_output_samples);
+    dp->cuda_postprocessing_callback(rx_freqs, total_antennas, samples_needed, samples_per_antenna,
+                                      total_output_samples);
 
   } //for(;;)
 }

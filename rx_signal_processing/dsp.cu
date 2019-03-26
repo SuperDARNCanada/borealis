@@ -69,13 +69,12 @@ namespace {
    * @param      dm_rates         The decimation rates of each stage.
    * @param[in]  num_antennas     The number of antennas.
    * @param[in]  num_freqs        The number of freqs.
-   * @param[in]  extra_samples    The extra samples needed to account for filter rolloff.
    */
   void drop_bad_samples(cuComplex *input_samples, std::vector<cuComplex> &output_samples,
                         std::vector<uint32_t> &samps_per_stage,
                         std::vector<uint32_t> &taps_per_stage,
                         std::vector<uint32_t> &dm_rates,
-                        uint32_t num_antennas, uint32_t num_freqs, uint32_t extra_samples)
+                        uint32_t num_antennas, uint32_t num_freqs)
   {
 
     auto original_undropped_sample_count = samps_per_stage.back();
@@ -94,16 +93,7 @@ namespace {
       bad_samples_per_stage[i] += std::ceil(float(bad_samples_per_stage[i-1])/(dm_rates[i]));
     }
 
-
-    // Account for time to the middle of the first pulse. We drop everything that comes before.
-    auto samples_to_first_pulse = extra_samples;
-    for (uint32_t i=0; i<taps_per_stage.size(); i++) {
-      samples_to_first_pulse = uint32_t(std::ceil((samples_to_first_pulse -
-                                                  float(taps_per_stage[i] / 2)) /
-                                        dm_rates[i]));
-    }
-
-    samps_per_stage.back() -= bad_samples_per_stage.back() + samples_to_first_pulse;
+    samps_per_stage.back() -= bad_samples_per_stage.back();
     auto samples_per_frequency = samps_per_stage.back() * num_antennas;
 
     output_samples.resize(num_freqs * samples_per_frequency);
@@ -113,7 +103,7 @@ namespace {
         auto dest = output_samples.data() + (freq_index * samples_per_frequency) +
                     (i * samps_per_stage.back());
         auto src = input_samples + freq_index * (original_samples_per_frequency) +
-                    (i * original_undropped_sample_count) + samples_to_first_pulse;
+                    (i * original_undropped_sample_count);
         auto num_bytes =  sizeof(cuComplex) * samps_per_stage.back();
         memcpy(dest, src, num_bytes);
       }
@@ -268,8 +258,7 @@ namespace {
     auto filter_outputs_h = dp->get_filter_outputs_h();
     auto dm_rates = dp->get_dm_rates();
     drop_bad_samples(filter_outputs_h.back(), output_samples, samps_per_stage, taps_per_stage,
-                     dm_rates, dp->get_num_antennas(), dp->get_rx_freqs().size(),
-                     dp->get_filter_rolloff_samples());
+                     dm_rates, dp->get_num_antennas(), dp->get_rx_freqs().size());
 
     // For each antenna, for each frequency.
     auto num_samples_after_dropping = output_samples.size()/
@@ -752,16 +741,6 @@ std::vector<std::vector<float>> DSPCore::get_filter_taps() {
   return filter_taps;
 }
 
-
-/**
- * @brief      Gets the filter rolloff samples.
- *
- * @return     The filter rolloff samples.
- */
-uint32_t DSPCore::get_filter_rolloff_samples() {
-  return filter_rolloff_samples;
-}
-
 /**
  * @brief      Allocate a filter output on the GPU.
  *
@@ -845,7 +824,6 @@ void DSPCore::send_timing()
  */
 void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
                                             uint32_t num_samples_rf,
-                                            uint32_t extra_samples,
                                             std::vector<uint32_t> samples_per_antenna,
                                             std::vector<uint32_t> total_output_samples)
 {
@@ -861,7 +839,6 @@ void DSPCore::cuda_postprocessing_callback(std::vector<double> freqs, uint32_t t
   num_rf_samples = num_samples_rf;
   num_antennas = total_antennas;
   this->samples_per_antenna = samples_per_antenna;
-  filter_rolloff_samples = extra_samples;
 
   gpuErrchk(cudaStreamAddCallback(stream, postprocess, this, 0));
 
