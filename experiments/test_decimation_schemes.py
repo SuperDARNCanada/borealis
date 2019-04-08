@@ -192,12 +192,12 @@ def create_test_scheme_9():
 	transition_widths = [150.0e3, 40.0e3, 15.0e3, 1.0e3]
 	cutoffs = [20.0e3, 10.0e3, 10.0e3, 5.0e3] # bandwidth is double this
 	ripple_dbs = [150.0, 80.0, 35.0, 9.0]
-
+        scaling_factors = [10.0, 100.0, 100.0, 100.0]
 	all_stages = []
 
 	for stage in range(0,4):
-		filter_taps = list(create_firwin_filter_by_attenuation(rates[stage], transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
-		all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], filter_taps))
+		filter_taps = list(scaling_factors[stage] * create_firwin_filter_by_attenuation(rates[stage], transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
+                all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], filter_taps))
 
 	return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
 
