@@ -21,7 +21,7 @@ class Normalscan(ExperimentPrototype):
             "rx_int_antennas": [0, 1, 2, 3],
             "pulse_sequence": [0, 9, 12, 20, 22, 26, 27], #[0, 14, 22, 24, 27, 31, 42, 43],
             "pulse_shift": [0, 0, 0, 0, 0, 0, 0],
-            "mpinc": 1500,  # us
+            "mpinc": 2400,  # us
             "pulse_len": 300,  # us
             "nrang": 75,  # range gates
             "frang": 180,  # first range gate, in km
