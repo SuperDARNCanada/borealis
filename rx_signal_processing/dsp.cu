@@ -316,7 +316,7 @@ namespace {
     auto filter_outputs_h = dp->get_filter_outputs_h();
     auto dm_rates = dp->get_dm_rates();
     drop_bad_samples(filter_outputs_h.back(), output_samples, samps_per_stage, taps_per_stage,
-                     dm_rates, dp->get_num_antennas(), dp->get_slice_info().size());
+                     dm_rates, dp->get_num_antennas(), rx_slice_info.size());
 
     // For each antenna, for each frequency.
     auto num_samples_after_dropping = output_samples.size()/
@@ -406,7 +406,7 @@ namespace {
     std::vector<std::vector<std::vector<cuComplex*>>> all_stage_ptrs;
     #ifdef ENGINEERING_DEBUG
       for (uint32_t i=0; i<filter_outputs_h.size(); i++) {
-        auto ptrs = make_ptrs_vec(filter_outputs_h[i], dp->get_slice_info().size(),
+        auto ptrs = make_ptrs_vec(filter_outputs_h[i], rx_slice_info.size(),
                             dp->get_num_antennas(), samples_per_antenna[i]);
         all_stage_ptrs.push_back(ptrs);
       }
@@ -499,7 +499,7 @@ namespace {
       dataset->set_numberofranges(rx_slice_info[i].num_ranges);
       dataset->set_numberoflags(rx_slice_info[i].lags.size());
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
-    } // close loop over frequencies.
+    } // close loop over frequencies (number of slices).
 
     pd.set_rf_samples_location(dp->get_shared_memory_name());
     pd.set_sequence_num(dp->get_sequence_num());
@@ -1212,16 +1212,10 @@ double DSPCore::get_sequence_start_time()
 }
 
 /**
- * @brief      Gets the vector of slice identifiers.
+ * @brief      Gets the vector of slice information, rx_slice structs.
  *
- * @return     The vector of slice identifiers.
+ * @return     The vector of rx_slice structs with slice information.
  */
-/*std::vector<uint32_t> DSPCore::get_slice_ids()
-{
-  return slice_ids;
-}
-*/
-
  std::vector<rx_slice> DSPCore::get_slice_info()
  {
   return slice_info;
