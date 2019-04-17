@@ -314,8 +314,7 @@ namespace {
     auto filter_outputs_h = dp->get_filter_outputs_h();
     auto dm_rates = dp->get_dm_rates();
     drop_bad_samples(filter_outputs_h.back(), output_samples, samps_per_stage, taps_per_stage,
-                     dm_rates, dp->get_num_antennas(), dp->get_rx_freqs().size());
-    // TODO convert to , rx_slice_info.size()); instead of rx_freqs().size()?
+                     dm_rates, dp->get_num_antennas(), dp->get_slice_info().size());
 
     // For each antenna, for each frequency.
     auto num_samples_after_dropping = output_samples.size()/
@@ -405,7 +404,7 @@ namespace {
     std::vector<std::vector<std::vector<cuComplex*>>> all_stage_ptrs;
     #ifdef ENGINEERING_DEBUG
       for (uint32_t i=0; i<filter_outputs_h.size(); i++) {
-        auto ptrs = make_ptrs_vec(filter_outputs_h[i], dp->get_rx_freqs().size(),
+        auto ptrs = make_ptrs_vec(filter_outputs_h[i], dp->get_slice_info().size(),
                             dp->get_num_antennas(), samples_per_antenna[i]);
         all_stage_ptrs.push_back(ptrs);
       }
@@ -626,25 +625,23 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * @param[in]  sequence_num                The pulse sequence number for which will be acknowledged.
  * @param[in]  rx_rate                     The USRP sampling rate.
  * @param[in]  output_sample_rate          The final decimated output sample rate.
- * @param[in]  rx_freqs                    The receive freqs in Hz.
  * @param[in]  filter_taps                 The filter taps for each stage.
  * @param[in]  beam_phases                 The beam phases.
- * @param[in]  beam_direction_counts       The beam direction counts.
  * @param[in]  driver_initialization_time  The driver initialization time.
  * @param[in]  sequence_start_time         The sequence start time.
- * @param[in]  slice_ids                   The slice identifiers.
  * @param[in]  dm_rates                    The decimation rates.
+ * @param[in]  slice_info                  The slice info given as a vector of rx_slice structs.
  *
  * The constructor creates a new CUDA stream and initializes the timing events. It then opens the
  * shared memory with the received RF samples for a pulse sequence.
  */
 DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::socket_t *data_socket,
                   SignalProcessingOptions &sig_options, uint32_t sequence_num,
-                  double rx_rate, double output_sample_rate, std::vector<double> rx_freqs,
+                  double rx_rate, double output_sample_rate, 
                   std::vector<std::vector<float>> filter_taps,
-                  std::vector<cuComplex> beam_phases, std::vector<uint32_t> beam_direction_counts,
+                  std::vector<cuComplex> beam_phases,
                   double driver_initialization_time, double sequence_start_time,
-                  std::vector<uint32_t> slice_ids, std::vector<uint32_t> dm_rates,
+                  std::vector<uint32_t> dm_rates,
                   std::vector<rx_slice> slice_info) :
   sequence_num(sequence_num),
   rx_rate(rx_rate),
@@ -655,13 +652,9 @@ DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::s
   sig_options(sig_options),
   filter_taps(filter_taps),
   beam_phases(beam_phases),
-  //beam_direction_counts(beam_direction_counts),
   driver_initialization_time(driver_initialization_time),
   sequence_start_time(sequence_start_time),
-
-  slice_info(slice_info), // TODO remove slice_ids and rx_freqs for slice_info vector
-
-  slice_ids(slice_ids),
+  slice_info(slice_info),
   dm_rates(dm_rates)
 
 {
@@ -962,7 +955,6 @@ void DSPCore::cuda_postprocessing_callback(uint32_t total_antennas,
 
   allocate_and_copy_host(total_output_samples.back(), filter_outputs_d.back());
 
-  rx_freqs = freqs;
   num_rf_samples = num_samples_rf;
   num_antennas = total_antennas;
   this->samples_per_antenna = samples_per_antenna;
@@ -1088,15 +1080,6 @@ std::vector<cuComplex*> DSPCore::get_filter_outputs_h()
   return filter_outputs_h;
 }
 
-/**
- * @brief      Get the vector of host side frequencies.
- *
- * @return     The receive freqs vector.
- */
-/*std::vector<double> DSPCore::get_rx_freqs()
-{
-  return rx_freqs;
-}*/
 /**
  * @brief      Gets the CUDA stream this DSPCore's work is associated to.
  *

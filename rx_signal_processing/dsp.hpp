@@ -66,7 +66,7 @@ typedef struct rx_slice
  */
 class DSPCore {
  public:
-  void cuda_postprocessing_callback(std::vector<double> freqs, uint32_t total_antennas,
+  void cuda_postprocessing_callback(uint32_t total_antennas,
                                             uint32_t num_samples_rf,
                                             std::vector<uint32_t> samples_per_antenna,
                                             std::vector<uint32_t> total_output_samples);
@@ -74,12 +74,11 @@ class DSPCore {
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num,
-                    double rx_rate, double output_sample_rate, std::vector<double> freqs,
+                    double rx_rate, double output_sample_rate, 
                     std::vector<std::vector<float>> filter_taps,
                     std::vector<cuComplex> beam_phases,
-                    std::vector<uint32_t> beam_direction_counts,
                     double driver_initialization_time, double sequence_start_time,
-                    std::vector<uint32_t> slice_ids, std::vector<uint32_t> dm_rates,
+                    std::vector<uint32_t> dm_rates,
                     std::vector<rx_slice> slice_info);
 
   ~DSPCore(); //destructor
@@ -101,7 +100,6 @@ class DSPCore {
   void allocate_output(uint32_t num_output_samples);
   std::vector<std::vector<float>> get_filter_taps();
   uint32_t get_num_antennas();
-  std::vector<double> get_rx_freqs();
   float get_total_timing();
   float get_decimate_timing();
   void allocate_and_copy_host(uint32_t num_output_samples, cuComplex *output_d);
@@ -115,11 +113,9 @@ class DSPCore {
   double get_output_sample_rate();
   double get_driver_initialization_time();
   double get_sequence_start_time();
-  //std::vector<uint32_t> get_slice_ids();
   std::vector<rx_slice> get_slice_info();
   cudaStream_t get_cuda_stream();
   std::vector<cuComplex> get_beam_phases();
-  //std::vector<uint32_t> get_beam_direction_counts();
   std::string get_shared_memory_name();
   void start_decimate_timing();
   void stop_timing();
@@ -209,9 +205,6 @@ class DSPCore {
   //! A host side vector for the rf samples.
   std::vector<cuComplex> rf_samples_h;
 
-  //! A vector containing the host side rx frequencies.
-  std::vector<double> rx_freqs;
-  
   //! The number of total antennas.
   uint32_t num_antennas;
 
@@ -220,9 +213,6 @@ class DSPCore {
 
   //! A set of beam angle phases for each beam direction.
   std::vector<cuComplex> beam_phases;
-
-  //! Each entry holds the number of beam directions for an RX frequency.
-  //std::vector<uint32_t> beam_direction_counts;
 
   //! A handler for a shared memory section.
   SharedMemoryHandler shm;
@@ -233,9 +223,7 @@ class DSPCore {
   //! Timestamp of when the sequence began. Seconds since epoch.
   double sequence_start_time;
 
-/*  //! Identifiers for each slice
-  std::vector<uint32_t> slice_ids;*/
-
+  //! Slice information given from rx_slice structs
   std::vector<rx_slice> slice_info;
 
 

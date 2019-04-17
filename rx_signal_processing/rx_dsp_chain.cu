@@ -227,15 +227,13 @@ int main(int argc, char **argv){
       }()
     );
 
-
-
     auto complex_taps = filters.get_mixed_filter_taps();
 
     DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
                              sig_options, sp_packet.sequence_num(), rx_rate, output_sample_rate,
-                             rx_freqs, filter_taps, beam_phases,
-                             beam_direction_counts, rx_metadata.initialization_time(),
-                             rx_metadata.sequence_start_time(), slice_ids, dm_rates, slice_info);
+                             filter_taps, beam_phases,
+                             rx_metadata.initialization_time(),
+                             rx_metadata.sequence_start_time(), dm_rates, slice_info);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
@@ -321,7 +319,7 @@ int main(int argc, char **argv){
       prev_output = last_filter_output;
     }
 
-    dp->cuda_postprocessing_callback(rx_freqs, total_antennas, samples_needed, samples_per_antenna,
+    dp->cuda_postprocessing_callback(total_antennas, samples_needed, samples_per_antenna,
                                       total_output_samples);
 
   } //for(;;)
