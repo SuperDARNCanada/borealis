@@ -59,6 +59,8 @@ DATA_TEMPLATE = {
     "experiment_string" : None, # Name of the experiment file.
     "station" : None, # Three letter radar identifier.
     "num_sequences": None, # Number of sampling periods in the integration time.
+    "num_ranges": None, # Number of ranges to calculate correlations for
+    "range_sep": None, # range gate separation (equivalent distance between samples)
     "first_range_rtt" : None, # Round trip time of flight to first range in microseconds.
     "first_range" : None, # Distance to first range in km.
     "rx_sample_rate" : None, # Sampling rate of the samples being written to file in Hz.
@@ -704,11 +706,11 @@ class DataWrite(object):
                 find_expectation_value(intf_acfs[slice_id]['data'], parameters, 'intf_acfs')
 
 
-            unneeded_fields = ['antenna_arrays_order', 'data']
+            unneeded_fields = ['antenna_arrays_order', 'data', 'num_ranges', 'num_lags']
 
             for slice_id, parameters in parameters_holder.items():
                 parameters['data_descriptors'] = ['num_ranges', "num_lags"]
-                parameters['data_dimensions'] = np.array([0,0],dtype=np.uint32) #TODO
+                parameters['data_dimensions'] = np.array([parameters["num_ranges"],parameters["num_lags"]],dtype=np.uint32) #TODO
                 for field in unneeded_fields:
                     parameters.pop(field, None)
 
@@ -984,7 +986,8 @@ class DataWrite(object):
                 parameters['experiment_string'] = integration_meta.experiment_string
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = integration_meta.nave
-
+                parameters['num_ranges'] = integration_meta.nrang
+                parameters['range_sep'] = integration_meta.rsep
                 #time to first range and back. convert to meters, div by c then convert to us
                 rtt = (rx_freq.frang * 2 * 1.0e3 / speed_of_light) * 1.0e6
                 parameters['first_range_rtt'] = np.float32(rtt)
