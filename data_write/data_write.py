@@ -986,8 +986,8 @@ class DataWrite(object):
                 parameters['experiment_string'] = integration_meta.experiment_string
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = integration_meta.nave
-                parameters['num_ranges'] = integration_meta.nrang
-                parameters['range_sep'] = integration_meta.rsep
+                parameters['num_ranges'] = np.uint32(rx_freq.nrang)
+                parameters['range_sep'] = np.float32(rx_freq.rsep)
                 #time to first range and back. convert to meters, div by c then convert to us
                 rtt = (rx_freq.frang * 2 * 1.0e3 / speed_of_light) * 1.0e6
                 parameters['first_range_rtt'] = np.float32(rtt)
