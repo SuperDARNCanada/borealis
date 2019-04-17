@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# this file is for plotting data taken using the UHD example for txrx loopback.
+
 import sys
 import deepdish
 import random

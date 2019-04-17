@@ -121,6 +121,9 @@ class ParseData(object):
 
         self.processed_data = None
 
+        self._rx_rate = 0.0
+        self._output_sample_rate = 0.0
+
         self._bfiq_available = False
         self._bfiq_accumulator = self.nested_dict()
 
@@ -283,6 +286,9 @@ class ParseData(object):
 
         self._timestamps.append(self.processed_data.sequence_start_time)
 
+        self._rx_rate = self.processed_data.rx_sample_rate
+        self._output_sample_rate = self.processed_data.output_sample_rate
+
         for data_set in self.processed_data.outputdataset:
             self._slice_ids.add(data_set.slice_id)
 
@@ -416,6 +422,24 @@ class ParseData(object):
             python list: A list of sequence timestamps from the processed data packets
         """
         return self._timestamps
+
+    @property
+    def rx_rate(self):
+        """Return the rx_rate of the data in the data packet
+
+        Returns:
+            float: sampling rate in Hz. 
+        """
+        return self._rx_rate
+
+    @property
+    def output_sample_rate(self):
+        """Return the output rate of the filtered, decimated data in the data packet.
+
+        Returns:
+            float: output sampling rate in Hz. 
+        """
+        return self._output_sample_rate
 
     @property
     def slice_ids(self):
@@ -855,7 +879,7 @@ class DataWrite(object):
 
             param['data'] = np.concatenate(samples_list)
 
-            param['rx_sample_rate'] = np.float32(self.options.rx_sample_rate)
+            param['rx_sample_rate'] = np.float32(data_parsing.rx_rate)
 
             total_ants = self.options.main_antenna_count + self.options.intf_antenna_count
             param['num_samps'] = np.uint32(len(samples_list[0])/total_ants)
@@ -965,7 +989,7 @@ class DataWrite(object):
                 rtt = (rx_freq.frang * 2 * 1.0e3 / speed_of_light) * 1.0e6
                 parameters['first_range_rtt'] = np.float32(rtt)
                 parameters['first_range'] = np.float32(rx_freq.frang)
-                parameters['rx_sample_rate'] = np.float32(self.options.third_stage_sample_rate)
+                parameters['rx_sample_rate'] = data_parsing.output_sample_rate # this applies to pre-bf and bfiq
                 parameters['scan_start_marker'] = integration_meta.scan_flag # Should this change to scan_start_marker?
                 parameters['int_time'] = np.float32(integration_meta.integration_time)
                 parameters['tx_pulse_len'] = np.uint32(rx_freq.pulse_len)

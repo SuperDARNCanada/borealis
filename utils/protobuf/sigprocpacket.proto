@@ -4,14 +4,17 @@ package sigprocpacket;
 
 message SigProcPacket {
     repeated RXChan rxchannel = 1; // REVIEW #28 spec?
-    uint32 sequence_num = 2;
-    double kerneltime = 3;
-    float sequence_time = 4;
-    float offset_to_first_rx_sample = 5;
+    repeated DMStage decimation_stages = 2;
+    uint32 sequence_num = 3;
+    double kerneltime = 4;
+    float sequence_time = 5;
+    float offset_to_first_rx_sample = 6;
+    double rxrate = 7;
+    double output_sample_rate = 8;
 
     message RXChan {
         uint32 slice_id = 1;
-        double rxfreq = 2; // REVIEW #28 Does this need to be a double?
+        double rxfreq = 2; // this is offset frequency from centre freq
         uint32 nrang = 3;
         float frang = 4;
         float rsep = 5;
@@ -32,6 +35,13 @@ message SigProcPacket {
             uint32 pulse_2 = 2;
             uint32 lag_num = 3;
         }
+    }
+
+    message DMStage {
+        uint32 stage_num = 1;
+        double input_rate = 2;
+        uint32 dm_rate = 3;
+        repeated float filter_taps = 4;
     }
 
 }

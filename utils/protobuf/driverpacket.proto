@@ -5,13 +5,14 @@ package driverpacket;
 message DriverPacket {
   repeated SamplesBuffer channel_samples = 1;
   uint32 sequence_num = 2;
-  double txrate = 3;
-  double txcenterfreq = 4;
-  double rxcenterfreq = 5;
-  uint32 numberofreceivesamples = 6;
-  double timetosendsamples = 7;
-  bool SOB = 8;
-  bool EOB = 9;
+  double rxrate = 3;
+  double txrate = 4;
+  double txcenterfreq = 5;
+  double rxcenterfreq = 6;
+  uint32 numberofreceivesamples = 7;
+  double timetosendsamples = 8;
+  bool SOB = 9;
+  bool EOB = 10;
 
   message SamplesBuffer {
     repeated float real = 1;

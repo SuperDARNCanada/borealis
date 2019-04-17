@@ -67,10 +67,10 @@ class AveragingPeriod(ScanClassBase):
         in less time.
     """
 
-    def __init__(self, ave_keys, ave_slice_dict, ave_interface, options, slice_to_beamorder_dict,
-                 slice_to_beamdir_dict):
+    def __init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata,
+                 slice_to_beamorder_dict, slice_to_beamdir_dict):
 
-        ScanClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, options)
+        ScanClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata)
 
         self.slice_to_beamorder = slice_to_beamorder_dict
         self.slice_to_beamdir = slice_to_beamdir_dict
@@ -120,23 +120,6 @@ class AveragingPeriod(ScanClassBase):
             self.sequences.append(Sequence(*params))
 
         self.one_pulse_only = False
-
-        #for beam_iter in len(beams[self.slice_ids[0]]):
-
-        #self.beamdir = {}
-        #self.scan_beams = {}
-        #for slice_id in self.slice_ids:
-        #    self.beamdir[slice_id] = self.slice_dict[slice_id]['beam_angle']
-        #    self.scan_beams[slice_id] = self.slice_dict[slice_id]['beam_order']
-
-        #slice_to_beamdir_dict = self.set_beamdirdict(beam_iter)
-
-        # Build an ordered list of sequences
-        # A sequence is a list of pulses in order
-        # A pulse is a dictionary with all required information for that pulse.
-        #sequence_dict_list = self.build_sequences(slice_to_beamdir_dict,
-        #                                               experiment.txctrfreq,
-        #                                               experiment.txrate, options)  # TODO pass in only options needed.
 
 
     def get_sequence_slice_ids(self):
@@ -198,7 +181,7 @@ class AveragingPeriod(ScanClassBase):
 
         return slice_to_beamdir_dict
 
-    def build_sequences(self, slice_to_beamdir_dict, txctrfreq, txrate, options):  # TODO fix and input only options used or get from init
+    def build_sequences(self, slice_to_beamdir_dict):
         """
         Build a list of sequences to iterate through when transmitting.
          
@@ -219,8 +202,7 @@ class AveragingPeriod(ScanClassBase):
         # a pulse data is a dictionary of the required data for the pulse.
         for sequence in self.sequences:
             # create pulse dictionary.
-            sequence_dict = sequence.build_pulse_transmit_data(slice_to_beamdir_dict,
-                                                               txctrfreq, txrate, options)
+            sequence_dict = sequence.build_pulse_transmit_data(slice_to_beamdir_dict)
 
             # Just alternating sequences
 

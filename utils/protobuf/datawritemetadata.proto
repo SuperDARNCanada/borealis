@@ -10,6 +10,7 @@ message IntegrationTimeMetadata {
   uint32 last_seqn_num = 5;
   bool scan_flag  = 6;
   double integration_time  = 7;
+  double output_sample_rate = 8;
 
   message SequenceType {
     repeated RXChan rxchannel = 1;
@@ -24,7 +25,7 @@ message IntegrationTimeMetadata {
       bool rx_only = 5;
       uint32 pulse_len = 6;
       uint32 tau_spacing = 7;
-      uint32 rxfreq = 8;
+      float rxfreq = 8;
       PulseTable ptab = 9;
       bool acf = 10;
       bool xcf = 11;

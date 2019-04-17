@@ -29,5 +29,5 @@ import os
 
 Import('*')
 
-Prog('n200_test_packet', Glob("./*.c*"), with_libs='utils::utils',
-     LIBS=['protobuf','pthread','zmq','rt'])
+#Prog('dsp_input_sim', Glob("./dsp_input_sim.cpp"), with_libs='utils::utils',
+#     LIBS=['protobuf','pthread','zmq', 'boost_system', 'rt'])
