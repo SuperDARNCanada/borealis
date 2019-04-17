@@ -41,7 +41,8 @@ elif [ "$2" = "debug" ] || [ "$2" = "engineeringdebug" ]; then
 #    start_datawrite="sleep 0.001s; python3 data_write/data_write.py --enable-bfiq --enable-pre-bfiq --enable-tx --enable-raw-rf; bash"
     start_datawrite="sleep 0.001s; python3 data_write/data_write.py --enable-pre-bfiq --enable-raw-rf --enable-raw-acfs; bash"
     start_usrp_driver="sleep 0.001s; source mode "$2" ; gdb -ex start usrp_driver 2>usrp_output.txt; bash"
-    start_dsp="sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
+#    start_dsp="sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
+    start_dsp="sleep 0.001s; source mode release; signal_processing; bash;"
     start_tids="sleep 0.001s; python3 usrp_drivers/set_affinity.py; bash"
 else
     echo "Mode '$2' is unknown, exiting without running Borealis"
