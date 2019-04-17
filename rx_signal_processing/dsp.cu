@@ -217,13 +217,15 @@ namespace {
   }
 
   /**
-   * @brief      Finds correlations from two sets of samples.
+   * @brief      Finds correlations from two sets of samples. Calculates autocorrelation by
+   *             passing in the same sample set as both beamformed_samples_1 and beamformed_samples_2. 
    *
    * @param      beamformed_samples_1   The first set of beamformed samples for each beam.
    * @param      beamformed_samples_2   The second set of beamformed samples for each beam.
    * @param      corr_results           A set of vectors where correlation results are stored.
    * @param[in]  rx_slice_info          A vector of the info needed from each slice.
-   * @param[in]  num_samples            The number samples for each beam.
+   * @param[in]  num_samples            The number samples for each beam contained in the beamformed_samples set.
+   *                                    Assumed to be equal for both sample sets.
    *
    * For each slice a correlation matrix is build for all the beams in that slice. Values
    * corresponding to particular lags and range gates are selected from the final data. This

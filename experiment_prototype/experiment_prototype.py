@@ -1322,7 +1322,7 @@ class ExperimentPrototype(object):
                 print('Rsep, lag_table, xcf, and acfint will not be used because acf is '
                               'not True.')
             if 'rsep' not in exp_slice.keys():
-                slice_with_defaults['rsep'] = None
+                slice_with_defaults['rsep'] = 0.0
             if 'lag_table' not in exp_slice.keys():
                 slice_with_defaults['lag_table'] = []
 

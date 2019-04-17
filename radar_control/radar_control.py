@@ -208,8 +208,9 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         chan_add.rsep = slice_dict[slice_id]['rsep']
         for beamdir in beam_dict[slice_id]:
             beam_add = chan_add.beam_directions.add()
-            # beamdir is a list (len = total antennas, main and interferometer) with phase for each
-            # antenna for that beam direction
+            # Don't need to send channel numbers, will always send beamdir with length = total antennas.
+            # Beam directions are formated e^i*phi so that a 0 will indicate not
+            # to receive on that channel.
             for antenna_num, phi in enumerate(beamdir):
                 phase_add = beam_add.phase.add()
                 if antenna_num in slice_dict[slice_id]['rx_main_antennas'] or antenna_num - main_antenna_count in slice_dict[slice_id]['rx_int_antennas']:
@@ -224,9 +225,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             lag_add.pulse_1 = lag[0]
             lag_add.pulse_2 = lag[1]
             lag_add.lag_num = int(lag[1] - lag[0])
-    # Don't need to send channel numbers, will always send with length = total antennas.
-    # TODO : Beam directions will be formated e^i*phi so that a 0 will indicate not
-    # to receive on that channel. ** make this update phase = 0 on channels not included.
+
 
 
     # Brian requests sequence metadata for timeouts
@@ -393,7 +392,8 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 rxchan_add.rsep = sequence.slice_dict[slice_id]['rsep']
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = rxchan_add.ltab.lag.add()
-                    lag_add.pulse_position = lag
+                    for pul_pos in lag:
+                        lag_add.pulse_position[:] = lag
                     lag_add.lag_num = int(lag[1] - lag[0])
 
             rxchan_add.comment = comment_string + '\n' + sequence.slice_dict[slice_id]['comment']

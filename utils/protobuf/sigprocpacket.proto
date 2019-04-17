@@ -15,11 +15,12 @@ message SigProcPacket {
     message RXChan {
         uint32 slice_id = 1;
         double rxfreq = 2; // this is offset frequency from centre freq
-        uint32 nrang = 3;
-        float frang = 4;
-        float rsep = 5;
-        repeated BeamDirections beam_directions = 6;
-        repeated LagPair lags = 7;
+        repeated BeamDirections beam_directions = 3;
+        uint32 nrang = 4; 
+        float frang = 5;
+        float rsep = 6; // wil be = 0 if no acfs.
+        repeated LagPair lags = 7; // will be empty if no acfs. 
+
 
         message BeamDirections {
             repeated Phase phase = 1; /* must be length = number main + intf antennas */
