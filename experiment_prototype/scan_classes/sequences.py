@@ -99,6 +99,9 @@ class Sequence(ScanClassBase):
     """
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
+        """
+        :param transmit_metadata: metadata from the config file that is useful here.
+        """
 
         # TODO make diagram(s) for pulse combining algorithm
         # TODO make diagram for pulses that are repeats, showing clearly what intra_pulse_start_time,
