@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+
+# Copyright 2019 SuperDARN Canada
+#
+# scd_utils.py
+# 2019-04-18
+# Utilites for working with scd files.
+
 import datetime as dt
 import collections
 import shutil
@@ -96,7 +104,7 @@ class SCDUtils(object):
                 f.write("{}\n".format(line))
 
 
-    def add_line(self, mmddyy, hhmm, prio, experiment, duration='-'):
+    def add_line(self, mmddyy, hhmm, experiment, prio=0, duration='-'):
         """Adds a new line to the SCD.
 
         Args:
@@ -144,7 +152,7 @@ class SCDUtils(object):
 
         self.write_scd(new_scd)
 
-    def remove_line(self, mmddyy, hhmm, prio, experiment, duration='-'):
+    def remove_line(self, mmddyy, hhmm, experiment, prio=0, duration='-'):
         """Summary
 
         Args:
@@ -221,19 +229,19 @@ if __name__ == "__main__":
 
     scd_util = SCDUtils(filename)
 
-    scd_util.add_line("04/04/2019", "10:43", 0, "twofsound")
-    #scd_util.add_line("04/04/2019", "10:43", 0, "twofsound")
-    scd_util.add_line("04/07/2019", "10:43", 0, "twofsound")
-    scd_util.add_line("04/14/2019", "10:43", 0, "twofsound")
-    scd_util.add_line("04/14/2019", "10:43", 2, "twofsound")
-    scd_util.add_line("04/14/2019", "10:43", 1, "twofsound", 89)
-    scd_util.add_line("04/14/2019", "10:43", 1, "twofsound", 24)
-    scd_util.add_line("04/14/2019", "11:43", 0, "twofsound", 46)
-    scd_util.add_line("04/14/2019", "00:43", 0, "twofsound")
-    scd_util.add_line("04/08/2019", "15:43", 0, "twofsound", 57)
+    scd_util.add_line("04/04/2019", "10:43", "twofsound")
+    #scd_util.add_line("04/04/2019", "10:43","twofsound")
+    scd_util.add_line("04/07/2019", "10:43", "twofsound")
+    scd_util.add_line("04/14/2019", "10:43", "twofsound")
+    scd_util.add_line("04/14/2019", "10:43", "twofsound", 2)
+    scd_util.add_line("04/14/2019", "10:43", "twofsound", 1, 89)
+    scd_util.add_line("04/14/2019", "10:43", "twofsound", 1, 24)
+    scd_util.add_line("04/14/2019", "11:43", "twofsound", 46)
+    scd_util.add_line("04/14/2019", "00:43", "twofsound")
+    scd_util.add_line("04/08/2019", "15:43", "twofsound", 57)
 
 
-    scd_util.remove_line("04/14/2019", "10:43", 0, "twofsound")
+    scd_util.remove_line("04/14/2019", "10:43", "twofsound")
 
     print(scd_util.get_relevant_lines("04/14/2019", "10:43"))
 

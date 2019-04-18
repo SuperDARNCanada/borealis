@@ -1,6 +1,14 @@
+#!/usr/bin/python3
+
+# Copyright 2019 SuperDARN Canada
+#
+# email_utils.py
+# 2019-04-18
+# Utilites for sending emails via scripts.
+#
 import email
 import smtplib
-
+import email.mime.text
 
 class Emailer(object):
     """Utilities used to send logs during scheduling.
@@ -14,8 +22,11 @@ class Emailer(object):
     def __init__(self, file_of_emails):
         super(Emailer, self).__init__()
 
-        with open(file_of_emails, 'r') as f:
-            self.emails = f.readlines()
+        try:
+            with open(file_of_emails, 'r') as f:
+                self.emails = f.readlines()
+        except:
+            self.emails = []
 
         self.smtp = smtplib.SMTP('localhost')
         self.sender = "borealis"
