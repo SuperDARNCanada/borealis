@@ -6,12 +6,17 @@ class Emailer(object):
     """Utilities used to send logs during scheduling.
 
     Attributes:
-        emails (TYPE): list of emails to send to.
+        emails (list): list of emails to send to.
         sender (str): Name of the sender.
-        smtp (TYPE): SMTP client to send emails from. Going through localhost instead of some known
+        smtp (smtplib.SMTP): SMTP client to send emails from. Going through localhost instead of some known
         email client.
     """
     def __init__(self, file_of_emails):
+        """Inits the Emailer object.
+
+        Args:
+            file_of_emails (str): a file containing a list of emails.
+        """
         super(Emailer, self).__init__()
 
         with open(file_of_emails, 'r') as f:
@@ -25,8 +30,8 @@ class Emailer(object):
         """Send a log to the emails.
 
         Args:
-            subject (TYPE): Subject line for the log email.
-            log_file (TYPE): File name of the log.
+            subject (str): Subject line for the log email.
+            log_file (str): File name of the log.
         """
         try:
             with open(log_file, 'r') as f:
