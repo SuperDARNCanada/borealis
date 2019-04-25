@@ -216,7 +216,7 @@ class SWG(object):
             if "Discretionary Time" in line:
                 mode_to_use = modes["discretionary_time"]
 
-            param = {"mmddyyyy": "{}/{}/{}".format(month, start_day, year),
+            param = {"yyyymmdd": "{}{}{}".format(year, month, start_day),
                      "hhmm" : "{}:00".format(start_hr),
                      "experiment" : mode_to_use}
             parsed_params.append(param)
@@ -235,7 +235,7 @@ def main():
     scd_dir = args.scd_dir
     scd_logs = scd_dir + "/logs"
 
-    emailer = email_utils.Emailer(args.emails)
+    emailer = email_utils.Emailer(args.emails_filepath)
 
     if not os.path.exists(scd_dir):
         with open(scd_logs + "/server_error.txt", 'w') as f:
@@ -265,14 +265,14 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        site_scd.add_line(ex['mmddyyyy'], ex['hhmm'], ex['experiment'])
+                        site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'])
                     except ValueError as e:
                         error_msg = ("{logtime}: Unable to add line with parameters:\n"
                                      "\t {date} {time} {experiment}\n"
                                      "\t Exception thrown:\n"
                                      "\t\t {exception}\n")
                         error_msg = error_msg.format(logtime = today.strftime("%c"),
-                                                        date=ex['mmddyyyy'],
+                                                        date=ex['yyyymmdd'],
                                                         time=ex['hhmm'],
                                                         experiment=ex['experiment'],
                                                         exception=str(e))
@@ -294,10 +294,10 @@ def main():
                 success_msg = "All swg lines successfully scheduled.\n"
                 for site, site_scd in zip(sites, site_scds):
                     next_month = swg.get_next_month()
-                    mmddyyyy = next_month.strftime("%x")
+                    yyyymmdd = next_month.strftime("%Y%m%d")
                     hhmm = next_month.strftime("%H:%M")
 
-                    new_lines = site_scd.get_relevant_lines(mmddyyyy, hhmm)
+                    new_lines = site_scd.get_relevant_lines(yyyymmdd, hhmm)
 
                     text_lines = [site_scd.fmt_line(x) for x in new_lines]
 
