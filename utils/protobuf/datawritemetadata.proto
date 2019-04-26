@@ -3,14 +3,16 @@ syntax = "proto3";
 package datawritemetadata;
 
 message IntegrationTimeMetadata {
-  uint32 experiment_id = 1;
-  string experiment_string = 2;
-  repeated SequenceType sequences = 3;
-  uint32 nave = 4;
-  uint32 last_seqn_num = 5;
-  bool scan_flag  = 6;
-  double integration_time  = 7;
-  double output_sample_rate = 8;
+  int32 experiment_id = 1;
+  string experiment_name = 2;
+  string experiment_comment = 3;
+  float rx_centre_freq = 4;
+  repeated SequenceType sequences = 5;
+  uint32 nave = 6;
+  uint32 last_seqn_num = 7;
+  bool scan_flag  = 8;
+  double integration_time  = 9;
+  double output_sample_rate = 10;
 
   message SequenceType {
     repeated RXChan rxchannel = 1;
@@ -19,35 +21,40 @@ message IntegrationTimeMetadata {
 
     message RXChan {
       uint32 slice_id = 1;
-      float frang = 2;
-      uint32 nrang = 3;
-      repeated Beam beams = 4;
-      bool rx_only = 5;
-      uint32 pulse_len = 6;
-      uint32 tau_spacing = 7;
-      float rxfreq = 8;
-      PulseTable ptab = 9;
-      bool acf = 10;
-      bool xcf = 11;
-      bool acfint = 12;
-      float rsep = 13;
-      LagTable ltab = 14;
-      string comment = 15;
-      string interfacing = 16;
-      repeated uint32 rx_main_antennas = 17; // Main antennas received on for experiment slice.
-      repeated uint32 rx_intf_antennas = 18;
-
-      message Beam {
-      uint32 beamnum = 1;  // no channel phase data because beamforming already occurred
-      double beamazimuth = 2;
-      }
+      string slice_comment = 2;
+      string interfacing = 3;
+      bool rx_only = 4;
+      uint32 pulse_len = 5;
+      uint32 tau_spacing = 6;
+      float rxfreq = 7;
+      PulseTable ptab = 8;
+      PulsePhase pulse_phases = 9;
+      repeated uint32 rx_main_antennas = 10; // Main antennas received on for experiment slice.
+      repeated uint32 rx_intf_antennas = 11;
+      repeated Beam beams = 12;
+      bool acf = 13;
+      bool xcf = 14;
+      bool acfint = 15;
+      float frang = 16;
+      uint32 nrang = 17;
+      float rsep = 18;
+      LagTable ltab = 19;
 
       message PulseTable {  // length = length of sequence
-      repeated uint32 pulse_position = 1;
+        repeated uint32 pulse_position = 1;
+      }
+
+      message PulsePhase {  // length = length of sequence
+        repeated float pulse_phase = 1;
+      }
+
+      message Beam {
+        uint32 beamnum = 1;  // no channel phase data because beamforming already occurred
+        double beamazimuth = 2;
       }
 
       message LagTable {
-      repeated Lag lag = 1;
+        repeated Lag lag = 1;
 
         message Lag { // each Lag must have 2 pulse positions
           repeated uint32 pulse_position = 1;

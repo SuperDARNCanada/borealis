@@ -1247,7 +1247,7 @@ class ExperimentPrototype(object):
             slice_with_defaults['rx_int_antennas'] = \
                 [i for i in range(0, self.options.interferometer_antenna_count)]
         if 'pulse_shift' not in exp_slice:
-            slice_with_defaults['pulse_shift'] = [0 for i in range(0, len(
+            slice_with_defaults['pulse_shift'] = [0.0 for i in range(0, len(
                 slice_with_defaults['pulse_sequence']))]
         if 'scanboundflag' not in exp_slice and 'scanbound' not in exp_slice:
             slice_with_defaults['scanboundflag'] = False  # TODO discuss defaults, discuss whether scanboundflag is necessary

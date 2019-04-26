@@ -56,7 +56,10 @@ DATA_TEMPLATE = {
     "borealis_git_hash" : None, # Identifies the version of Borealis that made this data.
     "timestamp_of_write" : None, # Timestamp of when the record was written. Seconds since epoch.
     "experiment_id" : None, # Number used to identify experiment.
-    "experiment_string" : None, # Name of the experiment file.
+    "experiment_name" : None, # Name of the experiment file.
+    "experiment_comment" : None,  # Comment about the whole experiment
+    "slice_comment" : None, # Additional text comment that describes the slice.
+    "num_slices" : None, # Number of slices in the experiment at this integration time.
     "station" : None, # Three letter radar identifier.
     "num_sequences": None, # Number of sampling periods in the integration time.
     "num_ranges": None, # Number of ranges to calculate correlations for
@@ -74,20 +77,29 @@ DATA_TEMPLATE = {
     "main_antenna_count" : None, # Number of main array antennas.
     "intf_antenna_count" : None, # Number of interferometer array antennas.
     "freq" : None, # The frequency used for this experiment slice in kHz.
-    "comment" : None, # Additional text comment that describes the slice.
-    "num_samps" : None, # Number of samples in the sampling period.
-    "antenna_arrays_order" : None, # States what order the data is in. Describes the data layout.
+    "filtered_bandwidth" : None, # Bandwidth of the output iq data types.
+    "rx_centre_freq" : None, # the centre frequency of this data (for rawrf)
     "samples_data_type" : None, # C data type of the samples such as complex float.
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
+    "pulse_phase_offset" : None, # for pulse encoding phase in this inttime
     "lags" : None, # The lags created from combined pulses.
     "blanked_samples" : None, # Samples that have been blanked during TR switching.
     "sqn_timestamps" : None, # A list of GPS timestamps of the beginning of transmission for each
                              # sampling period in the integration time. Seconds since epoch.
     "beam_nums" : None, # A list of beam numbers used in this slice.
     "beam_azms" : None, # A list of the beams azimuths for each beam in degrees.
+    "noise_at_freq" : None, # Noise at the receive frequency, should be an array (one value per sequence) (TODO units??) (TODO document FFT resolution bandwidth for this value)
+    "noise_in_raw_band" : None, # Average noise in the sampling band (input sample rate) (TODO units??)
+    "num_samps" : None, # Number of samples in the sampling period.
+    "antenna_arrays_order" : None, # States what order the data is in. Describes the data layout.
     "data_descriptors" : None, # Denotes what each data dimension represents.
     "data_dimensions" : None, # The dimensions in which to reshape the data.
-    "data" : None # A contiguous set of data.
+    "data" : None, # A contiguous set of samples (complex float) at given sample rate
+    "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
+    "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
+    "main_acfs" : None, # Main array autocorrelations
+    "intf_acfs" : None, # Interferometer array autocorrelations
+    "xcfs" : None # Crosscorrelations between main and interferometer arrays
 }
 
 TX_TEMPLATE = {
@@ -683,6 +695,20 @@ class DataWrite(object):
 
             """
 
+            needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
+            "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
+            "num_sequences", "range_sep", "first_range_rtt", "first_range", "rx_sample_rate",
+            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", "num_pulses",
+            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
+            "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
+            "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs", 
+            "xcfs"]
+            # note num_lags and num_ranges are not in needed_fields but are used to make 
+            # correlation_dimensions
+
+            #unneeded_fields = ['data_dimensions', 'data_descriptors', 'antenna_arrays_order',
+            #'data', 'num_ranges', 'num_lags', 'num_samps', 'rx_centre_freq', 'pulse_phase_offset']
+
             main_acfs = data_parsing.mainacfs_accumulator
             xcfs = data_parsing.xcfs_accumulator
             intf_acfs = data_parsing.intfacfs_accumulator
@@ -706,13 +732,12 @@ class DataWrite(object):
                 find_expectation_value(intf_acfs[slice_id]['data'], parameters, 'intf_acfs')
 
 
-            unneeded_fields = ['antenna_arrays_order', 'data', 'num_ranges', 'num_lags']
-
             for slice_id, parameters in parameters_holder.items():
-                parameters['data_descriptors'] = ['num_ranges', "num_lags"]
-                parameters['data_dimensions'] = np.array([parameters["num_ranges"],parameters["num_lags"]],dtype=np.uint32) #TODO
-                for field in unneeded_fields:
-                    parameters.pop(field, None)
+                parameters['correlation_descriptors'] = ['num_ranges', "num_lags"]
+                parameters['correlation_dimensions'] = np.array([parameters["num_ranges"],parameters["num_lags"]],dtype=np.uint32) #TODO
+                for field in parameters:
+                    if field not in needed_fields:
+                        parameters.pop(field, None)
 
                 name = dataset_name.format(sliceid=slice_id, dformat="rawacf")
                 output_file = dataset_location.format(name=name)
@@ -721,15 +746,31 @@ class DataWrite(object):
 
                 write_file(output_file, parameters, two_hr_file_with_type)
 
-        def write_bfiq_params(parameters_holder):
+        def write_bfiqdat_params(parameters_holder):
             """
             write out any possible beamformed IQ data that has been parsed. Adds additional slice
-            info to each parameter dict. Some variables are captured from outer scope.
+            info to each parameter dict. Some variables are captured from outer scope. This is for writing
+            iq data that can be converted to iqdat (some correlation information is included). 
+            Note that if pulse_phase_offset != [0,0,0...] or blanked_samples != pulses,
+            the file will not be able to be converted to iqdat because that information is not accommodated 
+            by the DARN iqdat dmap format (Apr 2019)
 
             Args:
                 parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
 
             """
+
+            needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
+            "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
+            "num_sequences", "range_sep", "first_range_rtt", "first_range", "rx_sample_rate",
+            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", "num_pulses",
+            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", "pulse_phase_offset",
+            "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
+            "data_dimensions", "data_descriptors", "antenna_arrays_order", "data", "num_ranges",
+            "num_samps"]
+`
+            #unneeded_fields = ["num_lags", "correlation_descriptors", "rx_centre_freq", 
+            #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs"]
 
             bfiq = data_parsing.bfiq_accumulator
 
@@ -759,6 +800,81 @@ class DataWrite(object):
                                                           len(parameters['beam_nums']),
                                                           parameters['num_samps']], dtype=np.uint32)
 
+                for field in parameters:
+                    if field not in needed_fields:
+                        parameters.pop(field, None)
+
+                # for field in unneeded_fields:
+                #     parameters.pop(field, None)
+
+            for slice_id, parameters in parameters_holder.items():
+                name = dataset_name.format(sliceid=slice_id, dformat="bfiq")
+                output_file = dataset_location.format(name=name)
+
+                two_hr_file_with_type = self.slice_filenames[slice_id].format(ext="bfiq")
+
+                write_file(output_file, parameters, two_hr_file_with_type)
+
+
+        def write_bfiq_params(parameters_holder):
+            """
+            write out any possible beamformed IQ data that has been parsed. Adds additional slice
+            info to each parameter dict. Some variables are captured from outer scope. This is for writing 
+            basic data, with only the transmit information included (no correlation function information 
+            is written). If you would like correlation information, use bfiqdat.
+
+            Args:
+                parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
+
+            """
+
+            needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
+            "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
+            "num_sequences", "rx_sample_rate", "pulse_phase_offset",
+            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", "num_pulses",
+            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
+            "pulses", "sqn_timestamps", "beam_nums", "beam_azms", 
+            "data_dimensions", "data_descriptors", "antenna_arrays_order", "data", 
+            "num_samps"]
+`
+            #unneeded_fields = ["num_lags", "correlation_descriptors", "range_sep", "first_range_rtt", 
+            #"first_range", "rx_centre_freq", "correlation_dimensions", "main_acfs", "intf_acfs", 
+            #"xcfs", "lags", "blanked_samples", "num_ranges"]
+
+            bfiq = data_parsing.bfiq_accumulator
+
+            # Pop these off so we dont include them in later iteration.
+            data_descriptors = bfiq.pop('data_descriptors', None)
+
+            for slice_id in bfiq:
+                parameters = parameters_holder[slice_id]
+
+                parameters['data_descriptors'] = data_descriptors
+                parameters['antenna_arrays_order'] = []
+
+                flattened_data = []
+                if "main" in bfiq[slice_id]:
+                    parameters['antenna_arrays_order'].append("main")
+                    flattened_data.append(bfiq[slice_id]['main']['data'])
+                if "intf" in bfiq[slice_id]:
+                    parameters['antenna_arrays_order'].append("intf")
+                    flattened_data.append(bfiq[slice_id]['intf']['data'])
+
+                flattened_data = np.concatenate(flattened_data)
+                parameters['data'] = flattened_data
+
+                parameters['num_samps'] = np.uint32(bfiq[slice_id].pop('num_samps', None))
+                parameters['data_dimensions'] = np.array([len(bfiq[slice_id].keys()),
+                                                          integration_meta.nave,
+                                                          len(parameters['beam_nums']),
+                                                          parameters['num_samps']], dtype=np.uint32)
+
+                for field in parameters:
+                    if field not in needed_fields:
+                        parameters.pop(field, None)
+
+                # for field in unneeded_fields:
+                #     parameters.pop(field, None)
 
             for slice_id, parameters in parameters_holder.items():
                 name = dataset_name.format(sliceid=slice_id, dformat="bfiq")
@@ -772,12 +888,24 @@ class DataWrite(object):
         def write_pre_bfiq_params(parameters_holder):
             """
             Writes out any pre-beamformed IQ that has been parsed. Adds additional slice info
-            to each paramater dict. Some variables are captured from outer scope.
+            to each paramater dict. Some variables are captured from outer scope. Pre-beamformed iq
+            is the individual antenna received data. Antenna_arrays_order will list the antennas' order.
 
             Args:
                 parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
 
             """
+
+            needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
+            "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
+            "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
+            "num_pulses", "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
+            "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors", 
+            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset"]
+`
+            #unneeded_fields = ["num_lags", "correlation_descriptors", "rx_centre_freq", 
+            #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range_rtt", "first_range",
+            #"lags", "blanked_samples", "num_ranges"]
 
             pre_bfiq = data_parsing.pre_bfiq_accumulator
 
@@ -824,7 +952,6 @@ class DataWrite(object):
                                                               parameters['num_samps']],
                                                              dtype=np.uint32)
 
-
                     data = []
                     for k, data_dict in pre_bfiq[slice_id][stage].items():
                         if k in parameters['antenna_arrays_order']:
@@ -832,6 +959,11 @@ class DataWrite(object):
 
                     flattened_data = np.concatenate(data)
                     parameters['data'] = flattened_data
+
+
+                    for field in parameters:
+                        if field not in needed_fields:
+                            parameters.pop(field, None)
 
                     final_data_params[slice_id][stage] = parameters
 
@@ -851,15 +983,32 @@ class DataWrite(object):
             """
             Opens the shared memory location in the protobuf and writes the samples out to file.
             Write medium must be able to sustain high write bandwidth. Shared memory is destroyed
-            after write. Some variables are captured in scope. Some new members are added to the
-            parameter dict.
-
+            after write. Some variables are captured in scope. 
 
             Args:
                 param (Dict): A dict of parameters to write. Some will be removed.
 
 
             """
+
+            needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
+            "experiment_name", "experiment_comment", "num_slices", "station",
+            "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", 
+            "main_antenna_count", "intf_antenna_count", "samples_data_type", 
+            "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
+            "rx_centre_freq"]
+`
+            # Some fields don't make much sense when working with the raw rf. It's expected
+            # that the user will have knowledge of what they are looking for when working with
+            # this data. Note that because this data is not slice-specific a lot of slice-specific 
+            # data (ex. pulses, num_pulses, beam_nums, beam_azms) is not included (user must look 
+            # at the experiment they ran)
+
+            #unneeded_fields = ["num_lags", "lags", "num_ranges", "correlation_descriptors", "slice_comment", 
+            #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range", 
+            #"first_range_rtt", "num_pulses", "antenna_arrays_order", "pulse_phase_offset", 
+            #"blanked_samples", "pulses", "beam_nums", "beam_azms", "tx_pulse_len", "tau_spacing", "freq"]
+
             raw_rf = data_parsing.rawrf_locations
 
             # Don't need slice id here
@@ -892,12 +1041,7 @@ class DataWrite(object):
                                                 dtype=np.uint32)
             param['main_antenna_count'] = np.uint32(self.options.main_antenna_count)
             param['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
-            # These fields don't make much sense when working with the raw rf. It's expected
-            # that the user will have knowledge of what they are looking for when working with
-            # this data.
-            unneeded_fields = ['first_range', 'first_range_rtt', 'tx_pulse_len', 'tau_spacing',
-                               'num_pulses', 'num_lags', 'freq', 'pulses', 'lags',
-                               'blanked_samples', 'beam_nums', 'beam_azms', 'antenna_arrays_order']
+
 
             for field in unneeded_fields:
                 param.pop(field, None)
@@ -912,7 +1056,9 @@ class DataWrite(object):
                 mapfile.close()
 
         def write_tx_data():
-            """Writes out the tx samples and metadata for debugging purposes.
+            """
+            Writes out the tx samples and metadata for debugging purposes. 
+            Does not use same parameters of other writes.
 
             """
             tx_data = None
@@ -974,16 +1120,17 @@ class DataWrite(object):
 
 
 
-
         parameters_holder = {}
         for meta in integration_meta.sequences:
             for rx_freq in meta.rxchannel:
                 parameters = DATA_TEMPLATE.copy()
                 parameters['borealis_git_hash'] = self.git_hash.decode('utf-8')
-
                 parameters['timestamp_of_write'] = (write_time - epoch).total_seconds()
                 parameters['experiment_id'] = np.uint32(integration_meta.experiment_id)
-                parameters['experiment_string'] = integration_meta.experiment_string
+                parameters['experiment_name'] = integration_meta.experiment_name
+                parameters['experiment_comment'] = integration_meta.experiment_comment  
+                parameters['slice_comment'] = rx_freq.slice_comment
+                parameters['num_slices'] = len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = integration_meta.nave
                 parameters['num_ranges'] = np.uint32(rx_freq.nrang)
@@ -1002,9 +1149,10 @@ class DataWrite(object):
                 parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
-                parameters['comment'] = rx_freq.comment
+                parameters['rx_centre_freq'] = integration_meta.rx_centre_freq
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
+                parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phases.pulse_phase, dtype=np.float32)
 
                 lags = []
                 for lag in rx_freq.ltab.lag:
@@ -1013,16 +1161,21 @@ class DataWrite(object):
                 parameters['lags'] = np.array(lags, dtype=np.uint32)
 
                 parameters['blanked_samples'] = np.array(meta.blanks, dtype=np.uint32)
+                parameters['sqn_timestamps'] = data_parsing.timestamps
 
                 parameters['beam_nums'] = []
                 parameters['beam_azms'] = []
-
                 for beam in rx_freq.beams:
                     parameters['beam_nums'].append(np.uint32(beam.beamnum))
                     parameters['beam_azms'].append(beam.beamazimuth)
 
-                parameters['sqn_timestamps'] = data_parsing.timestamps
+                parameters['noise_at_freq'] = 0.0 # TODO update
+                parameters['noise_in_raw_band'] = 0.0 # TODO update
 
+                # num_samps, antenna_arrays_order, data_descriptors, data_dimensions, data
+                # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs
+                # all get set within the separate write functions.
+                
                 parameters_holder[rx_freq.slice_id] = parameters
 
         # Use multiprocessing to speed up writing. Each data type can be parsed and written by a
@@ -1130,9 +1283,9 @@ def main():
             if not first_time:
                 if data_parsing.sequence_num == final_integration:
 
-                    if integration_meta.experiment_string != current_experiment:
+                    if integration_meta.experiment_name != current_experiment:
                         data_write = DataWrite(options)
-                        current_experiment = integration_meta.experiment_string
+                        current_experiment = integration_meta.experiment_name
 
                     kwargs = dict(write_bfiq=args.enable_bfiq,
                                            write_pre_bfiq=args.enable_pre_bfiq,
