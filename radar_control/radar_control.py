@@ -323,7 +323,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     :param output_sample_rate: The output sample rate of the output data, defined by the
     experiment, in Hz.
     :param experiment_comment: The comment string for the experiment, user-defined.
-    :param rx_centre_freq: The receive centre frequency (Hz)
+    :param rx_centre_freq: The receive centre frequency (kHz)
     :param debug_samples: the debug samples for this integration period, to be written to the
     file if debug is set. This is a list of dictionaries for each Sequence in the
     AveragingPeriod. The dictionary is set up in the sample_building module function
@@ -337,7 +337,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     packet.experiment_id = experiment_id
     packet.experiment_name = experiment_name
     packet.experiment_comment = experiment_comment
-    packet.rx_centre_freq = rx_centre_freq
+    packet.rx_centre_freq = rx_centre_freq 
     packet.nave = nave
     packet.last_seqn_num = seqnum
     packet.scan_flag = scan_flag
