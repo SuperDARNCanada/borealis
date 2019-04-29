@@ -13,6 +13,7 @@ message IntegrationTimeMetadata {
   bool scan_flag  = 8;
   double integration_time  = 9;
   double output_sample_rate = 10;
+  float output_filter_bandwidth = 11;
 
   message SequenceType {
     repeated RXChan rxchannel = 1;

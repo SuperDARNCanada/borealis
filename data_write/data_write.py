@@ -77,7 +77,7 @@ DATA_TEMPLATE = {
     "main_antenna_count" : None, # Number of main array antennas.
     "intf_antenna_count" : None, # Number of interferometer array antennas.
     "freq" : None, # The frequency used for this experiment slice in kHz.
-    "filtered_bandwidth" : None, # Bandwidth of the output iq data types.
+    "filtered_3db_bandwidth" : None, # Bandwidth of the output iq data types.
     "rx_centre_freq" : None, # the centre frequency of this data (for rawrf)
     "samples_data_type" : None, # C data type of the samples such as complex float.
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
@@ -89,7 +89,8 @@ DATA_TEMPLATE = {
     "beam_nums" : None, # A list of beam numbers used in this slice.
     "beam_azms" : None, # A list of the beams azimuths for each beam in degrees.
     "noise_at_freq" : None, # Noise at the receive frequency, should be an array (one value per sequence) (TODO units??) (TODO document FFT resolution bandwidth for this value)
-    "noise_in_raw_band" : None, # Average noise in the sampling band (input sample rate) (TODO units??)
+    #"noise_in_raw_band" : None, # Average noise in the sampling band (input sample rate) (TODO units??)
+    #"rx_bandwidth" : None, # if the noise_in_raw_band is provided, the rx_bandwidth should be provided!
     "num_samps" : None, # Number of samples in the sampling period.
     "antenna_arrays_order" : None, # States what order the data is in. Describes the data layout.
     "data_descriptors" : None, # Denotes what each data dimension represents.
@@ -561,7 +562,7 @@ class DataWrite(object):
         # TODO: Complete this by parsing through the dictionary and write out to proper dmap format
         pass
 
-    def output_data(self, write_bfiq, write_pre_bfiq, write_raw_rf, write_tx, file_ext,
+    def output_data(self, write_bfiq, write_bfiqdat, write_pre_bfiq, write_raw_rf, write_tx, file_ext,
                     integration_meta, data_parsing, write_rawacf=True):
         """
         Parse through samples and write to file.
@@ -702,7 +703,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs", 
-            "xcfs"]
+            "xcfs", "noise_at_freq", "filtered_3db_bandwidth"]
             # note num_lags and num_ranges are not in needed_fields but are used to make 
             # correlation_dimensions
 
@@ -767,7 +768,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", "pulse_phase_offset",
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data", "num_ranges",
-            "num_samps"]
+            "num_samps", "noise_at_freq", "filtered_3db_bandwidth"]
 `
             #unneeded_fields = ["num_lags", "correlation_descriptors", "rx_centre_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs"]
@@ -835,7 +836,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", 
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data", 
-            "num_samps"]
+            "num_samps", "noise_at_freq", "filtered_3db_bandwidth"]
 `
             #unneeded_fields = ["num_lags", "correlation_descriptors", "range_sep", "first_range_rtt", 
             #"first_range", "rx_centre_freq", "correlation_dimensions", "main_acfs", "intf_acfs", 
@@ -901,7 +902,8 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
             "num_pulses", "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors", 
-            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset"]
+            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq", 
+            "filtered_3db_bandwidth"]
 `
             #unneeded_fields = ["num_lags", "correlation_descriptors", "rx_centre_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range_rtt", "first_range",
@@ -1007,7 +1009,8 @@ class DataWrite(object):
             #unneeded_fields = ["num_lags", "lags", "num_ranges", "correlation_descriptors", "slice_comment", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range", 
             #"first_range_rtt", "num_pulses", "antenna_arrays_order", "pulse_phase_offset", 
-            #"blanked_samples", "pulses", "beam_nums", "beam_azms", "tx_pulse_len", "tau_spacing", "freq"]
+            #"blanked_samples", "pulses", "beam_nums", "beam_azms", "tx_pulse_len", "tau_spacing", "freq",
+            #"noise_at_freq", "filtered_3db_bandwidth"]
 
             raw_rf = data_parsing.rawrf_locations
 
@@ -1149,6 +1152,7 @@ class DataWrite(object):
                 parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
+                parameters['filtered_3db_bandwidth'] = integration_meta.output_filter_bandwidth # TODO update
                 parameters['rx_centre_freq'] = integration_meta.rx_centre_freq
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
@@ -1169,8 +1173,7 @@ class DataWrite(object):
                     parameters['beam_nums'].append(np.uint32(beam.beamnum))
                     parameters['beam_azms'].append(beam.beamazimuth)
 
-                parameters['noise_at_freq'] = 0.0 # TODO update
-                parameters['noise_in_raw_band'] = 0.0 # TODO update
+                parameters['noise_at_freq'] = [0.0] # TODO update. should come from data_parsing
 
                 # num_samps, antenna_arrays_order, data_descriptors, data_dimensions, data
                 # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs
@@ -1190,6 +1193,10 @@ class DataWrite(object):
         if write_bfiq and data_parsing.bfiq_available:
             #procs.append(threading.Thread(target=write_bfiq_params, args=(parameters_holder.copy(), )))
             write_bfiq_params(parameters_holder.copy())
+
+        if write_bfiqdat and data_parsing.bfiq_available:
+            #procs.append(threading.Thread(target=write_bfiq_params, args=(parameters_holder.copy(), )))
+            write_bfiqdat_params(parameters_holder.copy())
 
         if write_pre_bfiq and data_parsing.pre_bfiq_available:
             #procs.append(threading.Thread(target=write_pre_bfiq_params,
@@ -1230,8 +1237,10 @@ def main():
                         default='hdf5')
     parser.add_argument('--enable-raw-acfs', help='Enable raw acf writing',
                         action='store_true')
-    parser.add_argument('--enable-bfiq', help='Enable beamformed iq writing',
+    parser.add_argument('--enable-bfiq', help='Enable beamformed basic iq writing',
                         action='store_true')
+     parser.add_argument('--enable-bfiqdat', help='Enable beamformed iqdat-style writing',
+                        action='store_true')   
     parser.add_argument('--enable-pre-bfiq', help='Enable individual antenna iq writing',
                         action='store_true')
     parser.add_argument('--enable-raw-rf', help='Save raw, unfiltered IQ samples. Requires HDF5.',
@@ -1288,6 +1297,7 @@ def main():
                         current_experiment = integration_meta.experiment_name
 
                     kwargs = dict(write_bfiq=args.enable_bfiq,
+                                           write_bfiqdat=args.enable_bfiqdat,
                                            write_pre_bfiq=args.enable_pre_bfiq,
                                            write_raw_rf=args.enable_raw_rf,
                                            write_tx=args.enable_tx,
@@ -1307,10 +1317,6 @@ def main():
             data_parsing.update(data)
             end = time.time()
             printing("Time to parse: {} ms".format((end-start)*1000))
-
-
-
-
 
 
 if __name__ == '__main__':
