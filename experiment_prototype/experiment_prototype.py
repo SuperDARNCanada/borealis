@@ -631,7 +631,6 @@ class ExperimentPrototype(object):
     def txctrfreq(self):
         """
         The transmission centre frequency that USRP is tuned to (kHz).
-        If you would like to change this value, note that it will take tuning time.
         """
         return self.__txctrfreq
 
@@ -669,7 +668,6 @@ class ExperimentPrototype(object):
     def rxctrfreq(self):
         """
         The receive centre frequency that USRP is tuned to (kHz).
-        If you would like to change this, note that it will take tuning time.
         """
         return self.__rxctrfreq
 
