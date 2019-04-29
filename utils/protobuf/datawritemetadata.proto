@@ -3,7 +3,7 @@ syntax = "proto3";
 package datawritemetadata;
 
 message IntegrationTimeMetadata {
-  int32 experiment_id = 1;
+  int64 experiment_id = 1;
   string experiment_name = 2;
   string experiment_comment = 3;
   float rx_centre_freq = 4;
