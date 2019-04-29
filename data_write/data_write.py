@@ -25,7 +25,7 @@ import posix_ipc as ipc
 import zmq
 import faulthandler
 from scipy.constants import speed_of_light
-
+import copy
 
 borealis_path = os.environ['BOREALISPATH']
 if not borealis_path:
@@ -792,6 +792,7 @@ class DataWrite(object):
                                                           len(parameters['beam_nums']),
                                                           parameters['num_samps']], dtype=np.uint32)
 
+
                 for field in list(parameters.keys()):
                     if field not in needed_fields:
                         parameters.pop(field, None)
@@ -967,9 +968,9 @@ class DataWrite(object):
             param['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
 
 
-            for field in list(parameters.keys()):
+            for field in list(param.keys()):
                 if field not in needed_fields:
-                    parameters.pop(field, None)
+                    param.pop(field, None)
 
             write_file(output_file, param, self.raw_rf_two_hr_name)
 
@@ -1093,7 +1094,7 @@ class DataWrite(object):
                     parameters['beam_nums'].append(np.uint32(beam.beamnum))
                     parameters['beam_azms'].append(beam.beamazimuth)
 
-                parameters['noise_at_freq'] = [0.0] # TODO update. should come from data_parsing
+                parameters['noise_at_freq'] = [0.0] * integration_meta.nave # TODO update. should come from data_parsing
 
                 # num_samps, antenna_arrays_order, data_descriptors, data_dimensions, data
                 # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs
@@ -1107,21 +1108,21 @@ class DataWrite(object):
 
         if write_rawacf:
             #procs.append(threading.Thread(target=do_acf))
-            write_correlations(parameters_holder.copy())
+            write_correlations(copy.deepcopy(parameters_holder))
             pass
 
         if write_bfiq and data_parsing.bfiq_available:
             #procs.append(threading.Thread(target=write_bfiq_params, args=(parameters_holder.copy(), )))
-            write_bfiq_params(parameters_holder.copy())
+            write_bfiq_params(copy.deepcopy(parameters_holder))
 
         if write_pre_bfiq and data_parsing.pre_bfiq_available:
             #procs.append(threading.Thread(target=write_pre_bfiq_params,
             #                        args=(parameters_holder.copy(), )))
-            write_pre_bfiq_params(parameters_holder.copy())
+            write_pre_bfiq_params(copy.deepcopy(parameters_holder))
 
         if write_raw_rf:
             # Just need first available slice paramaters.
-            one_slice_params = next(iter(parameters_holder.values())).copy()
+            one_slice_params = copy.deepcopy(next(iter(parameters_holder.values())))
             #procs.append(threading.Thread(target=write_raw_rf_params, args=(one_slice_params, )))
             write_raw_rf_params(one_slice_params)
         else:
