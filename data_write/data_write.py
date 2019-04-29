@@ -77,7 +77,7 @@ DATA_TEMPLATE = {
     "main_antenna_count" : None, # Number of main array antennas.
     "intf_antenna_count" : None, # Number of interferometer array antennas.
     "freq" : None, # The frequency used for this experiment slice in kHz.
-    "filtered_3db_bandwidth" : None, # Bandwidth of the output iq data types.
+    #"filtered_3db_bandwidth" : None, # Bandwidth of the output iq data types? can add later
     "rx_centre_freq" : None, # the centre frequency of this data (for rawrf)
     "samples_data_type" : None, # C data type of the samples such as complex float.
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
@@ -88,7 +88,7 @@ DATA_TEMPLATE = {
                              # sampling period in the integration time. Seconds since epoch.
     "beam_nums" : None, # A list of beam numbers used in this slice.
     "beam_azms" : None, # A list of the beams azimuths for each beam in degrees.
-    "noise_at_freq" : None, # Noise at the receive frequency, should be an array (one value per sequence) (TODO units??) (TODO document FFT resolution bandwidth for this value)
+    "noise_at_freq" : None, # Noise at the receive frequency, should be an array (one value per sequence) (TODO units??) (TODO document FFT resolution bandwidth for this value, should be = output_sample rate?)
     #"noise_in_raw_band" : None, # Average noise in the sampling band (input sample rate) (TODO units??)
     #"rx_bandwidth" : None, # if the noise_in_raw_band is provided, the rx_bandwidth should be provided!
     "num_samps" : None, # Number of samples in the sampling period.
@@ -703,7 +703,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs", 
-            "xcfs", "noise_at_freq", "filtered_3db_bandwidth"]
+            "xcfs", "noise_at_freq"]
             # note num_lags and num_ranges are not in needed_fields but are used to make 
             # correlation_dimensions
 
@@ -768,7 +768,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", "pulse_phase_offset",
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data", "num_ranges",
-            "num_samps", "noise_at_freq", "filtered_3db_bandwidth"]
+            "num_samps", "noise_at_freq"]
 `
             #unneeded_fields = ["num_lags", "correlation_descriptors", "rx_centre_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs"]
@@ -836,7 +836,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", 
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data", 
-            "num_samps", "noise_at_freq", "filtered_3db_bandwidth"]
+            "num_samps", "noise_at_freq"]
 `
             #unneeded_fields = ["num_lags", "correlation_descriptors", "range_sep", "first_range_rtt", 
             #"first_range", "rx_centre_freq", "correlation_dimensions", "main_acfs", "intf_acfs", 
@@ -902,8 +902,7 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
             "num_pulses", "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors", 
-            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq", 
-            "filtered_3db_bandwidth"]
+            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq"]
 `
             #unneeded_fields = ["num_lags", "correlation_descriptors", "rx_centre_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range_rtt", "first_range",
@@ -1010,7 +1009,7 @@ class DataWrite(object):
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range", 
             #"first_range_rtt", "num_pulses", "antenna_arrays_order", "pulse_phase_offset", 
             #"blanked_samples", "pulses", "beam_nums", "beam_azms", "tx_pulse_len", "tau_spacing", "freq",
-            #"noise_at_freq", "filtered_3db_bandwidth"]
+            #"noise_at_freq"]
 
             raw_rf = data_parsing.rawrf_locations
 
@@ -1152,7 +1151,6 @@ class DataWrite(object):
                 parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
-                parameters['filtered_3db_bandwidth'] = integration_meta.output_filter_bandwidth # TODO update
                 parameters['rx_centre_freq'] = integration_meta.rx_centre_freq
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
@@ -1309,7 +1307,6 @@ def main():
                     thread.daemon = True
                     thread.start()
                     data_parsing = ParseData()
-
 
             first_time = False
 
