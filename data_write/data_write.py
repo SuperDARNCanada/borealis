@@ -729,7 +729,7 @@ class DataWrite(object):
 
             for slice_id, parameters in parameters_holder.items():
                 parameters['correlation_descriptors'] = ['num_ranges', "num_lags"]
-                parameters['correlation_dimensions'] = np.array([parameters["num_ranges"],parameters["lags"].size[0]],dtype=np.uint32) #TODO
+                parameters['correlation_dimensions'] = np.array([parameters["num_ranges"], parameters["lags"].shape[0]],dtype=np.uint32) #TODO
                 for field in list(parameters.keys()):
                     if field not in needed_fields:
                         parameters.pop(field, None)
