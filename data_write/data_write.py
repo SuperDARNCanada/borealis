@@ -702,7 +702,7 @@ class DataWrite(object):
             # correlation_dimensions
 
             #unneeded_fields = ['data_dimensions', 'data_descriptors', 'antenna_arrays_order',
-            #'data', 'num_ranges', 'num_samps', 'rx_centre_freq', 'pulse_phase_offset']
+            #'data', 'num_ranges', 'num_samps', 'rx_center_freq', 'pulse_phase_offset']
 
             main_acfs = data_parsing.mainacfs_accumulator
             xcfs = data_parsing.xcfs_accumulator
@@ -760,7 +760,7 @@ class DataWrite(object):
             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range", 
             "lags", "num_ranges"]
 
-            #unneeded_fields = ["correlation_descriptors", "rx_centre_freq", 
+            #unneeded_fields = ["correlation_descriptors", "rx_center_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs"]                  
 
             bfiq = data_parsing.bfiq_accumulator
@@ -826,7 +826,7 @@ class DataWrite(object):
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors", 
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq"]
 
-            #unneeded_fields = ["correlation_descriptors", "rx_centre_freq", 
+            #unneeded_fields = ["correlation_descriptors", "rx_center_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range_rtt", "first_range",
             #"lags", "blanked_samples", "num_ranges"]
 
@@ -919,7 +919,7 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", 
             "main_antenna_count", "intf_antenna_count", "samples_data_type", 
             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
-            "rx_centre_freq"]
+            "rx_center_freq"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
@@ -1071,7 +1071,7 @@ class DataWrite(object):
                 parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
-                parameters['rx_centre_freq'] = integration_meta.rx_centre_freq
+                parameters['rx_center_freq'] = integration_meta.rx_centre_freq # Sorry, we'll convert to US English here
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
                 parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phases.pulse_phase, dtype=np.float32)
