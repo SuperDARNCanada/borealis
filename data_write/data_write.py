@@ -70,24 +70,23 @@ DATA_TEMPLATE = {
     "scan_start_marker" : None, # Designates if the record is the first in a scan.
     "int_time" : None, # Integration time in seconds.
     "tx_pulse_len" : None, # Length of the pulse in microseconds.
-    "tau_spacing" : None, # The minimum spacing between pulses, spacing between pulses is always a
-                          # multiple of this in microseconds.
-    "num_pulses" : None, # Number of pulses in sequence.
-    "num_lags" : None, # Number of lags in the lag table.
+    "tau_spacing" : None, # The minimum spacing between pulses in microseconds. 
+                          # Spacing between pulses is always a multiple of this.
     "main_antenna_count" : None, # Number of main array antennas.
     "intf_antenna_count" : None, # Number of interferometer array antennas.
     "freq" : None, # The frequency used for this experiment slice in kHz.
     #"filtered_3db_bandwidth" : None, # Bandwidth of the output iq data types? can add later
-    "rx_centre_freq" : None, # the centre frequency of this data (for rawrf)
+    "rx_center_freq" : None, # the center frequency of this data (for rawrf)
     "samples_data_type" : None, # C data type of the samples such as complex float.
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
-    "pulse_phase_offset" : None, # for pulse encoding phase in this inttime
-    "lags" : None, # The lags created from combined pulses.
-    "blanked_samples" : None, # Samples that have been blanked during TR switching.
+    "pulse_phase_offset" : None, # For pulse encoding phase. Contains one phase offset per pulse in pulses.
+    "lags" : None, # The lags created from two pulses in the pulses array.
+    "blanked_samples" : None, # Samples that have been blanked because they occurred during transmission times. 
+                              # Can differ from the pulses array due to multiple slices in a single sequence.
     "sqn_timestamps" : None, # A list of GPS timestamps of the beginning of transmission for each
                              # sampling period in the integration time. Seconds since epoch.
     "beam_nums" : None, # A list of beam numbers used in this slice.
-    "beam_azms" : None, # A list of the beams azimuths for each beam in degrees.
+    "beam_azms" : None, # A list of the beams azimuths for each beam in degrees off boresite.
     "noise_at_freq" : None, # Noise at the receive frequency, should be an array (one value per sequence) (TODO units??) (TODO document FFT resolution bandwidth for this value, should be = output_sample rate?)
     #"noise_in_raw_band" : None, # Average noise in the sampling band (input sample rate) (TODO units??)
     #"rx_bandwidth" : None, # if the noise_in_raw_band is provided, the rx_bandwidth should be provided!
@@ -694,16 +693,16 @@ class DataWrite(object):
             needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
             "num_sequences", "range_sep", "first_range_rtt", "first_range", "rx_sample_rate",
-            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", "num_pulses",
+            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs", 
             "xcfs", "noise_at_freq"]
-            # note num_lags and num_ranges are not in needed_fields but are used to make 
+            # note num_ranges not in needed_fields but are used to make 
             # correlation_dimensions
 
             #unneeded_fields = ['data_dimensions', 'data_descriptors', 'antenna_arrays_order',
-            #'data', 'num_ranges', 'num_lags', 'num_samps', 'rx_centre_freq', 'pulse_phase_offset']
+            #'data', 'num_ranges', 'num_samps', 'rx_centre_freq', 'pulse_phase_offset']
 
             main_acfs = data_parsing.mainacfs_accumulator
             xcfs = data_parsing.xcfs_accumulator
@@ -730,7 +729,7 @@ class DataWrite(object):
 
             for slice_id, parameters in parameters_holder.items():
                 parameters['correlation_descriptors'] = ['num_ranges', "num_lags"]
-                parameters['correlation_dimensions'] = np.array([parameters["num_ranges"],parameters["num_lags"]],dtype=np.uint32) #TODO
+                parameters['correlation_dimensions'] = np.array([parameters["num_ranges"],parameters["lags"].size[0]],dtype=np.uint32) #TODO
                 for field in list(parameters.keys()):
                     if field not in needed_fields:
                         parameters.pop(field, None)
@@ -754,14 +753,14 @@ class DataWrite(object):
             needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
             "num_sequences", "rx_sample_rate", "pulse_phase_offset",
-            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", "num_pulses",
+            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data", 
             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range", 
             "lags", "num_ranges"]
 
-            #unneeded_fields = ["num_lags", "correlation_descriptors", "rx_centre_freq", 
+            #unneeded_fields = ["correlation_descriptors", "rx_centre_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs"]                  
 
             bfiq = data_parsing.bfiq_accumulator
@@ -823,11 +822,11 @@ class DataWrite(object):
             needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
-            "num_pulses", "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
+            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors", 
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq"]
 
-            #unneeded_fields = ["num_lags", "correlation_descriptors", "rx_centre_freq", 
+            #unneeded_fields = ["correlation_descriptors", "rx_centre_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range_rtt", "first_range",
             #"lags", "blanked_samples", "num_ranges"]
 
@@ -925,12 +924,12 @@ class DataWrite(object):
             # Some fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
             # this data. Note that because this data is not slice-specific a lot of slice-specific 
-            # data (ex. pulses, num_pulses, beam_nums, beam_azms) is not included (user must look 
+            # data (ex. pulses, beam_nums, beam_azms) is not included (user must look 
             # at the experiment they ran)
 
-            #unneeded_fields = ["num_lags", "lags", "num_ranges", "correlation_descriptors", "slice_comment", 
+            #unneeded_fields = ["lags", "num_ranges", "correlation_descriptors", "slice_comment", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range", 
-            #"first_range_rtt", "num_pulses", "antenna_arrays_order", "pulse_phase_offset", 
+            #"first_range_rtt", "antenna_arrays_order", "pulse_phase_offset", 
             #"blanked_samples", "pulses", "beam_nums", "beam_azms", "tx_pulse_len", "tau_spacing", "freq",
             #"noise_at_freq"]
 
@@ -1055,7 +1054,7 @@ class DataWrite(object):
                 parameters['experiment_name'] = integration_meta.experiment_name
                 parameters['experiment_comment'] = integration_meta.experiment_comment  
                 parameters['slice_comment'] = rx_freq.slice_comment
-                parameters['num_slices'] = len(meta.rxchannel)
+                parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = integration_meta.nave
                 parameters['num_ranges'] = np.uint32(rx_freq.nrang)
@@ -1069,8 +1068,6 @@ class DataWrite(object):
                 parameters['int_time'] = np.float32(integration_meta.integration_time)
                 parameters['tx_pulse_len'] = np.uint32(rx_freq.pulse_len)
                 parameters['tau_spacing'] = np.uint32(rx_freq.tau_spacing)
-                parameters['num_pulses'] = np.uint32(len(rx_freq.ptab.pulse_position))
-                parameters['num_lags'] = np.uint32(len(rx_freq.ltab.lag))
                 parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
