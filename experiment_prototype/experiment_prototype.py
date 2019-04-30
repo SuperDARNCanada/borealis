@@ -631,7 +631,6 @@ class ExperimentPrototype(object):
     def txctrfreq(self):
         """
         The transmission centre frequency that USRP is tuned to (kHz).
-        If you would like to change this value, note that it will take tuning time.
         """
         return self.__txctrfreq
 
@@ -669,7 +668,6 @@ class ExperimentPrototype(object):
     def rxctrfreq(self):
         """
         The receive centre frequency that USRP is tuned to (kHz).
-        If you would like to change this, note that it will take tuning time.
         """
         return self.__rxctrfreq
 
@@ -1247,7 +1245,7 @@ class ExperimentPrototype(object):
             slice_with_defaults['rx_int_antennas'] = \
                 [i for i in range(0, self.options.interferometer_antenna_count)]
         if 'pulse_shift' not in exp_slice:
-            slice_with_defaults['pulse_shift'] = [0 for i in range(0, len(
+            slice_with_defaults['pulse_shift'] = [0.0 for i in range(0, len(
                 slice_with_defaults['pulse_sequence']))]
         if 'scanboundflag' not in exp_slice and 'scanbound' not in exp_slice:
             slice_with_defaults['scanboundflag'] = False  # TODO discuss defaults, discuss whether scanboundflag is necessary

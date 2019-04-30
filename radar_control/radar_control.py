@@ -302,8 +302,8 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, nave, scan_flag, inttime, sequences, beamdir_dict,
-                            experiment_id, experiment_name, output_sample_rate, comment_string,
-                            debug_samples=None):
+                            experiment_id, experiment_name, output_sample_rate, experiment_comment,
+                            rx_centre_freq, debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
     :param packet: The IntegrationTimeMetadata protobuf packet.
@@ -322,7 +322,8 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     :param experiment_name: the experiment name to be placed in the data files.
     :param output_sample_rate: The output sample rate of the output data, defined by the
     experiment, in Hz.
-    :param comment_string: The comment string for the experiment, user-defined.
+    :param experiment_comment: The comment string for the experiment, user-defined.
+    :param rx_centre_freq: The receive centre frequency (kHz)
     :param debug_samples: the debug samples for this integration period, to be written to the
     file if debug is set. This is a list of dictionaries for each Sequence in the
     AveragingPeriod. The dictionary is set up in the sample_building module function
@@ -334,7 +335,9 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
 
     packet.Clear()
     packet.experiment_id = experiment_id
-    packet.experiment_string = experiment_name
+    packet.experiment_name = experiment_name
+    packet.experiment_comment = experiment_comment
+    packet.rx_centre_freq = rx_centre_freq 
     packet.nave = nave
     packet.last_seqn_num = seqnum
     packet.scan_flag = scan_flag
@@ -366,8 +369,21 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
         for slice_id in sequence.slice_ids:
             rxchan_add = sequence_add.rxchannel.add()
             rxchan_add.slice_id = slice_id
-            rxchan_add.frang = sequence.slice_dict[slice_id]['frang']
-            rxchan_add.nrang = sequence.slice_dict[slice_id]['nrang']
+            rxchan_add.slice_comment = sequence.slice_dict[slice_id]['comment']
+            rxchan_add.interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
+            rxchan_add.rx_only = sequence.slice_dict[slice_id]['rxonly']
+            rxchan_add.pulse_len = sequence.slice_dict[slice_id]['pulse_len']
+            rxchan_add.tau_spacing = sequence.slice_dict[slice_id]['mpinc']
+
+            if sequence.slice_dict[slice_id]['rxonly']:
+                rxchan_add.rxfreq = sequence.slice_dict[slice_id]['rxfreq']
+            else:
+                rxchan_add.rxfreq = sequence.slice_dict[slice_id]['txfreq']
+
+            rxchan_add.ptab.pulse_position[:] = sequence.slice_dict[slice_id]['pulse_sequence']
+            rxchan_add.pulse_phases.pulse_phase[:] = sequence.slice_dict[slice_id]['pulse_shift']
+            rxchan_add.rx_main_antennas[:] = sequence.slice_dict[slice_id]['rx_main_antennas']
+            rxchan_add.rx_intf_antennas[:] = sequence.slice_dict[slice_id]['rx_int_antennas']
 
             beamdirs = beamdir_dict[slice_id]
             for index, beamdir in enumerate(beamdirs):
@@ -375,32 +391,18 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 beam.beamnum = sequence.slice_dict[slice_id]["beam_angle"].index(beamdir)
                 beam.beamazimuth = beamdir
 
-            rxchan_add.rx_only = sequence.slice_dict[slice_id]['rxonly']
-            rxchan_add.pulse_len = sequence.slice_dict[slice_id]['pulse_len']
-            rxchan_add.tau_spacing = sequence.slice_dict[slice_id]['mpinc']
-            if sequence.slice_dict[slice_id]['rxonly']:
-                rxchan_add.rxfreq = sequence.slice_dict[slice_id]['rxfreq']
-            else:
-                rxchan_add.rxfreq = sequence.slice_dict[slice_id]['txfreq']
-
-            rxchan_add.ptab.pulse_position[:] = sequence.slice_dict[slice_id]['pulse_sequence']
-
             if sequence.slice_dict[slice_id]['acf']:
                 rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
                 rxchan_add.acfint = sequence.slice_dict[slice_id]['acfint']
+                rxchan_add.frang = sequence.slice_dict[slice_id]['frang']
+                rxchan_add.nrang = sequence.slice_dict[slice_id]['nrang']
                 rxchan_add.rsep = sequence.slice_dict[slice_id]['rsep']
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = rxchan_add.ltab.lag.add()
                     for pul_pos in lag:
                         lag_add.pulse_position[:] = lag
                     lag_add.lag_num = int(lag[1] - lag[0])
-
-            rxchan_add.comment = comment_string + '\n' + sequence.slice_dict[slice_id]['comment']
-            rxchan_add.interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
-
-            rxchan_add.rx_main_antennas[:] = sequence.slice_dict[slice_id]['rx_main_antennas']
-            rxchan_add.rx_intf_antennas[:] = sequence.slice_dict[slice_id]['rx_int_antennas']
 
     if __debug__:
         printing('Sending metadata to datawrite.')
@@ -700,7 +702,7 @@ def radar():
                                             aveperiod.sequences, slice_to_beamdir_dict,
                                             experiment.cpid, experiment.experiment_name,
                                             experiment.output_rx_rate, experiment.comment_string,
-                                            debug_samples=debug_samples)
+                                            experiment.rxctrfreq, debug_samples=debug_samples)
 
                     # end of the averaging period loop - move onto the next averaging period.
                     # Increment the sequence number by the number of sequences that were in this
