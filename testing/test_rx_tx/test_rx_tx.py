@@ -1,6 +1,7 @@
 import numpy as np
 import uhd.usrp.MultiUSRP as USRP
-import math as math
+import math
+import cmath
 
 # Define constants
 ADDR = "num_recv_frames=512,num_send_frames=256,send_buff_size=2304000"
@@ -24,9 +25,52 @@ start_tx = False
 
 # Make ramped pulses
 def make_ramped_pulse(double: tx_rate):
+	"""
+	Purpose:
+		Create a ramped pulse to be used during testing
+	Pre-conditions:
+		tx_rate: the data transfer rate of the device, double format
+	Return:
+		a list of complex numbers representing the generated pulse
+	"""
+	# define amplitude and pulse length
 	amp = 1.0/math.sqrt(2.0)
 	pulse_len = 300.0E-6
-	
+
 	tr_start_pad = 60
 	tr_end_pad = 60
-	
+	num_samps_per_antenna = np.ceil(pulse_len * (tx_rate + tr_start_pad + tr_end_pad))
+	tx_freqs = [1E6]
+
+	# initialize samples list
+	default_v = complex(0, 0)
+	samples = [default_v] * num_samps_per_antenna
+
+	# build the pulse one sample at a time
+	for i in range(tr_start_pad, num_samps_per_antenna-tr_end_pad):
+			nco_point = complex(0, 0)
+		for freq in tx_freqs:
+			sampling_freq = 2 * math.pi * freq / tx_rate
+
+			radians = math.fmod(sampling_freq * i, 2 * math.pi)
+			I = amp * math.cos(radians)
+			Q = amp * math.sin(radians)
+
+			nco_point += complex(I, Q)
+
+		samples[i] = nco_point
+
+	ramp_size = int(10E-6 * tx_rate)
+
+	k = 0
+	for i in range(tr_start_pad, tr_start_pad+ramp_size):
+		a = k / ramp_size
+		samples[j] *= complex(a, 0)
+		k += 1
+
+	k = 0
+	for j in range(num_samps_per_antenna-tr_end_pad-1, num_samps_per_antenna-tr_end_pad-1-ramp_size, -1):
+		a = k / ramp_size
+		samples[j] *= complex(a, 0)
+
+	return samples
