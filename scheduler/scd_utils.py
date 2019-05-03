@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+
+# Copyright 2019 SuperDARN Canada
+#
+# scd_utils.py
+# 2019-04-18
+# Utilites for working with scd files.
+
 import datetime as dt
 import collections
 import shutil
@@ -124,7 +132,9 @@ class SCDUtils(object):
                 f.write("{}\n".format(line))
 
 
+
     def add_line(self, yyyymmdd, hhmm, prio, experiment, duration='-'):
+
         """Adds a new line to the SCD.
 
         Args:
@@ -156,6 +166,7 @@ class SCDUtils(object):
         self.write_scd(new_scd)
 
     def remove_line(self, yyyymmdd, hhmm, prio, experiment, duration='-'):
+
         """Summary
 
         Args:
