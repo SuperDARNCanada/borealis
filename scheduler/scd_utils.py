@@ -10,30 +10,78 @@ import datetime as dt
 import collections
 import shutil
 import locale
-
-# Standardizes datetime format to use the en_US formatting in the Python docs.
-locale.setlocale(locale.LC_TIME, "en_US")
+import sys
 
 class SCDUtils(object):
-    """Contains utilities for working with SCD files.
+    """Contains utilities for working with SCD files. SCD files are schedule files for Borealis.
 
     Attributes:
         line_fmt (str): String format for scd line.
         scd_dt_fmt (str): String format for parsing/writing datetimes.
-        scd_filename (TYPE): The filename of schedule to use.
+        scd_filename (str): The filename of schedule to use.
     """
 
     def __init__(self, scd_filename):
         super(SCDUtils, self).__init__()
         self.scd_filename = scd_filename
-        self.scd_dt_fmt = "%x %H:%M"
+        self.scd_dt_fmt = "%Y%m%d %H:%M"
         self.line_fmt = "{datetime} {duration} {prio} {experiment}"
 
-    def read_scd(self):
-        """Read and parse the SCD file.
+    def check_line(self, yyyymmdd, hhmm, prio, experiment, duration):
+        """Checks the line parameters to see if they are valid and then returns a dict with all
+        the valid fields.
+
+        Args:
+            yyyymmdd (str): year/month/day string.
+            hhmm (str): hour/minute string.
+            prio (str or int): priority value.
+            experiment (str): The experiment to run.
+            duration (str): an optional duration to run for.
 
         Returns:
-            TYPE: Dict
+            TYPE: Dict of line params.
+
+        Raises:
+            ValueError: If line parameters are invalid or if line is a duplicate.
+        """
+
+        try:
+            # create datetime from args to see if valid
+            time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
+        except:
+            raise ValueError("Can not create datetime from supplied formats")
+
+        try:
+            int(prio)
+        except ValueError as e:
+            raise ValueError("Unable to cast priority {} as int.".format(prio))
+
+        if not (0 <= int(prio) <= 20):
+            raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
+
+
+        if duration != "-":
+            try:
+                int(duration)
+            except ValueError as e:
+                raise ValueError("Unable to cast duration {} as int".format(duration))
+
+        epoch = dt.datetime.utcfromtimestamp(0)
+        epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
+
+        return {"timestamp" : epoch_milliseconds,
+                "time" : time,
+                "duration" : str(duration),
+                "prio" : str(prio),
+                "experiment" : experiment}
+
+
+
+    def read_scd(self):
+        """Read and parse the Borealis schedule file.
+
+        Returns:
+            TYPE: list of dicts.
 
         Raises:
             ValueError: on lines with obvious errors in them.
@@ -49,27 +97,7 @@ class SCDUtils(object):
             if len(line) != 5:
                 raise ValueError("Line {} has too many arguments".format(num))
 
-            try:
-                time = dt.datetime.strptime(line[0] + " " + line[1], self.scd_dt_fmt)
-            except:
-                raise ValueError("Unable to create datetime from line {}".format(num))
-
-            duration = line[2]
-
-            prio = int(line[3])
-            if not (0 <= prio <= 20):
-                raise ValueError("Priority in line {} is out of bounds".format(num))
-
-            experiment = line[4]
-
-            epoch = dt.datetime.utcfromtimestamp(0)
-            epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
-
-            scd_lines.append({"timestamp" : epoch_milliseconds,
-                                "time" : time,
-                                "duration" : str(duration),
-                                "prio" : str(prio),
-                                "experiment" : experiment})
+            scd_lines.append(self.check_line(line[0], line[1], line[3], line[4], line[2]))
 
         return scd_lines
 
@@ -77,7 +105,7 @@ class SCDUtils(object):
         """Formats a dictionary with line info into a text line for file.
 
         Args:
-            line_dict (TYPE): A dict that holds all the line info.
+            line_dict (dict): A dict that holds all the line info.
 
         Returns:
             TYPE: Formatted string.
@@ -93,7 +121,7 @@ class SCDUtils(object):
         writing.
 
         Args:
-            scd_lines (TYPE): A list dicts that contain the line info.
+            scd_lines (list): A list dicts that contain the line info.
         """
         text_lines = [self.fmt_line(x) for x in scd_lines]
 
@@ -104,88 +132,57 @@ class SCDUtils(object):
                 f.write("{}\n".format(line))
 
 
-    def add_line(self, mmddyy, hhmm, experiment, prio=0, duration='-'):
+
+    def add_line(self, yyyymmdd, hhmm, prio, experiment, duration='-'):
+
         """Adds a new line to the SCD.
 
         Args:
-            mmddyy (TYPE): month/day/year string.
-            hhmm (TYPE): hour/minute string.
-            prio (TYPE): priority value.
-            experiment (TYPE): The experiment to run.
+            yyyymmdd (str): year/month/day string.
+            hhmm (str): hour/minute string.
+            prio (int or str): priority value.
+            experiment (str): The experiment to run.
             duration (str, optional): an optional duration to run for.
 
         Raises:
             ValueError: If line parameters are invalid or if line is a duplicate.
         """
 
-        try:
-            # create datetime from args to see if valid
-            time = dt.datetime.strptime(mmddyy + " " + hhmm, self.scd_dt_fmt)
-        except:
-            raise ValueError("Can not create datetime from supplied formats")
-
-        if not (0 <= prio <= 20):
-            raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
-
+        new_line = self.check_line(yyyymmdd, hhmm, prio, experiment, duration)
 
         scd_lines = self.read_scd()
-
-        epoch = dt.datetime.utcfromtimestamp(0)
-        epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
-
-        new_line = {"timestamp" : epoch_milliseconds,
-                    "time" : time,
-                    "duration" : str(duration),
-                    "prio" : str(prio),
-                    "experiment" : experiment}
 
         if new_line in scd_lines:
             raise ValueError("Line is a duplicate of an existing line")
 
         scd_lines.append(new_line)
 
-        # sort first by timestamp, then by duration with default duration first, then by priority.
+        # sort first by timestamp, then by priority, then by duration with default duration last.
         # duration sorting is funky cause the default value is not a int.
         new_scd = sorted(scd_lines, key=lambda x:(x['timestamp'],
-                                                    (x['duration'] != '-', x['duration']),
-                                                    x['prio']))
+                                                    x['prio'],
+                                                    (x['duration'] == '-', x['duration'])))
 
         self.write_scd(new_scd)
 
-    def remove_line(self, mmddyy, hhmm, experiment, prio=0, duration='-'):
+    def remove_line(self, yyyymmdd, hhmm, prio, experiment, duration='-'):
+
         """Summary
 
         Args:
-            mmddyy (TYPE): month/day/year string.
-            hhmm (TYPE): hour/minute string.
-            prio (TYPE): priority value.
-            experiment (TYPE): The experiment to run.
+            yyyymmdd (str): year/month/day string.
+            hhmm (str): hour/minute string.
+            prio (int or str): priority value.
+            experiment (str): The experiment to run.
             duration (str, optional): an optional duration to run for.
 
         Raises:
             ValueError: If line parameters are invalid or if line does not exist.
         """
 
-        try:
-            # create datetime from args to see if valid
-            time = dt.datetime.strptime(mmddyy + " " + hhmm, self.scd_dt_fmt)
-        except:
-            raise ValueError("Can not create datetime from supplied formats")
-
-        if not (0 <= prio <= 20):
-            raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
+        line_to_rm = self.check_line(yyyymmdd, hhmm, prio, experiment, duration)
 
         scd_lines = self.read_scd()
-
-        epoch = dt.datetime.utcfromtimestamp(0)
-        epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
-
-        line_to_rm = {"timestamp" : epoch_milliseconds,
-                        "time" : time,
-                        "duration" : str(duration),
-                        "prio" : str(prio),
-                        "experiment" : experiment}
-
         try:
             scd_lines.remove(line_to_rm)
         except:
@@ -193,12 +190,12 @@ class SCDUtils(object):
 
         self.write_scd(scd_lines)
 
-    def get_relevant_lines(self, mmddyy, hhmm):
-        """Gets any relevant future lines given a supplied time.
+    def get_relevant_lines(self, yyyymmdd, hhmm):
+        """Gets the currently scheduled and future lines given a supplied time. If the provided time is equal to a scheduled line time, it provides that line and all future lines. If the provided time is between schedule line times, it provides any lines in the schedule with the most recent timestamp and all future lines.  If the provided time is before any lines in the schedule, it provides all schedule lines.
 
         Args:
-            mmddyy (TYPE): month/day/year string.
-            hhmm (TYPE): hour/minute string.
+            yyyymmdd (str): year/month/day string.
+            hhmm (str): hour/minute string.
 
         Returns:
             TYPE: List of relevant dicts of line info.
@@ -209,7 +206,7 @@ class SCDUtils(object):
 
         try:
             # create datetime from args to see if valid
-            time = dt.datetime.strptime(mmddyy + " " + hhmm, self.scd_dt_fmt)
+            time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
         except:
             raise ValueError("Can not create datetime from supplied formats")
 
@@ -218,30 +215,50 @@ class SCDUtils(object):
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
 
-        relevant_lines = [x for x in scd_lines if x['timestamp'] >= epoch_milliseconds]
+        equals = False
+        prev_line_appended = False
+        relevant_lines = []
+        for idx, line in enumerate(scd_lines):
+            if line['timestamp'] == epoch_milliseconds:
+                equals = True
+                relevant_lines.append(line)
+            elif line['timestamp'] > epoch_milliseconds:
+                if equals:
+                    relevant_lines.append(line)
+                else:
+                    if not prev_line_appended:
+                        last_line_timestamp = scd_lines[idx-1]['timestamp']
+                        temp_list = scd_lines[:]
+                        for t in temp_list:
+                            if t['timestamp'] == last_line_timestamp:
+                                relevant_lines.append(t)
+                        prev_line_appended = True
+                    relevant_lines.append(line)
+            else:
+                continue
 
         return relevant_lines
 
 
 
 if __name__ == "__main__":
-    filename = "test_scd.txt"
+    filename = sys.argv[1]
 
     scd_util = SCDUtils(filename)
 
-    scd_util.add_line("04/04/2019", "10:43", "twofsound")
-    #scd_util.add_line("04/04/2019", "10:43","twofsound")
-    scd_util.add_line("04/07/2019", "10:43", "twofsound")
-    scd_util.add_line("04/14/2019", "10:43", "twofsound")
-    scd_util.add_line("04/14/2019", "10:43", "twofsound", 2)
-    scd_util.add_line("04/14/2019", "10:43", "twofsound", 1, 89)
-    scd_util.add_line("04/14/2019", "10:43", "twofsound", 1, 24)
-    scd_util.add_line("04/14/2019", "11:43", "twofsound", 46)
-    scd_util.add_line("04/14/2019", "00:43", "twofsound")
-    scd_util.add_line("04/08/2019", "15:43", "twofsound", 57)
+    scd_util.add_line("20190404", "10:43", 0, "twofsound")
+    #scd_util.add_line("04/04/2019", "10:43", 0, "twofsound")
+    scd_util.add_line("20190407", "10:43", 0, "twofsound")
+    scd_util.add_line("20190414", "10:43", 0, "twofsound")
+    scd_util.add_line("20190414", "10:43", 2, "twofsound")
+    scd_util.add_line("20190414", "10:43", 1, "twofsound", 89)
+    scd_util.add_line("20190414", "10:43", 1, "twofsound", 24)
+    scd_util.add_line("20190414", "11:43", 0, "twofsound", 46)
+    scd_util.add_line("20190414", "00:43", 0, "twofsound")
+    scd_util.add_line("20190408", "15:43", 0, "twofsound", 57)
 
 
-    scd_util.remove_line("04/14/2019", "10:43", "twofsound")
+    scd_util.remove_line("20190414", "10:43", 0, "twofsound")
 
-    print(scd_util.get_relevant_lines("04/14/2019", "10:43"))
+    print(scd_util.get_relevant_lines("20190414", "10:44"))
 
