@@ -2,6 +2,7 @@ import numpy as np
 import uhd.usrp as usrp
 import math
 import cmath
+import sys
 
 # Define constants
 ADDR = "num_recv_frames=512,num_send_frames=256,send_buff_size=2304000"
@@ -43,8 +44,7 @@ def make_ramped_pulse(double: tx_rate):
 	tx_freqs = [1E6]
 
 	# initialize samples list
-	default_v = complex(0, 0)
-	samples = [default_v] * num_samps_per_antenna
+	samples = np.zeros(num_samps_per_antenna, dtype=np.complex64)
 
 	# build the pulse one sample at a time
 	for i in range(tr_start_pad, num_samps_per_antenna-tr_end_pad):
@@ -90,3 +90,5 @@ def recv(usrp.MultiUSRP: usrp_d, list: rx_chans):
 	rx_stream = usrp_d.get_rx_stream(rx_stream_args)
 
 	usrp_buffer_size = 100 * rx_stream.get_max_num_samps()
+	ringbuffer_size = (sys.getsizeof(500.0E6)/sys.getsizeof(complex(float))/usrp_buffer_size) * 
+									usrp_buffer_size
