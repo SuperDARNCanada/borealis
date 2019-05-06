@@ -1,5 +1,5 @@
 import numpy as np
-import uhd.usrp.MultiUSRP as USRP
+import uhd.usrp as usrp
 import math
 import cmath
 
@@ -74,3 +74,19 @@ def make_ramped_pulse(double: tx_rate):
 		samples[j] *= complex(a, 0)
 
 	return samples
+
+# RX THREAD
+def recv(usrp.MultiUSRP: usrp_d, list: rx_chans):
+	"""
+	Function defines the operation of the recieve thread for the USRP
+	:param usrp_d: The MultiUSRP object
+	:param rx_chans: A list specifying the reciever channels
+	"""
+	# create the stream args object
+	rx_stream_args = usrp.StreamArgs("fc32", "sc16")
+	# set channel list
+	rx_stream_args.channels = rx_chans
+	# set rx streamer
+	rx_stream = usrp_d.get_rx_stream(rx_stream_args)
+
+	usrp_buffer_size = 100 * rx_stream.get_max_num_samps()
