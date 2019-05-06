@@ -1,8 +1,10 @@
 import numpy as np
 import uhd.usrp as usrp
+import uhd
 import math
 import cmath
 import sys
+import time
 
 # Define constants
 ADDR = "num_recv_frames=512,num_send_frames=256,send_buff_size=2304000"
@@ -47,8 +49,8 @@ def make_ramped_pulse(double: tx_rate):
 	samples = np.zeros(num_samps_per_antenna, dtype=np.complex64)
 
 	# build the pulse one sample at a time
-	for i in range(tr_start_pad, num_samps_per_antenna-tr_end_pad):
-			nco_point = complex(0, 0)
+	for i in np.arange(tr_start_pad, num_samps_per_antenna-tr_end_pad):
+			nco_point = np.complex64(0.0)
 		for freq in tx_freqs:
 			sampling_freq = 2 * math.pi * freq / tx_rate
 
@@ -63,15 +65,15 @@ def make_ramped_pulse(double: tx_rate):
 	ramp_size = int(10E-6 * tx_rate)
 
 	k = 0
-	for i in range(tr_start_pad, tr_start_pad+ramp_size):
+	for i in np.arange(tr_start_pad, tr_start_pad+ramp_size):
 		a = k / ramp_size
-		samples[j] *= complex(a, 0)
+		samples[j] *= complex(a, 0.0)
 		k += 1
 
 	k = 0
-	for j in range(num_samps_per_antenna-tr_end_pad-1, num_samps_per_antenna-tr_end_pad-1-ramp_size, -1):
+	for j in np.arange(num_samps_per_antenna-tr_end_pad-1, num_samps_per_antenna-tr_end_pad-1-ramp_size, -1):
 		a = k / ramp_size
-		samples[j] *= complex(a, 0)
+		samples[j] *= complex(a, 0.0)
 
 	return samples
 
@@ -89,6 +91,51 @@ def recv(usrp.MultiUSRP: usrp_d, list: rx_chans):
 	# set rx streamer
 	rx_stream = usrp_d.get_rx_stream(rx_stream_args)
 
+	# create buffer
 	usrp_buffer_size = 100 * rx_stream.get_max_num_samps()
 	ringbuffer_size = (sys.getsizeof(500.0E6)/sys.getsizeof(complex(float))/usrp_buffer_size) * 
 									usrp_buffer_size
+	buffer_array = np.empty((rx_chans.size(), ringbuffer_size))
+
+	# make stream command
+	rx_stream_cmd = uhd.types.StreamCMD(uhd.types.STREAMCMD.start_cont)
+	rx_stream_cmd.stream_now = False
+	rx_stream_cmd.num_samps = 0
+	rx_stream_cmd.time_spec = usrp_d.get_time_now() + uhd.TimeSpec(DELAY)
+
+	# timing stuff
+	stream_start = time.time()
+	rx_stream.issue_stream_cmd(rx_stream_cmd)
+	stream_end = time.time()
+
+	# set up metadata and statistics counters
+	meta = uhd.types.RXMetadata()
+
+	buffer_inc = 0
+	timeout_count = 0
+	overflow_count = 0
+	overflow_oos_count = 0
+	late_count = 0
+	bchain_count = 0
+	align_count = 0
+	badp_count = 0
+	first_time = True
+
+	# execute testing
+	test_trials = 0
+	test_while = True
+	while(test_while):
+		num_rx_samples = rx_stream.recv(buffer_array, usrp_buffer_size, meta, 3.0)
+		print("Recv", num_rx_samples, "samples", "\n")
+		print("On ringbuffer idx", usrp_buffer_size * buffer_inc, "\n")
+
+		error_code = meta.error_code
+		print("RX TIME:", meta.time_spec.get_real_secs(), "\n")
+		if first_time:
+			start_time = meta.time_spec
+			start_tx = True
+			first_time = False
+
+		# handle errors
+		if error_code == uhd.types.RXMetadataErrorCode.none:
+			
