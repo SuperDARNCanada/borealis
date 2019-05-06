@@ -95,7 +95,7 @@ def recv(usrp.MultiUSRP: usrp_d, list: rx_chans):
 	usrp_buffer_size = 100 * rx_stream.get_max_num_samps()
 	ringbuffer_size = (sys.getsizeof(500.0E6)/sys.getsizeof(complex(float))/usrp_buffer_size) * 
 									usrp_buffer_size
-	buffer_array = np.empty((rx_chans.size(), ringbuffer_size))
+	recv_buffer = np.empty((rx_chans.size(), ringbuffer_size))
 
 	# make stream command
 	rx_stream_cmd = uhd.types.StreamCMD(uhd.types.STREAMCMD.start_cont)
@@ -125,7 +125,7 @@ def recv(usrp.MultiUSRP: usrp_d, list: rx_chans):
 	test_trials = 0
 	test_while = True
 	while(test_while):
-		num_rx_samples = rx_stream.recv(buffer_array, usrp_buffer_size, meta, 3.0)
+		num_rx_samples = rx_stream.recv(recv_buffer, usrp_buffer_size, meta, 3.0)
 		print("Recv", num_rx_samples, "samples", "\n")
 		print("On ringbuffer idx", usrp_buffer_size * buffer_inc, "\n")
 
@@ -138,4 +138,40 @@ def recv(usrp.MultiUSRP: usrp_d, list: rx_chans):
 
 		# handle errors
 		if error_code == uhd.types.RXMetadataErrorCode.none:
-			
+			pass
+		elif error_code == uhd.types.RXMetadataErrorCode.timeout:
+			print("Timed out!\n")
+			timeout_count += 1
+		elif error_code == uhd.types.RXMetadataErrorCode.overflow:
+			print("Overflow!\n")
+			print("OOS:" meta.out_of_sequence, "\n")
+			if meta.out_of_sequence:
+				overflow_oos_count += 1
+			overflow_count += 1
+		elif error_code == uhd.types.RXMetadataErrorCode.late:
+			print("Late!\n")
+			late_count += 1
+		elif error_code == uhd.types.RXMetadataErrorCode.broken_chain:
+			print("Broken Chain!\n")
+			bchain_count += 1
+		elif error_code == uhd.types.RXMetadataErrorCode.alignment:
+			print("Alignment!\n")
+			align_count += 1
+		elif error_code == uhd.types.RXMetadataErrorCode.bad_packet:
+			print("Bad Packet!")
+			badp_count += 1
+
+		# Print results
+		print("Timeout count:", timeout_count, "\n")
+		print("Overflow count:", overflow_count, "\n")
+		print("Overflow OOS count:", overflow_oos_countm "\n")
+		print("Late count:", late_count, "\n")
+		print("Broken chain count", bchain_count, "\n")
+		print("Alignment count", align_count, "\n")
+		print("Bad packet count", badp_count, "\n")
+
+		if not test_mode == "full":
+			test_trials += 1
+		if test_trials == 10
+			test_while = 0
+			test_trials = 0
