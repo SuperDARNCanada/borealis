@@ -25,9 +25,12 @@ DELAY = 10E-3
 PULSETIMES = [0.0, 13500E-3, 18000E-6, 30000E-6, 33000E-6, 39000E-6, 40500E-6]
 
 start_tx = False
+start_time = uhd.types.TimeSpec()
+tx_ringbuffer_size = 10000
+test_mode = "0"
 
 # Make ramped pulses
-def make_ramped_pulse(double: tx_rate):
+def make_ramped_pulse(tx_rate: double):
 	"""
 	Purpose:
 		Create a ramped pulse to be used during testing
@@ -78,7 +81,7 @@ def make_ramped_pulse(double: tx_rate):
 	return samples
 
 # RX THREAD
-def recv(usrp.MultiUSRP: usrp_d, list: rx_chans):
+def recv(usrp_d: usrp.MultiUSRP, rx_chans: list):
 	"""
 	Function defines the operation of the recieve thread for the USRP
 	:param usrp_d: The MultiUSRP object
@@ -175,3 +178,95 @@ def recv(usrp.MultiUSRP: usrp_d, list: rx_chans):
 		if test_trials == 10
 			test_while = 0
 			test_trials = 0
+
+# TX THREAD
+def tx(usrp_d: usrp.MultiUSRP, tx_chans: list):
+	"""
+	Defines operation of transfer thread for USRP testing
+	:param usrp_d: The MultiUSRP object
+	:param tx_chans: A list of channels for transmit testing
+	"""
+	tx_stream_args = usrp.StreamArgs("fc32", "sc16")
+	tx_stream_args.channels = tx_chans
+	tx_stream = usrp_d.get_tx_stream(tx_stream_args)
+
+	# create tx samples
+	pulse = make_ramped_pulse(TXRATE)
+	tx_samples = pulse
+	try:
+		for chan in tx_chans[1:]:
+			np.stack((tx_samples, pulse))
+	except IndexError:
+		print("Only one tx channel, continuing")
+
+	# set up transmit test
+	time_per_pulse = PULSETIMES
+
+	count = 1
+	test_trials = 0
+	test_while = True
+
+	# run tests
+	while test_while:
+		u_time_now = usrp_d.get_time_now()
+		time_zero = u_time_now + uhd.TimeSpec(DELAY)
+
+		print("Starting tx #" + count + "\n")
+
+		def send(start_time):
+			"""
+			Helper function for sending signals to TXIO board
+			:param start_time: the start time to send a signal to the board
+			"""
+			# create metadata for transmission
+			meta = uhd.types.TXMetadata()
+			meta.has_time_spec = True
+			time_to_send_pulse = uhd.TimeSpec(start_time)
+			pulse_start_time = time_zero + time_to_send_pulse
+			meta.time_spec = pulse_start_time
+
+			meta.start_of_burst = true
+
+			# set up loop controls
+			num_samps_sent = 0
+			samples_per_buff = np.size(tx_samples[0])
+
+			# send samples
+			while num_samps_sent < samples_per_buff:
+				num_samps_to_send = samples_per_buff - num_samps_sent
+				num_samps_sent = tx_stream.send(tx_samples, num_samps_to_send, meta)
+				meta.start_of_burst = False
+				meta.has_time_spec = False
+
+			# finish tx stream
+			meta.end_of_burst = True
+			tx_stream.send("", 0, meta)
+
+		# send samples to board
+		for i in np.arange(np.size(time_per_pulse)):
+			send(time_per_pulse[i])
+
+		seq_time = time_per_pulse[-1] + 23.5E-3
+		start_sample = np.uint32((time_zero.get_real_secs() - start_time.get_real_secs())
+								* RXRATE) % ringbuffer_size
+
+		time.sleep(seq_time + 2*DELAY)
+		if (start_sample + (seq_time * RXRATE)) tx_ringbuffer_size:
+			end_sample = np.uint32(start_sample + (seq_time * RXRATE)) - tx_ringbuffer_size
+
+			print("Tx #", count, "needs sample", start_sample, "to", tx_ringbuffer_size
+				  - 1, "and 0 to", end_sample, "\n")
+		else:
+			end_sample = np.uint32(start_sample + (seq_time * RXRATE))
+
+			print("Tx #", count, "needs sample", start_sample, "to", end_sample, "\n")
+
+		usrp_d.clear_command_time()
+		count += 1
+
+		if not test_mode == "full":
+			test_trials += 1
+		if test_trials == 10:
+			test_while = False
+			test_trials = 0
+
