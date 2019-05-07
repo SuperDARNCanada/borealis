@@ -94,12 +94,12 @@ DATA_TEMPLATE = {
     "antenna_arrays_order" : None, # States what order the data is in. Describes the data layout.
     "data_descriptors" : None, # Denotes what each data dimension represents.
     "data_dimensions" : None, # The dimensions in which to reshape the data.
-    "data" : None, # A contiguous set of samples (complex float) at given sample rate
+    "data" : [], # A contiguous set of samples (complex float) at given sample rate
     "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
     "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
-    "main_acfs" : None, # Main array autocorrelations
-    "intf_acfs" : None, # Interferometer array autocorrelations
-    "xcfs" : None # Crosscorrelations between main and interferometer arrays
+    "main_acfs" : [], # Main array autocorrelations
+    "intf_acfs" : [], # Interferometer array autocorrelations
+    "xcfs" : [] # Crosscorrelations between main and interferometer arrays
 }
 
 TX_TEMPLATE = {
@@ -688,6 +688,11 @@ class DataWrite(object):
             Parses out any possible correlation data from protobuf and writes to file. Some variables
             are captured from outer scope.
 
+            main_acfs, intf_acfs, and xcfs are all passed to data_write for all sequences
+            individually. At this point, they will be combined into data for a single integration
+            time. Typically, averaging was done but we chose median here to protect against effects of 
+            single sequences that might have signal interference.
+
             """
 
             needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
@@ -709,9 +714,14 @@ class DataWrite(object):
             intf_acfs = data_parsing.intfacfs_accumulator
 
             def find_expectation_value(x, parameters, field_name):
+                """
+                Get the median of all correlations from all sequences in the 
+                integration period - only this will be recorded.
+                """
+                # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
+                # so we get median of all sequences. 
                 array_2d = np.array(x, dtype=np.complex64)
                 array_expectation_value = np.median(array_2d, axis=0)
-
                 parameters[field_name] = array_expectation_value
 
             for slice_id in main_acfs:
@@ -728,8 +738,9 @@ class DataWrite(object):
 
 
             for slice_id, parameters in parameters_holder.items():
-                parameters['correlation_descriptors'] = ['num_ranges', "num_lags"]
-                parameters['correlation_dimensions'] = np.array([parameters["num_ranges"], parameters["lags"].shape[0]],dtype=np.uint32) #TODO
+                parameters['correlation_descriptors'] = ['num_beams', 'num_ranges', 'num_lags']
+                parameters['correlation_dimensions'] = np.array([len(parameters["beam_nums"]), 
+                    parameters["num_ranges"], parameters["lags"].shape[0]],dtype=np.uint32) 
                 for field in list(parameters.keys()):
                     if field not in needed_fields:
                         parameters.pop(field, None)
