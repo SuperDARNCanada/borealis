@@ -5,6 +5,7 @@ import math
 import cmath
 import sys
 import time
+import threading
 
 # Define constants
 ADDR = "num_recv_frames=512,num_send_frames=256,send_buff_size=2304000"
@@ -270,3 +271,69 @@ def tx(usrp_d: usrp.MultiUSRP, tx_chans: list):
 			test_while = False
 			test_trials = 0
 
+# MAIN LOOP
+def UHD_SAFE_MAIN():
+	"""
+	Main program loop
+	"""
+	argv = sys.argv
+	test_mode = argv[2]
+	# Throw error for incomplete arguments
+	if not (len(argv) == 3):
+		print("TXIO Board tsting requires address and testing mode arguments.\n")
+		print("Test modes: txrx, txo, rxo, idle, full")
+	# output heading
+	print("\n")
+	print("-----------------------------------------TXIO BOARD TESTING SCRIPT--------------------------------------------------")
+	print("Version:", argv[0], "\n")
+	print("Unit IP Address:", argv[1], "\n")
+	print("Test mode:", argv[2], "\n")
+	print("\n")
+
+	# Setup a usrp device
+	usrp_d = usrp.MultiUSRP(ADDR + "," + argv[1])
+	usrp_d.set_clock_source(CLKSRC)
+
+	usrp_d.set_rx_subdev_spec(RXSUBDEV)
+
+	usrp_d.set_rx_rate(RXRATE)
+
+	rx_chans = RXCHAN
+
+	rx_tune_request = uhd.types.TuneRequest(RXFREQ)
+	for channel in rx_chans:
+		usrp_d.set_rx_freq(rx_tune_request, channel)
+		actual_freq = usrp_d.get_rx_freq(channel)
+		if not (actual_freq == RXFREQ):
+			print("requested rx ctr freq", RXFREQ, "actual_freq", actual_freq, "\n")
+	
+	# set usrp time
+	res = time.clock_getres(CLOCK_REALTIME)
+	tt_sc = time.time()
+	while (((tt_sc / res) - np.floor(tt_sc / res)) < 0.2) or (((tt_sc / res) - np.floor(tt_sc / res)) > 0.3):
+		tt_sc = time.time()
+		time.sleep(0.01)
+
+	usrp_d.set_time_now(tt_sc / res)
+
+	# configure usrp motherboards
+	for i in arange(usrp_d.get_num_mboards()):
+		usrp_d.set_gpio_attr("RXA", "CTRL", 0xFFFF, 0b11111111, i)
+		usrp_d.set_gpio_attr("RXA", "DDR", 0xFFFF, 0b11111111, i)
+
+		# Mirror pins along bank for easier scoping
+		usrp_d.set_gpio_attr("RXA", "ATR_RX", 0xFFFF, 0b000000010, i)
+	    usrp_d.set_gpio_attr("RXA", "ATR_RX", 0xFFFF, 0b000000100, i)
+
+	    usrp_d.set_gpio_attr("RXA", "ATR_TX", 0xFFFF, 0b000001000, i)
+	    usrp_d.set_gpio_attr("RXA", "ATR_TX", 0xFFFF, 0b000010000, i)
+
+	    #XX is the actual TR signal
+	    usrp_d.set_gpio_attr("RXA", "ATR_XX", 0xFFFF, 0b000100000, i)
+	    usrp_d.set_gpio_attr("RXA", "ATR_XX", 0xFFFF, 0b001000000, i)
+
+	    #0X acts as 'scope sync'
+	    usrp_d.set_gpio_attr("RXA", "ATR_0X", 0xFFFF, 0b010000000, i)
+	    usrp_d.set_gpio_attr("RXA", "ATR_0X", 0xFFFF, 0b100000000, i)
+
+	
