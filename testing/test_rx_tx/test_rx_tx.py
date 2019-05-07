@@ -174,14 +174,14 @@ def recv(usrp_d: usrp.MultiUSRP, rx_chans: list):
 		print("Alignment count", align_count, "\n")
 		print("Bad packet count", badp_count, "\n")
 
-		if not test_mode == "full":
+		if test_mode == "full":
 			test_trials += 1
 		if test_trials == 10
 			test_while = 0
 			test_trials = 0
 
 # TX THREAD
-def tx(usrp_d: usrp.MultiUSRP, tx_chans: list):
+def tx(usrp_d: usrp.MultiUSRP, tx_chans):
 	"""
 	Defines operation of transfer thread for USRP testing
 	:param usrp_d: The MultiUSRP object
@@ -265,7 +265,7 @@ def tx(usrp_d: usrp.MultiUSRP, tx_chans: list):
 		usrp_d.clear_command_time()
 		count += 1
 
-		if not test_mode == "full":
+		if test_mode == "full":
 			test_trials += 1
 		if test_trials == 10:
 			test_while = False
@@ -336,4 +336,39 @@ def UHD_SAFE_MAIN():
 	    usrp_d.set_gpio_attr("RXA", "ATR_0X", 0xFFFF, 0b010000000, i)
 	    usrp_d.set_gpio_attr("RXA", "ATR_0X", 0xFFFF, 0b100000000, i)
 
-	
+	# tx config
+	tx_chans = TXCHAN
+
+	usrp_d.set_tx_subdev_spec(TXSUBDEV)
+	usrp_d.set_tx_rate(TXRATE)
+
+	tx_tune_request = uhd.types.TuneRequest(TXFREQ)
+	for channel in tx_chans:
+		usrp_d.set_tx_freq(tx_tune_request, channel)
+		actual_freq = usrp_d.get_tx_freq(channel)
+		if not (actual_freq == RXFREQ):
+			print("requested tx ctr freq", TXFREQ, "actual_freq", actual_freq, "\n")
+
+
+	# Select the test sequence to run
+	if argv[2] == "txrx":
+		rx_thread = threading.Thread(target=recv, args=(usrp_d, rx_chans))
+		tx_thread = threading.Thread(target=tx, args=(usrp_d, tx_chans))
+		rx_thread.join()
+		tx_thread.join()
+	elif argv[2] == "txo":
+		tx_thread = threading.Thread(target=tx, args=(usrp_d, tx_chans))
+		tx_thread.join()
+	elif argv[2] == "rxo":
+		rx_thread = threading.Thread(target=recv, args=(usrp_d, rx_chans))
+		rx_thread.join()
+	elif argv[2] == "idle":
+		print("IDLE...\n")
+		while(1):
+			continue
+	elif argv[2] == "full":
+		print("Not yet implemented\n")
+		# TODO: Implement this
+	else:
+		print("Invalid testing mode provided.\n")
+	return
