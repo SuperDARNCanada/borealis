@@ -18,6 +18,7 @@ class SetupOptions(object):
 			errmsg = 'Cannon open config file at {}'.format(config_path)
 			raise IOError(errmsg)
 
+		self._devices = raw_config['devices']
 		self._tx_subdev = raw_config['tx_subdev']
 		self._tx_sample_rate = float(raw_config['tx_sample_rate'])
 		self._main_rx_subdev = raw_config['main_rx_subdev']
@@ -29,6 +30,16 @@ class SetupOptions(object):
 		self._cpu = raw_config['cpu']
 		self._gpio_bank = raw_config['gpio_bank']
 
+	@property
+	def devices(self):
+		"""
+		Get the address of the devices to be used
+
+		:returns: The device address
+		:rtype: str
+		"""
+		return self._devices
+	
 	@property
 	def tx_subdev(self):
 		"""
@@ -82,9 +93,9 @@ class SetupOptions(object):
 	@property
 	def pps(self):
 		"""
-		Gets the pps configuration string
+		Gets the clock source
 
-		:returns: The pps configuration
+		:returns: The clock source
 		:rtype: str
 		"""
 		return self._pps
