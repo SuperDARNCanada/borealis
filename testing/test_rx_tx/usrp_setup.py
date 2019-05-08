@@ -24,3 +24,13 @@ class USRPSetup(object):
 		self._rx_freq = tx_freq
 		self._rx_chans = rx_chans
 		self._tx_chans = tx_chans
+
+		# create usrp device
+		self.usrp = uhd.usrp.MultiUSRP(self._options.devices())
+
+	def set_usrp_clock_source(source):
+		"""
+		Sets the clock source on the usrp
+		:param source: string representing the clock source
+		"""
+		self.usrp.set_clock_source(source)
