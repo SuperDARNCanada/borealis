@@ -59,3 +59,73 @@ class SetupOptions(object):
 		"""
 		return self._main_rx_subdev
 	
+	@property
+	def interferometer_rx_subdev(self):
+		"""
+		Gets the subdevice for the interferometer reciever
+
+		:returns: The subdevice for the interferometer reciever
+		:rtype: str
+		"""
+		return self._interferometer_rx_subdev
+	
+	@property
+	def rx_sample_rate(self):
+		"""
+		Gets the reciever sample rate
+
+		:returns: The sample rate for the reciever
+		:rtype: float
+		"""
+		return self._rx_sample_rate
+	
+	@property
+	def pps(self):
+		"""
+		Gets the pps configuration string
+
+		:returns: The pps configuration
+		:rtype: str
+		"""
+		return self._pps
+	
+	@property
+	def ref(self):
+		"""
+		Gets the reference clock specification
+
+		:returns: The reference clock
+		:rtype: str
+		"""
+		return self._ref
+	
+	@property
+	def otw(self):
+		"""
+		Gets the over the wire format for communication
+
+		:returns: The over the wire format
+		:rtype: str
+		"""
+		return self._otw
+	
+	@property
+	def cpu(self):
+		"""
+		Gets the cpu format for communication
+
+		:returns: The cpu format
+		:rtype: str
+		"""
+		return self._cpu
+	
+	@property
+	def gpio_bank(self):
+		"""
+		Gets the gpio bank for formatting
+
+		:returns: The gpio bank
+		:rtype: str
+		"""
+		return self._gpio_bank
+	
