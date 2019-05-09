@@ -1,4 +1,4 @@
-import setup_options.SetupOptions
+import setup_options
 import numpy as np
 import uhd
 import math
@@ -20,23 +20,23 @@ class USRPSetup(object):
 		:param tx_chans: transmission channels
 		:param rx_chans: reciever channels
 		"""
-		options = SetupOptions(config_file)
+		self.options = setup_options.SetupOptions(config_file)
 		self._tx_freq = tx_freq
 		self._rx_freq = tx_freq
 		self._rx_chans = rx_chans
 		self._tx_chans = tx_chans
 
 		# create usrp device
-		self.usrp = uhd.usrp.MultiUSRP(options.devices())
+		self.usrp = uhd.usrp.MultiUSRP(self.options.get_devices)
 
-	def set_usrp_clock_source(source):
+	def set_usrp_clock_source(self, source):
 		"""
 		Sets the clock source on the usrp
 		:param source: string representing the clock source
 		"""
 		self.usrp.set_clock_source(source)
 
-	def set_tx_subdev(tx_subdev_str):
+	def set_tx_subdev(self, tx_subdev_str):
 		"""
 		Sets the subdevice for handling transmissions
 		:param tx_subdev_str: A string specifying the subdevice
@@ -44,27 +44,27 @@ class USRPSetup(object):
 		tx_subdev = uhd.usrp.SubdevSpec(tx_subdev_str)
 		self.usrp.set_tx_subdev_spec(tx_subdev)
 
-	def set_tx_rate(tx_rate):
+	def set_tx_rate(self, tx_rate):
 		"""
 		Sets the transmission rate for specified transmission channels
 		:param tx_rate: The desired data rate for transmission
 		"""
-		self.usrp.set_tx_rate(tx_rate)
+		self.usrp.set_tx_rate(tx_rate)	
 
-	def get_tx_rate(channel):
+	def get_tx_rate(self, channel):
 		"""
 		Gets the actual tx rate being used on a transmission channel
 		:param channel: an integer representing the channel number
 		"""
-		return np.uint32(self.usrp.get_tx_rate(channel))
+		return self.usrp.get_tx_rate(np.uint32(channel))
 
-	def set_tx_center_freq(freq, chans):
+	def set_tx_center_freq(self, freq, chans):
 		"""
 		Tunes the usrp to the desired center frequency
 		:param freq: The desired frequency in Hz
 		:param chans: The channels to be tuned
 		"""
-		tx_tune_request = uhd.types.TuneRequest(freq):
+		tx_tune_request = uhd.types.TuneRequest(freq)
 		for channel in chans:
 			self.usrp.set_tx_freq(tx_tune_request, channel)
 			actual_freq = self.usrp.get_tx_freq(channel)
@@ -72,7 +72,7 @@ class USRPSetup(object):
 				print("Requested tx center frequency:", freq, "actual frequency:",
 						actual_freq, "\n")
 
-	def get_tx_center_freq(chan):
+	def get_tx_center_freq(self, chan):
 		"""
 		Gets the center frequency for a specified channel
 		:param chan: The channel at which to retrieve the center frequency
@@ -80,7 +80,7 @@ class USRPSetup(object):
 		return self.usrp.get_tx_freq(chan)
 
 
-	def create_tx_stream(cpu, otw, chans):
+	def create_tx_stream(self, cpu, otw, chans):
 		"""
 		Sets up the tx streamer object based on given streaming options
 		:param cpu: The host cpu format as a string
@@ -92,7 +92,7 @@ class USRPSetup(object):
 		tx_stream = self.usrp.get_tx_stream(tx_stream_args)
 		return tx_stream
 
-	def set_main_rx_subdev(main_subdev):
+	def set_main_rx_subdev(self, main_subdev):
 		"""
 		Sets up the subdevice for the main reciever
 		:param main_subdev: String representing the subdevice(s) for the main reciever
@@ -100,21 +100,21 @@ class USRPSetup(object):
 		rx_subdev = uhd.usrp.SubdevSpec(main_subdev)
 		self.usrp.set_rx_subdev_spec(rx_subdev)
 
-	def set_rx_rate(rx_rate):
+	def set_rx_rate(self, rx_rate):
 		"""
 		Sets the data rate for the reciever
 		:param rx_rate: The reciever data rate
 		"""
 		self.usrp.set_rx_rate(rx_rate)
 
-	def get_rx_rate(channel):
+	def get_rx_rate(self, channel):
 		"""
 		Gets the reciever rate on a specified channel
 		:param channel: The desired channel
 		"""
-		return np.uint32(self.usrp.get_rx_rate(channel))
+		return self.usrp.get_rx_rate(np.uint32(channel))
 
-	def set_rx_center_freq(freq, chans):
+	def set_rx_center_freq(self, freq, chans):
 		"""
 		Tunes the reciever to a desired frequency
 		:param freq: The desired reciever center frequency
@@ -127,14 +127,14 @@ class USRPSetup(object):
 			if not (actual_freq == freq):
 				print("Requested rx center frequency:", freq, "actual frequency:",
 						actual_freq, "\n")
-	def get_rx_center_freq(chan):
+	def get_rx_center_freq(self, chan):
 		"""
 		Gets the center frequency for a specified channel
 		:param chan: The channel at which to retrieve the center frequency
 		"""
 		return self.usrp.get_rx_freq(chan)
 
-	def create_rx_stream(cpu, otw, chans):
+	def create_rx_stream(self, cpu, otw, chans):
 		"""
 		Sets up an rx streaming object based on given options
 		:par
@@ -143,11 +143,11 @@ class USRPSetup(object):
 		:param chans: Desired receiving channels
 		"""
 		rx_stream_args = uhd.usrp.StreamArgs(cpu, otw)
-		rx_stream_args.channel = chans
+		rx_stream_args.channels = chans
 		rx_stream = self.usrp.get_rx_stream(rx_stream_args)
 		return rx_stream
 
-	def setup_gpio(gpio_bank):
+	def setup_gpio(self, gpio_bank):
 		"""
 		Configures the given gpio bank for the txio
 		:param gpio_bank: String representing the gpio bank
@@ -171,30 +171,25 @@ class USRPSetup(object):
 			self.usrp.set_gpio_attr(gpio_bank, "ATR_0X", 0xFFFF, 0b010000000, i)
 			self.usrp.set_gpio_attr(gpio_bank, "ATR_0X", 0xFFFF, 0b100000000, i)
 
-	def setup():
+	def setup(self):
 		"""
 		main method for handling board setup based on given config
 		file, frequencies, and channels
-		:returns: a tuple containing the configured usrp object,
-				  rx streamer and tx streamer in that order
 		"""
 		# Configure USRP clock and gpio bank
-		self.set_usrp_clock_source(options.pps())
-		self.setup_gpio(options.gpio_bank())
+		self.set_usrp_clock_source(self.options.get_pps)
+		self.setup_gpio(self.options.get_gpio_bank)
 
 		# Configure RX subdevice
-		self.set_main_rx_subdev(options.main_rx_subdev())
-		self.set_rx_rate(options.rx_sample_rate())
+		self.set_main_rx_subdev(self.options.get_main_rx_subdev)
+		self.set_rx_rate(self.options.get_rx_sample_rate)
 		self.set_rx_center_freq(self._rx_freq, self._rx_chans)
 
 		# Configure TX subdevice
-		self.set_tx_subdev(options.tx_subdev())
-		self.set_tx_rate(options.tx_sample_rate())
+		self.set_tx_subdev(self.options.get_tx_subdev)
+		self.set_tx_rate(self.options.get_tx_sample_rate)
 		self.set_tx_center_freq(self._tx_freq, self._tx_chans)
 
 		# Create streams
-		rx_stream = self.create_rx_stream
-		tx_stream = self.create_tx_stream
-
-		# Return tuple
-		return self.usrp, rx_stream, tx_stream
+		self.rx_stream = self.create_rx_stream(self.options.get_cpu, self.options.get_otw, self._rx_chans)
+		self.tx_stream = self.create_tx_stream(self.options.get_cpu, self.options.get_otw, self._tx_chans)
