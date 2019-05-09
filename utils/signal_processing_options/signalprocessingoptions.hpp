@@ -9,16 +9,6 @@
 class SignalProcessingOptions: public Options {
  public:
   explicit SignalProcessingOptions();
-  double get_rx_rate() const;
-  double get_first_stage_sample_rate() const;
-  double get_second_stage_sample_rate() const;
-  double get_third_stage_sample_rate() const;
-  double get_first_stage_filter_cutoff() const;
-  double get_first_stage_filter_transition() const;
-  double get_second_stage_filter_cutoff() const;
-  double get_second_stage_filter_transition() const;
-  double get_third_stage_filter_cutoff() const;
-  double get_third_stage_filter_transition() const;
   uint32_t get_main_antenna_count() const;
   uint32_t get_interferometer_antenna_count() const;
 
@@ -35,26 +25,11 @@ class SignalProcessingOptions: public Options {
   std::string get_brian_dspend_identity() const;
   std::string get_exphan_dsp_identity() const;
   std::string get_dw_dsp_identity() const;
+  std::string get_ringbuffer_name() const;
 
  private:
   uint32_t main_antenna_count;
   uint32_t interferometer_antenna_count;
-  double rx_sample_rate;
-  double first_stage_sample_rate;
-  double second_stage_sample_rate;
-  double third_stage_sample_rate;
-  double first_stage_filter_cutoff;
-  double first_stage_filter_transition;
-  double second_stage_filter_cutoff;
-  double second_stage_filter_transition;
-  double third_stage_filter_cutoff;
-  double third_stage_filter_transition;
-/*  std::string driver_socket_address;
-  std::string radar_control_socket_address;
-  std::string ack_socket_address;
-  std::string timing_socket_address;
-  std::string data_write_address;
-*/
   std::string router_address;
   std::string dsp_to_radctrl_identity;
   std::string dsp_driver_identity;
@@ -68,6 +43,7 @@ class SignalProcessingOptions: public Options {
   std::string brian_dspend_identity;
   std::string exphan_dsp_identity;
   std::string dw_dsp_identity;
+  std::string ringbuffer_name;
 
 
 };

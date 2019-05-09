@@ -59,12 +59,18 @@ class AveragingPeriod(ScanClassBase):
         many averages will be transmitted in the aveperiod. If there are multiple 
         sequences in the list, they will be alternated between until the end of the 
         aveperiod.
+    one_pulse_only
+        boolean, True if this averaging period only has one unique set of pulse samples in it.
+        This is true if there is only one sequence in the averaging period, and all pulses after the
+        first pulse in the sequence have the isarepeat key = True. This boolean can be used to
+        speed up the process of sending data to the driver which means we can get more averages
+        in less time.
     """
 
-    def __init__(self, ave_keys, ave_slice_dict, ave_interface, options, slice_to_beamorder_dict,
-                 slice_to_beamdir_dict):
+    def __init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata,
+                 slice_to_beamorder_dict, slice_to_beamdir_dict):
 
-        ScanClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, options)
+        ScanClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata)
 
         self.slice_to_beamorder = slice_to_beamorder_dict
         self.slice_to_beamdir = slice_to_beamdir_dict
@@ -113,22 +119,7 @@ class AveragingPeriod(ScanClassBase):
         for params in self.prep_for_nested_scan_class():
             self.sequences.append(Sequence(*params))
 
-        #for beam_iter in len(beams[self.slice_ids[0]]):
-
-        #self.beamdir = {}
-        #self.scan_beams = {}
-        #for slice_id in self.slice_ids:
-        #    self.beamdir[slice_id] = self.slice_dict[slice_id]['beam_angle']
-        #    self.scan_beams[slice_id] = self.slice_dict[slice_id]['beam_order']
-
-        #slice_to_beamdir_dict = self.set_beamdirdict(beam_iter)
-
-        # Build an ordered list of sequences
-        # A sequence is a list of pulses in order
-        # A pulse is a dictionary with all required information for that pulse.
-        #sequence_dict_list = self.build_sequences(slice_to_beamdir_dict,
-        #                                               experiment.txctrfreq,
-        #                                               experiment.txrate, options)  # TODO pass in only options needed.
+        self.one_pulse_only = False
 
 
     def get_sequence_slice_ids(self):
@@ -190,7 +181,7 @@ class AveragingPeriod(ScanClassBase):
 
         return slice_to_beamdir_dict
 
-    def build_sequences(self, slice_to_beamdir_dict, txctrfreq, txrate, options):  # TODO fix and input only options used or get from init
+    def build_sequences(self, slice_to_beamdir_dict):
         """
         Build a list of sequences to iterate through when transmitting.
          
@@ -211,11 +202,20 @@ class AveragingPeriod(ScanClassBase):
         # a pulse data is a dictionary of the required data for the pulse.
         for sequence in self.sequences:
             # create pulse dictionary.
-            sequence_dict = sequence.build_pulse_transmit_data(slice_to_beamdir_dict,
-                                                               txctrfreq, txrate, options)
+            sequence_dict = sequence.build_pulse_transmit_data(slice_to_beamdir_dict)
 
             # Just alternating sequences
 
             sequence_dict_list.append(sequence_dict)
 
-            return sequence_dict_list
+        if len(sequence_dict_list) == 1:
+            # only one sequence in the averaging period
+            for pulse_num, pulse_dict in enumerate(sequence_dict_list[0]):
+                if pulse_num == 0:
+                    continue
+                elif pulse_dict['isarepeat'] == False:
+                    break  # there is another unique pulse in the sequence.
+            else:  # no break
+                self.one_pulse_only = True  # there is only one unique pulse in the sequence.
+
+        return sequence_dict_list

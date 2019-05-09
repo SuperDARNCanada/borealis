@@ -1,4 +1,4 @@
-#!/usr/bin/python
+# !/usr/bin/python3
 # Copyright 2015 The Ostrich / by Itamar O
 # Copyright 2016 SuperDARN
 
@@ -76,6 +76,9 @@ ENV_OVERRIDES = {
     'debug': dict(
         BUILDROOT = os.path.join(_BUILD_BASE, 'debug'),
     ),
+    'engineeringdebug': dict(
+        BUILDROOT = os.path.join(_BUILD_BASE, 'engineeringdebug'),
+    ),
     'release': dict(
         BUILDROOT = os.path.join(_BUILD_BASE, 'release'),
     ),
@@ -96,8 +99,13 @@ ENV_EXTENSIONS = {
     ),
     'debug': dict(
         # Extra flags for debug C++ builds
+        CCFLAGS = ['-g', '-DDEBUG',],
+        NVCCFLAGS = ['-G', '-g', '-DDEBUG'],
+    ),
+    'engineeringdebug' : dict(
+        # Extra flags for engineering level debug c++ builds
         CCFLAGS = ['-g', '-DDEBUG', '-DENGINEERING_DEBUG'],
-        NVCCFLAGS = ['-G'],
+        NVCCFLAGS = ['-G', '-g', '-DDEBUG', '-DENGINEERING_DEBUG'],
     ),
     'release': dict(
         # Extra flags for release C++ builds
@@ -135,7 +143,7 @@ def main():
             items = [_BIN_SUBDIR]
         # print out the item values
         for val in items:
-            print val
+            print(val)
 
 if '__main__' == __name__:
     main()

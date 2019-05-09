@@ -165,10 +165,6 @@ int main(int argc, char *argv[]){
 
     }
 
-    //zmq::message_t dsp_msg;
-    //dsp_socket.recv(&dsp_msg);
-    //std::string dsp_msg_str(static_cast<char*>(dsp_msg.data()), dsp_msg.size());
-
     auto message = std::string("Need metadata");
     SEND_REQUEST(dsp_to_driver, driver_options.get_driver_to_dsp_identity(), message);
     auto reply = RECV_REPLY(dsp_to_driver, driver_options.get_driver_to_dsp_identity());
@@ -176,18 +172,13 @@ int main(int argc, char *argv[]){
     rxsamplesmetadata::RxSamplesMetadata rx_metadata;
     rx_metadata.ParseFromString(reply);
 
-    SharedMemoryHandler shr_mem(rx_metadata.shrmemname());
+/*    SharedMemoryHandler shr_mem(rx_metadata.shrmemname());
     shr_mem.remove_shr_mem();
 
-
-/*    zmq::message_t ack_msg;
-    rad_socket.recv(&ack_msg);
-    std::string ack_msg_str(static_cast<char*>(ack_msg.data()), ack_msg.size());
 */
     SEND_REQUEST(brian_to_driver, driver_options.get_driver_to_brian_identity(), message);
     reply = RECV_REPLY(brian_to_driver, driver_options.get_driver_to_brian_identity());
 
-   //k driverpacket::DriverPacket ack;
     rx_metadata.ParseFromString(reply);
 
     std::cout << std::endl << std::endl<<"Got ack #" <<rx_metadata.sequence_num()<< " for seq #"
@@ -198,6 +189,4 @@ int main(int argc, char *argv[]){
     //usleep(100.0e3);
 
   }
-
-  //router_t.join();
 }

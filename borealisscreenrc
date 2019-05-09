@@ -1,0 +1,32 @@
+chdir $BOREALISPATH
+
+layout autosave on
+layout new borealis
+screen -t "Brian" bash -c "START_BRIAN"
+split
+
+split -v
+focus right
+screen -t "N200 Driver" bash -c "START_USRP_DRIVER"
+
+split -v
+focus right
+screen -t "Signal Processing" bash -c "START_DSP"
+
+focus down
+screen -t "Data Write" bash -c "START_DATAWRITE"
+
+split -v
+focus right
+screen -t "Experiment Handler" bash -c "START_EXPHAN"
+
+split -v
+focus right
+screen -t "Radar Control" bash -c "START_RADCTRL"
+
+split -v
+focus right
+screen -t "Cpu Affinity" bash -c "START_TIDS"
+
+detach
+
