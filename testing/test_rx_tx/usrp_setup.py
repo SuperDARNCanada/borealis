@@ -101,7 +101,7 @@ class USRPSetup(object):
 	def set_main_rx_subdev(self, main_subdev):
 		"""
 		Sets up the subdevice for the main reciever
-		:param main_subdev: String representing the subdevice(s) for the main reciever
+		:param main_subdev: String representing the subdevice(s) for the main receiver
 		"""
 		rx_subdev = uhd.usrp.SubdevSpec(main_subdev)
 		self.usrp.set_rx_subdev_spec(rx_subdev)

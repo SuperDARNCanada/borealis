@@ -68,9 +68,9 @@ class SetupOptions(object):
 	@property
 	def get_main_rx_subdev(self):
 		"""
-		Gets the subdevice for the main reciever
+		Gets the subdevice for the main receiver
 
-		:returns: The subdevice for the main reciever
+		:returns: The subdevice for the main receiver
 		:rtype: str
 		"""
 		return self._main_rx_subdev
@@ -78,9 +78,9 @@ class SetupOptions(object):
 	@property
 	def get_interferometer_rx_subdev(self):
 		"""
-		Gets the subdevice for the interferometer reciever
+		Gets the subdevice for the interferometer receiver
 
-		:returns: The subdevice for the interferometer reciever
+		:returns: The subdevice for the interferometer receiver
 		:rtype: str
 		"""
 		return self._interferometer_rx_subdev
@@ -88,9 +88,9 @@ class SetupOptions(object):
 	@property
 	def get_rx_sample_rate(self):
 		"""
-		Gets the reciever sample rate
+		Gets the receiver sample rate
 
-		:returns: The sample rate for the reciever
+		:returns: The sample rate for the receiver
 		:rtype: float
 		"""
 		return self._rx_sample_rate
@@ -144,4 +144,3 @@ class SetupOptions(object):
 		:rtype: str
 		"""
 		return self._gpio_bank
-	
