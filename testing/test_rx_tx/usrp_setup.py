@@ -42,6 +42,12 @@ class USRPSetup(object):
 		"""
 		self.usrp.set_clock_source(source)
 
+	def set_time_source(self, source):
+		"""
+		Sets the pps time source
+		:param source: String representing the source
+		"""
+
 	def set_tx_subdev(self, tx_subdev_str):
 		"""
 		Sets the subdevice for handling transmissions
@@ -183,7 +189,7 @@ class USRPSetup(object):
 		file, frequencies, and channels
 		"""
 		# Configure USRP clock and gpio bank
-		self.set_usrp_clock_source(self.options.get_pps)
+		self.set_usrp_clock_source(self.options.get_ref)
 		self.setup_gpio(self.options.get_gpio_bank)
 
 		# Configure RX subdevice
