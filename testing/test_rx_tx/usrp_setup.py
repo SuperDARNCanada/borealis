@@ -15,8 +15,8 @@ class USRPSetup(object):
 		Initializes txio board setup
 
 		:param config_file: path to config file with options
-		:param tx_freq: transmission frequency
-		:param rx_freq: recieving frequency
+		:param tx_freq: transmission center frequency
+		:param rx_freq: recieving center frequency
 		:param tx_chans: transmission channels
 		:param rx_chans: reciever channels
 		"""
@@ -41,7 +41,7 @@ class USRPSetup(object):
 		Sets the subdevice for handling transmissions
 		:param tx_subdev_str: A string specifying the subdevice
 		"""
-		tx_subdev = uhd.SubdevSpec(tx_subdev_str)
+		tx_subdev = uhd.usrp.SubdevSpec(tx_subdev_str)
 		self.usrp.set_tx_subdev_spec(tx_subdev)
 
 	def set_tx_rate(tx_rate):
@@ -69,7 +69,8 @@ class USRPSetup(object):
 			self.usrp.set_tx_freq(tx_tune_request, channel)
 			actual_freq = self.usrp.get_tx_freq(channel)
 			if not (actual_freq == freq):
-				print("Requested tx center frequency:", freq, "actual frequency:", actual_freq, "\n")
+				print("Requested tx center frequency:", freq, "actual frequency:",
+						actual_freq, "\n")
 
 	def setup_tx_stream(cpu, otw, chans):
 		"""
@@ -83,4 +84,32 @@ class USRPSetup(object):
 		tx_stream = usrp.get_tx_stream
 		return tx_stream
 
-	
+	def set_main_rx_subdev(main_subdev):
+		"""
+		Sets up the subdevice for the main reciever
+		:param main_subdev: String representing the subdevice(s) for the main reciever
+		"""
+		rx_subdev = uhd.usrp.SubdevSpec(main_subdev)
+		self.usrp.set_rx_subdev_spec(rx_subdev)
+
+	def set_rx_rate(rx_rate):
+		"""
+		Sets the data rate for the reciever
+		:param rx_rate: The reciever data rate
+		"""
+		self.usrp.set_rx_rate(rx_rate)
+
+	def get_rx_rate(channel):
+		"""
+		Gets the reciever rate on a specified channel
+		:param channel: The desired channel
+		"""
+		return np.uint32(self.usrp.get_rx_rate(channel))
+
+	def set_rx_center_freq(freq, chans):
+		"""
+		Tunes the reciever to a desired frequency
+		:param freq: The desired reciever center frequency
+		:param chans: The channels to tune to freq
+
+		
