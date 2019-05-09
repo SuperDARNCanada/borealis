@@ -72,16 +72,24 @@ class USRPSetup(object):
 				print("Requested tx center frequency:", freq, "actual frequency:",
 						actual_freq, "\n")
 
-	def setup_tx_stream(cpu, otw, chans):
+	def get_tx_center_freq(chan):
 		"""
-		Sets up the tx stream object based on given streaming options
+		Gets the center frequency for a specified channel
+		:param chan: The channel at which to retrieve the center frequency
+		"""
+		return self.usrp.get_tx_freq(chan)
+
+
+	def create_tx_stream(cpu, otw, chans):
+		"""
+		Sets up the tx streamer object based on given streaming options
 		:param cpu: The host cpu format as a string
 		:param otw: The over the wire format as a string
 		:param chans: Desired transmission channels
 		"""
-		tx_stream_args = usrp.StreamArgs(cpu, otw)
+		tx_stream_args = uhd.usrp.StreamArgs(cpu, otw)
 		tx_stream_args.channels = chans
-		tx_stream = usrp.get_tx_stream
+		tx_stream = self.usrp.get_tx_stream(tx_stream_args)
 		return tx_stream
 
 	def set_main_rx_subdev(main_subdev):
@@ -111,5 +119,54 @@ class USRPSetup(object):
 		Tunes the reciever to a desired frequency
 		:param freq: The desired reciever center frequency
 		:param chans: The channels to tune to freq
+		"""
+		rx_tune_request = uhd.types.TuneRequest(freq)
+		for channel in chans:
+			self.usrp.set_rx_freq(rx_tune_request, channel)
+			actual_freq = self.usrp.get_rx_freq(channel)
+			if not (actual_freq == freq):
+				print("Requested rx center frequency:", freq, "actual frequency:",
+						actual_freq, "\n")
+	def get_rx_center_freq(chan):
+		"""
+		Gets the center frequency for a specified channel
+		:param chan: The channel at which to retrieve the center frequency
+		"""
+		return self.usrp.get_rx_freq(chan)
 
-		
+	def create_rx_stream(cpu, otw, chans):
+		"""
+		Sets up an rx streaming object based on given options
+		:par
+		:param cpu: The host cpu format as a string
+		:param otw: The over the wire format as a string
+		:param chans: Desired receiving channels
+		"""
+		rx_stream_args = uhd.usrp.StreamArgs(cpu, otw)
+		rx_stream_args.channel = chans
+		rx_stream = self.usrp.get_rx_stream(rx_stream_args)
+		return rx_stream
+
+	def setup_gpio(gpio_bank):
+		"""
+		Configures the given gpio bank for the txio
+		:param gpio_bank: String representing the gpio bank
+		"""
+		for i in np.arange(self.usrp.get_num_mboards()):
+			self.usrp.set_gpio_attr(gpio_bank, "CTRL", 0xFFFF, 0b11111111, i)
+			self.usrp.set_gpio_attr(gpio_bank, "DDR", 0xFFFF, 0b11111111, i)
+
+			# Mirror pins along bank for easier scoping
+			usrp_d.set_gpio_attr(gpio_bank, "ATR_RX", 0xFFFF, 0b000000010, i)
+			usrp_d.set_gpio_attr(gpio_bank, "ATR_RX", 0xFFFF, 0b000000100, i)
+
+			usrp_d.set_gpio_attr(gpio_bank, "ATR_TX", 0xFFFF, 0b000001000, i)
+			usrp_d.set_gpio_attr(gpio_bank, "ATR_TX", 0xFFFF, 0b000010000, i)
+
+			#XX is the actual TR signal
+			usrp_d.set_gpio_attr(gpio_bank, "ATR_XX", 0xFFFF, 0b000100000, i)
+			usrp_d.set_gpio_attr(gpio_bank, "ATR_XX", 0xFFFF, 0b001000000, i)
+
+			#0X acts as 'scope sync'
+			usrp_d.set_gpio_attr(gpio_bank, "ATR_0X", 0xFFFF, 0b010000000, i)
+			usrp_d.set_gpio_attr(gpio_bank, "ATR_0X", 0xFFFF, 0b100000000, i)
