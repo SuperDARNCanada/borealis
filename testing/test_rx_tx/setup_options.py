@@ -1,3 +1,8 @@
+"""
+Class SetupOptions parses options from a configuration file and
+provideds methods for setting and retrieving options critical
+to txio board and USRP device configuration
+"""
 import json
 import os
 
