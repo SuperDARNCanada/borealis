@@ -157,16 +157,44 @@ class USRPSetup(object):
 			self.usrp.set_gpio_attr(gpio_bank, "DDR", 0xFFFF, 0b11111111, i)
 
 			# Mirror pins along bank for easier scoping
-			usrp_d.set_gpio_attr(gpio_bank, "ATR_RX", 0xFFFF, 0b000000010, i)
-			usrp_d.set_gpio_attr(gpio_bank, "ATR_RX", 0xFFFF, 0b000000100, i)
+			self.usrp.set_gpio_attr(gpio_bank, "ATR_RX", 0xFFFF, 0b000000010, i)
+			self.usrp.set_gpio_attr(gpio_bank, "ATR_RX", 0xFFFF, 0b000000100, i)
 
-			usrp_d.set_gpio_attr(gpio_bank, "ATR_TX", 0xFFFF, 0b000001000, i)
-			usrp_d.set_gpio_attr(gpio_bank, "ATR_TX", 0xFFFF, 0b000010000, i)
+			self.usrp.set_gpio_attr(gpio_bank, "ATR_TX", 0xFFFF, 0b000001000, i)
+			self.usrp.set_gpio_attr(gpio_bank, "ATR_TX", 0xFFFF, 0b000010000, i)
 
 			#XX is the actual TR signal
-			usrp_d.set_gpio_attr(gpio_bank, "ATR_XX", 0xFFFF, 0b000100000, i)
-			usrp_d.set_gpio_attr(gpio_bank, "ATR_XX", 0xFFFF, 0b001000000, i)
+			self.usrp.set_gpio_attr(gpio_bank, "ATR_XX", 0xFFFF, 0b000100000, i)
+			self.usrp.set_gpio_attr(gpio_bank, "ATR_XX", 0xFFFF, 0b001000000, i)
 
 			#0X acts as 'scope sync'
-			usrp_d.set_gpio_attr(gpio_bank, "ATR_0X", 0xFFFF, 0b010000000, i)
-			usrp_d.set_gpio_attr(gpio_bank, "ATR_0X", 0xFFFF, 0b100000000, i)
+			self.usrp.set_gpio_attr(gpio_bank, "ATR_0X", 0xFFFF, 0b010000000, i)
+			self.usrp.set_gpio_attr(gpio_bank, "ATR_0X", 0xFFFF, 0b100000000, i)
+
+	def setup():
+		"""
+		main method for handling board setup based on given config
+		file, frequencies, and channels
+		:returns: a tuple containing the configured usrp object,
+				  rx streamer and tx streamer in that order
+		"""
+		# Configure USRP clock and gpio bank
+		self.set_usrp_clock_source(options.pps())
+		self.setup_gpio(options.gpio_bank())
+
+		# Configure RX subdevice
+		self.set_main_rx_subdev(options.main_rx_subdev())
+		self.set_rx_rate(options.rx_sample_rate())
+		self.set_rx_center_freq(self._rx_freq, self._rx_chans)
+
+		# Configure TX subdevice
+		self.set_tx_subdev(options.tx_subdev())
+		self.set_tx_rate(options.tx_sample_rate())
+		self.set_tx_center_freq(self._tx_freq, self._tx_chans)
+
+		# Create streams
+		rx_stream = self.create_rx_stream
+		tx_stream = self.create_tx_stream
+
+		# Return tuple
+		return self.usrp, rx_stream, tx_stream
