@@ -31,7 +31,7 @@ class SetupOptions(object):
 		self._gpio_bank = raw_config['gpio_bank']
 
 	@property
-	def devices(self):
+	def get_devices(self):
 		"""
 		Get the address of the devices to be used
 
@@ -41,7 +41,7 @@ class SetupOptions(object):
 		return self._devices
 	
 	@property
-	def tx_subdev(self):
+	def get_tx_subdev(self):
 		"""
 		Gets the subdevice for the transmit function
 
@@ -51,7 +51,7 @@ class SetupOptions(object):
 		return self._tx_subdev
 	
 	@property
-	def tx_sample_rate(self):
+	def get_tx_sample_rate(self):
 		"""
 		Gets the transmit sample rate
 
@@ -61,7 +61,7 @@ class SetupOptions(object):
 		return self._tx_sample_rate
 	
 	@property
-	def main_rx_subdev(self):
+	def get_main_rx_subdev(self):
 		"""
 		Gets the subdevice for the main reciever
 
@@ -71,7 +71,7 @@ class SetupOptions(object):
 		return self._main_rx_subdev
 	
 	@property
-	def interferometer_rx_subdev(self):
+	def get_interferometer_rx_subdev(self):
 		"""
 		Gets the subdevice for the interferometer reciever
 
@@ -81,7 +81,7 @@ class SetupOptions(object):
 		return self._interferometer_rx_subdev
 	
 	@property
-	def rx_sample_rate(self):
+	def get_rx_sample_rate(self):
 		"""
 		Gets the reciever sample rate
 
@@ -91,7 +91,7 @@ class SetupOptions(object):
 		return self._rx_sample_rate
 	
 	@property
-	def pps(self):
+	def get_pps(self):
 		"""
 		Gets the clock source
 
@@ -101,7 +101,7 @@ class SetupOptions(object):
 		return self._pps
 	
 	@property
-	def ref(self):
+	def get_ref(self):
 		"""
 		Gets the reference clock specification
 
@@ -111,7 +111,7 @@ class SetupOptions(object):
 		return self._ref
 	
 	@property
-	def otw(self):
+	def get_otw(self):
 		"""
 		Gets the over the wire format for communication
 
@@ -121,7 +121,7 @@ class SetupOptions(object):
 		return self._otw
 	
 	@property
-	def cpu(self):
+	def get_cpu(self):
 		"""
 		Gets the cpu format for communication
 
@@ -131,7 +131,7 @@ class SetupOptions(object):
 		return self._cpu
 	
 	@property
-	def gpio_bank(self):
+	def get_gpio_bank(self):
 		"""
 		Gets the gpio bank for formatting
 
