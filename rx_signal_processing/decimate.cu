@@ -27,8 +27,8 @@ namespace {
     auto num_blocks_x = num_samples/dm_rate;
     auto num_blocks_y = num_antennas;
     auto num_blocks_z = 1;
-    std::cout << "    Grid size: " << num_blocks_x << " x " << num_blocks_y << " x "
-      << num_blocks_z << std::endl;
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Grid size: " << num_blocks_x << " x "
+      << num_blocks_y << " x "<< num_blocks_z);
     dim3 dimGrid(num_blocks_x,num_blocks_y,num_blocks_z);
 
     return dimGrid;
@@ -47,8 +47,8 @@ namespace {
     auto num_threads_x = num_taps_per_filter;
     auto num_threads_y = num_freqs;
     auto num_threads_z = 1;
-    std::cout << "    Block size: " << num_threads_x << " x " << num_threads_y << " x "
-      << num_threads_z << std::endl;
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Block size: " << num_threads_x << " x "
+      << num_threads_y << " x " << num_threads_z);
     dim3 dimBlock(num_threads_x,num_threads_y,num_threads_z);
 
     return dimBlock;
@@ -70,8 +70,8 @@ namespace {
     auto num_blocks_x = num_samples/dm_rate;
     auto num_blocks_y = num_antennas;
     auto num_blocks_z = num_freqs;
-    std::cout << "    Grid size: " << num_blocks_x << " x " << num_blocks_y << " x "
-      << num_blocks_z << std::endl;
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Grid size: " << num_blocks_x << " x "
+      << num_blocks_y << " x "<< num_blocks_z);
     dim3 dimGrid(num_blocks_x,num_blocks_y,num_blocks_z);
 
     return dimGrid;
@@ -89,8 +89,8 @@ namespace {
     auto num_threads_x = num_taps_per_filter;
     auto num_threads_y = 1;
     auto num_threads_z = 1;
-    std::cout << "    Block size: " << num_threads_x << " x " << num_threads_y << " x "
-      << num_threads_z << std::endl;
+    DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Block size: " << num_threads_x << " x "
+      << num_threads_y << " x " << num_threads_z);
     dim3 dimBlock(num_threads_x,num_threads_y,num_threads_z);
 
     return dimBlock;
@@ -111,10 +111,10 @@ namespace {
  * https://devblogs.nvidia.com/parallelforall/faster-parallel-reductions-kepler/
  * http://docs.nvidia.com/cuda/cuda-c-programming-guide/#warp-shuffle-functions
  */
-__device__ inline cuComplex __shfl_down(cuComplex var, unsigned int srcLane, int width=32){
+__device__ inline cuComplex __shfl_down_sync(cuComplex var, unsigned int srcLane, int width=32){
   float2 a = *reinterpret_cast<float2*>(&var);
-  a.x = __shfl_down(a.x, srcLane, width);
-  a.y = __shfl_down(a.y, srcLane, width);
+  a.x = __shfl_down_sync(0xFFFFFFFF, a.x, srcLane, width);
+  a.y = __shfl_down_sync(0xFFFFFFFF, a.y, srcLane, width);
   return *reinterpret_cast<cuComplex*>(&a);
 }
 
@@ -177,7 +177,7 @@ __device__ cuComplex parallel_reduce(cuComplex* data, uint32_t tap_offset) {
     // values from upper threads to lower threads without needing __syncthreads().
     for (int offset = warpSize/2; offset > 0; offset /= 2)
     {
-      total_sum = cuCaddf(total_sum,__shfl_down(total_sum, offset));
+      total_sum = cuCaddf(total_sum,__shfl_down_sync(total_sum, offset));
     }
   }
 
@@ -284,7 +284,7 @@ __global__ void bandpass_decimate1024(cuComplex* original_samples,
     auto freq_idx = threadIdx.y;
     auto unwrapped_phase = 2.0 * M_PI * (freqs[freq_idx]/F_s) * dec_sample_num * dm_rate;
     auto phase = fmod(unwrapped_phase, 2.0 * M_PI);
-    auto filter_phase = _exp(make_cuComplex(0.0f, -1 * phase));
+    auto filter_phase = _exp(make_cuComplex(0.0f, 1 * phase));
     calculated_output_sample = cuCmulf(calculated_output_sample,filter_phase);
 
     antenna_offset = antenna_num * gridDim.x;
@@ -394,7 +394,7 @@ __global__ void bandpass_decimate2048(cuComplex* original_samples,
     auto freq_idx = threadIdx.y;
     auto unwrapped_phase = 2.0 * M_PI * (freqs[freq_idx]/F_s) * dec_sample_num * dm_rate;
     auto phase = fmod(unwrapped_phase, 2.0 * M_PI);
-    auto filter_phase = _exp(make_cuComplex(0.0f, -1 * phase));
+    auto filter_phase = _exp(make_cuComplex(0.0f, 1 * phase));
     calculated_output_sample = cuCmulf(calculated_output_sample,filter_phase);
 
     antenna_offset = antenna_num * gridDim.x;
@@ -434,7 +434,7 @@ void bandpass_decimate1024_wrapper(cuComplex* original_samples,
 
   //Allocate shared memory on device for all filter taps.
   auto shr_mem_taps = num_freqs * num_taps_per_filter * sizeof(cuComplex);
-  std::cout << "    Number of shared memory bytes: "<< shr_mem_taps << std::endl;
+  DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_taps);
 
   auto dimGrid = create_bandpass_grid(samples_per_antenna, dm_rate, num_antennas);
   auto dimBlock = create_bandpass_block(num_taps_per_filter,num_freqs);
@@ -474,7 +474,7 @@ void bandpass_decimate2048_wrapper(cuComplex* original_samples,
 
   //Allocate shared memory on device for all filter taps.
   auto shr_mem_taps = num_freqs * num_taps_per_filter * sizeof(cuComplex);
-  std::cout << "    Number of shared memory bytes: "<< shr_mem_taps << std::endl;
+  DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_taps);
 
   auto dimGrid = create_bandpass_grid(samples_per_antenna, dm_rate, num_antennas);
   auto dimBlock = create_bandpass_block(num_taps_per_filter/2, num_freqs);
@@ -702,7 +702,7 @@ void lowpass_decimate1024_wrapper(cuComplex* original_samples,
 
   //Allocate shared memory on device for all filter taps.
   auto shr_mem_taps = num_freqs * num_taps_per_filter * sizeof(cuComplex);
-  std::cout << "    Number of shared memory bytes: "<< shr_mem_taps << std::endl;
+  DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_taps);
 
   auto dimGrid = create_lowpass_grid(samples_per_antenna, dm_rate, num_antennas, num_freqs);
   auto dimBlock = create_lowpass_block(num_taps_per_filter);
@@ -734,7 +734,7 @@ void lowpass_decimate2048_wrapper(cuComplex* original_samples,
 
   //Allocate shared memory on device for all filter taps.
   auto shr_mem_taps = num_freqs * num_taps_per_filter * sizeof(cuComplex);
-  std::cout << "    Number of shared memory bytes: "<< shr_mem_taps << std::endl;
+  DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_taps);
 
   auto dimGrid = create_lowpass_grid(samples_per_antenna, dm_rate, num_antennas, num_freqs);
   auto dimBlock = create_lowpass_block(num_taps_per_filter/2);

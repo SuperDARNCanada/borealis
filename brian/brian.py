@@ -8,28 +8,39 @@
 
 import sys
 import os
-import zmq
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import threading
+import argparse
+import zmq
 
 sys.path.append(os.environ["BOREALISPATH"])
 
 if __debug__:
-	sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
+    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
 else:
-	sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
+    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
+
 import driverpacket_pb2
 import sigprocpacket_pb2
 import rxsamplesmetadata_pb2
 import processeddata_pb2
+
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/experiment_options')
 import experimentoptions as options
 
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/zmq_borealis_helpers')
 import socket_operations as so
 
+TIME_PROFILE = False
+
 def router(opts):
+    """The router is responsible for moving traffic between modules by routing traffic using
+    named sockets.
+
+    Args:
+        opts (ExperimentOptions): Options parsed from config.
+    """
     context = zmq.Context().instance()
     router = context.socket(zmq.ROUTER)
     router.setsockopt(zmq.ROUTER_MANDATORY, 1)
@@ -38,20 +49,25 @@ def router(opts):
     sys.stdout.write("Starting router!\n")
     while True:
         dd = router.recv_multipart()
-        #sys.stdout.write(dd)
+
         sender, receiver, empty, data = dd
-        output = "Router input/// Sender -> {}: Receiver -> {}: empty: Data -> {}\n".format(*dd)
-        sys.stdout.write(output)
-        frames = [receiver,sender,empty,data]
-        output = "Router output/// Receiver -> {}: Sender -> {}: empty: Data -> {}\n".format(*frames)
-        sys.stdout.write(output)
+        if __debug__:
+            output = "Router input/// Sender -> {}: Receiver -> {}\n"
+            output = output.format(sender, receiver)
+            sys.stdout.write(output)
+        frames = [receiver, sender,empty,data]
+        if __debug__:
+            output = "Router output/// Receiver -> {}: Sender -> {}\n"
+            output = output.format(receiver, sender)
+            sys.stdout.write(output)
         sent = False
         while not sent:
             try:
                 router.send_multipart(frames)
                 sent = True
             except zmq.ZMQError as e:
-                sys.stdout.write("Trying to send \n")
+                if __debug__:
+                    sys.stdout.write("Trying to send \n")
                 time.sleep(0.5)
 
 def sequence_timing(opts):
@@ -63,9 +79,6 @@ def sequence_timing(opts):
     :param context: zmq context, if None, then this method will get one
     :type context: zmq context, optional
     """
-
-
-    #ids = [BRIAN_RADCTRL_IDEN, BRIAN_DRIVER_IDEN, BRIAN_DSPBEGIN_IDEN, BRIAN_DSPEND_IDEN]
 
     ids = [opts.brian_to_radctrl_identity,
            opts.brian_to_driver_identity,
@@ -104,22 +117,52 @@ def sequence_timing(opts):
 
         want_to_start = False
         good_to_start = True
-        while True:
+        dsp_finish_counter = 2
 
-            if want_to_start and good_to_start:
+        # starting a new sequence and keeping the system correctly pipelined is dependent on 3
+        # conditions. We trigger a 'want_to_start' when the samples have been collected from the
+        # driver and dsp is ready to do its job. This signals that the driver is capable of
+        # collecting new data. 'good_to_start' is triggered once the samples have been copied to
+        # the GPU and the filtering begins. 'extra_good_to_start' is needed to make sure the
+        # system can keep up with the demand if the gpu is working hard. Without this flag its
+        # possible to overload the gpu and crash the system with overallocation of memory. This
+        # is set once the filtering is complete.
+        #
+        # The last flag is actually a counter because on the first run it is 2 sequences
+        # behind the current sequence and then after that its only 1 sequence behind. The dsp
+        # is always processing the work while a new sequence is being collected.
+        if TIME_PROFILE:
+            time_now = datetime.utcnow()
+        while True:
+            if want_to_start and good_to_start and dsp_finish_counter:
                 #Acknowledge new sequence can begin to Radar Control by requesting new sequence
                 #metadata
-                printing("Requesting metadata from Radar control")
-                so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity, "Requesting metadata")
-                want_to_start = good_to_start = False
+                if __debug__:
+                    printing("Requesting metadata from Radar control")
 
-            message = start_new.recv()
+                so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity,
+                                "Requesting metadata")
+                want_to_start = good_to_start = False
+                dsp_finish_counter -= 1
+
+            message = start_new.recv_string()
             if message == "want_to_start":
+                if TIME_PROFILE:
+                    print('Driver ready: {}'.format(datetime.utcnow() - time_now))
+                    time_now = datetime.utcnow()
                 want_to_start = True
 
             if message == "good_to_start":
+                if TIME_PROFILE:
+                    print('Copied to GPU: {}'.format(datetime.utcnow() - time_now))
+                    time_now = datetime.utcnow()
                 good_to_start = True
 
+            if message == "extra_good_to_start":
+                if TIME_PROFILE:
+                    print('DSP finished w/ data: {}'.format(datetime.utcnow() - time_now))
+                    time_now = datetime.utcnow()
+                dsp_finish_counter = 1;
 
     thread = threading.Thread(target=start_new)
     thread.daemon = True
@@ -132,92 +175,122 @@ def sequence_timing(opts):
     processing_times = {}
 
     first_time = True
-    processing_done = True
+
     late_counter = 0
     while True:
 
         if first_time:
             #Request new sequence metadata
-            printing("Requesting metadata from Radar control")
-            so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity, "Requesting metadata")
+            if __debug__:
+                printing("Requesting metadata from Radar control")
+            so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity,
+                            "Requesting metadata")
             first_time = False
 
         socks = dict(sequence_poller.poll())
-        if brian_to_radar_control in socks and socks[brian_to_radar_control] == zmq.POLLIN:
-
-            #Get new sequence metadata from radar control
-            reply = so.recv_reply(brian_to_radar_control, opts.radctrl_to_brian_identity, printing)
-
-            sigp = sigprocpacket_pb2.SigProcPacket()
-            sigp.ParseFromString(reply)
-            reply_output = "Radar control sent -> sequence {} time {}".format(sigp.sequence_num,
-                                                                              sigp.sequence_time)
-            printing(reply_output)
-
-            pulse_seq_times[sigp.sequence_num] = sigp.sequence_time
-
-            #Request acknowledgement of sequence from driver
-            printing("Requesting ack from driver")
-            so.send_request(brian_to_driver, opts.driver_to_brian_identity, "Requesting ack")
 
         if brian_to_driver in socks and socks[brian_to_driver] == zmq.POLLIN:
 
             #Receive metadata of completed sequence from driver such as timing
-            reply = so.recv_reply(brian_to_driver, opts.driver_to_brian_identity, printing)
+            reply = so.recv_obj(brian_to_driver, opts.driver_to_brian_identity, printing)
             meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
             meta.ParseFromString(reply)
-            reply_output = "Driver sent -> time {}, sqnum {}".format(meta.sequence_time, meta.sequence_num)
-            printing(reply_output)
+
+            if __debug__:
+                reply_output = "Driver sent -> time {} ms, sqnum {}"
+                reply_output = reply_output.format(meta.sequence_time*1e3, meta.sequence_num)
+                printing(reply_output)
 
             driver_times[meta.sequence_num] = meta.sequence_time
 
             #Requesting acknowledgement of work begins from DSP
-            printing("Requesting work begins from DSP")
-            so.send_request(brian_to_dsp_begin, opts.dspbegin_to_brian_identity, "Requesting work begins")
+            if __debug__:
+                printing("Requesting work begins from DSP")
+            so.send_request(brian_to_dsp_begin, opts.dspbegin_to_brian_identity,
+                            "Requesting work begins")
+
+            #acknowledge we want to start something new
+            start_new_sock.send_string("want_to_start")
+
+        if brian_to_radar_control in socks and socks[brian_to_radar_control] == zmq.POLLIN:
+
+            #Get new sequence metadata from radar control
+            reply = so.recv_obj(brian_to_radar_control, opts.radctrl_to_brian_identity, printing)
+
+            sigp = sigprocpacket_pb2.SigProcPacket()
+            sigp.ParseFromString(reply)
+
+            if __debug__:
+                reply_output = "Radar control sent -> sequence {} time {} ms"
+                reply_output = reply_output.format(sigp.sequence_num, sigp.sequence_time)
+                printing(reply_output)
+
+            pulse_seq_times[sigp.sequence_num] = sigp.sequence_time
+
+            #Request acknowledgement of sequence from driver
+            if __debug__:
+                printing("Requesting ack from driver")
+            so.send_request(brian_to_driver, opts.driver_to_brian_identity, "Requesting ack")
 
         if brian_to_dsp_begin in socks and socks[brian_to_dsp_begin] == zmq.POLLIN:
 
             #Get acknowledgement that work began in processing.
-            reply = so.recv_reply(brian_to_dsp_begin, opts.dspbegin_to_brian_identity, printing)
-            reply_output = "Dsp sent -> {}".format(reply)
-            printing(reply_output)
+            reply = so.recv_obj(brian_to_dsp_begin, opts.dspbegin_to_brian_identity, printing)
+            sig_p = sigprocpacket_pb2.SigProcPacket()
+            sig_p.ParseFromString(reply)
+
+            if __debug__:
+                reply_output = "Dsp began -> sqnum {}".format(sig_p.sequence_num)
+                printing(reply_output)
 
             #Requesting acknowledgement of work ends from DSP
-            printing("Requesting work end from DSP")
+
+            if __debug__:
+                printing("Requesting work end from DSP")
             so.send_request(brian_to_dsp_end, opts.dspend_to_brian_identity, "Requesting work ends")
 
-            #acknowledge we want to start something new
-            start_new_sock.send("want_to_start")
+            #acknowledge that we are good and able to start something new
+            start_new_sock.send_string("good_to_start")
 
 
         if brian_to_dsp_end in socks and socks[brian_to_dsp_end] == zmq.POLLIN:
 
             #Receive ack that work finished on previous sequence.
-            reply = so.recv_reply(brian_to_dsp_end, opts.dspend_to_brian_identity, printing)
+            reply = so.recv_obj(brian_to_dsp_end, opts.dspend_to_brian_identity, printing)
 
-            proc_d = processeddata_pb2.ProcessedData()
-            proc_d.ParseFromString(reply)
-            reply_output = "Dsp sent -> time {}, sqnum {}".format(proc_d.processing_time, proc_d.sequence_num)
-            printing(reply_output)
+            sig_p = sigprocpacket_pb2.SigProcPacket()
+            sig_p.ParseFromString(reply)
 
+            if __debug__:
+                reply_output = "Dsp sent -> time {}, sqnum {}"
+                reply_output = reply_output.format(sig_p.kerneltime, sig_p.sequence_num)
+                printing(reply_output)
 
-            processing_times[proc_d.sequence_num] = proc_d.processing_time
-            if proc_d.sequence_num != 0:
-                if proc_d.processing_time > processing_times[proc_d.sequence_num-1]:
-                    late_counter +=1
+            processing_times[sig_p.sequence_num] = sig_p.kerneltime
+            if sig_p.sequence_num != 0:
+                if sig_p.kerneltime > processing_times[sig_p.sequence_num-1]:
+                    late_counter += 1
                 else:
                     late_counter = 0
-            printing("Late counter {}".format(late_counter))
+
+            if __debug__:
+                printing("Late counter {}".format(late_counter))
 
             #acknowledge that we are good and able to start something new
-            start_new_sock.send("good_to_start")
+            start_new_sock.send_string("extra_good_to_start")
 
-if __name__ == "__main__":
+def main():
+    parser = argparse.ArgumentParser()
+    help_msg = 'Run only the router. Do not run any of the other threads or functions.'
+    parser.add_argument('--router-only', action='store_true', help=help_msg)
+    args = parser.parse_args()
 
     opts = options.ExperimentOptions()
     threads = []
-    threads.append(threading.Thread(target=router,args=(opts,)))
-    threads.append(threading.Thread(target=sequence_timing,args=(opts,)))
+    threads.append(threading.Thread(target=router, args=(opts,)))
+
+    if not args.router_only:
+        threads.append(threading.Thread(target=sequence_timing, args=(opts,)))
 
     for thread in threads:
         thread.daemon = True
@@ -225,3 +298,7 @@ if __name__ == "__main__":
 
     while True:
         time.sleep(1)
+
+if __name__ == "__main__":
+    main()
+

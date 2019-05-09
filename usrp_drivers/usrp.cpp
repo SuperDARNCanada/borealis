@@ -8,12 +8,15 @@ See LICENSE for details.
 
 */
 #include <uhd/usrp/multi_usrp.hpp>
+#include <uhd/usrp_clock/multi_usrp_clock.hpp>
 #include <memory>
 #include <string>
 #include <vector>
 #include <chrono>
 #include <cmath>
-#include "usrp_drivers/n200/usrp.hpp"
+#include <thread>
+#include <sstream>
+#include "usrp_drivers/usrp.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
 
@@ -21,28 +24,39 @@ See LICENSE for details.
  * @brief      Creates the multiUSRP abstraction with the options from the config file.
  *
  * @param[in]  driver_options  The driver options parsed from config
+ * @param[in]  tx_rate         The transmit rate in Sps  (samples per second, Hz).
+ * @param[in]  rx_rate         The receive rate in Sps (samples per second, Hz).
  */
-USRP::USRP(const DriverOptions& driver_options)
+USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
 {
-  mboard_ = 0;
+
   gpio_bank_ = driver_options.get_gpio_bank();
-  scope_sync_mask_ = driver_options.get_scope_sync_mask();
-  atten_mask_ = driver_options.get_atten_mask();
-  tr_mask_ = driver_options.get_tr_mask();
+  atr_rx_ = driver_options.get_atr_rx();
+  atr_tx_ = driver_options.get_atr_tx();
+  atr_xx_ = driver_options.get_atr_xx();
+  atr_0x_ = driver_options.get_atr_0x();
+  tx_rate_ = tx_rate;
+  rx_rate_ = rx_rate;
+
   usrp_ = uhd::usrp::multi_usrp::make(driver_options.get_device_args());
-  // Set first four GPIO on gpio_bank_ to output, the rest are input
-  usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x000F, 0xFFFF);
+
+
   set_usrp_clock_source(driver_options.get_ref());
   set_tx_subdev(driver_options.get_tx_subdev());
   set_main_rx_subdev(driver_options.get_main_rx_subdev());
   set_interferometer_rx_subdev(driver_options.get_interferometer_rx_subdev(),
                                 driver_options.get_interferometer_antenna_count());
-/*  receive_channels = create_receive_channels(driver_options.get_main_antenna_count(),
-                                              driver_options.get_interferometer_antenna_count());*/
-  set_time_source(driver_options.get_pps());
+  set_time_source(driver_options.get_pps(), driver_options.get_clk_addr());
   check_ref_locked();
   set_atr_gpios();
 
+  set_tx_rate(driver_options.get_transmit_channels());
+  set_rx_rate(driver_options.get_receive_channels());
+
+  create_usrp_tx_stream(driver_options.get_cpu(), driver_options.get_otw(),
+                          driver_options.get_transmit_channels());
+  create_usrp_rx_stream(driver_options.get_cpu(), driver_options.get_otw(),
+                          driver_options.get_receive_channels());
 }
 
 
@@ -71,17 +85,17 @@ void USRP::set_tx_subdev(std::string tx_subdev)
 /**
  * @brief      Sets the transmit sample rate.
  *
- * @param[in]  tx_rate  The transmit sample rate in Sps.
+ * @param[in]  chs   A vector of USRP channels to tx on.
  *
  * @return     Actual set tx rate.
  */
-double USRP::set_tx_rate(double tx_rate, std::vector<size_t> chs)
+double USRP::set_tx_rate(std::vector<size_t> chs)
 {
-  if (tx_rate <= 0.0) {
+  if (tx_rate_ <= 0.0) {
     //todo(keith): handle error
   }
 
-  usrp_->set_tx_rate(tx_rate);
+  usrp_->set_tx_rate(tx_rate_);
   for (auto& ch : chs)
   {
     double actual_rate = usrp_->get_tx_rate(ch);
@@ -90,6 +104,11 @@ double USRP::set_tx_rate(double tx_rate, std::vector<size_t> chs)
     if (actual_rate != rate_1) {
       /*TODO(keith): error*/
     }
+
+    if (actual_rate != tx_rate_) {
+      /*TODO(keith): error - fail because experiment will assume and we will transmit different than expected*/
+    }
+
   }
 
   return usrp_->get_tx_rate(chs[0]);
@@ -109,41 +128,55 @@ double USRP::get_tx_rate(uint32_t channel)
 /**
  * @brief      Sets the transmit center frequency.
  *
- * @param[in]  freq  The frequency in Hz.
- * @param[in]  chs   A vector of which USRP channels to set a center frequency.
+ * @param[in]  freq         The frequency in Hz.
+ * @param[in]  chs          A vector of which USRP channels to set a center frequency.
+ * @param[in]  tune_delay   The amount of time in future to tune the devices.
  *
  * @return     The actual set tx center frequency for the USRPs
  *
  * The USRP uses a numbered channel mapping system to identify which data streams come from which
  * USRP and its daughterboard frontends. With the daughtboard frontends connected to the
  * transmitters, controlling what USRP channels are selected will control what antennas are
- * used and what order they are in.
+ * used and what order they are in. To synchronize tuning of all boxes, timed commands are used so
+ * that everything is done at once.
  */
-double USRP::set_tx_center_freq(double freq, std::vector<size_t> chs)
+double USRP::set_tx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay)
 {
   uhd::tune_request_t tune_request(freq);
 
+  set_command_time(get_current_usrp_time() + tune_delay);
   for(auto &channel : chs) {
     usrp_->set_tx_freq(tune_request, channel); //TODO(keith): test tune request.
-
-    double actual_freq = usrp_->get_tx_freq(channel);
-    if (actual_freq != freq) {
-      /*TODO(Keith): something*/
-    }
-
   }
+  clear_command_time();
+
+  auto duration = std::chrono::duration<double>(tune_delay.get_real_secs());
+  std::this_thread::sleep_for(duration);
 
   //check for varying USRPs
   for (auto &channel : chs) {
     auto actual_freq = usrp_->get_tx_freq(channel);
     auto freq_1 = usrp_->get_tx_freq(chs[0]);
 
-    if (actual_freq != freq_1) {
-        //TODO(keith): throw error.
+    if (actual_freq != freq) {
+      //TODO(keith): throw error.
+    }
+    else if (actual_freq != freq_1) {
+      //TODO(keith): throw error.
     }
   }
 
   return usrp_->get_tx_freq(chs[0]);
+}
+
+/**
+ * @brief      Gets the transmit center frequency.
+ *
+ * @return     The actual center frequency that the USRPs are tuned to.
+ */
+double USRP::get_tx_center_freq(uint32_t channel)
+{
+  return usrp_->get_tx_freq(channel);
 }
 
 /**
@@ -181,86 +214,52 @@ void USRP::set_interferometer_rx_subdev(std::string interferometer_subdev,
 }
 
 /**
- * @brief      Creates the order of USRP receiver channels.
- *
- * @param[in]  main_antenna_count            The main antenna count.
- * @param[in]  interferometer_antenna_count  The interferometer antenna count.
- *
- * @return     A vector with the USRP channel ordering.
- *
- * The USRP default channel mapping will cause the main antenna and interferometer
- * antenna data to be interleaved buffer by buffer. When setting up the receive streamer from the
- * USRP, it is possible to reorder the host side data buffers. This algorithm reorders the channels
- * so that the main array buffers are in order, followed by the interferometers buffers. This
- * ordering is easiest to work with and is what most people would assume the data layout looks like.
- */
-/*std::vector<size_t> USRP::create_receive_channels(uint32_t main_antenna_count,
-                        uint32_t interferometer_antenna_count) //TODO(keith): add channel mapping
-{
-
-  std::vector<size_t> channels;
-
-  //Add the main array channels from the mboards that will also be receiving the
-  //interferometer samples
-  for(uint32_t i=0; i<interferometer_antenna_count; i++) {
-    channels.push_back(2*i);
-  }
-
-  //starts at 2 * i_count since those channels are interleaved
-  auto start = 2 * interferometer_antenna_count;
-  auto end = main_antenna_count + interferometer_antenna_count;
-
-  //Add the rest of main array channels
-  for(uint32_t i=start; i<end; i++){
-    channels.push_back(i);
-  }
-
-  //Now add the interferometer channels
-  for(uint32_t i=0; i<interferometer_antenna_count; i++) {
-    channels.push_back(2*i + 1);
-  }
-
-  return channels;
-
-}
-*/
-/**
- * @brief      Gets the receive channels.
- *
- * @return     A vector of the receive channel ordering.
- */
-/*std::vector<size_t> USRP::get_receive_channels()
-{
-  return receive_channels;
-}
-*/
-/**
  * @brief      Sets the receive sample rate.
  *
- * @param[in]  rx_rate  The receive rate in Sps.
+ * @param[in]  rx_chs  The USRP channels to rx on.
+ *
+ * @return     The actual rate set.
  */
-double USRP::set_rx_rate(double rx_rate, std::vector<size_t> rx_chs)
+double USRP::set_rx_rate(std::vector<size_t> rx_chs)
 {
-  usrp_->set_rx_rate(rx_rate);
+
+  if (rx_rate_ <= 0.0) {
+    //todo(keith): handle error
+  }
+  usrp_->set_rx_rate(rx_rate_);
 
   //check for varying USRPs
   for (auto &channel : rx_chs) {
-    auto actual_freq = usrp_->get_rx_freq(channel);
-    auto freq_1 = usrp_->get_rx_freq(rx_chs[0]);
+    auto actual_rate = usrp_->get_rx_rate(channel);
+    auto rate_1 = usrp_->get_rx_rate(rx_chs[0]);
 
-    if (actual_freq != freq_1) {
+    if (actual_rate != rate_1) {
         //TODO(keith): throw error.
+    }
+
+    if (actual_rate != rx_rate_) {
+        //TODO(keith): throw error. Fail because will be receiving unknown freqs.
     }
   }
 
-  return usrp_->get_rx_freq(rx_chs[0]);
+  return usrp_->get_rx_rate(rx_chs[0]);
 }
 
 /**
+ * @brief      Gets the USRP transmit sample rate.
+ *
+ * @return     The transmit sample rate in Sps.
+ */
+double USRP::get_rx_rate(uint32_t channel)
+{
+  return usrp_->get_rx_rate(channel);
+}
+/**
  * @brief      Sets the receive center frequency.
  *
- * @param[in]  freq  The frequency in Hz.
- * @param[in]  chs   A vector of which USRP channels to set a center frequency.
+ * @param[in]  freq         The frequency in Hz.
+ * @param[in]  chs          A vector of which USRP channels to set a center frequency.
+ * @param[in]  tune_delay   The amount of time in future to tune the devices.
  *
  * @return     The actual center frequency that the USRPs are tuned to.
  *
@@ -268,34 +267,59 @@ double USRP::set_rx_rate(double rx_rate, std::vector<size_t> rx_chs)
  * USRP and its daughterboard frontends. With the daughtboard frontends connected to the
  * transmitters, controlling what USRP channels are selected will control what antennas are
  * used and what order they are in. To simplify data processing, all antenna mapped channels are
- * used.
+ * used. To synchronize tuning of all boxes, timed commands are used so that everything is done at
+ * once.
  */
-double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs)
+double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay)
 {
   uhd::tune_request_t tune_request(freq);
 
+  set_command_time(get_current_usrp_time() + tune_delay);
   for(auto &channel : chs) {
-    usrp_->set_rx_freq(tune_request, channel);
-    double actual_freq = usrp_->get_rx_freq(channel);
-    if (actual_freq != freq) {
-      /*TODO: something*/
-    }
+    usrp_->set_rx_freq(tune_request, channel); //TODO(keith): test tune request.
+  }
+  clear_command_time();
 
+  auto duration = std::chrono::duration<double>(tune_delay.get_real_secs());
+  std::this_thread::sleep_for(duration);
+
+  //check for varying USRPs
+  for (auto &channel : chs) {
+    auto actual_freq = usrp_->get_rx_freq(channel);
+    auto freq_1 = usrp_->get_rx_freq(chs[0]);
+
+    if (actual_freq != freq) {
+      //TODO(keith): throw error.
+    }
+    else if (actual_freq != freq_1) {
+      //TODO(keith): throw error.
+    }
   }
 
-  //return will assume that the set frequency of one USRP is the same as all of them.
   return usrp_->get_rx_freq(chs[0]);
 }
-
+/**
+ * @brief      Gets the receive center frequency.
+ *
+ * @return     The actual center frequency that the USRPs are tuned to.
+ */
+double USRP::get_rx_center_freq(uint32_t channel)
+{
+  return usrp_->get_rx_freq(channel);
+}
 /**
  * @brief      Sets the USRP time source.
  *
- * @param[in]  source   A string with the time source the USRP will use.
+ * @param[in]  source    A string with the time source the USRP will use.
+ * @param[in]  clk_addr  IP address of the octoclock for gps timing.
  *
- * This uses Juha Vierinen's method of latching to the current time by making sure the clock time
- * is in a stable place past the second. The USRP is then set to this time.
+ * Uses the method Ettus suggests for setting time on the x300.
+ * https://files.ettus.com/manual/page_gpsdo_x3x0.html
+ * Falls back to Juha Vierinen's method of latching to the current time by making sure the clock
+ * time is in a stable place past the second if no gps is available.
+ * The USRP is then set to this time.
  */
-void USRP::set_time_source(std::string source)
+void USRP::set_time_source(std::string source, std::string clk_addr)
 {
   auto tt =  std::chrono::high_resolution_clock::now();
   auto tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(tt.time_since_epoch());
@@ -307,12 +331,57 @@ void USRP::set_time_source(std::string source)
     usleep(10000);
   }
   if (source == "external"){
+    uhd::usrp_clock::multi_usrp_clock::sptr clock;
+    clock = uhd::usrp_clock::multi_usrp_clock::make(uhd::device_addr_t(clk_addr));
+
+    //Make sure Clock configuration is correct
+    if(clock->get_sensor("gps_detected").value == "false"){
+      throw uhd::runtime_error("No GPSDO detected on Clock.");
+    }
+    if(clock->get_sensor("using_ref").value != "internal"){
+      std::ostringstream msg;
+      msg << "Clock must be using an internal reference. Using "
+          << clock->get_sensor("using_ref").value;
+      throw uhd::runtime_error(msg.str());
+    }
+
+    while(! (clock->get_sensor("gps_locked").to_bool())) {
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+      RUNTIME_MSG("Waiting for gps lock...");
+    }
     usrp_->set_time_source(source);
-    usrp_->set_time_unknown_pps(std::ceil(tt_sc.count()) + 1);
+
+    auto wait_for_update = [&]() {
+      uhd::time_spec_t last = usrp_->get_time_last_pps();
+      uhd::time_spec_t next = usrp_->get_time_last_pps();
+      while(next == last) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
+          last = next;
+          next = usrp_->get_time_last_pps();
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    };
+
+    wait_for_update();
+
+    usrp_->set_time_next_pps(uhd::time_spec_t(double(clock->get_time() + 1)));
+
+    wait_for_update();
+
+    auto clock_time = uhd::time_spec_t(double(clock->get_time()));
+
+    for (uint32_t board=0; board<usrp_->get_num_mboards(); board++){
+      auto usrp_time = usrp_->get_time_last_pps(board);
+      auto time_diff = clock_time - usrp_time;
+
+      RUNTIME_MSG("Time difference between USRPs and gps clock for board " << board
+                << " " << time_diff.get_real_secs());
+    }
+
   }
   else {
     //TODO(keith): throw error
-    usrp_->set_time_now(uhd::time_spec_t(0.0));
+    usrp_->set_time_now(uhd::time_spec_t(std::ceil(tt_sc.count())));
   }
 }
 
@@ -341,102 +410,43 @@ void USRP::check_ref_locked()
 }
 
 /**
- * @brief      Sets the scope sync GPIO to high.
+ * @brief      Sets the command time.
  *
- * @param[in]  scope_high  The timespec for when in the future to set the scope sync pin.
+ * @param[in]  cmd_time  The command time to run a timed command.
  */
-void USRP::set_scope_sync(uhd::time_spec_t scope_high)
+void USRP::set_command_time(uhd::time_spec_t cmd_time)
 {
-  usrp_->set_command_time(scope_high);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0xFFFF, scope_sync_mask_, mboard_);
-}
-
-/**
- * @brief      Sets the attenuator GPIO to high.
- *
- * @param[in]  atten_high  The timespec for when in the future to set the attenuator pin.
- */
-void USRP::set_atten(uhd::time_spec_t atten_high)
-{
-  usrp_->set_command_time(atten_high);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0xFFFF, atten_mask_, mboard_);
-}
-
-/**
- * @brief      Sets the t/r GPIO to high.
- *
- * @param[in]  tr_high  The timespec for when in the future to set the TR pin.
- */
-void USRP::set_tr(uhd::time_spec_t tr_high)
-{
-  usrp_->set_command_time(tr_high);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0xFFFF, tr_mask_, mboard_);
-}
-
-/**
- * @brief      Clears the scope sync GPIO to low.
- *
- * @param[in]  scope_low  The timespec for when in the future to clear the scope sync pin.
- */
-void USRP::clear_scope_sync(uhd::time_spec_t scope_low)
-{
-  usrp_->set_command_time(scope_low);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0x0000, scope_sync_mask_, mboard_);
-}
-
-/**
- * @brief      Clears the attenuator GPIO to low.
- *
- * @param[in]  atten_low  The timespec for when in the future to clear the attenuator pin.
- */
-void USRP::clear_atten(uhd::time_spec_t atten_low)
-{
-  usrp_->set_command_time(atten_low);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0x0000, atten_mask_, mboard_);
-}
-
-/**
- * @brief      Clears the t/r GPIO to low.
- *
- * @param[in]  tr_low  The timespec for when in the future to clear the TR pin.
- */
-void USRP::clear_tr(uhd::time_spec_t tr_low)
-{
-  usrp_->set_command_time(tr_low);
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0x0000, tr_mask_, mboard_);
+  usrp_->set_command_time(cmd_time);
 }
 
 /**
  * @brief      Clears any timed USRP commands.
  */
-void USRP::clear_command_times()
+void USRP::clear_command_time()
 {
   usrp_->clear_command_time();
 }
 
+/**
+ * @brief      Sets the USRP automatic transmit/receive states on GPIO for the given daughtercard
+ *             bank.
+ */
 void USRP::set_atr_gpios()
 {
-  for (int i=0; i<usrp_->get_num_mboards(); i++){
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
     usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0xFFFF, 0b11111111, i);
     usrp_->set_gpio_attr(gpio_bank_, "DDR", 0xFFFF, 0b11111111, i);
 
-    //Mirror pins along bank for easier scoping.
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, 0b000000010, i);
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, 0b000000100, i);
-
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, 0b000001000, i);
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, 0b000010000, i);
-
     //XX is the actual TR signal
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, 0b000100000, i);
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, 0b001000000, i);
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, atr_xx_, i);
 
-    //0X acts as 'scope sync'
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, 0b010000000, i);
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, 0b100000000, i);
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, atr_rx_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, atr_tx_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, atr_0x_, i);
+
   }
-
-
 }
 
 /**
@@ -449,31 +459,46 @@ uhd::time_spec_t USRP::get_current_usrp_time()
   return usrp_->get_time_now();
 }
 
+
+/**
+ * @brief      Creates an USRP receive stream.
+ *
+ * @param[in]  cpu_fmt  The cpu format for the tx stream. Described in UHD docs.
+ * @param[in]  otw_fmt  The otw format for the tx stream. Described in UHD docs.
+ * @param[in]  chs      A vector of which USRP channels to receive on.
+ */
+void USRP::create_usrp_rx_stream(std::string cpu_fmt, std::string otw_fmt, std::vector<size_t> chs)
+{
+  uhd::stream_args_t stream_args(cpu_fmt, otw_fmt);
+  stream_args.channels = chs;
+  rx_stream_ =  usrp_->get_rx_stream(stream_args);
+}
+
 /**
  * @brief      Gets a pointer to the USRP rx stream.
  *
- * @param[in]  stream_args  The arguments for the type of stream. Described in UHD docs.
- *
  * @return     The USRP rx stream.
  */
-uhd::rx_streamer::sptr USRP::get_usrp_rx_stream(uhd::stream_args_t stream_args)
+uhd::rx_streamer::sptr USRP::get_usrp_rx_stream()
 {
-  return usrp_->get_rx_stream(stream_args);
+  return rx_stream_;
 }
+
 
 /**
- * @brief      Gets a pointer to the USRP tx stream.
+ * @brief      Creates an USRP transmit stream.
  *
- * @param[in]  stream_args  The arguments for the type of stream. Described in UHD docs.
- *
- * @return     The USRP tx stream.
+ * @param[in]  cpu_fmt  The cpu format for the tx stream. Described in UHD docs.
+ * @param[in]  otw_fmt  The otw format for the tx stream. Described in UHD docs.
+ * @param[in]  chs      A vector of which USRP channels to transmit on.
  */
-uhd::tx_streamer::sptr USRP::get_usrp_tx_stream(uhd::stream_args_t stream_args)
+void USRP::create_usrp_tx_stream(std::string cpu_fmt, std::string otw_fmt, std::vector<size_t> chs)
 {
-  return usrp_->get_tx_stream(stream_args);
+  uhd::stream_args_t stream_args(cpu_fmt, otw_fmt);
+  stream_args.channels = chs;
+  tx_stream_ = usrp_->get_tx_stream(stream_args);
 }
 
-// REVIEW #6 TODO create a set and clear for new method of timing that is a hybrid between atten and t/r (we are only using one pin for both and breaking off on separate board)
 
 /**
  * @brief      Gets the usrp.
@@ -485,6 +510,14 @@ uhd::usrp::multi_usrp::sptr USRP::get_usrp()
   return usrp_;
 }
 
+/**
+ * @brief      Gets a pointer to the USRP tx stream.
+ *
+ * @return     The USRP tx stream.
+ */
+uhd::tx_streamer::sptr USRP::get_usrp_tx_stream() {
+  return tx_stream_;
+}
 
 /**
  * @brief      Returns a string representation of the USRP parameters.

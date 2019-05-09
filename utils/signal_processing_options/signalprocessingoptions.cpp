@@ -10,26 +10,6 @@
 SignalProcessingOptions::SignalProcessingOptions() {
   Options::parse_config_file();
 
-  rx_sample_rate = boost::lexical_cast<double>(
-                config_pt.get<std::string>("rx_sample_rate"));
-  first_stage_sample_rate = boost::lexical_cast<double>(
-                config_pt.get<std::string>("first_stage_sample_rate"));
-  second_stage_sample_rate = boost::lexical_cast<double>(
-                config_pt.get<std::string>("second_stage_sample_rate"));
-  third_stage_sample_rate = boost::lexical_cast<double>(
-                config_pt.get<std::string>("third_stage_sample_rate"));
-  first_stage_filter_cutoff = boost::lexical_cast<double>(
-                config_pt.get<std::string>("first_stage_filter_cutoff"));
-  first_stage_filter_transition = boost::lexical_cast<double>(
-                config_pt.get<std::string>("first_stage_filter_transition"));
-  second_stage_filter_cutoff = boost::lexical_cast<double>(
-                config_pt.get<std::string>("second_stage_filter_cutoff"));
-  second_stage_filter_transition = boost::lexical_cast<double>(
-                config_pt.get<std::string>("second_stage_filter_transition"));
-  third_stage_filter_cutoff = boost::lexical_cast<double>(
-                config_pt.get<std::string>("third_stage_filter_cutoff"));
-  third_stage_filter_transition = boost::lexical_cast<double>(
-                config_pt.get<std::string>("third_stage_filter_transition"));
   main_antenna_count = boost::lexical_cast<uint32_t>(
                 config_pt.get<std::string>("main_antenna_count"));
   interferometer_antenna_count = boost::lexical_cast<uint32_t>(
@@ -47,12 +27,9 @@ SignalProcessingOptions::SignalProcessingOptions() {
   brian_dspend_identity = config_pt.get<std::string>("brian_to_dspend_identity");
   exphan_dsp_identity = config_pt.get<std::string>("exphan_to_dsp_identity");
   dw_dsp_identity = config_pt.get<std::string>("dw_to_dsp_identity");
+  ringbuffer_name = config_pt.get<std::string>("ringbuffer_name");
 }
 
-double SignalProcessingOptions::get_rx_rate() const
-{
-  return rx_sample_rate;
-}
 
 uint32_t SignalProcessingOptions::get_main_antenna_count() const
 {
@@ -62,50 +39,6 @@ uint32_t SignalProcessingOptions::get_main_antenna_count() const
 uint32_t SignalProcessingOptions::get_interferometer_antenna_count() const
 {
   return interferometer_antenna_count;
-}
-double SignalProcessingOptions::get_first_stage_sample_rate() const
-{
-  return first_stage_sample_rate;
-}
-
-double SignalProcessingOptions::get_second_stage_sample_rate() const
-{
-  return second_stage_sample_rate;
-}
-
-double SignalProcessingOptions::get_third_stage_sample_rate() const
-{
-  return third_stage_sample_rate;
-}
-
-double SignalProcessingOptions::get_first_stage_filter_cutoff() const
-{
-  return first_stage_filter_cutoff;
-}
-
-double SignalProcessingOptions::get_first_stage_filter_transition() const
-{
-  return first_stage_filter_transition;
-}
-
-double SignalProcessingOptions::get_second_stage_filter_cutoff() const
-{
-  return second_stage_filter_cutoff;
-}
-
-double SignalProcessingOptions::get_second_stage_filter_transition() const
-{
-  return second_stage_filter_transition;
-}
-
-double SignalProcessingOptions::get_third_stage_filter_cutoff() const
-{
-  return third_stage_filter_cutoff;
-}
-
-double SignalProcessingOptions::get_third_stage_filter_transition() const
-{
-  return third_stage_filter_transition;
 }
 
 std::string SignalProcessingOptions::get_router_address() const
@@ -171,4 +104,9 @@ std::string SignalProcessingOptions::get_exphan_dsp_identity() const
 std::string SignalProcessingOptions::get_dw_dsp_identity() const
 {
   return dw_dsp_identity;
+}
+
+std::string SignalProcessingOptions::get_ringbuffer_name() const
+{
+  return ringbuffer_name;
 }
