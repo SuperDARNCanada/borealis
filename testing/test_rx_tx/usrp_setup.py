@@ -1,3 +1,9 @@
+"""
+Class USRPSetup is intended to do the work of configuring a USRP device using
+options from a configuration file, as well as user defined tx/rx frequencies
+and channels. The class also provides setting methods for all configuration
+options in case the user wishes to change the configuration on-the-fly.
+"""
 import setup_options
 import numpy as np
 import uhd
