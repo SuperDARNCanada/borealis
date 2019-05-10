@@ -786,10 +786,13 @@ class DataWrite(object):
                 parameters['antenna_arrays_order'] = []
 
                 flattened_data = []
+                num_antenna_arrays = 0
                 if "main" in bfiq[slice_id]:
+                    num_antenna_arrays += 1 
                     parameters['antenna_arrays_order'].append("main")
                     flattened_data.append(bfiq[slice_id]['main']['data'])
                 if "intf" in bfiq[slice_id]:
+                    num_antenna_arrays += 1 
                     parameters['antenna_arrays_order'].append("intf")
                     flattened_data.append(bfiq[slice_id]['intf']['data'])
 
@@ -797,7 +800,7 @@ class DataWrite(object):
                 parameters['data'] = flattened_data
 
                 parameters['num_samps'] = np.uint32(bfiq[slice_id]['num_samps'])
-                parameters['data_dimensions'] = np.array([len(bfiq[slice_id].keys()),
+                parameters['data_dimensions'] = np.array([num_antenna_arrays,
                                                           integration_meta.nave,
                                                           len(parameters['beam_nums']),
                                                           parameters['num_samps']], dtype=np.uint32)

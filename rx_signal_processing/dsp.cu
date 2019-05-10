@@ -220,7 +220,9 @@ namespace {
    * @brief      Finds correlations from two sets of samples. Calculates autocorrelation by
    *             passing in the same sample set as both beamformed_samples_1 and beamformed_samples_2. 
    *
-   * @param      beamformed_samples_1   The first set of beamformed samples for each beam.
+   * @param      beamformed_samples_1   The first set of beamformed samples for each beam. 
+   *                                    Both sets of beamformed samples are for a single sequence. The 
+   *                                    main and intf arrays will have same number of: beams, samples per sequence.
    * @param      beamformed_samples_2   The second set of beamformed samples for each beam.
    * @param      corr_results           A set of vectors where correlation results are stored.
    * @param[in]  rx_slice_info          A vector of the info needed from each slice.
