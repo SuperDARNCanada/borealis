@@ -19,11 +19,13 @@ class gpio_testing(object):
 		self.PULSE_TIME = 0.5
 		self._usrp = uhd.usrp.MultiUSRP(address)
 		print("USRP has", self._usrp.get_num_mboards(), "motherboards on board")
-		self._rxo_pin = int(input("Specify RXO GPIO pin "))
-		self._txo_pin = int(input("Specify TXO GPIO pin "))
-		self._tr_pin = int(input("Specify T/R GPIO pin "))
-		self._idle_pin = int(input("Specify IDLE GPIO pin "))
-		self._tm_pin = int(input("Specify TEST_MODE GPIO pin "))
+		self._rxo_pin = int(input("Specify pin connected to the RXO signal "))
+		self._txo_pin = int(input("Specify pin connected to the TXO signal "))
+		self._tr_pin = int(input("Specify pin connected to the T/R signal "))
+		self._idle_pin = int(input("Specify pin connected to the IDLE signal "))
+		self._tm_pin = int(input("Specify pin connected to the TEST_MODE signal "))
+		self._lp_pin = int(input("Specify pin connected to the LOW_PWR signal"))
+		self._agc_pin = int(input("Specify pin connected to the AGC_STATUS signal"))
 
 
 	def set_all_low(self):
@@ -54,13 +56,7 @@ class gpio_testing(object):
 
 	def run_single_signals_test(self):
 		"""
-		Handles testing of rxo pin
-		:param function: String specifying the function you wish to test
-						 Options: "RXO"
-						 		  "TXO"
-						 		  "TX/RX"
-						 		  "IDLE"
-						 		  "TEST_MODE"
+		Handles the single ended output signals test
 		"""
 		# Select test
 		signals = [("RXO", self._rxo_pin), ("TXO", self._txo_pin), ("T/R", self._tr_pin), ("IDLE", self._idle_pin), ("TEST_MODE", self._tm_pin)]
@@ -84,6 +80,39 @@ class gpio_testing(object):
 					print("Ending tests...")
 					return
 
+	def run_differential_signal_test(self):
+		"""
+		Handles the loop-back differential signals test
+		"""
+		lp_mask = self.get_pin_mask(self._lp_pin)
+		agc_mask = self.get_pin_mask(self._agc_pin)
+
+		def set_lp_agc_inputs():
+			"""
+			sets pins connected to low power and AGC status signals as inputs
+			"""
+			self._usrp.set_gpio_attr(self._bank, "DDR", 0x0000, lp_mask)
+			self._usrp.set_gpio_attr(self._bank, "DDR", 0x0000, agc_mask)
+
+		for pin in [self._tr_pin, self._tm_pin]
+			# configure GPIO for testing
+			self.set_all_low()
+			set_lp_agc_inputs()
+			mask = self.get_pin_mask(pin)
+			try:
+				while True:
+					self._usrp.set_gpio_attr(self._bank, "OUT", 0xffff, mask)
+					time.sleep(self.PULSE_TIME)
+					self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, mask)
+					time.sleep(self.PULSE_TIME)
+			except KeyboardInterrupt:
+				user = input("\nContinue? [y/n] ")
+				if user == "y":
+					print("Going to next test...")
+					pass
+				elif user == "n":
+					print("Ending tests...")
+					return
 
 
 if __name__ == "__main__":
