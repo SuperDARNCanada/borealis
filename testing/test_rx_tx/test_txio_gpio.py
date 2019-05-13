@@ -16,16 +16,26 @@ class gpio_testing(object):
 
 		# Create USRP object
 		self._bank = bank
-		self.PULSE_TIME = 0.5
+		self.PULSE_TIME = 2
 		self._usrp = uhd.usrp.MultiUSRP(address)
 		print("USRP has", self._usrp.get_num_mboards(), "motherboards on board")
-		self._rxo_pin = int(input("Specify pin connected to the RXO signal "))
-		self._txo_pin = int(input("Specify pin connected to the TXO signal "))
-		self._tr_pin = int(input("Specify pin connected to the T/R signal "))
-		self._idle_pin = int(input("Specify pin connected to the IDLE signal "))
-		self._tm_pin = int(input("Specify pin connected to the TEST_MODE signal "))
-		self._lp_pin = int(input("Specify pin connected to the LOW_PWR signal"))
-		self._agc_pin = int(input("Specify pin connected to the AGC_STATUS signal"))
+		pinout = input("Set pinout: 'user' for user or enter for default ")
+		if pinout == 'user':
+			self._rxo_pin = int(input("Specify pin connected to the RXO signal "))
+			self._txo_pin = int(input("Specify pin connected to the TXO signal "))
+			self._tr_pin = int(input("Specify pin connected to the T/R signal "))
+			self._idle_pin = int(input("Specify pin connected to the IDLE signal "))
+			self._tm_pin = int(input("Specify pin connected to the TEST_MODE signal "))
+			self._lp_pin = int(input("Specify pin connected to the LOW_PWR signal "))
+			self._agc_pin = int(input("Specify pin connected to the AGC_STATUS signal "))
+		else:
+			self._rxo_pin = 1
+			self._txo_pin = 3
+			self._tr_pin = 5
+			self._idle_pin = 7
+			self._tm_pin = 9
+			self._lp_pin = 11
+			self._agc_pin =  13
 
 
 	def set_all_low(self):
@@ -35,9 +45,9 @@ class gpio_testing(object):
 		"""
 		# for i in arange(self._usrp.get_num_mboards()):
 		print("Setting all pins on", self._bank, "as low outputs.")
-		self._usrp.set_gpio_attr(self._bank, "CTRL", 0x0000, 0b1111111111111111)
-		self._usrp.set_gpio_attr(self._bank, "DDR", 0xffff, 0b1111111111111111)
-		self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, 0b1111111111111111)
+		self._usrp.set_gpio_attr(self._bank, "CTRL", 0x0000, 0b11111111)
+		self._usrp.set_gpio_attr(self._bank, "DDR", 0xffff, 0b11111111)
+		self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, 0b11111111)
 
 	def set_pulse_time(self, pt):
 		"""
@@ -83,8 +93,10 @@ class gpio_testing(object):
 			try:
 				while True:
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0xffff, mask)
+					# print(self._usrp.get_gpio_attr(self._bank, "READBACK"))
 					time.sleep(self.PULSE_TIME)
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, mask)
+					# print(self._usrp.get_gpio_attr(self._bank, "READBACK"))
 					time.sleep(self.PULSE_TIME)
 			except KeyboardInterrupt:
 				user = self.query_user()
