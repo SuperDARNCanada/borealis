@@ -34,6 +34,10 @@ class SetupOptions(object):
 		self._otw = raw_config['overthewire']
 		self._cpu = raw_config['cpu']
 		self._gpio_bank = raw_config['gpio_bank']
+		self._atr_rx = raw_config['atr_rx']
+		self._atr_tx = raw_config['atr_tx']
+		self._atr_xx = raw_config['atr_xx']
+		self._atr_0x = raw_config['atr_0x']
 
 	@property
 	def get_devices(self):
@@ -144,3 +148,43 @@ class SetupOptions(object):
 		:rtype: str
 		"""
 		return self._gpio_bank
+
+	@property
+	def get_atr_rx(self):
+		"""
+		Gets the bitmask for receive only mapping
+
+		:returns: The ATR_RX bitmask
+		:rtype: str
+		"""
+		return self._atr_rx
+
+	@property
+	def get_atr_tx(self):
+		"""
+		Gets the bitmask for transmit only mapping
+
+		:returns: The ATR_TX bitmask
+		:rtype: str
+		"""
+		return self._atr_tx
+	
+	@property
+	def get_atr_xx(self):
+		"""
+		Gets the bitmask for duplex mapping
+
+		:returns: The ATR_XX bitmask
+		:rtype: str
+		"""
+		return self._atr_xx
+	
+	@property
+	def get_atr_0x(self):
+		"""
+		Gets the bitmask for idle state mapping
+
+		:returns: The ATR_0X bitmask
+		:rtype: str
+		"""
+		return self._atr_0x
