@@ -164,24 +164,35 @@ class USRPSetup(object):
 		Configures the given gpio bank for the txio
 		:param gpio_bank: String representing the gpio bank
 		"""
+
+		def mask_map(attr, mask):
+			"""
+			Applies a mask to the attribute for the given gpio bank
+
+			:param attr: The gpio attribute to set
+			:param mask: The bitmask that specifies the bits to set
+						 the attribute on
+			"""
+			for i in self.usrp.get_num_mboards():
+				self.usrp.set_gpio_attr(gpio_bank, attr, 0xFFFF, mask, i)
+
+		def mask_unpack(gpio_tup):
+			"""
+			Unpacks a gpio attribute, bitmask tuple for use in mask_map
+			"""
+			mask_map(*gpio_tup)
+
+		# Setup control and data direction register
 		for i in np.arange(self.usrp.get_num_mboards()):
 			self.usrp.set_gpio_attr(gpio_bank, "CTRL", 0xFFFF, 0b11111111, i)
 			self.usrp.set_gpio_attr(gpio_bank, "DDR", 0xFFFF, 0b11111111, i)
 
-			# Mirror pins along bank for easier scoping
-			self.usrp.set_gpio_attr(gpio_bank, "ATR_RX", 0xFFFF, 0b000000010, i)
-			self.usrp.set_gpio_attr(gpio_bank, "ATR_RX", 0xFFFF, 0b000000100, i)
-
-			self.usrp.set_gpio_attr(gpio_bank, "ATR_TX", 0xFFFF, 0b000001000, i)
-			self.usrp.set_gpio_attr(gpio_bank, "ATR_TX", 0xFFFF, 0b000010000, i)
-
-			#XX is the actual TR signal
-			self.usrp.set_gpio_attr(gpio_bank, "ATR_XX", 0xFFFF, 0b000100000, i)
-			self.usrp.set_gpio_attr(gpio_bank, "ATR_XX", 0xFFFF, 0b001000000, i)
-
-			#0X acts as 'scope sync'
-			self.usrp.set_gpio_attr(gpio_bank, "ATR_0X", 0xFFFF, 0b010000000, i)
-			self.usrp.set_gpio_attr(gpio_bank, "ATR_0X", 0xFFFF, 0b100000000, i)
+		# setup GPIO attributes
+		gpio_tups = [("ATR_RX", self.options.get_atr_rx),
+					 ("ATR_TX", self.options.get_atr_tx),
+					 ("ATR_XX", self.options.get_atr_xx),
+					 ("ATR_0X", self.options.get_atr_0x)]
+		map(mask_unpack, gpio_tups)
 
 	def setup(self):
 		"""
