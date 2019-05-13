@@ -54,6 +54,21 @@ class gpio_testing(object):
 		mask = 2 ** pin
 		return mask
 
+	def query_user(self):
+		"""
+		Gets user input for continuing or aborting testing
+		"""
+		user = input("\nContinue? [y/n] ")
+		if user == "y":
+			print("Going to next test...\n")
+			return "y"
+		elif user == "n":
+			print("Ending tests...\n")
+			return "n"
+		else:
+			print("Invalid input\n")
+			return self.query_user()
+
 	def run_single_signals_test(self):
 		"""
 		Handles the single ended output signals test
@@ -72,12 +87,10 @@ class gpio_testing(object):
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, mask)
 					time.sleep(self.PULSE_TIME)
 			except KeyboardInterrupt:
-				user = input("\nContinue? [y/n] ")
+				user = self.query_user()
 				if user == "y":
-					print("Going to next test...")
-					pass
-				elif user == "n":
-					print("Ending tests...")
+					continue
+				else:
 					return
 
 	def run_differential_signal_test(self):
@@ -94,7 +107,7 @@ class gpio_testing(object):
 			self._usrp.set_gpio_attr(self._bank, "DDR", 0x0000, lp_mask)
 			self._usrp.set_gpio_attr(self._bank, "DDR", 0x0000, agc_mask)
 
-		for pin in [self._tr_pin, self._tm_pin]
+		for pin in [self._tr_pin, self._tm_pin]:
 			# configure GPIO for testing
 			self.set_all_low()
 			set_lp_agc_inputs()
@@ -106,12 +119,10 @@ class gpio_testing(object):
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, mask)
 					time.sleep(self.PULSE_TIME)
 			except KeyboardInterrupt:
-				user = input("\nContinue? [y/n] ")
+				user = self.query_user()
 				if user == "y":
-					print("Going to next test...")
-					pass
-				elif user == "n":
-					print("Ending tests...")
+					continue
+				else:
 					return
 
 
