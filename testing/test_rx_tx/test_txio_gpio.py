@@ -20,6 +20,7 @@ class gpio_testing(object):
 		self._usrp = uhd.usrp.MultiUSRP(address)
 		print("USRP has", self._usrp.get_num_mboards(), "motherboards on board")
 		pinout = input("Set pinout: 'user' for user or enter for default ")
+		# user input pinout
 		if pinout == 'user':
 			self._rxo_pin = int(input("Specify pin connected to the RXO signal "))
 			self._txo_pin = int(input("Specify pin connected to the TXO signal "))
@@ -28,6 +29,7 @@ class gpio_testing(object):
 			self._tm_pin = int(input("Specify pin connected to the TEST_MODE signal "))
 			self._lp_pin = int(input("Specify pin connected to the LOW_PWR signal "))
 			self._agc_pin = int(input("Specify pin connected to the AGC_STATUS signal "))
+		# default pins
 		else:
 			self._rxo_pin = 1
 			self._txo_pin = 3
@@ -91,6 +93,7 @@ class gpio_testing(object):
 			self.set_all_low()
 			print("Testing", signal)
 			try:
+				# run current test
 				while True:
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0xffff, mask)
 					# print(self._usrp.get_gpio_attr(self._bank, "READBACK"))
@@ -99,6 +102,7 @@ class gpio_testing(object):
 					# print(self._usrp.get_gpio_attr(self._bank, "READBACK"))
 					time.sleep(self.PULSE_TIME)
 			except KeyboardInterrupt:
+				# ask user whether they want to continue the test sequence
 				user = self.query_user()
 				if user == "y":
 					continue
@@ -125,12 +129,14 @@ class gpio_testing(object):
 			set_lp_agc_inputs()
 			mask = self.get_pin_mask(pin)
 			try:
+				# run current test
 				while True:
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0xffff, mask)
 					time.sleep(self.PULSE_TIME)
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, mask)
 					time.sleep(self.PULSE_TIME)
 			except KeyboardInterrupt:
+				# ask user whether they want to continue the test sequence
 				user = self.query_user()
 				if user == "y":
 					continue
