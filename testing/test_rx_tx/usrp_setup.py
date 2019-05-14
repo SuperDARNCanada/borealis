@@ -9,6 +9,7 @@ import numpy as np
 import uhd
 import math
 import os
+import time
 
 
 class USRPSetup(object):
@@ -47,6 +48,16 @@ class USRPSetup(object):
 		Sets the pps time source
 		:param source: String representing the source
 		"""
+		clk_addr = self.options.get_clk_addr()
+		tt = time.time()
+		while (tt - np.floor(tt)) < 0.2 or (tt - np.floor(tt)) > 0.3:
+			tt = time.time()
+			time.sleep(0.01)
+
+		# TODO: Figure out how to set this to an external source
+		self.usrp.set_time_source("none")
+
+
 
 	def set_tx_subdev(self, tx_subdev_str):
 		"""

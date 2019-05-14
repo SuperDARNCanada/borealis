@@ -38,6 +38,7 @@ class SetupOptions(object):
 		self._atr_tx = raw_config['atr_tx']
 		self._atr_xx = raw_config['atr_xx']
 		self._atr_0x = raw_config['atr_0x']
+		self._clk_addr = raw_config['gps_octoclock_addr']
 
 	@property
 	def get_devices(self):
@@ -48,6 +49,17 @@ class SetupOptions(object):
 		:rtype: str
 		"""
 		return self._devices
+
+	@property
+	def get_clk_addr(self):
+		"""
+		Gets the IP address of the gps clock on site
+
+		:returns: The IP address of the gps clock
+		:rtype: str
+		"""
+		return self._clk_addr
+	
 	
 	@property
 	def get_tx_subdev(self):
