@@ -1541,6 +1541,9 @@ class ExperimentPrototype(object):
         if exp_slice['mpinc'] < self.options.minimum_mpinc_length:
             error_list.append("Slice {} Multi-Pulse Increment Too Small".format(
                 exp_slice['slice_id']))
+        if exp_slice['mpinc'] % exp_slice['pulse_len'] != 0:
+            print('Warning: Lags will be off because pulse_len is not an even divisor '\
+                   'of mpinc')
 
         # check intn and intt make sense given mpinc, and pulse_sequence.
         if exp_slice['pulse_sequence']:  # if not empty
