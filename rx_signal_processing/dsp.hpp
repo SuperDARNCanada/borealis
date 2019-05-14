@@ -48,16 +48,18 @@ typedef struct rx_slice
   uint32_t beam_count;
   float first_range; // km
   float range_sep; // km
+  uint32_t tau_spacing; // us
   std::vector<uint32_t> lags;
 
   rx_slice(double rx_freq, uint32_t slice_id, uint32_t num_ranges, uint32_t beam_count,
-            float first_range, float range_sep, std::vector<uint32_t> lags) :
+            float first_range, float range_sep, uint32_t tau_spacing, std::vector<uint32_t> lags) :
     rx_freq(rx_freq),
     slice_id(slice_id),
     num_ranges(num_ranges),
     beam_count(beam_count),
     first_range(first_range),
     range_sep(range_sep),
+    tau_spacing(tau_spacing),
     lags(lags){}
 }rx_slice;
 
@@ -74,7 +76,7 @@ class DSPCore {
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
                     SignalProcessingOptions &options, uint32_t sq_num,
-                    double rx_rate, double output_sample_rate, 
+                    double rx_rate, double output_sample_rate,
                     std::vector<std::vector<float>> filter_taps,
                     std::vector<cuComplex> beam_phases,
                     double driver_initialization_time, double sequence_start_time,

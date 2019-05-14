@@ -217,27 +217,31 @@ namespace {
   }
 
   /**
-   * @brief      Finds correlations from two sets of samples. Calculates autocorrelation by
-   *             passing in the same sample set as both beamformed_samples_1 and beamformed_samples_2. 
+   * @brief      Finds correlations from two sets of samples. Calculates autocorrelation by passing
+   *             in the same sample set as both beamformed_samples_1 and beamformed_samples_2.
    *
-   * @param      beamformed_samples_1   The first set of beamformed samples for each beam. 
-   *                                    Both sets of beamformed samples are for a single sequence. The 
-   *                                    main and intf arrays will have same number of: beams, samples per sequence.
-   * @param      beamformed_samples_2   The second set of beamformed samples for each beam.
-   * @param      corr_results           A set of vectors where correlation results are stored.
-   * @param[in]  rx_slice_info          A vector of the info needed from each slice.
-   * @param[in]  num_samples            The number samples for each beam contained in the beamformed_samples set.
-   *                                    Assumed to be equal for both sample sets.
+   * @param      beamformed_samples_1  The first set of beamformed samples for each beam. Both sets
+   *                                   of beamformed samples are for a single sequence. The main and
+   *                                   intf arrays will have same number of: beams, samples per
+   *                                   sequence.
+   * @param      beamformed_samples_2  The second set of beamformed samples for each beam.
+   * @param      corr_results          A set of vectors where correlation results are stored.
+   * @param[in]  rx_slice_info         A vector of the info needed from each slice.
+   * @param[in]  num_samples           The number samples for each beam contained in the
+   *                                   beamformed_samples set. Assumed to be equal for both sample
+   *                                   sets.
+   * @param[in]  output_sample_rate    The output sample rate.
    *
-   * For each slice a correlation matrix is build for all the beams in that slice. Values
-   * corresponding to particular lags and range gates are selected from the final data. This
-   * function does not compute the expectation value for the correlations. That part is done in
-   * data write.
+   *             For each slice a correlation matrix is build for all the beams in that slice.
+   *             Values corresponding to particular lags and range gates are selected from the final
+   *             data. This function does not compute the expectation value for the correlations.
+   *             That part is done in data write.
    */
   void correlations_from_samples(std::vector<std::vector<cuComplex>> &beamformed_samples_1,
                                   std::vector<std::vector<cuComplex>> &beamformed_samples_2,
                                   std::vector<std::vector<cuComplex>> &corr_results,
-                                  std::vector<rx_slice> rx_slice_info, uint32_t num_samples)
+                                  std::vector<rx_slice> rx_slice_info, uint32_t num_samples,
+                                  double output_sample_rate)
   {
     for (uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
       auto num_beams = rx_slice_info[slice_num].beam_count;
@@ -271,14 +275,20 @@ namespace {
         // Select out the lags for each range gate.
         for(uint32_t range=0; range<num_ranges; range++) {
           for(uint32_t lag=0; lag<num_lags; lag++) {
-              auto range_lag_offset = (range * num_lags) + lag;
-              auto total_offset = beam_offset + range_lag_offset;
-              // use column major indexing.
-              auto val = correlation_matrix(range + first_range_offset +
-                                            rx_slice_info[slice_num].lags[lag],
-                                            range + first_range_offset);
-              corr_results[slice_num][total_offset].x = val.real();
-              corr_results[slice_num][total_offset].y = val.imag();
+
+            // tau spacing in is us, sample rate in hz
+            auto tau_in_samples = uint32_t(rx_slice_info[slice_num].tau_spacing * 1e-6 *
+                                            output_sample_rate);
+            auto lag_offset = rx_slice_info[slice_num].lags[lag] * tau_in_samples;
+
+            // use column major indexing.
+            auto val = correlation_matrix(range + first_range_offset + lag_offset,
+                                          range + first_range_offset);
+
+            auto range_lag_offset = (range * num_lags) + lag;
+            auto total_offset = beam_offset + range_lag_offset;
+            corr_results[slice_num][total_offset].x = val.real();
+            corr_results[slice_num][total_offset].y = val.imag();
           } // close lags scope
         } // close ranges scope
       } // close beams scope
@@ -373,13 +383,14 @@ namespace {
       {
         correlations_from_samples(beamformed_samples_main, beamformed_samples_main,
                                           main_acfs, rx_slice_info,
-                                          num_samples_after_dropping);
+                                          num_samples_after_dropping, dp->get_output_sample_rate());
         if (dp->sig_options.get_interferometer_antenna_count() > 0) {
           correlations_from_samples(beamformed_samples_main, beamformed_samples_intf,
-                                          xcfs, rx_slice_info, num_samples_after_dropping);
+                                          xcfs, rx_slice_info, num_samples_after_dropping,
+                                          dp->get_output_sample_rate());
           correlations_from_samples(beamformed_samples_intf, beamformed_samples_intf,
                                           intf_acfs, rx_slice_info,
-                                          num_samples_after_dropping);
+                                          num_samples_after_dropping, dp->get_output_sample_rate());
         }
       }
 
@@ -641,7 +652,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  */
 DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::socket_t *data_socket,
                   SignalProcessingOptions &sig_options, uint32_t sequence_num,
-                  double rx_rate, double output_sample_rate, 
+                  double rx_rate, double output_sample_rate,
                   std::vector<std::vector<float>> filter_taps,
                   std::vector<cuComplex> beam_phases,
                   double driver_initialization_time, double sequence_start_time,

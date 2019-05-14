@@ -16,10 +16,11 @@ message SigProcPacket {
         uint32 slice_id = 1;
         double rxfreq = 2; // this is offset frequency from centre freq
         repeated BeamDirections beam_directions = 3;
-        uint32 nrang = 4; 
+        uint32 nrang = 4;
         float frang = 5;
-        float rsep = 6; // wil be = 0 if no acfs.
-        repeated LagPair lags = 7; // will be empty if no acfs. 
+        float rsep = 6; // will be = 0 if no acfs.
+        uint32 tau_spacing = 7; // in us
+        repeated LagPair lags = 8; // will be empty if no acfs.
 
 
         message BeamDirections {

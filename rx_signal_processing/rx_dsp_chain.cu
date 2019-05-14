@@ -179,8 +179,10 @@ int main(int argc, char **argv){
       auto frange = rx_channel.frang();
       auto rsep = rx_channel.rsep();
       auto beam_count = rx_channel.beam_directions_size();
+      auto tau_spacing = rx_channel.tau_spacing();
 
-      slice_info.push_back(rx_slice(rx_freq, slice_id, nrange, beam_count, frange, rsep, lags));
+      slice_info.push_back(rx_slice(rx_freq, slice_id, nrange, beam_count, frange, rsep,
+                                    tau_spacing, lags));
 
       // We are going to use two intermediate vectors here to rearrange the phase data so that
       // all M data comes first, followed by all I data. This way can we directly treat each
