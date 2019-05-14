@@ -277,8 +277,8 @@ namespace {
           for(uint32_t lag=0; lag<num_lags; lag++) {
 
             // tau spacing in is us, sample rate in hz
-            auto tau_in_samples = uint32_t(rx_slice_info[slice_num].tau_spacing * 1e-6 *
-                                            output_sample_rate);
+            auto tau_in_samples = uint32_t(std::ceil(rx_slice_info[slice_num].tau_spacing * 1e-6 *
+                                            output_sample_rate));
             auto lag_offset = rx_slice_info[slice_num].lags[lag] * tau_in_samples;
 
             // use column major indexing.
