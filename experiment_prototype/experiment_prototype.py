@@ -1310,6 +1310,8 @@ class ExperimentPrototype(object):
                 lag_table = list(itertools.combinations(slice_with_defaults['pulse_sequence'], 2))
                 lag_table.append([slice_with_defaults['pulse_sequence'][0], slice_with_defaults[
                     'pulse_sequence'][0]])  # lag 0
+                # sort by lag number
+                lag_table = sorted(lag_table, key=lambda x: x[1] - x[0])
                 lag_table.append([slice_with_defaults['pulse_sequence'][-1], slice_with_defaults[
                     'pulse_sequence'][-1]])  # alternate lag 0
                 slice_with_defaults['lag_table'] = lag_table
