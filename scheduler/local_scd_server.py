@@ -250,7 +250,7 @@ def main():
 
 
     sites = list(EXPERIMENTS.keys())
-    site_scds = [scd_utils.SCDUtils("{}_scd.txt".format(s)) for s in sites]
+    site_scds = [scd_utils.SCDUtils("{}.scd".format(s)) for s in sites]
     swg = SWG(scd_dir)
 
     while True:
