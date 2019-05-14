@@ -196,6 +196,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
         chan_add.slice_id = slice_id
+        chan_add.tau_spacing = slice_dict[slice_id]['mpinc'] # us
         # send the translational frequencies to dsp in order to bandpass filter correctly.
         if slice_dict[slice_id]['rxonly']:
             chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['rxfreq'] * 1.0e3

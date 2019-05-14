@@ -1541,9 +1541,10 @@ class ExperimentPrototype(object):
         if exp_slice['mpinc'] < self.options.minimum_mpinc_length:
             error_list.append("Slice {} Multi-Pulse Increment Too Small".format(
                 exp_slice['slice_id']))
-        if exp_slice['mpinc'] % exp_slice['pulse_len'] != 0:
-            print('Warning: Lags will be off because pulse_len is not an even divisor '\
-                   'of mpinc')
+        if not math.isclose((exp_slice['mpinc'] * self.output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
+            error_list.append('Slice {} Correlation lags will be off because mpinc {} us is not a '\
+                'multiple of the output rx sampling period (1/output_rx_rate {} Hz).'.format(
+                    exp_slice['slice_id'], exp_slice['mpinc'], self.output_rx_rate))
 
         # check intn and intt make sense given mpinc, and pulse_sequence.
         if exp_slice['pulse_sequence']:  # if not empty
