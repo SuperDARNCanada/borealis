@@ -703,7 +703,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs", 
-            "xcfs", "noise_at_freq"]
+            "xcfs", "noise_at_freq", "data_normalization_factor"]
             # note num_ranges not in needed_fields but are used to make 
             # correlation_dimensions
 
@@ -770,7 +770,7 @@ class DataWrite(object):
             "pulses", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data", 
             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range", 
-            "lags", "num_ranges"]
+            "lags", "num_ranges", "data_normalization_factor"]
 
             #unneeded_fields = ["correlation_descriptors", "rx_center_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs"]                  
@@ -839,7 +839,8 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors", 
-            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq"]
+            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
+            "data_normalization_factor"]
 
             #unneeded_fields = ["correlation_descriptors", "rx_center_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range_rtt", "first_range",
