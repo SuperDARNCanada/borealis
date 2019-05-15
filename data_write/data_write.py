@@ -94,6 +94,7 @@ DATA_TEMPLATE = {
     "antenna_arrays_order" : None, # States what order the data is in. Describes the data layout.
     "data_descriptors" : None, # Denotes what each data dimension represents.
     "data_dimensions" : None, # The dimensions in which to reshape the data.
+    "data_normalization_factor" : None, # The scale of all of the filters, multiplied, for a total scaling factor to normalize by. 
     "data" : [], # A contiguous set of samples (complex float) at given sample rate
     "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
     "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
@@ -1089,6 +1090,7 @@ class DataWrite(object):
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
                 parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phases.pulse_phase, dtype=np.float32)
+                parameters['data_normalization_factor'] = integration_meta.data_normalization_factor
 
                 lags = []
                 for lag in rx_freq.ltab.lag:

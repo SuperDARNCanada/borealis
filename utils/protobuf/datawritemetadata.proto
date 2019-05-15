@@ -13,6 +13,7 @@ message IntegrationTimeMetadata {
   bool scan_flag  = 8;
   double integration_time  = 9;
   double output_sample_rate = 10;
+  double data_normalization_factor = 11; // to give filter scaling factors in data output.
 
   message SequenceType {
     repeated RXChan rxchannel = 1;

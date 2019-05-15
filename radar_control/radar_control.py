@@ -21,6 +21,7 @@ import os
 import zmq
 import pickle
 import threading
+from functools import reduce
 
 sys.path.append(os.environ["BOREALISPATH"])
 from experiment_prototype.experiment_exception import ExperimentException
@@ -304,7 +305,7 @@ def search_for_experiment(radar_control_to_exp_handler,
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, nave, scan_flag, inttime, sequences, beamdir_dict,
                             experiment_id, experiment_name, output_sample_rate, experiment_comment,
-                            rx_centre_freq, debug_samples=None):
+                            filter_scaling_factors, rx_centre_freq, debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
     :param packet: The IntegrationTimeMetadata protobuf packet.
@@ -324,6 +325,8 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     :param output_sample_rate: The output sample rate of the output data, defined by the
     experiment, in Hz.
     :param experiment_comment: The comment string for the experiment, user-defined.
+    :param filter_scaling_factors: The decimation scheme scaling factors used for the experiment, 
+    to get the scaling for the data for accurate power measurements between experiments.
     :param rx_centre_freq: The receive centre frequency (kHz)
     :param debug_samples: the debug samples for this integration period, to be written to the
     file if debug is set. This is a list of dictionaries for each Sequence in the
@@ -343,7 +346,8 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     packet.last_seqn_num = seqnum
     packet.scan_flag = scan_flag
     packet.integration_time = inttime.total_seconds()
-    packet.output_sample_rate = output_sample_rate
+    packet.output_sample_rate = output_sample_rate 
+    packet.data_normalization_factor = reduce(lambda x,y: x*y, filter_scaling_factors) # multiply all
 
     for sequence_index, sequence in enumerate(sequences):
         sequence_add = packet.sequences.add()
@@ -703,7 +707,8 @@ def radar():
                                             aveperiod.sequences, slice_to_beamdir_dict,
                                             experiment.cpid, experiment.experiment_name,
                                             experiment.output_rx_rate, experiment.comment_string,
-                                            experiment.rxctrfreq, debug_samples=debug_samples)
+                                            experiment.decimation_scheme.filter_scaling_factors, experiment.rxctrfreq, 
+                                            debug_samples=debug_samples)
 
                     # end of the averaging period loop - move onto the next averaging period.
                     # Increment the sequence number by the number of sequences that were in this
