@@ -49,18 +49,28 @@ typedef struct rx_slice
   float first_range; // km
   float range_sep; // km
   uint32_t tau_spacing; // us
-  std::vector<uint32_t> lags;
+
+  struct lag
+  {
+    uint32_t pulse_1;
+    uint32_t pulse_2;
+    uint32_t lag_num;
+    lag(uint32_t pulse_1, uint32_t pulse_2, uint32_t lag_num):
+      pulse_1(pulse_1),
+      pulse_2(pulse_2),
+      lag_num(lag_num){}
+  };
+  std::vector<lag> lags;
 
   rx_slice(double rx_freq, uint32_t slice_id, uint32_t num_ranges, uint32_t beam_count,
-            float first_range, float range_sep, uint32_t tau_spacing, std::vector<uint32_t> lags) :
+            float first_range, float range_sep, uint32_t tau_spacing) :
     rx_freq(rx_freq),
     slice_id(slice_id),
     num_ranges(num_ranges),
     beam_count(beam_count),
     first_range(first_range),
     range_sep(range_sep),
-    tau_spacing(tau_spacing),
-    lags(lags){}
+    tau_spacing(tau_spacing){}
 }rx_slice;
 
 /**

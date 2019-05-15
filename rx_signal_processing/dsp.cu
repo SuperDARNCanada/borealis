@@ -279,11 +279,13 @@ namespace {
             // tau spacing in is us, sample rate in hz
             auto tau_in_samples = uint32_t(std::ceil(rx_slice_info[slice_num].tau_spacing * 1e-6 *
                                             output_sample_rate));
-            auto lag_offset = rx_slice_info[slice_num].lags[lag] * tau_in_samples;
+
+            auto p1_offset = rx_slice_info[slice_num].lags[lag].pulse_1 * tau_in_samples;
+            auto p2_offset = rx_slice_info[slice_num].lags[lag].pulse_2 * tau_in_samples;
 
             // use column major indexing.
-            auto val = correlation_matrix(range + first_range_offset + lag_offset,
-                                          range + first_range_offset);
+            auto val = correlation_matrix(range + first_range_offset + p2_offset,
+                                          range + first_range_offset + p1_offset);
 
             auto range_lag_offset = (range * num_lags) + lag;
             auto total_offset = beam_offset + range_lag_offset;
