@@ -1298,6 +1298,14 @@ class ExperimentPrototype(object):
             # This is the distance travelled by the wave in the length of the pulse, divided by
             # two because it's an echo (travels there and back).
 
+            # The below check is an assumption that is made during acf calculation 
+            # (1 output received sample = 1 range separation)
+            if not math.isclose(exp_slice['pulse_len'] * 1.0e-6, (1/self.output_rx_rate), abs_tol=0.000001):
+                errmsg = 'For an experiment slice with real-time acfs, pulse length must be equal (within 1 us) to ' \
+                '1/output_rx_rate to make acfs valid. Current pulse length is {} us, output rate is {}' \
+                ' Hz.'.format(exp_slice['pulse_len'], self.output_rx_rate)
+                raise ExperimentException(errmsg)
+
             if 'lag_table' in exp_slice:
                 # Check that lags are valid
                 for lag in exp_slice['lag_table']:
