@@ -157,6 +157,6 @@ if __name__ == "__main__":
 	tests = gpio_testing("num_recv_frames=512,num_send_frames=256,send_buff_size=2304000,addr=" + ADDR, "RXA")
 
 	print("Beginning tests")
-	# tests.run_single_signals_test()
+	tests.run_single_signals_test()
 	tests.run_differential_signal_test()
 	print("Done!")
