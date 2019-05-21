@@ -16,7 +16,7 @@ class gpio_testing(object):
 
 		# Create USRP object
 		self._bank = bank
-		self.PULSE_TIME = 2
+		self.PULSE_TIME = 1
 		self._usrp = uhd.usrp.MultiUSRP(address)
 		print("USRP has", self._usrp.get_num_mboards(), "motherboards on board")
 		pinout = input("Set pinout: 'user' for user or enter for default ")
@@ -132,8 +132,12 @@ class gpio_testing(object):
 				# run current test
 				while True:
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0xffff, mask)
+					print("State with output pin high:")
+					print(self._usrp.get_gpio_attr(self._bank, "READBACK"))
 					time.sleep(self.PULSE_TIME)
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, mask)
+					print("State with output pin low:")
+					print(self._usrp.get_gpio_attr(self._bank, "READBACK"))
 					time.sleep(self.PULSE_TIME)
 			except KeyboardInterrupt:
 				# ask user whether they want to continue the test sequence
@@ -153,5 +157,6 @@ if __name__ == "__main__":
 	tests = gpio_testing("num_recv_frames=512,num_send_frames=256,send_buff_size=2304000,addr=" + ADDR, "RXA")
 
 	print("Beginning tests")
-	tests.run_single_signals_test()
+	# tests.run_single_signals_test()
+	tests.run_differential_signal_test()
 	print("Done!")
