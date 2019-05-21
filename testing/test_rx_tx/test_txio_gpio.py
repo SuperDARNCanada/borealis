@@ -47,9 +47,9 @@ class gpio_testing(object):
 		"""
 		# for i in arange(self._usrp.get_num_mboards()):
 		print("Setting all pins on", self._bank, "as low outputs.")
-		self._usrp.set_gpio_attr(self._bank, "CTRL", 0x0000, 0b11111111)
-		self._usrp.set_gpio_attr(self._bank, "DDR", 0xffff, 0b11111111)
-		self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, 0b11111111)
+		self._usrp.set_gpio_attr(self._bank, "CTRL", 0x0000, 0b11111111111111111)
+		self._usrp.set_gpio_attr(self._bank, "DDR", 0xffff, 0b11111111111111111)
+		self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, 0b11111111111111111)
 
 	def set_pulse_time(self, pt):
 		"""
@@ -126,10 +126,20 @@ class gpio_testing(object):
 		for pin in [self._tr_pin, self._tm_pin]:
 			# configure GPIO for testing
 			self.set_all_low()
+			print("Initial Status:", self._usrp.get_gpio_attr(self._bank, "READBACK"))
 			set_lp_agc_inputs()
+			print("Status after setting inputs:", self._usrp.get_gpio_attr(self._bank, "READBACK"))
+			time.sleep(1)
 			mask = self.get_pin_mask(pin)
 			try:
 				# run current test
+				# State name of current test
+				if pin == self._tr_pin:
+					print("Testing TR AGC Loopback")
+				else:
+					print("Testing TM, LP Loopback")
+
+				# make sure that we are starting in an all pins 0 state
 				while True:
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0xffff, mask)
 					print("State with output pin high:")
