@@ -302,9 +302,14 @@ class Sequence(ScanClassBase):
         # (numberofreceivesamples) using scope sync and send that to the driver to sample at
         # a specific rxrate (given by the config).
 
-        #TODO: Account for frang in ssdelay?
-        self.ssdelay = max([self.slice_dict[slice_id]['nrang'] *
+        # number of samples for the first range for all slice ids
+        first_range_samples = {slice_id : int(math.ceil(self.slice_dict[slice_id]['frang']/self.slice_dict[slice_id]['rsep']))
+            for slice_id in self.slice_ids}
+
+        # time for number of ranges given, in us, taking into account frang and nrang.          
+        self.ssdelay = max([(self.slice_dict[slice_id]['nrang'] + first_range_samples[slice_id]) *
                             self.slice_dict[slice_id]['pulse_len'] for slice_id in self.slice_ids])
+
         # The delay is long enough for any slice's pulse length and nrang to be accounted for.
 
         # FIND the sequence time. Time before the first pulse is 70 us when RX and TR set up for the first pulse. The

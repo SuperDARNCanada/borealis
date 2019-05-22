@@ -1289,7 +1289,7 @@ class ExperimentPrototype(object):
             if 'rsep' in exp_slice:
                 if slice_with_defaults['rsep'] != int(round(slice_with_defaults['pulse_len'] *
                                                             1.0e-6 * speed_of_light/2.0)):
-                    errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
+                    errmsg = 'Rsep was set incorrectly. Rsep will be overwritten based on pulse_len'
                     if __debug__:  # TODO change to logging
                         print(errmsg)
 
@@ -1557,6 +1557,7 @@ class ExperimentPrototype(object):
         # check intn and intt make sense given mpinc, and pulse_sequence.
         if exp_slice['pulse_sequence']:  # if not empty
             # Sequence length is length of pulse sequence plus the scope sync delay time.
+            # TODO this is an old check and seqtime now set in sequences class, update.
             seq_len = exp_slice['mpinc'] * (exp_slice['pulse_sequence'][-1]) \
                       + (exp_slice['nrang'] + 19 + 10) * exp_slice['pulse_len']  # us
 
