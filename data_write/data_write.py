@@ -718,11 +718,13 @@ class DataWrite(object):
                 """
                 Get the median of all correlations from all sequences in the 
                 integration period - only this will be recorded.
+                This is effectively 'averaging' all correlations over the integration
+                time. 
                 """
                 # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
                 # so we get median of all sequences. 
                 array_2d = np.array(x, dtype=np.complex64)
-                array_expectation_value = np.median(array_2d, axis=0)
+                array_expectation_value = np.mean(array_2d, axis=0) # or use np.median?
                 parameters[field_name] = array_expectation_value
 
             for slice_id in main_acfs:
