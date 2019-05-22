@@ -1287,13 +1287,13 @@ class ExperimentPrototype(object):
 
         if slice_with_defaults['acf']:
             if 'rsep' in exp_slice:
-                if slice_with_defaults['rsep'] != slice_with_defaults['pulse_len'] *
+                if slice_with_defaults['rsep'] != slice_with_defaults['pulse_len'] * \
                                                             1.0e-9 * speed_of_light/2.0: # rsep in km
                     errmsg = 'Rsep was set incorrectly. Rsep will be overwritten based on pulse_len'
                     if __debug__:  # TODO change to logging
                         print(errmsg)
 
-            slice_with_defaults['rsep'] = slice_with_defaults['pulse_len'] * 1.0e-9 *
+            slice_with_defaults['rsep'] = slice_with_defaults['pulse_len'] * 1.0e-9 * \
                                                       speed_of_light/2.0
             # This is the distance travelled by the wave in the length of the pulse, divided by
             # two because it's an echo (travels there and back). In km.
