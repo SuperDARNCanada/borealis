@@ -63,7 +63,7 @@ DATA_TEMPLATE = {
     "station" : None, # Three letter radar identifier.
     "num_sequences": None, # Number of sampling periods in the integration time.
     "num_ranges": None, # Number of ranges to calculate correlations for
-    "range_sep": None, # range gate separation (equivalent distance between samples)
+    "range_sep": None, # range gate separation (equivalent distance between samples) in km.
     "first_range_rtt" : None, # Round trip time of flight to first range in microseconds.
     "first_range" : None, # Distance to first range in km.
     "rx_sample_rate" : None, # Sampling rate of the samples being written to file in Hz.
