@@ -971,7 +971,7 @@ class ExperimentPrototype(object):
             raise ExperimentException(errmsg, exp_slice)
 
         if 'frang' not in exp_slice.keys() or not isinstance(exp_slice['frang'], int):
-            errmsg = "Slice must specify frang that must be an integer"
+            errmsg = "Slice must specify frang in km that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
         if 'intt' not in exp_slice.keys():
@@ -1330,7 +1330,8 @@ class ExperimentPrototype(object):
                 print('Rsep, lag_table, xcf, and acfint will not be used because acf is '
                               'not True.')
             if 'rsep' not in exp_slice.keys():
-                slice_with_defaults['rsep'] = 0.0
+                slice_with_defaults['rsep'] = slice_with_defaults['pulse_len'] * 1.0e-9 * \
+                                                      speed_of_light/2.0
             if 'lag_table' not in exp_slice.keys():
                 slice_with_defaults['lag_table'] = []
 
