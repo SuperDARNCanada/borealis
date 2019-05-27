@@ -29,12 +29,12 @@ def format_to_atq(dt, experiment, first_event_flag=False):
         str: Formatted atq str.
     """
     if first_event_flag:
-        cmd_str = "echo 'start_script {experiment}' | at now"
-        cmd_str = cmd_str.format(experiment=experiment)
+        cmd_str = "echo '{borealis_path}/start_radar.sh {experiment}' | at now"
+        cmd_str = cmd_str.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment)
         cmd_str = dt.strftime(cmd_str)
     else:
-        cmd_str = "echo 'start_script {experiment}' | at -t %Y%m%d%H%M"
-        cmd_str = cmd_str.format(experiment=experiment)
+        cmd_str = "echo ''{borealis_path}/start_radar.sh {experiment}' | at -t %Y%m%d%H%M"
+        cmd_str = cmd_str.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment)
         cmd_str = dt.strftime(cmd_str)
 
     return cmd_str
