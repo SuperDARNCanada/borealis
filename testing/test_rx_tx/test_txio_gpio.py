@@ -45,7 +45,6 @@ class gpio_testing(object):
 		Set all GPIO pins on gpio bank low
 		:param bank: String identifying the GPIO bank
 		"""
-		# for i in arange(self._usrp.get_num_mboards()):
 		print("Setting all pins on", self._bank, "as low outputs.")
 		self._usrp.set_gpio_attr(self._bank, "CTRL", 0x0000, 0b11111111111111111)
 		self._usrp.set_gpio_attr(self._bank, "DDR", 0xffff, 0b11111111111111111)
@@ -96,10 +95,8 @@ class gpio_testing(object):
 				# run current test
 				while True:
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0xffff, mask)
-					# print(self._usrp.get_gpio_attr(self._bank, "READBACK"))
 					time.sleep(self.PULSE_TIME)
 					self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, mask)
-					# print(self._usrp.get_gpio_attr(self._bank, "READBACK"))
 					time.sleep(self.PULSE_TIME)
 			except KeyboardInterrupt:
 				# ask user whether they want to continue the test sequence
