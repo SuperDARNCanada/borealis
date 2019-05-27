@@ -16,8 +16,6 @@ import matplotlib.dates as mdates
 
 import remote_server_options as rso
 
-SCD_FILES = ["sas.scd", "pgr.scd", "cly.scd", "rkn.scd", "inv.scd"]
-
 def format_to_atq(dt, experiment, first_event_flag=False):
     """Turns an experiment line from the scd into a formatted atq command.
 
