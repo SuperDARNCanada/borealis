@@ -25,7 +25,7 @@ class USRPSetup(object):
 		:param tx_freq: transmission center frequency
 		:param rx_freq: recieving center frequency
 		:param tx_chans: transmission channels
-		:param rx_chans: reciever channels
+		:param rx_chans: receiver channels
 		"""
 		self.options = setup_options.SetupOptions(config_file)
 		self._tx_freq = tx_freq
@@ -53,6 +53,9 @@ class USRPSetup(object):
 		while (tt - np.floor(tt)) < 0.2 or (tt - np.floor(tt)) > 0.3:
 			tt = time.time()
 			time.sleep(0.01)
+
+		curr_time = uhd.types.TimeSpec(tt)
+		self.usrp.set_time_now(curr_time)
 
 		# TODO: Figure out how to set this to an external source
 		self.usrp.set_time_source("none")
@@ -117,7 +120,7 @@ class USRPSetup(object):
 
 	def set_main_rx_subdev(self, main_subdev):
 		"""
-		Sets up the subdevice for the main reciever
+		Sets up the subdevice for the main receiver
 		:param main_subdev: String representing the subdevice(s) for the main receiver
 		"""
 		rx_subdev = uhd.usrp.SubdevSpec(main_subdev)
