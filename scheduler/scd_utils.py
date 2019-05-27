@@ -228,12 +228,13 @@ class SCDUtils(object):
                 if equals:
                     relevant_lines.append(line)
                 else:
-                    if not prev_line_appended and idx != 0:
-                        last_line_timestamp = scd_lines[idx-1]['timestamp']
-                        temp_list = scd_lines[:]
-                        for t in temp_list:
-                            if t['timestamp'] == last_line_timestamp:
-                                relevant_lines.append(t)
+                    if not prev_line_appended:
+                        if idx != 0:
+                            last_line_timestamp = scd_lines[idx-1]['timestamp']
+                            temp_list = scd_lines[:]
+                            for t in temp_list:
+                                if t['timestamp'] == last_line_timestamp:
+                                    relevant_lines.append(t)
                         prev_line_appended = True
                     relevant_lines.append(line)
             else:
