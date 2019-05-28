@@ -45,6 +45,15 @@ DriverOptions::DriverOptions() {
     ss >> atr_0x_;
     ss.clear();
 
+    ss << std::hex << config_pt.get<std::string>("lo_pwr");
+    ss >> lo_pwr_;
+    ss.clear();
+
+    ss << std::hex << config_pt.get<std::string>("agc");
+    ss >> agc_;
+    ss.clear();
+
+
     tr_window_time_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("tr_window_time"));
     main_antenna_count_ = boost::lexical_cast<uint32_t>(
@@ -162,6 +171,16 @@ uint32_t DriverOptions::get_atr_0x() const
 {
     return atr_0x_;
 
+}
+
+uint32_t DriverOptions::get_lo_pwr() const
+{
+    return lo_pwr_;
+}
+
+uint32_t DriverOptions::get_agc() const
+{
+    return agc_;
 }
 
 double DriverOptions::get_tr_window_time() const
