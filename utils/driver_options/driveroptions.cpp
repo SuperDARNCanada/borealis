@@ -49,8 +49,8 @@ DriverOptions::DriverOptions() {
     ss >> lo_pwr_;
     ss.clear();
 
-    ss << std::hex << config_pt.get<std::string>("agc");
-    ss >> agc_;
+    ss << std::hex << config_pt.get<std::string>("agc_st");
+    ss >> agc_st_;
     ss.clear();
 
 
@@ -178,9 +178,9 @@ uint32_t DriverOptions::get_lo_pwr() const
     return lo_pwr_;
 }
 
-uint32_t DriverOptions::get_agc() const
+uint32_t DriverOptions::get_agc_st() const
 {
-    return agc_;
+    return agc_st_;
 }
 
 double DriverOptions::get_tr_window_time() const

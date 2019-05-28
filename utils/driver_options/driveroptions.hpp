@@ -24,7 +24,7 @@ class DriverOptions: public Options {
         uint32_t get_atr_xx() const;
         uint32_t get_atr_0x() const;
         uint32_t get_lo_pwr() const;
-        uint32_t get_agc() const;
+        uint32_t get_agc_st() const;
         double get_tr_window_time() const;
         uint32_t get_main_antenna_count() const;
         uint32_t get_interferometer_antenna_count() const;
