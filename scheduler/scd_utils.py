@@ -1,3 +1,11 @@
+#!/usr/bin/python3
+
+# Copyright 2019 SuperDARN Canada
+#
+# scd_utils.py
+# 2019-04-18
+# Utilites for working with scd files.
+
 import datetime as dt
 import collections
 import shutil
@@ -19,15 +27,15 @@ class SCDUtils(object):
         self.scd_dt_fmt = "%Y%m%d %H:%M"
         self.line_fmt = "{datetime} {duration} {prio} {experiment}"
 
-    def check_line(self, yyyymmdd, hhmm, prio, experiment, duration):
+    def check_line(self, yyyymmdd, hhmm, experiment, prio, duration):
         """Checks the line parameters to see if they are valid and then returns a dict with all
         the valid fields.
 
         Args:
             yyyymmdd (str): year/month/day string.
             hhmm (str): hour/minute string.
-            prio (str or int): priority value.
             experiment (str): The experiment to run.
+            prio (str or int): priority value.
             duration (str): an optional duration to run for.
 
         Returns:
@@ -89,7 +97,7 @@ class SCDUtils(object):
             if len(line) != 5:
                 raise ValueError("Line {} has too many arguments".format(num))
 
-            scd_lines.append(self.check_line(line[0], line[1], line[3], line[4], line[2]))
+            scd_lines.append(self.check_line(line[0], line[1], line[4], line[3], line[2]))
 
         return scd_lines
 
@@ -124,21 +132,21 @@ class SCDUtils(object):
                 f.write("{}\n".format(line))
 
 
-    def add_line(self, yyyymmdd, hhmm, prio, experiment, duration='-'):
+    def add_line(self, yyyymmdd, hhmm, experiment, prio=0, duration='-'):
         """Adds a new line to the SCD.
 
         Args:
             yyyymmdd (str): year/month/day string.
             hhmm (str): hour/minute string.
-            prio (int or str): priority value.
             experiment (str): The experiment to run.
+            prio (int or str, optional): priority value.
             duration (str, optional): an optional duration to run for.
 
         Raises:
             ValueError: If line parameters are invalid or if line is a duplicate.
         """
 
-        new_line = self.check_line(yyyymmdd, hhmm, prio, experiment, duration)
+        new_line = self.check_line(yyyymmdd, hhmm, experiment, prio, duration)
 
         scd_lines = self.read_scd()
 
@@ -155,21 +163,21 @@ class SCDUtils(object):
 
         self.write_scd(new_scd)
 
-    def remove_line(self, yyyymmdd, hhmm, prio, experiment, duration='-'):
+    def remove_line(self, yyyymmdd, hhmm, experiment, prio=0, duration='-'):
         """Summary
 
         Args:
             yyyymmdd (str): year/month/day string.
             hhmm (str): hour/minute string.
-            prio (int or str): priority value.
             experiment (str): The experiment to run.
+            prio (int or str, optional): priority value.
             duration (str, optional): an optional duration to run for.
 
         Raises:
             ValueError: If line parameters are invalid or if line does not exist.
         """
 
-        line_to_rm = self.check_line(yyyymmdd, hhmm, prio, experiment, duration)
+        line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, prio, duration)
 
         scd_lines = self.read_scd()
         try:
@@ -235,19 +243,20 @@ if __name__ == "__main__":
 
     scd_util = SCDUtils(filename)
 
-    scd_util.add_line("20190404", "10:43", 0, "twofsound")
-    #scd_util.add_line("04/04/2019", "10:43", 0, "twofsound")
-    scd_util.add_line("20190407", "10:43", 0, "twofsound")
-    scd_util.add_line("20190414", "10:43", 0, "twofsound")
-    scd_util.add_line("20190414", "10:43", 2, "twofsound")
-    scd_util.add_line("20190414", "10:43", 1, "twofsound", 89)
-    scd_util.add_line("20190414", "10:43", 1, "twofsound", 24)
-    scd_util.add_line("20190414", "11:43", 0, "twofsound", 46)
-    scd_util.add_line("20190414", "00:43", 0, "twofsound")
-    scd_util.add_line("20190408", "15:43", 0, "twofsound", 57)
+    scd_util.add_line("20190404", "10:43", "twofsound")
+    #scd_util.add_line("04/04/2019", "10:43", "twofsound")
+    scd_util.add_line("20190407", "10:43", "twofsound")
+    scd_util.add_line("20190414", "10:43", "twofsound")
+    scd_util.add_line("20190414", "10:43", "twofsound", prio=2)
+    scd_util.add_line("20190414", "10:43", "twofsound", prio=1, duration=89)
+    scd_util.add_line("20190414", "10:43", "twofsound", prio=1, duration=24)
+    scd_util.add_line("20190414", "11:43", "twofsound", duration=46)
+    scd_util.add_line("20190414", "00:43", "twofsound")
+    scd_util.add_line("20190408", "15:43", "twofsound", duration=57)
 
 
-    scd_util.remove_line("20190414", "10:43", 0, "twofsound")
+    scd_util.remove_line("20190414", "10:43", "twofsound")
+
 
     print(scd_util.get_relevant_lines("20190414", "10:44"))
 
