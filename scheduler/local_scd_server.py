@@ -73,7 +73,7 @@ class SWG(object):
     """Holds the data needed for processing a SWG file.
 
     Attributes:
-        scd_dir (TYPE): Description
+        scd_dir (str): Path to the SCD files dir.
     """
     def __init__(self, scd_dir):
         super(SWG, self).__init__()
@@ -93,6 +93,9 @@ class SWG(object):
         Returns:
             TYPE: True, if new git update is available.
         """
+
+        # This command will return the number of new commits available in master. This signals that
+        # there are new SWG files available.
         cmd = "cd {}/{}; git log ..origin/master --oneline | wc -l".format(self.scd_dir,
                                                                         SWG_GIT_REPO_DIR)
         shell_output = sp.check_output(cmd, shell=True)
@@ -227,8 +230,8 @@ class SWG(object):
 
 def main():
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
-    parser.add_argument('--emails_filepath',required=True, help='A list of emails to send logs to')
-    parser.add_argument('--scd_dir', required=True, help='The scd working directory')
+    parser.add_argument('--emails-filepath',required=True, help='A list of emails to send logs to')
+    parser.add_argument('--scd-dir', required=True, help='The scd working directory')
 
     args = parser.parse_args()
 
@@ -238,16 +241,10 @@ def main():
     emailer = email_utils.Emailer(args.emails_filepath)
 
     if not os.path.exists(scd_dir):
-        with open(scd_logs + "/server_error.txt", 'w') as f:
-            f.write('Supplied local server scd folder does not exist')
-        emailer.email_log("Error starting local SCD server", scd_logs + "/server_error.txt")
-        raise ValueError("Supplied local server scd folder does not exist")
+        os.makedirs(scd_dir)
 
-    try:
+    if not os.path.exists(scd_logs):
         os.makedirs(scd_logs)
-    except FileExistsError:
-        pass
-
 
     sites = list(EXPERIMENTS.keys())
     site_scds = [scd_utils.SCDUtils("{}.scd".format(s)) for s in sites]
@@ -293,9 +290,8 @@ def main():
             if not errors:
                 success_msg = "All swg lines successfully scheduled.\n"
                 for site, site_scd in zip(sites, site_scds):
-                    next_month = swg.get_next_month()
-                    yyyymmdd = next_month.strftime("%Y%m%d")
-                    hhmm = next_month.strftime("%H:%M")
+                    yyyymmdd = today.strftime("%Y%m%d")
+                    hhmm = today.strftime("%H:%M")
 
                     new_lines = site_scd.get_relevant_lines(yyyymmdd, hhmm)
 
