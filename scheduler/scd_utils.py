@@ -138,8 +138,8 @@ class SCDUtils(object):
         Args:
             yyyymmdd (str): year/month/day string.
             hhmm (str): hour/minute string.
-            prio (int or str): priority value.
             experiment (str): The experiment to run.
+            prio (int or str, optional): priority value.
             duration (str, optional): an optional duration to run for.
 
         Raises:
@@ -163,15 +163,14 @@ class SCDUtils(object):
 
         self.write_scd(new_scd)
 
-
     def remove_line(self, yyyymmdd, hhmm, experiment, prio=0, duration='-'):
         """Summary
 
         Args:
             yyyymmdd (str): year/month/day string.
             hhmm (str): hour/minute string.
-            prio (int or str): priority value.
             experiment (str): The experiment to run.
+            prio (int or str, optional): priority value.
             duration (str, optional): an optional duration to run for.
 
         Raises:
@@ -189,7 +188,7 @@ class SCDUtils(object):
         self.write_scd(scd_lines)
 
     def get_relevant_lines(self, yyyymmdd, hhmm):
-        """Gets any relevant future lines given a supplied time. If a re
+        """Gets the currently scheduled and future lines given a supplied time. If the provided time is equal to a scheduled line time, it provides that line and all future lines. If the provided time is between schedule line times, it provides any lines in the schedule with the most recent timestamp and all future lines.  If the provided time is before any lines in the schedule, it provides all schedule lines.
 
         Args:
             yyyymmdd (str): year/month/day string.
@@ -257,6 +256,7 @@ if __name__ == "__main__":
 
 
     scd_util.remove_line("20190414", "10:43", "twofsound")
+
 
     print(scd_util.get_relevant_lines("20190414", "10:44"))
 
