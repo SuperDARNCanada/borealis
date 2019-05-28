@@ -33,7 +33,7 @@ def format_to_atq(dt, experiment, first_event_flag=False):
         cmd_str = cmd_str.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment)
         cmd_str = dt.strftime(cmd_str)
     else:
-        cmd_str = "echo ''{borealis_path}/start_radar.sh {experiment}' | at -t %Y%m%d%H%M"
+        cmd_str = "echo '{borealis_path}/start_radar.sh {experiment}' | at -t %Y%m%d%H%M"
         cmd_str = cmd_str.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment)
         cmd_str = dt.strftime(cmd_str)
 
