@@ -85,6 +85,8 @@ class USRP{
 
     void set_atr_gpios();
 
+    void set_input_gpios();
+
 };
 
 /**

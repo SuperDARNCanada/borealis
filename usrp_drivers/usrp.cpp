@@ -35,6 +35,8 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   atr_tx_ = driver_options.get_atr_tx();
   atr_xx_ = driver_options.get_atr_xx();
   atr_0x_ = driver_options.get_atr_0x();
+  agc_st_ = driver_options.get_agc_st();
+  lo_pwr_ = driver_options.get_lo_pwr();
   tx_rate_ = tx_rate;
   rx_rate_ = rx_rate;
 
@@ -445,6 +447,19 @@ void USRP::set_atr_gpios()
     usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, atr_tx_, i);
 
     usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, atr_0x_, i);
+
+  }
+}
+
+void USRP::set_input_gpios()
+{
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    // CTRL 0 sets the pins in gpio mode, DDR 0 sets them as inputs
+    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0x0000, agc_st_, i);
+    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0x0000, lo_pwr_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x0000, agc_st_, i);
+    usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x0000, lo_pwr_, i);
 
   }
 }
