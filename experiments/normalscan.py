@@ -2,13 +2,14 @@
 
 # write an experiment that creates a new control program.
 from experiment_prototype.experiment_prototype import ExperimentPrototype
-
+from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
+from experiments.test_decimation_schemes import *
 
 class Normalscan(ExperimentPrototype):
 
     def __init__(self):
         cpid = 150
-        super(Normalscan, self).__init__(cpid)
+        super(Normalscan, self).__init__(cpid, decimation_scheme=create_test_scheme_9())
 
         tx_antennas = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
         rx_main_antennas = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
