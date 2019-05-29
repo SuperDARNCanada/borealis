@@ -29,7 +29,7 @@ class TwoMultifsound(ExperimentPrototype):
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
             "pulse_sequence": pulse_sequence,
-            "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
+            "pulse_shift": [0, 0, 0, 0, 0, 0, 0],
             "mpinc": tau_spacing,
             "pulse_len": 300,  # us
             "nrang": 75,  # range gates
@@ -57,7 +57,7 @@ class TwoMultifsound(ExperimentPrototype):
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
             "pulse_sequence": pulse_sequence,
-            "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
+            "pulse_shift": [0, 0, 0, 0, 0, 0, 0],
             "mpinc": tau_spacing,
             "pulse_len": 300,  # us
             "nrang": 75,  # range gates
