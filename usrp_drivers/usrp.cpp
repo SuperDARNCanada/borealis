@@ -51,6 +51,7 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   set_time_source(driver_options.get_pps(), driver_options.get_clk_addr());
   check_ref_locked();
   set_atr_gpios();
+  set_input_gpios();
 
   set_tx_rate(driver_options.get_transmit_channels());
   set_rx_rate(driver_options.get_receive_channels());

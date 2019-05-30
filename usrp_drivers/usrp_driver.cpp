@@ -365,6 +365,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       std::this_thread::sleep_for(duration);
     }
 
+    // TODO: read agc and lo pwr signals here
+    // TODO: log result of both reads in protobuf
+
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
     samples_metadata.set_rx_rate(rx_rate);
     samples_metadata.set_initialization_time(initialization_time.get_real_secs());
