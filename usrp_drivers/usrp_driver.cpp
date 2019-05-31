@@ -425,7 +425,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
     else
     {
-      agc_high = false
+      agc_high = false;
     }
 
     if pin_string[lp_pin] == "1"
@@ -434,7 +434,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
     else
     {
-      lp_high = false
+      lp_high = false;
     }
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
@@ -446,8 +446,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     samples_metadata.set_sequence_num(sqn_num);
     auto actual_finish = box_time;
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
-    samples_metadata.set_agc_high(agc_high)
-    samples_metadata.set_lp_high(lp_high)
+    samples_metadata.set_agc_high(agc_high);
+    samples_metadata.set_lp_high(lp_high);
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);
 
