@@ -365,6 +365,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       std::this_thread::sleep_for(duration);
     }
 
+    usrp_d->clear_command_time();
+    uhd::time_spec_t read_delay = uhd::time_spec_t(0.150);
+    uhd::time_spec_t read_time = usrp_d->get_time_now() + read_delay;
+    usrp_d->set_command_time(read_time);
+    usrp_d->get_gpio_attr(driver_options->get_gpio_bank(), "READBACK");
     // TODO: read agc and lo pwr signals here
     // TODO: log result of both reads in protobuf
 
