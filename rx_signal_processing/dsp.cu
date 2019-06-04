@@ -284,8 +284,8 @@ namespace {
             auto p2_offset = rx_slice_info[slice_num].lags[lag].pulse_2 * tau_in_samples;
 
             // use column major indexing.
-            auto val = correlation_matrix(range + first_range_offset + p2_offset,
-                                          range + first_range_offset + p1_offset);
+            auto val = correlation_matrix(range + first_range_offset + p1_offset,
+                                          range + first_range_offset + p2_offset);
 
             auto range_lag_offset = (range * num_lags) + lag;
             auto total_offset = beam_offset + range_lag_offset;
