@@ -399,6 +399,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
     bool agc_high;
     bool lp_high;
+    uint32_t agc_dec;
+    uint32_t lp_dec;
     std::stringstream ss;
 
     ss << std::dec << driver_options.get_agc_st();
@@ -416,8 +418,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
     uint32_t agc_pin = first_one(agc_string, 16);
     uint32_t lp_pin = first_one(lo_pwr_string, 16);
-    bool agc_high;
-    bool lp_high;
 
     // Check pin locations of agc and lp signals in the GPIO string
     if ((pin_string[agc_pin]) == "1")
