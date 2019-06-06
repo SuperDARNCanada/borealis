@@ -39,6 +39,7 @@ class USRP{
     void create_usrp_tx_stream(std::string cpu_fmt, std::string otw_fmt, std::vector<size_t> chs);
     void set_command_time(uhd::time_spec_t cmd_time);
     void clear_command_time();
+    uint32_t get_gpio_state();
     uhd::time_spec_t get_current_usrp_time();
     uhd::rx_streamer::sptr get_usrp_rx_stream();
     uhd::tx_streamer::sptr get_usrp_tx_stream();
@@ -92,8 +93,6 @@ class USRP{
     void set_atr_gpios();
 
     void set_input_gpios();
-
-    uint32_t get_gpio_state();
 
 };
 
