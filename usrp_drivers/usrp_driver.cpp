@@ -394,7 +394,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     uhd::time_spec_t read_delay = uhd::time_spec_t(0.150);
     uhd::time_spec_t read_time = usrp_d.get_current_usrp_time() + read_delay;
     usrp_d.set_command_time(read_time);
-    uint32_t pin_status = usrp_d.get_gpio_attr(driver_options.get_gpio_bank(), "READBACK");
+    uint32_t pin_status = usrp_d.get_gpio_state();
     usrp_d.clear_command_time();
 
     bool agc_high;

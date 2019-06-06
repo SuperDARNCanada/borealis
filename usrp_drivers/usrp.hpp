@@ -93,6 +93,8 @@ class USRP{
 
     void set_input_gpios();
 
+    uint32_t get_gpio_state();
+
 };
 
 /**

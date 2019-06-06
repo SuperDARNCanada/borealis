@@ -452,6 +452,10 @@ void USRP::set_atr_gpios()
   }
 }
 
+/**
+* @brief      Sets the pins mapping the AGC and low power signals as GPIO
+*             inputs.
+*/
 void USRP::set_input_gpios()
 {
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
@@ -463,6 +467,14 @@ void USRP::set_input_gpios()
     usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x0000, lo_pwr_, i);
 
   }
+}
+
+/**
+* @brief      Gets the state of the GPIO bank represented as a decimal number
+*/
+uint32_t USRP::get_gpio_state()
+{
+  return usrp_->get_gpio_attr(gpio_bank_, "READBACK");
 }
 
 /**
