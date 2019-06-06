@@ -67,6 +67,8 @@ class DriverOptions: public Options {
         uint32_t atr_tx_;
         uint32_t atr_xx_;
         uint32_t atr_0x_;
+        uint32_t agc_st_;
+        uint32_t lo_pwr_;
         std::string router_address_;
         std::string driver_to_radctrl_identity_;
         std::string driver_to_dsp_identity_;

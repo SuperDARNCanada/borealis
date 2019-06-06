@@ -73,6 +73,12 @@ class USRP{
     //! Bitmask used for idle ATR.
     uint32_t atr_0x_;
 
+    //! Bitmask used for AGC signal
+    uint32_t agc_st_;
+
+    //! Bitmask used for lo pwr signal
+    uint32_t lo_pwr_;
+
     //! The tx rate in Hz.
     float tx_rate_;
 
