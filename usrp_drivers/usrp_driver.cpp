@@ -81,6 +81,30 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
   return samples;
 }
 
+// Function converts an integer to a binary string
+std::string to_bit_string(uint32_t val, const uint32_t num_bits)
+{
+  std::string bit_string;
+  for (int i=num_bits-1; i>=0; i--)  {
+    std::string bit = ((val >> i) & 1) ? "1" : "0";
+    bit_string += bit;
+  }
+  return bit_string;
+}
+
+// Function finds the location of the first "1" in a string of bits
+uint32_t first_one(std::string bit_string, uint32_t str_len)
+{
+  uint32_t out = str_len;
+  for (uint32_t i=0; i<str_len; i++)  {
+    if ((bit_string[i]) == "1")
+    {
+      out = i;
+      break;
+    }
+  }
+  return out;
+    }
 
 void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver_options)
 {
@@ -366,49 +390,24 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     }
 
     // Read AGC and Low Power signals
-    usrp_d->clear_command_time();
+    usrp_d.clear_command_time();
     uhd::time_spec_t read_delay = uhd::time_spec_t(0.150);
-    uhd::time_spec_t read_time = usrp_d->get_time_now() + read_delay;
-    usrp_d->set_command_time(read_time);
-    uint32_t pin_status = usrp_d->get_gpio_attr(driver_options->get_gpio_bank(), "READBACK");
-    usrp_d->clear_command_time();
+    uhd::time_spec_t read_time = usrp_d.get_current_usrp_time() + read_delay;
+    usrp_d.set_command_time(read_time);
+    uint32_t pin_status = usrp_d.get_gpio_attr(driver_options.get_gpio_bank(), "READBACK");
+    usrp_d.clear_command_time();
 
     bool agc_high;
     bool lp_high;
     std::stringstream ss;
 
-    ss << std::dec << driver_options->get_agc_st();
+    ss << std::dec << driver_options.get_agc_st();
     ss >> agc_dec;
     ss.clear();
 
-    ss << std::dec << driver_options->get_lo_pwr();
+    ss << std::dec << driver_options.get_lo_pwr();
     ss >> lp_dec;
     ss.clear();
-
-    // Function converts an integer to a binary string
-    std::string to_bit_string(uint32_t val, const uint32_t num_bits)
-    {
-      std::string bit_string;
-      for (int i=num_bits-1; i>=0; i--)  {
-        std::string bit = ((val >> i) & 1) ? "1" : "0";
-        bit_string += bit;
-      }
-      return bit_string;
-    }
-
-    // Function finds the location of the first "1" in a string of bits
-    uint32_t first_one(std::string bit_string, uint32_t str_len)
-    {
-      uint32_t out = str_len;
-      for (uint32_t i=0; i<str_len; i++)  {
-        if bit_string[i] == "1"
-        {
-          out = i;
-          break;
-        }
-      }
-      return out;
-    }
 
     // Convert pin_status, AGC mask from options and low power mask from options to 16 bit strings
     std::string pin_string = to_bit_string(pin_status, 16);
@@ -421,7 +420,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     bool lp_high;
 
     // Check pin locations of agc and lp signals in the GPIO string
-    if pin_string[agc_pin] == "1"
+    if ((pin_string[agc_pin]) == "1")
     {
       agc_high = true;
     }
@@ -430,7 +429,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       agc_high = false;
     }
 
-    if pin_string[lp_pin] == "1"
+    if ((pin_string[lp_pin]) == "1")
     {
       lp_high = true;
     }
