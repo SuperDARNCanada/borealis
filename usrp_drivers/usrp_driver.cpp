@@ -97,7 +97,8 @@ uint32_t first_one(std::string bit_string, uint32_t str_len)
 {
   uint32_t out = str_len;
   for (uint32_t i=0; i<str_len; i++)  {
-    if ((bit_string[i]) == "1")
+    char el = bit_string[i]
+    if (el == '1')
     {
       out = i;
       break;
@@ -418,9 +419,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
     uint32_t agc_pin = first_one(agc_string, 16);
     uint32_t lp_pin = first_one(lo_pwr_string, 16);
+    char agc_char = pin_string[agc_pin]
+    char lp_char = pin_string[lp_pin]
 
     // Check pin locations of agc and lp signals in the GPIO string
-    if ((pin_string[agc_pin]) == "1")
+    if (agc_char == '1')
     {
       agc_high = true;
     }
@@ -429,7 +432,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       agc_high = false;
     }
 
-    if ((pin_string[lp_pin]) == "1")
+    if (lp_char == '1')
     {
       lp_high = true;
     }
