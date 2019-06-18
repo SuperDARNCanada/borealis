@@ -333,7 +333,20 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 }() //pulse lambda
               ); //pulse timeit macro
             }
+            // Timed read on GPIOs here
+            // Just readback and & with bitmasks
 
+            // Read AGC and Low Power signals
+            bool agc_high;
+            bool lp_high;
+            usrp_d.clear_command_time();
+            usrp_d.set_command_time(time);
+            uint32_t pin_status = usrp_d.get_gpio_state();
+            usrp_d.clear_command_time();
+            if pin_status & driver_options.get_agc_st;
+              agc_high = true;
+            if pin_status & driver_options.get_lo_pwr;
+              lp_high = true;
             for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
               std::vector<size_t> acks(tx_channels.size(),0);
@@ -388,57 +401,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     if(sleep_time.get_real_secs() > 0.0) {
       auto duration = std::chrono::duration<double>(sleep_time.get_real_secs());
       std::this_thread::sleep_for(duration);
-    }
-
-    // Read AGC and Low Power signals
-    usrp_d.clear_command_time();
-    uhd::time_spec_t read_delay = uhd::time_spec_t(0.150);
-    uhd::time_spec_t read_time = usrp_d.get_current_usrp_time() + read_delay;
-    usrp_d.set_command_time(read_time);
-    uint32_t pin_status = usrp_d.get_gpio_state();
-    usrp_d.clear_command_time();
-
-    bool agc_high;
-    bool lp_high;
-    uint32_t agc_dec;
-    uint32_t lp_dec;
-    std::stringstream ss;
-
-    ss << std::dec << driver_options.get_agc_st();
-    ss >> agc_dec;
-    ss.clear();
-
-    ss << std::dec << driver_options.get_lo_pwr();
-    ss >> lp_dec;
-    ss.clear();
-
-    // Convert pin_status, AGC mask from options and low power mask from options to 16 bit strings
-    std::string pin_string = to_bit_string(pin_status, 16);
-    std::string agc_string = to_bit_string(agc_dec, 16);
-    std::string lo_pwr_string = to_bit_string(lp_dec, 16);
-
-    uint32_t agc_pin = first_one(agc_string, 16);
-    uint32_t lp_pin = first_one(lo_pwr_string, 16);
-    char agc_char = pin_string[agc_pin]
-    char lp_char = pin_string[lp_pin]
-
-    // Check pin locations of agc and lp signals in the GPIO string
-    if (agc_char == '1')
-    {
-      agc_high = true;
-    }
-    else
-    {
-      agc_high = false;
-    }
-
-    if (lp_char == '1')
-    {
-      lp_high = true;
-    }
-    else
-    {
-      lp_high = false;
     }
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
