@@ -39,6 +39,8 @@
 
 // GPS clock variable. Gets updated every time an RX packet is recvd.
 uhd::time_spec_t box_time;
+bool agc_high;
+bool lp_high;
 
 
 /**
@@ -337,16 +339,17 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             // Just readback and & with bitmasks
 
             // Read AGC and Low Power signals
-            bool agc_high;
-            bool lp_high;
             usrp_d.clear_command_time();
-            usrp_d.set_command_time(time);
+            auto read_time = sequence_start_time + uhd::time_spec_t(time_to_send_samples.back()/1.0e6);
+            usrp_d.set_command_time(read_time);
             uint32_t pin_status = usrp_d.get_gpio_state();
             usrp_d.clear_command_time();
-            if pin_status & driver_options.get_agc_st;
+            if (pin_status & driver_options.get_agc_st())  {
               agc_high = true;
-            if pin_status & driver_options.get_lo_pwr;
+            }
+            if (pin_status & driver_options.get_lo_pwr())  {
               lp_high = true;
+            }
             for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
               std::vector<size_t> acks(tx_channels.size(),0);
