@@ -83,32 +83,6 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
   return samples;
 }
 
-// Function converts an integer to a binary string
-std::string to_bit_string(uint32_t val, const uint32_t num_bits)
-{
-  std::string bit_string;
-  for (int i=num_bits-1; i>=0; i--)  {
-    std::string bit = ((val >> i) & 1) ? "1" : "0";
-    bit_string += bit;
-  }
-  return bit_string;
-}
-
-// Function finds the location of the first "1" in a string of bits
-uint32_t first_one(std::string bit_string, uint32_t str_len)
-{
-  uint32_t out = str_len;
-  for (uint32_t i=0; i<str_len; i++)  {
-    char el = bit_string[i]
-    if (el == '1')
-    {
-      out = i;
-      break;
-    }
-  }
-  return out;
-    }
-
 void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver_options)
 {
   DEBUG_MSG("Enter transmit thread");
