@@ -309,8 +309,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 }() //pulse lambda
               ); //pulse timeit macro
             }
-            // Timed read on GPIOs here
-            // Just readback and & with bitmasks
 
             // Read AGC and Low Power signals
             usrp_d.clear_command_time();
@@ -324,6 +322,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             if (pin_status & driver_options.get_lo_pwr())  {
               lp_high = true;
             }
+            
             for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
               std::vector<size_t> acks(tx_channels.size(),0);
