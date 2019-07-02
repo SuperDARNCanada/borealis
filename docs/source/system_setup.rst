@@ -20,8 +20,7 @@ This guide assumes set up of a brand new, unopened unit.
 5. Use the UHD utilities `rx_samples_to_file`, `tx_bursts` and `txrx_loopback_to_file` to verify the USRP works. Use the scope to see the transmit signal. The RX samples will be a binary file that can be quickly read in a plotted with Numpy/Matplotlib. While testing, watch the front panel LEDs to see that they work as expected.
 6. If the USRP is working correctly, the inner motherboard, fan, daughtercards and RF cables can all be removed from the unit. Carefully peel the product sticker. All removed components and the sticker can be stored in the anti-static bags that were supplied with the unit. The enclosure is ready for machining the additional holes.
 7. Once the enclosures are machined, the electronics and components can all be reinstalled. Place the product sticker on the bottom left corner, closest to the front panel. Connect RXA to port RF1, connect RXB to port RF2, and connect TXA to the additional front panel hole that was added.
-8. Install the LEDs and D-sub connector into the corresponding holes. The order of the LED install
-patterns from left to right are the TX only indicator(RED), the idle indicator(YELLOW), the RX only indicator(GREEN) and the TR indicator(BLUE). Add labels to the LEDs on the front panel.
+8.Install the LEDs and D-sub connector into the corresponding holes. The order of the LED install patterns from left to right are the TX only indicator(RED), the idle indicator(YELLOW),the RX only indicator(GREEN) and the TR indicator(BLUE). Add labels to the LEDs on the front panel.
 9. Install the TXIO board.
 
     - Begin by connecting eight female-female jumper cables to pins 1-4 and 6-9 of the D-sub connector on the inside of the USRP housing.
