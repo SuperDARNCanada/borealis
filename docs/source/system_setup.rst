@@ -16,13 +16,10 @@ This guide assumes set up of a brand new, unopened unit.
 1. Open the unit and install the LFTX/LFRX daughtercards. Use an SMA RF splitter pattern such that one end can split to a second splitter that connects TXA to RXA and RXB. The other splitter will attach to a scope.
 2. USRPs have a default IP address of \192.168.10.2. Assign a computer network interface an address that can communicate in this subnet. Connect the USRP to the computer's network interface either directly or through one of the switches from the system specifications. Connect the USRP power supply.
 3. Verify the board powers on and is discoverable. The USRP should be discoverable by pinging 192.168.10.2. Ettus' USRP UHD library supplies a tool called `uhd_usrp_probe`,`uhd_usrp_probe`should also be able to detect the device. See software setup for notes on installing UHD. The USRP may require a firmware upgrade.
-4. Connect the free SMA output of the splitter to the scope. Connect the Octoclock PPS and 10MHz
-reference signals to the USRP. Make sure that the jumper on J510 is in the rightmost position
-connecting the front panel 10MHz as the system reference.
+4. Connect the free SMA output of the splitter to the scope. Connect the Octoclock PPS and 10MHz reference signals to the USRP. Make sure that the jumper on J510 is in the rightmost position connecting the front panel 10MHz as the system reference.
 5. Use the UHD utilities `rx_samples_to_file`, `tx_bursts` and `txrx_loopback_to_file` to verify the USRP works. Use the scope to see the transmit signal. The RX samples will be a binary file that can be quickly read in a plotted with Numpy/Matplotlib. While testing, watch the front panel LEDs to see that they work as expected.
 6. If the USRP is working correctly, the inner motherboard, fan, daughtercards and RF cables can all be removed from the unit. Carefully peel the product sticker. All removed components and the sticker can be stored in the anti-static bags that were supplied with the unit. The enclosure is ready for machining the additional holes.
-7. Once the enclosures are machined, the electronics and components can all be reinstalled. Place the product sticker on the bottom left corner, closest to the front panel. Connect RXA to port RF1,
-connect RXB to port RF2, and connect TXA to the additional front panel hole that was added.
+7. Once the enclosures are machined, the electronics and components can all be reinstalled. Place the product sticker on the bottom left corner, closest to the front panel. Connect RXA to port RF1, connect RXB to port RF2, and connect TXA to the additional front panel hole that was added.
 8. Install the LEDs and D-sub connector into the corresponding holes. The order of the LED install
 patterns from left to right are the TX only indicator(RED), the idle indicator(YELLOW), the RX only indicator(GREEN) and the TR indicator(BLUE). Add labels to the LEDs on the front panel.
 9. Install the TXIO board.
