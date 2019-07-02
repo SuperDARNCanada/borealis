@@ -1,3 +1,4 @@
+sphinx>=2.0
 breathe
 numpy
 scipy
