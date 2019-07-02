@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
 # Borealis documentation build configuration file, created by
@@ -16,6 +16,7 @@
 import sys
 import os
 import shlex
+from subprocess import call
 import sphinx_rtd_theme
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -26,7 +27,20 @@ import sphinx_rtd_theme
 BOREALISPATH = os.path.abspath('../..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
-sys.path.insert(1, BOREALISPATH + '/experiments')
+sys.path.insert(1, BOREALISPATH + '/experiment_prototype')
+sys.path.insert(2, BOREALISPATH + '/utils')
+sys.path.insert(3, os.environ['PATH'])
+
+proto_directory = BOREALISPATH + "/utils/protobuf"
+#pb2_directory = BOREALISPATH + "/build/release/utils/protobuf/"
+sigprocproto = proto_directory + "/sigprocpacket.proto"
+driverproto = proto_directory + "/driverpacket.proto"
+
+# need to set up protobuf
+# just placed them in the proto directory so they can be found by radar_control.
+#call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, sigprocproto])
+#call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, driverproto])
+
 
 # hack for readthedocs to cause it to run doxygen first
 # https://github.com/rtfd/readthedocs.org/issues/388
@@ -60,6 +74,8 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'breathe'
+    'sphinxcontrib.programoutput',
+    'sphinxcontrib.autoprogram'
 ]
 
 breathe_projects = {"borealis" : "xml/"}

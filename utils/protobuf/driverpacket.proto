@@ -3,19 +3,19 @@ syntax = "proto3";
 package driverpacket;
 
 message DriverPacket {
-  repeated uint32 channels = 1;
-  repeated SamplesBuffer channel_samples = 2;
-  uint32 sequence_num = 4;
-  double txrate = 5;
-  double txcenterfreq = 3;
+  repeated SamplesBuffer channel_samples = 1;
+  uint32 sequence_num = 2;
+  double rxrate = 3;
+  double txrate = 4;
+  double txcenterfreq = 5;
   double rxcenterfreq = 6;
-  uint32 numberofreceivesamples = 10;
-  double timetosendsamples = 7;
-  bool SOB = 8;
-  bool EOB = 9;
+  uint32 numberofreceivesamples = 7;
+  double timetosendsamples = 8;
+  bool SOB = 9;
+  bool EOB = 10;
 
   message SamplesBuffer {
-    repeated double real = 1;
-    repeated double imag = 2;
+    repeated float real = 1;
+    repeated float imag = 2;
   }
 }

@@ -12,6 +12,8 @@ Contents - THIS NEEDS WORK:
     :maxdepth: 2
     :glob:
 
+    /system_specifications
+    /system_setup
     /config
     /experiment_prototype_doc
     /example_experiment
@@ -19,6 +21,8 @@ Contents - THIS NEEDS WORK:
     /usrp_n200_driver
     /rx_signal_processing
     /utils
+    /starting_the_radar
+    /modules
 ..  automodule:: experiment_exception
 
     ..  autoclass:: ExperimentException
@@ -26,6 +30,7 @@ Contents - THIS NEEDS WORK:
 
 ..  automodule:: scan_classes
     :members:
+
 
 
 Indices and tables

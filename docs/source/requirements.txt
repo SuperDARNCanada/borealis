@@ -1,1 +1,11 @@
 breathe
+numpy
+scipy
+protobuf
+sphinxcontrib-programoutput
+sphinxcontrib-autoprogram
+pyzmq
+#cmake
+#pycparser
+#venvgit2
+#couldn't get pygit2 to install properly on readthedocs

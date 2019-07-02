@@ -3,7 +3,18 @@ Rx Signal Processing
 
 The Borealis radar receive side signal processing is mostly moved into software using the digital radar design. The RX DSP block is designed to utilize a GPU and threading in order to maximize parallelism to be able to process as much data as possible in real-time.
 
-In operation, the first thing done is to create the filter coefficients used for the cascaded filter design. These filters are generated at runtime using the Parks-McClellan algorithm using the band edges specified in the config file. The implementation of the filtering algorithm is written in C and was copied from the `open source project GNU Octave <https://sourceforge.net/p/octave/signal/ci/default/tree/src/remez.cc>`_. Creating filters at runtime eliminates the need to have external files or hardcoded values of filter coefficients. Runtime generation opens up the possibility for generating new coefficients during operation if that functionality is ever desired for an experiment. Borealis uses a modified version of the Frerking filtering technique for filtering and downsampling. See :ref:`frerking-label` for details.
+Borealis experiments give lots of flexibility for filtering. Filter coefficients are generated as
+part of decimation schemes at the experiment level. The DSP block receives the coefficients for
+each stage of decimation from Radar Control. The DSP block has been designed to be able to run
+as many decimation stages as are configured in the decimation scheme. This allows SuperDARN users
+to have as much control as they want in designing filter characteristics.
+
+.. figure:: rx_sig_updated.png
+   :scale: 75 %
+   :alt: Block diagram of RX DSP software
+   :align: center
+
+   Block diagram of RX DSP software
 
 Sampled data stored in shared memory is then opened, and operation of the GPU is configured. The GPU programming is set up in an asynchronous mode, meaning that more than one `stream <http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#streams>`_ can run at once. The GPU does not have enough computation resources to be able to process data from more than one sequence, but in asynchronous mode data from one sequence can be copied to the GPU memory while another sequence is being processed. Asynchronous mode also allows for a callback function that executes when the stream is finished executing without interrupting operation of the main thread. GPU operations works as follows:
 

@@ -1,5 +1,32 @@
 #include "utils/shared_memory/shared_memory.hpp"
 #include <iostream>
+#include <algorithm>
+/**
+ * @brief      Generates a string of random characters
+ *
+ * @param[in]  length  The length of desired string.
+ *
+ * @return     A string of random characters.
+ *
+ * This string is used for creation of named shared memory.
+ */
+std::string random_string( size_t length )
+{
+    //Lambda expression to return a random character.
+    auto randchar = []() -> char
+    {
+        const char charset[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+        const size_t max_index = (sizeof(charset) - 1);
+        return charset[ rand() % max_index ];
+    };
+    std::string str(length,0);
+    std::generate_n( str.begin(), length, randchar );
+    return str;
+}
+
 boost::interprocess::mapped_region shr_mem_create(std::string name, size_t size) {
   boost::interprocess::shared_memory_object::remove(name.c_str());
 
@@ -57,6 +84,11 @@ void* SharedMemoryHandler::get_shrmem_addr()
 {
   return shr_region.get_address();
 }
+
+std::string SharedMemoryHandler::get_region_name() {
+  return region_name;
+}
+
 
 
 
