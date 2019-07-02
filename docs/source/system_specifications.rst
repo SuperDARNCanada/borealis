@@ -22,7 +22,8 @@ Digital Radio Equipment
 - 20x SMA to N-type Male to Female cables
 - 4x Cables from INTF pre-amps   <-MORE DETAIL
 - 16x Cables from MAIN pre-amps    <-MORE DETAIL
-tu
+- 1x 15V power supply (INTF pre-amps)
+
 ================
 Control Computer
 ================
