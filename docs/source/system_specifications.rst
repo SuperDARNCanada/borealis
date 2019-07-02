@@ -6,6 +6,7 @@ Digital Radio Equipment
 =======================
 
 - 17x Ettus USRP N200(16 and 1 spare)
+
     - 17x Ettus LFTX daughterboards
     - 17x Ettus LFRX daughterboards
 - 1x Ettus Octoclock-g (includes GPSDO)
@@ -21,8 +22,7 @@ Digital Radio Equipment
 - 20x SMA to N-type Male to Female cables
 - 4x Cables from INTF pre-amps   <-MORE DETAIL
 - 16x Cables from MAIN pre-amps    <-MORE DETAIL
-- 1x 15V power supply (INTF pre-amps)
-
+tu
 ================
 Control Computer
 ================
