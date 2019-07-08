@@ -14,15 +14,10 @@ Contents - THIS NEEDS WORK:
 
     /system_specifications
     /system_setup
-    /config
-    /experiment_prototype_doc
-    /example_experiment
     /starting_the_radar
-    /usrp_n200_driver
-    /rx_signal_processing
-    /utils
-    /starting_the_radar
-    /modules
+    /building_an_experiment
+
+    /borealis_processes
 ..  automodule:: experiment_exception
 
     ..  autoclass:: ExperimentException

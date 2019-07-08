@@ -1,3 +1,4 @@
+****************************
 Full System Setup Procedures
 ****************************
 
@@ -81,11 +82,13 @@ This guide will assume working top to bottom.
 
 TODO
 
---------
+-----------------------
 Computer and Networking
---------
+-----------------------
 
-To be able to run Borealis at high data rates, a powerful CPU with many cores and a high number of PCI lanes is needed. The team recommends an Intel i9 10 core CPU or better. Likewise a good NVIDIA GPU is needed for fast data processing. The team recommends a GeForce 1080TI/2080 or better. Just make sure the drivers are up to date on Linux for the model. A 10Gb or better network interface is also required.
+To be able to run Borealis at high data rates, a powerful CPU with many cores and a high number of PCI lanes is needed. The team recommends an Intel i9 10 core CPU or better. Likewise a good NVIDIA GPU is needed for fast data processing. The team recommends a GeForce 1080TI/2080 or better. Just make sure the drivers are up to date on Linux for the model. A 10Gb(or multiple 1Gb interfaces) or better network interface is also required.
+
+Not all networking equipment works
 
 Once these components are selected, the supporting components such as motherboard, cooling and hard drives can all be selected. Assemble the computer following the instructions that come with the motherboard.
 
@@ -120,4 +123,4 @@ SuperDARN Canada uses OpenSUSE for an operating system, but any Linux system tha
 
 8. Add an environment variable called BOREALISPATH that holds to path to the cloned directory in .bashrc or .profile and re-source the file.
 9. The Borealis software has a script called install_radar_deps_opensuse.sh to help install dependencies. This script can be modified to use the package manager of a different distribution. Make sure that the version of CUDA is up to date and supports your card.
-10. Assuming all dependencies are resolved, use scons to build the system. Use the script called mode to change the build environment to debug or release depending on what version of the system should be run.
+10. Assuming all dependencies are resolved, use scons to build the system. Use the script called `mode` to change the build environment to debug or release depending on what version of the system should be run.
