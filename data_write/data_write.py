@@ -63,7 +63,7 @@ DATA_TEMPLATE = {
     "station" : None, # Three letter radar identifier.
     "num_sequences": None, # Number of sampling periods in the integration time.
     "num_ranges": None, # Number of ranges to calculate correlations for
-    "range_sep": None, # range gate separation (equivalent distance between samples)
+    "range_sep": None, # range gate separation (equivalent distance between samples) in km.
     "first_range_rtt" : None, # Round trip time of flight to first range in microseconds.
     "first_range" : None, # Distance to first range in km.
     "rx_sample_rate" : None, # Sampling rate of the samples being written to file in Hz.
@@ -94,6 +94,7 @@ DATA_TEMPLATE = {
     "antenna_arrays_order" : None, # States what order the data is in. Describes the data layout.
     "data_descriptors" : None, # Denotes what each data dimension represents.
     "data_dimensions" : None, # The dimensions in which to reshape the data.
+    "data_normalization_factor" : None, # The scale of all of the filters, multiplied, for a total scaling factor to normalize by. 
     "data" : [], # A contiguous set of samples (complex float) at given sample rate
     "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
     "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
@@ -702,7 +703,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs", 
-            "xcfs", "noise_at_freq"]
+            "xcfs", "noise_at_freq", "data_normalization_factor"]
             # note num_ranges not in needed_fields but are used to make 
             # correlation_dimensions
 
@@ -717,11 +718,13 @@ class DataWrite(object):
                 """
                 Get the median of all correlations from all sequences in the 
                 integration period - only this will be recorded.
+                This is effectively 'averaging' all correlations over the integration
+                time. 
                 """
                 # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
                 # so we get median of all sequences. 
                 array_2d = np.array(x, dtype=np.complex64)
-                array_expectation_value = np.median(array_2d, axis=0)
+                array_expectation_value = np.mean(array_2d, axis=0) # or use np.median?
                 parameters[field_name] = array_expectation_value
 
             for slice_id in main_acfs:
@@ -769,7 +772,7 @@ class DataWrite(object):
             "pulses", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data", 
             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range", 
-            "lags", "num_ranges"]
+            "lags", "num_ranges", "data_normalization_factor"]
 
             #unneeded_fields = ["correlation_descriptors", "rx_center_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs"]                  
@@ -838,7 +841,8 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors", 
-            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq"]
+            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
+            "data_normalization_factor"]
 
             #unneeded_fields = ["correlation_descriptors", "rx_center_freq", 
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range_rtt", "first_range",
@@ -1089,6 +1093,7 @@ class DataWrite(object):
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
                 parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phases.pulse_phase, dtype=np.float32)
+                parameters['data_normalization_factor'] = integration_meta.data_normalization_factor
 
                 lags = []
                 for lag in rx_freq.ltab.lag:

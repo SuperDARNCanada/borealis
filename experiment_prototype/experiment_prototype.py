@@ -971,7 +971,7 @@ class ExperimentPrototype(object):
             raise ExperimentException(errmsg, exp_slice)
 
         if 'frang' not in exp_slice.keys() or not isinstance(exp_slice['frang'], int):
-            errmsg = "Slice must specify frang that must be an integer"
+            errmsg = "Slice must specify frang in km that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
         if 'intt' not in exp_slice.keys():
@@ -1287,16 +1287,24 @@ class ExperimentPrototype(object):
 
         if slice_with_defaults['acf']:
             if 'rsep' in exp_slice:
-                if slice_with_defaults['rsep'] != int(round(slice_with_defaults['pulse_len'] *
-                                                            1.0e-6 * speed_of_light/2.0)):
-                    errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
+                if slice_with_defaults['rsep'] != slice_with_defaults['pulse_len'] * \
+                                                            1.0e-9 * speed_of_light/2.0: # rsep in km
+                    errmsg = 'Rsep was set incorrectly. Rsep will be overwritten based on pulse_len'
                     if __debug__:  # TODO change to logging
                         print(errmsg)
 
-            slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] * 1.0e-6 *
-                                                      speed_of_light/2.0))
+            slice_with_defaults['rsep'] = slice_with_defaults['pulse_len'] * 1.0e-9 * \
+                                                      speed_of_light/2.0
             # This is the distance travelled by the wave in the length of the pulse, divided by
-            # two because it's an echo (travels there and back).
+            # two because it's an echo (travels there and back). In km.
+
+            # The below check is an assumption that is made during acf calculation 
+            # (1 output received sample = 1 range separation)
+            if not math.isclose(exp_slice['pulse_len'] * 1.0e-6, (1/self.output_rx_rate), abs_tol=0.000001):
+                errmsg = 'For an experiment slice with real-time acfs, pulse length must be equal (within 1 us) to ' \
+                '1/output_rx_rate to make acfs valid. Current pulse length is {} us, output rate is {}' \
+                ' Hz.'.format(exp_slice['pulse_len'], self.output_rx_rate)
+                raise ExperimentException(errmsg)
 
             if 'lag_table' in exp_slice:
                 # Check that lags are valid
@@ -1322,7 +1330,8 @@ class ExperimentPrototype(object):
                 print('Rsep, lag_table, xcf, and acfint will not be used because acf is '
                               'not True.')
             if 'rsep' not in exp_slice.keys():
-                slice_with_defaults['rsep'] = 0.0
+                slice_with_defaults['rsep'] = slice_with_defaults['pulse_len'] * 1.0e-9 * \
+                                                      speed_of_light/2.0
             if 'lag_table' not in exp_slice.keys():
                 slice_with_defaults['lag_table'] = []
 
@@ -1549,6 +1558,7 @@ class ExperimentPrototype(object):
         # check intn and intt make sense given mpinc, and pulse_sequence.
         if exp_slice['pulse_sequence']:  # if not empty
             # Sequence length is length of pulse sequence plus the scope sync delay time.
+            # TODO this is an old check and seqtime now set in sequences class, update.
             seq_len = exp_slice['mpinc'] * (exp_slice['pulse_sequence'][-1]) \
                       + (exp_slice['nrang'] + 19 + 10) * exp_slice['pulse_len']  # us
 

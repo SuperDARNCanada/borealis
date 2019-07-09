@@ -168,19 +168,26 @@ int main(int argc, char **argv){
       // In this case each channel is the info for a new RX frequency
       auto rx_channel = sp_packet.rxchannel(channel);
 
-      std::vector<uint32_t> lags;
-      auto num_lags = sp_packet.rxchannel(channel).lags_size();
-      for (uint32_t lag_counter=0; lag_counter<num_lags; lag_counter++) {
-        lags.push_back(sp_packet.rxchannel(channel).lags(lag_counter).lag_num());
-      }
       auto rx_freq = rx_channel.rxfreq();
       auto slice_id = rx_channel.slice_id();
       auto nrange = rx_channel.nrang();
       auto frange = rx_channel.frang();
       auto rsep = rx_channel.rsep();
       auto beam_count = rx_channel.beam_directions_size();
+      auto tau_spacing = rx_channel.tau_spacing();
+      auto new_rx_slice = rx_slice(rx_freq, slice_id, nrange, beam_count, frange, rsep,
+                                    tau_spacing);
 
-      slice_info.push_back(rx_slice(rx_freq, slice_id, nrange, beam_count, frange, rsep, lags));
+      auto num_lags = sp_packet.rxchannel(channel).lags_size();
+      for (uint32_t lag_counter=0; lag_counter<num_lags; lag_counter++) {
+        auto lag_num = sp_packet.rxchannel(channel).lags(lag_counter).lag_num();
+        auto pulse_1 = sp_packet.rxchannel(channel).lags(lag_counter).pulse_1();
+        auto pulse_2 = sp_packet.rxchannel(channel).lags(lag_counter).pulse_2();
+        new_rx_slice.lags.push_back({pulse_1, pulse_2, lag_num});
+      }
+      slice_info.push_back(new_rx_slice);
+
+
 
       // We are going to use two intermediate vectors here to rearrange the phase data so that
       // all M data comes first, followed by all I data. This way can we directly treat each
