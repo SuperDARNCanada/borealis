@@ -15,7 +15,9 @@ Contents - THIS NEEDS WORK:
     /system_specifications
     /system_setup
     /starting_the_radar
+    /scheduling
     /building_an_experiment
+    /config_options
 
     /borealis_processes
 ..  automodule:: experiment_exception

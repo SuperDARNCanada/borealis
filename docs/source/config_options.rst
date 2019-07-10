@@ -1,19 +1,9 @@
-utils package
-=============
-
-utils.experiment_options.experimentoptions module
--------------------------------------------------
-
-.. automodule:: utils.experiment_options.experimentoptions
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-=================
+*****************
 Config Parameters
-=================
-
+*****************
 +-----------------------------------------+----------------------------------------------+--------------------------------------+
+|Config field                             | Example entry                                | Description                          |
++=========================================+==============================================+======================================+
 | site_id                                 | sas                                          | 3-letter standard ID of the radar    |
 +-----------------------------------------+----------------------------------------------+--------------------------------------+
 | gps_octoclock_addr                      | addr=192.168.10.131                          | IP address of the GPS Octoclock      |

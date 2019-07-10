@@ -42,7 +42,7 @@ The receive thread configures the ringbuffer and shared memory sections. It then
 .. toctree::
    :glob:
 
-   file/n200__driver_8cpp.rst
+   file/usrp__driver_8cpp.rst
    file/usrp_8hpp.rst
 
 
