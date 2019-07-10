@@ -16,16 +16,7 @@ Welcome to Borealis's documentation!
     /scheduling
     /building_an_experiment
     /config_options
-
     /borealis_processes
-..  automodule:: experiment_exception
-
-    ..  autoclass:: ExperimentException
-        :members:
-
-..  automodule:: scan_classes
-    :members:
-
 
 
 Indices and tables
@@ -34,4 +25,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
