@@ -6,8 +6,6 @@
 Welcome to Borealis's documentation!
 ====================================
 
-Contents - THIS NEEDS WORK:
-
 ..  toctree::
     :maxdepth: 2
     :glob:
