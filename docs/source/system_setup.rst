@@ -45,9 +45,9 @@ This guide assumes set up of a brand new, unopened unit.
         - Connect pin 6 of J1 to the io_rxa[3] pin on the LFRX daughterboard.
         - Connect pin 7 of J1 to the io_rxa[5] pin on the LFRX daughterboard.
         - Connect pin 8 of J1 to the io_rxa[7] pin on the LFRX daughterboard.
-        - Connect pin 9 of J1 to the io_rxa[11] pin on the LFRX daughterboard.
-        - Connect pin 10 of J1 to the io_rxa[13] pin on the LFRX daughterboard.
-        - Connect pin 11 of J1 to the io_rxa[9] pin on the LFRX daughterboard.
+        - Connect pin 9 of J1 to the io_rxa[9] pin on the LFRX daughterboard.
+        - Connect pin 10 of J1 to the io_rxa[11] pin on the LFRX daughterboard.
+        - Connect pin 11 of J1 to the io_rxa[13] pin on the LFRX daughterboard.
         - Connect pin 12 of J1 to an available digital ground pin on the LFRX daughterboard.
 
     - We connect the LEDs. Using female to female jumper cables, make the following connections:
