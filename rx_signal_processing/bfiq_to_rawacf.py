@@ -4,6 +4,7 @@ import sys
 import subprocess as sp
 import os
 from datetime import datetime as dt
+import warnings
 
 def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 
@@ -87,6 +88,8 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 
 		return out_main, out_intf, out_cross
 
+	warnings.simplefilter('ignore')
+
 	acf_file = 'test' + bfiq_filepath.split('b')[0] + 'rawacf.hdf5'
 	temp_file= "temp_acf.hdf5"
 
@@ -120,6 +123,11 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 
 		ts_dd = {}
 		ts_dd[k] = acfs[k]
+		# Log information about how this file was generated
+		now = dt.now()
+		date_str = now.strftime("%Y-%m-%d")
+		time_str = now.strftime("%H:%M")
+		ts_dd[k]["experiment_comment"] += "File generated on " + date_str + " at " + time_str + " from " + bfiq_filepath
 
 		# copy timestamped record to full acf file
 		dd.io.save(temp_file, ts_dd, compression=None)
@@ -129,11 +137,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 		sp.call(cmd.split())
 		os.remove(temp_file)
 
-		# Log information about how this file was generated
-		now = dt.now()
-		date_str = now.strftime("%Y-%m-%d")
-		time_str = now.strftime("%H:%M")
-		acfs[k]["experiment_comment"] = "File generated on " + date_str + " at " + time_str
+		print("Done", k)
 
 
 if __name__ == "__main__":

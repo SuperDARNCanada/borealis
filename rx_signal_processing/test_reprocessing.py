@@ -1,6 +1,6 @@
 import numpy as np
 import deepdish as dd
-from reprocessing import correlate_samples
+from bfiq_to_rawacf import correlate_samples
 
 acfs = dd.io.load("data/20190619.1600.02.sas.0.rawacf.hdf5")
 bfiq = dd.io.load("data/20190619.1600.02.sas.0.bfiq.hdf5")
