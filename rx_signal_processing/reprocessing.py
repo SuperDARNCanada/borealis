@@ -30,18 +30,14 @@ def correlate_samples(ts_dict):
 	intf_data = data_mat[1][:][:][:]
 
 	# Preallocate arrays for correlation results
-	main_corrs = intf_corrs = cross_corrs = np.zeros((num_sequences,
-													 	num_beams, 
-													 	num_samples, 
-													 	num_samples), 
-														dtype=np.complex64)
+	main_corrs = np.zeros((num_sequences, num_beams, num_samples, num_samples), dtype=np.complex64)
+	intf_corrs = np.zeros((num_sequences, num_beams, num_samples, num_samples), dtype=np.complex64)
+	cross_corrs = np.zeros((num_sequences, num_beams, num_samples, num_samples), dtype=np.complex64)
 
 	# Preallocate arrays for results of range-lag selection
-	out_main = out_intf = out_cross = np.zeros((num_sequences,
-												num_beams,
-												num_ranges,
-												num_lags), 
-												dtype=np.complex64)
+	out_main = np.zeros((num_sequences, num_beams, num_ranges, num_lags), dtype=np.complex64)
+	out_intf = np.zeros((num_sequences, num_beams, num_ranges, num_lags), dtype=np.complex64)
+	out_cross = np.zeros((num_sequences, num_beams, num_ranges, num_lags), dtype=np.complex64)
 
 	# Perform autocorrelations of each array, and cross
 	# correlation between arrays
@@ -50,16 +46,17 @@ def correlate_samples(ts_dict):
 			main_samps = main_data[seq, beam]
 			intf_samps = intf_data[seq, beam]
 
-			main_corrs[seq, beam] = np.outer(main_samps, main_samps.conjugate())
-			intf_corrs[seq, beam] = np.outer(intf_samps, intf_samps.conjugate())
-			cross_corrs[seq, beam] = np.outer(main_samps, intf_samps.conjugate())
+			main_corrs[seq, beam] = np.outer(main_samps.conjugate(), main_samps)
+			intf_corrs[seq, beam] = np.outer(intf_samps.conjugate(), intf_samps)
+			cross_corrs[seq, beam] = np.outer(main_samps.conjugate(), intf_samps)
 
 			beam_offset = num_beams * num_ranges * num_lags
 			first_range_offset = int(ts_dict["first_range"] / ts_dict["range_sep"])
 
 			# Select out the lags for each range gate
-			main_small = intf_small = cross_small = np.zeros((num_ranges, num_lags,), 
-																dtype=np.complex64)
+			main_small = np.zeros((num_ranges, num_lags,), dtype=np.complex64)
+			intf_small = np.zeros((num_ranges, num_lags,), dtype=np.complex64)
+			cross_small = np.zeros((num_ranges, num_lags,), dtype=np.complex64)
 
 			for rng in range(num_ranges):
 				for lag in range(num_lags):
@@ -69,12 +66,12 @@ def correlate_samples(ts_dict):
 					p1_offset = lags[lag, 0] * tau_in_samples
 					p2_offset = lags[lag, 1] * tau_in_samples
 					
-					dim_1_offset = int(rng + first_range_offset + p1_offset)
-					dim_2_offset = int(rng + first_range_offset + p2_offset)
+					row_offset = int(rng + first_range_offset + p1_offset)
+					col_offset = int(rng + first_range_offset + p2_offset)
 
-					main_small[rng, lag] = main_corrs[seq, beam, dim_1_offset, dim_2_offset]
-					intf_small[rng, lag] = intf_corrs[seq, beam, dim_1_offset, dim_2_offset]
-					cross_small[rng, lag] = cross_corrs[seq, beam, dim_1_offset, dim_2_offset]
+					main_small[rng, lag] = main_corrs[seq, beam, row_offset, col_offset]
+					intf_small[rng, lag] = intf_corrs[seq, beam, row_offset, col_offset]
+					cross_small[rng, lag] = cross_corrs[seq, beam, row_offset, col_offset]
 
 			# replace full correlation matrix with resized range-lag matrix
 			out_main[seq, beam] = main_small
@@ -91,8 +88,8 @@ def correlate_samples(ts_dict):
 
 if __name__ == "__main__":
 	bfiq_filepath = sys.argv[1]
-	acfs_filepath = sys.argv[2]
-	test_acf = "data/test_acf.hdf5"
+
+	test_acf = "data/test_acf_mkII.hdf5"
 	# try:
 	# 	fd = os.open(test_acf, os.O_CREAT | os.O_EXCL)
 	# 	os.close(fd)
