@@ -7,11 +7,16 @@ from datetime import datetime as dt
 import warnings
 
 def bfiq_to_rawacf_postprocessing(bfiq_filepath):
+	"""
+	Processes the data from a bfiq.hdf5 file and creates auto and cross correlations from the samples.
+	This data is formatted and written to mimic borealis rawacf.hdf5 files.
+	"""
 
 	def correlate_samples(ts_dict):
 		"""
 		Builds the autocorrelation and cross-correlation matrices for the beamformed data
-		contained in one timestamp dictionary
+		contained in one timestamped dictionary
+		:param ts_dict: A timestamped dictionary from a formated bfiq.hdf5 file
 		"""
 		data_buff = ts_dict["data"]
 		num_slices = ts_dict["num_slices"]
