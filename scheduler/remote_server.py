@@ -54,7 +54,7 @@ def get_next_month(date):
 
         return new_date
 
-def plot_timeline(timeline_list, scd_dir, now):
+def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
     """Plots the timeline to better visualize runtime.
 
     Args:
@@ -78,44 +78,50 @@ def plot_timeline(timeline_list, scd_dir, now):
 
     def split_event(event):
         """
-        Splits an event that runs during two or more days into two events
+        Recursively splits an event that runs during two or more days into two events
         in order to handle plotting.
         """
-        new_event = dict()
-        new_event['color'] = event['color']
-        new_event['label'] = event['label']
+        if event['start'].day == event['end'].day:
+            return [event]
+        else:
+            new_event = dict()
+            new_event['color'] = event['color']
+            new_event['label'] = event['label']
 
-        td = dt.timedelta(days=1)
-        midnight = dt.datetime.combine(event['start'] + td, dt.datetime.min.time())
+            td = datetime.timedelta(days=1)
+            midnight = datetime.datetime.combine(event['start'] + td, datetime.datetime.min.time())
 
-        first_dur = midnight - event['start']
-        second_dur = event['end'] - midnight
+            first_dur = midnight - event['start']
+            second_dur = event['end'] - midnight
 
-        # handle the new event first
-        new_event['start'] = midnight
-        new_event['duration'] = second_dur
-        new_event['end'] = event['end']
+            # handle the new event first
+            new_event['start'] = midnight
+            new_event['duration'] = second_dur
+            new_event['end'] = event['end']
 
-        # now handle the old event
-        event['duration'] = first_dur
-        event['end'] = midnight
+            # now handle the old event
+            event['duration'] = first_dur
+            event['end'] = midnight
 
-        return event, new_event
+            return [event] + split_event(new_event)
+
 
     # make random colors
-    cmap = get_cmap(len(timeline_list))
-    colors = [cmap(i) for i in range(len(timeline_list))]
+    cmap = get_cmap(len(timeline_dict.items()))
+    colors = [cmap(i) for i in range(len(timeline_dict.items()))]
     random.shuffle(colors)
 
-    # put the colors in
+    # put the colors in and create event records with only start and end times,
+    # durations, colors, and labels
+    for i, (_, events) in enumerate(timeline_dict.items()):
+        for event in events:
+            event['color'] = colors[i]
+
     for i, event in enumerate(timeline_list):
-        event['color'] = colors[i]
-
-    for event in timeline_list:
         event_item = dict()
-        event_item['label'] = event['experiment']
 
-        color = colors[i]
+        event_item['color'] = event['color']
+        event_item['label'] = event['experiment']
 
         event_item['start'] = event['time']
 
@@ -127,29 +133,42 @@ def plot_timeline(timeline_list, scd_dir, now):
         event_item['end'] = event_item['start'] + td
         event_item['duration'] = td
 
+        timeline_list[i] = event_item
 
         if i == 0:
-            first_date = event['time']
+            first_date = event['time'].date()
         if i == len(timeline_list) - 1:
             last_date = event['time'] + td
+            last_date = last_date.date()
 
-        event_labels.append(event_label)
-        ax.broken_barh(event_times, ((i+1)*10, 4), facecolors=colors_for_line)
+    # loop through events again, splitting them where necessary
+    for event in timeline_list:
+        event_list += split_event(event)
 
-    ax.set_yticks([(i+1)*10 + 2 for i in range(len(event_labels))])
-    ax.set_yticklabels(event_labels)
+    for event in event_list:
+        day_offset = event['start'].date() - first_date
+        start = event['start'] - day_offset
+        ax.barh(event['start'].date(), event['duration'], left=start, color=event['color'])
+        # ax.text((ev['start'] + ev['duration']) / 2, ev['start'].day, ev['label'])
 
     hours = mdates.HourLocator(byhour=[0,6,12,18,24])
     days = mdates.DayLocator()
     minutes = mdates.MinuteLocator()
-    fmt = mdates.DateFormatter('%H:%M')
+    x_fmt = mdates.DateFormatter('%H:%M')
+    y_fmt = mdates.DateFormatter('%m-%d')
 
-    ax.xaxis.set_major_locator(days)
-    ax.xaxis.set_major_formatter(fmt)
-    ax.xaxis.set_minor_locator(hours)
+    ax.xaxis.set_major_locator(hours)
+    ax.xaxis.set_major_formatter(x_fmt)
 
-    ax.set_xlim(first_date, last_date)
+    # ax.xaxis.set_minor_locator(minutes)
+
+    ax.yaxis.set_major_locator(days)
+    ax.yaxis.set_major_formatter(y_fmt)
+    ax.set_ylim(first_date, last_date)
+
     plt.xticks(rotation=45)
+
+    plt.show()
 
     plot_time_str = now.strftime("%Y.%m.%d.%H.%M")
     plot_dir = "{}/timeline_plots".format(scd_dir)
@@ -488,8 +507,8 @@ def _main():
 
             emailer.email_log(subject, log_file)
         else:
-            timeline = convert_scd_to_timeline(relevant_lines)
-            plot_path, pickle_path = plot_timeline(timeline, scd_dir, now)
+            timeline, timeline_list = convert_scd_to_timeline(relevant_lines)
+            plot_path, pickle_path = plot_timeline(timeline_list, timeline, scd_dir, now)
             new_atq_str = timeline_to_atq(timeline, scd_dir, now)
 
             with open(log_file, 'wb') as f:
