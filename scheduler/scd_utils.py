@@ -192,7 +192,11 @@ class SCDUtils(object):
         self.write_scd(scd_lines)
 
     def get_relevant_lines(self, yyyymmdd, hhmm):
-        """Gets the currently scheduled and future lines given a supplied time. If the provided time is equal to a scheduled line time, it provides that line and all future lines. If the provided time is between schedule line times, it provides any lines in the schedule with the most recent timestamp and all future lines.  If the provided time is before any lines in the schedule, it provides all schedule lines.
+        """Gets the currently scheduled and future lines given a supplied time. If the provided time
+        is equal to a scheduled line time, it provides that line and all future lines. If the
+        provided time is between schedule line times, it provides any lines in the schedule with the
+        most recent timestamp and all future lines.  If the provided time is before any lines in the
+        schedule, it provides all schedule lines.
 
         Args:
             yyyymmdd (str): year/month/day string.
