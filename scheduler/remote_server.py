@@ -81,6 +81,26 @@ def plot_timeline(timeline_list, scd_dir, now):
         Splits an event that runs during two or more days into two events
         in order to handle plotting.
         """
+        new_event = dict()
+        new_event['color'] = event['color']
+        new_event['label'] = event['label']
+
+        td = dt.timedelta(days=1)
+        midnight = dt.datetime.combine(event['start'] + td, dt.datetime.min.time())
+
+        first_dur = midnight - event['start']
+        second_dur = event['end'] - midnight
+
+        # handle the new event first
+        new_event['start'] = midnight
+        new_event['duration'] = second_dur
+        new_event['end'] = event['end']
+
+        # now handle the old event
+        event['duration'] = first_dur
+        event['end'] = midnight
+
+        return event, new_event
 
     # make random colors
     cmap = get_cmap(len(timeline_list))
@@ -90,8 +110,6 @@ def plot_timeline(timeline_list, scd_dir, now):
     # put the colors in
     for i, event in enumerate(timeline_list):
         event['color'] = colors[i]
-
-    # loop through days, splitting events that run past one day
 
     for event in timeline_list:
         event_item = dict()
@@ -107,6 +125,7 @@ def plot_timeline(timeline_list, scd_dir, now):
             td = datetime.timedelta(minutes=int(event['duration']))
 
         event_item['end'] = event_item['start'] + td
+        event_item['duration'] = td
 
 
         if i == 0:
