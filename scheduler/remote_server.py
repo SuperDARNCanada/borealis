@@ -170,8 +170,15 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
     ax.set_ylabel('Date, MM-DD', rotation='vertical', fontsize=12)
 
     ax.set_title('Schedule from {} to {}'.format(first_date, last_date.date()) )
-    plt.show()
 
+    
+    pretty_date_str = now.strftime("%Y-%m-%d")
+    pretty_time_str = now.strftime("%H:%M")
+
+    ax.annotate('Generated on {} at {} UTC'.format(pretty_date_str, pretty_time_str),
+                                                xy=(1,1), xycoords='axes fraction', fontsize=12, ha='right', va='top')
+
+    plt.show()
     plot_time_str = now.strftime("%Y.%m.%d.%H.%M")
     plot_dir = "{}/timeline_plots".format(scd_dir)
 
