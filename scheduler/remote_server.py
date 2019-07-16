@@ -54,7 +54,7 @@ def get_next_month(date):
 
         return new_date
 
-def plot_timeline(timeline_dict, scd_dir, now):
+def plot_timeline(timeline_list, scd_dir, now):
     """Plots the timeline to better visualize runtime.
 
     Args:
@@ -67,7 +67,7 @@ def plot_timeline(timeline_dict, scd_dir, now):
     """
     fig, ax = plt.subplots()
 
-    event_labels = []
+    event_list = []
     first_date, last_date = None, None
 
 
@@ -76,33 +76,43 @@ def plot_timeline(timeline_dict, scd_dir, now):
         RGB color; the keyword argument name must be a standard mpl colormap name.'''
         return plt.cm.get_cmap(name, n)
 
-    #make random colors
-    cmap = get_cmap(len(timeline_dict.items()))
-    colors = [cmap(i) for i in range(len(timeline_dict.items()))]
+    def split_event(event):
+        """
+        Splits an event that runs during two or more days into two events
+        in order to handle plotting.
+        """
+
+    # make random colors
+    cmap = get_cmap(len(timeline_list))
+    colors = [cmap(i) for i in range(len(timeline_list))]
     random.shuffle(colors)
 
-    for i, (_, events) in enumerate(timeline_dict.items()):
-        event_times = []
-        event_label = ""
+    # put the colors in
+    for i, event in enumerate(timeline_list):
+        event['color'] = colors[i]
+
+    # loop through days, splitting events that run past one day
+
+    for event in timeline_list:
+        event_item = dict()
+        event_item['label'] = event['experiment']
 
         color = colors[i]
-        colors_for_line = [color] * len(events)
-        for event in events:
-            time_start = mdates.date2num(event['time'])
 
-            if event['duration'] == '-':
-                td = get_next_month(event['time']) - event['time']
-            else:
-                td = datetime.timedelta(minutes=int(event['duration']))
+        event_item['start'] = event['time']
 
-            time_end = td.total_seconds()/(24 * 60 * 60)
-            event_times.append((time_start, time_end))
-            event_label = event['experiment']
+        if event['duration'] == '-':
+            td = get_next_month(event['time']) - event['time']
+        else:
+            td = datetime.timedelta(minutes=int(event['duration']))
 
-            if i == 0:
-                first_date = event['time']
-            if i == len(timeline_dict.items()) - 1:
-                last_date = event['time'] + td
+        event_item['end'] = event_item['start'] + td
+
+
+        if i == 0:
+            first_date = event['time']
+        if i == len(timeline_list) - 1:
+            last_date = event['time'] + td
 
         event_labels.append(event_label)
         ax.broken_barh(event_times, ((i+1)*10, 4), facecolors=colors_for_line)
@@ -112,7 +122,8 @@ def plot_timeline(timeline_dict, scd_dir, now):
 
     hours = mdates.HourLocator(byhour=[0,6,12,18,24])
     days = mdates.DayLocator()
-    fmt = mdates.DateFormatter('%m-%d')
+    minutes = mdates.MinuteLocator()
+    fmt = mdates.DateFormatter('%H:%M')
 
     ax.xaxis.set_major_locator(days)
     ax.xaxis.set_major_formatter(fmt)
@@ -303,7 +314,7 @@ def convert_scd_to_timeline(scd_lines):
 
         queued_dict[line['order']].append(line)
 
-    return queued_dict
+    return queued_dict, queued_lines
 
 def timeline_to_atq(timeline, scd_dir, now):
     """ Converts the created timeline to actual atq commands.
