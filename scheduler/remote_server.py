@@ -139,7 +139,7 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
             first_date = event['time'].date()
         if i == len(timeline_list) - 1:
             last_date = event['time'] + td
-            last_date = last_date.date()
+            plot_last = (last_date + datetime.timedelta(hours=12)).date()
 
     # loop through events again, splitting them where necessary
     for event in timeline_list:
@@ -148,8 +148,9 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
     for event in event_list:
         day_offset = event['start'].date() - first_date
         start = event['start'] - day_offset
-        ax.barh(event['start'].date(), event['duration'], left=start, color=event['color'])
-        # ax.text((ev['start'] + ev['duration']) / 2, ev['start'].day, ev['label'])
+        ax.barh(event['start'].date(), event['duration'], 0.16, left=start, color=event['color'], align='edge')
+        ax.text(x=(start + (event['duration'] / 2)), y=event['start'].date(), s=event['label'], color='k', rotation=45, ha='right', va='top', fontsize=8)
+
 
     hours = mdates.HourLocator(byhour=[0,6,12,18,24])
     days = mdates.DayLocator()
@@ -159,15 +160,16 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
 
     ax.xaxis.set_major_locator(hours)
     ax.xaxis.set_major_formatter(x_fmt)
-
-    # ax.xaxis.set_minor_locator(minutes)
+    plt.xticks(rotation=45)
+    ax.set_xlabel('Time of Day', fontsize=12)
 
     ax.yaxis.set_major_locator(days)
     ax.yaxis.set_major_formatter(y_fmt)
-    ax.set_ylim(first_date, last_date)
+    ax.yaxis.set_minor_locator(hours)
+    ax.set_ylim(first_date, plot_last)
+    ax.set_ylabel('Date, MM-DD', rotation='vertical', fontsize=12)
 
-    plt.xticks(rotation=45)
-
+    ax.set_title('Schedule from {} to {}'.format(first_date, last_date.date()) )
     plt.show()
 
     plot_time_str = now.strftime("%Y.%m.%d.%H.%M")
