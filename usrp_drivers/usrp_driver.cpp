@@ -39,8 +39,6 @@
 
 // GPS clock variable. Gets updated every time an RX packet is recvd.
 uhd::time_spec_t box_time;
-bool agc_high;
-bool lp_high;
 
 
 /**
@@ -127,6 +125,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   uhd::time_spec_t sequence_start_time;
   uhd::time_spec_t initialization_time;
+
+  bool agc_high;
+  bool lp_high;
 
   zmq::message_t request;
 
