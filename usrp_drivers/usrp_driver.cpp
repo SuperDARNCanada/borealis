@@ -128,6 +128,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   bool agc_high;
   bool lp_high;
+  double seqtime;
+
+  double agc_signal_read_delay = driver_options.get_agc_signal_read_delay();
 
   zmq::message_t request;
 
@@ -159,6 +162,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
           }
 
           sqn_num = driver_packet.sequence_num();
+          seqtime = driverpacket.seqtime();
           if (sqn_num != expected_sqn_num){
             DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: " <<
                         expected_sqn_num);
@@ -313,7 +317,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
             // Read AGC and Low Power signals
             usrp_d.clear_command_time();
-            auto read_time = sequence_start_time + uhd::time_spec_t(time_to_send_samples.back()/1.0e6);
+            auto read_time = sequence_start_time + seqtime + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
             uint32_t pin_status = usrp_d.get_gpio_state();
             usrp_d.clear_command_time();

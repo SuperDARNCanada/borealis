@@ -642,6 +642,7 @@ def radar():
                                                    experiment.rxctrfreq, experiment.txrate, 
                                                    experiment.rxrate,
                                                    sequence.numberofreceivesamples,
+                                                   sequence.seqtime,
                                                    pulse_dict['startofburst'], pulse_dict['endofburst'],
                                                    pulse_dict['timing'], seqnum_start + nave,
                                                    repeat=True)
@@ -654,6 +655,7 @@ def radar():
                                                    experiment.rxctrfreq, experiment.txrate,
                                                    experiment.rxrate,
                                                    sequence.numberofreceivesamples,
+                                                   sequence.seqtime,
                                                    pulse_dict['startofburst'], pulse_dict['endofburst'],
                                                    pulse_dict['timing'], seqnum_start + nave,
                                                    repeat=pulse_dict['isarepeat'])
