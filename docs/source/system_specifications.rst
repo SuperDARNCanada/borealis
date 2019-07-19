@@ -5,7 +5,7 @@ SuperDARN Canada System Specifications
 Digital Radio Equipment
 =======================
 
-- 17x Ettus USRP N200(16 and 1 spare)
+- 17x Ettus USRP N200 (16 and 1 spare)
 
     - 17x Ettus LFTX daughterboards
     - 17x Ettus LFRX daughterboards
@@ -15,13 +15,10 @@ Digital Radio Equipment
 - 18x 24" SMA Male to Male RG-316 for PPS signals
 - 18x 24" SMA Male to Male RG-316 for 10MHz REF signals
 - GPS Antenna (SMA connector)
-- 17x Custom TXIO board
-- 22x Mini-Circuits ZFL-500LN pre-amps
-- 8x Bulkheads for INTF pre-amps
-- 8x Coax for INTF pre-amps
-- 20x SMA to N-type Male to Female cables
-- 4x Cables from INTF pre-amps   <-MORE DETAIL
-- 16x Cables from MAIN pre-amps    <-MORE DETAIL
+- 17x Custom TXIO board (for transmitter interfacing)
+- 22x Mini-Circuits ZFL-500LN pre-amps (20 and 2 spare)
+- 8x coax cables and adapters for to/from INTF (interferometer) pre-amps
+- 32x coax cables for to/from main array filters and pre-amps inside transmitter
 - 1x 15V power supply (INTF pre-amps)
 
 ================
@@ -43,7 +40,7 @@ Control Computer
 Networking
 ==========
 
-- 3x Netgear XS708E 10Gb switchs
+- 3x Netgear XS708E 10Gb switches
 - 27x SSTP CAT 6a 7ft cables
 - 2x SSTP CAT 6a 15ft cables
 
@@ -54,4 +51,6 @@ Rack and Cabling
 - 4x 8 outlet rackmount PDU
 - 2x APC AP7900B rackmount PDU
 - 1x 4 post 42U rack
+- 4x custom-made USRP N200 rackmount shelves (or Ettus ones)
+- 1x rackmount shelf for interferometer pre-amps
 

@@ -6,7 +6,7 @@ Starting the Radar
 Manual Start-up
 ===============
 
-To more easily start the radar, there is a script called `steamed_hams.sh`. The name of this script is a goofy reference to a scene in an episode of The Simpsons in which Principal Skinner claims there is an aurora happening in his house. The script takes two arguments and can invoked as follows:
+To more easily start the radar, there is a script called `steamed_hams.sh`. The name of this script is a goofy reference to a scene in an episode of The Simpsons in which Principal Skinner claims there is an aurora happening in his house. The script takes two arguments and can be invoked as follows:
 
     * $BOREALISPATH/steamed_hams.sh experiment_name code_environment
 
