@@ -153,13 +153,17 @@ class SCDUtils(object):
         if new_line in scd_lines:
             raise ValueError("Line is a duplicate of an existing line")
 
+        if any([(new_line['timestamp'] == line['timestamp'] and
+                    new_line['prio'] == line['prio']) for line in scd_lines]):
+            raise ValueError("Priority already exists at this time")
+
+
         scd_lines.append(new_line)
 
-        # sort first by timestamp, then by priority, then by duration with default duration last.
-        # duration sorting is funky cause the default value is not a int.
-        new_scd = sorted(scd_lines, key=lambda x:(x['timestamp'],
-                                                    x['prio'],
-                                                    (x['duration'] == '-', x['duration'])))
+        # sort priorities in reverse so that they are descending order. Then sort everything by
+        # timestamp
+        new_scd = sorted(scd_lines, key=lambda x: x['prio'], reverse=True)
+        new_scd = sorted(new_scd, key=lambda x: x['timestamp'])
 
         self.write_scd(new_scd)
 
@@ -188,7 +192,11 @@ class SCDUtils(object):
         self.write_scd(scd_lines)
 
     def get_relevant_lines(self, yyyymmdd, hhmm):
-        """Gets the currently scheduled and future lines given a supplied time. If the provided time is equal to a scheduled line time, it provides that line and all future lines. If the provided time is between schedule line times, it provides any lines in the schedule with the most recent timestamp and all future lines.  If the provided time is before any lines in the schedule, it provides all schedule lines.
+        """Gets the currently scheduled and future lines given a supplied time. If the provided time
+        is equal to a scheduled line time, it provides that line and all future lines. If the
+        provided time is between schedule line times, it provides any lines in the schedule with the
+        most recent timestamp and all future lines.  If the provided time is before any lines in the
+        schedule, it provides all schedule lines.
 
         Args:
             yyyymmdd (str): year/month/day string.
@@ -224,11 +232,12 @@ class SCDUtils(object):
                     relevant_lines.append(line)
                 else:
                     if not prev_line_appended:
-                        last_line_timestamp = scd_lines[idx-1]['timestamp']
-                        temp_list = scd_lines[:]
-                        for t in temp_list:
-                            if t['timestamp'] == last_line_timestamp:
-                                relevant_lines.append(t)
+                        if idx != 0:
+                            last_line_timestamp = scd_lines[idx-1]['timestamp']
+                            temp_list = scd_lines[:]
+                            for t in temp_list:
+                                if t['timestamp'] == last_line_timestamp:
+                                    relevant_lines.append(t)
                         prev_line_appended = True
                     relevant_lines.append(line)
             else:
@@ -249,7 +258,7 @@ if __name__ == "__main__":
     scd_util.add_line("20190414", "10:43", "twofsound")
     scd_util.add_line("20190414", "10:43", "twofsound", prio=2)
     scd_util.add_line("20190414", "10:43", "twofsound", prio=1, duration=89)
-    scd_util.add_line("20190414", "10:43", "twofsound", prio=1, duration=24)
+    #scd_util.add_line("20190414", "10:43", "twofsound", prio=1, duration=24)
     scd_util.add_line("20190414", "11:43", "twofsound", duration=46)
     scd_util.add_line("20190414", "00:43", "twofsound")
     scd_util.add_line("20190408", "15:43", "twofsound", duration=57)
