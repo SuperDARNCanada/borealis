@@ -98,6 +98,7 @@ def plot_timeline(timeline_dict, scd_dir, time_of_interest):
             time_start = mdates.date2num(event['time'])
 
             if event['duration'] == '-':
+                # at this point the only infinite duration event is the last event in the schedule.
                 td = get_next_month_from_date(event['time']) - event['time']
             else:
                 td = datetime.timedelta(minutes=int(event['duration']))
