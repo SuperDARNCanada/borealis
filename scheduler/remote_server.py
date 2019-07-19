@@ -185,7 +185,7 @@ def convert_scd_to_timeline(scd_lines):
     queued_lines = []
 
     # Add the ordering of the lines to each line. This is so we can group entries that get split
-    # up on one line for plotting.
+    # up as the same originally scheduled experiment line in the plot. 
     for i, line in enumerate(scd_lines):
         line['order'] = i
 
