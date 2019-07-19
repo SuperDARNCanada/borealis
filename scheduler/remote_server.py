@@ -161,6 +161,17 @@ def convert_scd_to_timeline(scd_lines):
         prio(priority)
         experiment
 
+    The true timeline queued_lines dictionary differs from the scd_lines list by the following:
+        - duration is parsed, adding in events so that all event durations are equal to the next event's 
+        start time, subtract the current event's start time.
+        - priority is parsed so that there is only ever one event at any time (no overlap)
+        - therefore the only event in the true timeline with infinite duration is the last event. 
+        - the keys of the true timeline dict are the original scd_lines order of the lines (integer). This allows 
+        the preservation of which events in the true timeline were scheduled in the same original line. 
+        This can be useful for plotting (same color = same scd scheduled line). The items in queued_lines
+        dict are lists of all of the events corresponding to that original line's order. These events have the same 
+        keys as the lines in scd_lines. 
+
     Args:
         scd_lines (list): List of sorted lines by timestamp and priority,
                           scd lines to try convert to a timeline.
