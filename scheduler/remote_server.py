@@ -162,7 +162,7 @@ def convert_scd_to_timeline(scd_lines):
         experiment
 
     Args:
-        scd_lines (list): List of sorted by timestamp and priority,
+        scd_lines (list): List of sorted lines by timestamp and priority,
                           scd lines to try convert to a timeline.
 
     Returns:
