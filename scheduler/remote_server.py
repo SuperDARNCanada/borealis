@@ -465,9 +465,9 @@ def _main():
     options = rso.RemoteServerOptions()
     site_id = options.site_id
 
-    scd_file = '{}.scd'.format(site_id)
+    scd_file = '{}/{}.scd'.format(scd_dir, site_id)
 
-    i.add_watch(scd_dir + '/' + scd_file)
+    i.add_watch(scd_file)
     scd_util = scd_utils.SCDUtils(scd_file)
 
     log_dir = "{}/logs".format(scd_dir)
