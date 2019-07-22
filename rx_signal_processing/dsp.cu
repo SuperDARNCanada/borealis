@@ -511,8 +511,8 @@ namespace {
         num_samples_after_dropping);
 
       dataset->set_slice_id(rx_slice_info[i].slice_id);
-      dataset->set_numberofranges(rx_slice_info[i].num_ranges);
-      dataset->set_numberoflags(rx_slice_info[i].lags.size());
+      dataset->set_num_ranges(rx_slice_info[i].num_ranges);
+      dataset->set_num_lags(rx_slice_info[i].lags.size());
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     } // close loop over frequencies (number of slices).
 

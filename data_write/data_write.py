@@ -801,7 +801,7 @@ class DataWrite(object):
 
                 parameters['num_samps'] = np.uint32(bfiq[slice_id]['num_samps'])
                 parameters['data_dimensions'] = np.array([num_antenna_arrays,
-                                                          integration_meta.nave,
+                                                          integration_meta.num_sequences,
                                                           len(parameters['beam_nums']),
                                                           parameters['num_samps']], dtype=np.uint32)
 
@@ -886,7 +886,7 @@ class DataWrite(object):
                     num_ants = len(parameters['antenna_arrays_order'])
 
                     parameters['data_dimensions'] = np.array([num_ants,
-                                                              integration_meta.nave,
+                                                              integration_meta.num_sequences,
                                                               parameters['num_samps']],
                                                              dtype=np.uint32)
 
@@ -1071,13 +1071,13 @@ class DataWrite(object):
                 parameters['slice_comment'] = rx_freq.slice_comment
                 parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
-                parameters['num_sequences'] = integration_meta.nave
-                parameters['num_ranges'] = np.uint32(rx_freq.nrang)
-                parameters['range_sep'] = np.float32(rx_freq.rsep)
+                parameters['num_sequences'] = integration_meta.num_sequences
+                parameters['num_ranges'] = np.uint32(rx_freq.num_ranges)
+                parameters['range_sep'] = np.float32(rx_freq.range_sep)
                 #time to first range and back. convert to meters, div by c then convert to us
-                rtt = (rx_freq.frang * 2 * 1.0e3 / speed_of_light) * 1.0e6
+                rtt = (rx_freq.first_range * 2 * 1.0e3 / speed_of_light) * 1.0e6
                 parameters['first_range_rtt'] = np.float32(rtt)
-                parameters['first_range'] = np.float32(rx_freq.frang)
+                parameters['first_range'] = np.float32(rx_freq.first_range)
                 parameters['rx_sample_rate'] = data_parsing.output_sample_rate # this applies to pre-bf and bfiq
                 parameters['scan_start_marker'] = integration_meta.scan_flag # Should this change to scan_start_marker?
                 parameters['int_time'] = np.float32(integration_meta.integration_time)
@@ -1107,7 +1107,7 @@ class DataWrite(object):
                     parameters['beam_nums'].append(np.uint32(beam.beamnum))
                     parameters['beam_azms'].append(beam.beamazimuth)
 
-                parameters['noise_at_freq'] = [0.0] * integration_meta.nave # TODO update. should come from data_parsing
+                parameters['noise_at_freq'] = [0.0] * integration_meta.num_sequences # TODO update. should come from data_parsing
 
                 # num_samps, antenna_arrays_order, data_descriptors, data_dimensions, data
                 # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs

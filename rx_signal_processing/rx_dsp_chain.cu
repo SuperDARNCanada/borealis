@@ -170,12 +170,12 @@ int main(int argc, char **argv){
 
       auto rx_freq = rx_channel.rxfreq();
       auto slice_id = rx_channel.slice_id();
-      auto nrange = rx_channel.nrang();
-      auto frange = rx_channel.frang();
-      auto rsep = rx_channel.rsep();
+      auto num_ranges = rx_channel.num_ranges();
+      auto first_range = rx_channel.first_range();
+      auto range_sep = rx_channel.range_sep();
       auto beam_count = rx_channel.beam_directions_size();
       auto tau_spacing = rx_channel.tau_spacing();
-      auto new_rx_slice = rx_slice(rx_freq, slice_id, nrange, beam_count, frange, rsep,
+      auto new_rx_slice = rx_slice(rx_freq, slice_id, num_ranges, beam_count, first_range, range_sep,
                                     tau_spacing);
 
       auto num_lags = sp_packet.rxchannel(channel).lags_size();

@@ -205,9 +205,9 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             pass  # TODO - get freq from clear frequency search.
         else:
             chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['txfreq'] * 1.0e3
-        chan_add.nrang = slice_dict[slice_id]['nrang']
-        chan_add.frang = slice_dict[slice_id]['frang']
-        chan_add.rsep = slice_dict[slice_id]['rsep']
+        chan_add.num_ranges = slice_dict[slice_id]['nrang']
+        chan_add.first_range = slice_dict[slice_id]['frang']
+        chan_add.range_sep = slice_dict[slice_id]['rsep']
         for beamdir in beam_dict[slice_id]:
             beam_add = chan_add.beam_directions.add()
             # Don't need to send channel numbers, will always send beamdir with length = total antennas.
@@ -303,7 +303,7 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
-                            seqnum, nave, scan_flag, inttime, sequences, beamdir_dict,
+                            seqnum, num_sequences, scan_flag, inttime, sequences, beamdir_dict,
                             experiment_id, experiment_name, output_sample_rate, experiment_comment,
                             filter_scaling_factors, rx_centre_freq, debug_samples=None):
     """
@@ -313,8 +313,8 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     :param datawrite_radctrl_iden: Identity of datawrite on the socket.
     :param seqnum: The last sequence number (identifier) that is valid for this integration
     period. Used to verify and synchronize driver, dsp, datawrite.
-    :param nave: The number of sequences that were sent in this integration period. (number of
-    averages).
+    :param num_sequences: The number of sequences that were sent in this integration period. (number of
+    sequences to average together).
     :param scan_flag: True if this integration period is the first in a scan.
     :param inttime: The time that expired during this integration period.
     :param sequences: The sequences of class Sequence for this integration period (AveragingPeriod).
@@ -342,7 +342,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     packet.experiment_name = experiment_name
     packet.experiment_comment = experiment_comment
     packet.rx_centre_freq = rx_centre_freq 
-    packet.nave = nave
+    packet.num_sequences = num_sequences
     packet.last_seqn_num = seqnum
     packet.scan_flag = scan_flag
     packet.integration_time = inttime.total_seconds()
@@ -400,9 +400,9 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
                 rxchan_add.acfint = sequence.slice_dict[slice_id]['acfint']
-                rxchan_add.frang = sequence.slice_dict[slice_id]['frang']
-                rxchan_add.nrang = sequence.slice_dict[slice_id]['nrang']
-                rxchan_add.rsep = sequence.slice_dict[slice_id]['rsep']
+                rxchan_add.first_range = sequence.slice_dict[slice_id]['frang']
+                rxchan_add.num_range = sequence.slice_dict[slice_id]['nrang']
+                rxchan_add.range_sep = sequence.slice_dict[slice_id]['rsep']
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = rxchan_add.ltab.lag.add()
                     lag_add.pulse_position[:] = lag
@@ -463,7 +463,7 @@ def radar():
 
     # seqnum is used as a identifier in all packets while
     # radar is running so set it up here.
-    # seqnum will get increased by nave (number of averages or sequences in the integration period)
+    # seqnum will get increased by num_sequences (number of averages or sequences in the integration period)
     # at the end of every integration time.
     seqnum_start = 0
 
@@ -599,7 +599,7 @@ def radar():
                     # all phases are set up for this averaging period for the beams required. Time to start averaging
                     # in the below loop.
 
-                    nave = 0
+                    num_sequences = 0
                     time_remains = True
                     integration_period_done_time = integration_period_start_time + \
                         timedelta(milliseconds=(float(aveperiod.intt)))  # ms
@@ -618,7 +618,7 @@ def radar():
                                 time_remains = False
                                 integration_period_time = time_now - integration_period_start_time
                                 break
-                                # TODO add a break for nave == intn if going for number of averages instead of
+                                # TODO add a break for num_sequences == intn if going for number of averages instead of
                                 # integration time
                             beam_phase_dict = beam_phase_dict_list[sequence_index]
                             send_dsp_metadata(sigprocpacket,
@@ -628,7 +628,7 @@ def radar():
                                            options.brian_to_radctrl_identity,
                                            experiment.rxrate,
                                            experiment.output_rx_rate,
-                                           seqnum_start + nave,
+                                           seqnum_start + num_sequences,
                                            sequence.slice_ids, experiment.slice_dict,
                                            beam_phase_dict, sequence.seqtime,
                                            sequence.first_rx_sample_time,
@@ -660,7 +660,7 @@ def radar():
                                                    experiment.rxrate,
                                                    sequence.numberofreceivesamples,
                                                    pulse_dict['startofburst'], pulse_dict['endofburst'],
-                                                   pulse_dict['timing'], seqnum_start + nave,
+                                                   pulse_dict['timing'], seqnum_start + num_sequences,
                                                    repeat=True)
                             else:
                                 for pulse_index, pulse_dict in \
@@ -672,14 +672,14 @@ def radar():
                                                    experiment.rxrate,
                                                    sequence.numberofreceivesamples,
                                                    pulse_dict['startofburst'], pulse_dict['endofburst'],
-                                                   pulse_dict['timing'], seqnum_start + nave,
+                                                   pulse_dict['timing'], seqnum_start + num_sequences,
                                                    repeat=pulse_dict['isarepeat'])
                                 first_sequence_out = True
 
 
                             # TODO: Make sure you can have a slice that doesn't transmit, only receives on a frequency. # REVIEW #1 what do you mean, what is this TODO for? REPLY : driver acks wouldn't be required etc need to make sure this is possible
                             # Sequence is done
-                            nave = nave + 1
+                            num_sequences = num_sequences + 1
 
                             if __debug__:
                                 time.sleep(1)
@@ -692,16 +692,16 @@ def radar():
                         time_at_end_aveperiod = datetime.utcnow()
 
                     #if __debug__:
-                    print("Number of integrations: {}".format(nave))
+                    print("Number of sequences: {}".format(num_sequences))
 
                     if beam_iter == 0:  # The first integration time in the scan.
                         scan_flag = True
                     else:
                         scan_flag = False
 
-                    last_sequence_num = seqnum_start + nave - 1
+                    last_sequence_num = seqnum_start + num_sequences - 1
                     send_datawrite_metadata(integration_time_packet, radar_control_to_dw,
-                                            options.dw_to_radctrl_identity, last_sequence_num, nave,
+                                            options.dw_to_radctrl_identity, last_sequence_num, num_sequences,
                                             scan_flag, integration_period_time,
                                             aveperiod.sequences, slice_to_beamdir_dict,
                                             experiment.cpid, experiment.experiment_name,
@@ -712,7 +712,7 @@ def radar():
                     # end of the averaging period loop - move onto the next averaging period.
                     # Increment the sequence number by the number of sequences that were in this
                     # averaging period.
-                    seqnum_start += nave
+                    seqnum_start += num_sequences
 
                     if TIME_PROFILE:
                         time_to_finish_aveperiod = datetime.utcnow() - time_at_end_aveperiod
