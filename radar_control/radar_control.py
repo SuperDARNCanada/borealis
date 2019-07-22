@@ -197,7 +197,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
         chan_add.slice_id = slice_id
-        chan_add.tau_spacing = slice_dict[slice_id]['mpinc'] # us
+        chan_add.tau_spacing = slice_dict[slice_id]['tau_spacing'] # us
         # send the translational frequencies to dsp in order to bandpass filter correctly.
         if slice_dict[slice_id]['rxonly']:
             chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['rxfreq'] * 1.0e3
@@ -205,9 +205,9 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             pass  # TODO - get freq from clear frequency search.
         else:
             chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['txfreq'] * 1.0e3
-        chan_add.num_ranges = slice_dict[slice_id]['nrang']
-        chan_add.first_range = slice_dict[slice_id]['frang']
-        chan_add.range_sep = slice_dict[slice_id]['rsep']
+        chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
+        chan_add.first_range = slice_dict[slice_id]['first_range']
+        chan_add.range_sep = slice_dict[slice_id]['range_sep']
         for beamdir in beam_dict[slice_id]:
             beam_add = chan_add.beam_directions.add()
             # Don't need to send channel numbers, will always send beamdir with length = total antennas.
@@ -378,7 +378,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
             rxchan_add.interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
             rxchan_add.rx_only = sequence.slice_dict[slice_id]['rxonly']
             rxchan_add.pulse_len = sequence.slice_dict[slice_id]['pulse_len']
-            rxchan_add.tau_spacing = sequence.slice_dict[slice_id]['mpinc']
+            rxchan_add.tau_spacing = sequence.slice_dict[slice_id]['tau_spacing']
 
             if sequence.slice_dict[slice_id]['rxonly']:
                 rxchan_add.rxfreq = sequence.slice_dict[slice_id]['rxfreq']
@@ -386,7 +386,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 rxchan_add.rxfreq = sequence.slice_dict[slice_id]['txfreq']
 
             rxchan_add.ptab.pulse_position[:] = sequence.slice_dict[slice_id]['pulse_sequence']
-            rxchan_add.pulse_phases.pulse_phase[:] = sequence.slice_dict[slice_id]['pulse_shift']
+            rxchan_add.pulse_phase_offsets.pulse_phase[:] = sequence.slice_dict[slice_id]['pulse_phase_offset']
             rxchan_add.rx_main_antennas[:] = sequence.slice_dict[slice_id]['rx_main_antennas']
             rxchan_add.rx_intf_antennas[:] = sequence.slice_dict[slice_id]['rx_int_antennas']
 
@@ -400,9 +400,9 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
                 rxchan_add.acfint = sequence.slice_dict[slice_id]['acfint']
-                rxchan_add.first_range = sequence.slice_dict[slice_id]['frang']
-                rxchan_add.num_range = sequence.slice_dict[slice_id]['nrang']
-                rxchan_add.range_sep = sequence.slice_dict[slice_id]['rsep']
+                rxchan_add.first_range = sequence.slice_dict[slice_id]['first_range']
+                rxchan_add.num_range = sequence.slice_dict[slice_id]['num_ranges']
+                rxchan_add.range_sep = sequence.slice_dict[slice_id]['range_sep']
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = rxchan_add.ltab.lag.add()
                     lag_add.pulse_position[:] = lag

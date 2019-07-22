@@ -45,7 +45,7 @@ class Sequence(ScanClassBase):
     last_pulse_len
         the length of the last pulse (us)
     ssdelay
-        delay past the end of the sequence to receive for (us) - function of nrang and
+        delay past the end of the sequence to receive for (us) - function of num_ranges and
         pulse_len. ss stands for scope sync.
     seqtime
         the amount of time for the whole sequence to transmit, until the logic signal 
@@ -70,7 +70,7 @@ class Sequence(ScanClassBase):
         The time past the start of sequence for this pulse to start at (us).
     slice_id
         The slice_id that corresponds to this pulse and gives the information about the 
-        experiment and pulse information (frequency, nrang, frang, etc.).
+        experiment and pulse information (frequency, num_ranges, first_range, etc.).
     slice_pulse_index
         The index of the pulse in its own slice's sequence. 
     pulse_len
@@ -100,6 +100,14 @@ class Sequence(ScanClassBase):
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
         """
+        :param seqn_keys: list of slice_ids that need to be included in this sequence.
+        :param sequence_slice_dict: the slice dictionary that explains the parameters of each
+         slice that is included in this sequence. Keys are the slice_ids included
+         and values are dictionaries including all necessary slice parameters as keys.
+        :param sequence_interface: the interfacing dictionary that describes how to interface the 
+         slices that are included in this sequence. Keys are tuples of format
+         (slice_id_1, slice_id_2) and values are of interface_types set up in 
+         experiment_prototype.
         :param transmit_metadata: metadata from the config file that is useful here.
         """
 
@@ -121,11 +129,11 @@ class Sequence(ScanClassBase):
         # Getting a list of pulses, where pulse is a dictionary
         for slice_id in self.slice_ids:
             for slice_pulse_index, pulse_time in enumerate(self.slice_dict[slice_id]['pulse_sequence']):
-                pulse_timing_us = pulse_time*self.slice_dict[slice_id]['mpinc']
+                pulse_timing_us = pulse_time*self.slice_dict[slice_id]['tau_spacing']
                 pulses.append({'pulse_timing_us': pulse_timing_us, 'slice_id': slice_id,
                                    'slice_pulse_index': slice_pulse_index,
                                    'pulse_len': self.slice_dict[slice_id]['pulse_len'],
-                                   'pulse_shift': self.slice_dict[slice_id]['pulse_shift'][slice_pulse_index]})
+                                   'pulse_shift': self.slice_dict[slice_id]['pulse_phase_offset'][slice_pulse_index]})
 
         self.pulses = sorted(pulses, key=itemgetter('pulse_timing_us', 'slice_id'))
         # Will sort by timing first and then by slice if timing =. This is all pulses in the sequence,
@@ -296,21 +304,21 @@ class Sequence(ScanClassBase):
 
         # FIND the max scope sync time
         # The gc214 receiver card in the old system required 19 us for sample delay and another 10 us
-        # as empirically discovered. in that case delay = (nrang + 19 + 10) * pulse_len.
+        # as empirically discovered. in that case delay = (num_ranges + 19 + 10) * pulse_len.
         # Now we will remove those values. In the old design scope sync was used directly to
         # determine how long to sample. Now we will calculate the number of samples to receive
         # (numberofreceivesamples) using scope sync and send that to the driver to sample at
         # a specific rxrate (given by the config).
 
         # number of samples for the first range for all slice ids
-        first_range_samples = {slice_id : int(math.ceil(self.slice_dict[slice_id]['frang']/self.slice_dict[slice_id]['rsep']))
+        first_range_samples = {slice_id : int(math.ceil(self.slice_dict[slice_id]['first_range']/self.slice_dict[slice_id]['range_sep']))
             for slice_id in self.slice_ids}
 
-        # time for number of ranges given, in us, taking into account frang and nrang.          
-        self.ssdelay = max([(self.slice_dict[slice_id]['nrang'] + first_range_samples[slice_id]) *
+        # time for number of ranges given, in us, taking into account first_range and num_ranges.          
+        self.ssdelay = max([(self.slice_dict[slice_id]['num_ranges'] + first_range_samples[slice_id]) *
                             self.slice_dict[slice_id]['pulse_len'] for slice_id in self.slice_ids])
 
-        # The delay is long enough for any slice's pulse length and nrang to be accounted for.
+        # The delay is long enough for any slice's pulse length and num_ranges to be accounted for.
 
         # FIND the sequence time. Time before the first pulse is 70 us when RX and TR set up for the first pulse. The
         # timing to the last pulse is added, as well as its pulse length and the RX/TR delay at the end of last pulse.

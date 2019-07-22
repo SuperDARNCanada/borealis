@@ -76,7 +76,7 @@ DATA_TEMPLATE = {
     "intf_antenna_count" : None, # Number of interferometer array antennas.
     "freq" : None, # The frequency used for this experiment slice in kHz.
     #"filtered_3db_bandwidth" : None, # Bandwidth of the output iq data types? can add later
-    "rx_center_freq" : None, # the center frequency of this data (for rawrf)
+    "rx_center_freq" : None, # the center frequency of this data (for rawrf), kHz
     "samples_data_type" : None, # C data type of the samples such as complex float.
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
     "pulse_phase_offset" : None, # For pulse encoding phase. Contains one phase offset per pulse in pulses.
@@ -1089,7 +1089,7 @@ class DataWrite(object):
                 parameters['rx_center_freq'] = integration_meta.rx_centre_freq # Sorry, we'll convert to US English here
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
-                parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phases.pulse_phase, dtype=np.float32)
+                parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phase_offsets.pulse_phase, dtype=np.float32)
                 parameters['data_normalization_factor'] = integration_meta.data_normalization_factor
 
                 lags = []

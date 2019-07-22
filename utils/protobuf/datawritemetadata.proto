@@ -6,7 +6,7 @@ message IntegrationTimeMetadata {
   int64 experiment_id = 1;
   string experiment_name = 2;
   string experiment_comment = 3;
-  float rx_centre_freq = 4;
+  float rx_centre_freq = 4; // kHz
   repeated SequenceType sequences = 5;
   uint32 num_sequences = 6;
   uint32 last_seqn_num = 7;
@@ -29,7 +29,7 @@ message IntegrationTimeMetadata {
       uint32 tau_spacing = 6;
       float rxfreq = 7;
       PulseTable ptab = 8;
-      PulsePhase pulse_phases = 9;
+      PulsePhase pulse_phase_offsets = 9;
       repeated uint32 rx_main_antennas = 10; // Main antennas received on for experiment slice.
       repeated uint32 rx_intf_antennas = 11;
       repeated Beam beams = 12;

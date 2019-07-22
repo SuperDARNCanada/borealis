@@ -42,7 +42,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties);
 
 typedef struct rx_slice
 {
-  double rx_freq;
+  double rx_freq; // kHz
   uint32_t slice_id;
   uint32_t num_ranges;
   uint32_t beam_count;

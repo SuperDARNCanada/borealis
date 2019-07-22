@@ -271,7 +271,7 @@ namespace {
 
         auto beam_offset = beam_count * num_ranges * num_lags;
         auto first_range_offset = uint32_t(rx_slice_info[slice_num].first_range /
-                              rx_slice_info[slice_num].range_sep); // range sep in m, first_range in km
+                              rx_slice_info[slice_num].range_sep); // range sep in km, first_range in km
         // Select out the lags for each range gate.
         for(uint32_t range=0; range<num_ranges; range++) {
           for(uint32_t lag=0; lag<num_lags; lag++) {
