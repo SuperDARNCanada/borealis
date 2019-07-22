@@ -399,7 +399,7 @@ class ParseData(object):
         array of data for each sampling period.
 
         Returns:
-            TYPE: Default dict: Contains acf data for each slice.
+            TYPE: Default dict: Contains main acf data for each slice.
         """
         return self._mainacfs_accumulator
 
@@ -691,8 +691,7 @@ class DataWrite(object):
 
             main_acfs, intf_acfs, and xcfs are all passed to data_write for all sequences
             individually. At this point, they will be combined into data for a single integration
-            time. Typically, averaging was done but we chose median here to protect against effects of 
-            single sequences that might have signal interference.
+            time via averaging.
 
             """
 
@@ -789,11 +788,9 @@ class DataWrite(object):
                 parameters['antenna_arrays_order'] = []
 
                 flattened_data = []
-                num_antenna_arrays = 0
-                if "main" in bfiq[slice_id]:
-                    num_antenna_arrays += 1 
-                    parameters['antenna_arrays_order'].append("main")
-                    flattened_data.append(bfiq[slice_id]['main']['data'])
+                num_antenna_arrays = 1 
+                parameters['antenna_arrays_order'].append("main")
+                flattened_data.append(bfiq[slice_id]['main']['data'])
                 if "intf" in bfiq[slice_id]:
                     num_antenna_arrays += 1 
                     parameters['antenna_arrays_order'].append("intf")

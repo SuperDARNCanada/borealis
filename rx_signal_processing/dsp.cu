@@ -178,7 +178,7 @@ namespace {
     // offsets, we can call the beamforming lambda.
     for (uint32_t rx_freq_num=0; rx_freq_num<rx_slice_info.size(); rx_freq_num++) {
 
-      auto num_beams = rx_slice_info[rx_freq_num].beam_count;;
+      auto num_beams = rx_slice_info[rx_freq_num].beam_count;
 
       // Increment to start of new frequency dataset.
       auto main_sample_offset = num_samples * (num_main_ants + num_intf_ants) * rx_freq_num;
@@ -276,7 +276,7 @@ namespace {
         for(uint32_t range=0; range<num_ranges; range++) {
           for(uint32_t lag=0; lag<num_lags; lag++) {
 
-            // tau spacing in is us, sample rate in hz
+            // tau spacing is in us, sample rate in hz
             auto tau_in_samples = uint32_t(std::ceil(rx_slice_info[slice_num].tau_spacing * 1e-6 *
                                             output_sample_rate));
 
@@ -396,7 +396,7 @@ namespace {
         }
       }
 
-    );
+    ); // closing timeit scope
 
     // We have a lambda to extract the starting pointers of each set of output samples so that
     // we can use a consistent function to write either rf samples or stage data.
@@ -1185,16 +1185,6 @@ std::vector<cuComplex> DSPCore::get_beam_phases()
 {
   return beam_phases;
 }
-
-/**
- * @brief     Gets the vector of beam direction counts for each RX frequency.
- *
- * @return    The beam direction counts.
- */
-/*std::vector<uint32_t> DSPCore::get_beam_direction_counts()
-{
-  return beam_direction_counts;
-}*/
 
 /**
  * @brief     Gets the name of the shared memory section.

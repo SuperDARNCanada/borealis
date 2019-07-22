@@ -405,8 +405,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 rxchan_add.rsep = sequence.slice_dict[slice_id]['rsep']
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = rxchan_add.ltab.lag.add()
-                    for pul_pos in lag:
-                        lag_add.pulse_position[:] = lag
+                    lag_add.pulse_position[:] = lag
                     lag_add.lag_num = int(lag[1] - lag[0])
 
     if __debug__:
