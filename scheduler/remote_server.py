@@ -58,6 +58,7 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
     """Plots the timeline to better visualize runtime.
 
     Args:
+        timeline_list (list): A list of entries ordered chronologically as scheduled
         timeline_dict (dict): A dict of grouped entries.
         scd_dir (str): The scd directory path.
         now (datetime): The datetime holding the time of scheduling.
@@ -67,9 +68,7 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
     """
     fig, ax = plt.subplots()
 
-    event_list = []
     first_date, last_date = None, None
-
 
     def get_cmap(n, name='hsv'):
         '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct
@@ -141,6 +140,7 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
             last_date = event['time'] + td
             plot_last = (last_date + datetime.timedelta(hours=12)).date()
 
+    event_list = []
     # loop through events again, splitting them where necessary
     for event in timeline_list:
         event_list += split_event(event)
@@ -178,7 +178,6 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
     ax.annotate('Generated on {} at {} UTC'.format(pretty_date_str, pretty_time_str),
                                                 xy=(1,1), xycoords='axes fraction', fontsize=12, ha='right', va='top')
 
-    plt.show()
     plot_time_str = now.strftime("%Y.%m.%d.%H.%M")
     plot_dir = "{}/timeline_plots".format(scd_dir)
 
