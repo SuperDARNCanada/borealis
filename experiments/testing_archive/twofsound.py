@@ -9,6 +9,8 @@ BOREALISPATH = os.environ['BOREALISPATH']
 
 #import test
 from experiment_prototype.experiment_prototype import ExperimentPrototype
+from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
+from experiments.test_decimation_schemes import *
 
 class Twofsound(ExperimentPrototype):
 
@@ -27,11 +29,11 @@ class Twofsound(ExperimentPrototype):
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
             "pulse_sequence": pulse_sequence,
-            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0, 0],
-            "tau_spacing": tau_spacing,
+            "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
+            "mpinc": tau_spacing,
             "pulse_len": 300,  # us
-            "num_ranges": 75,  # range gates
-            "first_range": 180,  # first range gate, in km
+            "nrang": 75,  # range gates
+            "frang": 180,  # first range gate, in km
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
@@ -55,11 +57,11 @@ class Twofsound(ExperimentPrototype):
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
             "pulse_sequence": pulse_sequence,
-            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0, 0],
-            "tau_spacing": tau_spacing,
+            "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
+            "mpinc": tau_spacing,
             "pulse_len": 300,  # us
-            "num_ranges": 75,  # range gates
-            "first_range": 90,  # first range gate, in km
+            "nrang": 75,  # range gates
+            "frang": 90,  # first range gate, in km
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
@@ -84,6 +86,7 @@ class Twofsound(ExperimentPrototype):
         
         super(Twofsound, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate,
                 txctrfreq=txctrfreq, rxctrfreq=rxctrfreq, 
+                decimation_scheme=create_test_scheme_9(),
                 comment_string='Twofsound classic scan-by-scan')
 
         print(self.txctrfreq)

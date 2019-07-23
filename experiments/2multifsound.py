@@ -17,8 +17,8 @@ class TwoMultifsound(ExperimentPrototype):
         rxrate = 5.0e6
         output_rx_rate = 10.0e3/3
 
-        tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-        rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
         rx_int_ant = [0, 1, 2, 3]        
         pulse_sequence = [0, 9, 12, 20, 22, 26, 27] #[0, 14, 22, 24, 27, 31, 42, 43]
         tau_spacing = 2400 # 1500 # us
@@ -27,11 +27,11 @@ class TwoMultifsound(ExperimentPrototype):
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
             "pulse_sequence": pulse_sequence,
-            "pulse_shift": [0, 0, 0, 0, 0, 0, 0],
-            "mpinc": tau_spacing,
+            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0],
+            "tau_spacing": tau_spacing,
             "pulse_len": 300,  # us
-            "nrang": 75,  # range gates
-            "frang": 180,  # first range gate, in km
+            "num_ranges": 75,  # range gates
+            "first_range": 180,  # first range gate, in km
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
@@ -55,11 +55,11 @@ class TwoMultifsound(ExperimentPrototype):
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
             "pulse_sequence": pulse_sequence,
-            "pulse_shift": [0, 0, 0, 0, 0, 0, 0],
-            "mpinc": tau_spacing,
+            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0],
+            "tau_spacing": tau_spacing,
             "pulse_len": 300,  # us
-            "nrang": 75,  # range gates
-            "frang": 90,  # first range gate, in km
+            "num_ranges": 75,  # range gates
+            "first_range": 90,  # first range gate, in km
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,

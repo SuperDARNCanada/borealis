@@ -76,7 +76,7 @@ DATA_TEMPLATE = {
     "intf_antenna_count" : None, # Number of interferometer array antennas.
     "freq" : None, # The frequency used for this experiment slice in kHz.
     #"filtered_3db_bandwidth" : None, # Bandwidth of the output iq data types? can add later
-    "rx_center_freq" : None, # the center frequency of this data (for rawrf)
+    "rx_center_freq" : None, # the center frequency of this data (for rawrf), kHz
     "samples_data_type" : None, # C data type of the samples such as complex float.
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
     "pulse_phase_offset" : None, # For pulse encoding phase. Contains one phase offset per pulse in pulses.
@@ -399,7 +399,7 @@ class ParseData(object):
         array of data for each sampling period.
 
         Returns:
-            TYPE: Default dict: Contains acf data for each slice.
+            TYPE: Default dict: Contains main acf data for each slice.
         """
         return self._mainacfs_accumulator
 
@@ -691,8 +691,7 @@ class DataWrite(object):
 
             main_acfs, intf_acfs, and xcfs are all passed to data_write for all sequences
             individually. At this point, they will be combined into data for a single integration
-            time. Typically, averaging was done but we chose median here to protect against effects of 
-            single sequences that might have signal interference.
+            time via averaging.
 
             """
 
@@ -789,11 +788,9 @@ class DataWrite(object):
                 parameters['antenna_arrays_order'] = []
 
                 flattened_data = []
-                num_antenna_arrays = 0
-                if "main" in bfiq[slice_id]:
-                    num_antenna_arrays += 1 
-                    parameters['antenna_arrays_order'].append("main")
-                    flattened_data.append(bfiq[slice_id]['main']['data'])
+                num_antenna_arrays = 1 
+                parameters['antenna_arrays_order'].append("main")
+                flattened_data.append(bfiq[slice_id]['main']['data'])
                 if "intf" in bfiq[slice_id]:
                     num_antenna_arrays += 1 
                     parameters['antenna_arrays_order'].append("intf")
@@ -804,7 +801,7 @@ class DataWrite(object):
 
                 parameters['num_samps'] = np.uint32(bfiq[slice_id]['num_samps'])
                 parameters['data_dimensions'] = np.array([num_antenna_arrays,
-                                                          integration_meta.nave,
+                                                          integration_meta.num_sequences,
                                                           len(parameters['beam_nums']),
                                                           parameters['num_samps']], dtype=np.uint32)
 
@@ -889,7 +886,7 @@ class DataWrite(object):
                     num_ants = len(parameters['antenna_arrays_order'])
 
                     parameters['data_dimensions'] = np.array([num_ants,
-                                                              integration_meta.nave,
+                                                              integration_meta.num_sequences,
                                                               parameters['num_samps']],
                                                              dtype=np.uint32)
 
@@ -1074,13 +1071,13 @@ class DataWrite(object):
                 parameters['slice_comment'] = rx_freq.slice_comment
                 parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
-                parameters['num_sequences'] = integration_meta.nave
-                parameters['num_ranges'] = np.uint32(rx_freq.nrang)
-                parameters['range_sep'] = np.float32(rx_freq.rsep)
+                parameters['num_sequences'] = integration_meta.num_sequences
+                parameters['num_ranges'] = np.uint32(rx_freq.num_ranges)
+                parameters['range_sep'] = np.float32(rx_freq.range_sep)
                 #time to first range and back. convert to meters, div by c then convert to us
-                rtt = (rx_freq.frang * 2 * 1.0e3 / speed_of_light) * 1.0e6
+                rtt = (rx_freq.first_range * 2 * 1.0e3 / speed_of_light) * 1.0e6
                 parameters['first_range_rtt'] = np.float32(rtt)
-                parameters['first_range'] = np.float32(rx_freq.frang)
+                parameters['first_range'] = np.float32(rx_freq.first_range)
                 parameters['rx_sample_rate'] = data_parsing.output_sample_rate # this applies to pre-bf and bfiq
                 parameters['scan_start_marker'] = integration_meta.scan_flag # Should this change to scan_start_marker?
                 parameters['int_time'] = np.float32(integration_meta.integration_time)
@@ -1092,7 +1089,7 @@ class DataWrite(object):
                 parameters['rx_center_freq'] = integration_meta.rx_centre_freq # Sorry, we'll convert to US English here
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
-                parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phases.pulse_phase, dtype=np.float32)
+                parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phase_offsets.pulse_phase, dtype=np.float32)
                 parameters['data_normalization_factor'] = integration_meta.data_normalization_factor
 
                 lags = []
@@ -1110,7 +1107,7 @@ class DataWrite(object):
                     parameters['beam_nums'].append(np.uint32(beam.beamnum))
                     parameters['beam_azms'].append(beam.beamazimuth)
 
-                parameters['noise_at_freq'] = [0.0] * integration_meta.nave # TODO update. should come from data_parsing
+                parameters['noise_at_freq'] = [0.0] * integration_meta.num_sequences # TODO update. should come from data_parsing
 
                 # num_samps, antenna_arrays_order, data_descriptors, data_dimensions, data
                 # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs

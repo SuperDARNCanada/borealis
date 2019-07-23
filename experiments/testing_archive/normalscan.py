@@ -2,12 +2,14 @@
 
 # write an experiment that creates a new control program.
 from experiment_prototype.experiment_prototype import ExperimentPrototype
+from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
+from experiments.test_decimation_schemes import *
 
 class Normalscan(ExperimentPrototype):
 
     def __init__(self):
         cpid = 150
-        super(Normalscan, self).__init__(cpid)
+        super(Normalscan, self).__init__(cpid, decimation_scheme=create_test_scheme_9())
 
         tx_antennas = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
         rx_main_antennas = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
@@ -19,11 +21,11 @@ class Normalscan(ExperimentPrototype):
             "rx_main_antennas": rx_main_antennas,
             "rx_int_antennas": rx_int_antennas,
             "pulse_sequence": pulse_sequence,
-            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0],
-            "tau_spacing": tau_spacing,  # us
+            "pulse_shift": [0, 0, 0, 0, 0, 0, 0],
+            "mpinc": tau_spacing,  # us
             "pulse_len": 300,  # us
-            "num_ranges": 75,  # range gates
-            "first_range": 180,  # first range gate, in km
+            "nrang": 75,  # range gates
+            "frang": 180,  # first range gate, in km
             "intt": 3500,  # duration of an integration, in ms
             #"intn": 21,  # number of averages if intt is None.
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
