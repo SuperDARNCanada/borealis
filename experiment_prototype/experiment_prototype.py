@@ -411,7 +411,7 @@ class ExperimentPrototype(object):
     @property
     def output_rx_rate(self):
         """
-        The output receive rate of the data.
+        The output receive rate of the data, Hz.
 
         This is read-only once established in instantiation.
         """

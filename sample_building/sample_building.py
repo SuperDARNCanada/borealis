@@ -278,7 +278,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
     :param main_antenna_count: number of main antennas in the array to transmit.
     :param main_antenna_spacing: spacing between main array antennas, assumed uniform.
     :param pulse_ramp_time: time to ramp up the pulse at the start and end of the pulse. This
-    time counts as part of the total pulse length time.
+    time counts as part of the total pulse length time (in seconds).
     :param max_usrp_dac_amplitude: max voltage out of the digital-analog converter on the USRP
     :param tr_window_time: time in seconds to add zero-samples to the transmit waveform in order
     to count for the transmit/receive switching time. Windows the pulse on both sides.
@@ -391,7 +391,7 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
     :param main_antenna_count: number of main antennas in the array to transmit.
     :param main_antenna_spacing: spacing between main array antennas, assumed uniform.
     :param pulse_ramp_time: time to ramp up the pulse at the start and end of the pulse. This
-    time counts as part of the total pulse length time.
+    time counts as part of the total pulse length time (in seconds).
     :param max_usrp_dac_amplitude: max voltage out of the digital-analog converter on the USRP
     """
 
