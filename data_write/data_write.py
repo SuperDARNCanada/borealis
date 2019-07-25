@@ -70,7 +70,7 @@ DATA_TEMPLATE = {
     "scan_start_marker" : None, # Designates if the record is the first in a scan.
     "int_time" : None, # Integration time in seconds.
     "tx_pulse_len" : None, # Length of the pulse in microseconds.
-    "tau_spacing" : None, # The minimum spacing between pulses in microseconds. 
+    "tau_spacing" : None, # The minimum spacing between pulses in microseconds.
                           # Spacing between pulses is always a multiple of this.
     "main_antenna_count" : None, # Number of main array antennas.
     "intf_antenna_count" : None, # Number of interferometer array antennas.
@@ -81,7 +81,7 @@ DATA_TEMPLATE = {
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
     "pulse_phase_offset" : None, # For pulse encoding phase. Contains one phase offset per pulse in pulses.
     "lags" : None, # The lags created from two pulses in the pulses array.
-    "blanked_samples" : None, # Samples that have been blanked because they occurred during transmission times. 
+    "blanked_samples" : None, # Samples that have been blanked because they occurred during transmission times.
                               # Can differ from the pulses array due to multiple slices in a single sequence.
     "sqn_timestamps" : None, # A list of GPS timestamps of the beginning of transmission for each
                              # sampling period in the integration time. Seconds since epoch.
@@ -437,7 +437,7 @@ class ParseData(object):
         """Return the rx_rate of the data in the data packet
 
         Returns:
-            float: sampling rate in Hz. 
+            float: sampling rate in Hz.
         """
         return self._rx_rate
 
@@ -446,7 +446,7 @@ class ParseData(object):
         """Return the output rate of the filtered, decimated data in the data packet.
 
         Returns:
-            float: output sampling rate in Hz. 
+            float: output sampling rate in Hz.
         """
         return self._output_sample_rate
 
@@ -690,7 +690,7 @@ class DataWrite(object):
 
             main_acfs, intf_acfs, and xcfs are all passed to data_write for all sequences
             individually. At this point, they will be combined into data for a single integration
-            time. Typically, averaging was done but we chose median here to protect against effects of 
+            time. Typically, averaging was done but we chose median here to protect against effects of
             single sequences that might have signal interference.
 
             """
@@ -698,12 +698,12 @@ class DataWrite(object):
             needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
             "num_sequences", "range_sep", "first_range_rtt", "first_range", "rx_sample_rate",
-            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
-            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
-            "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
-            "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs", 
+            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
+            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
+            "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
+            "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs",
             "xcfs", "noise_at_freq"]
-            # note num_ranges not in needed_fields but are used to make 
+            # note num_ranges not in needed_fields but are used to make
             # correlation_dimensions
 
             #unneeded_fields = ['data_dimensions', 'data_descriptors', 'antenna_arrays_order',
@@ -715,11 +715,11 @@ class DataWrite(object):
 
             def find_expectation_value(x, parameters, field_name):
                 """
-                Get the median of all correlations from all sequences in the 
+                Get the median of all correlations from all sequences in the
                 integration period - only this will be recorded.
                 """
                 # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
-                # so we get median of all sequences. 
+                # so we get median of all sequences.
                 array_2d = np.array(x, dtype=np.complex64)
                 array_expectation_value = np.median(array_2d, axis=0)
                 parameters[field_name] = array_expectation_value
@@ -739,8 +739,8 @@ class DataWrite(object):
 
             for slice_id, parameters in parameters_holder.items():
                 parameters['correlation_descriptors'] = ['num_beams', 'num_ranges', 'num_lags']
-                parameters['correlation_dimensions'] = np.array([len(parameters["beam_nums"]), 
-                    parameters["num_ranges"], parameters["lags"].shape[0]],dtype=np.uint32) 
+                parameters['correlation_dimensions'] = np.array([len(parameters["beam_nums"]),
+                    parameters["num_ranges"], parameters["lags"].shape[0]],dtype=np.uint32)
                 for field in list(parameters.keys()):
                     if field not in needed_fields:
                         parameters.pop(field, None)
@@ -756,7 +756,7 @@ class DataWrite(object):
         def write_bfiq_params(parameters_holder):
             """
             write out any possible beamformed IQ data that has been parsed. Adds additional slice
-            info to each parameter dict. Some variables are captured from outer scope. 
+            info to each parameter dict. Some variables are captured from outer scope.
 
             Args:
                 parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
@@ -764,15 +764,15 @@ class DataWrite(object):
             needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
             "num_sequences", "rx_sample_rate", "pulse_phase_offset",
-            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
-            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
-            "pulses", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms", 
-            "data_dimensions", "data_descriptors", "antenna_arrays_order", "data", 
-            "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range", 
+            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
+            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
+            "pulses", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
+            "data_dimensions", "data_descriptors", "antenna_arrays_order", "data",
+            "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range",
             "lags", "num_ranges"]
 
-            #unneeded_fields = ["correlation_descriptors", "rx_center_freq", 
-            #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs"]                  
+            #unneeded_fields = ["correlation_descriptors", "rx_center_freq",
+            #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs"]
 
             bfiq = data_parsing.bfiq_accumulator
 
@@ -788,11 +788,11 @@ class DataWrite(object):
                 flattened_data = []
                 num_antenna_arrays = 0
                 if "main" in bfiq[slice_id]:
-                    num_antenna_arrays += 1 
+                    num_antenna_arrays += 1
                     parameters['antenna_arrays_order'].append("main")
                     flattened_data.append(bfiq[slice_id]['main']['data'])
                 if "intf" in bfiq[slice_id]:
-                    num_antenna_arrays += 1 
+                    num_antenna_arrays += 1
                     parameters['antenna_arrays_order'].append("intf")
                     flattened_data.append(bfiq[slice_id]['intf']['data'])
 
@@ -835,12 +835,12 @@ class DataWrite(object):
 
             needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
-            "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing", 
-            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type", 
-            "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors", 
+            "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
+            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
+            "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors",
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq"]
 
-            #unneeded_fields = ["correlation_descriptors", "rx_center_freq", 
+            #unneeded_fields = ["correlation_descriptors", "rx_center_freq",
             #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range_rtt", "first_range",
             #"lags", "blanked_samples", "num_ranges"]
 
@@ -920,7 +920,7 @@ class DataWrite(object):
             """
             Opens the shared memory location in the protobuf and writes the samples out to file.
             Write medium must be able to sustain high write bandwidth. Shared memory is destroyed
-            after write. Some variables are captured in scope. 
+            after write. Some variables are captured in scope.
 
             Args:
                 param (Dict): A dict of parameters to write. Some will be removed.
@@ -930,20 +930,20 @@ class DataWrite(object):
 
             needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "station",
-            "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", 
-            "main_antenna_count", "intf_antenna_count", "samples_data_type", 
+            "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
+            "main_antenna_count", "intf_antenna_count", "samples_data_type",
             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
             "rx_center_freq"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
-            # this data. Note that because this data is not slice-specific a lot of slice-specific 
-            # data (ex. pulses, beam_nums, beam_azms) is not included (user must look 
+            # this data. Note that because this data is not slice-specific a lot of slice-specific
+            # data (ex. pulses, beam_nums, beam_azms) is not included (user must look
             # at the experiment they ran)
 
-            #unneeded_fields = ["lags", "num_ranges", "correlation_descriptors", "slice_comment", 
-            #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range", 
-            #"first_range_rtt", "antenna_arrays_order", "pulse_phase_offset", 
+            #unneeded_fields = ["lags", "num_ranges", "correlation_descriptors", "slice_comment",
+            #"correlation_dimensions", "main_acfs", "intf_acfs", "xcfs", "range_sep", "first_range",
+            #"first_range_rtt", "antenna_arrays_order", "pulse_phase_offset",
             #"blanked_samples", "pulses", "beam_nums", "beam_azms", "tx_pulse_len", "tau_spacing", "freq",
             #"noise_at_freq"]
 
@@ -995,7 +995,7 @@ class DataWrite(object):
 
         def write_tx_data():
             """
-            Writes out the tx samples and metadata for debugging purposes. 
+            Writes out the tx samples and metadata for debugging purposes.
             Does not use same parameters of other writes.
 
             """
@@ -1066,7 +1066,7 @@ class DataWrite(object):
                 parameters['timestamp_of_write'] = (write_time - epoch).total_seconds()
                 parameters['experiment_id'] = np.int64(integration_meta.experiment_id)
                 parameters['experiment_name'] = integration_meta.experiment_name
-                parameters['experiment_comment'] = integration_meta.experiment_comment  
+                parameters['experiment_comment'] = integration_meta.experiment_comment
                 parameters['slice_comment'] = rx_freq.slice_comment
                 parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
@@ -1110,31 +1110,23 @@ class DataWrite(object):
                 # num_samps, antenna_arrays_order, data_descriptors, data_dimensions, data
                 # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs
                 # all get set within the separate write functions.
-                
+
                 parameters_holder[rx_freq.slice_id] = parameters
 
-        # Use multiprocessing to speed up writing. Each data type can be parsed and written by a
-        # separate process in order to parallelize the work.
-        #procs = []
-
         if write_rawacf:
-            #procs.append(threading.Thread(target=do_acf))
+
             write_correlations(copy.deepcopy(parameters_holder))
             pass
 
         if write_bfiq and data_parsing.bfiq_available:
-            #procs.append(threading.Thread(target=write_bfiq_params, args=(parameters_holder.copy(), )))
             write_bfiq_params(copy.deepcopy(parameters_holder))
 
         if write_pre_bfiq and data_parsing.pre_bfiq_available:
-            #procs.append(threading.Thread(target=write_pre_bfiq_params,
-            #                        args=(parameters_holder.copy(), )))
             write_pre_bfiq_params(copy.deepcopy(parameters_holder))
 
         if write_raw_rf:
             # Just need first available slice paramaters.
             one_slice_params = copy.deepcopy(next(iter(parameters_holder.values())))
-            #procs.append(threading.Thread(target=write_raw_rf_params, args=(one_slice_params, )))
             write_raw_rf_params(one_slice_params)
         else:
             for rf_samples_location in data_parsing.rawrf_locations:
@@ -1143,14 +1135,8 @@ class DataWrite(object):
                 shm.unlink()
 
         if write_tx:
-            #procs.append(threading.Thread(target=write_tx_data))
             write_tx_data()
 
-        # for proc in procs:
-        #     proc.start()
-
-        # for proc in procs:
-        #     proc.join()
 
         end = time.time()
         printing("Time to write: {} ms".format((end-start)*1000))
@@ -1167,7 +1153,7 @@ def main():
                         action='store_true')
     parser.add_argument('--enable-bfiq', help='Enable beamformed iq writing',
                         action='store_true')
-    parser.add_argument('--enable-pre-bfiq', help='Enable individual antenna iq writing',
+    parser.add_argument('--enable-antenna-iq', help='Enable individual antenna iq writing',
                         action='store_true')
     parser.add_argument('--enable-raw-rf', help='Save raw, unfiltered IQ samples. Requires HDF5.',
                         action='store_true')
