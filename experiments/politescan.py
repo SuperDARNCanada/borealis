@@ -18,11 +18,11 @@ class Politescan(ExperimentPrototype):
             "rx_main_antennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             "rx_int_antennas": [0, 1, 2, 3],
             "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
-            "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
-            "mpinc": 1500,  # us
+            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0, 0],
+            "tau_spacing": 1500,  # us
             "pulse_len": 300,  # us
-            "nrang": 75,  # range gates
-            "frang": 180,  # first range gate, in km
+            "num_ranges": 75,  # range gates
+            "first_range": 180,  # first range gate, in km
             "intt": 3000,  # duration of an integration, in ms
             #"intn": 21,  # number of averages if intt is None.
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,

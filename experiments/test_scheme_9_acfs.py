@@ -9,26 +9,26 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
 from experiments.test_decimation_schemes import *
 
-class OneBox(ExperimentPrototype):
-
+class TestScheme9ACFs(ExperimentPrototype):
+    # with 7 PULSE sequence
     def __init__(self):
         cpid = 100000000
         output_rx_rate = 10.0e3/3
         rxrate = 5.0e6
-        super(OneBox, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate, decimation_scheme=create_test_scheme_9())
+        super(TestScheme9ACFs, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate, decimation_scheme=create_test_scheme_9())
 
-        pulse_sequence = [0, 14, 22, 24, 27, 31, 42, 43]
+        pulse_sequence = [0, 9, 12, 20, 22, 26, 27] # [0, 14, 22, 24, 27, 31, 42, 43]
         #pulse_sequence = [0,3,15,41,66,95,97,106,142,152,220,221,225,242,295,330,338,354,382,388,402,415,486,504,523,546,553]
         self.add_slice({  # slice_id = 0, there is only one slice.
-            # "tx_antennas": [0],
-            # "rx_main_antennas": [0,1,2,3,4],
+            "tx_antennas": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+            "rx_main_antennas": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
             # "rx_int_antennas": [],
-            "pulse_sequence":pulse_sequence,#[0, 14, 22, 24, 27, 31, 42, 43],
-            "pulse_shift": [0] * len(pulse_sequence),
-            "mpinc": 1500,  # us
+            "pulse_sequence":pulse_sequence,
+            "pulse_phase_offset": [0] * len(pulse_sequence),
+            "tau_spacing": 2400,  # us
             "pulse_len": 300,  # us
-            "nrang": 75,  # range gates
-            "frang": 180,  # first range gate, in km
+            "num_ranges": 75,  # range gates
+            "first_range": 180,  # first range gate, in km
             "intt": 3000,  # duration of an integration, in ms
             "intn": 21,  # number of averages if intt is None.
             "beam_angle": [0.0], # [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
@@ -41,6 +41,7 @@ class OneBox(ExperimentPrototype):
             #"clrfrqrange": [13200, 13500],  # frequency range for clear frequency search, kHz
             # including a clrfrqrange overrides rxfreq and txfreq so these are no longer necessary
             # as they will be set by the frequency chosen from the range.
+            "acf": True, # acfs on
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         })
@@ -52,11 +53,11 @@ class OneBox(ExperimentPrototype):
         #     "rx_main_antennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
         #     "rx_int_antennas": [0, 1, 2, 3],
         #     "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
-        #     "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
-        #     "mpinc": 1500,  # us
+        #     "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0, 0],
+        #     "tau_spacing": 1500,  # us
         #     "pulse_len": 300,  # us
-        #     "nrang": 75,  # range gates
-        #     "frang": 180,  # first range gate, in km
+        #     "num_ranges": 75,  # range gates
+        #     "first_range": 180,  # first range gate, in km
         #     "intt": 3000,  # duration of an integration, in ms
         #     "intn": 21,  # number of averages if intt is None.
         #     "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
@@ -92,7 +93,7 @@ class OneBox(ExperimentPrototype):
             slice 1 and 2 must have same intt and intn. Integrations will switch between one and the other slice until 
             time is up or the required number of averages is reached.
         PULSE : Simultaneous sequence interfacing, pulse by pulse creates a single sequence. Experiment Slice 1 and 2 
-            might have different frequencies and/or may have different pulse length, mpinc, sequence. They must also 
+            might have different frequencies and/or may have different pulse length, tau_spacing, sequence. They must also 
             have same len(scan), although they may use different directions in scan. They must have the same scan 
             boundary if any. A time offset between the pulses starting may be set (seq_timer in the slice). Slice 1 
             and 2 will have integrations that run at the same time. 
