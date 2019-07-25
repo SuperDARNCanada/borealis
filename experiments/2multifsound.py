@@ -12,16 +12,16 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
 from experiments.test_decimation_schemes import *
 
-class Twofsound(ExperimentPrototype):
+class TwoMultifsound(ExperimentPrototype):
 
     def __init__(self):
-        cpid = 3503
+        cpid = 350300
         rxrate = 5.0e6
         output_rx_rate = 10.0e3/3
 
         tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
         rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        rx_int_ant = [0, 1, 2, 3]
+        rx_int_ant = [0, 1, 2, 3]        
         pulse_sequence = [0, 9, 12, 20, 22, 26, 27] #[0, 14, 22, 24, 27, 31, 42, 43]
         tau_spacing = 2400 # 1500 # us
         slice_1 = {  # slice_id = 0, the first slice
@@ -29,7 +29,7 @@ class Twofsound(ExperimentPrototype):
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
             "pulse_sequence": pulse_sequence,
-            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0, 0],
+            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0],
             "tau_spacing": tau_spacing,
             "pulse_len": 300,  # us
             "num_ranges": 75,  # range gates
@@ -57,7 +57,7 @@ class Twofsound(ExperimentPrototype):
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
             "pulse_sequence": pulse_sequence,
-            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0, 0],
+            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0],
             "tau_spacing": tau_spacing,
             "pulse_len": 300,  # us
             "num_ranges": 75,  # range gates
@@ -84,16 +84,16 @@ class Twofsound(ExperimentPrototype):
         rxctrfreq = txctrfreq = int(sum_of_freq/len(list_of_slices))
         
         
-        super(Twofsound, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate,
+        super(TwoMultifsound, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate,
                 txctrfreq=txctrfreq, rxctrfreq=rxctrfreq, 
                 decimation_scheme=create_test_scheme_9(),
-                comment_string='Twofsound classic scan-by-scan')
+                comment_string='Twofsound simultaneous in-sequence')
 
         print(self.txctrfreq)
 
         self.add_slice(slice_1)
 
-        self.add_slice(slice_2, interfacing_dict={0: 'SCAN'})
+        self.add_slice(slice_2, interfacing_dict={0: 'PULSE'})
 
         # Other things you can change if you wish. You may want to discuss with us about
         # it beforehand.

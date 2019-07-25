@@ -178,7 +178,7 @@ namespace {
     // offsets, we can call the beamforming lambda.
     for (uint32_t rx_freq_num=0; rx_freq_num<rx_slice_info.size(); rx_freq_num++) {
 
-      auto num_beams = rx_slice_info[rx_freq_num].beam_count;;
+      auto num_beams = rx_slice_info[rx_freq_num].beam_count;
 
       // Increment to start of new frequency dataset.
       auto main_sample_offset = num_samples * (num_main_ants + num_intf_ants) * rx_freq_num;
@@ -217,30 +217,31 @@ namespace {
   }
 
   /**
-   * @brief      Finds correlations from two sets of samples. Calculates autocorrelation by
-   *             passing in the same sample set as both beamformed_samples_1 and
-   *             beamformed_samples_2.
+   * @brief      Finds correlations from two sets of samples. Calculates autocorrelation by passing
+   *             in the same sample set as both beamformed_samples_1 and beamformed_samples_2.
    *
-   * @param      beamformed_samples_1   The first set of beamformed samples for each beam.
-   *                                    Both sets of beamformed samples are for a single sequence.
-   *                                    The main and intf arrays will have same number of: beams,
-   *                                    samples per sequence.
-   * @param      beamformed_samples_2   The second set of beamformed samples for each beam.
-   * @param      corr_results           A set of vectors where correlation results are stored.
-   * @param[in]  rx_slice_info          A vector of the info needed from each slice.
-   * @param[in]  num_samples            The number samples for each beam contained in the
-   *                                    beamformed_samples set.
-   *                                    Assumed to be equal for both sample sets.
+   * @param      beamformed_samples_1  The first set of beamformed samples for each beam. Both sets
+   *                                   of beamformed samples are for a single sequence. The main and
+   *                                   intf arrays will have same number of: beams, samples per
+   *                                   sequence.
+   * @param      beamformed_samples_2  The second set of beamformed samples for each beam.
+   * @param      corr_results          A set of vectors where correlation results are stored.
+   * @param[in]  rx_slice_info         A vector of the info needed from each slice.
+   * @param[in]  num_samples           The number samples for each beam contained in the
+   *                                   beamformed_samples set. Assumed to be equal for both sample
+   *                                   sets.
+   * @param[in]  output_sample_rate    The output sample rate.
    *
-   * For each slice a correlation matrix is build for all the beams in that slice. Values
-   * corresponding to particular lags and range gates are selected from the final data. This
-   * function does not compute the expectation value for the correlations. That part is done in
-   * data write.
+   *             For each slice a correlation matrix is build for all the beams in that slice.
+   *             Values corresponding to particular lags and range gates are selected from the final
+   *             data. This function does not compute the expectation value for the correlations.
+   *             That part is done in data write.
    */
   void correlations_from_samples(std::vector<std::vector<cuComplex>> &beamformed_samples_1,
                                   std::vector<std::vector<cuComplex>> &beamformed_samples_2,
                                   std::vector<std::vector<cuComplex>> &corr_results,
-                                  std::vector<rx_slice> rx_slice_info, uint32_t num_samples)
+                                  std::vector<rx_slice> rx_slice_info, uint32_t num_samples,
+                                  double output_sample_rate)
   {
     for (uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
       auto num_beams = rx_slice_info[slice_num].beam_count;
@@ -272,18 +273,26 @@ namespace {
 
         auto beam_offset = beam_count * num_ranges * num_lags;
         auto first_range_offset = uint32_t(rx_slice_info[slice_num].first_range /
-                              rx_slice_info[slice_num].range_sep);
+                              rx_slice_info[slice_num].range_sep); // range sep in km, first_range in km
         // Select out the lags for each range gate.
         for(uint32_t range=0; range<num_ranges; range++) {
           for(uint32_t lag=0; lag<num_lags; lag++) {
-              auto range_lag_offset = (range * num_lags) + lag;
-              auto total_offset = beam_offset + range_lag_offset;
-              // use column major indexing.
-              auto val = correlation_matrix(range + first_range_offset +
-                                            rx_slice_info[slice_num].lags[lag],
-                                            range + first_range_offset);
-              corr_results[slice_num][total_offset].x = val.real();
-              corr_results[slice_num][total_offset].y = val.imag();
+
+            // tau spacing is in us, sample rate in hz
+            auto tau_in_samples = uint32_t(std::ceil(rx_slice_info[slice_num].tau_spacing * 1e-6 *
+                                            output_sample_rate));
+
+            auto p1_offset = rx_slice_info[slice_num].lags[lag].pulse_1 * tau_in_samples;
+            auto p2_offset = rx_slice_info[slice_num].lags[lag].pulse_2 * tau_in_samples;
+
+            // use column major indexing.
+            auto val = correlation_matrix(range + first_range_offset + p1_offset,
+                                          range + first_range_offset + p2_offset);
+
+            auto range_lag_offset = (range * num_lags) + lag;
+            auto total_offset = beam_offset + range_lag_offset;
+            corr_results[slice_num][total_offset].x = val.real();
+            corr_results[slice_num][total_offset].y = val.imag();
           } // close lags scope
         } // close ranges scope
       } // close beams scope
@@ -378,17 +387,18 @@ namespace {
       {
         correlations_from_samples(beamformed_samples_main, beamformed_samples_main,
                                           main_acfs, rx_slice_info,
-                                          num_samples_after_dropping);
+                                          num_samples_after_dropping, dp->get_output_sample_rate());
         if (dp->sig_options.get_interferometer_antenna_count() > 0) {
           correlations_from_samples(beamformed_samples_main, beamformed_samples_intf,
-                                          xcfs, rx_slice_info, num_samples_after_dropping);
+                                          xcfs, rx_slice_info, num_samples_after_dropping,
+                                          dp->get_output_sample_rate());
           correlations_from_samples(beamformed_samples_intf, beamformed_samples_intf,
                                           intf_acfs, rx_slice_info,
-                                          num_samples_after_dropping);
+                                          num_samples_after_dropping, dp->get_output_sample_rate());
         }
       }
 
-    );
+    ); // closing timeit scope
 
     // We have a lambda to extract the starting pointers of each set of output samples so that
     // we can use a consistent function to write either rf samples or stage data.
@@ -505,8 +515,9 @@ namespace {
         num_samples_after_dropping);
 
       dataset->set_slice_id(rx_slice_info[slice_num].slice_id);
-      dataset->set_numberofranges(rx_slice_info[slice_num].num_ranges);
-      dataset->set_numberoflags(rx_slice_info[slice_num].lags.size());
+      dataset->set_num_ranges(rx_slice_info[slice_num].num_ranges);
+      dataset->set_num_lags(rx_slice_info[slice_num].lags.size());
+
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     } // close loop over frequencies (number of slices).
 
@@ -1179,16 +1190,6 @@ std::vector<cuComplex> DSPCore::get_beam_phases()
 {
   return beam_phases;
 }
-
-/**
- * @brief     Gets the vector of beam direction counts for each RX frequency.
- *
- * @return    The beam direction counts.
- */
-/*std::vector<uint32_t> DSPCore::get_beam_direction_counts()
-{
-  return beam_direction_counts;
-}*/
 
 /**
  * @brief     Gets the name of the shared memory section.

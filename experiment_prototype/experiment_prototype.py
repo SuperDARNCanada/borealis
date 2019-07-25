@@ -67,7 +67,7 @@ PULSE
     Simultaneous pulse_sequence interfacing, pulse by pulse
     creates a single pulse_sequence. exp_slice A and B might have different
     frequencies (stereo) and/or may have different pulse
-    length, mpinc, pulse_sequence, but must have the same integration
+    length, tau_spacing, pulse_sequence, but must have the same integration
     time. They must also have same len(scan), although they may
     use different directions in scan. They must have the same
     scan boundary if any. A time offset between the pulses
@@ -77,11 +77,11 @@ PULSE
 """
 
 slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas",
-                    "rx_int_antennas", "pulse_sequence", "pulse_shift", "mpinc",
-                    "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
+                    "rx_int_antennas", "pulse_sequence", "pulse_phase_offset", "tau_spacing",
+                    "pulse_len", "num_ranges", "first_range", "intt", "intn", "beam_angle",
                     "beam_order", "scanboundflag", "scanbound", "txfreq", "rxfreq",
                     "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
-                    "iwavetable", "qwavetable", "comment", "rsep", "lag_table"])
+                    "iwavetable", "qwavetable", "comment", "range_sep", "lag_table"])
 # TODO add scanboundt?
 """
 **Description of Slice Keys**
@@ -105,23 +105,23 @@ rx_int_antennas
     antennas given max number from config.
 
 pulse_sequence
-    The pulse sequence timing, given in quantities of mpinc, for example
+    The pulse sequence timing, given in quantities of tau_spacing, for example
     normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
 
-mpinc
+tau_spacing
     multi-pulse increment in us, Defines minimum space between pulses.
 
-pulse_shift
+pulse_phase_offset
     Allows phase shifting between pulses, enabling encoding of pulses. Default all
     zeros for all pulses in pulse_sequence.
 
 pulse_len
     length of pulse in us. Range gate size is also determined by this.
 
-nrang
+num_ranges
     Number of range gates.
 
-frang
+first_range
     first range gate, in km
 
 intt
@@ -199,7 +199,7 @@ acfint
     flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
     False.
 
-rsep
+range_sep
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct 
     value determined by the pulse_len. Used for acfs. This is the range gate separation, 
     in azimuthal direction, in km.
@@ -940,7 +940,7 @@ class ExperimentPrototype(object):
         Check the required slice keys.
 
         Check for the minimum requirements of the slice. The following keys are always required:
-        "pulse_sequence", "mpinc", "pulse_len", "nrang", "frang", (one of "intt" or "intn"),
+        "pulse_sequence", "tau_spacing", "pulse_len", "num_ranges", "first_range", (one of "intt" or "intn"),
         "beam_angle", and "beam_order". This function may modify the values in this slice dictionary
         to ensure that it is able to be run and that the values make sense.
 
@@ -957,8 +957,8 @@ class ExperimentPrototype(object):
                 errmsg = "Slice must specify pulse_sequence that must be a list of integers"
                 raise ExperimentException(errmsg, exp_slice)
 
-        if 'mpinc' not in exp_slice.keys() or not isinstance(exp_slice['mpinc'], int):
-            errmsg = "Slice must specify mpinc that must be an integer"
+        if 'tau_spacing' not in exp_slice.keys() or not isinstance(exp_slice['tau_spacing'], int):
+            errmsg = "Slice must specify tau_spacing that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
         # TODO may want to add a field for range_gate which could set this param.
@@ -966,12 +966,12 @@ class ExperimentPrototype(object):
             errmsg = "Slice must specify pulse_len that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
-        if 'nrang' not in exp_slice.keys() or not isinstance(exp_slice['nrang'], int):
-            errmsg = "Slice must specify nrang that must be an integer"
+        if 'num_ranges' not in exp_slice.keys() or not isinstance(exp_slice['num_ranges'], int):
+            errmsg = "Slice must specify num_ranges that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
-        if 'frang' not in exp_slice.keys() or not isinstance(exp_slice['frang'], int):
-            errmsg = "Slice must specify frang that must be an integer"
+        if 'first_range' not in exp_slice.keys() or not isinstance(exp_slice['first_range'], int):
+            errmsg = "Slice must specify first_range in km that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
         if 'intt' not in exp_slice.keys():
@@ -1244,8 +1244,8 @@ class ExperimentPrototype(object):
         if 'rx_int_antennas' not in exp_slice:
             slice_with_defaults['rx_int_antennas'] = \
                 [i for i in range(0, self.options.interferometer_antenna_count)]
-        if 'pulse_shift' not in exp_slice:
-            slice_with_defaults['pulse_shift'] = [0.0 for i in range(0, len(
+        if 'pulse_phase_offset' not in exp_slice:
+            slice_with_defaults['pulse_phase_offset'] = [0.0 for i in range(0, len(
                 slice_with_defaults['pulse_sequence']))]
         if 'scanboundflag' not in exp_slice and 'scanbound' not in exp_slice:
             slice_with_defaults['scanboundflag'] = False  # TODO discuss defaults, discuss whether scanboundflag is necessary
@@ -1286,17 +1286,26 @@ class ExperimentPrototype(object):
             slice_with_defaults['acfint'] = False
 
         if slice_with_defaults['acf']:
-            if 'rsep' in exp_slice:
-                if slice_with_defaults['rsep'] != int(round(slice_with_defaults['pulse_len'] *
-                                                            1.0e-6 * speed_of_light/2.0)):
-                    errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
+            correct_range_sep = slice_with_defaults['pulse_len'] * 1.0e-9 * speed_of_light / 2.0
+            if 'range_sep' in exp_slice:
+                if not math.isclose(slice_with_defaults['range_sep'], correct_range_sep, abs_tol=0.01): # range_sep in km
+                    errmsg = 'range_sep = {} was set incorrectly. range_sep will be overwritten based on \
+                        pulse_len, which must be equal to 1/rx_rate. The new range_sep = {}'.format(slice_with_defaults['range_sep'], 
+                            correct_range_sep)
                     if __debug__:  # TODO change to logging
                         print(errmsg)
 
-            slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] * 1.0e-6 *
-                                                      speed_of_light/2.0))
+            slice_with_defaults['range_sep'] = correct_range_sep
             # This is the distance travelled by the wave in the length of the pulse, divided by
-            # two because it's an echo (travels there and back).
+            # two because it's an echo (travels there and back). In km.
+
+            # The below check is an assumption that is made during acf calculation 
+            # (1 output received sample = 1 range separation)
+            if not math.isclose(exp_slice['pulse_len'] * 1.0e-6, (1/self.output_rx_rate), abs_tol=0.000001):
+                errmsg = 'For an experiment slice with real-time acfs, pulse length must be equal (within 1 us) to ' \
+                '1/output_rx_rate to make acfs valid. Current pulse length is {} us, output rate is {}' \
+                ' Hz.'.format(exp_slice['pulse_len'], self.output_rx_rate)
+                raise ExperimentException(errmsg)
 
             if 'lag_table' in exp_slice:
                 # Check that lags are valid
@@ -1317,12 +1326,13 @@ class ExperimentPrototype(object):
                 slice_with_defaults['lag_table'] = lag_table
 
         else:
-            # TODO log rsep, lag_table, xcf, and acfint will not be used
+            # TODO log range_sep, lag_table, xcf, and acfint will not be used
             if __debug__:
-                print('Rsep, lag_table, xcf, and acfint will not be used because acf is '
+                print('range_sep, lag_table, xcf, and acfint will not be used because acf is '
                               'not True.')
-            if 'rsep' not in exp_slice.keys():
-                slice_with_defaults['rsep'] = 0.0
+            if 'range_sep' not in exp_slice.keys():
+                slice_with_defaults['range_sep'] = slice_with_defaults['pulse_len'] * 1.0e-9 * \
+                                                      speed_of_light/2.0
             if 'lag_table' not in exp_slice.keys():
                 slice_with_defaults['lag_table'] = []
 
@@ -1344,13 +1354,13 @@ class ExperimentPrototype(object):
         keys and check values of keys that are needed, and set defaults of keys that are optional.
 
         The following are always able to be defaulted, so are optional:
-        "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_shift", "scanboundflag",
+        "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_phase_offset", "scanboundflag",
         "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset"
 
 
         The following are always required for processing acf, xcf, and acfint which we will assume
         we are always doing:
-        "pulse_sequence", "mpinc", "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
+        "pulse_sequence", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt", "intn", "beam_angle",
         "beam_order"
 
         The following are required depending on slice type:
@@ -1473,8 +1483,8 @@ class ExperimentPrototype(object):
                 error_list.append("Slice {} has A Parameter that is not Used: {} = {}". \
                     format(exp_slice['slice_id'], param, exp_slice[param]))
 
-        # TODO : mpinc needs to be an integer multiple of pulse_len in ros - is there a max ratio
-        # allowed for pulse_len/mpinc ? Add this check and add check for each slice's tx duty-cycle
+        # TODO : tau_spacing needs to be an integer multiple of pulse_len in ros - is there a max ratio
+        # allowed for pulse_len/tau_spacing ? Add this check and add check for each slice's tx duty-cycle
         # and make sure we aren't transmitting the entire time after combination with all slices
 
         if len(exp_slice['tx_antennas']) > options.main_antenna_count:
@@ -1529,28 +1539,29 @@ class ExperimentPrototype(object):
             error_list.append("Slice {} pulse_sequence Not Increasing".format(
                 exp_slice['slice_id']))
 
-        # Check that pulse_len and mpinc make sense (values in us)
-        if exp_slice['pulse_len'] > exp_slice['mpinc']:
-            error_list.append("Slice {} Pulse Length Greater than MPINC".format(
+        # Check that pulse_len and tau_spacing make sense (values in us)
+        if exp_slice['pulse_len'] > exp_slice['tau_spacing']:
+            error_list.append("Slice {} Pulse Length Greater than tau_spacing".format(
                 exp_slice['slice_id']))
         if exp_slice['pulse_len'] < self.options.minimum_pulse_length and \
                         exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * \
                         10.0e6:
             error_list.append("Slice {} Pulse Length Too Small".format(
                 exp_slice['slice_id']))
-        if exp_slice['mpinc'] < self.options.minimum_mpinc_length:
+        if exp_slice['tau_spacing'] < self.options.minimum_tau_spacing_length:
             error_list.append("Slice {} Multi-Pulse Increment Too Small".format(
                 exp_slice['slice_id']))
-        if not math.isclose((exp_slice['mpinc'] * self.output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
-            error_list.append('Slice {} Correlation lags will be off because mpinc {} us is not a '\
+        if not math.isclose((exp_slice['tau_spacing'] * self.output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
+            error_list.append('Slice {} Correlation lags will be off because tau_spacing {} us is not a '\
                 'multiple of the output rx sampling period (1/output_rx_rate {} Hz).'.format(
-                    exp_slice['slice_id'], exp_slice['mpinc'], self.output_rx_rate))
+                    exp_slice['slice_id'], exp_slice['tau_spacing'], self.output_rx_rate))
 
-        # check intn and intt make sense given mpinc, and pulse_sequence.
+        # check intn and intt make sense given tau_spacing, and pulse_sequence.
         if exp_slice['pulse_sequence']:  # if not empty
             # Sequence length is length of pulse sequence plus the scope sync delay time.
-            seq_len = exp_slice['mpinc'] * (exp_slice['pulse_sequence'][-1]) \
-                      + (exp_slice['nrang'] + 19 + 10) * exp_slice['pulse_len']  # us
+            # TODO this is an old check and seqtime now set in sequences class, update.
+            seq_len = exp_slice['tau_spacing'] * (exp_slice['pulse_sequence'][-1]) \
+                      + (exp_slice['num_ranges'] + 19 + 10) * exp_slice['pulse_len']  # us
 
             if exp_slice['intt'] is None and exp_slice['intn'] is None:
                 # both are None and we are not rx - only
