@@ -266,7 +266,9 @@ namespace {
         arma::cx_frowvec samps_1_matrix(samples_cast_1, num_samples, false, true);
         arma::cx_frowvec samps_2_matrix(samples_cast_2, num_samples, false, true);
 
-        // correlation = E(XY^H) where X and Y are random vectors and H is the conjugate
+        // correlation = E(XY^H) where X and Y are random vectors and H is the conjugate.
+        // https://en.wikipedia.org/wiki/Autocorrelation_matrix
+        // Matrix is not symmetric
         arma::cx_fmat correlation_matrix = samps_1_matrix.t() * samps_2_matrix;
 
         auto beam_offset = beam_count * num_ranges * num_lags;
@@ -430,11 +432,13 @@ namespace {
     auto output_ptrs = make_ptrs_vec(output_samples.data(), rx_slice_info.size(),
                           dp->get_num_antennas(), num_samples_after_dropping);
 
-    for(uint32_t i=0; i<rx_slice_info.size(); i++) {
+    for(uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
       auto dataset = pd.add_outputdataset();
       // This lambda adds the stage data to the processed data for debug purposes.
-      auto add_debug_data = [dataset,i](std::string stage_name, std::vector<cuComplex*> &data_ptrs,
-                                          uint32_t num_antennas, uint32_t num_samps_per_antenna)
+      auto add_debug_data = [dataset,slice_num](std::string stage_name,
+                                                std::vector<cuComplex*> &data_ptrs,
+                                                uint32_t num_antennas,
+                                                uint32_t num_samps_per_antenna)
       {
         auto debug_samples = dataset->add_debugsamples();
 
@@ -450,28 +454,28 @@ namespace {
       };
 
       // Add our beamformed IQ data to the processed data packet that gets sent to data_write.
-      for (uint32_t beam_count=0; beam_count<rx_slice_info[i].beam_count; beam_count++) {
+      for (uint32_t beam_count=0; beam_count<rx_slice_info[slice_num].beam_count; beam_count++) {
         auto beam = dataset->add_beamformedsamples();
         beam->set_beamnum(beam_count);
 
         for (uint32_t sample=0; sample<num_samples_after_dropping; sample++){
           auto main_sample = beam->add_mainsamples();
           auto beam_start = beam_count * num_samples_after_dropping;
-          main_sample->set_real(beamformed_samples_main[i][beam_start + sample].x);
-          main_sample->set_imag(beamformed_samples_main[i][beam_start + sample].y);
+          main_sample->set_real(beamformed_samples_main[slice_num][beam_start + sample].x);
+          main_sample->set_imag(beamformed_samples_main[slice_num][beam_start + sample].y);
 
           if (dp->sig_options.get_interferometer_antenna_count() > 0) {
             auto intf_sample = beam->add_intfsamples();
-            intf_sample->set_real(beamformed_samples_intf[i][beam_start + sample].x);
-            intf_sample->set_imag(beamformed_samples_intf[i][beam_start + sample].y);
+            intf_sample->set_real(beamformed_samples_intf[slice_num][beam_start + sample].x);
+            intf_sample->set_imag(beamformed_samples_intf[slice_num][beam_start + sample].y);
           }
         } // close loop over samples.
       } // close loop over beams.
 
 
-      auto num_lags = rx_slice_info[i].lags.size();
-      auto num_ranges = rx_slice_info[i].num_ranges;
-      for (uint32_t beam_count=0; beam_count<rx_slice_info[i].beam_count; beam_count++) {
+      auto num_lags = rx_slice_info[slice_num].lags.size();
+      auto num_ranges = rx_slice_info[slice_num].num_ranges;
+      for (uint32_t beam_count=0; beam_count<rx_slice_info[slice_num].beam_count; beam_count++) {
         auto beam_offset = beam_count * (num_ranges * num_lags);
 
         for (uint32_t range=0; range<num_ranges; range++) {
@@ -479,7 +483,7 @@ namespace {
 
           for (uint32_t lag=0; lag<num_lags; lag++) {
             auto mainacf = dataset->add_mainacf();
-            auto val = main_acfs[i][beam_offset + range_offset + lag];
+            auto val = main_acfs[slice_num][beam_offset + range_offset + lag];
             mainacf->set_real(val.x);
             mainacf->set_imag(val.y);
 
@@ -487,11 +491,11 @@ namespace {
               auto xcf = dataset->add_xcf();
               auto intfacf = dataset->add_intacf();
 
-              val = xcfs[i][beam_offset + range_offset + lag];
+              val = xcfs[slice_num][beam_offset + range_offset + lag];
               xcf->set_real(val.x);
               xcf->set_imag(val.y);
 
-              val = intf_acfs[i][beam_offset + range_offset + lag];
+              val = intf_acfs[slice_num][beam_offset + range_offset + lag];
               intfacf->set_real(val.x);
               intfacf->set_imag(val.y);
             } // close intf scope
@@ -502,17 +506,18 @@ namespace {
       #ifdef ENGINEERING_DEBUG
         for (uint32_t j=0; j<all_stage_ptrs.size(); j++){
           auto stage_str = "stage_" + std::to_string(j);
-          add_debug_data(stage_str, all_stage_ptrs[j][i], dp->get_num_antennas(),
+          add_debug_data(stage_str, all_stage_ptrs[j][slice_num], dp->get_num_antennas(),
             samples_per_antenna[j]);
         }
       #endif
 
-      add_debug_data("output_ptrs", output_ptrs[i], dp->get_num_antennas(),
+      add_debug_data("antennas", output_ptrs[slice_num], dp->get_num_antennas(),
         num_samples_after_dropping);
 
-      dataset->set_slice_id(rx_slice_info[i].slice_id);
-      dataset->set_num_ranges(rx_slice_info[i].num_ranges);
-      dataset->set_num_lags(rx_slice_info[i].lags.size());
+      dataset->set_slice_id(rx_slice_info[slice_num].slice_id);
+      dataset->set_num_ranges(rx_slice_info[slice_num].num_ranges);
+      dataset->set_num_lags(rx_slice_info[slice_num].lags.size());
+
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     } // close loop over frequencies (number of slices).
 
