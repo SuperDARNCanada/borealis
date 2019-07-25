@@ -142,8 +142,8 @@ class ParseData(object):
         self._bfiq_available = False
         self._bfiq_accumulator = self.nested_dict()
 
-        self._pre_bfiq_accumulator = self.nested_dict()
-        self._pre_bfiq_available = False
+        self._antenna_iq_accumulator = self.nested_dict()
+        self._antenna_iq_available = False
 
         self._mainacfs_available = False
         self._mainacfs_accumulator = self.nested_dict()
@@ -242,13 +242,13 @@ class ParseData(object):
                         add_samples(beam.intfsamples, "intf")
 
 
-    def parse_pre_bfiq(self):
+    def parse_antenna_iq(self):
         """
         Parses out any pre-beamformed IQ if available. Runs on every processeddata
         packet(contains all sampling period data). All variables are captured from outer scope.
         """
 
-        self._pre_bfiq_accumulator['data_descriptors'] = ['num_antennas', 'num_sequences',
+        self._antenna_iq_accumulator['data_descriptors'] = ['num_antennas', 'num_sequences',
                                                           'num_samps']
         # Iterate over every data set, one data set per slice
         for data_set in self.processed_data.outputdataset:
@@ -256,33 +256,33 @@ class ParseData(object):
 
             # non beamformed IQ samples are available
             if data_set.debugsamples:
-                self._pre_bfiq_available = True
+                self._antenna_iq_available = True
 
                 # Loops over all filter stage data, one set per stage
                 for debug_samples in data_set.debugsamples:
                     stage_name = debug_samples.stagename
 
-                    if stage_name not in self._pre_bfiq_accumulator[slice_id]:
-                        self._pre_bfiq_accumulator[slice_id][stage_name] = collections.OrderedDict()
+                    if stage_name not in self._antenna_iq_accumulator[slice_id]:
+                        self._antenna_iq_accumulator[slice_id][stage_name] = collections.OrderedDict()
 
-                    pre_bfiq_stage = self._pre_bfiq_accumulator[slice_id][stage_name]
+                    antenna_iq_stage = self._antenna_iq_accumulator[slice_id][stage_name]
                     # Loops over antenna data within stage
                     for ant_num, ant_data in enumerate(debug_samples.antennadata):
                         ant_str = "antenna_{0}".format(ant_num)
 
                         cmplx = np.empty(len(ant_data.antennasamples), dtype=np.complex64)
-                        pre_bfiq_stage["num_samps"] = len(ant_data.antennasamples)
+                        antenna_iq_stage["num_samps"] = len(ant_data.antennasamples)
 
                         for i, sample in enumerate(ant_data.antennasamples):
                             cmplx[i] = sample.real + 1.0j * sample.imag
 
-                        if ant_str not in pre_bfiq_stage:
-                            pre_bfiq_stage[ant_str] = {}
+                        if ant_str not in antenna_iq_stage:
+                            antenna_iq_stage[ant_str] = {}
 
-                        if 'data' not in pre_bfiq_stage[ant_str]:
-                            pre_bfiq_stage[ant_str]['data'] = cmplx
+                        if 'data' not in antenna_iq_stage[ant_str]:
+                            antenna_iq_stage[ant_str]['data'] = cmplx
                         else:
-                            arr = pre_bfiq_stage[ant_str]
+                            arr = antenna_iq_stage[ant_str]
                             arr['data'] = np.concatenate((arr['data'], cmplx))
 
     def update(self, data):
@@ -309,7 +309,7 @@ class ParseData(object):
 
         self.parse_correlations()
         self.parse_bfiq()
-        self.parse_pre_bfiq()
+        self.parse_antenna_iq()
 
         for proc in procs:
             proc.start()
@@ -337,13 +337,13 @@ class ParseData(object):
         return self._bfiq_available
 
     @property
-    def pre_bfiq_available(self):
+    def antenna_iq_available(self):
         """ Gets the pre-bfiq available flag.
 
         Returns:
             TYPE: Bool
         """
-        return self._pre_bfiq_available
+        return self._antenna_iq_available
 
     @property
     def mainacfs_available(self):
@@ -384,14 +384,14 @@ class ParseData(object):
         return self._bfiq_accumulator
 
     @property
-    def pre_bfiq_accumulator(self):
+    def antenna_iq_accumulator(self):
         """Returns the nested default dictionary with complex stage data for each antenna as well
         as some metadata for each slice.
 
         Returns:
             Nested default dict: Contains stage data for each antenna and slice.
         """
-        return self._pre_bfiq_accumulator
+        return self._antenna_iq_accumulator
 
     @property
     def mainacfs_accumulator(self):
@@ -557,7 +557,7 @@ class DataWrite(object):
         # TODO: Complete this by parsing through the dictionary and write out to proper dmap format
         pass
 
-    def output_data(self, write_bfiq, write_pre_bfiq, write_raw_rf, write_tx, file_ext,
+    def output_data(self, write_bfiq, write_antenna_iq, write_raw_rf, write_tx, file_ext,
                     integration_meta, data_parsing, write_rawacf=True):
         """
         Parse through samples and write to file.
@@ -565,7 +565,7 @@ class DataWrite(object):
         A file will be created using the file extention for each requested data product.
 
         :param write_bfiq:          Should beamformed IQ be written to file? Bool.
-        :param write_pre_bfiq:      Should pre-beamformed IQ be written to file? Bool.
+        :param write_antenna_iq:      Should pre-beamformed IQ be written to file? Bool.
         :param write_raw_rf:        Should raw rf samples be written to file? Bool.
         :param file_ext:            Type of file extention to use. String
         :param integration_meta:    Metadata from radar control about integration period. Protobuf
@@ -818,7 +818,7 @@ class DataWrite(object):
                 write_file(output_file, parameters, two_hr_file_with_type)
 
 
-        def write_pre_bfiq_params(parameters_holder):
+        def write_antenna_iq_params(parameters_holder):
             """
             Writes out any pre-beamformed IQ that has been parsed. Adds additional slice info
             to each paramater dict. Some variables are captured from outer scope. Pre-beamformed iq
@@ -837,10 +837,10 @@ class DataWrite(object):
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
             "data_normalization_factor"]
 
-            pre_bfiq = data_parsing.pre_bfiq_accumulator
+            antenna_iq = data_parsing.antenna_iq_accumulator
 
             # Pop these so we don't include them in later iteration.
-            data_descriptors = pre_bfiq.pop('data_descriptors', None)
+            data_descriptors = antenna_iq.pop('data_descriptors', None)
 
             # Parse the antennas from protobuf
             rx_main_antennas = {}
@@ -861,15 +861,15 @@ class DataWrite(object):
 
 
             final_data_params = {}
-            for slice_id in pre_bfiq:
+            for slice_id in antenna_iq:
                 final_data_params[slice_id] = {}
 
-                for stage in pre_bfiq[slice_id]:
+                for stage in antenna_iq[slice_id]:
                     parameters = parameters_holder[slice_id].copy()
 
                     parameters['data_descriptors'] = data_descriptors
                     parameters['num_samps'] = np.uint32(
-                        pre_bfiq[slice_id][stage].pop('num_samps', None))
+                        antenna_iq[slice_id][stage].pop('num_samps', None))
 
 
                     parameters['antenna_arrays_order'] = rx_main_antennas[slice_id] +\
@@ -883,7 +883,7 @@ class DataWrite(object):
                                                              dtype=np.uint32)
 
                     data = []
-                    for k, data_dict in pre_bfiq[slice_id][stage].items():
+                    for k, data_dict in antenna_iq[slice_id][stage].items():
                         if k in parameters['antenna_arrays_order']:
                             data.append(data_dict['data'])
 
@@ -1109,8 +1109,8 @@ class DataWrite(object):
         if write_bfiq and data_parsing.bfiq_available:
             write_bfiq_params(copy.deepcopy(parameters_holder))
 
-        if write_pre_bfiq and data_parsing.pre_bfiq_available:
-            write_pre_bfiq_params(copy.deepcopy(parameters_holder))
+        if write_antenna_iq and data_parsing.antenna_iq_available:
+            write_antenna_iq_params(copy.deepcopy(parameters_holder))
 
         if write_raw_rf:
             # Just need first available slice paramaters.
@@ -1197,7 +1197,7 @@ def main():
                         current_experiment = integration_meta.experiment_name
 
                     kwargs = dict(write_bfiq=args.enable_bfiq,
-                                           write_pre_bfiq=args.enable_pre_bfiq,
+                                           write_antenna_iq=args.enable_antenna_iq,
                                            write_raw_rf=args.enable_raw_rf,
                                            write_tx=args.enable_tx,
                                            file_ext=args.file_type,

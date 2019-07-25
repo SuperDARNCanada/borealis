@@ -422,7 +422,7 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
                 phase_for_antenna = \
                     get_phshift(beamdirs_for_antennas[antenna], exp_slices[pulse['slice_id']]['txfreq'],
                                 antenna,
-                                exp_slices[pulse['slice_id']]['pulse_shift'][pulse['slice_pulse_index']],
+                                exp_slices[pulse['slice_id']]['pulse_phase_offset'][pulse['slice_pulse_index']],
                                 main_antenna_count, main_antenna_spacing)
                 phase_array.append(phase_for_antenna)
         else: # rxonly operation.

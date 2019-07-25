@@ -401,7 +401,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
                 rxchan_add.acfint = sequence.slice_dict[slice_id]['acfint']
                 rxchan_add.first_range = sequence.slice_dict[slice_id]['first_range']
-                rxchan_add.num_range = sequence.slice_dict[slice_id]['num_ranges']
+                rxchan_add.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
                 rxchan_add.range_sep = sequence.slice_dict[slice_id]['range_sep']
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = rxchan_add.ltab.lag.add()
