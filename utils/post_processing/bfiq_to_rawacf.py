@@ -132,7 +132,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 		now = dt.now()
 		date_str = now.strftime("%Y-%m-%d")
 		time_str = now.strftime("%H:%M")
-		ts_dd[k]["experiment_comment"] += "File generated on " + date_str + " at " + time_str + " from " + bfiq_filepath
+		ts_dd[k]["experiment_comment"] += "File generated on " + date_str + " at " + time_str + " from " + bfiq_filepath + "via postprocessing util"
 
 		# copy timestamped record to full acf file
 		dd.io.save(temp_file, ts_dd, compression=None)
