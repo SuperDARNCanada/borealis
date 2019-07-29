@@ -1,8 +1,9 @@
 import deepdish as dd
 import numpy as np
+import sys
 
 
-def find_shared(data_record):
+def find_shared(data):
 	"""
 	Finds fields in an hdf5 file that do not change
 	between records
@@ -13,10 +14,9 @@ def find_shared(data_record):
 
 	for k in data:
 		if start:
-			data_sub = data_sub[k]
+			data_sub = data[k]
 			start = False
 		else:
-			print("checking", k)
 			for f in data[k]:
 				if type(data[k][f]) is np.ndarray:
 					if np.array_equal(data[k][f], data_sub[f]):
@@ -92,18 +92,30 @@ def restructure_data(data_path):
 		timestamp_array = np.empty(num_records)
 		write_time_array = np.empty(num_records)
 		int_time_array = np.empty(num_records)
-		sqn_ts_array = np.empty((num_records, data_dict["num_sequences"]))
+
+		# find largest number of sequences in record
+		max_sequences = data_dict["num_sequences"]
+		for k in data_record:
+			if len(data_record[k]["sqn_timestamps"]) > max_sequences:
+				max_sequences = len(data_record[k]["sqn_timestamps"])
+		sqn_ts_array = np.empty((num_records, max_sequences))
 
 		rec_idx = 0
 		for k in data_record:
+			print("Restructuring", k)
 			timestamp_array[rec_idx] = k
 			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
 			int_time_array[rec_idx] = data_record[k]["int_time"]
-			sqn_ts_array[rec_idx] = data_record[k]["sqn_timestamps"]
 
-			main_array[rec_idx] = data_record[k]["main_acfs"].reshape(data_shape)
-			intf_array[rec_idx] = data_record[k]["intf_acfs"].reshape(data_shape)
-			xcfs_array[rec_idx] = data_record[k]["xcfs"].reshape(data_shape)
+			sqn_timestamps = data_record[k]["sqn_timestamps"]
+			if len(sqn_timestamps) < max_sequences:
+				while len(sqn_timestamps) < max_sequences:
+					sqn_timestamps = np.append(sqn_timestamps, 0)
+			sqn_ts_array[rec_idx] = sqn_timestamps
+
+			main_array[rec_idx] = data_record[k]["main_acfs"].reshape(dims)
+			intf_array[rec_idx] = data_record[k]["intf_acfs"].reshape(dims)
+			xcfs_array[rec_idx] = data_record[k]["xcfs"].reshape(dims)
 
 			rec_idx += 1
 
@@ -120,7 +132,7 @@ def restructure_data(data_path):
 		data_dict["intf_acfs"] = intf_array
 		data_dict["xcfs"] = xcfs_array
 
-		dd.io.save("test_acf.hdf5", data_dict, compression=None)
+		dd.io.save(data_path + ".new", data_dict, compression=None)
 
 	suffix = data_path.split('.')[-2]
 
@@ -128,10 +140,17 @@ def restructure_data(data_path):
 
 	if suffix == 'output_ptrs_iq':
 		restructure_pre_bfiq(data)
+		return
 	elif suffix == 'bfiq':
 		restructure_bfiq(data)
+		return
 	elif suffix == 'rawacf':
 		restructure_rawacf(data)
+		return
 	else:
 		print(suffix, 'filetypes are not supported')
 		return
+
+if __name__ == "__main__":
+	filepath = sys.argv[1]
+	restructure_data(filepath)
