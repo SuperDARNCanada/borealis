@@ -395,7 +395,7 @@ def convert_scd_to_timeline(scd_lines):
 
         queued_dict[line['order']].append(line)
 
-    return queued_dict, queued_lines
+    return queued_dict, queued_lines, warnings
 
 def timeline_to_atq(timeline, scd_dir, time_of_interest):
     """ Converts the created timeline to actual atq commands.
@@ -556,7 +556,7 @@ def _main():
             emailer.email_log(subject, log_file)
         else:
 
-            timeline, timeline_list = convert_scd_to_timeline(relevant_lines)
+            timeline, timeline_list, warnings = convert_scd_to_timeline(relevant_lines)
             plot_path, pickle_path = plot_timeline(timeline_list, timeline, scd_dir, now)
             new_atq_str = timeline_to_atq(timeline, scd_dir, now)
 
