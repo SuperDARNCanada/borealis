@@ -60,8 +60,22 @@ def get_next_month_from_date(date):
             new_date = date + datetime.timedelta(days=counter)
 
         return new_date
+def timeline_to_dict(timeline):
+    """
+    Converts the timeline list to an ordered dict for scheduling and
+    colour mapping
+    Returns:
+        OrderedDict: an ordered dict containing the timeline
+    """
+    timeline_dict = collections.OrderedDict()
+    for line in timeline:
+        if not line['order'] in timeline_dict:
+            timeline_dict[line['order']] = []
 
-def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
+        timeline_dict[line['order']].append(line)
+    return timeline_dict
+
+def plot_timeline(timeline, scd_dir, time_of_interest):
     """Plots the timeline to better visualize runtime.
 
     Args:
@@ -76,6 +90,8 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
     fig, ax = plt.subplots()
 
     first_date, last_date = None, None
+
+    timeline_list = [0] * len(timeline)
 
     def get_cmap(n, name='hsv'):
         '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct
@@ -113,6 +129,7 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
 
 
     # make random colors
+    timeline_dict = timeline_to_dict(timeline)
     cmap = get_cmap(len(timeline_dict.items()))
     colors = [cmap(i) for i in range(len(timeline_dict.items()))]
     random.shuffle(colors)
@@ -123,7 +140,7 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
         for event in events:
             event['color'] = colors[i]
 
-    for i, event in enumerate(timeline_list):
+    for i, event in enumerate(timeline):
         event_item = dict()
 
         event_item['color'] = event['color']
@@ -132,7 +149,7 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
         event_item['start'] = event['time']
 
         if event['duration'] == '-':
-            td = get_next_month(event['time']) - event['time']
+            td = get_next_month_from_date(event['time']) - event['time']
         else:
             td = datetime.timedelta(minutes=int(event['duration']))
 
@@ -179,8 +196,8 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
     ax.set_title('Schedule from {} to {}'.format(first_date, last_date.date()) )
 
     
-    pretty_date_str = now.strftime("%Y-%m-%d")
-    pretty_time_str = now.strftime("%H:%M")
+    pretty_date_str = time_of_interest.strftime("%Y-%m-%d")
+    pretty_time_str = time_of_interest.strftime("%H:%M")
 
     ax.annotate('Generated on {} at {} UTC'.format(pretty_date_str, pretty_time_str),
                                                 xy=(1,1), xycoords='axes fraction', fontsize=12, ha='right', va='top')
@@ -192,7 +209,6 @@ def plot_timeline(timeline_list, timeline_dict, scd_dir, now):
         os.makedirs(plot_dir)
 
     plot_file = "{}/{}.png".format(plot_dir, plot_time_str)
-    plt.show()
     fig.set_size_inches(14,8)
     fig.savefig(plot_file, dpi=80)
 
@@ -388,20 +404,13 @@ def convert_scd_to_timeline(scd_lines):
             inf_dur_line['time'] = queued_finish
             queued_lines.append(inf_dur_line)
 
-    queued_dict = collections.OrderedDict()
-    for line in queued_lines:
-        if not line['order'] in queued_dict:
-            queued_dict[line['order']] = []
-
-        queued_dict[line['order']].append(line)
-
-    return queued_dict, queued_lines, warnings
+    return queued_lines, warnings
 
 def timeline_to_atq(timeline, scd_dir, time_of_interest):
     """ Converts the created timeline to actual atq commands.
 
     Args:
-        timeline (OrderedDict): A dictionary holding all timeline events.
+        timeline (List): A list holding all timeline events.
         scd_dir (str): The directory with SCD files.
         time_of_interest (datetime): The datetime holding the time of scheduling.
 
@@ -409,6 +418,8 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest):
     first entry should be the currently running event, so it gets scheduled immediately. This
     function only backs up the commands that have not run yet.
     """
+    # Convert to ordered dict
+    timeline = timeline_to_dict(timeline)
 
     # This command is basically: for j in atq job number, print job num, time and command
     get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1);'\
@@ -556,9 +567,9 @@ def _main():
             emailer.email_log(subject, log_file)
         else:
 
-            timeline, timeline_list, warnings = convert_scd_to_timeline(relevant_lines)
-            plot_path, pickle_path = plot_timeline(timeline_list, timeline, scd_dir, now)
-            new_atq_str = timeline_to_atq(timeline, scd_dir, now)
+            timeline, warnings = convert_scd_to_timeline(relevant_lines)
+            plot_path, pickle_path = plot_timeline(timeline, scd_dir, time_of_interest)
+            new_atq_str = timeline_to_atq(timeline, scd_dir, time_of_interest)
 
             with open(log_file, 'wb') as f:
                 f.write(log_msg_header)
