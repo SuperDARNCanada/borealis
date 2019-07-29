@@ -1,6 +1,6 @@
 # Copyright 2019 SuperDARN Canada
 #
-# restructure.py
+# restructure_borealis.py
 # 2019-07-29
 # Command line tool for strucuturing Borealis files
 # for bfiq, pre-bfiq, and raw acf data into a smaller,
@@ -78,6 +78,7 @@ def restructure_data(data_path):
 		num_sequences = dims[1]
 		num_samps = dims[2]
 		data_shape = (num_records, num_antennas, num_sequences, num_samps)
+		data_len = num_antennas * num_sequences * num_samps
 
 		samples = np.empty(data_shape)
 
@@ -88,7 +89,6 @@ def restructure_data(data_path):
 
 		rec_idx = 0
 		for k in data_record:
-			print("Restructuring", k)
 			timestamp_array[rec_idx] = k
 			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
 			int_time_array[rec_idx] = data_record[k]["int_time"]
@@ -100,7 +100,15 @@ def restructure_data(data_path):
 				sqn_timestamps = np.append(sqn_timestamps, 0)
 			sqn_ts_array[rec_idx] = sqn_timestamps
 
-			samples[rec_idx] = data_record[k]["data"].reshape(dims)
+			# some records have fewer samples than specified by data
+			# dimensions, zero pad for now to get around this
+			# TODO: Ask if this is right, I suspect it is not
+			data_buffer = data_record[k]["data"]
+			while len(data_buffer) < data_len:
+				data_buffer = np.append(data_buffer, 0)
+				print(len(data_buffer))
+
+			samples[rec_idx] = data_buffer.reshape(dims)
 
 			rec_idx += 1
 
@@ -140,6 +148,7 @@ def restructure_data(data_path):
 		num_beams = dims[2]
 		num_samps = dims[3]
 		data_shape = (num_records, num_arrays, num_sequences, num_beams, num_samps)
+		data_len = num_arrays * num_sequences * num_beams * num_samps
 
 		samples = np.empty(data_shape)
 
@@ -150,7 +159,6 @@ def restructure_data(data_path):
 
 		rec_idx = 0
 		for k in data_record:
-			print("Restructuring", k)
 			timestamp_array[rec_idx] = k
 			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
 			int_time_array[rec_idx] = data_record[k]["int_time"]
@@ -162,7 +170,14 @@ def restructure_data(data_path):
 				sqn_timestamps = np.append(sqn_timestamps, 0)
 			sqn_ts_array[rec_idx] = sqn_timestamps
 
-			samples[rec_idx] = data_record[k]["data"].reshape(dims)
+			# some records have fewer samples than specified by data
+			# dimensions, zero pad for now to get around this
+			# TODO: Ask if this is right, I suspect it is not
+			data_buffer = data_record[k]["data"]
+			while len(data_buffer) < data_len:
+				data_buffer = np.append(data_buffer, 0)
+
+			samples[rec_idx] = data_buffer.reshape(dims)
 
 			rec_idx += 1
 
@@ -215,7 +230,6 @@ def restructure_data(data_path):
 
 		rec_idx = 0
 		for k in data_record:
-			print("Restructuring", k)
 			timestamp_array[rec_idx] = k
 			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
 			int_time_array[rec_idx] = data_record[k]["int_time"]
@@ -246,24 +260,29 @@ def restructure_data(data_path):
 		data_dict["intf_acfs"] = intf_array
 		data_dict["xcfs"] = xcfs_array
 
-		dd.io.save(data_path + ".new", data_dict, compression=None)
+		dd.io.save(data_path + ".new", data_dict, compression=None)  # TODO: Change all of these to final filename
+
 
 	suffix = data_path.split('.')[-2]
+
+	print("Restructuring", data_path, "...")
 
 	data = dd.io.load(data_path)
 
 	if suffix == 'output_ptrs_iq':
+		print("Loaded a pre bfiq file...")
 		restructure_pre_bfiq(data)
-		return
 	elif suffix == 'bfiq':
+		print("Loaded a bfiq file...")
 		restructure_bfiq(data)
-		return
 	elif suffix == 'rawacf':
+		print("Loaded a raw acf file")
 		restructure_rawacf(data)
-		return
 	else:
 		print(suffix, 'filetypes are not supported')
 		return
+
+	print("Success!")
 
 if __name__ == "__main__":
 	filepath = sys.argv[1]
