@@ -1,3 +1,11 @@
+# Copyright 2019 SuperDARN Canada
+#
+# restructure.py
+# 2019-07-29
+# Command line tool for strucuturing Borealis files
+# for bfiq, pre-bfiq, and raw acf data into a smaller,
+# faster, and more usable format
+
 import deepdish as dd
 import numpy as np
 import sys
@@ -42,14 +50,18 @@ def restructure_data(data_path):
 	Examples: for rawacfs, this array will be of shape (num_records, num_arrays, num_sequences, num_beams, num_ranges, num_lags)
 	Fields from the original record that do not change between records will be stored as fields in one metadata record within
 	the file. Other fields will contain the data arrays and other metadata that does change record to record.
+	Args:
+		data_path:	string containing the path to the data file for restructuring
+	Returns:	If valid filetype, returns None and saves the data as a newly
+				formatted hdf5 file.
 	"""
 
 	def restructure_pre_bfiq(data_record):
 		"""
 		Restructuring method for pre bfiq data
 		args:
-			data_record		a record loaded from an hdf5
-							data file
+			data_record		a timestamped record loaded from an
+			 				hdf5 Borealis pre-bfiq data file
 		"""
 		data_dict = dict()
 		num_records = len(data_record)
@@ -109,8 +121,8 @@ def restructure_data(data_path):
 		"""
 		Restructuring method for bfiq data
 		args:
-			data_record		a record loaded from an hdf5
-							data file
+			data_record		a timestamped record loaded from an
+			 				hdf5 Borealis bfiq data file
 		"""
 		data_dict = dict()
 		num_records = len(data_record)
@@ -171,8 +183,8 @@ def restructure_data(data_path):
 		"""
 		Restructuring method for rawacf data
 		args:
-			data_record		a record loaded from an hdf5
-							data file
+			data_record		a timestamped record loaded from an
+			 				hdf5 Borealis rawacf data file
 		"""
 		data_dict = dict()
 		num_records = len(data_record)
