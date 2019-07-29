@@ -51,6 +51,59 @@ def restructure_data(data_path):
 			data_record		a record loaded from an hdf5
 							data file
 		"""
+		data_dict = dict()
+		num_records = len(data_record)
+
+		# write shared fields to dictionary
+		shared = find_shared(data_record)
+		k = list(data_record.keys())[0]
+		for f in shared:
+			data_dict[f] = data[k][f]
+
+		# handle unshared fields
+		dims = data_dict["data_dimensions"]
+		num_antennas = dims[0]
+		num_sequences = dims[1]
+		num_samps = dims[2]
+		data_shape = (num_records, num_antennas, num_sequences, num_samps)
+
+		samples = np.empty(data_shape)
+
+		timestamp_array = np.empty(num_records)
+		write_time_array = np.empty(num_records)
+		int_time_array = np.empty(num_records)
+		sqn_ts_array = np.empty((num_records, num_sequences))
+
+		rec_idx = 0
+		for k in data_record:
+			print("Restructuring", k)
+			timestamp_array[rec_idx] = k
+			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
+			int_time_array[rec_idx] = data_record[k]["int_time"]
+
+			# some records have fewer than the specified number of sequences
+			# get around this by zero padding to the recorded number
+			sqn_timestamps = data_record[k]["sqn_timestamps"]
+			while len(sqn_timestamps) < num_sequences:
+				sqn_timestamps = np.append(sqn_timestamps, 0)
+			sqn_ts_array[rec_idx] = sqn_timestamps
+
+			samples[rec_idx] = data_record[k]["data"].reshape(dims)
+
+			rec_idx += 1
+
+		# write leftover metadata and data
+		data_dict["timestamps"] = timestamp_array
+		data_dict["timestamp_of_write"] = write_time_array
+		data_dict["int_time"] = int_time_array
+		data_dict["sqn_timestamps"] = sqn_ts_array
+
+		data_dict["data_dimensions"] = np.insert(data_dict["data_dimensions"], 0, num_records)
+		data_dict["data_descriptors"] = np.insert(data_dict["data_descriptors"], 0, "num_records")
+
+		data_dict["data"] = samples
+
+		dd.io.save(data_path + ".new", data_dict, compression=None)
 
 	def restructure_bfiq(data_record):
 		"""
@@ -59,6 +112,60 @@ def restructure_data(data_path):
 			data_record		a record loaded from an hdf5
 							data file
 		"""
+		data_dict = dict()
+		num_records = len(data_record)
+
+		# write shared fields to dictionary
+		shared = find_shared(data_record)
+		k = list(data_record.keys())[0]
+		for f in shared:
+			data_dict[f] = data[k][f]
+
+		# handle unshared fields
+		dims = data_dict["data_dimensions"]
+		num_arrays = dims[0]
+		num_sequences = dims[1]
+		num_beams = dims[2]
+		num_samps = dims[3]
+		data_shape = (num_records, num_arrays, num_sequences, num_beams, num_samps)
+
+		samples = np.empty(data_shape)
+
+		timestamp_array = np.empty(num_records)
+		write_time_array = np.empty(num_records)
+		int_time_array = np.empty(num_records)
+		sqn_ts_array = np.empty((num_records, num_sequences))
+
+		rec_idx = 0
+		for k in data_record:
+			print("Restructuring", k)
+			timestamp_array[rec_idx] = k
+			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
+			int_time_array[rec_idx] = data_record[k]["int_time"]
+
+			# some records have fewer than the specified number of sequences
+			# get around this by zero padding to the recorded number
+			sqn_timestamps = data_record[k]["sqn_timestamps"]
+			while len(sqn_timestamps) < num_sequences:
+				sqn_timestamps = np.append(sqn_timestamps, 0)
+			sqn_ts_array[rec_idx] = sqn_timestamps
+
+			samples[rec_idx] = data_record[k]["data"].reshape(dims)
+
+			rec_idx += 1
+
+		# write leftover metadata and data
+		data_dict["timestamps"] = timestamp_array
+		data_dict["timestamp_of_write"] = write_time_array
+		data_dict["int_time"] = int_time_array
+		data_dict["sqn_timestamps"] = sqn_ts_array
+
+		data_dict["data_dimensions"] = np.insert(data_dict["data_dimensions"], 0, num_records)
+		data_dict["data_descriptors"] = np.insert(data_dict["data_descriptors"], 0, "num_records")
+
+		data_dict["data"] = samples
+
+		dd.io.save(data_path + ".new", data_dict, compression=None)
 
 	def restructure_rawacf(data_record):
 		"""
@@ -68,7 +175,6 @@ def restructure_data(data_path):
 							data file
 		"""
 		data_dict = dict()
-
 		num_records = len(data_record)
 
 		# write shared fields to dictionary
@@ -78,12 +184,13 @@ def restructure_data(data_path):
 			data_dict[f] = data[k][f]
 
 		# handle unshared data fields
-		num_beams = data_dict["correlation_dimensions"][0]
-		num_ranges = data_dict["correlation_dimensions"][1]
-		num_lags = data_dict["correlation_dimensions"][2]
+		dims = data_dict["correlation_dimensions"]
+		num_beams = dims[0]
+		num_ranges = dims[1]
+		num_lags = dims[2]
 		data_shape = (num_records, num_beams, num_ranges, num_lags)
 
-		dims = data_dict["correlation_dimensions"]
+		num_sequences = data_dict["num_sequences"]
 
 		main_array = np.empty(data_shape)
 		intf_array = np.empty(data_shape)
@@ -92,13 +199,7 @@ def restructure_data(data_path):
 		timestamp_array = np.empty(num_records)
 		write_time_array = np.empty(num_records)
 		int_time_array = np.empty(num_records)
-
-		# find largest number of sequences in record
-		max_sequences = data_dict["num_sequences"]
-		for k in data_record:
-			if len(data_record[k]["sqn_timestamps"]) > max_sequences:
-				max_sequences = len(data_record[k]["sqn_timestamps"])
-		sqn_ts_array = np.empty((num_records, max_sequences))
+		sqn_ts_array = np.empty((num_records, num_sequences))
 
 		rec_idx = 0
 		for k in data_record:
@@ -107,10 +208,11 @@ def restructure_data(data_path):
 			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
 			int_time_array[rec_idx] = data_record[k]["int_time"]
 
+			# some records have fewer than the specified number of sequences
+			# get around this by zero padding to the recorded number
 			sqn_timestamps = data_record[k]["sqn_timestamps"]
-			if len(sqn_timestamps) < max_sequences:
-				while len(sqn_timestamps) < max_sequences:
-					sqn_timestamps = np.append(sqn_timestamps, 0)
+			while len(sqn_timestamps) < num_sequences:
+				sqn_timestamps = np.append(sqn_timestamps, 0)
 			sqn_ts_array[rec_idx] = sqn_timestamps
 
 			main_array[rec_idx] = data_record[k]["main_acfs"].reshape(dims)
