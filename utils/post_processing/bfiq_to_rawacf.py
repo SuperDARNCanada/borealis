@@ -95,7 +95,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 
 	warnings.simplefilter('ignore')
 
-	acf_file = 'test' + bfiq_filepath.split('b')[0] + 'rawacf.hdf5'
+	acf_file = bfiq_filepath.split('b')[-2] + 'rawacf.hdf5.test' 
 	temp_file= "temp_acf.hdf5"
 
 	bfiq = dd.io.load(bfiq_filepath)
@@ -133,6 +133,12 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 		date_str = now.strftime("%Y-%m-%d")
 		time_str = now.strftime("%H:%M")
 		ts_dd[k]["experiment_comment"] += "File generated on " + date_str + " at " + time_str + " from " + bfiq_filepath + "via postprocessing util"
+
+		try:
+			fd = os.open(acf_file, os.O_CREAT | os.O_EXCL)
+			os.close(fd)
+		except FileExistsError:
+			pass
 
 		# copy timestamped record to full acf file
 		dd.io.save(temp_file, ts_dd, compression=None)
