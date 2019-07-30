@@ -54,7 +54,6 @@ def printing(msg):
 
 DATA_TEMPLATE = {
     "borealis_git_hash" : None, # Identifies the version of Borealis that made this data.
-    "timestamp_of_write" : None, # Timestamp of when the record was written. Seconds since epoch.
     "experiment_id" : None, # Number used to identify experiment.
     "experiment_name" : None, # Name of the experiment file.
     "experiment_comment" : None,  # Comment about the whole experiment
@@ -580,7 +579,6 @@ class DataWrite(object):
             raise ValueError("File format selection required (hdf5, json, dmap), none given")
 
         # Format the name and location for the dataset
-        write_time = datetime.datetime.utcnow()
         time_now = datetime.datetime.utcfromtimestamp(data_parsing.timestamps[0])
 
         today_string = time_now.strftime("%Y%m%d")
@@ -661,7 +659,7 @@ class DataWrite(object):
 
 
             if file_ext == 'hdf5':
-                full_two_hr_file = "{0}/{1}.hdf5".format(dataset_directory, two_hr_file_with_type)
+                full_two_hr_file = "{0}/{1}.hdf5.site".format(dataset_directory, two_hr_file_with_type)
 
                 try:
                     fd = os.open(full_two_hr_file, os.O_CREAT | os.O_EXCL)
@@ -694,7 +692,7 @@ class DataWrite(object):
             time via averaging.
             """
 
-            needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
+            needed_fields = ["borealis_git_hash", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
             "num_sequences", "range_sep", "first_range_rtt", "first_range", "rx_sample_rate",
             "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
@@ -762,7 +760,7 @@ class DataWrite(object):
             Args:
                 parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
             """
-            needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
+            needed_fields = ["borealis_git_hash", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
             "num_sequences", "rx_sample_rate", "pulse_phase_offset",
             "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
@@ -829,7 +827,7 @@ class DataWrite(object):
 
             """
 
-            needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
+            needed_fields = ["borealis_git_hash", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
@@ -921,7 +919,7 @@ class DataWrite(object):
 
             """
 
-            needed_fields = ["borealis_git_hash", "timestamp_of_write", "experiment_id",
+            needed_fields = ["borealis_git_hash", "experiment_id",
             "experiment_name", "experiment_comment", "num_slices", "station",
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
             "main_antenna_count", "intf_antenna_count", "samples_data_type",
@@ -1050,7 +1048,6 @@ class DataWrite(object):
             for rx_freq in meta.rxchannel:
                 parameters = DATA_TEMPLATE.copy()
                 parameters['borealis_git_hash'] = self.git_hash.decode('utf-8')
-                parameters['timestamp_of_write'] = (write_time - epoch).total_seconds()
                 parameters['experiment_id'] = np.int64(integration_meta.experiment_id)
                 parameters['experiment_name'] = integration_meta.experiment_name
                 parameters['experiment_comment'] = integration_meta.experiment_comment

@@ -235,15 +235,11 @@ def restructure_data(data_path):
 		intf_array = np.empty(data_shape)
 		xcfs_array = np.empty(data_shape)
 
-		timestamp_array = np.empty(num_records)
-		write_time_array = np.empty(num_records)
 		int_time_array = np.empty(num_records)
 		sqn_ts_array = np.empty((num_records, num_sequences))
 
 		rec_idx = 0
 		for k in data_record:
-			timestamp_array[rec_idx] = k
-			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
 			int_time_array[rec_idx] = data_record[k]["int_time"]
 
 			# some records have fewer than the specified number of sequences
@@ -260,8 +256,6 @@ def restructure_data(data_path):
 			rec_idx += 1
 
 		# write leftover metadata and data
-		data_dict["timestamps"] = timestamp_array
-		data_dict["timestamp_of_write"] = write_time_array
 		data_dict["int_time"] = int_time_array
 		data_dict["sqn_timestamps"] = sqn_ts_array
 
@@ -281,7 +275,7 @@ def restructure_data(data_path):
 
 	data = dd.io.load(data_path)
 
-	if suffix == 'output_ptrs_iq':
+	if (suffix == 'output_ptrs_iq') or (suffix == 'antennas_iq'):
 		print("Loaded a pre bfiq file...")
 		restructure_pre_bfiq(data)
 	elif suffix == 'bfiq':
