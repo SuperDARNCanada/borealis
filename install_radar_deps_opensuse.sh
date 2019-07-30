@@ -57,7 +57,7 @@ cd ../ || exit
 pip3 install zmq
 
 #### INSTALL ARMADILLO ####
-zypper install libarmadillo8 armadillo-devel
+zypper install -y libarmadillo9 armadillo-devel
 
 #### INSTALL UHD ####
 #http://files.ettus.com/manual/page_build_guide.html
