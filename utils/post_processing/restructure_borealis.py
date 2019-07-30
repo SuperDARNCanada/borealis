@@ -204,7 +204,7 @@ def restructure_data(data_path):
 		data_dict["data"] = data_buffer.reshape(data_shape)
 		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
 
-		dd.io.save(data_path + ".new", data_dict, compression=None)
+		dd.io.save(data_path + ".new", data_dict, compression='zlib')
 
 	def restructure_rawacf(data_record):
 		"""
