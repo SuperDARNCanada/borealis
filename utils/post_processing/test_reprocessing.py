@@ -1,58 +1,61 @@
 import numpy as np
 import deepdish as dd
-# from bfiq_to_rawacf import correlate_samples
+from tools import correlate_samples
 
 acfs = dd.io.load("data/20190619.1600.02.sas.0.rawacf.hdf5")
-test = dd.io.load("data/test_acf.hdf5")
+# bfiq = dd.io.load("data/20190619.1600.02.sas.0.bfiq.hdf5")
+test = dd.io.load("data/20190619.1600.02.sas.0.rawacf.hdf5.test")
 
 failed = []
 
-# for k in bfiq:
+for k in bfiq:
+	print("testing", k)
+	my_main, my_intf, my_xcfs = correlate_samples(bfiq[k])
 
-# 	my_main, my_intf, my_xcfs = correlate_samples(bfiq[k])
+	num_beams = acfs[k]["correlation_dimensions"][0]
+	num_ranges = acfs[k]["correlation_dimensions"][1]
+	num_lags = acfs[k]["correlation_dimensions"][2]
 
-# 	num_beams = acfs[k]["correlation_dimensions"][0]
-# 	num_ranges = acfs[k]["correlation_dimensions"][1]
-# 	num_lags = acfs[k]["correlation_dimensions"][2]
+	# main_acfs = np.reshape(acfs[k]["main_acfs"], (num_beams, num_ranges, num_lags))
+	# intf_acfs = np.reshape(acfs[k]["intf_acfs"], (num_beams, num_ranges, num_lags))
+	# xcfs_acfs = np.reshape(acfs[k]["xcfs"], (num_beams, num_ranges, num_lags))
 
-# 	main_acfs = np.reshape(acfs[k]["main_acfs"], (num_beams, num_ranges, num_lags))
-# 	intf_acfs = np.reshape(acfs[k]["intf_acfs"], (num_beams, num_ranges, num_lags))
-# 	xcfs_acfs = np.reshape(acfs[k]["xcfs"], (num_beams, num_ranges, num_lags))
+	main_acfs = acfs[k]["main_acfs"]
+	intf_acfs = acfs[k]["intf_acfs"]
+	xcfs_acfs = acfs[k]["xcfs"]
 
-# 	main = np.array_equal(my_main, main_acfs)
-# 	intf = np.array_equal(my_intf, intf_acfs)
-# 	crss = np.array_equal(my_xcfs, xcfs_acfs)
+	my_main = my_main.flatten()
+	my_intf = my_intf.flatten()
+	my_xcfs = my_xcfs.flatten()
 
-# 	if main and intf and crss:
-# 		print(k, "passed")
+	main = np.array_equal(my_main, main_acfs)
+	intf = np.array_equal(my_intf, intf_acfs)
+	crss = np.array_equal(my_xcfs, xcfs_acfs)
 
-# 	else:
-# 		print(k, "failed")
-# 		failed.append(k)
+	if not (main and intf and crss):
+		failed.append(k)
 
-shared_fields = ['beam_azms', 'beam_nums', 'blanked_samples', 'lags', 'noise_at_freq',
-					'pulses', 'sqn_timestamps', 'borealis_git_hash', 
-					'data_normalization_factor', 'experiment_comment', 
-					'experiment_id', 'experiment_name', 'first_range', 
-					'first_range_rtt', 'freq', 'int_time', 'intf_antenna_count', 
-					'main_antenna_count', 'num_sequences', 'num_slices', 'range_sep', 
-					'rx_sample_rate', 'samples_data_type', 'scan_start_marker', 
-					'slice_comment', 'station', 'tau_spacing', 'timestamp_of_write', 'tx_pulse_len']
+f = open("failed_correlations.txt", "w+")
+for i in range(len(failed)):
+	fail_str = "timestamp: " + str(failed[i]) + " failed\n"
 
+failed = []
 for k in acfs:
-	for f in shared_fields:
+	for f in acfs[k]:
+		if f == 'experiment_comment':
+			continue
 		if type(acfs[k][f]) is np.ndarray:
-			if np.array_equal(acfs[k][f], test[k][f]):
-				print(k, "passed")
-			else:
-				print(k, "failed")
+			if not (np.array_equal(acfs[k][f], test[k][f])):
 				failed.append((k,f))
-
 		else:
-			if acfs[k][f] == test[k][f]:
-				print(k, "passed")
-			else:
-				print(k, "failed")
+			if not (acfs[k][f] == test[k][f]):
 				failed.append((k,f))
 
-print(failed)
+f = open("failed_correlations.txt", "w+")
+
+for i in range(len(failed)):
+	fail_str = 'timestamp: ' + str(failed[i][0]) + ' failed with field: ' + str(failed[i][1]) + "\n"
+	f.write(fail_str)
+
+f.close()
+print(len(failed))
