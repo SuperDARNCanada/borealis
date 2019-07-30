@@ -28,19 +28,28 @@ def find_shared(data):
 			for f in data[k]:
 				if type(data[k][f]) is np.ndarray:
 					if np.array_equal(data[k][f], data_sub[f]):
-						if f not in shared:
+						if f not in shared and f not in unshared:
 							shared.append(f)
 					else:
-						if f in shared:
-							shared.remove(f)
+						unshared.append(f)
 				else:
 					if data[k][f] == data_sub[f]:
-						if f not in shared:
+						if f not in shared and f not in unshared:
 							shared.append(f)
 					else:
-						if f in shared:
-							shared.remove(f)
+						unshared.append(f)
 	return shared
+
+def find_max_sequences(data):
+	"""
+	Finds the maximum number of sequences between records in a data file
+	"""
+	first_key = list(data.keys())[0]
+	max_seqs = data[first_key]["num_sequences"]
+	for k in data:
+		if max_seqs < data[k]["num_sequences"]:
+			max_seqs = data[k]["num_sequences"]
+	return max_seqs
 
 
 def restructure_data(data_path):
@@ -72,43 +81,46 @@ def restructure_data(data_path):
 		for f in shared:
 			data_dict[f] = data[k][f]
 
-		# handle unshared fields
-		dims = data_dict["data_dimensions"]
+		# find maximum number of sequences
+		max_seqs = find_max_sequences(data_record)
+		dims = data_record[k]["data_dimensions"]
 		num_antennas = dims[0]
-		num_sequences = dims[1]
 		num_samps = dims[2]
-		data_shape = (num_records, num_antennas, num_sequences, num_samps)
-		data_len = num_antennas * num_sequences * num_samps
 
-		samples = np.empty(data_shape)
+		data_buffer_offset = num_antennas * num_samps * max_seqs
+		data_buffer = np.zeros(num_records * data_buffer_offset)
+		data_shape = (num_records, num_antennas, max_seqs, num_samps)
 
-		timestamp_array = np.empty(num_records)
-		write_time_array = np.empty(num_records)
-		int_time_array = np.empty(num_records)
-		sqn_ts_array = np.empty((num_records, num_sequences))
+		sqn_buffer_offset = max_seqs
+		sqn_ts_buffer = np.zeros(num_records * max_seqs)
+		sqn_shape = (num_records, max_seqs)
+
+		dim_array = np.empty((num_records, len(dims)))
 
 		rec_idx = 0
 		for k in data_record:
+			# handle unshared fields
+			print(k)
+			timestamp_array = np.empty(num_records)
+			write_time_array = np.empty(num_records)
+			int_time_array = np.empty(num_records)
+
 			timestamp_array[rec_idx] = k
 			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
 			int_time_array[rec_idx] = data_record[k]["int_time"]
+			dim_array[rec_idx] = data_record[k]["data_dimensions"]
 
-			# some records have fewer than the specified number of sequences
-			# get around this by zero padding to the recorded number
-			sqn_timestamps = data_record[k]["sqn_timestamps"]
-			while len(sqn_timestamps) < num_sequences:
-				sqn_timestamps = np.append(sqn_timestamps, 0)
-			sqn_ts_array[rec_idx] = sqn_timestamps
+			# insert data into buffer
+			record_buffer = data_record[k]["data"]
+			data_pos = rec_idx * data_buffer_offset
+			data_end = data_pos + len(record_buffer)
+			data_buffer[data_pos:data_end] = record_buffer
 
-			# some records have fewer samples than specified by data
-			# dimensions, zero pad for now to get around this
-			# TODO: Ask if this is right, I suspect it is not
-			data_buffer = data_record[k]["data"]
-			while len(data_buffer) < data_len:
-				data_buffer = np.append(data_buffer, 0)
-				print(len(data_buffer))
-
-			samples[rec_idx] = data_buffer.reshape(dims)
+			# insert sequence timestamps into buffer
+			rec_sqn_ts = data_record[k]["sqn_timestamps"]
+			sqn_pos = rec_idx * sqn_buffer_offset
+			sqn_end = sqn_pos + data_record[k]["num_sequences"]
+			sqn_ts_buffer[sqn_pos:sqn_end] = rec_sqn_ts
 
 			rec_idx += 1
 
@@ -116,12 +128,10 @@ def restructure_data(data_path):
 		data_dict["timestamps"] = timestamp_array
 		data_dict["timestamp_of_write"] = write_time_array
 		data_dict["int_time"] = int_time_array
-		data_dict["sqn_timestamps"] = sqn_ts_array
+		data_dict["data_dimensions"] = dim_array
 
-		data_dict["data_dimensions"] = np.insert(data_dict["data_dimensions"], 0, num_records)
-		data_dict["data_descriptors"] = np.insert(data_dict["data_descriptors"], 0, "num_records")
-
-		data_dict["data"] = samples
+		data_dict["data"] = data_buffer.reshape(data_shape)
+		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
 
 		dd.io.save(data_path + ".new", data_dict, compression=None)
 
@@ -141,43 +151,47 @@ def restructure_data(data_path):
 		for f in shared:
 			data_dict[f] = data[k][f]
 
-		# handle unshared fields
-		dims = data_dict["data_dimensions"]
+		# find maximum number of sequences
+		max_seqs = find_max_sequences(data_record)
+		dims = data_record[k]["data_dimensions"]
 		num_arrays = dims[0]
-		num_sequences = dims[1]
 		num_beams = dims[2]
 		num_samps = dims[3]
-		data_shape = (num_records, num_arrays, num_sequences, num_beams, num_samps)
-		data_len = num_arrays * num_sequences * num_beams * num_samps
 
-		samples = np.empty(data_shape)
+		data_buffer_offset = num_arrays * num_beams * num_samps * max_seqs
+		data_buffer = np.zeros(num_records * data_buffer_offset)
+		data_shape = (num_records, num_arrays, max_seqs, num_beams, num_samps)
 
-		timestamp_array = np.empty(num_records)
-		write_time_array = np.empty(num_records)
-		int_time_array = np.empty(num_records)
-		sqn_ts_array = np.empty((num_records, num_sequences))
+		sqn_buffer_offset = max_seqs
+		sqn_ts_buffer = np.zeros(num_records * max_seqs)
+		sqn_shape = (num_records, max_seqs)
+
+		dim_array = np.empty((num_records, len(dims)))
 
 		rec_idx = 0
 		for k in data_record:
+			# handle unshared fields
+			print(k)
+			timestamp_array = np.empty(num_records)
+			write_time_array = np.empty(num_records)
+			int_time_array = np.empty(num_records)
+
 			timestamp_array[rec_idx] = k
 			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
 			int_time_array[rec_idx] = data_record[k]["int_time"]
+			dim_array[rec_idx] = data_record[k]["data_dimensions"]
 
-			# some records have fewer than the specified number of sequences
-			# get around this by zero padding to the recorded number
-			sqn_timestamps = data_record[k]["sqn_timestamps"]
-			while len(sqn_timestamps) < num_sequences:
-				sqn_timestamps = np.append(sqn_timestamps, 0)
-			sqn_ts_array[rec_idx] = sqn_timestamps
+			# insert data into buffer
+			record_buffer = data_record[k]["data"]
+			data_pos = rec_idx * data_buffer_offset
+			data_end = data_pos + len(record_buffer)
+			data_buffer[data_pos:data_end] = record_buffer
 
-			# some records have fewer samples than specified by data
-			# dimensions, zero pad for now to get around this
-			# TODO: Ask if this is right, I suspect it is not
-			data_buffer = data_record[k]["data"]
-			while len(data_buffer) < data_len:
-				data_buffer = np.append(data_buffer, 0)
-
-			samples[rec_idx] = data_buffer.reshape(dims)
+			# insert sequence timestamps into buffer
+			rec_sqn_ts = data_record[k]["sqn_timestamps"]
+			sqn_pos = rec_idx * sqn_buffer_offset
+			sqn_end = sqn_pos + data_record[k]["num_sequences"]
+			sqn_ts_buffer[sqn_pos:sqn_end] = rec_sqn_ts
 
 			rec_idx += 1
 
@@ -185,12 +199,10 @@ def restructure_data(data_path):
 		data_dict["timestamps"] = timestamp_array
 		data_dict["timestamp_of_write"] = write_time_array
 		data_dict["int_time"] = int_time_array
-		data_dict["sqn_timestamps"] = sqn_ts_array
+		data_dict["data_dimensions"] = dim_array
 
-		data_dict["data_dimensions"] = np.insert(data_dict["data_dimensions"], 0, num_records)
-		data_dict["data_descriptors"] = np.insert(data_dict["data_descriptors"], 0, "num_records")
-
-		data_dict["data"] = samples
+		data_dict["data"] = data_buffer.reshape(data_shape)
+		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
 
 		dd.io.save(data_path + ".new", data_dict, compression=None)
 
