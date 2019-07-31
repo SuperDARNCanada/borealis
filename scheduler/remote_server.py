@@ -61,11 +61,26 @@ def get_next_month_from_date(date):
 
         return new_date
 
-def plot_timeline(timeline_dict, scd_dir, time_of_interest):
+def timeline_to_dict(timeline):
+    """
+    Converts the timeline list to an ordered dict for scheduling and
+    colour mapping
+    Returns:
+        OrderedDict: an ordered dict containing the timeline
+    """
+    timeline_dict = collections.OrderedDict()
+    for line in timeline:
+        if not line['order'] in timeline_dict:
+            timeline_dict[line['order']] = []
+
+        timeline_dict[line['order']].append(line)
+    return timeline_dict
+
+def plot_timeline(timeline, scd_dir, time_of_interest):
     """Plots the timeline to better visualize runtime.
 
     Args:
-        timeline_dict (dict): A dict of grouped entries.
+        timeline (list): A list of entries ordered chronologically as scheduled
         scd_dir (str): The scd directory path.
         time_of_interest (datetime): The datetime holding the time of scheduling.
 
@@ -74,60 +89,118 @@ def plot_timeline(timeline_dict, scd_dir, time_of_interest):
     """
     fig, ax = plt.subplots()
 
-    event_labels = []
     first_date, last_date = None, None
 
+    timeline_list = [0] * len(timeline)
 
     def get_cmap(n, name='hsv'):
         '''Returns a function that maps each index in 0, 1, ..., n-1 to a distinct
         RGB color; the keyword argument name must be a standard mpl colormap name.'''
         return plt.cm.get_cmap(name, n)
 
-    #make random colors
+    def split_event(event):
+        """
+        Recursively splits an event that runs during two or more days into two events
+        in order to handle plotting.
+        """
+        if event['start'].day == event['end'].day:
+            return [event]
+        else:
+            new_event = dict()
+            new_event['color'] = event['color']
+            new_event['label'] = event['label']
+
+            td = datetime.timedelta(days=1)
+            midnight = datetime.datetime.combine(event['start'] + td, datetime.datetime.min.time())
+
+            first_dur = midnight - event['start']
+            second_dur = event['end'] - midnight
+
+            # handle the new event first
+            new_event['start'] = midnight
+            new_event['duration'] = second_dur
+            new_event['end'] = event['end']
+
+            # now handle the old event
+            event['duration'] = first_dur
+            event['end'] = midnight
+
+            return [event] + split_event(new_event)
+
+
+    # make random colors
+    timeline_dict = timeline_to_dict(timeline)
     cmap = get_cmap(len(timeline_dict.items()))
     colors = [cmap(i) for i in range(len(timeline_dict.items()))]
     random.shuffle(colors)
 
+    # put the colors in and create event records with only start and end times,
+    # durations, colors, and labels
     for i, (_, events) in enumerate(timeline_dict.items()):
-        event_times = []
-        event_label = ""
-
-        color = colors[i]
-        colors_for_line = [color] * len(events)
         for event in events:
-            time_start = mdates.date2num(event['time'])
+            event['color'] = colors[i]
 
-            if event['duration'] == '-':
-                # at this point the only infinite duration event is the last event in the schedule.
-                td = get_next_month_from_date(event['time']) - event['time']
-            else:
-                td = datetime.timedelta(minutes=int(event['duration']))
+    for i, event in enumerate(timeline):
+        event_item = dict()
 
-            time_end = td.total_seconds()/(24 * 60 * 60)
-            event_times.append((time_start, time_end))
-            event_label = event['experiment']
+        event_item['color'] = event['color']
+        event_item['label'] = event['experiment']
 
-            if i == 0:
-                first_date = event['time']
-            if i == len(timeline_dict.items()) - 1:
-                last_date = event['time'] + td
+        event_item['start'] = event['time']
 
-        event_labels.append(event_label)
-        ax.broken_barh(event_times, ((i+1)*10, 4), facecolors=colors_for_line)
+        if event['duration'] == '-':
+            td = get_next_month_from_date(event['time']) - event['time']
+        else:
+            td = datetime.timedelta(minutes=int(event['duration']))
 
-    ax.set_yticks([(i+1)*10 + 2 for i in range(len(event_labels))])
-    ax.set_yticklabels(event_labels)
+        event_item['end'] = event_item['start'] + td
+        event_item['duration'] = td
+
+        timeline_list[i] = event_item
+
+        if i == 0:
+            first_date = event['time'].date()
+        if i == len(timeline_list) - 1:
+            last_date = event['time'] + td
+            plot_last = (last_date + datetime.timedelta(hours=12)).date()
+
+    event_list = []
+    # loop through events again, splitting them where necessary
+    for event in timeline_list:
+        event_list += split_event(event)
+
+    for event in event_list:
+        day_offset = event['start'].date() - first_date
+        start = event['start'] - day_offset
+        ax.barh(event['start'].date(), event['duration'], 0.16, left=start, color=event['color'], align='edge')
+        ax.text(x=(start + (event['duration'] / 2)), y=event['start'].date(), s=event['label'], color='k', rotation=45, ha='right', va='top', fontsize=8)
+
 
     hours = mdates.HourLocator(byhour=[0,6,12,18,24])
     days = mdates.DayLocator()
-    fmt = mdates.DateFormatter('%m-%d')
+    minutes = mdates.MinuteLocator()
+    x_fmt = mdates.DateFormatter('%H:%M')
+    y_fmt = mdates.DateFormatter('%m-%d')
 
-    ax.xaxis.set_major_locator(days)
-    ax.xaxis.set_major_formatter(fmt)
-    ax.xaxis.set_minor_locator(hours)
-
-    ax.set_xlim(first_date, last_date)
+    ax.xaxis.set_major_locator(hours)
+    ax.xaxis.set_major_formatter(x_fmt)
     plt.xticks(rotation=45)
+    ax.set_xlabel('Time of Day', fontsize=12)
+
+    ax.yaxis.set_major_locator(days)
+    ax.yaxis.set_major_formatter(y_fmt)
+    ax.yaxis.set_minor_locator(hours)
+    ax.set_ylim(first_date, plot_last)
+    ax.set_ylabel('Date, MM-DD', rotation='vertical', fontsize=12)
+
+    ax.set_title('Schedule from {} to {}'.format(first_date, last_date.date()) )
+
+
+    pretty_date_str = time_of_interest.strftime("%Y-%m-%d")
+    pretty_time_str = time_of_interest.strftime("%H:%M")
+
+    ax.annotate('Generated on {} at {} UTC'.format(pretty_date_str, pretty_time_str),
+                                                xy=(1,1), xycoords='axes fraction', fontsize=12, ha='right', va='top')
 
     plot_time_str = time_of_interest.strftime("%Y.%m.%d.%H.%M")
     plot_dir = "{}/timeline_plots".format(scd_dir)
@@ -136,7 +209,6 @@ def plot_timeline(timeline_dict, scd_dir, time_of_interest):
         os.makedirs(plot_dir)
 
     plot_file = "{}/{}.png".format(plot_dir, plot_time_str)
-    plt.show()
     fig.set_size_inches(14,8)
     fig.savefig(plot_file, dpi=80)
 
@@ -162,15 +234,15 @@ def convert_scd_to_timeline(scd_lines):
         experiment
 
     The true timeline queued_lines dictionary differs from the scd_lines list by the following:
-        - duration is parsed, adding in events so that all event durations are equal to the next event's 
+        - duration is parsed, adding in events so that all event durations are equal to the next event's
         start time, subtract the current event's start time.
         - priority is parsed so that there is only ever one event at any time (no overlap)
-        - therefore the only event in the true timeline with infinite duration is the last event. 
-        - the keys of the true timeline dict are the original scd_lines order of the lines (integer). This allows 
-        the preservation of which events in the true timeline were scheduled in the same original line. 
+        - therefore the only event in the true timeline with infinite duration is the last event.
+        - the keys of the true timeline dict are the original scd_lines order of the lines (integer). This allows
+        the preservation of which events in the true timeline were scheduled in the same original line.
         This can be useful for plotting (same color = same scd scheduled line). The items in queued_lines
-        dict are lists of all of the events corresponding to that original line's order. These events have the same 
-        keys as the lines in scd_lines. 
+        dict are lists of all of the events corresponding to that original line's order. These events have the same
+        keys as the lines in scd_lines.
 
     Args:
         scd_lines (list): List of sorted lines by timestamp and priority,
@@ -185,7 +257,7 @@ def convert_scd_to_timeline(scd_lines):
     queued_lines = []
 
     # Add the ordering of the lines to each line. This is so we can group entries that get split
-    # up as the same originally scheduled experiment line in the plot. 
+    # up as the same originally scheduled experiment line in the plot.
     for i, line in enumerate(scd_lines):
         line['order'] = i
 
@@ -332,20 +404,13 @@ def convert_scd_to_timeline(scd_lines):
             inf_dur_line['time'] = queued_finish
             queued_lines.append(inf_dur_line)
 
-    queued_dict = collections.OrderedDict()
-    for line in queued_lines:
-        if not line['order'] in queued_dict:
-            queued_dict[line['order']] = []
-
-        queued_dict[line['order']].append(line)
-
-    return queued_dict, warnings
+    return queued_lines, warnings
 
 def timeline_to_atq(timeline, scd_dir, time_of_interest):
     """ Converts the created timeline to actual atq commands.
 
     Args:
-        timeline (OrderedDict): A dictionary holding all timeline events.
+        timeline (List): A list holding all timeline events.
         scd_dir (str): The directory with SCD files.
         time_of_interest (datetime): The datetime holding the time of scheduling.
 
@@ -377,13 +442,12 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest):
 
     atq = []
     first_event = True
-    for _,events in timeline.items():
-        for event in events:
-            if first_event:
-                atq.append(format_to_atq(event['time'], event['experiment'], True))
-                first_event = False
-            else:
-                atq.append(format_to_atq(event['time'], event['experiment']))
+    for event in timeline:
+        if first_event:
+            atq.append(format_to_atq(event['time'], event['experiment'], True))
+            first_event = False
+        else:
+            atq.append(format_to_atq(event['time'], event['experiment']))
 
     for cmd in atq:
         sp.call(cmd, shell=True)
@@ -499,17 +563,18 @@ def _main():
 
             emailer.email_log(subject, log_file)
         else:
+
             timeline, warnings = convert_scd_to_timeline(relevant_lines)
             plot_path, pickle_path = plot_timeline(timeline, scd_dir, time_of_interest)
             new_atq_str = timeline_to_atq(timeline, scd_dir, time_of_interest)
 
             with open(log_file, 'wb') as f:
-                f.write(log_msg_header)
+                f.write(log_msg_header.encode())
                 f.write(new_atq_str)
 
-                f.write("\n")
+                f.write("\n".encode())
                 for warning in warnings:
-                    f.write("\n" + warning)
+                    f.write("\n{}".format(warning).encode())
 
             subject = "Successfully scheduled commands at {}".format(site_id)
             emailer.email_log(subject, log_file, [plot_path, pickle_path])
