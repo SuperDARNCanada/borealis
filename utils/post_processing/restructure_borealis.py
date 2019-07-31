@@ -97,7 +97,7 @@ def restructure_data(data_path):
 		sqn_ts_buffer = np.zeros(num_records * max_seqs)
 		sqn_shape = (num_records, max_seqs)
 
-		dim_array = np.empty((num_records, len(dims)))
+		sqn_num_array = np.empty((num_records))
 
 		rec_idx = 0
 		for k in data_record:
@@ -106,6 +106,7 @@ def restructure_data(data_path):
 
 			int_time_array = np.empty(num_records)
 			int_time_array[rec_idx] = data_record[k]["int_time"]
+			sqn_num_array[rec_idx] = data_record[k]["num_sequences"]
 
 			# insert data into buffer
 			record_buffer = data_record[k]["data"]
@@ -164,7 +165,7 @@ def restructure_data(data_path):
 		sqn_ts_buffer = np.zeros(num_records * max_seqs)
 		sqn_shape = (num_records, max_seqs)
 
-		dim_array = np.empty((num_records, len(dims)))
+		sqn_num_array = np.empty((num_records))
 
 		rec_idx = 0
 		for k in data_record:
@@ -172,6 +173,7 @@ def restructure_data(data_path):
 			print(k)
 			int_time_array = np.empty(num_records)
 			int_time_array[rec_idx] = data_record[k]["int_time"]
+			sqn_num_array[rec_idx] = data_record[k]["num_sequences"]
 
 			# insert data into buffer
 			record_buffer = data_record[k]["data"]
