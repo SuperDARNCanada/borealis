@@ -1,9 +1,11 @@
-# Copyright 2019 SuperDARN Canada
+# Copyright 2019 SuperDARN Canada, University of Saskatchewan
+# Author: Liam Graham
+
 #
 # restructure_borealis.py
-# 2019-07-29
+# 2019-07-30
 # Command line tool for strucuturing Borealis files
-# for bfiq, pre-bfiq, and raw acf data into a smaller,
+# for bfiq, antennas iq, and raw acf data into a smaller,
 # faster, and more usable format
 
 import deepdish as dd
@@ -133,7 +135,9 @@ def restructure_data(data_path):
 		data_dict["data"] = data_buffer.reshape(data_shape)
 		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
 
-		dd.io.save(data_path + ".new", data_dict, compression=None)
+		data_dict["data_descriptors"] = np.insert(data_dict["data_descriptors"], 0, "num_records")
+
+		dd.io.save(data_path + ".new", data_dict, compression='zlib')
 
 	def restructure_bfiq(data_record):
 		"""
@@ -204,6 +208,8 @@ def restructure_data(data_path):
 		data_dict["data"] = data_buffer.reshape(data_shape)
 		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
 
+		data_dict["data_descriptors"] = np.insert(data_dict["data_descriptors"], 0, "num_records")
+
 		dd.io.save(data_path + ".new", data_dict, compression='zlib')
 
 	def restructure_rawacf(data_record):
@@ -259,14 +265,13 @@ def restructure_data(data_path):
 		data_dict["int_time"] = int_time_array
 		data_dict["sqn_timestamps"] = sqn_ts_array
 
-		data_dict["correlation_dimensions"] = np.insert(data_dict["correlation_dimensions"], 0, num_records)
 		data_dict["correlation_descriptors"] = np.insert(data_dict["correlation_descriptors"], 0, "num_records")
 
 		data_dict["main_acfs"] = main_array
 		data_dict["intf_acfs"] = intf_array
 		data_dict["xcfs"] = xcfs_array
 
-		dd.io.save(data_path + ".new", data_dict, compression=None)  # TODO: Change all of these to final filename
+		dd.io.save(data_path + ".new", data_dict, compression='zlib')  # TODO: Change all of these to final filename
 
 
 	suffix = data_path.split('.')[-2]
