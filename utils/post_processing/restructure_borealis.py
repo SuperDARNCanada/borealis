@@ -97,14 +97,12 @@ def restructure_data(data_path):
 		sqn_ts_buffer = np.zeros(num_records * max_seqs)
 		sqn_shape = (num_records, max_seqs)
 
-		sqn_num_array = np.empty((num_records))
+		sqn_num_array = np.empty(num_records)
+		int_time_array = np.empty(num_records)
 
 		rec_idx = 0
 		for k in data_record:
 			# handle unshared fields
-			print(k)
-
-			int_time_array = np.empty(num_records)
 			int_time_array[rec_idx] = data_record[k]["int_time"]
 			sqn_num_array[rec_idx] = data_record[k]["num_sequences"]
 
@@ -123,15 +121,15 @@ def restructure_data(data_path):
 			rec_idx += 1
 
 		# write leftover metadata and data
-		data_dict["timestamps"] = timestamp_array
-		data_dict["timestamp_of_write"] = write_time_array
 		data_dict["int_time"] = int_time_array
+		data_dict["num_sequences"] = sqn_num_array
 
 		data_dict["data"] = data_buffer.reshape(data_shape)
 		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
 
 		data_dict["data_descriptors"] = np.insert(data_dict["data_descriptors"], 0, "num_records")
 
+		print("Compressing...")
 		dd.io.save(data_path + ".new", data_dict, compression='zlib')
 
 	def restructure_bfiq(data_record):
@@ -165,12 +163,12 @@ def restructure_data(data_path):
 		sqn_ts_buffer = np.zeros(num_records * max_seqs)
 		sqn_shape = (num_records, max_seqs)
 
-		sqn_num_array = np.empty((num_records))
+		sqn_num_array = np.empty(num_records)
+		int_time_array = np.empty(num_records)
 
 		rec_idx = 0
 		for k in data_record:
 			# handle unshared fields
-			print(k)
 			int_time_array = np.empty(num_records)
 			int_time_array[rec_idx] = data_record[k]["int_time"]
 			sqn_num_array[rec_idx] = data_record[k]["num_sequences"]
@@ -190,15 +188,15 @@ def restructure_data(data_path):
 			rec_idx += 1
 
 		# write leftover metadata and data
-		data_dict["timestamps"] = timestamp_array
-		data_dict["timestamp_of_write"] = write_time_array
 		data_dict["int_time"] = int_time_array
+		data_dict["num_sequences"] = sqn_num_array
 
 		data_dict["data"] = data_buffer.reshape(data_shape)
 		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
 
 		data_dict["data_descriptors"] = np.insert(data_dict["data_descriptors"], 0, "num_records")
 
+		print("Compressing...")
 		dd.io.save(data_path + ".new", data_dict, compression='zlib')
 
 	def restructure_rawacf(data_record):
@@ -260,6 +258,7 @@ def restructure_data(data_path):
 		data_dict["intf_acfs"] = intf_array
 		data_dict["xcfs"] = xcfs_array
 
+		print("Compressing...")
 		dd.io.save(data_path + ".new", data_dict, compression='zlib')  # TODO: Change all of these to final filename
 
 
