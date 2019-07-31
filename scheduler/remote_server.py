@@ -80,7 +80,6 @@ def plot_timeline(timeline, scd_dir, time_of_interest):
 
     Args:
         timeline_list (list): A list of entries ordered chronologically as scheduled
-        timeline_dict (dict): A dict of grouped entries.
         scd_dir (str): The scd directory path.
         time_of_interest (datetime): The datetime holding the time of scheduling.
 
@@ -418,8 +417,6 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest):
     first entry should be the currently running event, so it gets scheduled immediately. This
     function only backs up the commands that have not run yet.
     """
-    # Convert to ordered dict
-    timeline = timeline_to_dict(timeline)
 
     # This command is basically: for j in atq job number, print job num, time and command
     get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1);'\
@@ -444,13 +441,12 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest):
 
     atq = []
     first_event = True
-    for _,events in timeline.items():
-        for event in events:
-            if first_event:
-                atq.append(format_to_atq(event['time'], event['experiment'], True))
-                first_event = False
-            else:
-                atq.append(format_to_atq(event['time'], event['experiment']))
+    for event in timeline:
+        if first_event:
+            atq.append(format_to_atq(event['time'], event['experiment'], True))
+            first_event = False
+        else:
+            atq.append(format_to_atq(event['time'], event['experiment']))
 
     for cmd in atq:
         sp.call(cmd, shell=True)
