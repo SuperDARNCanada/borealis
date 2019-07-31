@@ -130,7 +130,6 @@ def restructure_data(data_path):
 		data_dict["timestamps"] = timestamp_array
 		data_dict["timestamp_of_write"] = write_time_array
 		data_dict["int_time"] = int_time_array
-		data_dict["data_dimensions"] = dim_array
 
 		data_dict["data"] = data_buffer.reshape(data_shape)
 		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
@@ -203,7 +202,6 @@ def restructure_data(data_path):
 		data_dict["timestamps"] = timestamp_array
 		data_dict["timestamp_of_write"] = write_time_array
 		data_dict["int_time"] = int_time_array
-		data_dict["data_dimensions"] = dim_array
 
 		data_dict["data"] = data_buffer.reshape(data_shape)
 		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
