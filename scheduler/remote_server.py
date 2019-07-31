@@ -60,6 +60,7 @@ def get_next_month_from_date(date):
             new_date = date + datetime.timedelta(days=counter)
 
         return new_date
+
 def timeline_to_dict(timeline):
     """
     Converts the timeline list to an ordered dict for scheduling and
@@ -79,7 +80,7 @@ def plot_timeline(timeline, scd_dir, time_of_interest):
     """Plots the timeline to better visualize runtime.
 
     Args:
-        timeline_list (list): A list of entries ordered chronologically as scheduled
+        timeline (list): A list of entries ordered chronologically as scheduled
         scd_dir (str): The scd directory path.
         time_of_interest (datetime): The datetime holding the time of scheduling.
 
@@ -194,7 +195,7 @@ def plot_timeline(timeline, scd_dir, time_of_interest):
 
     ax.set_title('Schedule from {} to {}'.format(first_date, last_date.date()) )
 
-    
+
     pretty_date_str = time_of_interest.strftime("%Y-%m-%d")
     pretty_time_str = time_of_interest.strftime("%H:%M")
 
@@ -233,15 +234,15 @@ def convert_scd_to_timeline(scd_lines):
         experiment
 
     The true timeline queued_lines dictionary differs from the scd_lines list by the following:
-        - duration is parsed, adding in events so that all event durations are equal to the next event's 
+        - duration is parsed, adding in events so that all event durations are equal to the next event's
         start time, subtract the current event's start time.
         - priority is parsed so that there is only ever one event at any time (no overlap)
-        - therefore the only event in the true timeline with infinite duration is the last event. 
-        - the keys of the true timeline dict are the original scd_lines order of the lines (integer). This allows 
-        the preservation of which events in the true timeline were scheduled in the same original line. 
+        - therefore the only event in the true timeline with infinite duration is the last event.
+        - the keys of the true timeline dict are the original scd_lines order of the lines (integer). This allows
+        the preservation of which events in the true timeline were scheduled in the same original line.
         This can be useful for plotting (same color = same scd scheduled line). The items in queued_lines
-        dict are lists of all of the events corresponding to that original line's order. These events have the same 
-        keys as the lines in scd_lines. 
+        dict are lists of all of the events corresponding to that original line's order. These events have the same
+        keys as the lines in scd_lines.
 
     Args:
         scd_lines (list): List of sorted lines by timestamp and priority,
@@ -256,7 +257,7 @@ def convert_scd_to_timeline(scd_lines):
     queued_lines = []
 
     # Add the ordering of the lines to each line. This is so we can group entries that get split
-    # up as the same originally scheduled experiment line in the plot. 
+    # up as the same originally scheduled experiment line in the plot.
     for i, line in enumerate(scd_lines):
         line['order'] = i
 
@@ -568,12 +569,12 @@ def _main():
             new_atq_str = timeline_to_atq(timeline, scd_dir, time_of_interest)
 
             with open(log_file, 'wb') as f:
-                f.write(log_msg_header)
+                f.write(log_msg_header.encode())
                 f.write(new_atq_str)
 
-                f.write("\n")
+                f.write("\n".encode())
                 for warning in warnings:
-                    f.write("\n" + warning)
+                    f.write("\n{}".format(warning).encode())
 
             subject = "Successfully scheduled commands at {}".format(site_id)
             emailer.email_log(subject, log_file, [plot_path, pickle_path])
