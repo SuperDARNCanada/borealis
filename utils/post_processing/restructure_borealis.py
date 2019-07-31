@@ -103,14 +103,9 @@ def restructure_data(data_path):
 		for k in data_record:
 			# handle unshared fields
 			print(k)
-			timestamp_array = np.empty(num_records)
-			write_time_array = np.empty(num_records)
-			int_time_array = np.empty(num_records)
 
-			timestamp_array[rec_idx] = k
-			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
+			int_time_array = np.empty(num_records)
 			int_time_array[rec_idx] = data_record[k]["int_time"]
-			dim_array[rec_idx] = data_record[k]["data_dimensions"]
 
 			# insert data into buffer
 			record_buffer = data_record[k]["data"]
@@ -175,14 +170,8 @@ def restructure_data(data_path):
 		for k in data_record:
 			# handle unshared fields
 			print(k)
-			timestamp_array = np.empty(num_records)
-			write_time_array = np.empty(num_records)
 			int_time_array = np.empty(num_records)
-
-			timestamp_array[rec_idx] = k
-			write_time_array[rec_idx] = data_record[k]["timestamp_of_write"]
 			int_time_array[rec_idx] = data_record[k]["int_time"]
-			dim_array[rec_idx] = data_record[k]["data_dimensions"]
 
 			# insert data into buffer
 			record_buffer = data_record[k]["data"]
