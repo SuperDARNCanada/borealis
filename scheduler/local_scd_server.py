@@ -125,7 +125,7 @@ class SWG(object):
 
         return new_date
 
-    def parse_swg_to_scd(self, modes, radar):
+    def parse_swg_to_scd(self, modes, radar, first_run):
         """Reads the new SWG file and parses into a set of parameters than can be used for borealis
         scheduling.
 
@@ -136,9 +136,15 @@ class SWG(object):
         Returns:
             TYPE: List of all the parsed parameters.
         """
-        next_month = self.get_next_month()
-        year = next_month.strftime("%Y")
-        month = next_month.strftime("%m")
+
+
+        if first_run:
+            month_to_use = datetime.datetime.utcnow()
+        else:
+            month_to_use = next_month = self.get_next_month()
+
+        year = month_to_use.strftime("%Y")
+        month = month_to_use.strftime("%m")
 
         swg_file = "{scd_dir}/{swg_dir}/{yyyy}/{yyyymm}.swg".format(scd_dir=self.scd_dir,
                                                                     swg_dir=SWG_GIT_REPO_DIR,
@@ -232,7 +238,14 @@ def main():
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
     parser.add_argument('--emails-filepath',required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
-
+    parser.add_argument('--first-run', action="store_true", help='This will generate the first set'
+                                                                 ' of schedule files if running on'
+                                                                 ' a fresh directory. If the next'
+                                                                 ' month schedule is available,'
+                                                                 ' you will need to roll back the'
+                                                                 ' SWG schedule folder back to the'
+                                                                 ' last commit before running in'
+                                                                 ' continuous operation.')
     args = parser.parse_args()
 
     scd_dir = args.scd_dir
@@ -251,10 +264,11 @@ def main():
     swg = SWG(scd_dir)
 
     while True:
-        if swg.new_swg_file_available():
+        if swg.new_swg_file_available() or args.first_run:
             swg.pull_new_swg_file()
 
-            site_experiments = [swg.parse_swg_to_scd(EXPERIMENTS[s], s) for s in sites]
+            site_experiments = [swg.parse_swg_to_scd(EXPERIMENTS[s], s, args.first_run)
+                                for s in sites]
 
             errors = False
             today = datetime.datetime.utcnow()
@@ -307,6 +321,9 @@ def main():
                 errors = False
 
             emailer.email_log(subject, scd_logs + scd_error_log)
+
+            if args.first_run:
+                break;
 
         else:
             time.sleep(300)
