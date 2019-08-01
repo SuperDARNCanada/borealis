@@ -169,7 +169,6 @@ def restructure_data(data_path):
 		rec_idx = 0
 		for k in data_record:
 			# handle unshared fields
-			int_time_array = np.empty(num_records)
 			int_time_array[rec_idx] = data_record[k]["int_time"]
 			sqn_num_array[rec_idx] = data_record[k]["num_sequences"]
 
