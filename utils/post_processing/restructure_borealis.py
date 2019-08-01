@@ -90,7 +90,7 @@ def restructure_data(data_path):
 		num_samps = dims[2]
 
 		data_buffer_offset = num_antennas * num_samps * max_seqs
-		data_buffer = np.zeros(num_records * data_buffer_offset)
+		data_buffer = np.zeros(num_records * data_buffer_offset, dtype=np.complex64)
 		data_shape = (num_records, num_antennas, max_seqs, num_samps)
 
 		sqn_buffer_offset = max_seqs
@@ -156,7 +156,7 @@ def restructure_data(data_path):
 		num_samps = dims[3]
 
 		data_buffer_offset = num_arrays * num_beams * num_samps * max_seqs
-		data_buffer = np.zeros(num_records * data_buffer_offset)
+		data_buffer = np.zeros(num_records * data_buffer_offset, dtype=np.complex64)
 		data_shape = (num_records, num_arrays, max_seqs, num_beams, num_samps)
 
 		sqn_buffer_offset = max_seqs
@@ -208,6 +208,7 @@ def restructure_data(data_path):
 		"""
 		data_dict = dict()
 		num_records = len(data_record)
+		max_seqs = find_max_sequences(data_record)
 
 		# write shared fields to dictionary
 		shared = find_shared(data_record)
@@ -222,23 +223,25 @@ def restructure_data(data_path):
 		num_lags = dims[2]
 		data_shape = (num_records, num_beams, num_ranges, num_lags)
 
-		num_sequences = data_dict["num_sequences"]
-
-		main_array = np.empty(data_shape)
-		intf_array = np.empty(data_shape)
-		xcfs_array = np.empty(data_shape)
+		
+		sqn_ts_array = np.empty((num_records, max_seqs))
+		sqn_num_array = np.empty(num_records)
+		main_array = np.empty(data_shape, dtype=np.complex64)
+		intf_array = np.empty(data_shape, dtype=np.complex64)
+		xcfs_array = np.empty(data_shape, dtype=np.complex64)
 
 		int_time_array = np.empty(num_records)
-		sqn_ts_array = np.empty((num_records, num_sequences))
+		
 
 		rec_idx = 0
 		for k in data_record:
+			sqn_num_array[rec_idx] = data_record[k]["num_sequences"]
 			int_time_array[rec_idx] = data_record[k]["int_time"]
 
 			# some records have fewer than the specified number of sequences
 			# get around this by zero padding to the recorded number
 			sqn_timestamps = data_record[k]["sqn_timestamps"]
-			while len(sqn_timestamps) < num_sequences:
+			while len(sqn_timestamps) < max_seqs:
 				sqn_timestamps = np.append(sqn_timestamps, 0)
 			sqn_ts_array[rec_idx] = sqn_timestamps
 
@@ -251,6 +254,7 @@ def restructure_data(data_path):
 		# write leftover metadata and data
 		data_dict["int_time"] = int_time_array
 		data_dict["sqn_timestamps"] = sqn_ts_array
+		data_dict["num_sequences"] = sqn_num_array
 
 		data_dict["correlation_descriptors"] = np.insert(data_dict["correlation_descriptors"], 0, "num_records")
 
