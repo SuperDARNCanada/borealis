@@ -97,14 +97,21 @@ def restructure_data(data_path):
 		sqn_ts_buffer = np.zeros(num_records * max_seqs)
 		sqn_shape = (num_records, max_seqs)
 
+		noise_buffer_offset = max_seqs
+		noise_buffer = np.zeros(num_records * max_seqs)
+		noise_shape = (num_records, max_seqs)
+
 		sqn_num_array = np.empty(num_records)
 		int_time_array = np.empty(num_records)
+
+		data_dims_array = np.empty((num_records, len(data_record[k]["data_descriptors"])))
 
 		rec_idx = 0
 		for k in data_record:
 			# handle unshared fields
 			int_time_array[rec_idx] = data_record[k]["int_time"]
 			sqn_num_array[rec_idx] = data_record[k]["num_sequences"]
+			data_dims_array[rec_idx] = data_record[k]["data_dimensions"]
 
 			# insert data into buffer
 			record_buffer = data_record[k]["data"]
@@ -118,6 +125,11 @@ def restructure_data(data_path):
 			sqn_end = sqn_pos + data_record[k]["num_sequences"]
 			sqn_ts_buffer[sqn_pos:sqn_end] = rec_sqn_ts
 
+			rec_noise = data_record[k]["noise_at_freq"]
+			noise_pos = rec_idx * noise_buffer_offset
+			noise_end = noise_pos + data_record[k]["num_sequences"]
+			noise_buffer[noise_pos:noise_end] = rec_noise
+
 			rec_idx += 1
 
 		# write leftover metadata and data
@@ -126,8 +138,10 @@ def restructure_data(data_path):
 
 		data_dict["data"] = data_buffer.reshape(data_shape)
 		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
+		data_dict["noise_at_freq"] = noise_buffer.reshape(noise_shape)
 
 		data_dict["data_descriptors"] = np.insert(data_dict["data_descriptors"], 0, "num_records")
+		data_dict["data_dimensions"] = data_dims_array
 
 		print("Compressing...")
 		dd.io.save(data_path + ".new", data_dict, compression='zlib')
@@ -163,14 +177,21 @@ def restructure_data(data_path):
 		sqn_ts_buffer = np.zeros(num_records * max_seqs)
 		sqn_shape = (num_records, max_seqs)
 
+		noise_buffer_offset = max_seqs
+		noise_buffer = np.zeros(num_records * max_seqs)
+		noise_shape = (num_records, max_seqs)
+
 		sqn_num_array = np.empty(num_records)
 		int_time_array = np.empty(num_records)
+
+		data_dims_array = np.empty((num_records, len(data_record[k]["data_descriptors"])))
 
 		rec_idx = 0
 		for k in data_record:
 			# handle unshared fields
 			int_time_array[rec_idx] = data_record[k]["int_time"]
 			sqn_num_array[rec_idx] = data_record[k]["num_sequences"]
+			data_dims_array[rec_idx] = data_record[k]["data_dimensions"]
 
 			# insert data into buffer
 			record_buffer = data_record[k]["data"]
@@ -184,6 +205,11 @@ def restructure_data(data_path):
 			sqn_end = sqn_pos + data_record[k]["num_sequences"]
 			sqn_ts_buffer[sqn_pos:sqn_end] = rec_sqn_ts
 
+			rec_noise = data_record[k]["noise_at_freq"]
+			noise_pos = rec_idx * noise_buffer_offset
+			noise_end = noise_pos + data_record[k]["num_sequences"]
+			noise_buffer[noise_pos:noise_end] = rec_noise
+
 			rec_idx += 1
 
 		# write leftover metadata and data
@@ -192,8 +218,10 @@ def restructure_data(data_path):
 
 		data_dict["data"] = data_buffer.reshape(data_shape)
 		data_dict["sqn_timestamps"] = sqn_ts_buffer.reshape(sqn_shape)
+		data_dict["noise_at_freq"] = noise_buffer.reshape(noise_shape)
 
 		data_dict["data_descriptors"] = np.insert(data_dict["data_descriptors"], 0, "num_records")
+		data_dict["data_dimensions"] = data_dims_array
 
 		print("Compressing...")
 		dd.io.save(data_path + ".new", data_dict, compression='zlib')
@@ -222,7 +250,10 @@ def restructure_data(data_path):
 		num_lags = dims[2]
 		data_shape = (num_records, num_beams, num_ranges, num_lags)
 
-		
+		noise_buffer_offset = max_seqs
+		noise_buffer = np.zeros(num_records * max_seqs)
+		noise_shape = (num_records, max_seqs)
+
 		sqn_ts_array = np.empty((num_records, max_seqs))
 		sqn_num_array = np.empty(num_records)
 		main_array = np.empty(data_shape, dtype=np.complex64)
@@ -244,6 +275,13 @@ def restructure_data(data_path):
 				sqn_timestamps = np.append(sqn_timestamps, 0)
 			sqn_ts_array[rec_idx] = sqn_timestamps
 
+			rec_noise = data_record[k]["noise_at_freq"]
+			noise_pos = rec_idx * noise_buffer_offset
+			noise_end = noise_pos + data_record[k]["num_sequences"]
+			noise_buffer[noise_pos:noise_end] = rec_noise
+
+			data_dict["noise_at_freq"] = noise_buffer.reshape(noise_shape)
+
 			main_array[rec_idx] = data_record[k]["main_acfs"].reshape(dims)
 			intf_array[rec_idx] = data_record[k]["intf_acfs"].reshape(dims)
 			xcfs_array[rec_idx] = data_record[k]["xcfs"].reshape(dims)
@@ -254,7 +292,7 @@ def restructure_data(data_path):
 		data_dict["int_time"] = int_time_array
 		data_dict["sqn_timestamps"] = sqn_ts_array
 		data_dict["num_sequences"] = sqn_num_array
-
+		data_dict["noise_at_freq"] = noise_buffer.reshape(noise_shape)
 		data_dict["correlation_descriptors"] = np.insert(data_dict["correlation_descriptors"], 0, "num_records")
 
 		data_dict["main_acfs"] = main_array
