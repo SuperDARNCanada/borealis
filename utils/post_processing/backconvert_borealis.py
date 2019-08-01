@@ -11,6 +11,7 @@ import numpy as np
 import os
 import sys
 import subprocess as sp
+import datetime
 
 def backconvert_data(data_path):
 	"""
@@ -31,7 +32,11 @@ def backconvert_data(data_path):
 		ts_dict = dict()
 		# get keys from first sequence timestamps
 		for rec, seq_ts in enumerate(data_record["sqn_timestamps"]):
-			key = str(int(seq_ts[0] * 1000))
+			# format dictionary key in the same way it is done
+			# in datawrite on site
+			sqn_dt_ts = datetime.datetime.utcfromtimestamp(seq_ts[0])
+			epoch = datetime.datetime.utcfromtimestamp(0)
+			key = str(int((sqn_dt_ts - epoch).total_seconds() * 1000))
 			
 			ts_dict[key] = dict()
 			temp_file = 'temp.hdf5'
