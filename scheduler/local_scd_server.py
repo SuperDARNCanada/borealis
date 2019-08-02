@@ -260,7 +260,7 @@ def main():
         os.makedirs(scd_logs)
 
     sites = list(EXPERIMENTS.keys())
-    site_scds = [scd_utils.SCDUtils("{}.scd".format(s)) for s in sites]
+    site_scds = [scd_utils.SCDUtils("{}/{}.scd".format(scd_dir, s)) for s in sites]
     swg = SWG(scd_dir)
 
     while True:
@@ -272,7 +272,7 @@ def main():
 
             errors = False
             today = datetime.datetime.utcnow()
-            scd_error_log = "/scd_errors.{}{}{}".format(today.year, today.month, today.day)
+            scd_error_log = today.strftime("/scd_errors.%Y%m%d")
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
@@ -292,12 +292,14 @@ def main():
                             f.write(error_msg)
 
                         errors = True
+                        break
                     except FileNotFoundError as e:
-                        error_msg = "SCD filename: {} is missing!!!".format(site_scd.scd_filename)
+                        error_msg = "SCD filename: {} is missing!!!\n".format(site_scd.scd_filename)
                         with open(scd_logs + scd_error_log, 'a') as f:
                             f.write(error_msg)
 
                         errors = True
+                        break
 
 
             subject = "Scheduling report for swg lines"
