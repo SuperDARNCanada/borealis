@@ -49,7 +49,7 @@ class ExperimentOptions:
             self._max_freq = float(config['max_freq'])  # Hz
             self._min_freq = float(config['min_freq'])  # Hz
             self._minimum_pulse_length = float(config['minimum_pulse_length'])  # us
-            self._minimum_mpinc_length = float(config['minimum_mpinc_length'])  # us
+            self._minimum_tau_spacing_length = float(config['minimum_tau_spacing_length'])  # us
             # Minimum pulse separation is the minimum before the experiment treats it as a single
             # pulse (transmitting zeroes or no receiving between the pulses)
             # 125 us is approx two TX/RX times
@@ -218,7 +218,7 @@ class ExperimentOptions:
                     \n    max_freq = {} \
                     \n    min_freq = {} \
                     \n    minimum_pulse_length = {} \
-                    \n    minimum_mpinc_length = {} \
+                    \n    minimum_tau_spacing_length = {} \
                     \n    minimum_pulse_separation = {} \
                     \n    tr_window_time = {} \
                     \n    atten_window_time_start = {} \
@@ -236,7 +236,7 @@ class ExperimentOptions:
                                 self.analog_rx_attenuator, self.tdiff, self.phase_sign,
                                 self.intf_offset, self.analog_rx_rise, self.analog_atten_stages,
                                 self.max_range_gates, self.max_beams, self.max_freq, self.min_freq,
-                                self. minimum_pulse_length, self.minimum_mpinc_length,
+                                self. minimum_pulse_length, self.minimum_tau_spacing_length,
                                 self.minimum_pulse_separation, self.tr_window_time,
                                 self.atten_window_time_start, self.atten_window_time_end,
                                 self.default_freq, self.restricted_ranges)
@@ -307,8 +307,8 @@ class ExperimentOptions:
         return self._minimum_pulse_length  # us
 
     @property
-    def minimum_mpinc_length(self):
-        return self._minimum_mpinc_length  # us
+    def minimum_tau_spacing_length(self):
+        return self._minimum_tau_spacing_length  # us
 
     @property
     def minimum_pulse_separation(self):

@@ -372,6 +372,9 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
     given pulse and a given transmit antenna (index of array in list provides antenna 
     number). Adds the list of samples to the pulse dictionary (in the pulse_list list) 
     under the key 'samples'. 
+
+    If the antenna is listed in the config but is not used in the sequence, it is provided 
+    an array of zeroes to transmit. 
     
     :param pulse_list: a list of dictionaries, each dict is a pulse. The list includes 
      all pulses that will be combined together. All dictionaries in this list (all 
@@ -419,7 +422,7 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
                 phase_for_antenna = \
                     get_phshift(beamdirs_for_antennas[antenna], exp_slices[pulse['slice_id']]['txfreq'],
                                 antenna,
-                                exp_slices[pulse['slice_id']]['pulse_shift'][pulse['slice_pulse_index']],
+                                exp_slices[pulse['slice_id']]['pulse_phase_offset'][pulse['slice_pulse_index']],
                                 main_antenna_count, main_antenna_spacing)
                 phase_array.append(phase_for_antenna)
         else: # rxonly operation.
@@ -490,7 +493,11 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
     Get all the necessary phase shifts for all antennas for all the beams for a pulse sequence.
   
     Take all beam directions and resolve into a list of phase offsets for all antennas given the
-    spacing, frequency, and number of antennas to resolve for. 
+    spacing, frequency, and number of antennas to resolve for (provided in config).
+
+    If the experiment does not use all channels in config, that will be accounted for in the 
+    send_dsp_metadata function, where the phase rotation will instead = 0.0 so all samples from 
+    that receive channel will be multiplied by zero and therefore not included (in beamforming).
     
     :param beamdir: list of length 1 or more.
     :param main_antenna_count: the number of main antennas to calculate the phase offset for.

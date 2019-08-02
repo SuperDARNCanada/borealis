@@ -254,7 +254,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto time_now = box_time;
     auto sequence_start_time = time_now + delay;
 
-    TIMEIT_IF_TRUE_OR_DEBUG(true,COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
+    TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
       [&]() {
 
         // Here we are time-aligning our time_zero to the start of a sample. Do this by recalculating
@@ -267,7 +267,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
         sequence_start_time = initialization_time + time_from_initialization;
 
-        TIMEIT_IF_TRUE_OR_DEBUG(true,COLOR_BLUE("TRANSMIT") << " time to send all samples to USRP: ",
+        TIMEIT_IF_TRUE_OR_DEBUG(false ,COLOR_BLUE("TRANSMIT") << " time to send all samples to USRP: ",
           [&]() {
             for (uint32_t i=0; i<pulses.size(); i++){
               auto md = TXMetadata();
@@ -285,7 +285,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               //0.1 seconds.
               auto samples_per_pulse = pulses[i][0].size();
 
-              TIMEIT_IF_TRUE_OR_DEBUG(true, COLOR_BLUE("TRANSMIT") << " time to send pulse " << i <<
+              TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " time to send pulse " << i <<
                                       " to USRP: ",
                 [&]() {
                   uint64_t total_samps_sent = 0;
@@ -334,14 +334,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               }
 
               for(uint32_t j=0; j<lates.size(); j++) {
-                RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": channel " << j <<
+                DEBUG_MSG(COLOR_BLUE("TRANSMIT") << ": channel " << j <<
                               " got " << lates[j] << " lates for pulse " << i);
               }
 
-              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num <<" Got "
+              DEBUG_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num <<" Got "
                             << channel_acks << " acks out of " << tx_channels.size()
                             << " channels for pulse " << i);
-              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num << " Got "
+              DEBUG_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num << " Got "
                             << channel_lates << " lates out of " << tx_channels.size()
                             << " channels for pulse " << i);
               }
@@ -357,7 +357,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
 
-    RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sleep time " << sleep_time.get_real_secs() * 1e6
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << ": Sleep time " << sleep_time.get_real_secs() * 1e6
                   << " us");
 
     if(sleep_time.get_real_secs() > 0.0) {

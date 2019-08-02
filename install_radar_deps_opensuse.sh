@@ -56,14 +56,8 @@ cp zmq_addon.hpp /usr/local/include
 cd ../ || exit
 pip3 install zmq
 
-#### INSTALL EIGEN####
-git clone https://github.com/eigenteam/eigen-git-mirror.git
-cd eigen-git-mirror
-mkdir build
-cd build || exit
-cmake ../
-make install
-cd ../../ || exit
+#### INSTALL ARMADILLO ####
+zypper install libarmadillo8 armadillo-devel
 
 #### INSTALL UHD ####
 #http://files.ettus.com/manual/page_build_guide.html
