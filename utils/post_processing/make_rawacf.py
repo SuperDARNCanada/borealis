@@ -10,7 +10,7 @@ import bz2
 import os
 import sys
 
-from borealis.utils.post_processing.bfiq_to_rawacf import bfiq_to_rawacf_postprocessing
+from bfiq_to_rawacf import bfiq_to_rawacf_postprocessing
 
 def usage_msg():
     """
@@ -115,7 +115,7 @@ def rawacf_processor(filename, rawacf_directory):
 
 
 def main():
-    parser = borealis_conversion_parser()
+    parser = script_parser()
     args = parser.parse_args()
 
     rawacf_processor(args.borealis_bfiq_file, args.rawacf_directory)
