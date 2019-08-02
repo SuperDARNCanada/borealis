@@ -130,7 +130,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   bool lp_high;
   double seqtime;
 
-  double agc_signal_read_delay = driver_options.get_agc_signal_read_delay();
+  double agc_signal_read_delay = driver_options.get_agc_signal_read_delay() * 1e-6;
 
   zmq::message_t request;
 
