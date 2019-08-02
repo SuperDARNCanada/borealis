@@ -12,6 +12,7 @@ import os
 import sys
 import subprocess as sp
 import datetime
+import warnings
 
 def backconvert_data(data_path):
 	"""
@@ -204,6 +205,8 @@ def backconvert_data(data_path):
 	print("Restructuring", data_path, "...")
 
 	data = dd.io.load(data_path)
+
+	warnings.simplefilter('ignore')
 
 
 	if (suffix == 'output_ptrs_iq') or (suffix == 'antennas_iq'):
