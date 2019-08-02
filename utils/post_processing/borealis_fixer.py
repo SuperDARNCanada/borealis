@@ -39,13 +39,13 @@ def script_parser():
     return parser
 
 
-def update_file(filename, fixed_data_dir):
+def update_file(filename, out_file):
 
     recs = dd.io.load(filename)
     sorted_keys = sorted(list(recs.keys()))
 
-    out_file = fixed_data_dir + "/" + os.path.basename(filename)
-    tmp_file = fixed_data_dir + "/" + os.path.basename(filename) + ".tmp"
+
+    tmp_file = out_file + ".tmp"
 
 
     write_dict = {}
@@ -94,8 +94,66 @@ def update_file(filename, fixed_data_dir):
         os.remove(tmp_file)
 
 
+def decompress_bz2(filename):
+    basename = os.path.basename(filename) 
+    newfilepath = os.path.dirname(filename) + '/' + '.'.join(basename.split('.')[0:-1]) # all but bz2
+
+    with open(newfilepath, 'wb') as new_file, bz2.BZ2File(filename, 'rb') as file:
+        for data in iter(lambda : file.read(100 * 1024), b''):
+            new_file.write(data)    
+
+    return newfilepath
+
+
+def compress_bz2(filename):
+    bz2_filename = filename + '.bz2'
+
+    with open(filename, 'rb') as file, bz2.BZ2File(bz2_filename, 'wb') as bz2_file:
+        for data in iter(lambda : file.read(100 * 1024), b''):
+            bz2_file.write(data)   
+
+    return bz2_filename
+
+
+def file_updater(filename, fixed_data_dir):
+    """
+    Checks if the file is bz2, decompresses if necessary, and 
+    writes to a fixed data directory. If the file was bz2, then the resulting
+    file will also be compressed to bz2.
+
+    Parameters
+    ----------
+    filename
+        filename to update, can be bz2 compressed
+    fixed_data_dir
+        pathname to put the new file into
+    """
+
+    if os.path.basename(filename).split('.')[-1] in ['bz2', 'bzip2']:
+        hdf5_file = decompress_bz2(filename)
+        bzip2 = True
+    else:
+        hdf5_file = filename
+        bzip2 = False
+    
+    out_file = fixed_data_dir + "/" + os.path.basename(hdf5_file)
+
+    update_file(hdf5_file, out_file)
+
+    if bzip2:
+        # remove the input file from the directory because it was generated.
+        os.remove(hdf5_file)
+        # compress the updated file to bz2 if the input file was given as bz2.
+        bz2_filename = compress_bz2(out_file)
+        os.remove(out_file)
+        out_file = bz2_filename
+
+    return out_file
+
+
+
 if __name__ == "__main__":
     parser = script_parser()
     args = parser.parse_args()
 
-    update_file(args.filename, args.fixed_data_dir)
+    file_updater(args.filename, args.fixed_data_dir)
