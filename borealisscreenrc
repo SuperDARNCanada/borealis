@@ -2,29 +2,30 @@ chdir $BOREALISPATH
 
 layout autosave on
 layout new borealis
-screen -t "Brian" bash -c "python3 -O brian/brian.py; bash"
+screen -t "Brian" bash -c "START_BRIAN"
 split
 
 split -v
 focus right
-screen -t "N200 Driver" bash -c "sleep 0.001s; source mode release; usrp_driver > usrp_output.txt; bash"
+screen -t "N200 Driver" bash -c "START_USRP_DRIVER"
 
 split -v
 focus right
-screen -t "Signal Processing" bash -c "sleep 0.001s; source mode release; signal_processing; bash;"
+screen -t "Signal Processing" bash -c "START_DSP"
 
 focus down
-screen -t "Data Write" bash -c "sleep 0.001s;python3 -O data_write/data_write.py --file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq; bash;"
+screen -t "Data Write" bash -c "START_DATAWRITE"
 
 split -v
 focus right
-screen -t "Experiment Handler" bash -c "sleep 0.001s; python3 -O experiment_handler/experiment_handler.py normalscan ; bash;"
+screen -t "Experiment Handler" bash -c "START_EXPHAN"
 
 split -v
 focus right
-screen -t "Radar Control" bash -c "sleep 0.001s; python3 -O radar_control/radar_control.py; bash;"
+screen -t "Radar Control" bash -c "START_RADCTRL"
 
 split -v
 focus right
-screen -t "Cpu Affinity" bash -c "sleep 0.001s; python3 -O usrp_drivers/set_affinity.py; bash;"
+screen -t "Cpu Affinity" bash -c "START_TIDS"
 
+detach
