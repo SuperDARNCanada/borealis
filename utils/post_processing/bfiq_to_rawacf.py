@@ -6,10 +6,17 @@ import os
 from datetime import datetime as dt
 import warnings
 
-def bfiq_to_rawacf_postprocessing(bfiq_filepath):
+def bfiq_to_rawacf_postprocessing(bfiq_filepath, rawacf_filepath):
 	"""
 	Processes the data from a bfiq.hdf5 file and creates auto and cross correlations from the samples.
 	This data is formatted and written to mimic borealis rawacf.hdf5 files.
+
+	Parameters 
+	----------
+	bfiq_filepath
+		The file where the bfiq hdf5 data is located.
+	rawacf_filepath
+		The path to where you want to place the rawacf hdf5 data.
 	"""
 
 	def correlate_samples(ts_dict):
@@ -95,8 +102,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 
 	warnings.simplefilter('ignore')
 
-	acf_file = bfiq_filepath.split('b')[-2] + 'rawacf.hdf5.test' 
-	temp_file= "temp_acf.hdf5"
+	temp_file= rawacf_filepath + ".temp_acf"
 
 	bfiq = dd.io.load(bfiq_filepath)
 	acfs = dict()
@@ -135,7 +141,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 		ts_dd[k]["experiment_comment"] += "File generated on " + date_str + " at " + time_str + " from " + bfiq_filepath + "via postprocessing util"
 
 		try:
-			fd = os.open(acf_file, os.O_CREAT | os.O_EXCL)
+			fd = os.open(rawacf_filepath, os.O_CREAT | os.O_EXCL)
 			os.close(fd)
 		except FileExistsError:
 			pass
@@ -143,7 +149,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 		# copy timestamped record to full acf file
 		dd.io.save(temp_file, ts_dd, compression=None)
 		cmd = 'h5copy -i {newfile} -o {fullfile} -s {dtstr} -d {dtstr}'
-		cmd = cmd.format(newfile=temp_file, fullfile=acf_file, dtstr=k)
+		cmd = cmd.format(newfile=temp_file, fullfile=rawacf_filepath, dtstr=k)
 
 		sp.call(cmd.split())
 		os.remove(temp_file)
