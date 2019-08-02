@@ -56,9 +56,9 @@ sed -i.bak "s#START_BRIAN#$start_brian#; \
             s#START_DATAWRITE#$start_datawrite#; \
             s#START_USRP_DRIVER#$start_usrp_driver#; \
             s#START_DSP#$start_dsp#; \
-            s#START_TIDS#$start_tids#;" borealisscreenrc
+            s#START_TIDS#$start_tids#;" $BOREALISPATH/borealisscreenrc
 
 # Launch a detached screen with editted layout.
-screen -S borealis -c borealisscreenrc
+screen -S borealis -c $BOREALISPATH/borealisscreenrc
 # Return the original config file
-mv borealisscreenrc.bak borealisscreenrc
+mv $BOREALISPATH/borealisscreenrc.bak $BOREALISPATH/borealisscreenrc

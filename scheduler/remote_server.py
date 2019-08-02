@@ -37,12 +37,14 @@ def format_to_atq(dt, experiment, first_event_flag=False):
     Returns:
         str: Formatted atq str.
     """
-    if first_event_flag:
-        cmd_str = "echo '{borealis_path}/start_radar.sh {experiment}' | at now"
-    else:
-        cmd_str = "echo '{borealis_path}/start_radar.sh {experiment}' | at -t %Y%m%d%H%M"
 
-    cmd_str = cmd_str.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment)
+    start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.sh {experiment} release'" 
+    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment)
+    if first_event_flag:
+        cmd_str = start_cmd + " | at now + 1 minute"
+    else:
+        cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
+    
     cmd_str = dt.strftime(cmd_str)
     return cmd_str
 
@@ -448,7 +450,9 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest):
             first_event = False
         else:
             atq.append(format_to_atq(event['time'], event['experiment']))
-
+    
+    stop_cmd = "screen -X -S borealis quit"
+    sp.call(stop_cmd, shell=True)
     for cmd in atq:
         sp.call(cmd, shell=True)
 
@@ -530,7 +534,6 @@ def _main():
     site_id = options.site_id
 
     scd_file = '{}/{}.scd'.format(scd_dir, site_id)
-
     i.add_watch(scd_file)
     scd_util = scd_utils.SCDUtils(scd_file)
 
@@ -544,7 +547,7 @@ def _main():
         time_of_interest = datetime.datetime.utcnow()
 
         log_time_str = time_of_interest.strftime("%Y.%m.%d.%H.%M")
-        log_file = "{}/{}.log".format(log_dir, log_time_str)
+        log_file = "{}/remote_server.{}.log".format(log_dir, log_time_str)
 
         log_msg_header = "Updated at {}\n".format(time_of_interest)
         try:

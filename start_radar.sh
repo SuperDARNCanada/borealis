@@ -1,7 +1,4 @@
 #!/bin/bash
 
-screen -X -S borealis quit
-sleep 1
-cd $BOREALISPATH
-./steamed_hams.sh $1 release
-
+pkill -9 -f remote_server.py
+python3 $BOREALISPATH/scheduler/remote_server.py --scd-dir=/home/radar/borealis_schedules/borealis_schedules --emails-filepath=/home/radar/borealis_schedules/borealis_schedules/emails.txt 
