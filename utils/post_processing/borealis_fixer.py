@@ -151,7 +151,6 @@ def file_updater(filename, fixed_data_dir):
     return out_file
 
 
-
 if __name__ == "__main__":
     parser = script_parser()
     args = parser.parse_args()
