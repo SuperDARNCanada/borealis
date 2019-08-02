@@ -55,11 +55,10 @@ def backconvert_data(data_path):
 			ts_dict[key]["int_time"] = data_record["int_time"][rec]
 			ts_dict[key]["sqn_timestamps"] = data_record["sqn_timestamps"][rec, 0:int(num_sequences)]
 			ts_dict[key]["noise_at_freq"] = data_record["noise_at_freq"][rec, 0:int(num_sequences)]
-			ts_dict[key]["data"] = data_record["data"][rec, :, 0:int(num_sequences), :].flatten()
 			ts_dict[key]["data_descriptors"] = ts_dict[key]["data_descriptors"][1:]
 			ts_dict[key]["data_dimensions"] = data_record["data_dimensions"][rec]
 
-
+			ts_dict[key]["data"] = np.trim_zeros(data_record["data"][rec].flatten())
 			# File should be written here
 
 			site_format_file = data_path + '.site'
@@ -115,9 +114,10 @@ def backconvert_data(data_path):
 			ts_dict[key]["int_time"] = data_record["int_time"][rec]
 			ts_dict[key]["sqn_timestamps"] = data_record["sqn_timestamps"][rec, 0:int(num_sequences)]
 			ts_dict[key]["noise_at_freq"] = data_record["noise_at_freq"][rec, 0:int(num_sequences)]
-			ts_dict[key]["data"] = data_record["data"][rec, :, 0:int(num_sequences), :, :].flatten()
 			ts_dict[key]["data_descriptors"] = ts_dict[key]["data_descriptors"][1:]
 			ts_dict[key]["data_dimensions"] = data_record["data_dimensions"][rec]
+
+			ts_dict[key]["data"] = np.trim_zeros(data_record["data"][rec].flatten())
 			# File should be written here
 
 			site_format_file = data_path + '.site'
@@ -207,7 +207,7 @@ def backconvert_data(data_path):
 
 
 	if (suffix == 'output_ptrs_iq') or (suffix == 'antennas_iq'):
-		print("Loaded a pre bfiq file...")
+		print("Loaded an antenna iq file...")
 		backconvert_pre_bfiq(data, data_path)
 	elif suffix == 'bfiq':
 		print("Loaded a bfiq file...")

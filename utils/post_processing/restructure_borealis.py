@@ -310,7 +310,7 @@ def restructure_data(data_path):
 	data = dd.io.load(data_path)
 
 	if (suffix == 'output_ptrs_iq') or (suffix == 'antennas_iq'):
-		print("Loaded a pre bfiq file...")
+		print("Loaded an antenna iq file...")
 		restructure_pre_bfiq(data)
 	elif suffix == 'bfiq':
 		print("Loaded a bfiq file...")
