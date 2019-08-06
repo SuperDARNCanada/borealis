@@ -22,8 +22,8 @@ if [ "$2" = "release" ]; then
     start_brian="python3 -O brian/brian.py; bash"
     start_exphan="sleep 0.001s; python3 -O experiment_handler/experiment_handler.py "$1" ; bash;"
     start_radctrl="sleep 0.001s; python3 -O radar_control/radar_control.py; bash;"
-    start_datawrite="sleep 0.001s;python3 -O data_write/data_write.py --file-type=hdf5 --enable-bfiq --enable-pre-bfiq; bash;"
-    start_usrp_driver="sleep 0.001s; source mode "$2"; usrp_driver; bash"
+    start_datawrite="sleep 0.001s;python3 -O data_write/data_write.py --file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq; bash;"
+    start_usrp_driver="sleep 0.001s; source mode "$2"; usrp_driver > usrp_output.txt; bash"
     start_dsp="sleep 0.001s; source mode "$2"; signal_processing; bash;"
     start_tids="sleep 0.001s; python3 -O usrp_drivers/set_affinity.py; bash;"
 elif [ "$2" = "python-profiling" ]; then  # uses source mode release for C code.
@@ -39,9 +39,10 @@ elif [ "$2" = "debug" ] || [ "$2" = "engineeringdebug" ]; then
     start_exphan="sleep 0.001s; python3 experiment_handler/experiment_handler.py "$1" ; bash"
     start_radctrl="sleep 0.001s; python3 radar_control/radar_control.py; bash"
 #    start_datawrite="sleep 0.001s; python3 data_write/data_write.py --enable-bfiq --enable-pre-bfiq --enable-tx --enable-raw-rf; bash"
-    start_datawrite="sleep 0.001s; python3 data_write/data_write.py --enable-pre-bfiq --enable-raw-rf; bash"
+    start_datawrite="sleep 0.001s; python3 data_write/data_write.py --enable-antenna-iq --enable-raw-rf --enable-raw-acfs; bash"
     start_usrp_driver="sleep 0.001s; source mode "$2" ; gdb -ex start usrp_driver 2>usrp_output.txt; bash"
-    start_dsp="sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
+#    start_dsp="sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
+    start_dsp="sleep 0.001s; source mode release; signal_processing; bash;"
     start_tids="sleep 0.001s; python3 usrp_drivers/set_affinity.py; bash"
 else
     echo "Mode '$2' is unknown, exiting without running Borealis"

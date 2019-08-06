@@ -28,7 +28,7 @@
 """SCons site config script"""
 
 import os
-
+import subprocess as sp
 from site_utils import module_dirs_generator
 
 # Directory for build process outputs (object files etc.)
@@ -87,13 +87,33 @@ ENV_OVERRIDES = {
 # Dictionary of flavor-specific settings that should extend values
 #  from the base environment (using env.Append).
 # `_common` is reserved for settings that apply to the base env.
+
+def detect_compute_capability():
+	""" Uses the CUDA demo suite to determine the device compute capability.
+	This will automatically produce the correct compilation flags for the 
+	device in the machine.
+	"""
+
+	cmd = "/usr/local/cuda/extras/demo_suite/deviceQuery"
+	output = sp.check_output(cmd, shell=True)
+
+	for line in output.splitlines():
+		str_decode = line.decode('ascii')
+		if "CUDA Capability" in str_decode:
+			split = str_decode.split()
+			# CC version is the last element in the line. Just need to remove
+			# decimal point.
+			compute_cap = split[-1].replace(".", "")
+
+	return ['-gencode','arch=compute_{0},code=sm_{0}'.format(compute_cap)]
+
 ENV_EXTENSIONS = {
     '_common': dict(
         # Common flags for all C++ builds
         CCFLAGS = ['-Wall'],
         CXXFLAGS = ['-std=c++11'],
         CFLAGS = ['-std=c99'],
-        NVCCFLAGS = ['-gencode', 'arch=compute_30,code=sm_30','-gencode', 'arch=compute_50,code=sm_50','-gencode','arch=compute_61,code=sm_61'],
+        NVCCFLAGS = detect_compute_capability(),
         # Modules should be able to include relative to build root dir
         CPPPATH = ['#$BUILDROOT'],
     ),
@@ -122,7 +142,7 @@ def flavors():
     tells the system what's the build base directory for that flavor.
     """
     # Use the keys from the env override / extension dictionaries
-    for flavor in set(ENV_EXTENSIONS.keys() + ENV_OVERRIDES.keys()):
+    for flavor in set(list(ENV_EXTENSIONS.keys()) + list(ENV_OVERRIDES.keys())):
         # Skip "hidden" records
         if not flavor.startswith('_'):
             yield flavor

@@ -86,15 +86,15 @@ class DataWriteOptions(object):
         return self._dw_to_radctrl_identity
 
 
-    @property
-    def debug_file(self):
-        """
-        Gets the name of the file to output debug data to.
+    # @property
+    # def debug_file(self):
+    #     """
+    #     Gets the name of the file to output debug data to.
 
-        :returns:   debug file name
-        :rtype:     str
-        """
-        return self._debug_file
+    #     :returns:   debug file name
+    #     :rtype:     str
+    #     """
+    #     return self._debug_file
 
     @property
     def data_directory(self):

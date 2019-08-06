@@ -2,40 +2,33 @@
 
 # write an experiment that creates a new control program.
 from experiment_prototype.experiment_prototype import ExperimentPrototype
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
-from experiments.test_decimation_schemes import *
+
 
 class Normalscan(ExperimentPrototype):
 
     def __init__(self):
         cpid = 150
-        super(Normalscan, self).__init__(cpid, decimation_scheme=create_test_scheme_9())
+        super(Normalscan, self).__init__(cpid)
 
-        tx_antennas = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        rx_main_antennas = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        rx_int_antennas = [0, 1, 2, 3]
-        pulse_sequence = [0, 9, 12, 20, 22, 26, 27] #[0, 14, 22, 24, 27, 31, 42, 43]
-        tau_spacing = 2400 # 1500 # us
         self.add_slice({  # slice_id = 0, there is only one slice.
-            "tx_antennas": tx_antennas,
-            "rx_main_antennas": rx_main_antennas,
-            "rx_int_antennas": rx_int_antennas,
-            "pulse_sequence": pulse_sequence,
-            "pulse_phase_offset": [0, 0, 0, 0, 0, 0, 0],
-            "tau_spacing": tau_spacing,  # us
+            "tx_antennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+            "rx_main_antennas": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+            "rx_int_antennas": [0, 1, 2, 3],
+            "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
+            "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
+            "mpinc": 1500,  # us
             "pulse_len": 300,  # us
-            "num_ranges": 75,  # range gates
-            "first_range": 180,  # first range gate, in km
-            "intt": 3500,  # duration of an integration, in ms
-            #"intn": 21,  # number of averages if intt is None.
+            "nrang": 75,  # range gates
+            "frang": 180,  # first range gate, in km
+            "intt": 3000,  # duration of an integration, in ms
+            "intn": 21,  # number of averages if intt is None.
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
                            26.25],
             "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
-            #"scanboundflag": True,  # there is a scan boundary
-            #"scanbound": 60000,  # ms
-            "txfreq": 10500,
-            "acf": True,
+            "scanboundflag": True,  # there is a scan boundary
+            "scanbound": 60000,  # ms
+            "txfreq": 13300,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         })
