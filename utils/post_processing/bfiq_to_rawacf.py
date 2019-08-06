@@ -114,7 +114,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath, rawacf_filepath):
 	 					'first_range_rtt', 'freq', 'int_time', 'intf_antenna_count', 
 	 					'main_antenna_count', 'num_sequences', 'num_slices', 'range_sep', 
 	 					'rx_sample_rate', 'samples_data_type', 'scan_start_marker', 
-	 					'slice_comment', 'station', 'tau_spacing', 'timestamp_of_write', 'tx_pulse_len']
+	 					'slice_comment', 'station', 'tau_spacing', 'tx_pulse_len']
 
 	for k in bfiq:
 		acfs[k] = dict()
