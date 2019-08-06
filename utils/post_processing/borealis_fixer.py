@@ -65,30 +65,50 @@ def update_file(filename, out_file):
                 continue
         return data
 
-    for group_name in sorted_keys:
+    for key_num, group_name in enumerate(sorted_keys):
 
         # APPLY CHANGE HERE
         # recs[group_name]['data_dimensions'][0] = 2
         if 'noise_at_freq' not in recs[group_name].keys():
             recs[group_name]['noise_at_freq'] = np.array([0.0] * int(recs[group_name]['num_sequences']), dtype=np.float64)
+            if key_num == 0:
+                print('noise_at_freq added')
         if 'data_normalization_factor' not in recs[group_name].keys():
             recs[group_name]['data_normalization_factor'] = np.float64(9999999.999999996)
+            if key_num == 0:
+                print('data_normalization_factor added')
         if 'comment' in recs[group_name].keys():
             recs[group_name]['experiment_comment'] = recs[group_name]['comment']
             del recs[group_name]['comment']
+            if key_num == 0:
+                print('experiment_comment added')
         if 'slice_comment' not in recs[group_name].keys():
             recs[group_name]['slice_comment'] = np.unicode_('')
+            if key_num == 0:
+                print('slice_comment added')
         if 'experiment_string' in recs[group_name].keys():
             recs[group_name]['experiment_name'] = recs[group_name]['experiment_string']
             del recs[group_name]['experiment_string']
+            if key_num == 0:
+                print('experiment_name added')
         if 'num_slices' not in recs[group_name].keys():
             recs[group_name]['num_slices'] = np.int64(1)
+            if key_num == 0:
+                print('num_slices added')
         if 'range_sep' not in recs[group_name].keys():
             recs[group_name]['range_sep'] = np.float32(44.96887)
+            if key_num == 0:
+                print('range_sep added')
         if 'num_ranges' not in recs[group_name].keys():
             recs[group_name]['num_ranges'] = np.uint32(75)
+            if key_num == 0:
+                print('num_ranges added')
         if 'timestamp_of_write' in recs[group_name].keys():
             del recs[group_name]['timestamp_of_write']
+            if key_num == 0:
+                print('timestamp_of_write removed')
+
+
 
         write_dict = {}
         write_dict[group_name] = convert_to_numpy(recs[group_name])
