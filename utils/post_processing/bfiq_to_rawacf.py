@@ -154,7 +154,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath, rawacf_filepath):
 		sp.call(cmd.split())
 		os.remove(temp_file)
 
-		print("Done", k)
+		# print("Done", k)
 
 
 if __name__ == "__main__":
