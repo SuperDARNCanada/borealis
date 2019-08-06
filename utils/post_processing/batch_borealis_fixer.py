@@ -57,6 +57,8 @@ if __name__ == "__main__":
     filename_index = 0
     num_processes = 4
 
+    fixed_data_dir = args.fixed_data_dir[0] # only 1
+
     while files_left:
         for procnum in range(num_processes):
             try:
@@ -68,7 +70,7 @@ if __name__ == "__main__":
                     raise
                 files_left = False
                 break
-            p = Process(target=file_updater, args=(filename, args.fixed_data_dir))
+            p = Process(target=file_updater, args=(filename, fixed_data_dir))
             jobs.append(p)
             p.start()
 

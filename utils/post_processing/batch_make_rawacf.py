@@ -48,10 +48,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     files_to_update = args.path_regex # should be a list
-    print("files: " + files_to_update)
-    print("directory: " + args.rawacf_directory)
     jobs = []
 
+    rawacf_directory = args.rawacf_directory[0] # only 1 arg
     files_left = True
     filename_index = 0
     num_processes = 4
@@ -67,7 +66,7 @@ if __name__ == "__main__":
                     raise
                 files_left = False
                 break
-            p = Process(target=rawacf_processor, args=(filename, args.rawacf_directory))
+            p = Process(target=rawacf_processor, args=(filename, rawacf_directory))
             jobs.append(p)
             p.start()
 
