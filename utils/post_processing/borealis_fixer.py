@@ -2,6 +2,7 @@
 # Author: Marci Detwiller
 
 import argparse
+import bz2
 import sys
 import os
 import copy
