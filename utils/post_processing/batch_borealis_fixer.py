@@ -38,8 +38,8 @@ def usage_msg():
 
 def script_parser():
     parser = argparse.ArgumentParser(usage=usage_msg())
-    parser.add_argument("fixed_data_dir", help="Path to place the updated file in.")
-    parser.add_argument("path_regex", nargs='+' help="Path regex you want to match. Will"
+    parser.add_argument("fixed_data_dir", nargs=1, help="Path to place the updated file in.")
+    parser.add_argument("path_regex", nargs='+', help="Path regex you want to match. Will"
         " find the files that match to modify. Alternatively, list files separately and "
         " all listed will be processed.")
     return parser
