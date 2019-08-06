@@ -79,6 +79,7 @@ def update_file(filename, out_file):
         recs[group_name]['num_slices'] = np.int64(1)
         recs[group_name]['range_sep'] = np.float32(44.96887) 
         recs[group_name]['num_ranges'] = np.uint32(75)
+        del recs[group_name]['timestamp_of_write']
         # recs[group_name]['xcfs'] = recs[group_name]['xcfs'] * -1
 
         write_dict = {}
