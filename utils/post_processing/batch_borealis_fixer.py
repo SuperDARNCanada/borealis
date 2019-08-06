@@ -24,7 +24,7 @@ def usage_msg():
     :returns: the usage message
     """
 
-    usage_message = """ borealis_fixer.py [-h] path_regex fixed_dat_dir
+    usage_message = """ borealis_fixer.py [-h] fixed_dat_dir path_regex 
     
     **** NOT TO BE USED IN PRODUCTION ****
     **** USE WITH CAUTION ****
@@ -38,9 +38,10 @@ def usage_msg():
 
 def script_parser():
     parser = argparse.ArgumentParser(usage=usage_msg())
-    parser.add_argument("path_regex", help="Path regex you want to match. Will"
-    	" find the files that match to modify.")
     parser.add_argument("fixed_data_dir", help="Path to place the updated file in.")
+    parser.add_argument("path_regex", nargs='+' help="Path regex you want to match. Will"
+        " find the files that match to modify. Alternatively, list files separately and "
+        " all listed will be processed.")
     return parser
 
 
@@ -48,7 +49,7 @@ if __name__ == "__main__":
     parser = script_parser()
     args = parser.parse_args()
 
-    files_to_update = glob.glob(args.path_regex)
+    files_to_update = args.path_regex # should be a list
     
     jobs = []
 
