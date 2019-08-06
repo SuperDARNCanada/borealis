@@ -69,18 +69,26 @@ def update_file(filename, out_file):
 
         # APPLY CHANGE HERE
         # recs[group_name]['data_dimensions'][0] = 2
-        recs[group_name]['noise_at_freq'] = np.array([0.0] * int(recs[group_name]['num_sequences']), dtype=np.float64)
-        recs[group_name]['data_normalization_factor'] = np.float64(9999999.999999996)
-        recs[group_name]['experiment_comment'] = recs[group_name]['comment']
-        del recs[group_name]['comment']
-        recs[group_name]['slice_comment'] = np.unicode_('')
-        recs[group_name]['experiment_name'] = recs[group_name]['experiment_string']
-        del recs[group_name]['experiment_string']
-        recs[group_name]['num_slices'] = np.int64(1)
-        recs[group_name]['range_sep'] = np.float32(44.96887) 
-        recs[group_name]['num_ranges'] = np.uint32(75)
-        del recs[group_name]['timestamp_of_write']
-        # recs[group_name]['xcfs'] = recs[group_name]['xcfs'] * -1
+        if 'noise_at_freq' not in recs[group_name].keys():
+            recs[group_name]['noise_at_freq'] = np.array([0.0] * int(recs[group_name]['num_sequences']), dtype=np.float64)
+        if 'data_normalization_factor' not in recs[group_name].keys():
+            recs[group_name]['data_normalization_factor'] = np.float64(9999999.999999996)
+        if 'comment' in recs[group_name].keys():
+            recs[group_name]['experiment_comment'] = recs[group_name]['comment']
+            del recs[group_name]['comment']
+        if 'slice_comment' not in recs[group_name].keys():
+            recs[group_name]['slice_comment'] = np.unicode_('')
+        if 'experiment_string' in recs[group_name].keys():
+            recs[group_name]['experiment_name'] = recs[group_name]['experiment_string']
+            del recs[group_name]['experiment_string']
+        if 'num_slices' not in recs[group_name].keys():
+            recs[group_name]['num_slices'] = np.int64(1)
+        if 'range_sep' not in recs[group_name].keys():
+            recs[group_name]['range_sep'] = np.float32(44.96887)
+        if 'num_ranges' not in recs[group_name].keys():
+            recs[group_name]['num_ranges'] = np.uint32(75)
+        if 'timestamp_of_write' in recs[group_name].keys():
+            del recs[group_name]['timestamp_of_write']
 
         write_dict = {}
         write_dict[group_name] = convert_to_numpy(recs[group_name])
