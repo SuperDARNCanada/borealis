@@ -55,10 +55,8 @@ def decompress_bz2(filename):
 
 def check_for_gaps_in_file(rawacf_file, gap_spacing, gaps_dict, file_duration_dict):
     """
-    In the future this could be improved by reading all 
-    sequence timestamps to get sub 10s downtimes
 
-    :param gap_spacing: minimum spacing allowed between writes, in seconds.
+    :param gap_spacing: minimum spacing allowed between integration periods, in seconds.
     """
     print('Checking for gaps in : ' + rawacf_file)
     if os.path.basename(filename).split('.')[-1] in ['bz2', 'bzip2']:
@@ -76,7 +74,7 @@ def check_for_gaps_in_file(rawacf_file, gap_spacing, gaps_dict, file_duration_di
     inner_dict1[rawacf_file] = (first_record, last_record)
     file_duration_dict = inner_dict1 # reassign
 
-    # records are timestamp of write since epoch, in ms. 
+    # records are first sequence timestamp, since epoch, in ms. 
     # expected difference in timestamps of no more than 7s. 
     # (6s integrations are default for 2min scans on some modes)
     # however gap spacing is passed in to allow different uses of the function
@@ -108,7 +106,7 @@ def check_for_gaps_in_file(rawacf_file, gap_spacing, gaps_dict, file_duration_di
 
 def check_for_gaps_between_files(file_duration_dict, gap_spacing, gaps_dict):
     """
-    :param gap_spacing: minimum spacing allowed between writes, in seconds. 
+    :param gap_spacing: minimum spacing allowed between integration periods, in seconds. 
     """
     # print(file_duration_dict)
     sorted_filenames = sorted(file_duration_dict.keys())
@@ -117,7 +115,7 @@ def check_for_gaps_between_files(file_duration_dict, gap_spacing, gaps_dict):
     for file_num, filename in enumerate(sorted_filenames):
         if file_num == 0:
             continue # skip first one
-        previous_end_time = datetime.datetime.utcfromtimestamp(float(previous_last_record)/1000) # last record write time in the first file.
+        previous_end_time = datetime.datetime.utcfromtimestamp(float(previous_last_record)/1000) # last record integration start time in the first file.
         (first_record, last_record) = file_duration_dict[filename]
         start_time = datetime.datetime.utcfromtimestamp(float(first_record)/1000)
         end_time = datetime.datetime.utcfromtimestamp(float(last_record)/1000)
