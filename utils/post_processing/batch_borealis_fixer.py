@@ -9,7 +9,7 @@ import subprocess as sp
 import numpy as np
 import warnings
 import tables
-from multiprocessing import Pool
+from multiprocessing import Process
 import deepdish as dd
 
 from borealis_fixer import file_updater
@@ -47,8 +47,30 @@ if __name__ == "__main__":
     parser = script_parser()
     args = parser.parse_args()
 
-    update_pool = Pool(processes=4)
-
     files_to_update = glob.glob(args.path_regex)
     
-    update_pool.map(file_updater, rawacf_hdf5_files)
+    jobs = []
+
+    files_left = True
+    filename_index = 0
+    num_processes = 4
+
+    while files_left:
+        for procnum in range(num_processes):
+            try:
+                filename = files_to_update[filename_index + procnum]
+                print('Fixing: ' + filename)
+            except IndexError:
+                if filename_index + procnum == 0:
+                    print('No files found to check!')
+                    raise
+                files_left = False
+                break
+            p = Process(target=file_updater, args=(filename, args.fixed_data_dir))
+            jobs.append(p)
+            p.start()
+
+        for proc in jobs:
+            proc.join()
+
+        filename_index += num_processes
