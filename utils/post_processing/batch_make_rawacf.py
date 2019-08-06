@@ -48,7 +48,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     files_to_update = args.path_regex # should be a list
-    
+    print("files: " + files_to_update)
+    print("directory: " + args.rawacf_directory)
     jobs = []
 
     files_left = True
@@ -59,7 +60,7 @@ if __name__ == "__main__":
         for procnum in range(num_processes):
             try:
                 filename = files_to_update[filename_index + procnum]
-                print('Fixing: ' + filename)
+                print('Rawacf Processing: ' + filename)
             except IndexError:
                 if filename_index + procnum == 0:
                     print('No files found to check!')
