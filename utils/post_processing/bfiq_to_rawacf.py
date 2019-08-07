@@ -138,7 +138,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath, rawacf_filepath):
 		now = dt.now()
 		date_str = now.strftime("%Y-%m-%d")
 		time_str = now.strftime("%H:%M")
-		ts_dd[k]["experiment_comment"] += "File generated on " + date_str + " at " + time_str + " from " + bfiq_filepath + "via postprocessing util"
+		ts_dd[k]["experiment_comment"] += "File generated on " + date_str + " at " + time_str + " from " + bfiq_filepath + " via postprocessing util"
 
 		try:
 			fd = os.open(rawacf_filepath, os.O_CREAT | os.O_EXCL)
