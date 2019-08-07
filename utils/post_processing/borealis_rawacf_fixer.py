@@ -105,10 +105,10 @@ def update_file(filename, out_file):
         #     recs[group_name]['num_ranges'] = np.uint32(75)
         #     if key_num == 0:
         #         print('num_ranges added')
-        # if 'timestamp_of_write' in recs[group_name].keys():
-        #     del recs[group_name]['timestamp_of_write']
-        #     if key_num == 0:
-        #         print('timestamp_of_write removed')
+        if 'timestamp_of_write' in recs[group_name].keys():
+            del recs[group_name]['timestamp_of_write']
+            if key_num == 0:
+                print('timestamp_of_write removed')
         # if not isinstance(recs[group_name]['experiment_id'], np.int64):
         #     recs[group_name]['experiment_id'] = np.int64(recs[group_name]['experiment_id'])
         # if not recs[group_name]['lags']: # empty - issue in April, generate from pulses
@@ -127,6 +127,7 @@ def update_file(filename, out_file):
         #     recs[group_name]['correlation_descriptors'] = np.array(['num_beams', 'num_ranges', 'num_lags', dtype=np.unicode_])
         if not isinstance(recs[group_name]['correlation_dimensions'][0], np.uint32):
             recs[group_name]['correlation_dimensions'] = np.array(recs[group_name]['correlation_dimensions'], dtype=np.uint32)
+            print('correlation dimensions type changed')
         # if recs[group_name]['correlation_dimensions'][2] == 0:
         #     recs[group_name]['correlation_dimensions'][2] = np.uint32(recs[group_name]['lags'].shape[0])
 
