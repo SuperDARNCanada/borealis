@@ -127,7 +127,8 @@ def update_file(filename, out_file):
         #     recs[group_name]['correlation_descriptors'] = np.array(['num_beams', 'num_ranges', 'num_lags', dtype=np.unicode_])
         if not isinstance(recs[group_name]['correlation_dimensions'][0], np.uint32):
             recs[group_name]['correlation_dimensions'] = np.array(recs[group_name]['correlation_dimensions'], dtype=np.uint32)
-            print('correlation dimensions type changed')
+            if key_num == 0:
+                print('correlation dimensions type changed')
         # if recs[group_name]['correlation_dimensions'][2] == 0:
         #     recs[group_name]['correlation_dimensions'][2] = np.uint32(recs[group_name]['lags'].shape[0])
 
