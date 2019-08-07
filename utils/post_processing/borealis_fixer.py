@@ -6,6 +6,7 @@ import bz2
 import sys
 import os
 import copy
+import itertools
 import subprocess as sp
 import numpy as np
 import warnings
@@ -108,16 +109,27 @@ def update_file(filename, out_file):
             del recs[group_name]['timestamp_of_write']
             if key_num == 0:
                 print('timestamp_of_write removed')
+
         if not isinstance(recs[group_name]['experiment_id'], np.int64):
             recs[group_name]['experiment_id'] = np.int64(recs[group_name]['experiment_id'])
-        if recs[group_name]['correlation_dimensions'].shape[0] == 2:
-            recs[group_name]['correlation_dimensions'] = np.array([1] + list(recs[group_name]['correlation_dimensions']), dtype=np.uint32)
-            # assuming num_beams = 1 here. Giving three dimensions as required     
-            recs[group_name]['correlation_descriptors'] = np.array(['num_beams', 'num_ranges', 'num_lags', dtype=np.unicode_])
+        if not recs[group_name]['lags']: # empty - issue in April, generate from pulses
+            lag_table = list(itertools.combinations(recs[group_name]['pulses'], 2))
+            lag_table.append([recs[group_name]['pulses'][0], recs[group_name][
+                'pulses'][0]])  # lag 0
+            # sort by lag number
+            lag_table = sorted(lag_table, key=lambda x: x[1] - x[0])
+            lag_table.append([recs[group_name]['pulses'][-1], recs[group_name][
+                'pulses'][-1]])  # alternate lag 0
+            recs[group_name]['lags'] = lag_table
+
+        # if recs[group_name]['correlation_dimensions'].shape[0] == 2:
+        #     recs[group_name]['correlation_dimensions'] = np.array([1] + list(recs[group_name]['correlation_dimensions']), dtype=np.uint32)
+        #     # assuming num_beams = 1 here. Giving three dimensions as required     
+        #     recs[group_name]['correlation_descriptors'] = np.array(['num_beams', 'num_ranges', 'num_lags', dtype=np.unicode_])
         if not isinstance(recs[group_name]['correlation_dimensions'][0], np.uint32):
             recs[group_name]['correlation_dimensions'] = np.array(recs[group_name]['correlation_dimensions'], dtype=np.uint32)
-        if recs[group_name]['correlation_dimensions'][2] == 0:
-            recs[group_name]['correlation_dimensions'][2] = np.uint32(recs[group_name]['lags'].shape[0])
+        # if recs[group_name]['correlation_dimensions'][2] == 0:
+        #     recs[group_name]['correlation_dimensions'][2] = np.uint32(recs[group_name]['lags'].shape[0])
 
         write_dict = {}
         write_dict[group_name] = convert_to_numpy(recs[group_name])
