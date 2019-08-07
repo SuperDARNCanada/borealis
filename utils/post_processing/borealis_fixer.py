@@ -110,10 +110,14 @@ def update_file(filename, out_file):
                 print('timestamp_of_write removed')
         if not isinstance(recs[group_name]['experiment_id'], np.int64):
             recs[group_name]['experiment_id'] = np.int64(recs[group_name]['experiment_id'])
+        if recs[group_name]['correlation_dimensions'].shape[0] == 2:
+            recs[group_name]['correlation_dimensions'] = np.array([1] + list(recs[group_name]['correlation_dimensions']), dtype=np.uint32)
+            # assuming num_beams = 1 here. Giving three dimensions as required     
+            recs[group_name]['correlation_descriptors'] = np.array(['num_beams', 'num_ranges', 'num_lags', dtype=np.unicode_])
         if not isinstance(recs[group_name]['correlation_dimensions'][0], np.uint32):
             recs[group_name]['correlation_dimensions'] = np.array(recs[group_name]['correlation_dimensions'], dtype=np.uint32)
-        if recs[group_name]['correlation_dimensions'][1] == 0:
-            recs[group_name]['correlation_dimensions'][1] = np.uint32(recs[group_name]['lags'].shape[0])
+        if recs[group_name]['correlation_dimensions'][2] == 0:
+            recs[group_name]['correlation_dimensions'][2] = np.uint32(recs[group_name]['lags'].shape[0])
 
         write_dict = {}
         write_dict[group_name] = convert_to_numpy(recs[group_name])
