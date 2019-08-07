@@ -26,7 +26,7 @@ def usage_msg():
 
     usage_message = """ batch_make_rawacf.py [-h] rawacf_directory path_regex
     
-    Process a bfiq files to rawacf Borealis files and place in the given directory. If the 
+    Process bfiq files to rawacf Borealis files and place in the given directory. If the 
     input file is bzip2 compressed, the output file will also be bzip2 compressed before 
     exiting.
     """
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     rawacf_directory = args.rawacf_directory[0] # only 1 arg
     files_left = True
     filename_index = 0
-    num_processes = 4
+    num_processes = 5
 
     while files_left:
         for procnum in range(num_processes):
