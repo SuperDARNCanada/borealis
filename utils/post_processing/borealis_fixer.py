@@ -111,7 +111,11 @@ def update_file(filename, out_file):
                 print('timestamp_of_write removed')
         if not isinstance(recs[group_name]['experiment_id'], np.int64):
             recs[group_name]['experiment_id'] = np.int64(recs[group_name]['experiment_id'])
+            if key_num == 0:
+                print('experiment id type changed')
         if not recs[group_name]['lags']: # empty - issue in April, generate from pulses
+            if key_num == 0:
+                print('lagtable generated')
             lag_table = list(itertools.combinations(recs[group_name]['pulses'], 2))
             lag_table.append([recs[group_name]['pulses'][0], recs[group_name][
                 'pulses'][0]])  # lag 0
@@ -125,8 +129,8 @@ def update_file(filename, out_file):
         #     recs[group_name]['correlation_dimensions'] = np.array([1] + list(recs[group_name]['correlation_dimensions']), dtype=np.uint32)
         #     # assuming num_beams = 1 here. Giving three dimensions as required     
         #     recs[group_name]['correlation_descriptors'] = np.array(['num_beams', 'num_ranges', 'num_lags', dtype=np.unicode_])
-        if not isinstance(recs[group_name]['correlation_dimensions'][0], np.uint32):
-            recs[group_name]['correlation_dimensions'] = np.array(recs[group_name]['correlation_dimensions'], dtype=np.uint32)
+        # if not isinstance(recs[group_name]['correlation_dimensions'][0], np.uint32):
+        #     recs[group_name]['correlation_dimensions'] = np.array(recs[group_name]['correlation_dimensions'], dtype=np.uint32)
         # if recs[group_name]['correlation_dimensions'][2] == 0:
         #     recs[group_name]['correlation_dimensions'][2] = np.uint32(recs[group_name]['lags'].shape[0])
 
