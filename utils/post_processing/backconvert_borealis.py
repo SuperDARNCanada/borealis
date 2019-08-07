@@ -138,6 +138,10 @@ def backconvert_rawacf(data_record):
 
 
 def write_backconverted(ts_dict, data_path):
+	"""
+	Writes a set of back-converted borealis data to file in the original site
+	file format
+	"""
 	temp_file = 'temp.hdf5'
 	site_format_file = data_path + '.site'
 	for key in ts_dict:

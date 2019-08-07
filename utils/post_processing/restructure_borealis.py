@@ -274,6 +274,9 @@ def restructure_rawacf(data_record):
 
 
 def write_restructured(data_dict, data_path):
+	"""
+	Writes a record of restructured borealis data to file.
+	"""
 	print("Compressing...")
 	dd.io.save(data_path + ".new.test", data_dict, compression='zlib')
 
