@@ -111,7 +111,7 @@ def update_file(filename, out_file):
         if not isinstance(recs[group_name]['experiment_id'], np.int64):
             recs[group_name]['experiment_id'] = np.int64(recs[group_name]['experiment_id'])
         if not isinstance(recs[group_name]['correlation_dimensions'][0], np.uint32):
-            recs[group_name]['correlation_dimensions'] = np.array(recs[group_name]['correlation_dimensions'], dtype=np.uint32
+            recs[group_name]['correlation_dimensions'] = np.array(recs[group_name]['correlation_dimensions'], dtype=np.uint32)
         if recs[group_name]['correlation_dimensions'][1] == 0:
             recs[group_name]['correlation_dimensions'] = recs[group_name]['lags'].shape[0]
 
