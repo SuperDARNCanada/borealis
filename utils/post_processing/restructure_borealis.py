@@ -291,21 +291,21 @@ def restructure_data(data_path):
 				formatted hdf5 file.
 	"""
 
-	suffix = data_path.split('.')[-2]
+	path_strings = data_path.split('.')
 
 	print("Restructuring", data_path, "...")
 
 	data = dd.io.load(data_path)
 
-	if (suffix == 'output_ptrs_iq') or (suffix == 'antennas_iq'):
+	if ('output_ptrs_iq' in path_strings) or ('antennas_iq' in path_strings):
 		print("Loaded an antenna iq file...")
 		ant_iq = restructure_pre_bfiq(data)
 		write_restructured(ant_iq, data_path)
-	elif suffix == 'bfiq':
+	elif 'bfiq' in path_strings:
 		print("Loaded a bfiq file...")
 		bfiq = restructure_bfiq(data)
 		write_restructured(bfiq, data_path)
-	elif suffix == 'rawacf':
+	elif 'rawacf' in path_strings:
 		print("Loaded a raw acf file")
 		raw_acf = restructure_rawacf(data)
 		write_restructured(raw_acf, data_path)
