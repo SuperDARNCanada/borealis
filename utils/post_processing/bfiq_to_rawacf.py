@@ -125,7 +125,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath, rawacf_filepath):
 		# Perform correlations and write to dictionary
 		main_acfs, intf_acfs, xcfs = correlate_samples(bfiq[k])
 
-		acfs[k]["correlation_dimensions"] = np.array(main_acfs.shape)
+		acfs[k]["correlation_dimensions"] = np.array(main_acfs.shape, dtype=np.uint32)
 		acfs[k]["correlation_descriptors"] = np.array(['num_beams', 'num_ranges', 'num_lags'])
 
 		acfs[k]["main_acfs"] = main_acfs.flatten()
