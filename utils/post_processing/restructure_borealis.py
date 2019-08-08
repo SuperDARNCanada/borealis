@@ -307,7 +307,8 @@ def write_array_format_data(data_dict, data_path):
 		data_path:		The path to the data file storing data_dict
 	"""
 	print("Compressing...")
-	dd.io.save(data_path + ".new.test", data_dict, compression='zlib')
+
+	dd.io.save(data_path[:-5], data_dict, compression='zlib')
 
 
 def site_to_array_format(data_path):
