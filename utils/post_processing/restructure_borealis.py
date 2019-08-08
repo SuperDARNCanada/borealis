@@ -3,14 +3,21 @@
 
 #
 # restructure_borealis.py
-# 2019-07-30
-# Command line tool for strucuturing Borealis files
-# for bfiq, antennas iq, and raw acf data into a smaller,
-# faster, and more usable format
+# 2019-08-08
 
 import deepdish as dd
 import numpy as np
 import sys
+import os
+import subprocess as sp
+import datetime
+import warnings
+
+
+########################## RESTRUCTURING CODE #################################
+# Functions for restructuring Borealis files
+# for bfiq, antennas iq, and raw acf data into a smaller,
+# faster, and more usable format
 
 shared_antiq = ['antenna_arrays_order', 'beam_azms', 'beam_nums', 'borealis_git_hash', 'data_descriptors',
 				'data_normalization_factor', 'experiment_comment', 'experiment_id', 'experiment_name',
@@ -29,11 +36,17 @@ shared_rawacf = ['beam_azms', 'beam_nums', 'blanked_samples', 'borealis_git_hash
 				 'data_normalization_factor', 'experiment_comment', 'experiment_id', 'experiment_name',
 				 'first_range', 'first_range_rtt', 'freq', 'intf_antenna_count', 'lags', 'main_antenna_count',
 				 'num_slices', 'pulses', 'range_sep', 'rx_sample_rate', 'samples_data_type', 'scan_start_marker',
-				 'slice_comment', 'station', 'tau_spacing', 'tx_pulse_len']
+				 'slice_comment', 'station', 'tau_spacing', 'tx_pulse_len', 'correlation_dimensions']
 
 def find_max_sequences(data):
 	"""
-	Finds the maximum number of sequences between records in a data file
+	Finds the maximum number of sequences between records in a Borealis data file
+	Args
+		data:		Site formatted data from a Borealis file, 
+					organized as one record for each slice
+	Returns:
+		max_seqs:	The largest number of sequences found 
+					in one record from the file
 	"""
 	first_key = list(data.keys())[0]
 	max_seqs = data[first_key]["num_sequences"]
@@ -43,12 +56,16 @@ def find_max_sequences(data):
 	return max_seqs
 
 
-def restructure_pre_bfiq(data_record):
+def antennas_iq_site_to_array(data_record):
 	"""
 	Restructuring method for pre bfiq data
 	args:
 		data_record		a timestamped record loaded from an
 		 				hdf5 Borealis pre-bfiq data file
+		 Returns:
+		 	data_dict:	A dictionary containing the data from data_record
+		 				reformatted to be stored entirely as arrays, or as
+		 				one entry if the field does not change between records
 	"""
 	data_dict = dict()
 	num_records = len(data_record)
@@ -120,12 +137,16 @@ def restructure_pre_bfiq(data_record):
 
 	return data_dict
 
-def restructure_bfiq(data_record):
+def bfiq_site_to_array(data_record):
 	"""
 	Restructuring method for bfiq data
-	args:
+	Args:
 		data_record		a timestamped record loaded from an
 		 				hdf5 Borealis bfiq data file
+	Returns:
+		 data_dict:		A dictionary containing the data from data_record
+		 				reformatted to be stored entirely as arrays, or as
+		 				one entry if the field does not change between records
 	"""
 	data_dict = dict()
 	num_records = len(data_record)
@@ -198,12 +219,16 @@ def restructure_bfiq(data_record):
 
 	return data_dict
 
-def restructure_rawacf(data_record):
+def rawacf_site_to_array(data_record):
 	"""
 	Restructuring method for rawacf data
-	args:
+	Args:
 		data_record		a timestamped record loaded from an
 		 				hdf5 Borealis rawacf data file
+	Returns:
+		 	data_dict:	A dictionary containing the data from data_record
+		 				reformatted to be stored entirely as arrays, or as
+		 				one entry if the field does not change between records
 	"""
 	data_dict = dict()
 	num_records = len(data_record)
@@ -273,15 +298,19 @@ def restructure_rawacf(data_record):
 	return data_dict
 
 
-def write_restructured(data_dict, data_path):
+def write_array_format_data(data_dict, data_path):
 	"""
 	Writes a record of restructured borealis data to file.
+	Args:
+		data_dict:		A timestamped dictionary containing site
+						formatted Borealis data
+		data_path:		The path to the data file storing data_dict
 	"""
 	print("Compressing...")
 	dd.io.save(data_path + ".new.test", data_dict, compression='zlib')
 
 
-def restructure_data(data_path):
+def site_to_array_format(data_path):
 	"""
 	Restructure the data contained in an hdf5 file to eliminate the record format.
 	Rather, data will be contained in a large array according to data dimensions.
@@ -302,22 +331,224 @@ def restructure_data(data_path):
 
 	if ('output_ptrs_iq' in path_strings) or ('antennas_iq' in path_strings):
 		print("Loaded an antenna iq file...")
-		ant_iq = restructure_pre_bfiq(data)
-		write_restructured(ant_iq, data_path)
+		ant_iq = antennas_iq_site_to_array(data)
+		write_array_format_data(ant_iq, data_path)
 	elif 'bfiq' in path_strings:
 		print("Loaded a bfiq file...")
-		bfiq = restructure_bfiq(data)
-		write_restructured(bfiq, data_path)
+		bfiq = bfiq_site_to_array(data)
+		write_array_format_data(bfiq, data_path)
 	elif 'rawacf' in path_strings:
 		print("Loaded a raw acf file")
-		raw_acf = restructure_rawacf(data)
-		write_restructured(raw_acf, data_path)
+		raw_acf = rawacf_site_to_array(data)
+		write_array_format_data(raw_acf, data_path)
 	else:
 		print(suffix, 'filetypes are not supported')
 		return
 
 	print("Success!")
 
-if __name__ == "__main__":
-	filepath = sys.argv[1]
-	restructure_data(filepath)
+
+########################## BACKCONVERSION CODE #####################################
+# Functions for converting restructured and compressed
+# Borealis files back to their original site format
+
+
+def antenna_iq_array_to_site(data_record):
+	"""
+	Converts a restructured antennas iq file back to its
+	original site format
+	Args:
+		data_record:	An opened antennas_iq hdf5 file in array format
+	Returns:
+		ts_dict:		A timestamped dictionary containing the data
+						from data_record formatted as the output from
+						a site file.
+	"""
+	num_records = len(data_record["int_time"])
+	ts_dict = dict()
+	# get keys from first sequence timestamps
+	for rec, seq_ts in enumerate(data_record["sqn_timestamps"]):
+		# format dictionary key in the same way it is done
+		# in datawrite on site
+		sqn_dt_ts = datetime.datetime.utcfromtimestamp(seq_ts[0])
+		epoch = datetime.datetime.utcfromtimestamp(0)
+		key = str(int((sqn_dt_ts - epoch).total_seconds() * 1000))
+		
+		ts_dict[key] = dict()
+		for f in data_record:
+			if not type(data_record[f]) is np.ndarray:
+				ts_dict[key][f] = data_record[f]
+			else:
+				if np.shape(data_record[f])[0] == num_records:
+					# pass data fields that are written per record
+					pass
+				else:
+					ts_dict[key][f] = data_record[f]
+		# Handle per record fields
+		num_sequences = data_record["num_sequences"][rec]
+		ts_dict[key]["num_sequences"] = num_sequences
+		ts_dict[key]["int_time"] = data_record["int_time"][rec]
+		ts_dict[key]["sqn_timestamps"] = data_record["sqn_timestamps"][rec, 0:int(num_sequences)]
+		ts_dict[key]["noise_at_freq"] = data_record["noise_at_freq"][rec, 0:int(num_sequences)]
+		ts_dict[key]["data_descriptors"] = ts_dict[key]["data_descriptors"][1:]
+		ts_dict[key]["data_dimensions"] = data_record["data_dimensions"][rec]
+
+		ts_dict[key]["data"] = np.trim_zeros(data_record["data"][rec].flatten())
+	
+	return ts_dict
+
+def bfiq_array_to_site(data_record):
+	"""
+	Converts a restructured bfiq file back to its
+	original site format
+	Args:
+		data_record:	An opened bfiq hdf5 file in array format
+	Returns:
+		ts_dict:		A timestamped dictionary containing the data
+						from data_record formatted as the output from
+						a site file.
+	"""
+	num_records = len(data_record["int_time"])
+	ts_dict = dict()
+	# get keys from first sequence timestamps
+	for rec, seq_ts in enumerate(data_record["sqn_timestamps"]):
+		# format dictionary key in the same way it is done
+		# in datawrite on site
+		sqn_dt_ts = datetime.datetime.utcfromtimestamp(seq_ts[0])
+		epoch = datetime.datetime.utcfromtimestamp(0)
+		key = str(int((sqn_dt_ts - epoch).total_seconds() * 1000))
+		
+		ts_dict[key] = dict()
+		for f in data_record:
+			if not type(data_record[f]) is np.ndarray:
+				ts_dict[key][f] = data_record[f]
+			else:
+				if np.shape(data_record[f])[0] == num_records:
+					# pass data fields that are written per record
+					pass
+				else:
+					ts_dict[key][f] = data_record[f]
+		# Handle per record fields
+		num_sequences = data_record["num_sequences"][rec]
+		ts_dict[key]["num_sequences"] = num_sequences
+		ts_dict[key]["int_time"] = data_record["int_time"][rec]
+		ts_dict[key]["sqn_timestamps"] = data_record["sqn_timestamps"][rec, 0:int(num_sequences)]
+		ts_dict[key]["noise_at_freq"] = data_record["noise_at_freq"][rec, 0:int(num_sequences)]
+		ts_dict[key]["data_descriptors"] = ts_dict[key]["data_descriptors"][1:]
+		ts_dict[key]["data_dimensions"] = data_record["data_dimensions"][rec]
+
+		ts_dict[key]["data"] = np.trim_zeros(data_record["data"][rec].flatten())
+	
+	return ts_dict
+
+def rawacf_array_to_site(data_record):
+	"""
+	Converts a restructured raw acf file back to its
+	original site format
+	Args:
+		data_record:	An opened rawacf hdf5 file in array format
+	Returns:
+		ts_dict:		A timestamped dictionary containing the data
+						from data_record formatted as the output from
+						a site file.
+	"""
+	num_records = len(data_record["int_time"])
+	ts_dict = dict()
+	# get keys from first sequence timestamps
+	for rec, seq_ts in enumerate(data_record["sqn_timestamps"]):
+		# format dictionary key in the same way it is done
+		# in datawrite on site
+		sqn_dt_ts = datetime.datetime.utcfromtimestamp(seq_ts[0])
+		epoch = datetime.datetime.utcfromtimestamp(0)
+		key = str(int((sqn_dt_ts - epoch).total_seconds() * 1000))
+		
+		ts_dict[key] = dict()
+		for f in data_record:
+			if not type(data_record[f]) is np.ndarray:
+				ts_dict[key][f] = data_record[f]
+			else:
+				if np.shape(data_record[f])[0] == num_records:
+					# pass data fields that are written per record
+					pass
+				else:
+					ts_dict[key][f] = data_record[f]
+		# Handle per record fields
+		num_sequences = data_record["num_sequences"][rec]
+		ts_dict[key]["num_sequences"] = num_sequences
+		ts_dict[key]["int_time"] = data_record["int_time"][rec]
+		ts_dict[key]["sqn_timestamps"] = data_record["sqn_timestamps"][rec, 0:int(num_sequences)]
+		ts_dict[key]["noise_at_freq"] = data_record["noise_at_freq"][rec, 0:int(num_sequences)]
+		ts_dict[key]["correlation_descriptors"] = ts_dict[key]["correlation_descriptors"][1:]
+
+		ts_dict[key]["main_acfs"] = data_record["main_acfs"][rec].flatten()
+		ts_dict[key]["intf_acfs"] = data_record["intf_acfs"][rec].flatten()
+		ts_dict[key]["xcfs"] = data_record["xcfs"][rec].flatten()
+		
+	return ts_dict
+
+
+def write_site_format_data(ts_dict, data_path):
+	"""
+	Writes a set of back-converted borealis data to file in the original site
+	file format
+	Args:
+		ts_dict:	The timestamped dictionary to be written to file
+		data_path:	Path to the restructured file from which the data
+					in ts_dict was converted
+	"""
+	temp_file = 'temp.hdf5'
+	site_format_file = data_path + '.site'
+	for key in ts_dict:
+		time_stamped_dd = {}
+		time_stamped_dd[key] = ts_dict[key]
+		# touch output file
+		try:
+			fd = os.open(site_format_file, os.O_CREAT | os.O_EXCL)
+			os.close(fd)
+		except FileExistsError:
+			pass
+
+		dd.io.save(temp_file, time_stamped_dd, compression=None)
+		cmd = 'h5copy -i {newfile} -o {fullfile} -s {dtstr} -d {dtstr}'
+		cmd = cmd.format(newfile=temp_file, fullfile=site_format_file, dtstr=key)
+
+		sp.call(cmd.split())
+		os.remove(temp_file)
+		print("Done", key)
+
+
+
+def array_to_site_format(data_path):
+	"""
+	Converts a restructured and compressed hdf5 borealis datafile
+	back to its original, record based format.
+	Args:
+		data_path (str): Path to the data file to be back converted
+	"""
+
+	path_strings = data_path.split('.')
+
+	print("Restructuring", data_path, "...")
+
+	data = dd.io.load(data_path)
+
+	warnings.simplefilter('ignore')
+
+
+	if ('output_ptrs_iq' in path_strings) or ('antennas_iq' in path_strings):
+		print("Loaded an antenna iq file...")
+		ant_iq = antenna_iq_array_to_site(data)
+		write_site_format_data(ant_iq, data_path)
+	elif 'bfiq' in path_strings:
+		print("Loaded a bfiq file...")
+		bfiq = bfiq_array_to_site(data)
+		write_site_format_data(bfiq, data_path)
+	elif 'rawacf' in path_strings:
+		print("Loaded a raw acf file")
+		raw_acf = rawacf_array_to_site(data)
+		write_site_format_data(raw_acf, data_path)
+	else:
+		print(suffix, 'filetypes are not supported')
+		return
+
+	print("Success!")
