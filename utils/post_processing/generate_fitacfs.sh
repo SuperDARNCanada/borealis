@@ -21,7 +21,7 @@ logfile=$4
 # available - for Borealis data we will use 3.0 Marci Detwiller
 version=3.0
 
-./logger.sh 'Going through each rawfile and making fitacf files' ${logfile} ${script_name}
+echo 'Going through each rawfile and making fitacf files'
 
 rawacfFiles=0
 # looping through every relevant rawacf file in the working directory and preforming the following tasks:
@@ -30,33 +30,29 @@ rawacfFiles=0
 #                           and add to the email for potential rawacf review (maybe it is currupt!)
 #                   - check if the file is empty, same process as above
 #                   - check if their is dmap error using backscatter, same process 
-for rawfile in $(ls ${workingdir_raw} | grep ${yyyymm}.*.rawacf)
+for rawfile in $(ls ${workingdir_raw} | grep ${yyyymm}.*.rawacf.dmap)
 do
-    echo "make_fit -fitacf-version ${version} ${workingdir_raw}/${rawfile} > ${workingdir_fitacf}/${rawfile%.*}.fitacf" >> ${logfile} 
-    make_fit -fitacf-version ${version} ${workingdir_raw}/${rawfile} > ${workingdir_fitacf}/${rawfile%.*}.fitacf 
+    echo "make_fit -fitacf-version ${version} ${workingdir_raw}/${rawfile} > ${workingdir_fitacf}/${rawfile%.rawacf.dmap}.fitacf.dmap" >> ${logfile} 
+    make_fit -fitacf-version ${version} ${workingdir_raw}/${rawfile} > ${workingdir_fitacf}/${rawfile%.rawacf.dmap}.fitacf.dmap 
     returnvalue=$?
     # Check if make_fit succeeded, if not then log it, remove it, and email the peeps
     if [ ${returnvalue} -ne 0 ]
     then
-        echo ${workingdir_fitacf}/${rawfile%.*}.fitacf >> ${logfile}.failed_fitacfs
+        echo ${workingdir_fitacf}/${rawfile%.rawacf.dmap}.fitacf.dmap >> ${logfile}.failed_fitacfs
         message="Error: make_fit returned ${returnvalue} on ${workingdir_raw}/${rawfile}"
-        ./logger.sh ${message} ${logfile} ${script_name}
-        message=$( (rm -v  ${workingdir_fitacf}/${rawfile%.*}.fitacf >> ${logfile}) 2>&1)
-        ./logger.sh ${message} ${logfile} ${script_name}
-         message=$( (rm -v  ${workingdir_raw}/${rawfile} >> ${logfile}) 2>&1)
-        ./logger.sh ${message} ${logfile} ${script_name}
+        echo ${message} ${script_name}
+        message=$( (rm -v  ${workingdir_fitacf}/${rawfile%.rawacf.dmap}.fitacf.dmap >> ${logfile}) 2>&1)
+        echo ${message} ${script_name}
         continue
     fi
     # Check if make_fit succeeded, if not then log it, remove it, and email the peeps 
-    if [ ! -s ${workingdir_fitacf}/${rawfile%.*}.fitacf ] 
+    if [ ! -s ${workingdir_fitacf}/${rawfile%.rawacf.dmap}.fitacf.dmap ] 
     then
-        echo ${workingdir_fitacf}/${rawfile%.*}.fitacf >> ${logfile}.failed_fitacfs
-        message="Error: make_fit generated a empty fitacf file ${rawfile%.*}.fitacf"
-        ./logger.sh ${message} ${logfile} ${script_name}
-        message=$( (rm -v ${workingdir_fitacf}/${rawfile%.*}.fitacf >> ${logfile}) 2>&1)
-        ./logger.sh ${message} ${logfile} ${script_name}
-         message=$( (rm -v  ${workingdir_raw}/${rawfile} >> ${logfile}) 2>&1)
-        ./logger.sh ${message} ${logfile} ${script_name}
+        echo ${workingdir_fitacf}/${rawfile%.rawacf.dmap}.fitacf.dmap >> ${logfile}.failed_fitacfs
+        message="Error: make_fit generated a empty fitacf file ${rawfile%.rawacf.dmap}.fitacf.dmap"
+        echo ${message} ${script_name}
+        message=$( (rm -v ${workingdir_fitacf}/${rawfile%.rawacf.dmap}.fitacf.dmap >> ${logfile}) 2>&1)
+        echo ${message} ${script_name}
         continue
     fi
 done
