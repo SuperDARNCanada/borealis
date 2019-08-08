@@ -189,7 +189,10 @@ def file_updater(filename, fixed_data_dir):
         hdf5_file = filename
         bzip2 = False
     
-    out_file = fixed_data_dir + "/" + os.path.basename(hdf5_file)
+    if fixed_data_dir[-1] == '/':
+        out_file = fixed_data_dir + os.path.basename(hdf5_file)
+    else:
+        out_file = fixed_data_dir + "/" + os.path.basename(hdf5_file)
 
     update_file(hdf5_file, out_file)
 
