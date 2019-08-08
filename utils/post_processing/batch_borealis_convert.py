@@ -2,7 +2,7 @@ import sys
 import os
 import argparse
 import glob
-from multiprocessing import Pool
+from multiprocessing import Pool, Process
 import bz2
 
 from borealis_converter import borealis_converter
@@ -16,7 +16,7 @@ def usage_msg():
     :returns: the usage message
     """
 
-    usage_message = """ batch_borealis_convert.py [-h] directory_to_convert 
+    usage_message = """ batch_borealis_convert.py [-h] regex_to_convert 
     
     Pass in the directory you wish to convert. Filenames with .bfiq.hdf5 will be attempted to be 
     converted to iqdat dmap. Filenames with .rawacf.hdf5 will be attempted to be converted to 
@@ -33,7 +33,7 @@ def usage_msg():
 
 def borealis_conversion_parser():
     parser = argparse.ArgumentParser(usage=usage_msg())
-    parser.add_argument("directory_to_convert", help="Path to the files you wish to convert to "
+    parser.add_argument("regex_to_convert", nargs='+', help="Path to the files you wish to convert to "
                                                    "SuperDARN dmap type.")
     return parser
 
@@ -52,8 +52,10 @@ if __name__ == "__main__":
     parser = borealis_conversion_parser()
     args = parser.parse_args()
 
-    rawacf_hdf5_files = glob.glob(args.directory_to_convert + '*.rawacf.hdf5')
-    rawacf_hdf5_files.extend(glob.glob(args.directory_to_convert + '*.rawacf.hdf5.bz2'))
+    #rawacf_hdf5_files = glob.glob(args.directory_to_convert + '*.rawacf.hdf5')
+    #rawacf_hdf5_files.extend(glob.glob(args.directory_to_convert + '*.rawacf.hdf5.bz2'))
+
+    rawacf_hdf5_files = args.regex_to_convert
 
     jobs = []
 
@@ -72,7 +74,7 @@ if __name__ == "__main__":
                     raise
                 files_left = False
                 break
-            p = Process(target=rawacf_borealis_converter, args=(filename))
+            p = Process(target=rawacf_borealis_converter, args=(filename,))
             jobs.append(p)
             p.start()
 

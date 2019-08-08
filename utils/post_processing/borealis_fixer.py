@@ -113,7 +113,7 @@ def update_file(filename, out_file):
             recs[group_name]['experiment_id'] = np.int64(recs[group_name]['experiment_id'])
             if key_num == 0:
                 print('experiment id type changed')
-        if not recs[group_name]['lags']: # empty - issue in April, generate from pulses
+        if len(recs[group_name]['lags']) == 0: # empty - issue in April, generate from pulses
             if key_num == 0:
                 print('lagtable generated')
             lag_table = list(itertools.combinations(recs[group_name]['pulses'], 2))
