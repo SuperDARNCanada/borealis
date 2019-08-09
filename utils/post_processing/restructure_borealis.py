@@ -323,22 +323,19 @@ def site_to_array_format(data_path):
 	Returns:	If valid filetype, returns None and saves the data as a newly
 				formatted hdf5 file.
 	"""
-
-	path_strings = data_path.split('.')
-
 	print("Restructuring", data_path, "...")
 
 	data = dd.io.load(data_path)
 
-	if ('output_ptrs_iq' in path_strings) or ('antennas_iq' in path_strings):
+	if ('output_ptrs_iq' in data_path) or ('antennas_iq' in data_path):
 		print("Loaded an antenna iq file...")
 		ant_iq = antennas_iq_site_to_array(data)
 		write_array_format_data(ant_iq, data_path)
-	elif 'bfiq' in path_strings:
+	elif 'bfiq' in data_path:
 		print("Loaded a bfiq file...")
 		bfiq = bfiq_site_to_array(data)
 		write_array_format_data(bfiq, data_path)
-	elif 'rawacf' in path_strings:
+	elif 'rawacf' in data_path:
 		print("Loaded a raw acf file")
 		raw_acf = rawacf_site_to_array(data)
 		write_array_format_data(raw_acf, data_path)
@@ -527,8 +524,6 @@ def array_to_site_format(data_path):
 		data_path (str): Path to the data file to be back converted
 	"""
 
-	path_strings = data_path.split('.')
-
 	print("Restructuring", data_path, "...")
 
 	data = dd.io.load(data_path)
@@ -536,15 +531,15 @@ def array_to_site_format(data_path):
 	warnings.simplefilter('ignore')
 
 
-	if ('output_ptrs_iq' in path_strings) or ('antennas_iq' in path_strings):
+	if ('output_ptrs_iq' in data_path) or ('antennas_iq' in data_path):
 		print("Loaded an antenna iq file...")
 		ant_iq = antenna_iq_array_to_site(data)
 		write_site_format_data(ant_iq, data_path)
-	elif 'bfiq' in path_strings:
+	elif 'bfiq' in data_path:
 		print("Loaded a bfiq file...")
 		bfiq = bfiq_array_to_site(data)
 		write_site_format_data(bfiq, data_path)
-	elif 'rawacf' in path_strings:
+	elif 'rawacf' in data_path:
 		print("Loaded a raw acf file")
 		raw_acf = rawacf_array_to_site(data)
 		write_site_format_data(raw_acf, data_path)
