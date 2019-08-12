@@ -96,7 +96,7 @@ class SWG(object):
 
         # This command will return the number of new commits available in master. This signals that
         # there are new SWG files available.
-        cmd = "cd {}/{}; git log ..origin/master --oneline | wc -l".format(self.scd_dir,
+        cmd = "cd {}/{}; git fetch; git log ..origin/master --oneline | wc -l".format(self.scd_dir,
                                                                         SWG_GIT_REPO_DIR)
         shell_output = sp.check_output(cmd, shell=True)
 
