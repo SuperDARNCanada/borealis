@@ -451,8 +451,6 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest):
         else:
             atq.append(format_to_atq(event['time'], event['experiment']))
     
-    stop_cmd = "screen -X -S borealis quit"
-    sp.call(stop_cmd, shell=True)
     for cmd in atq:
         sp.call(cmd, shell=True)
 

@@ -16,6 +16,8 @@ echo "v2.3-Alpha Season 1 Episode 3"
 echo "-----------------------------------------------------------------------------------"
 
 rm -r /dev/shm/*
+screen -X -S borealis quit
+sleep 1
 
 # These are the commands to in each window.
 if [ "$2" = "release" ]; then
