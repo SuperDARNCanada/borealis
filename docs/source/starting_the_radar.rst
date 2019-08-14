@@ -14,9 +14,13 @@ The experiment name must match to an experiment in the experiment folder, and do
 
 The script will boot all the radar processes in a detached `screen` window that runs in the background. This window can be reattached in any terminal window locally or over ssh to track any outputs if needed.
 
+If starting the radar in normal operation according to the schedule, there is a helper script called `start_radar.sh`.
+
 ==================
 Automated Start-up
 ==================
 
-The scheduling Python script, `remote_server.py`, is responsible for automating the control of the radar to follow the schedule. This script should be added the control computer bootup scripts so that it generate a new set of scheduled commands.
+The scheduling Python script, `remote_server.py`, is responsible for automating the control of the radar to follow the schedule. The
+
+This script should be added the control computer bootup scripts so that it generate a new set of scheduled commands.
 
