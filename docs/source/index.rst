@@ -17,6 +17,7 @@ Welcome to Borealis's documentation!
     /building_an_experiment
     /config_options
     /borealis_processes
+    /borealis_data
 
 
 Indices and tables

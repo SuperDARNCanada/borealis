@@ -34,6 +34,9 @@ The experiment handler will create an instance of your experiment when your expe
 
 The next step is to add slices to your experiment. An experiment is defined by the slices in the class, and how the slices interface.
 
+
+TODO
+
 ..  TODO outline ways to interface
 
 ..  TODO determine where users should write their experiments
