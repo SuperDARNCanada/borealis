@@ -12,6 +12,7 @@ import os
 import subprocess as sp
 import datetime
 import warnings
+import tempfile
 
 
 ########################## RESTRUCTURING CODE #################################
@@ -72,8 +73,8 @@ def antennas_iq_site_to_array(data_record):
 
 	# write shared fields to dictionary
 	k = list(data_record.keys())[0]
-	for f in shared_antiq:
-		data_dict[f] = data_record[k][f]
+	for field in shared_antiq:
+		data_dict[field] = data_record[k][field]
 
 	# find maximum number of sequences
 	max_seqs = find_max_sequences(data_record)
@@ -153,8 +154,8 @@ def bfiq_site_to_array(data_record):
 
 	# write shared fields to dictionary
 	k = list(data_record.keys())[0]
-	for f in shared_bfiq:
-		data_dict[f] = data_record[k][f]
+	for field in shared_bfiq:
+		data_dict[field] = data_record[k][field]
 
 	# find maximum number of sequences
 	max_seqs = find_max_sequences(data_record)
@@ -236,8 +237,8 @@ def rawacf_site_to_array(data_record):
 
 	# write shared fields to dictionary
 	k = list(data_record.keys())[0]
-	for f in shared_rawacf:
-		data_dict[f] = data_record[k][f]
+	for field in shared_rawacf:
+		data_dict[field] = data_record[k][field]
 
 	# handle unshared data fields
 	dims = data_dict["correlation_dimensions"]
@@ -351,53 +352,9 @@ def site_to_array_format(data_path):
 # Borealis files back to their original site format
 
 
-def antenna_iq_array_to_site(data_record):
+def iq_array_to_site(data_record):
 	"""
-	Converts a restructured antennas iq file back to its
-	original site format
-	Args:
-		data_record:	An opened antennas_iq hdf5 file in array format
-	Returns:
-		ts_dict:		A timestamped dictionary containing the data
-						from data_record formatted as the output from
-						a site file.
-	"""
-	num_records = len(data_record["int_time"])
-	ts_dict = dict()
-	# get keys from first sequence timestamps
-	for rec, seq_ts in enumerate(data_record["sqn_timestamps"]):
-		# format dictionary key in the same way it is done
-		# in datawrite on site
-		sqn_dt_ts = datetime.datetime.utcfromtimestamp(seq_ts[0])
-		epoch = datetime.datetime.utcfromtimestamp(0)
-		key = str(int((sqn_dt_ts - epoch).total_seconds() * 1000))
-		
-		ts_dict[key] = dict()
-		for f in data_record:
-			if not type(data_record[f]) is np.ndarray:
-				ts_dict[key][f] = data_record[f]
-			else:
-				if np.shape(data_record[f])[0] == num_records:
-					# pass data fields that are written per record
-					pass
-				else:
-					ts_dict[key][f] = data_record[f]
-		# Handle per record fields
-		num_sequences = data_record["num_sequences"][rec]
-		ts_dict[key]["num_sequences"] = num_sequences
-		ts_dict[key]["int_time"] = data_record["int_time"][rec]
-		ts_dict[key]["sqn_timestamps"] = data_record["sqn_timestamps"][rec, 0:int(num_sequences)]
-		ts_dict[key]["noise_at_freq"] = data_record["noise_at_freq"][rec, 0:int(num_sequences)]
-		ts_dict[key]["data_descriptors"] = ts_dict[key]["data_descriptors"][1:]
-		ts_dict[key]["data_dimensions"] = data_record["data_dimensions"][rec]
-
-		ts_dict[key]["data"] = np.trim_zeros(data_record["data"][rec].flatten())
-	
-	return ts_dict
-
-def bfiq_array_to_site(data_record):
-	"""
-	Converts a restructured bfiq file back to its
+	Converts a restructured bfiq or antenna iq file back to its
 	original site format
 	Args:
 		data_record:	An opened bfiq hdf5 file in array format
@@ -417,15 +374,15 @@ def bfiq_array_to_site(data_record):
 		key = str(int((sqn_dt_ts - epoch).total_seconds() * 1000))
 		
 		ts_dict[key] = dict()
-		for f in data_record:
-			if not type(data_record[f]) is np.ndarray:
-				ts_dict[key][f] = data_record[f]
+		for field in data_record:
+			if not type(data_record[field]) is np.ndarray:
+				ts_dict[key][field] = data_record[field]
 			else:
-				if np.shape(data_record[f])[0] == num_records:
+				if np.shape(data_record[field])[0] == num_records:
 					# pass data fields that are written per record
 					pass
 				else:
-					ts_dict[key][f] = data_record[f]
+					ts_dict[key][field] = data_record[field]
 		# Handle per record fields
 		num_sequences = data_record["num_sequences"][rec]
 		ts_dict[key]["num_sequences"] = num_sequences
@@ -461,15 +418,15 @@ def rawacf_array_to_site(data_record):
 		key = str(int((sqn_dt_ts - epoch).total_seconds() * 1000))
 		
 		ts_dict[key] = dict()
-		for f in data_record:
-			if not type(data_record[f]) is np.ndarray:
-				ts_dict[key][f] = data_record[f]
+		for field in data_record:
+			if not type(data_record[field]) is np.ndarray:
+				ts_dict[key][field] = data_record[field]
 			else:
-				if np.shape(data_record[f])[0] == num_records:
+				if np.shape(data_record[field])[0] == num_records:
 					# pass data fields that are written per record
 					pass
 				else:
-					ts_dict[key][f] = data_record[f]
+					ts_dict[key][field] = data_record[field]
 		# Handle per record fields
 		num_sequences = data_record["num_sequences"][rec]
 		ts_dict[key]["num_sequences"] = num_sequences
@@ -494,7 +451,7 @@ def write_site_format_data(ts_dict, data_path):
 		data_path:	Path to the restructured file from which the data
 					in ts_dict was converted
 	"""
-	temp_file = 'temp.hdf5'
+	temp_file = tempfile.NamedTemporaryFile().name
 	site_format_file = data_path + '.site'
 	for key in ts_dict:
 		time_stamped_dd = {}
@@ -533,11 +490,11 @@ def array_to_site_format(data_path):
 
 	if ('output_ptrs_iq' in data_path) or ('antennas_iq' in data_path):
 		print("Loaded an antenna iq file...")
-		ant_iq = antenna_iq_array_to_site(data)
+		ant_iq = iq_array_to_site(data)
 		write_site_format_data(ant_iq, data_path)
 	elif 'bfiq' in data_path:
 		print("Loaded a bfiq file...")
-		bfiq = bfiq_array_to_site(data)
+		bfiq = iq_array_to_site(data)
 		write_site_format_data(bfiq, data_path)
 	elif 'rawacf' in data_path:
 		print("Loaded a raw acf file")
