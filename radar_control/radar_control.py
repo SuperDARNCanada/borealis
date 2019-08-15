@@ -601,8 +601,14 @@ def radar():
 
                     num_sequences = 0
                     time_remains = True
-                    integration_period_done_time = integration_period_start_time + \
-                        timedelta(milliseconds=(float(aveperiod.intt)))  # ms
+                    if aveperiod.intt is not None:
+                        intt_break = True
+                        integration_period_done_time = integration_period_start_time + \
+                            timedelta(milliseconds=(float(aveperiod.intt)))  # ms
+                    else:
+                        intt_break = False
+                        ending_number_of_sequences = aveperiod.intn # this will exist 
+
                     first_sequence_out = False
 
                     if TIME_PROFILE:
@@ -614,12 +620,16 @@ def radar():
 
                             # Alternating sequences if there are multiple in the averaging_period.
                             time_now = datetime.utcnow()
-                            if time_now >= integration_period_done_time:
-                                time_remains = False
-                                integration_period_time = time_now - integration_period_start_time
-                                break
-                                # TODO add a break for num_sequences == intn if going for number of averages instead of
-                                # integration time
+                            if intt_break:
+                                if time_now >= integration_period_done_time:
+                                    time_remains = False
+                                    integration_period_time = time_now - integration_period_start_time
+                                    break
+                            else: # break at a certain number of integrations
+                                if num_sequences == ending_number_of_sequences:
+                                    time_remains = False
+                                    integration_period_time = time_now - integration_period_start_time
+                                    break                                    
                             beam_phase_dict = beam_phase_dict_list[sequence_index]
                             send_dsp_metadata(sigprocpacket,
                                            radar_control_to_dsp,

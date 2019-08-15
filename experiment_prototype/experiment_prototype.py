@@ -29,7 +29,8 @@ from experiment_prototype import list_tests
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, DecimationStage
+from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, DecimationStage, \
+    create_default_scheme
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
@@ -264,7 +265,7 @@ class ExperimentPrototype(object):
     def __init__(self, cpid, output_rx_rate=default_output_rx_rate,
                  rx_bandwidth=default_rx_bandwidth, tx_bandwidth=5.0e6, txctrfreq=12000.0,
                  rxctrfreq=12000.0,
-                 decimation_scheme=DecimationScheme(default_rx_bandwidth, default_output_rx_rate),
+                 decimation_scheme=create_default_scheme(),
                  comment_string=''):
         """
         Base initialization for your experiment.
@@ -410,7 +411,7 @@ class ExperimentPrototype(object):
     @property
     def output_rx_rate(self):
         """
-        The output receive rate of the data.
+        The output receive rate of the data, Hz.
 
         This is read-only once established in instantiation.
         """
