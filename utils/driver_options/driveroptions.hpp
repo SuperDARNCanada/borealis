@@ -23,7 +23,10 @@ class DriverOptions: public Options {
         uint32_t get_atr_tx() const;
         uint32_t get_atr_xx() const;
         uint32_t get_atr_0x() const;
+        uint32_t get_lo_pwr() const;
+        uint32_t get_agc_st() const;
         double get_tr_window_time() const;
+        double get_agc_signal_read_delay() const;
         uint32_t get_main_antenna_count() const;
         uint32_t get_interferometer_antenna_count() const;
         double get_ringbuffer_size() const;
@@ -58,6 +61,7 @@ class DriverOptions: public Options {
         std::string otw_;
         std::string gpio_bank_;
         double tr_window_time_;
+        double agc_signal_read_delay_;
         uint32_t main_antenna_count_;
         uint32_t interferometer_antenna_count_;
         double ringbuffer_size_bytes_;
@@ -65,6 +69,8 @@ class DriverOptions: public Options {
         uint32_t atr_tx_;
         uint32_t atr_xx_;
         uint32_t atr_0x_;
+        uint32_t agc_st_;
+        uint32_t lo_pwr_;
         std::string router_address_;
         std::string driver_to_radctrl_identity_;
         std::string driver_to_dsp_identity_;

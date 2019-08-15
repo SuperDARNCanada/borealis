@@ -39,6 +39,7 @@ class USRP{
     void create_usrp_tx_stream(std::string cpu_fmt, std::string otw_fmt, std::vector<size_t> chs);
     void set_command_time(uhd::time_spec_t cmd_time);
     void clear_command_time();
+    uint32_t get_gpio_state();
     uhd::time_spec_t get_current_usrp_time();
     uhd::rx_streamer::sptr get_usrp_rx_stream();
     uhd::tx_streamer::sptr get_usrp_tx_stream();
@@ -73,6 +74,12 @@ class USRP{
     //! Bitmask used for idle ATR.
     uint32_t atr_0x_;
 
+    //! Bitmask used for AGC signal
+    uint32_t agc_st_;
+
+    //! Bitmask used for lo pwr signal
+    uint32_t lo_pwr_;
+
     //! The tx rate in Hz.
     float tx_rate_;
 
@@ -84,6 +91,8 @@ class USRP{
     uhd::rx_streamer::sptr rx_stream_;
 
     void set_atr_gpios();
+
+    void set_input_gpios();
 
 };
 

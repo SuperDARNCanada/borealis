@@ -49,9 +49,9 @@ class Sequence(ScanClassBase):
         pulse_len. ss stands for scope sync.
     seqtime
         the amount of time for the whole sequence to transmit, until the logic signal 
-        switches low on the last pulse in the sequence.
+        switches low on the last pulse in the sequence (us).
     sstime  
-        ssdelay + seqtime (total time for receiving).
+        ssdelay + seqtime (total time for receiving) (us).
     numberofreceivesamples
         the number of receive samples to take, given the rx rate, during 
         the sstime.
@@ -316,14 +316,16 @@ class Sequence(ScanClassBase):
 
         # time for number of ranges given, in us, taking into account first_range and num_ranges.          
         self.ssdelay = max([(self.slice_dict[slice_id]['num_ranges'] + first_range_samples[slice_id]) *
-                            self.slice_dict[slice_id]['pulse_len'] for slice_id in self.slice_ids])
+                            (1.0e6/self.transmit_metadata.output_rx_rate) for slice_id in self.slice_ids])
+
 
         # The delay is long enough for any slice's pulse length and num_ranges to be accounted for.
 
         # FIND the sequence time. Time before the first pulse is 70 us when RX and TR set up for the first pulse. The
         # timing to the last pulse is added, as well as its pulse length and the RX/TR delay at the end of last pulse.
-        self.seqtime = 2*self.transmit_metadata['tr_window_time'] + self.pulses[-1][
-            'pulse_timing_us'] + self.last_pulse_len
+        # tr_window_time is originally in seconds, convert to us.
+        self.seqtime = 2*self.transmit_metadata['tr_window_time']*1.0e6 + self.pulses[-1][
+            'pulse_timing_us'] + self.last_pulse_len 
 
         # FIND the total scope sync time and number of samples to receive.
         self.sstime = self.seqtime + self.ssdelay

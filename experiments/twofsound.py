@@ -9,8 +9,6 @@ BOREALISPATH = os.environ['BOREALISPATH']
 
 #import test
 from experiment_prototype.experiment_prototype import ExperimentPrototype
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
-from experiments.test_decimation_schemes import *
 
 class Twofsound(ExperimentPrototype):
 
@@ -86,7 +84,6 @@ class Twofsound(ExperimentPrototype):
         
         super(Twofsound, self).__init__(cpid, output_rx_rate=output_rx_rate, rx_bandwidth=rxrate,
                 txctrfreq=txctrfreq, rxctrfreq=rxctrfreq, 
-                decimation_scheme=create_test_scheme_9(),
                 comment_string='Twofsound classic scan-by-scan')
 
         print(self.txctrfreq)
