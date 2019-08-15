@@ -84,7 +84,47 @@ Installing the Custom-Made TXIO Board
     - Connect the outermost SMA-MFA cable to J7, proceeding inwards, connect the SMA-MFA cables to J6, J5, and J4 respectively.
     - Screw the TXIO board into place on the USRP housing.
 
-4. Follow TXIO testing procedures from TXIO notes.
+4. Follow the testing procedure below to run a simple test of the TXIO outputs.
+
+**TXIO OUTPUT TESTS**
+
+- Connect a needle probe to channel one of your oscilloscope and set it to trigger on the rising edge of channel one.
+
+- Run test_txio_gpio.py located in borealis/testing/n200_gpio_test. Usage is as follows:
+
+    `python3 test_txio_gpio.py <N200_ip_address>`
+
+- When prompted to enter the pins corresponding to the TXIO signals, press enter to accept the default pin settings. This will begin the tests. Pressing CTRL+C and entering "y" will tell the program to run the next test.
+
+- Insert the needle probe into the SMA output corresponding to RXO. The scope signal should be the inverse of the pattern flashed by the GREEN front LED. Then, proceed to the next test (CTRL+C, then enter "y").
+
+- Insert the needle probe into the SMA output corresponding to TXO. The scope signal should be the inverse of the pattern flashed by the RED and BLUE front LEDs. Then, proceed to the next test (CTRL+C, then enter "y").
+
+- Insert the needle probe into the SMA output corresponding to TR. The scope signal should be the inverse of the pattern flashed by the BLUE and GREEN front LEDs. Then, proceed to the next test (CTRL+C, then enter "y").
+
+    - Insert the needle probe into the hole corresponding to pin 7 of the D-Sub connector (TR+). The scope signal should follow the pattern flashed by the BLUE and GREEN front LEDs.
+
+    - Insert the needle probe into the hole corresponding to pin 2 of the D-Sub connector (TR-). The scope signal should be the inverse of the pattern flashed by the BLUE and GREEN front LEDs.
+
+- Insert the needle probe into SMA output corresponding to IDLE. The scope signal should be the inverse of the pattern flashed by the YELLOW front LED. Then, proceed to the next test (CTRL+C, then enter "y").
+
+- Insert the needle probe into the hole corresponding to pin 8 of the D-Sub. The scope signal should follow the sequence of numbers being printed to your terminal (high when the number is non-zero, low when the number is zero).
+
+    - Insert the needle probe into the hole corresponding to pin 3 of the D-Sub. The scope signal should be the inverse of the sequence of numbers being printed to your terminal. Then, proceed to the next test (CTRL+C, then enter "y").
+
+- To properly perform the loopback tests of the differential signals, connect the D-Sub pins to each other in the following configuration:
+
+    - Pin 6 to pin 7
+    - Pin 1 to pin 2
+    - Pin 8 to pin 9
+    - Pin 3 to pin 4
+
+- Once connected ensure that during the TR, AGC loopback test, the printed number is non zero when the terminal indicates the output pin is low, and vice versa. Then, proceed to the next test (CTRL+C, then enter "y").
+
+- Ensure that during the TM, LP loopback test, the printed number is non zero when the terminal indicates the output pin is low, and vice versa. Press CTRL+C, then enter "y" to end the tests.
+
+- This concludes the tests! If any of these signal output tests failed, additional troubleshooting is needed. To check the entire logic path of each signal, follow the testing procedures found in the TXIO notes document.
+
 5. Install enclosure cover lid back in place.
 
 Configuring the Unit for Borealis
