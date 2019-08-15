@@ -1,3 +1,12 @@
+# Copyright 2019 SuperDARN Canada, University of Saskatchewan
+# Author: Liam Graham
+#
+# bfiq_to_rawacf.py
+# 2019-08-15
+# Code for processing beam-formed IQ data into ACF data product
+# matching the real-time product produced by datawrite.py
+
+
 import numpy as np
 import deepdish as dd
 import sys
@@ -5,18 +14,23 @@ import subprocess as sp
 import os
 from datetime import datetime as dt
 import warnings
+import tables
+from pathlib2 import Path
 
 def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 	"""
 	Processes the data from a bfiq.hdf5 file and creates auto and cross correlations from the samples.
 	This data is formatted and written to mimic borealis rawacf.hdf5 files.
+	Args:
+		bfiq_filepath:	String type path to the bfiq file to be processed
 	"""
 
 	def correlate_samples(ts_dict):
 		"""
 		Builds the autocorrelation and cross-correlation matrices for the beamformed data
 		contained in one timestamped dictionary
-		:param ts_dict: A timestamped dictionary from a formated bfiq.hdf5 file
+		Args:
+			ts_dict: A timestamped dictionary from a formated bfiq.hdf5 file
 		"""
 		data_buff = ts_dict["data"]
 		num_slices = ts_dict["num_slices"]
@@ -47,8 +61,7 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 		out_intf = np.zeros((num_sequences, num_beams, num_ranges, num_lags), dtype=np.complex64)
 		out_cross = np.zeros((num_sequences, num_beams, num_ranges, num_lags), dtype=np.complex64)
 
-		# Perform autocorrelations of each array, and cross
-		# correlation between arrays
+		# Perform autocorrelations of each array, and cross correlation between arrays
 		for seq in range(num_sequences):
 			for beam in range(num_beams):
 				main_samps = main_data[seq, beam]
@@ -69,8 +82,8 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 				for rng in range(num_ranges):
 					for lag in range(num_lags):
 						# tau spacing in us, sample rate in hz
-						tau_in_samples = np.ceil(ts_dict["tau_spacing"] * 1e-6 * 
-													ts_dict["rx_sample_rate"])
+						tau_in_samples = np.ceil(ts_dict["tau_spacing"] * 1e-6
+												 * ts_dict["rx_sample_rate"])
 						p1_offset = lags[lag, 0] * tau_in_samples
 						p2_offset = lags[lag, 1] * tau_in_samples
 						
@@ -91,15 +104,23 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 		out_intf = np.mean(out_intf, axis=0)
 		out_cross = np.mean(out_cross, axis=0)
 
+		# END def correlate_samples(ts_dict)
 		return out_main, out_intf, out_cross
 
-	warnings.simplefilter('ignore')
+	# Suppress NaturalNameWarning when using timestamps as keys for records
+	warnings.simplefilter('ignore', tables.NaturalNameWarning)
 
-	acf_file = bfiq_filepath.split('b')[-2] + 'rawacf.hdf5.test' 
-	temp_file= "temp_acf.hdf5"
+	bfiq_str = bfiq_filepath.split('.')[:5]
+	acf_file = ''
+	for part in bfiq_str:
+		acf_file += part + '.'
+	acf_file += 'rawacf.hdf5'
+	temp_file = "temp_acf.hdf5"
+
+	Path(acf_file).touch()
 
 	bfiq = dd.io.load(bfiq_filepath)
-	acfs = dict()
+	correlations = dict()
 
 	shared_fields = ['beam_azms', 'beam_nums', 'blanked_samples', 'lags', 'noise_at_freq',
 	 					'pulses', 'sqn_timestamps', 'borealis_git_hash', 
@@ -111,34 +132,28 @@ def bfiq_to_rawacf_postprocessing(bfiq_filepath):
 	 					'slice_comment', 'station', 'tau_spacing', 'timestamp_of_write', 'tx_pulse_len']
 
 	for k in bfiq:
-		acfs[k] = dict()
+		correlations[k] = dict()
 		# write common dictionary fields first
 		for f in shared_fields:
-			acfs[k][f] = bfiq[k][f]
+			correlations[k][f] = bfiq[k][f]
 
 		# Perform correlations and write to dictionary
 		main_acfs, intf_acfs, xcfs = correlate_samples(bfiq[k])
 
-		acfs[k]["correlation_dimensions"] = np.array(main_acfs.shape)
-		acfs[k]["correlation_descriptors"] = np.array(['num_beams', 'num_ranges', 'num_lags'])
+		correlations[k]["correlation_dimensions"] = np.array(main_acfs.shape)
+		correlations[k]["correlation_descriptors"] = np.array(['num_beams', 'num_ranges', 'num_lags'])
 
-		acfs[k]["main_acfs"] = main_acfs.flatten()
-		acfs[k]["intf_acfs"] = intf_acfs.flatten()
-		acfs[k]["xcfs"] = xcfs.flatten()
+		correlations[k]["main_acfs"] = main_acfs.flatten()
+		correlations[k]["intf_acfs"] = intf_acfs.flatten()
+		correlations[k]["xcfs"] = xcfs.flatten()
 
 		ts_dd = {}
-		ts_dd[k] = acfs[k]
+		ts_dd[k] = correlations[k]
 		# Log information about how this file was generated
 		now = dt.now()
 		date_str = now.strftime("%Y-%m-%d")
 		time_str = now.strftime("%H:%M")
 		ts_dd[k]["experiment_comment"] += "File generated on " + date_str + " at " + time_str + " from " + bfiq_filepath + "via postprocessing util"
-
-		try:
-			fd = os.open(acf_file, os.O_CREAT | os.O_EXCL)
-			os.close(fd)
-		except FileExistsError:
-			pass
 
 		# copy timestamped record to full acf file
 		dd.io.save(temp_file, ts_dd, compression=None)
