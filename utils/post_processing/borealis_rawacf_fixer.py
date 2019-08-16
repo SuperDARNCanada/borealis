@@ -1,4 +1,4 @@
-# Copyright SuperDARN Canada, University of Saskatchewan
+# Copyright 2019 SuperDARN Canada, University of Saskatchewan
 # Author: Marci Detwiller
 
 import argparse

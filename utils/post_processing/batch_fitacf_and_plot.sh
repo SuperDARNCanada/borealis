@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2019 SuperDARN Canada, University of Saskatchewan
+# Author: Marci Detwiller
+
 RAWACF_DIR="/borealis_site_data/sas_rawacf_dmap/"
 FITACF_DIR="/borealis_site_data/sas_fitacf/"
 SUMMARY_PLOT_DIR="/borealis_site_data/sas_summary_plot/"

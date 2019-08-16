@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2019 SuperDARN Canada, University of Saskatchewan
+# Author: Marci Detwiller
+
 DAY_TO_DMAP=$1
 
 DIRECTORY_TO_SOURCE="/borealis_site_data/sas_rawacf_unfixed/$DAY_TO_DMAP/*"

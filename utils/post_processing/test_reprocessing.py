@@ -1,3 +1,6 @@
+# Copyright 2019 SuperDARN Canada, University of Saskatchewan
+# Author: Liam Graham
+
 import numpy as np
 import deepdish as dd
 from tools import correlate_samples

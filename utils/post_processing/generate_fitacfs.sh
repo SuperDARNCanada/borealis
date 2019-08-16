@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Copyright 2018 SuperDARN
-# Description: Gennerates relevant fitacf files from relevant rawacf files that are in the working directory.
+# Copyright 2018 SuperDARN Canada, University of Saskatchewan
+# Description: Generates relevant fitacf files from relevant rawacf files that are in the working directory.
 #              If a problem occurs an email is sent to Kevin and Marina. 
 #
 # Authors: 

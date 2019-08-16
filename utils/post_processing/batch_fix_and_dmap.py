@@ -1,3 +1,6 @@
+# Copyright 2019 SuperDARN Canada, University of Saskatchewan
+# Author: Marci Detwiller
+
 import os
 from multiprocessing import Process
 import subprocess as sp
