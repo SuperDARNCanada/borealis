@@ -10,7 +10,7 @@ message DriverPacket {
   double txcenterfreq = 5;
   double rxcenterfreq = 6;
   uint32 numberofreceivesamples = 7;
-  double seqtime = 8
+  double seqtime = 8;
   double timetosendsamples = 9;
   bool SOB = 10;
   bool EOB = 11;
