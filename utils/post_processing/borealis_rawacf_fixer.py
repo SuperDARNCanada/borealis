@@ -105,10 +105,18 @@ def update_file(filename, out_file):
         #     recs[group_name]['num_ranges'] = np.uint32(75)
         #     if key_num == 0:
         #         print('num_ranges added')
+        
+        
         if 'timestamp_of_write' in recs[group_name].keys():
             del recs[group_name]['timestamp_of_write']
             if key_num == 0:
                 print('timestamp_of_write removed')
+        # if recs[group_name]['range_sep'] > 1000.0:
+        #     recs[group_name]['range_sep'] = np.float32(recs[group_name]['range_sep']/1000.0) # some rawacf have rsep in m not km
+        #     if key_num == 0:
+        #         print('range_sep converted to km')
+        
+        
         # if not isinstance(recs[group_name]['experiment_id'], np.int64):
         #     recs[group_name]['experiment_id'] = np.int64(recs[group_name]['experiment_id'])
         # if not recs[group_name]['lags']: # empty - issue in April, generate from pulses

@@ -30,7 +30,8 @@ rawacfFiles=0
 #                   - check if the file is empty, same process as above
 #                   - check if their is dmap error using backscatter, same process 
 
-for rawfile in $workingdir_raw*.rawacf.dmap
+rawglob="$workingdir_raw*rawacf.dmap"
+for rawfile in $rawglob
 do
     echo $rawfile
     basefilename=`basename ${rawfile}`
