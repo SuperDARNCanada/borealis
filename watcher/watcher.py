@@ -112,6 +112,26 @@ def build_truth(power_array, threshold):
 	return the_truth
 
 
+def truth_counter(truth_array, max_total):
+	num_antennas = truth_array.shape[0]
+	ctrs = np.zeros((num_antennas), dtype=int)
+	locs = np.transpose(np.nonzero(truth_array))
+	for loc in locs:
+		ctrs[loc[0]] += 1
+		ctrs[loc[1]] += 1
+
+	total = np.sum(ctrs)
+	if total > max_total:
+		max_ant = np.argmax(ctrs)
+		print("Removing antenna", max_ant)
+		new_truth = np.delete(truth_array, max_ant, 0)
+		new_truth = np.delete(new_truth, max_ant, 1)
+		print(new_truth.shape)
+		return truth_counter(new_truth, max_total)
+	else:
+		return truth_array
+
+
 def average_reporter(truth_array):
 	"""
 	Reports whether there are power discrepancies between antennas based on
@@ -159,17 +179,17 @@ def reporter(truth_array):
 	total = np.sum(ctrs)
 	print(total, "power discrepancies found\n")
 
-	for ant1 in range(num_antennas):
-		for ant2 in range(ant1+1, num_antennas):
-			count = ctrs[ant1, ant2]
-			print(count, "power discrepancies between antenna", ant1, "and antenna", ant2)
+	# for ant1 in range(num_antennas):
+	# 	for ant2 in range(ant1+1, num_antennas):
+	# 		count = ctrs[ant1, ant2]
+	# 		print(count, "power discrepancies between antenna", ant1, "and antenna", ant2)
 
 	for ant in range(num_antennas):
 		print("Antenna", ant, "involved in", totals[ant], "discrepancies")
 
 
 
-def check_antennas_iq_file_power(iq_file, threshold):
+def check_antennas_iq_file_power(iq_file, threshold, max_total):
 	"""
 	Checks that the power between antennas is reasonably close for each 
 	range in a record. If it is not, alert the squad.
@@ -181,20 +201,23 @@ def check_antennas_iq_file_power(iq_file, threshold):
 	ant_iq = dd.io.load(iq_file)
 	print("Loaded iq")
 	antenna_keys = list(ant_iq.keys())
-	first_rec = ant_iq[antenna_keys[0]]
+	# first_rec = ant_iq[antenna_keys[0]]
 	last_rec = ant_iq[antenna_keys[-1]]
 
-	first_pwr, first_avg = get_lag0_pwr(first_rec)
+	# first_pwr, first_avg = get_lag0_pwr(first_rec)
 	last_pwr, last_avg = get_lag0_pwr(last_rec)
 
 	# first_truth = build_truth_average(first_pwr, first_avg, threshold)
 	# last_truth = build_truth_average(last_pwr, last_avg, threshold)
 
-	first_truth = build_truth(first_pwr, threshold)
+	# first_truth = build_truth(first_pwr, threshold)
 	last_truth = build_truth(last_pwr, threshold)
 
-	print("Checking", antenna_keys[0], "\n")
-	reporter(first_truth)
+	# new_first = truth_counter(first_truth, max_total)
+	last_truth = truth_counter(last_truth, max_total)
+
+	# print("Checking", antenna_keys[0], "\n")
+	# reporter(new_first)
 	print("Checking", antenna_keys[-1], "\n")
 	reporter(last_truth)
 
@@ -202,4 +225,5 @@ def check_antennas_iq_file_power(iq_file, threshold):
 if __name__ == "__main__":
 	file = sys.argv[1]
 	threshold = int(sys.argv[2])
-	check_antennas_iq_file_power(file, threshold)
+	max_total = int(sys.argv[3])
+	check_antennas_iq_file_power(file, threshold, max_total)
