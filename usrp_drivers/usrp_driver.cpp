@@ -162,7 +162,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
           }
 
           sqn_num = driver_packet.sequence_num();
-          seqtime = driverpacket.seqtime();
+          seqtime = driver_packet.seqtime();
           if (sqn_num != expected_sqn_num){
             DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: " <<
                         expected_sqn_num);
@@ -260,6 +260,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto time_now = box_time;
     auto sequence_start_time = time_now + delay;
 
+    auto seqn_sampling_time = num_recv_samples/rx_rate;
     TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
       [&]() {
 
@@ -317,7 +318,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
             // Read AGC and Low Power signals
             usrp_d.clear_command_time();
-            auto read_time = sequence_start_time + seqtime + agc_signal_read_delay;
+            auto read_time = sequence_start_time + seqn_sampling_time + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
             uint32_t pin_status = usrp_d.get_gpio_state();
             usrp_d.clear_command_time();
@@ -370,7 +371,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     ); // full usrp function timeit macro
 
 
-    auto seqn_sampling_time = num_recv_samples/rx_rate;
 
     auto end_time = box_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
