@@ -112,24 +112,38 @@ def build_truth(power_array, threshold):
 	return the_truth
 
 
-def truth_counter(truth_array, max_total):
-	num_antennas = truth_array.shape[0]
-	ctrs = np.zeros((num_antennas), dtype=int)
+def find_bad_antennas(truth_array, proportion):
+	# Set up the problem
+	num_antennas, _, num_sequences, num_ranges = truth_array.shape
+	antennas = np.zeros((num_antennas), dtype=int)
 	locs = np.transpose(np.nonzero(truth_array))
 	for loc in locs:
-		ctrs[loc[0]] += 1
-		ctrs[loc[1]] += 1
+		antennas[loc[0]] += 1
+		antennas[loc[1]] += 1
 
-	total = np.sum(ctrs)
-	if total > max_total:
-		max_ant = np.argmax(ctrs)
-		print("Removing antenna", max_ant)
-		new_truth = np.delete(truth_array, max_ant, 0)
-		new_truth = np.delete(new_truth, max_ant, 1)
-		print(new_truth.shape)
-		return truth_counter(new_truth, max_total)
-	else:
-		return truth_array
+	removed = []
+	threshold = proportion * (num_antennas - 1) * num_sequences * num_ranges
+	unacceptable = antennas > threshold
+
+	while np.any(unacceptable):
+		print(unacceptable)
+		indices = np.nonzero(unacceptable)
+		for idx in indices:
+			truth_array = np.delete(truth_array, idx, 0)
+			truth_array = np.delete(truth_array, idx, 1)
+			removed.append(idx)
+
+		# Update problem
+		num_antennas = truth_array.shape[0]
+		threshold = proportion * (num_antennas - 1) * num_sequences * num_ranges
+		antennas = np.zeros((num_antennas), dtype=int)
+		locs = np.transpose(np.nonzero(truth_array))
+		for loc in locs:
+			antennas[loc[0]] += 1
+			antennas[loc[1]] += 1
+		unacceptable = antennas > threshold
+
+	return removed
 
 
 def average_reporter(truth_array):
@@ -189,7 +203,7 @@ def reporter(truth_array):
 
 
 
-def check_antennas_iq_file_power(iq_file, threshold, max_total):
+def check_antennas_iq_file_power(iq_file, threshold, proportion):
 	"""
 	Checks that the power between antennas is reasonably close for each 
 	range in a record. If it is not, alert the squad.
@@ -214,16 +228,18 @@ def check_antennas_iq_file_power(iq_file, threshold, max_total):
 	last_truth = build_truth(last_pwr, threshold)
 
 	# new_first = truth_counter(first_truth, max_total)
-	last_truth = truth_counter(last_truth, max_total)
+	# last_truth = truth_counter(last_truth, proportion)
+
+	find_bad_antennas(last_truth, proportion)
 
 	# print("Checking", antenna_keys[0], "\n")
 	# reporter(new_first)
-	print("Checking", antenna_keys[-1], "\n")
-	reporter(last_truth)
+	# print("Checking", antenna_keys[-1], "\n")
+	# reporter(last_truth)
 
 
 if __name__ == "__main__":
 	file = sys.argv[1]
 	threshold = int(sys.argv[2])
-	max_total = int(sys.argv[3])
-	check_antennas_iq_file_power(file, threshold, max_total)
+	proportion = float(sys.argv[3])
+	check_antennas_iq_file_power(file, threshold, proportion)
