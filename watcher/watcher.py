@@ -148,10 +148,13 @@ def reporter(truth_array):
 	# Get the indices of each False in the array
 	num_antennas = truth_array.shape[0]
 	ctrs = np.zeros((num_antennas, num_antennas), dtype=int)
+	totals = np.zeros((num_antennas), dtype=int)
 	if np.any(truth_array):
 		locs = np.transpose(np.nonzero(truth_array))
 		for loc in locs:
 			ctrs[loc[0], loc[1]] += 1
+			totals[loc[0]] += 1
+			totals[loc[1]] += 1
 
 	total = np.sum(ctrs)
 	print(total, "power discrepancies found\n")
@@ -159,7 +162,11 @@ def reporter(truth_array):
 	for ant1 in range(num_antennas):
 		for ant2 in range(ant1+1, num_antennas):
 			count = ctrs[ant1, ant2]
-			print(count, "power discrepancies between antenna", ant1, "and antenna", ant2, "\n")
+			print(count, "power discrepancies between antenna", ant1, "and antenna", ant2)
+
+	for ant in range(num_antennas):
+		print("Antenna", ant, "involved in", totals[ant], "discrepancies")
+
 
 
 def check_antennas_iq_file_power(iq_file, threshold):
@@ -180,13 +187,16 @@ def check_antennas_iq_file_power(iq_file, threshold):
 	first_pwr, first_avg = get_lag0_pwr(first_rec)
 	last_pwr, last_avg = get_lag0_pwr(last_rec)
 
-	first_truth = build_truth_average(first_pwr, first_avg, threshold)
-	last_truth = build_truth_average(last_pwr, last_avg, threshold)
+	# first_truth = build_truth_average(first_pwr, first_avg, threshold)
+	# last_truth = build_truth_average(last_pwr, last_avg, threshold)
+
+	first_truth = build_truth(first_pwr, threshold)
+	last_truth = build_truth(last_pwr, threshold)
 
 	print("Checking", antenna_keys[0], "\n")
-	average_reporter(first_truth)
+	reporter(first_truth)
 	print("Checking", antenna_keys[-1], "\n")
-	average_reporter(last_truth)
+	reporter(last_truth)
 
 
 if __name__ == "__main__":
