@@ -122,16 +122,17 @@ def find_bad_antennas(truth_array, proportion):
 		antennas[loc[1]] += 1
 
 	removed = []
+	original_index = np.array(range(num_antennas))
 	threshold = proportion * (num_antennas - 1) * num_sequences * num_ranges
 	unacceptable = antennas > threshold
 
 	while np.any(unacceptable):
-		print(unacceptable)
 		indices = np.nonzero(unacceptable)
-		for idx in indices:
+		for idx in indices[0]:
 			truth_array = np.delete(truth_array, idx, 0)
 			truth_array = np.delete(truth_array, idx, 1)
-			removed.append(idx)
+			removed.append(original_index[idx])
+		original_index = np.delete(original_index, indices)
 
 		# Update problem
 		num_antennas = truth_array.shape[0]
@@ -143,32 +144,19 @@ def find_bad_antennas(truth_array, proportion):
 			antennas[loc[1]] += 1
 		unacceptable = antennas > threshold
 
+	print(removed)
+	print(original_index)
 	return removed
 
 
-def average_reporter(truth_array):
-	"""
-	Reports whether there are power discrepancies between antennas based on
-	a truth array created by build_truth().
-	Args:
-		truth_array:	A truth array from build_truth(). Sould have shape:
-						(num_antennas, num_antennas, num_sequences, num_ranges)
-	"""
-	# Get the indices of each False in the array
-	num_antennas, num_sequences, num_ranges = truth_array.shape
-	ctrs = np.zeros((num_antennas, num_ranges), dtype=int)
-	if np.any(truth_array):
-		locs = np.transpose(np.nonzero(truth_array))
-		for loc in locs:
-			ctrs[loc[0], loc[2]] += 1
-
-	total = np.sum(ctrs)
-	print(total, "power discrepancies found\n")
-
-	for ant in range(num_antennas):
-		for rng in range(num_ranges):
-			count = ctrs[ant,rng]
-			print(count, "power discrepancies found for antenna", ant, "at range", rng)
+def compare_with_average(antennas, power_array, avg_power):
+	antennas = sorted(antennas)
+	for antenna in antennas:
+		print("Analyzing antenna", antenna)
+		antenna_power = power_array[antenna]
+		power_diff = np.mean(antenna_power - avg_power)
+		print(power_diff)
+	print(antennas)
 
 
 def reporter(truth_array):
@@ -230,7 +218,9 @@ def check_antennas_iq_file_power(iq_file, threshold, proportion):
 	# new_first = truth_counter(first_truth, max_total)
 	# last_truth = truth_counter(last_truth, proportion)
 
-	find_bad_antennas(last_truth, proportion)
+	bad = find_bad_antennas(last_truth, proportion)
+
+	compare_with_average(bad, last_pwr, last_avg)
 
 	# print("Checking", antenna_keys[0], "\n")
 	# reporter(new_first)
