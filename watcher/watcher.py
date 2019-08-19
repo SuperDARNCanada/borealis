@@ -54,7 +54,7 @@ def get_lag0_pwr(iq_record):
 	return power_array, avg_array
 
 
-def build_truth(power_array, average_array, threshold):
+def build_truth_average(power_array, average_array, threshold):
 	"""
 	Compares each data point (seq, range) for each antenna against every 
 	other antenna and builds an array of booleans of shape
@@ -71,15 +71,6 @@ def build_truth(power_array, average_array, threshold):
 		the_truth:		Array of booleans as described above.
 	"""
 	num_antennas, num_sequences, num_ranges = power_array.shape
-	# the_truth = np.zeros((num_antennas, num_antennas, num_sequences, num_ranges),
-	# 						dtype=bool)
-	# for ant in range(num_antennas):
-	# 	# start at ant to avoid duplicate results from array symmetry
-	# 	for comp in range(ant+1, num_antennas):
-	# 		for seq in range(num_sequences):
-	# 			for rng in range(num_ranges):
-	# 				if np.abs(power_array[ant, seq, rng] - power_array[comp, seq, rng]) > threshold:
-	# 					the_truth[ant, comp, seq, rng] = True
 
 	the_truth = np.zeros((num_antennas, num_sequences, num_ranges), dtype=bool)
 	for ant in range(num_antennas):
@@ -91,6 +82,60 @@ def build_truth(power_array, average_array, threshold):
 
 	return the_truth
 
+def build_truth(power_array, threshold):
+	"""
+	Compares each data point (seq, range) for each antenna against every 
+	other antenna and builds an array of booleans of shape
+	(num_antennas, num_antennas, num_sequences, num_ranges)
+	Each point is the inverse truth value of whether that point is within a difference
+	threshold for each antenna. For example, if point (0, 5, 6, 49) is False: 
+	then the power level difference between antennas 0 and 5 for sequence 6
+	range 50 is within the threshold. Inverse used because it is easier to find
+	nonzero elements in numpy.
+	Args:
+		power_array:	An np.ndarray of powers in dB created by get_lag0_pwr.
+		threshold:		The acceptable difference in power between antennas.
+	Returns:
+		the_truth:		Array of booleans as described above.
+	"""
+	num_antennas, num_sequences, num_ranges = power_array.shape
+	the_truth = np.zeros((num_antennas, num_antennas, num_sequences, num_ranges),
+							dtype=bool)
+	for ant in range(num_antennas):
+		# start at ant to avoid duplicate results from array symmetry
+		for comp in range(ant+1, num_antennas):
+			for seq in range(num_sequences):
+				for rng in range(num_ranges):
+					if np.abs(power_array[ant, seq, rng] - power_array[comp, seq, rng]) > threshold:
+						the_truth[ant, comp, seq, rng] = True
+
+	return the_truth
+
+
+def average_reporter(truth_array):
+	"""
+	Reports whether there are power discrepancies between antennas based on
+	a truth array created by build_truth().
+	Args:
+		truth_array:	A truth array from build_truth(). Sould have shape:
+						(num_antennas, num_antennas, num_sequences, num_ranges)
+	"""
+	# Get the indices of each False in the array
+	num_antennas, num_sequences, num_ranges = truth_array.shape
+	ctrs = np.zeros((num_antennas, num_ranges), dtype=int)
+	if np.any(truth_array):
+		locs = np.transpose(np.nonzero(truth_array))
+		for loc in locs:
+			ctrs[loc[0], loc[2]] += 1
+
+	total = np.sum(ctrs)
+	print(total, "power discrepancies found\n")
+
+	for ant in range(num_antennas):
+		for rng in range(num_ranges):
+			count = ctrs[ant,rng]
+			print(count, "power discrepancies found for antenna", ant, "at range", rng)
+
 
 def reporter(truth_array):
 	"""
@@ -101,26 +146,20 @@ def reporter(truth_array):
 						(num_antennas, num_antennas, num_sequences, num_ranges)
 	"""
 	# Get the indices of each False in the array
-	num_antennas, num_sequences, num_ranges = truth_array.shape
-	# ctrs = np.zeros((num_antennas, num_antennas), dtype=int)
-	ctrs = np.zeros((num_antennas, num_ranges), dtype=int)
+	num_antennas = truth_array.shape[0]
+	ctrs = np.zeros((num_antennas, num_antennas), dtype=int)
 	if np.any(truth_array):
 		locs = np.transpose(np.nonzero(truth_array))
 		for loc in locs:
-			ctrs[loc[0], loc[2]] += 1
+			ctrs[loc[0], loc[1]] += 1
 
 	total = np.sum(ctrs)
 	print(total, "power discrepancies found\n")
 
-	# for ant1 in range(num_antennas):
-	# 	for ant2 in range(ant1+1, num_antennas):
-	# 		count = ctrs[ant1, ant2]
-	# 		print(count, "power discrepancies between antenna", ant1, "and antenna", ant2, "\n")
-	for ant in range(num_antennas):
-		for rng in range(num_ranges):
-			count = ctrs[ant,rng]
-			print(count, "power discrepancies found for antenna", ant, "at range", rng)
-
+	for ant1 in range(num_antennas):
+		for ant2 in range(ant1+1, num_antennas):
+			count = ctrs[ant1, ant2]
+			print(count, "power discrepancies between antenna", ant1, "and antenna", ant2, "\n")
 
 
 def check_antennas_iq_file_power(iq_file, threshold):
@@ -141,13 +180,13 @@ def check_antennas_iq_file_power(iq_file, threshold):
 	first_pwr, first_avg = get_lag0_pwr(first_rec)
 	last_pwr, last_avg = get_lag0_pwr(last_rec)
 
-	first_truth = build_truth(first_pwr, first_avg, threshold)
-	last_truth = build_truth(last_pwr, last_avg, threshold)
+	first_truth = build_truth_average(first_pwr, first_avg, threshold)
+	last_truth = build_truth_average(last_pwr, last_avg, threshold)
 
 	print("Checking", antenna_keys[0], "\n")
-	reporter(first_truth)
+	average_reporter(first_truth)
 	print("Checking", antenna_keys[-1], "\n")
-	reporter(last_truth)
+	average_reporter(last_truth)
 
 
 if __name__ == "__main__":
