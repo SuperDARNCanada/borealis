@@ -31,22 +31,22 @@ class ImptTest(ExperimentPrototype):
         output_rx_rate = 10.0e3/3
         rx_rate = 5.0e6
 
-        #tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        #rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        #rx_int_ant = [0, 1, 2, 3]
-        tx_ant = [0]
-        rx_main_ant = [0]
-        rx_int_ant = [0]
+        tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        rx_int_ant = [0, 1, 2, 3]
+        #tx_ant = [0]
+        #rx_main_ant = [0]
+        #rx_int_ant = [0]
         default_slice = {  # slice_id = 0, the first slice
             "tx_antennas": tx_ant,
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
             "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
-            "pulse_shift": None,
-            "mpinc": 1500,  # us
+            #"pulse_shift": None,
+            "tau_spacing": 1500,  # us
             "pulse_len": 300,  # us
-            "nrang": 75,  # range gates
-            "frang": 180,  # first range gate, in km
+            "num_ranges": 75,  # range gates
+            "first_range": 180,  # first range gate, in km
             "intt": 3000,
             "beam_angle": [1.75],
             "beam_order": [0],
@@ -66,11 +66,11 @@ class ImptTest(ExperimentPrototype):
             "rx_main_antennas": rx_main_ant,
             "rx_int_antennas": rx_int_ant,
             "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
-            "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
-            "mpinc": 1500,  # us
+            #"phase_": [0, 0, 0, 0, 0, 0, 0, 0],
+            "tau_spacing": 1500,  # us
             "pulse_len": 300,  # us
-            "nrang": 75,  # range gates
-            "frang": 180,  # first range gate, in km
+            "num_ranges": 75,  # range gates
+            "first_range": 180,  # first range gate, in km
             "intt": 3000,
             "beam_angle": [1.75],
             "beam_order": [0],
@@ -92,7 +92,7 @@ class ImptTest(ExperimentPrototype):
         interfacing_dict2 = dict()
         for i in range(30):
             impt_slice = copy.deepcopy(default_slice)
-            impt_slice['pulse_shift'] = phases[i*8:8*(i+1)]
+            impt_slice['pulse_phase_offset'] = phases[i*8:8*(i+1)]
             if i == 0:
                 list_of_slices.append(impt_slice)
             else:
@@ -105,7 +105,7 @@ class ImptTest(ExperimentPrototype):
         rxctrfreq = katscan_slice["txfreq"]
         txctrfreq = rxctrfreq
         super(ImptTest, self).__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq, decimation_scheme=create_test_scheme_9(),
-            comment_string="Reimer IMPT test run july 3rd 2019")
+            comment_string="Reimer IMPT Experiment")
         # add slices to experiment
         for i,exp_slice in enumerate(list_of_slices):
             if i == 0:

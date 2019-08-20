@@ -316,7 +316,7 @@ class Sequence(ScanClassBase):
 
         # time for number of ranges given, in us, taking into account first_range and num_ranges.          
         self.ssdelay = max([(self.slice_dict[slice_id]['num_ranges'] + first_range_samples[slice_id]) *
-                            (1.0e6/self.transmit_metadata.output_rx_rate) for slice_id in self.slice_ids])
+                            (1.0e6/self.transmit_metadata['output_rx_rate']) for slice_id in self.slice_ids])
 
 
         # The delay is long enough for any slice's pulse length and num_ranges to be accounted for.

@@ -78,7 +78,7 @@ def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrf
 
 
 def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samples_array,
-                   txctrfreq, rxctrfreq, txrate, rxrate, numberofreceivesamples, SOB, EOB, timing,
+                   txctrfreq, rxctrfreq, txrate, rxrate, numberofreceivesamples, seqtime, SOB, EOB, timing,
                    seqnum, repeat=False):
     """ Place data in the driver packet and send it via zeromq to the driver.
         :param driverpacket: the protobuf packet to fill and pass over zmq
@@ -111,6 +111,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
     driverpacket.EOB = EOB
     driverpacket.sequence_num = seqnum
     driverpacket.numberofreceivesamples = numberofreceivesamples
+    driverpacket.seqtime = seqtime
 
     if repeat:
         # antennas empty
