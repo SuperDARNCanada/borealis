@@ -45,8 +45,19 @@ DriverOptions::DriverOptions() {
     ss >> atr_0x_;
     ss.clear();
 
+    ss << std::hex << config_pt.get<std::string>("lo_pwr");
+    ss >> lo_pwr_;
+    ss.clear();
+
+    ss << std::hex << config_pt.get<std::string>("agc_st");
+    ss >> agc_st_;
+    ss.clear();
+
+
     tr_window_time_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("tr_window_time"));
+    agc_signal_read_delay_ = boost::lexical_cast<double>(
+                                config_pt.get<std::string>("agc_signal_read_delay"));
     main_antenna_count_ = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("main_antenna_count"));
     interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
@@ -164,9 +175,24 @@ uint32_t DriverOptions::get_atr_0x() const
 
 }
 
+uint32_t DriverOptions::get_lo_pwr() const
+{
+    return lo_pwr_;
+}
+
+uint32_t DriverOptions::get_agc_st() const
+{
+    return agc_st_;
+}
+
 double DriverOptions::get_tr_window_time() const
 {
     return tr_window_time_;
+}
+
+double DriverOptions::get_agc_signal_read_delay() const
+{
+    return agc_signal_read_delay_;
 }
 
 uint32_t DriverOptions::get_main_antenna_count() const

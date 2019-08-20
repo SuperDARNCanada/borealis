@@ -2,11 +2,11 @@
 
 import os
 import sys
-from scipy.signal import firwin, remez, kaiserord, kaiser_beta
 
 sys.path.append(os.environ['BOREALISPATH'])
 
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
+from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme, \
+    create_firwin_filter_by_num_taps, create_firwin_filter_by_attenuation
 
 
 # Schemes 1-8 are original test schemes circa February 2019. They are no longer in use.
@@ -201,52 +201,3 @@ def create_test_scheme_9():
 
     return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
 
-
-def create_firwin_filter_by_attenuation(sample_rate, transition_width, cutoff_hz, ripple_db, 
-    window_type='kaiser'):
-    """
-    Create a firwin filter. 
-
-    :param ripple_db: The desired attenuation in the stop band, in dB.
-    """
-
-    # The Nyquist rate of the signal.
-    nyq_rate = sample_rate  # because we have complex sampled data. 
-
-    # The desired width of the transition from pass to stop,
-    # relative to the Nyquist rate. '
-    width_ratio = transition_width/nyq_rate
-
-    # Compute the order and Kaiser parameter for the FIR filter.
-    N, beta = kaiserord(ripple_db, width_ratio)
-    print(N)
-
-    # Use firwin with a Kaiser window to create a lowpass FIR filter
-    if window_type == 'kaiser':
-        window = ('kaiser', beta)
-    else:
-        window = window_type
-
-    taps = firwin(N, 2*cutoff_hz/nyq_rate, window=window)
-
-    return taps
-
-
-def create_firwin_filter_by_num_taps(sample_rate, transition_width, cutoff_hz, num_taps, 
-    window_type=('kaiser', 8.0)):
-    """
-    Create a firwin filter. 
-
-    :param ripple_db: The desired attenuation in the stop band, in dB.
-    """
-
-    # The Nyquist rate of the signal.
-    nyq_rate = sample_rate  # because we have complex sampled data. 
-
-    # The desired width of the transition from pass to stop,
-    # relative to the Nyquist rate. '
-    width_ratio = transition_width/nyq_rate
-
-    taps = firwin(num_taps, 2*cutoff_hz/nyq_rate, window=window_type)
-
-    return taps

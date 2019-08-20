@@ -78,7 +78,7 @@ def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrf
 
 
 def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samples_array,
-                   txctrfreq, rxctrfreq, txrate, rxrate, numberofreceivesamples, SOB, EOB, timing,
+                   txctrfreq, rxctrfreq, txrate, rxrate, numberofreceivesamples, seqtime, SOB, EOB, timing,
                    seqnum, repeat=False):
     """ Place data in the driver packet and send it via zeromq to the driver.
         :param driverpacket: the protobuf packet to fill and pass over zmq
@@ -111,6 +111,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
     driverpacket.EOB = EOB
     driverpacket.sequence_num = seqnum
     driverpacket.numberofreceivesamples = numberofreceivesamples
+    driverpacket.seqtime = seqtime
 
     if repeat:
         # antennas empty
@@ -401,7 +402,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
                 rxchan_add.acfint = sequence.slice_dict[slice_id]['acfint']
                 rxchan_add.first_range = sequence.slice_dict[slice_id]['first_range']
-                rxchan_add.num_range = sequence.slice_dict[slice_id]['num_ranges']
+                rxchan_add.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
                 rxchan_add.range_sep = sequence.slice_dict[slice_id]['range_sep']
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = rxchan_add.ltab.lag.add()
@@ -601,8 +602,14 @@ def radar():
 
                     num_sequences = 0
                     time_remains = True
-                    integration_period_done_time = integration_period_start_time + \
-                        timedelta(milliseconds=(float(aveperiod.intt)))  # ms
+                    if aveperiod.intt is not None:
+                        intt_break = True
+                        integration_period_done_time = integration_period_start_time + \
+                            timedelta(milliseconds=(float(aveperiod.intt)))  # ms
+                    else:
+                        intt_break = False
+                        ending_number_of_sequences = aveperiod.intn # this will exist 
+
                     first_sequence_out = False
 
                     if TIME_PROFILE:
@@ -614,12 +621,16 @@ def radar():
 
                             # Alternating sequences if there are multiple in the averaging_period.
                             time_now = datetime.utcnow()
-                            if time_now >= integration_period_done_time:
-                                time_remains = False
-                                integration_period_time = time_now - integration_period_start_time
-                                break
-                                # TODO add a break for num_sequences == intn if going for number of averages instead of
-                                # integration time
+                            if intt_break:
+                                if time_now >= integration_period_done_time:
+                                    time_remains = False
+                                    integration_period_time = time_now - integration_period_start_time
+                                    break
+                            else: # break at a certain number of integrations
+                                if num_sequences == ending_number_of_sequences:
+                                    time_remains = False
+                                    integration_period_time = time_now - integration_period_start_time
+                                    break                                    
                             beam_phase_dict = beam_phase_dict_list[sequence_index]
                             send_dsp_metadata(sigprocpacket,
                                            radar_control_to_dsp,
@@ -659,6 +670,7 @@ def radar():
                                                    experiment.rxctrfreq, experiment.txrate, 
                                                    experiment.rxrate,
                                                    sequence.numberofreceivesamples,
+                                                   sequence.seqtime,
                                                    pulse_dict['startofburst'], pulse_dict['endofburst'],
                                                    pulse_dict['timing'], seqnum_start + num_sequences,
                                                    repeat=True)
@@ -671,6 +683,7 @@ def radar():
                                                    experiment.rxctrfreq, experiment.txrate,
                                                    experiment.rxrate,
                                                    sequence.numberofreceivesamples,
+                                                   sequence.seqtime,
                                                    pulse_dict['startofburst'], pulse_dict['endofburst'],
                                                    pulse_dict['timing'], seqnum_start + num_sequences,
                                                    repeat=pulse_dict['isarepeat'])
