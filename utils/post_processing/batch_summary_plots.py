@@ -63,7 +63,7 @@ def plot_fitacf_summary(fitacf_file, directory_to_place):
     pydarn_reader = pydarn.DarnRead(fitacf_file)
     fitacf_data = pydarn_reader.read_fitacf()
 
-    pydarn.RTP.plot_summary(fitacf_data, beam_num=0, groundscatter=True, color_maps={'v': cmocean.cm.balance_r}})
+    pydarn.RTP.plot_summary(fitacf_data, beam_num=0, groundscatter=True, color_maps={'v': cmocean.cm.balance_r})
     
     if directory_to_place[-1] != '/':
         directory_to_place = directory_to_place + '/'
