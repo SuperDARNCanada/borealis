@@ -9,12 +9,13 @@
 # related to rx/tx power
 
 
-import inotify as i
+import inotify.adapters
 import deepdish as dd
 import numpy as np
 import sys
 import smtplib
 import ssl
+import argparse
 
 
 def antenna_average(power):
@@ -298,16 +299,42 @@ def check_antennas_iq_file_power(iq_file, threshold, proportion):
 
 	report = reporter(bad, power_diffs, range_diffs)
 
-	send_report(report, "liam.adair.graham@gmail.com")
+	if report is None:
+		pass
+	else:
+		send_report(report, "liam.adair.graham@gmail.com")
 
-	# print("Checking", antenna_keys[0], "\n")
-	# reporter(new_first)
-	# print("Checking", antenna_keys[-1], "\n")
-	# reporter(last_truth)
+
+def _main():
+	parser = argparse.ArgumentParser(description="Automatically generate a report on new antenna iq files")
+	parser.add_argument('--threshold', required=True, help='An acceptable decibel difference between antennae')
+	parser.add_argument('--proportion', required=True, help='The acceptable proportion of antennas any antenna may\
+																differ from')
+	args = parser.parse_args()
+	threshold = args.threshold
+	proportion = args.proportion
+
+	i = inotify.adapters.Inotify()
+
+	i.add_watch('/data')
+
+	while True:
+		for event in i.event_gen(yield_nones=False):
+			(_, type_names, path, filename) = event
+
+			if ("antennas_iq" in filename) or ("output_ptrs_iq" in filename) and ("IN_CLOSE_WRITE" in type_names):
+				print("Opening...")
+				file_path = path + '/' + filename
+				thresh = int(threshold)
+				prop = float(proportion)
+				check_antennas_iq_file_power(file_path, thresh, prop)
+
 
 
 if __name__ == "__main__":
-	file = sys.argv[1]
-	threshold = int(sys.argv[2])
-	proportion = float(sys.argv[3])
-	check_antennas_iq_file_power(file, threshold, proportion)
+	_main()
+
+	# file = sys.argv[1]
+	# threshold = int(sys.argv[2])
+	# proportion = float(sys.argv[3])
+	# check_antennas_iq_file_power(file, threshold, proportion)
