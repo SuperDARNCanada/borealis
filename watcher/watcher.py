@@ -333,8 +333,3 @@ def _main():
 
 if __name__ == "__main__":
 	_main()
-
-	# file = sys.argv[1]
-	# threshold = int(sys.argv[2])
-	# proportion = float(sys.argv[3])
-	# check_antennas_iq_file_power(file, threshold, proportion)
