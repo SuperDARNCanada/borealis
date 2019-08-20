@@ -252,9 +252,8 @@ def send_report(report, address):
 	sender = "watcherdevel@gmail.com"
 	receiver = address
 	password = input("Password for watcher email account:")
-	message = ""
+	message = "Your array report is ready.\n\n"
 	antennas = list(report.keys())
-	print(antennas)
 	for antenna in antennas:
 		message += "Antenna: " + str(antenna) + "\n"
 		message += "Total average difference from array average: " \
