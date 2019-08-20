@@ -156,11 +156,11 @@ def find_bad_antennas(truth_array, proportion=0.5):
 
 	while np.any(unacceptable):
 		# Get the index of towers outside the threshold
-		indices = np.nonzero(unacceptable)
-		for idx in indices[0]:
-			truth_array = np.delete(truth_array, idx, 0)
-			truth_array = np.delete(truth_array, idx, 1)
-			# Should append the original index of the antenna for further analysis
+		indices = np.nonzero(unacceptable)[0]
+		truth_array = np.delete(truth_array, indices, 0)
+		truth_array = np.delete(truth_array, indices, 1)
+		# Should append the original index of the antenna for further analysis
+		for idx in indices:
 			removed.append(original_index[idx])
 		# Keep track of indices that have not yet been removed
 		original_index = np.delete(original_index, indices)
