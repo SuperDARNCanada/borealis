@@ -15,6 +15,19 @@ import sys
 
 
 def antenna_average(power):
+	"""
+	Averages the measurement power in one antenna iq record
+	over each antenna
+	Args:
+		power (ndarray):	A numpy array of shape (num_antennas,
+							num_sequences, num_ranges) containing
+							the calculated power of the antenna iq
+							data.
+	Returns:
+		avg_db (ndarray): 	A numpy array of shape (num_sequences,
+							num_ranges) containing the antenna-averaged
+							power in decibels.
+	"""
 	avg_power = np.mean(power, axis=0)
 	avg_db = 10 * np.log(avg_power)
 	return avg_db
@@ -112,7 +125,22 @@ def build_truth(power_array, threshold):
 	return the_truth
 
 
-def find_bad_antennas(truth_array, proportion):
+def find_bad_antennas(truth_array, proportion=0.5):
+	"""
+	Finds antennas that may be acting up based on an antenna-antenna comparison
+	stored in a truth_array created by build_truth. Checks whether an antenna
+	is involved in more power discrepancies than set by the product of num_sequences,
+	num_ranges (range sets), num_antennas (remaining) and a user set proportion. If any
+	antennas are involved in more discrepancies than this product, that antenna is removed
+	from consideration and the check is performed on the remaining antennas.
+	Args:
+		truth_array (ndarray):	A numpy array of boolean values representing whether or not
+								a pair of antennas have matching powers on a specific
+								data point, within a threshold.
+		proportion (float):		A number describing the proportion of remaining towers with
+								which each tower must agree with to not be removed from the
+								problem. Default in 0.5.
+	"""
 	# Set up the problem
 	num_antennas, _, num_sequences, num_ranges = truth_array.shape
 	antennas = np.zeros((num_antennas), dtype=int)
@@ -127,11 +155,14 @@ def find_bad_antennas(truth_array, proportion):
 	unacceptable = antennas > threshold
 
 	while np.any(unacceptable):
+		# Get the index of towers outside the threshold
 		indices = np.nonzero(unacceptable)
 		for idx in indices[0]:
 			truth_array = np.delete(truth_array, idx, 0)
 			truth_array = np.delete(truth_array, idx, 1)
+			# Should append the original index of the antenna for further analysis
 			removed.append(original_index[idx])
+		# Keep track of indices that have not yet been removed
 		original_index = np.delete(original_index, indices)
 
 		# Update problem
@@ -144,12 +175,21 @@ def find_bad_antennas(truth_array, proportion):
 			antennas[loc[1]] += 1
 		unacceptable = antennas > threshold
 
-	print(removed)
-	print(original_index)
 	return removed
 
 
 def compare_with_average(antennas, power_array, avg_power):
+	"""
+	Compares the powers of specific antennas with the antenna-averaged
+	power for the whole array. Averages the difference in powers over
+	sequences and ranges to give a rough idea of how the antenna is
+	performing.
+	Args:
+		antennas:		A list of antennas to be checked
+		power_array:	An array of antenna powers in decibels.
+		avg_power:		An array containing the antenna averaged
+						power for each measurement.
+	"""
 	antennas = sorted(antennas)
 	for antenna in antennas:
 		print("Analyzing antenna", antenna)
@@ -209,14 +249,7 @@ def check_antennas_iq_file_power(iq_file, threshold, proportion):
 	# first_pwr, first_avg = get_lag0_pwr(first_rec)
 	last_pwr, last_avg = get_lag0_pwr(last_rec)
 
-	# first_truth = build_truth_average(first_pwr, first_avg, threshold)
-	# last_truth = build_truth_average(last_pwr, last_avg, threshold)
-
-	# first_truth = build_truth(first_pwr, threshold)
 	last_truth = build_truth(last_pwr, threshold)
-
-	# new_first = truth_counter(first_truth, max_total)
-	# last_truth = truth_counter(last_truth, proportion)
 
 	bad = find_bad_antennas(last_truth, proportion)
 
