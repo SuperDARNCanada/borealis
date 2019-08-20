@@ -4,8 +4,9 @@
 # Author: Liam Graham
 #
 # watcher.py
-# 2019-08-15
-# Monitoring process to flag any problems related to rx/tx power
+# 2019-08-20
+# Monitoring process to flag any potential problems
+# related to rx/tx power
 
 
 import inotify as i
@@ -58,9 +59,11 @@ def get_lag0_pwr(iq_record):
 			ant_power = power[antenna, sequence, 1:71]
 			power_db = 10 * np.log(ant_power)
 			for i in range(6):
+				# Get maximum power and maximum average power at each
+				# set of ranges
 				pwr = np.amax(power_db[(i+1)*10:(i+1)*10+9])
 				avg = np.amax(ant_avg[sequence, (i+1)*10:(i+1)*10+9])
-				# set appropriate section of power_array
+				# set appropriate section of power_array and avg_array
 				power_array[antenna, sequence, i] = pwr
 				avg_array[sequence, i] = avg
 
@@ -125,7 +128,7 @@ def build_truth(power_array, threshold):
 	return the_truth
 
 
-def find_bad_antennas(truth_array, proportion=0.5):
+def flag_antennas(truth_array, proportion=0.5):
 	"""
 	Finds antennas that may be acting up based on an antenna-antenna comparison
 	stored in a truth_array created by build_truth. Checks whether an antenna
@@ -189,47 +192,43 @@ def compare_with_average(antennas, power_array, avg_power):
 		power_array:	An array of antenna powers in decibels.
 		avg_power:		An array containing the antenna averaged
 						power for each measurement.
+
+	Returns:
+		power_diffs:	A list of tuples containing the antenna number and 
+						sequence and range averaged difference between
+						the antenna powers and the average power.
+		range_diffs:	A list of tuples containing the antenna number and 
+						sequence averaged difference betweenthe antenna
+						powers and the average power.
 	"""
 	antennas = sorted(antennas)
+	power_diffs = list()
+	range_diffs = list()
 	for antenna in antennas:
 		print("Analyzing antenna", antenna)
 		antenna_power = power_array[antenna]
+		# average difference over entire array
 		power_diff = np.mean(antenna_power - avg_power)
-		print(power_diff)
-	print(antennas)
+		# average difference over sequences at each range set
+		range_diff = np.mean(antenna_power - avg_power, axis=0)
+		power_diffs.append(power_diff)
+		range_diffs.append(range_diff)
+		
+	return power_diffs, range_diffs
 
 
-def reporter(truth_array):
+def reporter(antennas, total_power_diff, range_power_diff):
 	"""
-	Reports whether there are power discrepancies between antennas based on
-	a truth array created by build_truth().
+	Reports on the results of the antenna analysis
 	Args:
-		truth_array:	A truth array from build_truth(). Sould have shape:
-						(num_antennas, num_antennas, num_sequences, num_ranges)
+		antennas:			A list containing the flagged antenna numbers
+		total_power_diff:	A list containing the sequence and range averaged
+							difference between the antenna powers and the average power.
+		range_power_diff:	A list containing the sequence averaged difference between
+							the antenna powers and the average power.
 	"""
-	# Get the indices of each False in the array
-	num_antennas = truth_array.shape[0]
-	ctrs = np.zeros((num_antennas, num_antennas), dtype=int)
-	totals = np.zeros((num_antennas), dtype=int)
-	if np.any(truth_array):
-		locs = np.transpose(np.nonzero(truth_array))
-		for loc in locs:
-			ctrs[loc[0], loc[1]] += 1
-			totals[loc[0]] += 1
-			totals[loc[1]] += 1
 
-	total = np.sum(ctrs)
-	print(total, "power discrepancies found\n")
-
-	# for ant1 in range(num_antennas):
-	# 	for ant2 in range(ant1+1, num_antennas):
-	# 		count = ctrs[ant1, ant2]
-	# 		print(count, "power discrepancies between antenna", ant1, "and antenna", ant2)
-
-	for ant in range(num_antennas):
-		print("Antenna", ant, "involved in", totals[ant], "discrepancies")
-
-
+	
 
 def check_antennas_iq_file_power(iq_file, threshold, proportion):
 	"""
@@ -251,7 +250,7 @@ def check_antennas_iq_file_power(iq_file, threshold, proportion):
 
 	last_truth = build_truth(last_pwr, threshold)
 
-	bad = find_bad_antennas(last_truth, proportion)
+	bad = flag_antennas(last_truth, proportion)
 
 	compare_with_average(bad, last_pwr, last_avg)
 
