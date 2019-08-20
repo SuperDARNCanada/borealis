@@ -1,14 +1,17 @@
 # Copyright 2019 SuperDARN Canada, University of Saskatchewan
 # Author: Marci Detwiller
 
-import sys
-import os
 import argparse
+import bz2
+import cmocean
 import glob
+import os
+import sys
+
 import pydarn
 import matplotlib.pyplot as plt
 from multiprocessing import Pool, Process
-import bz2
+
 
 
 def usage_msg():
@@ -60,7 +63,7 @@ def plot_fitacf_summary(fitacf_file, directory_to_place):
     pydarn_reader = pydarn.DarnRead(fitacf_file)
     fitacf_data = pydarn_reader.read_fitacf()
 
-    pydarn.RTP.plot_summary(fitacf_data, beam_num=0, groundscatter=True, boundary={'nave': (0,40)})
+    pydarn.RTP.plot_summary(fitacf_data, beam_num=0, groundscatter=True, color_maps={'v': cmocean.cm.balance_r}})
     
     if directory_to_place[-1] != '/':
         directory_to_place = directory_to_place + '/'
