@@ -22,10 +22,13 @@ def usage_msg():
     :returns: the usage message
     """
 
-    usage_message = """ borealis_gaps.py [-h] data_dir
+    usage_message = """ borealis_gaps.py [-h] data_dir start_day end_day
     
     Pass in the data directory that you want to check for borealis gaps. This script uses 
     multiprocessing to check for gaps in the files and gaps between files. 
+
+    The data directory passed in should have within it multiple directories named YYYYMMDD
+    for a day's worth of data that is held there.
     """
 
     return usage_message
@@ -33,10 +36,10 @@ def usage_msg():
 
 def borealis_gaps_parser():
     parser = argparse.ArgumentParser(usage=usage_msg())
-    parser.add_argument("data_dir", help="Path to the *[filetype].hdf5.bz2 files that you wish to "
-                                         "check for gaps.")
-    parser.add_argument('-mo','--month', action='append', help="<Required> month or months to check "
-                                            "for files. Use '-mo 201904 -mo 201905' for example.", required=True)
+    parser.add_argument("data_dir", help="Path to the directory that holds the day directories of "
+                                         "*[filetype].hdf5.site.bz2 files.")
+    parser.add_argument("start_day", help="First day directory to check, given as YYYYMMDD.")
+    parser.add_argument("end_day", help="Last day directory to check, given as YYYYMMDD.")
     parser.add_argument("--filetype", help="The filetype that you want to check gaps in (bfiq or "
                                            "rawacf typical). Default 'rawacf'")
     parser.add_argument("--gap_spacing", help="The gap spacing that you wish to check the file"
@@ -136,6 +139,11 @@ def check_for_gaps_between_files(file_duration_dict, gap_spacing, gaps_dict):
     return new_dict
 
 
+def daterange(start_date, end_date):
+    for n in range(int ((end_date - start_date).days)):
+        yield start_date + datetime.timedelta(n)
+
+
 def print_gaps(gaps_dict):
 
     strf_format = '%Y%m%d %H:%M:%S'
@@ -174,8 +182,12 @@ if __name__ == '__main__':
     if data_dir[-1] != '/':
         data_dir += '/'
 
-    for month in args.month:
-        files.extend(glob.glob(data_dir + month + '*.' + filetype + '.hdf5.bz2'))
+    start_day = datetime.datetime(year=int(args.start_day[0:4]), month=int(args.start_day[4:6]), day=int(args.start_day[6:8]))
+    end_day = datetime.datetime(year=int(args.end_day[0:4]), month=int(args.end_day[4:6]), day=int(args.end_day[6:8]))    
+
+    for one_day in daterange(start_day, end_day):
+        print(one_day.strftime("%Y%m%d"))
+        files.extend(glob.glob(data_dir + one_day.strftime("%Y%m%d") + '/*.' + filetype + '.hdf5.site.bz2'))
     
     manager1 = Manager()
     gaps_dict = manager1.dict()
