@@ -13,6 +13,8 @@ import inotify as i
 import deepdish as dd
 import numpy as np
 import sys
+import smtplib
+import ssl
 
 
 def antenna_average(power):
@@ -213,7 +215,7 @@ def compare_with_average(antennas, power_array, avg_power):
 		range_diff = np.mean(antenna_power - avg_power, axis=0)
 		power_diffs.append(power_diff)
 		range_diffs.append(range_diff)
-		
+
 	return power_diffs, range_diffs
 
 
@@ -227,7 +229,48 @@ def reporter(antennas, total_power_diff, range_power_diff):
 		range_power_diff:	A list containing the sequence averaged difference between
 							the antenna powers and the average power.
 	"""
+	if len(antennas) == 0:
+		return
+	else:
+		report = dict()
+		for idx, antenna in enumerate(antennas):
+			report[antenna] = dict()
+			report[antenna]["Total Difference"] = total_power_diff[idx]
+			report[antenna]["Range Differences"] = range_power_diff[idx].tolist()
+		return report
 
+
+def send_report(report, address):
+	"""
+	Emails the power report to the addresses in an email file
+	Args:
+		report:		A report created by reporter()
+		address:	The email address to send the report to
+	"""
+	port = 587
+	smtp_server = "smtp.gmail.com"
+	sender = "watcherdevel@gmail.com"
+	receiver = address
+	password = input("Password for watcher email account:")
+	message = ""
+	antennas = list(report.keys())
+	print(antennas)
+	for antenna in antennas:
+		message += "Antenna: " + str(antenna) + "\n"
+		message += "Total average difference from array average: " \
+					 + str(report[antenna]["Total Difference"]) + "\n"
+		message += "Differences from array average by range: " \
+					 + str(report[antenna]["Range Differences"]) + "\n"
+		message += "\n"
+
+	context = ssl.create_default_context()
+
+	with smtplib.SMTP(smtp_server, port) as server:
+		server.ehlo()
+		server.starttls(context=context)
+		server.ehlo()
+		server.login(sender, password)
+		server.sendmail(sender, receiver, message)
 	
 
 def check_antennas_iq_file_power(iq_file, threshold, proportion):
@@ -252,7 +295,11 @@ def check_antennas_iq_file_power(iq_file, threshold, proportion):
 
 	bad = flag_antennas(last_truth, proportion)
 
-	compare_with_average(bad, last_pwr, last_avg)
+	power_diffs, range_diffs = compare_with_average(bad, last_pwr, last_avg)
+
+	report = reporter(bad, power_diffs, range_diffs)
+
+	send_report(report, "liam.adair.graham@gmail.com")
 
 	# print("Checking", antenna_keys[0], "\n")
 	# reporter(new_first)
