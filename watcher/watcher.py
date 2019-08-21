@@ -299,27 +299,35 @@ def check_antennas_iq_file_power(iq_file, threshold, proportion, history):
 	ant_iq = dd.io.load(iq_file)
 	print("Loaded iq")
 	antenna_keys = list(ant_iq.keys())
-	# first_rec = ant_iq[antenna_keys[0]]
+	first_rec = ant_iq[antenna_keys[0]]
 	last_rec = ant_iq[antenna_keys[-1]]
 
-	# first_pwr, first_avg = get_lag0_pwr(first_rec)
+	first_pwr, first_avg = get_lag0_pwr(first_rec)
 	last_pwr, last_avg = get_lag0_pwr(last_rec)
 
+	first_truth = build_truth(first_pwr, threshold)
 	last_truth = build_truth(last_pwr, threshold)
 
-	bad = flag_antennas(last_truth, proportion)
+	first_flagged = flag_antennas(first_truth, proportion)
+	last_flagged = flag_antennas(last_truth, proportion)
 
-	power_diffs, range_diffs = compare_with_average(bad, last_pwr, last_avg)
+	first_power_diffs, first_range_diffs = compare_with_average(first_flagged, first_pwr, first_avg)
+	last_power_diffs, last_range_diffs = compare_with_average(last_flagged, last_pwr, last_avg)
 
-	report = reporter(bad, power_diffs, range_diffs, history)
+	first_report = reporter(first_flagged, first_power_diffs, first_range_diffs, history)
+	history = first_flagged
+	last_report = reporter(last_flagged, last_power_diffs, last_range_diffs, history)
+	history = last_flagged
 
-	if report is None:
-		pass
-		print("Nothing to report")
-	else:
-		send_report(report, "liam.adair.graham@gmail.com")
+	reports = [first_report, last_report]
+	for report in reports:
+		if report is None:
+			pass
+			print("Nothing to report")
+		else:
+			send_report(report, "liam.adair.graham@gmail.com")
 
-	return bad
+	return history
 
 
 def _main():
