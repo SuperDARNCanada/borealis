@@ -11,3 +11,8 @@ Nagios core runs as a service under apache2. It is easy to install, but a little
 
 Installation
 ------------
+Detailed instructions for installing Nagios Core on several operating systems can be found on Nagios' website_.
+
+.. _website: https://assets.nagios.com/downloads/nagioscore/docs/nagioscore/4/en/quickstart.html
+
+After installing, simply replace the configuration files with those found in this repository.
