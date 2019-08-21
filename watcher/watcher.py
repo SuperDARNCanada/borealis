@@ -4,7 +4,7 @@
 # Author: Liam Graham
 #
 # watcher.py
-# 2019-08-20
+# 2019-08-21
 # Monitoring process to flag any potential problems
 # related to rx/tx power
 
@@ -52,54 +52,18 @@ def get_lag0_pwr(iq_record):
 	dims = iq_record["data_dimensions"]
 	voltage_samples = iq_record["data"].reshape(dims)
 	num_antennas, num_sequences, num_samps = dims
-	power_array = np.zeros((num_antennas, num_sequences, 6))
-	avg_array = np.zeros((num_sequences, 6))
+	power_array = np.zeros((num_antennas, 60))
+	avg_array = np.zeros((60))
 	# get power from voltage samples
-	power = np.sqrt(voltage_samples.real**2 + voltage_samples.imag**2)
-	ant_avg = antenna_average(power)
+	power = np.mean(np.sqrt(voltage_samples.real**2 + voltage_samples.imag**2), axis=1)
+	ant_avg = antenna_average(power)[5:65]
 	for antenna in range(num_antennas):
-		for sequence in range(num_sequences):
-			ant_power = power[antenna, sequence, 1:71]
-			power_db = 10 * np.log(ant_power)
-			for i in range(6):
-				# Get maximum power and maximum average power at each
-				# set of ranges
-				pwr = np.amax(power_db[(i+1)*10:(i+1)*10+9])
-				avg = np.amax(ant_avg[sequence, (i+1)*10:(i+1)*10+9])
-				# set appropriate section of power_array and avg_array
-				power_array[antenna, sequence, i] = pwr
-				avg_array[sequence, i] = avg
+		ant_power = power[antenna, 5:65]
+		power_db = 10 * np.log(ant_power)
+		power_array[antenna] = power_db
 
-	return power_array, avg_array
+	return power_array, ant_avg
 
-
-def build_truth_average(power_array, average_array, threshold):
-	"""
-	Compares each data point (seq, range) for each antenna against every 
-	other antenna and builds an array of booleans of shape
-	(num_antennas, num_antennas, num_sequences, num_ranges)
-	Each point is the inverse truth value of whether that point is within a difference
-	threshold for each antenna. For example, if point (0, 5, 6, 49) is False: 
-	then the power level difference between antennas 0 and 5 for sequence 6
-	range 50 is within the threshold. Inverse used because it is easier to find
-	nonzero elements in numpy.
-	Args:
-		power_array:	An np.ndarray of powers in dB created by get_lag0_pwr.
-		threshold:		The acceptable difference in power between antennas.
-	Returns:
-		the_truth:		Array of booleans as described above.
-	"""
-	num_antennas, num_sequences, num_ranges = power_array.shape
-
-	the_truth = np.zeros((num_antennas, num_sequences, num_ranges), dtype=bool)
-	for ant in range(num_antennas):
-		for seq in range(num_sequences):
-			for rng in range(num_ranges):
-				if np.abs(power_array[ant, seq, rng] - average_array[seq, rng]) > threshold:
-					the_truth[ant, seq, rng] = True
-
-
-	return the_truth
 
 def build_truth(power_array, threshold):
 	"""
@@ -117,21 +81,20 @@ def build_truth(power_array, threshold):
 	Returns:
 		the_truth:		Array of booleans as described above.
 	"""
-	num_antennas, num_sequences, num_ranges = power_array.shape
-	the_truth = np.zeros((num_antennas, num_antennas, num_sequences, num_ranges),
+	num_antennas, num_ranges = power_array.shape
+	the_truth = np.zeros((num_antennas, num_antennas, num_ranges),
 							dtype=bool)
 	for ant in range(num_antennas):
 		# start at ant to avoid duplicate results from array symmetry
 		for comp in range(ant+1, num_antennas):
-			for seq in range(num_sequences):
-				for rng in range(num_ranges):
-					if np.abs(power_array[ant, seq, rng] - power_array[comp, seq, rng]) > threshold:
-						the_truth[ant, comp, seq, rng] = True
+			for rng in range(num_ranges):
+				if np.abs(power_array[ant, rng] - power_array[comp, rng]) > threshold:
+					the_truth[ant, comp, rng] = True
 
 	return the_truth
+	
 
-
-def flag_antennas(truth_array, proportion=0.5):
+def flag_antennas(truth_array, proportion):
 	"""
 	Finds antennas that may be acting up based on an antenna-antenna comparison
 	stored in a truth_array created by build_truth. Checks whether an antenna
@@ -148,7 +111,7 @@ def flag_antennas(truth_array, proportion=0.5):
 								problem. Default in 0.5.
 	"""
 	# Set up the problem
-	num_antennas, _, num_sequences, num_ranges = truth_array.shape
+	num_antennas, _, num_ranges = truth_array.shape
 	antennas = np.zeros((num_antennas), dtype=int)
 	locs = np.transpose(np.nonzero(truth_array))
 	for loc in locs:
@@ -157,7 +120,7 @@ def flag_antennas(truth_array, proportion=0.5):
 
 	removed = []
 	original_index = np.array(range(num_antennas))
-	threshold = proportion * (num_antennas - 1) * num_sequences * num_ranges
+	threshold = proportion * (num_antennas - 1) * num_ranges
 	unacceptable = antennas > threshold
 
 	while np.any(unacceptable):
@@ -173,7 +136,7 @@ def flag_antennas(truth_array, proportion=0.5):
 
 		# Update problem
 		num_antennas = truth_array.shape[0]
-		threshold = proportion * (num_antennas - 1) * num_sequences * num_ranges
+		threshold = proportion * (num_antennas - 1) * num_ranges
 		antennas = np.zeros((num_antennas), dtype=int)
 		locs = np.transpose(np.nonzero(truth_array))
 		for loc in locs:
@@ -213,7 +176,7 @@ def compare_with_average(antennas, power_array, avg_power):
 		# average difference over entire array
 		power_diff = np.mean(antenna_power - avg_power)
 		# average difference over sequences at each range set
-		range_diff = np.mean(antenna_power - avg_power, axis=0)
+		range_diff = antenna_power - avg_power
 		power_diffs.append(power_diff)
 		range_diffs.append(range_diff)
 
