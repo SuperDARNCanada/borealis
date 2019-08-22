@@ -2,7 +2,7 @@
 Borealis Monitoring
 *******************
 
-The monitoring system implemented for Borealis is a custom configured installation of Nagios Core, working with NRPE. Nagios monitoring behaves according to objects defined in configuration files, all of which have copies in the monitoring directory of Borealis.
+The monitoring system implemented for Borealis is a custom configured installation of Nagios Core, working with NRPE. Nagios monitoring behaves according to objects defined in configuration files, all of which have copies in SuperDARN Canada's Nagios repository.
 
 Nagios
 ------
