@@ -32,7 +32,7 @@ import experimentoptions as options
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/zmq_borealis_helpers')
 import socket_operations as so
 
-TIME_PROFILE = False
+TIME_PROFILE = True
 
 def router(opts):
     """The router is responsible for moving traffic between modules by routing traffic using
@@ -250,7 +250,8 @@ def sequence_timing(opts):
             so.send_request(brian_to_dsp_end, opts.dspend_to_brian_identity, "Requesting work ends")
 
             #acknowledge that we are good and able to start something new
-            start_new_sock.send_string("good_to_start")
+            if sig_p.sequence_num != 0:
+                start_new_sock.send_string("good_to_start")
 
 
         if brian_to_dsp_end in socks and socks[brian_to_dsp_end] == zmq.POLLIN:
@@ -277,6 +278,9 @@ def sequence_timing(opts):
                 printing("Late counter {}".format(late_counter))
 
             #acknowledge that we are good and able to start something new
+            if sigp.sequence_num == 0:
+                start_new_sock.send_string("good_to_start")
+
             start_new_sock.send_string("extra_good_to_start")
 
 def main():
