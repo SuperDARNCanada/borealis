@@ -32,7 +32,7 @@ import experimentoptions as options
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/zmq_borealis_helpers')
 import socket_operations as so
 
-TIME_PROFILE = False
+TIME_PROFILE = True
 
 def router(opts):
     """The router is responsible for moving traffic between modules by routing traffic using
@@ -209,8 +209,11 @@ def sequence_timing(opts):
             so.send_request(brian_to_dsp_begin, opts.dspbegin_to_brian_identity,
                             "Requesting work begins")
 
-            #acknowledge we want to start something new
-            start_new_sock.send_string("want_to_start")
+            #acknowledge we want to start something new. We hold out on the first sequence in 
+            #order to keep the first sequence synchronous. This allows the NVIDIA code to 
+            #fully initialize.
+            if meta.sequence_num != 0:
+            	start_new_sock.send_string("want_to_start")
 
         if brian_to_radar_control in socks and socks[brian_to_radar_control] == zmq.POLLIN:
 
@@ -276,7 +279,12 @@ def sequence_timing(opts):
             if __debug__:
                 printing("Late counter {}".format(late_counter))
 
-            #acknowledge that we are good and able to start something new
+            #acknowledge that we are good and able to start something new. We hold out on the first
+            #sequence in order to keep the first sequence synchronous. This allows the NVIDIA code 
+            #to fully initialize.
+            if sigp.sequence_num == 0:
+            	start_new_sock.send_string("want_to_start")
+
             start_new_sock.send_string("extra_good_to_start")
 
 def main():

@@ -318,7 +318,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
             // Read AGC and Low Power signals
             usrp_d.clear_command_time();
-            auto read_time = sequence_start_time + seqtime + agc_signal_read_delay;
+            auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
             uint32_t pin_status = usrp_d.get_gpio_state();
             usrp_d.clear_command_time();
