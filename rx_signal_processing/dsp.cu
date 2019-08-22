@@ -567,7 +567,7 @@ namespace {
       auto sq_num = dp->get_sequence_num();
       delete dp;
 
-      DEBUG_MSG(COLOR_RED("Deleted DP in postprocess for sequence #" << sq_num
+      RUNTIME_MSG(COLOR_RED("Deleted DP in postprocess for sequence #" << sq_num
                   << ". Thread should terminate here."));
     };
 
