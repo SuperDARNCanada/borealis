@@ -16,6 +16,7 @@ import sys
 import smtplib
 import ssl
 import argparse
+import random
 
 
 def antenna_average(power):
@@ -183,7 +184,7 @@ def compare_with_average(antennas, power_array, avg_power):
 	return power_diffs, range_diffs
 
 
-def reporter(flagged, total_power_diff, range_power_diff, history):
+def reporter(flagged, total_power_diff, range_power_diff):
 	"""
 	Reports on the results of the antenna analysis
 	Args:
@@ -195,24 +196,15 @@ def reporter(flagged, total_power_diff, range_power_diff, history):
 	"""
 	antennas = list()
 	for antenna in flagged:
-		if antenna not in history:
-			antennas.append((antenna, False))
-	for antenna in history:
-		if antenna not in flagged:
-			antennas.append((antenna, True))
-
+		antennas.append(antenna)
 	if len(antennas) == 0:
 		return
 	else:
 		report = dict()
-		for idx, (antenna, change) in enumerate(antennas):
+		for idx, antenna in enumerate(antennas):
 			report[antenna] = dict()
-			if change:
-				report[antenna]["state_change"] = "Recovered"
-			else:
-				report[antenna]["state_change"] = "Failed"
-				report[antenna]["total_differences"] = total_power_diff[idx]
-				report[antenna]["range_differences"] = range_power_diff[idx].tolist()
+			report[antenna]["total_differences"] = total_power_diff[idx]
+			report[antenna]["range_differences"] = range_power_diff[idx].tolist()
 		return report
 
 
@@ -231,13 +223,11 @@ def send_report(report, address):
 	message = "Your array report is ready.\n\n"
 	antennas = list(report.keys())
 	for antenna in antennas:
-		message += "Antenna: " + str(antenna) + report[antenna]["state_change"] + "\n"
-
-		if report[antenna]["state_change"] == "Failed":
-			message += "Total average difference from array average: " \
-						 + str(report[antenna]["total_differences"]) + "\n"
-			message += "Differences from array average by range: " \
-						 + str(report[antenna]["range_differences"]) + "\n"
+		message += "Antenna: " + str(antenna) + "\n"
+		message += "Total average difference from array average: " \
+					 + str(report[antenna]["total_differences"]) + "\n"
+		message += "Differences from array average by range: " \
+					 + str(report[antenna]["range_differences"]) + "\n"
 		message += "\n"
 
 	context = ssl.create_default_context()
@@ -250,7 +240,7 @@ def send_report(report, address):
 		server.sendmail(sender, receiver, message)
 	
 
-def check_antennas_iq_file_power(iq_file, threshold, proportion, history):
+def check_antennas_iq_file_power(iq_file, threshold, proportion):
 	"""
 	Checks that the power between antennas is reasonably close for each 
 	range in a record. If it is not, alert the squad.
@@ -262,35 +252,21 @@ def check_antennas_iq_file_power(iq_file, threshold, proportion, history):
 	ant_iq = dd.io.load(iq_file)
 	print("Loaded iq")
 	antenna_keys = list(ant_iq.keys())
-	first_rec = ant_iq[antenna_keys[0]]
-	last_rec = ant_iq[antenna_keys[-1]]
+	key = random.choice(antenna_keys)
 
-	first_pwr, first_avg = get_lag0_pwr(first_rec)
-	last_pwr, last_avg = get_lag0_pwr(last_rec)
+	rec = ant_iq[key]
 
-	first_truth = build_truth(first_pwr, threshold)
-	last_truth = build_truth(last_pwr, threshold)
+	pwr, avg = get_lag0_pwr(rec)
 
-	first_flagged = flag_antennas(first_truth, proportion)
-	last_flagged = flag_antennas(last_truth, proportion)
+	truth = build_truth(pwr, threshold)
 
-	first_power_diffs, first_range_diffs = compare_with_average(first_flagged, first_pwr, first_avg)
-	last_power_diffs, last_range_diffs = compare_with_average(last_flagged, last_pwr, last_avg)
+	flagged = flag_antennas(truth, proportion)
 
-	first_report = reporter(first_flagged, first_power_diffs, first_range_diffs, history)
-	history = first_flagged
-	last_report = reporter(last_flagged, last_power_diffs, last_range_diffs, history)
-	history = last_flagged
+	power_diffs, range_diffs = compare_with_average(flagged, pwr, avg)
 
-	reports = [first_report, last_report]
-	for report in reports:
-		if report is None:
-			pass
-			print("Nothing to report")
-		else:
-			send_report(report, "liam.adair.graham@gmail.com")
+	report = reporter(flagged, power_diffs, range_diffs)
 
-	return history
+	return report
 
 
 def _main():
@@ -298,16 +274,20 @@ def _main():
 	parser.add_argument('--threshold', required=True, help='An acceptable decibel difference between antennae')
 	parser.add_argument('--proportion', required=True, help='The acceptable proportion of antennas any antenna may\
 																differ from')
+	parser.add_argument('--times', required=True, help='The number of times in a row an antenna can be flagged before\
+														a report is sent')
 	args = parser.parse_args()
-	threshold = args.threshold
-	proportion = args.proportion
+	threshold = int(args.threshold)
+	proportion = float(args.proportion)
+	times = int(args.times)
 
 	i = inotify.adapters.Inotify()
 
 	i.add_watch('/data')
 
 	# list to hold antenna numbers that were a problem last time
-	antenna_history = list()
+	antenna_history = dict()
+
 
 	while True:
 		for event in i.event_gen(yield_nones=False):
@@ -316,9 +296,21 @@ def _main():
 			if (("antennas_iq" in filename) or ("output_ptrs_iq" in filename)) and ("IN_CLOSE_WRITE" in type_names):
 				print("Opening...")
 				file_path = path + '/' + filename
-				thresh = int(threshold)
-				prop = float(proportion)
-				antenna_history = check_antennas_iq_file_power(file_path, thresh, prop, antenna_history)
+
+				report = check_antennas_iq_file_power(file_path, threshold, proportion)
+				if report is None:
+					pass
+					print("Nothing to report")
+				else:
+					for antenna in report:
+						if antenna in antenna_history:
+							antenna_history[antenna] += 1
+							if antenna_history[antenna] >= times:
+								send_report(report, "liam.adair.graham@gmail.com")
+						else:
+							antenna_history[antenna] = 1
+
+				print(antenna_history)
 
 
 
