@@ -276,61 +276,72 @@ def _main():
 																differ from')
 	parser.add_argument('--times', required=True, help='The number of times in a row an antenna can be flagged before\
 														a report is sent')
+	parser.add_argument('--directory', required=True, help='The directory watcher should be watching')
 	args = parser.parse_args()
 	threshold = int(args.threshold)
 	proportion = float(args.proportion)
 	times = int(args.times)
+	directory = args.directory
 
 	i = inotify.adapters.Inotify()
 
-	i.add_watch('/data')
+	i.add_watch(directory)
 
 	# list to hold antenna numbers that were a problem last time
 	antenna_history = dict()
+	check_flag = False
 
-
+	last_file = 'first'
+	
 	while True:
 		for event in i.event_gen(yield_nones=False):
 			(_, type_names, path, filename) = event
 
 			if (("antennas_iq" in filename) or ("output_ptrs_iq" in filename)) and ("IN_CLOSE_WRITE" in type_names):
-				print("Opening...")
-				file_path = path + '/' + filename
-
-				report = check_antennas_iq_file_power(file_path, threshold, proportion)
-				if report is None:
-					pass
-					print("Nothing to report")
+				if last_file == 'first':
+					last_file = filename
 				else:
-					# Remove antennas from antenna_history if they were not flagged again
-					history_remove = list()
-					for antenna in antenna_history:
-						if antenna not in report:
-							history_remove.append(antenna0)
-					for antenna in history_remove:
-						del antenna_history[antenna]
-					history_remove = list()
+					if check_flag:
+						print("Opening...", last_file)
+						file_path = path + '/' + last_file
 
-					report_remove = list()
-					# Add reported antennas to history
-					for antenna in report:
-						if antenna in antenna_history:
-							antenna_history[antenna] += 1
+						report = check_antennas_iq_file_power(file_path, threshold, proportion)
+						if report is None:
+							pass
+							print("Nothing to report")
 						else:
-							antenna_history[antenna] = 1
-					# Remove antenna from the report if it has not been flagged enough
-						if antenna_history[antenna] < times:
-							report_remove.append(antenna)
-					for antenna in report_remove:
-						del report[antenna]
+							# Remove antennas from antenna_history if they were not flagged again
+							history_remove = list()
+							for antenna in antenna_history:
+								if antenna not in report:
+									history_remove.append(antenna)
+							for antenna in history_remove:
+								del antenna_history[antenna]
+							history_remove = list()
 
-					# Finally, send the report if any antennas remain
-					# This means they've been flagged sufficiently often to be reported
-					if len(report) > 0:
-						send_report(report, "liam.adair.graham@gmail.com")
+							report_remove = list()
+							# Add reported antennas to history
+							for antenna in report:
+								if antenna in antenna_history:
+									antenna_history[antenna] += 1
+								else:
+									antenna_history[antenna] = 1
+							# Remove antenna from the report if it has not been flagged enough
+								if antenna_history[antenna] < times:
+									report_remove.append(antenna)
+							for antenna in report_remove:
+								del report[antenna]
 
-				print(antenna_history)
-
+							# Finally, send the report if any antennas remain
+							# This means they've been flagged sufficiently often to be reported
+							if len(report) > 0:
+								send_report(report, "liam.adair.graham@gmail.com")
+						check_flag = False
+						last_file = filename
+					else:
+						last_file = filename
+			if "IN_CREATE" in type_names:
+				check_flag = True
 
 
 if __name__ == "__main__":
