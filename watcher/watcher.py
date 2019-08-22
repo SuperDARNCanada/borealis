@@ -302,13 +302,32 @@ def _main():
 					pass
 					print("Nothing to report")
 				else:
+					# Remove antennas from antenna_history if they were not flagged again
+					history_remove = list()
+					for antenna in antenna_history:
+						if antenna not in report:
+							history_remove.append(antenna0)
+					for antenna in history_remove:
+						del antenna_history[antenna]
+					history_remove = list()
+
+					report_remove = list()
+					# Add reported antennas to history
 					for antenna in report:
 						if antenna in antenna_history:
 							antenna_history[antenna] += 1
-							if antenna_history[antenna] >= times:
-								send_report(report, "liam.adair.graham@gmail.com")
 						else:
 							antenna_history[antenna] = 1
+					# Remove antenna from the report if it has not been flagged enough
+						if antenna_history[antenna] < times:
+							report_remove.append(antenna)
+					for antenna in report_remove:
+						del report[antenna]
+
+					# Finally, send the report if any antennas remain
+					# This means they've been flagged sufficiently often to be reported
+					if len(report) > 0:
+						send_report(report, "liam.adair.graham@gmail.com")
 
 				print(antenna_history)
 
