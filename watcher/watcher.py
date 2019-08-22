@@ -193,6 +193,9 @@ def reporter(flagged, total_power_diff, range_power_diff):
 							difference between the antenna powers and the average power.
 		range_power_diff:	A list containing the sequence averaged difference between
 							the antenna powers and the average power.
+	Returns:
+		report:				Report on flagged antennas including a total averaged difference
+							and averaged differences at each range gate.
 	"""
 	antennas = list()
 	for antenna in flagged:
@@ -247,6 +250,8 @@ def check_antennas_iq_file_power(iq_file, threshold, proportion):
 	Args:
 		iq_file:		The path to the antenna iq file being checked.
 		threshold:		The acceptable difference in power between antennas.
+		proportion:		Proportion of antennas that any antenna may mismatch
+						with.
 	"""
 
 	ant_iq = dd.io.load(iq_file)
@@ -283,7 +288,8 @@ def _main():
 	times = int(args.times)
 	directory = args.directory
 
-	i = inotify.adapters.Inotify()
+	# Watch input directory and all subdirectories for file events
+	i = inotify.adapters.InotifyTree()
 
 	i.add_watch(directory)
 
@@ -296,15 +302,18 @@ def _main():
 	while True:
 		for event in i.event_gen(yield_nones=False):
 			(_, type_names, path, filename) = event
-
+			# When an antennas_iq file is closed and written, begin checking logic
 			if (("antennas_iq" in filename) or ("output_ptrs_iq" in filename)) and ("IN_CLOSE_WRITE" in type_names):
+				# Make sure that there are previously created files to be checked.
 				if last_file == 'first':
 					last_file = filename
 				else:
+					# Check there was a file created recently
 					if check_flag:
 						print("Opening...", last_file)
 						file_path = path + '/' + last_file
 
+						# Generate antenna report on random record in the file
 						report = check_antennas_iq_file_power(file_path, threshold, proportion)
 						if report is None:
 							pass
@@ -340,6 +349,7 @@ def _main():
 						last_file = filename
 					else:
 						last_file = filename
+			# Set check flag when a new file is created
 			if "IN_CREATE" in type_names:
 				check_flag = True
 
