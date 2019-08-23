@@ -90,15 +90,9 @@ DriverOptions::DriverOptions() {
     driver_to_radctrl_identity_ = config_pt.get<std::string>("driver_to_radctrl_identity");
     driver_to_dsp_identity_ = config_pt.get<std::string>("driver_to_dsp_identity");
     driver_to_brian_identity_ = config_pt.get<std::string>("driver_to_brian_identity");
-    driver_to_mainaffinity_identity_ = config_pt.get<std::string>("driver_to_mainaffinity_identity");
-    driver_to_txaffinity_identity_ = config_pt.get<std::string>("driver_to_txaffinity_identity");
-    driver_to_rxaffinity_identity_ = config_pt.get<std::string>("driver_to_rxaffinity_identity");
     radctrl_to_driver_identity_ = config_pt.get<std::string>("radctrl_to_driver_identity");
     dsp_to_driver_identity_ = config_pt.get<std::string>("dsp_to_driver_identity");
     brian_to_driver_identity_ = config_pt.get<std::string>("brian_to_driver_identity");
-    mainaffinity_to_driver_identity_ = config_pt.get<std::string>("mainaffinity_to_driver_identity");
-    txaffinity_to_driver_identity_ = config_pt.get<std::string>("txaffinity_to_driver_identity");
-    rxaffinity_to_driver_identity_ = config_pt.get<std::string>("rxaffinity_to_driver_identity");
     ringbuffer_name_ = config_pt.get<std::string>("ringbuffer_name");
     ringbuffer_size_bytes_ = boost::lexical_cast<double>(
                                     config_pt.get<std::string>("ringbuffer_size_bytes"));
@@ -261,34 +255,3 @@ std::string DriverOptions::get_ringbuffer_name() const
 {
     return ringbuffer_name_;
 }
-
-std::string DriverOptions::get_driver_to_mainaffinity_identity() const
-{
-    return driver_to_mainaffinity_identity_;
-}
-
-std::string DriverOptions::get_driver_to_txaffinity_identity() const
-{
-    return driver_to_txaffinity_identity_;
-}
-
-std::string DriverOptions::get_driver_to_rxaffinity_identity() const
-{
-    return driver_to_rxaffinity_identity_;
-}
-
-std::string DriverOptions::get_mainaffinity_to_driver_identity() const
-{
-    return mainaffinity_to_driver_identity_;
-}
-
-std::string DriverOptions::get_txaffinity_to_driver_identity() const
-{
-    return txaffinity_to_driver_identity_;
-}
-
-std::string DriverOptions::get_rxaffinity_to_driver_identity() const
-{
-    return rxaffinity_to_driver_identity_;
-}
-
