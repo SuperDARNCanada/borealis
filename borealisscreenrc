@@ -1,5 +1,6 @@
 chdir $BOREALISPATH
 
+scrollback 10000
 layout autosave on
 layout new borealis
 screen -t "Brian" bash -c "START_BRIAN"
@@ -23,10 +24,6 @@ screen -t "Experiment Handler" bash -c "START_EXPHAN"
 split -v
 focus right
 screen -t "Radar Control" bash -c "START_RADCTRL"
-
-split -v
-focus right
-screen -t "Cpu Affinity" bash -c "START_TIDS"
 
 detach
 
