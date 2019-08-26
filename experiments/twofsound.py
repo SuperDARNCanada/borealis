@@ -33,7 +33,6 @@ class Twofsound(ExperimentPrototype):
         }
 
         slice_2 = copy.deepcopy(slice_1)
-        slice_2['first_range'] = 90 #km
         slice_2['txfreq'] = 13000
 
         list_of_slices = [slice_1, slice_2]
