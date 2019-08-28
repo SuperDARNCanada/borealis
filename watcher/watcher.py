@@ -16,7 +16,7 @@ import smtplib
 from email.mime.text import MIMEText
 import argparse
 import random
-import logging
+import logging, logging.handlers
 
 
 def antenna_average(power):
@@ -25,15 +25,15 @@ def antenna_average(power):
 	over each antenna
 	Args:
 		power (ndarray):	A numpy array of shape (num_antennas,
-							num_sequences, num_ranges) containing
+							num_sequences, num_ranges) containing  # TODO: Not really true? The power passed in is an ndarray of num_antennas, num_sequences?
 							the calculated power of the antenna iq
 							data.
 	Returns:
 		avg_db (ndarray): 	A numpy array of shape (num_sequences,
-							num_ranges) containing the antenna-averaged
+							num_ranges) containing the antenna-averaged  # TODO: Fix this
 							power in decibels.
 	"""
-	avg_power = np.mean(power, axis=0)
+	avg_power = np.mean(power, axis=0)  # Now averaging across antennas, so this is a 1d array of powers at each range.
 	avg_db = 10 * np.log(avg_power)
 	return avg_db
 
@@ -43,22 +43,21 @@ def get_lag0_pwr(iq_record):
 	Gets lag0 power for each antenna and sequence in a record of 
 	antenna iq data.
 	Args:
-		iq_record:	 A single antenna iq data record loaded from file.
+		iq_record:	 A single 'antenna iq' data record loaded from file.
 	Returns:
-		power_array: A numpy array of shape (num_antennas, num_sequences, 70)
-		containing the lag 0 power for each antenna and sequence
-		in the iq_record
+		power_array: A numpy array of shape (num_antennas, num_sequences, 70)  # TODO: Find out what 70 is for
+		containing the lag 0 power for each antenna and sequence in the iq_record
 	"""
 	# Setup and memory allocation
 	dims = iq_record["data_dimensions"]
 	voltage_samples = iq_record["data"].reshape(dims)
 	num_antennas, num_sequences, num_samps = dims
-	power_array = np.zeros((num_antennas, 60))
-	# get power from voltage samples
-	power = np.mean(np.sqrt(voltage_samples.real**2 + voltage_samples.imag**2), axis=1)
-	ant_avg = antenna_average(power)[5:65]
+	power_array = np.zeros((num_antennas, 60))  # TODO: Find out what this magic number is for
+	# get power from voltage samples  # TODO: Check units and calculation are correct
+	power = np.mean(np.sqrt(voltage_samples.real ** 2 + voltage_samples.imag ** 2), axis=1)  # Axis 0 is antennas, axis 1 is sequences, axis 2 is samples so this is a power for each antenna averaged over sequences
+	ant_avg = antenna_average(power)[5:65]  # TODO: Find out what magic numbers are for
 	for antenna in range(num_antennas):
-		ant_power = power[antenna, 5:65]
+		ant_power = power[antenna, 5:65]  # TODO: Find out what magic numbers are for
 		power_db = 10 * np.log(ant_power)
 		power_array[antenna] = power_db
 
@@ -85,13 +84,13 @@ def build_truth(power_array, threshold):
 	the_truth = np.zeros((num_antennas, num_antennas, num_ranges), dtype=bool)
 	for ant in range(num_antennas):
 		# start at ant to avoid duplicate results from array symmetry
-		for comp in range(ant+1, num_antennas):
+		for comp in range(ant + 1, num_antennas):
 			for rng in range(num_ranges):
 				if np.abs(power_array[ant, rng] - power_array[comp, rng]) > threshold:
 					the_truth[ant, comp, rng] = True
 
 	return the_truth
-	
+
 
 def flag_antennas(truth_array, proportion):
 	"""
@@ -154,7 +153,7 @@ def compare_with_average(antennas, power_array, avg_power):
 	performing.
 	Args:
 		antennas:		A list of antennas to be checked
-		power_array:	An array of antenna powers in decibels.
+		power_array:	An array of antenna powers in dB.
 		avg_power:		An array containing the antenna averaged
 						power for each measurement.
 
@@ -163,14 +162,13 @@ def compare_with_average(antennas, power_array, avg_power):
 						sequence and range averaged difference between
 						the antenna powers and the average power.
 		range_diffs:	A list of tuples containing the antenna number and 
-						sequence averaged difference betweenthe antenna
+						sequence averaged difference between the antenna
 						powers and the average power.
 	"""
 	antennas = sorted(antennas)
 	power_diffs = list()
 	range_diffs = list()
 	for antenna in antennas:
-		print("Analyzing antenna", antenna)
 		antenna_power = power_array[antenna]
 		# average difference over entire array
 		power_diff = np.mean(antenna_power - avg_power)
@@ -195,9 +193,7 @@ def reporter(flagged, total_power_diff, range_power_diff):
 		report:				Report on flagged antennas including a total averaged difference
 							and averaged differences at each range gate.
 	"""
-	antennas = list()
-	for antenna in flagged:
-		antennas.append(antenna)
+	antennas = [antenna for antenna in flagged]
 	if len(antennas) == 0:
 		return
 	else:
@@ -209,7 +205,7 @@ def reporter(flagged, total_power_diff, range_power_diff):
 		return report
 
 
-def send_report(report, addresses=['kevin.krieger@usask.ca']):
+def send_report(report, addresses=None):
 	"""
 	Emails the power report to the addresses in an email file
 	Args:
@@ -217,14 +213,17 @@ def send_report(report, addresses=['kevin.krieger@usask.ca']):
 		addresses:	The email addresses to send the report to, list of strings
 	"""
 	smtp_server = "localhost"
-	email_sender = "antenna_watcher" # TODO: Better name
+	email_sender = "antenna_watcher"  # TODO: Better name
+	if addresses is None:
+		addresses = ['kevin.krieger@usask.ca']
 	email_recipients = addresses
-	email_subject = "Antenna power report" # TODO: Get site information and date
+	email_subject = "Antenna power report"  # TODO: Get site information and date
 	email_message = ""
 	antennas = list(report.keys())
 	for antenna in antennas:
 		email_message += "Antenna: " + str(antenna) + "\n"
-		email_message += "Total average difference from array average: " + str(report[antenna]["total_differences"]) + "\n"
+		email_message += "Total average difference from array average: " + str(
+			report[antenna]["total_differences"]) + "\n"
 		email_message += "Differences from array average by range: " + str(report[antenna]["range_differences"]) + "\n"
 		email_message += "\n"
 
@@ -240,119 +239,129 @@ def send_report(report, addresses=['kevin.krieger@usask.ca']):
 def check_antennas_iq_file_power(iq_file, threshold, proportion):
 	"""
 	Checks that the power between antennas is reasonably close for each 
-	range in a record. If it is not, alert the squad.
+	range in a record. If it is not, add to the report.
 	Args:
 		iq_file:		The path to the antenna iq file being checked.
-		threshold:		The acceptable difference in power between antennas.
-		proportion:		Proportion of antennas that any antenna may mismatch
-						with.
+		threshold:		The acceptable difference in power between antennas, in dB
+		proportion:		Percentage of antennas that any antenna may mismatch with before being include in the report.
 	"""
-
 	ant_iq = dd.io.load(iq_file)
-	print("Loaded iq")
 	antenna_keys = list(ant_iq.keys())
 	key = random.choice(antenna_keys)
-
-	rec = ant_iq[key]
-
-	pwr, avg = get_lag0_pwr(rec)
-
+	record = ant_iq[key]
+	pwr, avg = get_lag0_pwr(record)
 	truth = build_truth(pwr, threshold)
-
 	flagged = flag_antennas(truth, proportion)
-
 	power_diffs, range_diffs = compare_with_average(flagged, pwr, avg)
-
 	report = reporter(flagged, power_diffs, range_diffs)
-
 	return report
 
 
 def _main():
-	parser = argparse.ArgumentParser(description="Automatically generate a report on new antenna iq files")
-	parser.add_argument('-t', '--threshold', type=int, dest='threshold', default=1, help='An acceptable decibel difference between antennae')
-	parser.add_argument('-p', '--proportion', type=float, dest='proportion', default=0.125, help='The acceptable proportion of antennas any antenna may differ from')
-	parser.add_argument('-x', '--times', type=int, default=1, help='The number of times in a row an antenna can be flagged before a report is sent')
-	parser.add_argument('-v', '--verbose', action='store_true', help='Script will output more verbose messages')
-	parser.add_argument('directory', help='The directory watcher should be watching')
+	proportion_default = 0.2
+	parser = argparse.ArgumentParser(description="Automatically generate a power report on new antenna iq files")
+	parser.add_argument('-t', '--threshold', type=int, default=1,
+						help='An acceptable power difference between antennae in dB')
+	parser.add_argument('-p', '--proportion', type=float, default=proportion_default,
+						help='The acceptable percentage of antennas any antenna may differ from (float 0.0-1.0)')
+	parser.add_argument('-x', '--times', type=int, default=1,
+						help='The number of times in a row an antenna can be flagged before a report is sent')
+	parser.add_argument('-v', '--verbose', action='store_true',
+						help='Script will output more verbose messages')
+	parser.add_argument('-f', '--logfile', default=None, help='A path to a logfile to output log messages to')
+	parser.add_argument('directory', help='The directory this script should be watching for new antenna iq files')
 	args = parser.parse_args()
 	threshold = args.threshold
 	proportion = args.proportion
 	times = args.times
+	logfile = args.logfile
 	directory = args.directory
 
+	# Set up logger and handlers for a logfile, stream and email
 	logger = logging.getLogger(__name__)
-	logger.addHandler(logging.StreamHandler()) # Default stream is sys.stderr
+	if logfile is not None:
+		logger.addHandler(logging.FileHandler(logfile))
+	else:
+		logger.addHandler(logging.StreamHandler())  # Default stream is sys.stderr
+	email_handler = logging.handlers.SMTPHandler(mailhost='localhost',
+										fromaddr='antenna_watcher',
+										toaddrs=['kevin.krieger@usask.ca'],
+										subject='Antenna Power Report',
+										credentials=None,
+										secure=None)
+	email_handler.setLevel(logging.WARN)
+	logger.addHandler(email_handler)
 	if args.verbose:
 		logger.setLevel(logging.DEBUG)
 	else:
 		logger.setLevel(logging.INFO)
 
+	if proportion < 0.0 or proportion > 1.0:
+		logger.info("Proportion: {} doesn't make sense. Pick a float value between 0.0 and 1.0. "
+					"Setting to default: {}".format(proportion, proportion_default))
+
 	# Watch input directory and all subdirectories for file events
 	i = inotify.adapters.InotifyTree(directory)
 
-	# list to hold antenna numbers that were a problem last time
+	# dictionary to hold antenna numbers that were a problem last time
 	antenna_history = dict()
-	check_flag = False
-
-	last_file = 'first'
+	report = None
+	last_file = None
 	logger.info("Looping...")
+
 	while True:
 		for event in i.event_gen(yield_nones=False):
 			(_, type_names, path, filename) = event
 			logger.debug(event)
-			# When an antennas_iq file is closed and written, begin checking logic
+			# When an antennas_iq file is closed and written, or moved to the directory, begin checking logic
 			if (("antennas_iq" in filename) or ("output_ptrs_iq" in filename)) and \
-					(("IN_CLOSE_WRITE" in type_names) or ("IN_MOVED_TO" in type_names)): # IN_MOVED_TO added for testing
-				# Make sure that there are previously created files to be checked.
-				if last_file == 'first':
-					logger.debug("First file")
+				(("IN_CLOSE_WRITE" in type_names) or ("IN_MOVED_TO" in type_names)):
+
+				# Make sure that there are previously created files to be checked, otherwise wait for the next one.
+				if last_file is None:
+					logger.debug("First file event since script started: {}".format(filename))
 					last_file = filename
 				else:
-					logger.debug("file")
-					# Check there was a file created recently
-					if check_flag:
-						logger.info("Opening file {}".format(last_file))
-						file_path = path + '/' + last_file
+					logger.debug("File event for {} so script will analyze {}".format(filename, last_file))
+					logger.info("Opening file {}".format(last_file))
+					file_path = path + '/' + last_file
 
-						# Generate antenna report on random record in the file
+					# Generate antenna report on random record in the file
+					try:
 						report = check_antennas_iq_file_power(file_path, threshold, proportion)
-						if report is None:
-							pass
-							logger.info("Nothing to report")
-						else:
-							# Remove antennas from antenna_history if they were not flagged again
-							history_remove = list()
-							for antenna in antenna_history:
-								if antenna not in report:
-									history_remove.append(antenna)
-							for antenna in history_remove:
-								del antenna_history[antenna]
+					except OSError as e:
+						logger.error("Failed to generate report on {}, due to exception {}".format(file_path, e))
 
-							report_remove = list()
-							# Add reported antennas to history
-							for antenna in report:
-								if antenna in antenna_history:
-									antenna_history[antenna] += 1
-								else:
-									antenna_history[antenna] = 1
-							# Remove antenna from the report if it has not been flagged enough
-								if antenna_history[antenna] < times:
-									report_remove.append(antenna)
-							for antenna in report_remove:
-								del report[antenna]
-
-							# Finally, send the report if any antennas remain
-							# This means they've been flagged sufficiently often to be reported
-							if len(report) > 0:
-								send_report(report)
-						check_flag = False
-						last_file = filename
+					if report is None:
+						logger.info("Nothing to report for {}".format(file_path))
 					else:
-						last_file = filename
-			# Set check flag when a new file is created
-			if ("IN_CREATE" in type_names) or ("IN_MOVED_TO" in type_names):  # IN_MOVED_TO added for testing
-				check_flag = True
+						# Remove antennas from antenna_history if they were not flagged again
+						# TODO: See if you can simplify this antenna history stuff with list comprehensions, etc.
+						history_remove = list()
+						for antenna in antenna_history:
+							if antenna not in report:
+								history_remove.append(antenna)
+						for antenna in history_remove:
+							del antenna_history[antenna]
+
+						report_remove = list()
+						# Add reported antennas to history
+						for antenna in report:
+							if antenna in antenna_history:
+								antenna_history[antenna] += 1
+							else:
+								antenna_history[antenna] = 1
+							# Remove antenna from the report if it has not been flagged enough
+							if antenna_history[antenna] < times:
+								report_remove.append(antenna)
+						for antenna in report_remove:
+							del report[antenna]
+
+						# Finally, send the report if any antennas remain
+						# This means they've been flagged sufficiently often to be reported
+						if len(report) > 0:
+							send_report(report)
+					last_file = filename
 
 
 if __name__ == "__main__":
