@@ -133,18 +133,6 @@ Config Parameters
 +-----------------------------------------+----------------------------------------------+--------------------------------------+
 | driver_to_brian_identity                | DRIVER_BRIAN_IDEN                            | ZMQ named socket identity.           |
 +-----------------------------------------+----------------------------------------------+--------------------------------------+
-| driver_to_mainaffinity_identity         | DRIVER_MAINAFFINITY_IDEN                     | ZMQ named socket identity.           |
-+-----------------------------------------+----------------------------------------------+--------------------------------------+
-| driver_to_txaffinity_identity           | DRIVER_TXAFFINITY_IDEN                       | ZMQ named socket identity.           |
-+-----------------------------------------+----------------------------------------------+--------------------------------------+
-| driver_to_rxaffinity_identity           | DRIVER_RXAFFINITY_IDEN                       | ZMQ named socket identity.           |
-+-----------------------------------------+----------------------------------------------+--------------------------------------+
-| mainaffinity_to_driver_identity         | MAINAFFINITY_DRIVER_IDEN                     | ZMQ named socket identity.           |
-+-----------------------------------------+----------------------------------------------+--------------------------------------+
-| txaffinity_to_driver_identity           | TXAFFINITY_DRIVER_IDEN                       | ZMQ named socket identity.           |
-+-----------------------------------------+----------------------------------------------+--------------------------------------+
-| rxaffinity_to_driver_identity           | RXAFFINITY_DRIVER_IDEN                       | ZMQ named socket identity.           |
-+-----------------------------------------+----------------------------------------------+--------------------------------------+
 | exphan_to_radctrl_identity              | EXPHAN_RADCTRL_IDEN                          | ZMQ named socket identity.           |
 +-----------------------------------------+----------------------------------------------+--------------------------------------+
 | exphan_to_dsp_identity                  | EXPHAN_DSP_IDEN                              | ZMQ named socket identity.           |
