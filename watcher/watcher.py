@@ -13,9 +13,11 @@ import inotify.adapters
 import deepdish as dd
 import numpy as np
 import smtplib
-import ssl
+from email.mime.text import MIMEText
 import argparse
 import random
+import logging
+
 
 def antenna_average(power):
 	"""
@@ -207,35 +209,33 @@ def reporter(flagged, total_power_diff, range_power_diff):
 		return report
 
 
-def send_report(report, address):
+def send_report(report, addresses=['kevin.krieger@usask.ca']):
 	"""
 	Emails the power report to the addresses in an email file
 	Args:
 		report:		A report created by reporter()
-		address:	The email address to send the report to
+		addresses:	The email addresses to send the report to, list of strings
 	"""
-	port = 587
-	smtp_server = "smtp.gmail.com"
-	sender = "watcherdevel@gmail.com"
-	receiver = address
-	password = input("Password for watcher email account:")
-	message = "Your array report is ready.\n\n"
+	smtp_server = "localhost"
+	email_sender = "antenna_watcher" # TODO: Better name
+	email_recipients = addresses
+	email_subject = "Antenna power report" # TODO: Get site information and date
+	email_message = ""
 	antennas = list(report.keys())
 	for antenna in antennas:
-		message += "Antenna: " + str(antenna) + "\n"
-		message += "Total average difference from array average: " + str(report[antenna]["total_differences"]) + "\n"
-		message += "Differences from array average by range: " + str(report[antenna]["range_differences"]) + "\n"
-		message += "\n"
+		email_message += "Antenna: " + str(antenna) + "\n"
+		email_message += "Total average difference from array average: " + str(report[antenna]["total_differences"]) + "\n"
+		email_message += "Differences from array average by range: " + str(report[antenna]["range_differences"]) + "\n"
+		email_message += "\n"
 
-	context = ssl.create_default_context()
+	email = MIMEText(email_message)
+	email['Subject'] = email_subject
+	email['From'] = email_sender
+	email['To'] = ', '.join(email_recipients)
 
-	with smtplib.SMTP(smtp_server, port) as server:
-		server.ehlo()
-		server.starttls(context=context)
-		server.ehlo()
-		server.login(sender, password)
-		server.sendmail(sender, receiver, message)
-	
+	with smtplib.SMTP(smtp_server) as server:
+		server.sendmail(email_sender, email_recipients, email.as_string())
+
 
 def check_antennas_iq_file_power(iq_file, threshold, proportion):
 	"""
@@ -281,6 +281,13 @@ def _main():
 	times = args.times
 	directory = args.directory
 
+	logger = logging.getLogger(__name__)
+	logger.addHandler(logging.StreamHandler()) # Default stream is sys.stderr
+	if args.verbose:
+		logger.setLevel(logging.DEBUG)
+	else:
+		logger.setLevel(logging.INFO)
+
 	# Watch input directory and all subdirectories for file events
 	i = inotify.adapters.InotifyTree(directory)
 
@@ -289,31 +296,30 @@ def _main():
 	check_flag = False
 
 	last_file = 'first'
-
-	print("Looping...")
+	logger.info("Looping...")
 	while True:
 		for event in i.event_gen(yield_nones=False):
 			(_, type_names, path, filename) = event
-			print(event)
+			logger.debug(event)
 			# When an antennas_iq file is closed and written, begin checking logic
 			if (("antennas_iq" in filename) or ("output_ptrs_iq" in filename)) and \
 					(("IN_CLOSE_WRITE" in type_names) or ("IN_MOVED_TO" in type_names)): # IN_MOVED_TO added for testing
 				# Make sure that there are previously created files to be checked.
 				if last_file == 'first':
-					print("First file")
+					logger.debug("First file")
 					last_file = filename
 				else:
-					print("file")
+					logger.debug("file")
 					# Check there was a file created recently
 					if check_flag:
-						print("Opening...", last_file)
+						logger.info("Opening file {}".format(last_file))
 						file_path = path + '/' + last_file
 
 						# Generate antenna report on random record in the file
 						report = check_antennas_iq_file_power(file_path, threshold, proportion)
 						if report is None:
 							pass
-							print("Nothing to report")
+							logger.info("Nothing to report")
 						else:
 							# Remove antennas from antenna_history if they were not flagged again
 							history_remove = list()
@@ -339,7 +345,7 @@ def _main():
 							# Finally, send the report if any antennas remain
 							# This means they've been flagged sufficiently often to be reported
 							if len(report) > 0:
-								send_report(report, "kevin.krieger@usask.ca")
+								send_report(report)
 						check_flag = False
 						last_file = filename
 					else:
