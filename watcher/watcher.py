@@ -17,7 +17,6 @@ import ssl
 import argparse
 import random
 
-
 def antenna_average(power):
 	"""
 	Averages the measurement power in one antenna iq record
@@ -271,22 +270,19 @@ def check_antennas_iq_file_power(iq_file, threshold, proportion):
 
 def _main():
 	parser = argparse.ArgumentParser(description="Automatically generate a report on new antenna iq files")
-	parser.add_argument('--threshold', required=True, help='An acceptable decibel difference between antennae')
-	parser.add_argument('--proportion', required=True, help='The acceptable proportion of antennas any antenna may\
-																differ from')
-	parser.add_argument('--times', required=True, help='The number of times in a row an antenna can be flagged before\
-														a report is sent')
-	parser.add_argument('--directory', required=True, help='The directory watcher should be watching')
+	parser.add_argument('-t', '--threshold', type=int, dest='threshold', default=1, help='An acceptable decibel difference between antennae')
+	parser.add_argument('-p', '--proportion', type=float, dest='proportion', default=0.125, help='The acceptable proportion of antennas any antenna may differ from')
+	parser.add_argument('-x', '--times', type=int, default=1, help='The number of times in a row an antenna can be flagged before a report is sent')
+	parser.add_argument('-v', '--verbose', action='store_true', help='Script will output more verbose messages')
+	parser.add_argument('directory', help='The directory watcher should be watching')
 	args = parser.parse_args()
-	threshold = int(args.threshold)
-	proportion = float(args.proportion)
-	times = int(args.times)
+	threshold = args.threshold
+	proportion = args.proportion
+	times = args.times
 	directory = args.directory
 
 	# Watch input directory and all subdirectories for file events
 	i = inotify.adapters.InotifyTree(directory)
-
-	#i.add_watch(directory)
 
 	# list to hold antenna numbers that were a problem last time
 	antenna_history = dict()
