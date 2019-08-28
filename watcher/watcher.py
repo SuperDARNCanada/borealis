@@ -12,7 +12,6 @@
 import inotify.adapters
 import deepdish as dd
 import numpy as np
-import sys
 import smtplib
 import ssl
 import argparse
@@ -46,15 +45,14 @@ def get_lag0_pwr(iq_record):
 		iq_record:	 A single antenna iq data record loaded from file.
 	Returns:
 		power_array: A numpy array of shape (num_antennas, num_sequences, 70)
-					 containing the lag 0 power for each antenna and sequence
-					 in the iq_record
+		containing the lag 0 power for each antenna and sequence
+		in the iq_record
 	"""
 	# Setup and memory allocation
 	dims = iq_record["data_dimensions"]
 	voltage_samples = iq_record["data"].reshape(dims)
 	num_antennas, num_sequences, num_samps = dims
 	power_array = np.zeros((num_antennas, 60))
-	avg_array = np.zeros((60))
 	# get power from voltage samples
 	power = np.mean(np.sqrt(voltage_samples.real**2 + voltage_samples.imag**2), axis=1)
 	ant_avg = antenna_average(power)[5:65]
@@ -83,8 +81,7 @@ def build_truth(power_array, threshold):
 		the_truth:		Array of booleans as described above.
 	"""
 	num_antennas, num_ranges = power_array.shape
-	the_truth = np.zeros((num_antennas, num_antennas, num_ranges),
-							dtype=bool)
+	the_truth = np.zeros((num_antennas, num_antennas, num_ranges), dtype=bool)
 	for ant in range(num_antennas):
 		# start at ant to avoid duplicate results from array symmetry
 		for comp in range(ant+1, num_antennas):
@@ -188,7 +185,7 @@ def reporter(flagged, total_power_diff, range_power_diff):
 	"""
 	Reports on the results of the antenna analysis
 	Args:
-		antennas:			A list containing the flagged antenna numbers
+		flagged:			A list containing the flagged antenna numbers
 		total_power_diff:	A list containing the sequence and range averaged
 							difference between the antenna powers and the average power.
 		range_power_diff:	A list containing the sequence averaged difference between
@@ -227,10 +224,8 @@ def send_report(report, address):
 	antennas = list(report.keys())
 	for antenna in antennas:
 		message += "Antenna: " + str(antenna) + "\n"
-		message += "Total average difference from array average: " \
-					 + str(report[antenna]["total_differences"]) + "\n"
-		message += "Differences from array average by range: " \
-					 + str(report[antenna]["range_differences"]) + "\n"
+		message += "Total average difference from array average: " + str(report[antenna]["total_differences"]) + "\n"
+		message += "Differences from array average by range: " + str(report[antenna]["range_differences"]) + "\n"
 		message += "\n"
 
 	context = ssl.create_default_context()
@@ -289,25 +284,30 @@ def _main():
 	directory = args.directory
 
 	# Watch input directory and all subdirectories for file events
-	i = inotify.adapters.InotifyTree()
+	i = inotify.adapters.InotifyTree(directory)
 
-	i.add_watch(directory)
+	#i.add_watch(directory)
 
 	# list to hold antenna numbers that were a problem last time
 	antenna_history = dict()
 	check_flag = False
 
 	last_file = 'first'
-	
+
+	print("Looping...")
 	while True:
 		for event in i.event_gen(yield_nones=False):
 			(_, type_names, path, filename) = event
+			print(event)
 			# When an antennas_iq file is closed and written, begin checking logic
-			if (("antennas_iq" in filename) or ("output_ptrs_iq" in filename)) and ("IN_CLOSE_WRITE" in type_names):
+			if (("antennas_iq" in filename) or ("output_ptrs_iq" in filename)) and \
+					(("IN_CLOSE_WRITE" in type_names) or ("IN_MOVED_TO" in type_names)): # IN_MOVED_TO added for testing
 				# Make sure that there are previously created files to be checked.
 				if last_file == 'first':
+					print("First file")
 					last_file = filename
 				else:
+					print("file")
 					# Check there was a file created recently
 					if check_flag:
 						print("Opening...", last_file)
@@ -326,7 +326,6 @@ def _main():
 									history_remove.append(antenna)
 							for antenna in history_remove:
 								del antenna_history[antenna]
-							history_remove = list()
 
 							report_remove = list()
 							# Add reported antennas to history
@@ -344,13 +343,13 @@ def _main():
 							# Finally, send the report if any antennas remain
 							# This means they've been flagged sufficiently often to be reported
 							if len(report) > 0:
-								send_report(report, "liam.adair.graham@gmail.com")
+								send_report(report, "kevin.krieger@usask.ca")
 						check_flag = False
 						last_file = filename
 					else:
 						last_file = filename
 			# Set check flag when a new file is created
-			if "IN_CREATE" in type_names:
+			if ("IN_CREATE" in type_names) or ("IN_MOVED_TO" in type_names):  # IN_MOVED_TO added for testing
 				check_flag = True
 
 
