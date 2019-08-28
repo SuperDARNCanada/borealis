@@ -110,7 +110,8 @@ Config Parameters
 | tr_window_time                          | 6.00E-05                                     | How much windowing on either side of |
 |                                         |                                              | pulse is needed for TR signal (s).   |
 +-----------------------------------------+----------------------------------------------+--------------------------------------+
-| agc_signal_read_delay                   | 0                                            | Hardware dependent delay time for    |     |                                         |                                              | reading of AGC and low power signals |
+| agc_signal_read_delay                   | 0                                            | Hardware dependent delay time for    |
+|                                         |                                              | reading of AGC and low power signals |
 +-----------------------------------------+----------------------------------------------+--------------------------------------+
 | usrp_master_clock_rate                  | 1.00E+08                                     | Clock rate of the USRP master        |
 |                                         |                                              | clock (Sps).                         |
