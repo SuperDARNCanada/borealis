@@ -18,6 +18,7 @@ Welcome to Borealis's documentation!
     /config_options
     /borealis_processes
     /borealis_data
+    /monitoring
 
 
 Indices and tables
