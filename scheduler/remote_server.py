@@ -450,7 +450,6 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest):
             first_event = False
         else:
             atq.append(format_to_atq(event['time'], event['experiment']))
-    
     for cmd in atq:
         sp.call(cmd, shell=True)
 
@@ -532,6 +531,7 @@ def _main():
     site_id = options.site_id
 
     scd_file = '{}/{}.scd'.format(scd_dir, site_id)
+
     i.add_watch(scd_file)
     scd_util = scd_utils.SCDUtils(scd_file)
 

@@ -126,6 +126,7 @@ class SWG(object):
         return new_date
 
     def parse_swg_to_scd(self, modes, radar, first_run):
+
         """Reads the new SWG file and parses into a set of parameters than can be used for borealis
         scheduling.
 
@@ -145,6 +146,7 @@ class SWG(object):
 
         year = month_to_use.strftime("%Y")
         month = month_to_use.strftime("%m")
+
 
         swg_file = "{scd_dir}/{swg_dir}/{yyyy}/{yyyymm}.swg".format(scd_dir=self.scd_dir,
                                                                     swg_dir=SWG_GIT_REPO_DIR,
@@ -246,6 +248,7 @@ def main():
                                                                  ' SWG schedule folder back to the'
                                                                  ' last commit before running in'
                                                                  ' continuous operation.')
+
     args = parser.parse_args()
 
     scd_dir = args.scd_dir
@@ -273,6 +276,7 @@ def main():
             errors = False
             today = datetime.datetime.utcnow()
             scd_error_log = today.strftime("/scd_errors.%Y%m%d")
+
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
@@ -295,11 +299,13 @@ def main():
                         break
                     except FileNotFoundError as e:
                         error_msg = "SCD filename: {} is missing!!!\n".format(site_scd.scd_filename)
+
                         with open(scd_logs + scd_error_log, 'a') as f:
                             f.write(error_msg)
 
                         errors = True
                         break
+
 
 
             subject = "Scheduling report for swg lines"
