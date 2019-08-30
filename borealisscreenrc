@@ -26,4 +26,3 @@ focus right
 screen -t "Radar Control" bash -c "START_RADCTRL"
 
 detach
-
