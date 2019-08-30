@@ -81,7 +81,6 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
   return samples;
 }
 
-
 void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver_options)
 {
   DEBUG_MSG("Enter transmit thread");
@@ -127,6 +126,12 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   uhd::time_spec_t sequence_start_time;
   uhd::time_spec_t initialization_time;
 
+  bool agc_high;
+  bool lp_high;
+  double seqtime;
+
+  double agc_signal_read_delay = driver_options.get_agc_signal_read_delay() * 1e-6;
+
   zmq::message_t request;
 
   start_trigger.recv(&request);
@@ -157,6 +162,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
           }
 
           sqn_num = driver_packet.sequence_num();
+          seqtime = driver_packet.seqtime();
           if (sqn_num != expected_sqn_num){
             DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: " <<
                         expected_sqn_num);
@@ -254,6 +260,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto time_now = box_time;
     auto sequence_start_time = time_now + delay;
 
+    auto seqn_sampling_time = num_recv_samples/rx_rate;
     TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
       [&]() {
 
@@ -309,6 +316,19 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               ); //pulse timeit macro
             }
 
+            // Read AGC and Low Power signals
+            usrp_d.clear_command_time();
+            auto read_time = sequence_start_time + seqtime + agc_signal_read_delay;
+            usrp_d.set_command_time(read_time);
+            uint32_t pin_status = usrp_d.get_gpio_state();
+            usrp_d.clear_command_time();
+            if (pin_status & driver_options.get_agc_st())  {
+              agc_high = true;
+            }
+            if (pin_status & driver_options.get_lo_pwr())  {
+              lp_high = true;
+            }
+            
             for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
               std::vector<size_t> acks(tx_channels.size(),0);
@@ -351,7 +371,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     ); // full usrp function timeit macro
 
 
-    auto seqn_sampling_time = num_recv_samples/rx_rate;
 
     auto end_time = box_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
@@ -374,6 +393,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     samples_metadata.set_sequence_num(sqn_num);
     auto actual_finish = box_time;
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
+    samples_metadata.set_agc_high(agc_high);
+    samples_metadata.set_lp_high(lp_high);
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);
 

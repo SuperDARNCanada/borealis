@@ -11,6 +11,7 @@ pip3 install --upgrade pip
 zypper install -y libX11-devel
 pip3 install deepdish
 pip3 install posix_ipc
+pip3 install inotify
 
 #### INSTALL PROTOBUF ####
 #https://github.com/google/protobuf/blob/master/src/README.md#c-installation---uni

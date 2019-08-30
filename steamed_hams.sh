@@ -16,6 +16,8 @@ echo "v2.3-Alpha Season 1 Episode 3"
 echo "-----------------------------------------------------------------------------------"
 
 rm -r /dev/shm/*
+screen -X -S borealis quit
+sleep 1
 
 # These are the commands to in each window.
 if [ "$2" = "release" ]; then
@@ -56,9 +58,9 @@ sed -i.bak "s#START_BRIAN#$start_brian#; \
             s#START_DATAWRITE#$start_datawrite#; \
             s#START_USRP_DRIVER#$start_usrp_driver#; \
             s#START_DSP#$start_dsp#; \
-            s#START_TIDS#$start_tids#;" borealisscreenrc
+            s#START_TIDS#$start_tids#;" $BOREALISPATH/borealisscreenrc
 
 # Launch a detached screen with editted layout.
-screen -S borealis -c borealisscreenrc
+screen -S borealis -c $BOREALISPATH/borealisscreenrc
 # Return the original config file
-mv borealisscreenrc.bak borealisscreenrc
+mv $BOREALISPATH/borealisscreenrc.bak $BOREALISPATH/borealisscreenrc

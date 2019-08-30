@@ -29,4 +29,3 @@ focus right
 screen -t "Cpu Affinity" bash -c "START_TIDS"
 
 detach
-

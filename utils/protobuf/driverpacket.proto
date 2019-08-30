@@ -10,9 +10,10 @@ message DriverPacket {
   double txcenterfreq = 5;
   double rxcenterfreq = 6;
   uint32 numberofreceivesamples = 7;
-  double timetosendsamples = 8;
-  bool SOB = 9;
-  bool EOB = 10;
+  double seqtime = 8;
+  double timetosendsamples = 9;
+  bool SOB = 10;
+  bool EOB = 11;
 
   message SamplesBuffer {
     repeated float real = 1;
