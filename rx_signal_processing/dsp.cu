@@ -50,7 +50,7 @@ namespace {
       auto dp = static_cast<DSPCore*>(processing_data);
       dp->send_ack();
       dp->start_decimate_timing();
-      DEBUG_MSG(COLOR_RED("Finished initial memcpy handler for sequence #"
+      RUNTIME_MSG(COLOR_RED("Finished initial memcpy handler for sequence #"
                  << dp->get_sequence_num() << ". Thread should exit here"));
     };
 
@@ -562,12 +562,12 @@ namespace {
         }()
       );
 
-      DEBUG_MSG("Cuda kernel timing: " << COLOR_GREEN(dp->get_decimate_timing()) << "ms");
-      DEBUG_MSG("Complete process timing: " << COLOR_GREEN(dp->get_total_timing()) << "ms");
+      RUNTIME_MSG("Cuda kernel timing: " << COLOR_GREEN(dp->get_decimate_timing()) << "ms");
+      RUNTIME_MSG("Complete process timing: " << COLOR_GREEN(dp->get_total_timing()) << "ms");
       auto sq_num = dp->get_sequence_num();
       delete dp;
 
-      DEBUG_MSG(COLOR_RED("Deleted DP in postprocess for sequence #" << sq_num
+      RUNTIME_MSG(COLOR_RED("Deleted DP in postprocess for sequence #" << sq_num
                   << ". Thread should terminate here."));
     };
 
@@ -926,10 +926,10 @@ void DSPCore::stop_timing()
   gpuErrchk(cudaEventElapsedTime(&total_process_timing_ms, initial_start, stop));
   gpuErrchk(cudaEventElapsedTime(&decimate_kernel_timing_ms, kernel_start, stop));
   gpuErrchk(cudaEventElapsedTime(&mem_time_ms, initial_start, mem_transfer_end));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Cuda memcpy time for " 
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Cuda memcpy time for "
     << COLOR_RED("#" << sequence_num) << ": " << COLOR_GREEN(mem_time_ms) << "ms");
   RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimate time for "
-    << COLOR_RED("#" << sequence_num) << ": " 
+    << COLOR_RED("#" << sequence_num) << ": "
     << COLOR_GREEN(decimate_kernel_timing_ms) << "ms");
 
 }

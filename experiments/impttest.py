@@ -9,12 +9,12 @@
 # write an experiment that creates a new control program.
 import os
 import sys
+import copy
 
 BOREALISPATH = os.environ['BOREALISPATH']
-#sys.path.append(BOREALISPATH + "/experiment_prototype")
+sys.path.append(BOREALISPATH)
 
-#import test
-import copy
+import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
 from experiments.test_decimation_schemes import *
@@ -28,62 +28,20 @@ class ImptTest(ExperimentPrototype):
 
     def __init__(self):
         cpid = -3313
-        output_rx_rate = 10.0e3/3
-        rx_rate = 5.0e6
 
-        tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-        rx_int_ant = [0, 1, 2, 3]
-        #tx_ant = [0]
-        #rx_main_ant = [0]
-        #rx_int_ant = [0]
         default_slice = {  # slice_id = 0, the first slice
-            "tx_antennas": tx_ant,
-            "rx_main_antennas": rx_main_ant,
-            "rx_int_antennas": rx_int_ant,
-            "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
-            #"pulse_shift": None,
-            "tau_spacing": 1500,  # us
-            "pulse_len": 300,  # us
-            "num_ranges": 75,  # range gates
-            "first_range": 180,  # first range gate, in km
-            "intt": 3000,
+            "pulse_sequence": scf.SEQUENCE_8P,
+            "tau_spacing": scf.TAU_SPACING_8P,
+            "pulse_len": scf.PULSE_LEN_45KM,
+            "num_ranges": scf.STD_NUM_RANGES,
+            "first_range": scf.STD_FIRST_RANGE,
+            "intn": 30,
             "beam_angle": [1.75],
             "beam_order": [0],
-            "scanboundflag": False,  # there is a scan boundary
-            #"clrfrqflag": True,  # search for clear frequency before transmitting
-            #"clrfrqrange": [13100, 13400],  # frequency range for clear frequency search,
             "txfreq" : 13100,
-            # kHz including a clrfrqrange overrides rxfreq and txfreq so these are no
-            # longer necessary as they will be set by the frequency chosen from the
-            # range.
-            #"xcf": True,  # cross-correlation processing
-            #"acfint": True,  # interferometer acfs
         }
 
-        katscan_slice = {
-            "tx_antennas": tx_ant,
-            "rx_main_antennas": rx_main_ant,
-            "rx_int_antennas": rx_int_ant,
-            "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
-            #"phase_": [0, 0, 0, 0, 0, 0, 0, 0],
-            "tau_spacing": 1500,  # us
-            "pulse_len": 300,  # us
-            "num_ranges": 75,  # range gates
-            "first_range": 180,  # first range gate, in km
-            "intt": 3000,
-            "beam_angle": [1.75],
-            "beam_order": [0],
-            "scanboundflag": False,  # there is a scan boundary
-            #"clrfrqflag": True,  # search for clear frequency before transmitting
-            #"clrfrqrange": [13100, 13400],  # frequency range for clear frequency search,
-            "txfreq" : 13100,
-            # kHz including a clrfrqrange overrides rxfreq and txfreq so these are no
-            # longer necessary as they will be set by the frequency chosen from the
-            # range.
-            #"xcf": True,  # cross-correlation processing
-            #"acfint": True,  # interferometer acfs
-        }
+        katscan_slice = copy.deepcopy(default_slice)
 
         # set phases for each pulse on each sequence
         # 30 sequences of impt, each its own slice
@@ -104,8 +62,9 @@ class ImptTest(ExperimentPrototype):
         list_of_slices.append(katscan_slice)
         rxctrfreq = katscan_slice["txfreq"]
         txctrfreq = rxctrfreq
-        super(ImptTest, self).__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq, decimation_scheme=create_test_scheme_9(),
+        super(ImptTest, self).__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq,
             comment_string="Reimer IMPT Experiment")
+
         # add slices to experiment
         for i,exp_slice in enumerate(list_of_slices):
             if i == 0:
@@ -114,25 +73,3 @@ class ImptTest(ExperimentPrototype):
                 self.add_slice(exp_slice,interfacing_dict=interfacing_dict2)#{0: 'SCAN'})
             else:
                 self.add_slice(exp_slice,interfacing_dict=interfacing_dict1) #{0: 'INTEGRATION'})
-
-
-        # Other things you can change if you wish. You may want to discuss with us about
-        # it beforehand.
-        # These apply to the experiment and all slices as a whole.
-
-
-        # self.txrate = 12000000 # Hz, sample rate fed to DAC
-
-        # Update the following interface dictionary if you have more than one slice
-        # dictionary in your slice_list and you did not specify the interfacing when
-        # adding the slice. The keys in the interface dictionary correspond to the
-        # slice_ids of the slices in your slice_list.
-        # Take a look at the documentation for the frozenset interface_types in
-        # experiment_prototype to understand the types of interfacing (PULSE,
-        # INTEGRATION, INTTIME, or SCAN).
-
-        # NOTE keys are as such: (0,1), (0,2), (1,2), NEVER includes (2,0) etc.
-
-        # self.interface.update({
-        #     (0, 1): 'SCAN'  # Full scan of one slice, then full scan of the next.
-        # })

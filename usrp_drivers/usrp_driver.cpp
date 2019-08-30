@@ -318,7 +318,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
             // Read AGC and Low Power signals
             usrp_d.clear_command_time();
-            auto read_time = sequence_start_time + seqtime + agc_signal_read_delay;
+            auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
             uint32_t pin_status = usrp_d.get_gpio_state();
             usrp_d.clear_command_time();
@@ -328,7 +328,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             if (pin_status & driver_options.get_lo_pwr())  {
               lp_high = true;
             }
-            
+
             for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
               std::vector<size_t> acks(tx_channels.size(),0);
@@ -564,14 +564,12 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
 
   //  Prepare our context
   zmq::context_t driver_context(1);
-  auto identities = {driver_options.get_driver_to_mainaffinity_identity(),
-                      driver_options.get_driver_to_radctrl_identity()};
+  auto identities = {driver_options.get_driver_to_radctrl_identity()};
 
   auto sockets_vector = create_sockets(driver_context, identities,
                                         driver_options.get_router_address());
 
-  zmq::socket_t &driver_to_mainaffinity = sockets_vector[0];
-  zmq::socket_t &driver_to_radar_control = sockets_vector[1];
+  zmq::socket_t &driver_to_radar_control = sockets_vector[0];
 
   // Begin setup process.
   // This exchange signals to radar control that the devices are ready to go so that it can
@@ -611,11 +609,6 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
 
   threads.push_back(std::move(transmit_t));
   threads.push_back(std::move(receive_t));
-
-  auto set_tid_msg = std::string("SET_TIDS");
-  SEND_REQUEST(driver_to_mainaffinity,
-                              driver_options.get_mainaffinity_to_driver_identity(), set_tid_msg);
-  RECV_REPLY(driver_to_mainaffinity, driver_options.get_mainaffinity_to_driver_identity());
 
 
   for (auto& th : threads) {
