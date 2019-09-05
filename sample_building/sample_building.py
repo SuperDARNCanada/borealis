@@ -39,7 +39,8 @@ def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
     return beamdirs, amplitudes
 
 
-def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spacing):
+def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spacing,
+        centre_offset=0.0):
     """
     Find the phase shift for a given antenna and beam direction.
 
@@ -47,15 +48,17 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
     a specified extra phase shift if there is any, the number of antennas in the array, and the spacing
     between antennas.
 
-    :param beamdir: the direction of the beam off boresight, in degrees, positive beamdir being to
-        the right of the boresight. This is for this antenna.
+    :param beamdir: the azimuthal direction of the beam off boresight, in degrees, positive beamdir being to
+        the right of the boresight (looking along boresight from ground). This is for this antenna.
     :param freq: transmit frequency in kHz
-    :param antenna: antenna number, INDEXED FROM ZERO, zero being the leftmost antenna if looking down the azimuth
-        and positive beamdir right of azimuth
+    :param antenna: antenna number, INDEXED FROM ZERO, zero being the leftmost antenna if looking down the boresight
+        and positive beamdir right of boresight
     :param pulse_shift: in degrees, for phase encoding
     :param num_antennas: number of antennas in this array
     :param antenna_spacing: distance between antennas in this array, in meters
-
+    :param centre_offset: the phase reference for the midpoint of the array. Default = 0.0, in metres.
+     Important if there is a shift in centre point between arrays in the direction along the array.
+     Positive is shifted to the right when looking along boresight (from the ground).
     :returns phshift: a phase shift for the samples for this antenna number, in radians.
     """
 
@@ -64,14 +67,12 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
     beamdir = float(beamdir)
 
     beamrad = math.pi * float(beamdir) / 180.0
+
     # Pointing to right of boresight, use point in middle (hypothetically antenna 7.5) as phshift=0
     #   so all channels have a non-zero phase shift
-    if num_antennas % 2 == 1:
-        phshift = 2 * math.pi * freq * ((num_antennas-1)/2.0 - antenna) * antenna_spacing * math.cos(
-            math.pi / 2.0 - beamrad) / speed_of_light
-    else:
-        phshift = 2 * math.pi * freq * (num_antennas/2.0 - antenna) * antenna_spacing * math.cos(
-            math.pi / 2.0 - beamrad) / speed_of_light
+    phshift = 2 * math.pi * freq * (((num_antennas-1)/2.0 - antenna) * \
+        antenna_spacing + centre_offset) * math.cos(math.pi / 2.0 - beamrad) \
+        / speed_of_light
 
     # Add an extra phase shift if there is any specified
     phshift = phshift + math.radians(pulse_shift)
@@ -488,7 +489,8 @@ def calculated_combined_pulse_samples_length(pulse_list, txrate):
 
 
 def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenna_count,
-                              main_antenna_spacing, interferometer_antenna_spacing, freq):
+                              main_antenna_spacing, interferometer_antenna_spacing, 
+                              intf_offset, freq):
     """
     Get all the necessary phase shifts for all antennas for all the beams for a pulse sequence.
 
@@ -505,6 +507,9 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
      phase offset for.
     :param main_antenna_spacing: the spacing between the main array antennas (m).
     :param interferometer_antenna_spacing: the spacing between the interferometer antennas (m).
+    :param intf_offset: The interferometer offset from the main array (from centre to centre), 
+     in Cartesian coordinates. [x, y, z] where x is along line of antennas, y is along array
+     normal and z is altitude difference, in m.
     :param freq: the frequency we are transmitting/receiving at.
     :returns beams_antenna_phases: a list of length = beam directions, where each element is a list
      of length = number of antennas (main array followed by interferometer array). The inner list
@@ -516,12 +521,14 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
         phase_array = []
         for channel in range(0, main_antenna_count):
             # Get phase shifts for all channels
+            # zero pulse shift b/w pulses when beamforming.
             phase_array.append(get_phshift(beam, freq, channel, 0, main_antenna_count,
                 main_antenna_spacing))
-        for channel in range(0, interferometer_antenna_count):  # interferometer TODO interferometer offset ***
-            # Get phase shifts for all channels
+        for channel in range(0, interferometer_antenna_count): 
+            # Get phase shifts for all channels, adding in the x - offset of the interferometer
+            # from the main array.
             phase_array.append(get_phshift(beam, freq, channel, 0, interferometer_antenna_count,
-                interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
+                interferometer_antenna_spacing, centre_offset=intf_offset[0]))  
         beams_antenna_phases.append(phase_array)
 
     return beams_antenna_phases

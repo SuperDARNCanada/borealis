@@ -579,7 +579,7 @@ def radar():
                                                           options.interferometer_antenna_count,
                                                           options.main_antenna_spacing,
                                                           options.interferometer_antenna_spacing,
-                                                          receive_freq)
+                                                          options.intf_offset, receive_freq)
 
                         beam_phase_dict_list.append(beam_phase_dict)
 
