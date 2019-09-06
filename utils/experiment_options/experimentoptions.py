@@ -144,10 +144,10 @@ class ExperimentOptions:
         self._analog_rx_attenuator = params[9]  # dB
         self._tdiff = params[10] # ns
         self._phase_sign = params[11]
-        self._intf_offset = [float(params[12]), float(params[13]), float(params[14])]  #
+        self._intf_offset = [float(params[12]), float(params[13]), float(params[14])]  
         # interferometer offset from
         # midpoint of main, metres [x, y, z] where x is along line of antennas, y is along array
-        # normal and z is altitude difference.
+        # normal and z is altitude difference, in m.
         self._analog_rx_rise = params[15]  # us
         self._analog_atten_stages = params[16]  # number of stages
         self._max_range_gates = params[17]
