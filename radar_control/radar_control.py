@@ -217,7 +217,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             for antenna_num, phi in enumerate(beamdir):
                 phase_add = beam_add.phase.add()
                 if antenna_num in slice_dict[slice_id]['rx_main_antennas'] or antenna_num - main_antenna_count in slice_dict[slice_id]['rx_int_antennas']:
-                    phase = cmath.exp(-1 * phi * 1j)
+                    phase = cmath.exp(phi * 1j)
                 else:
                     phase = 0.0 + 0.0j
                 phase_add.real_phase = phase.real
