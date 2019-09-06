@@ -487,7 +487,7 @@ def calculated_combined_pulse_samples_length(pulse_list, txrate):
     return combined_pulse_length
 
 
-def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenna_count,
+def rx_azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenna_count,
                               main_antenna_spacing, interferometer_antenna_spacing, 
                               intf_offset, freq):
     """
@@ -514,9 +514,11 @@ def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenn
      of length = number of antennas (main array followed by interferometer array). The inner list
      contains the phase shift for the corresponding antenna for the corresponding beam.
     """
-
+    
+    # have to get the opposite phase on rx (from tx) for the correct antenna phase offset
+    rx_beamdir = [-1*beam for beam in beamdir]
     beams_antenna_phases = []
-    for beam in beamdir:
+    for beam in rx_beamdir:
         phase_array = []
         for channel in range(0, main_antenna_count):
             # Get phase shifts for all channels

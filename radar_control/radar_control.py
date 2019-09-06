@@ -36,7 +36,7 @@ from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
 from datawritemetadata_pb2 import IntegrationTimeMetadata
 
-from sample_building.sample_building import azimuth_to_antenna_offset, create_debug_sequence_samples
+from sample_building.sample_building import rx_azimuth_to_antenna_offset, create_debug_sequence_samples
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from radar_status.radar_status import RadarStatus
@@ -575,7 +575,7 @@ def radar():
 
                             beamdir = slice_to_beamdir_dict[slice_id]
                             beam_phase_dict[slice_id] = \
-                                azimuth_to_antenna_offset(beamdir, options.main_antenna_count,
+                                rx_azimuth_to_antenna_offset(beamdir, options.main_antenna_count,
                                                           options.interferometer_antenna_count,
                                                           options.main_antenna_spacing,
                                                           options.interferometer_antenna_spacing,
