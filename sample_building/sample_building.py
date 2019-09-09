@@ -515,10 +515,8 @@ def rx_azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_ant
      contains the phase shift for the corresponding antenna for the corresponding beam.
     """
     
-    # have to get the opposite phase on rx (from tx) for the correct antenna phase offset
-    rx_beamdir = [-1*beam for beam in beamdir]
     beams_antenna_phases = []
-    for beam in rx_beamdir:
+    for beam in beamdir:
         phase_array = []
         for channel in range(0, main_antenna_count):
             # Get phase shifts for all channels

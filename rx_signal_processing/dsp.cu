@@ -389,7 +389,7 @@ namespace {
                                           main_acfs, rx_slice_info,
                                           num_samples_after_dropping, dp->get_output_sample_rate());
         if (dp->sig_options.get_interferometer_antenna_count() > 0) {
-          correlations_from_samples(beamformed_samples_main, beamformed_samples_intf,
+          correlations_from_samples(beamformed_samples_intf, beamformed_samples_main,
                                           xcfs, rx_slice_info, num_samples_after_dropping,
                                           dp->get_output_sample_rate());
           correlations_from_samples(beamformed_samples_intf, beamformed_samples_intf,
