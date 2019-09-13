@@ -39,19 +39,13 @@ int main(int argc, char **argv){
   zmq::context_t context(1); // 1 is context num. Only need one per program as per examples
   auto identities = {sig_options.get_dsp_radctrl_identity(),
                    sig_options.get_dsp_driver_identity(),
-                   sig_options.get_dsp_exphan_identity(),
-                   sig_options.get_dsp_dw_identity(),
-                   sig_options.get_dspbegin_brian_identity(),
-                   sig_options.get_dspend_brian_identity()};
+                   sig_options.get_dsp_exphan_identity()};
 
   auto sockets_vector = create_sockets(context, identities, sig_options.get_router_address());
 
   zmq::socket_t &dsp_to_radar_control = sockets_vector[0];
   zmq::socket_t &dsp_to_driver = sockets_vector[1];
   zmq::socket_t &dsp_to_experiment_handler = sockets_vector[2];
-  zmq::socket_t &dsp_to_data_write = sockets_vector[3];
-  zmq::socket_t &dsp_to_brian_begin = sockets_vector[4];
-  zmq::socket_t &dsp_to_brian_end = sockets_vector[5];
 
   auto gpu_properties = get_gpu_properties();
   print_gpu_properties(gpu_properties);
@@ -236,8 +230,8 @@ int main(int argc, char **argv){
 
     auto complex_taps = filters.get_mixed_filter_taps();
 
-    DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
-                             sig_options, sp_packet.sequence_num(), rx_rate, output_sample_rate,
+    DSPCore *dp = new DSPCore(std::ref(context), sig_options, sp_packet.sequence_num(),
+                             rx_rate, output_sample_rate,
                              filter_taps, beam_phases,
                              rx_metadata.initialization_time(),
                              rx_metadata.sequence_start_time(), dm_rates, slice_info);

@@ -288,11 +288,9 @@ class ParseData(object):
         """ Parses the protobuf and updates the accumulator fields with the new data.
 
         Args:
-            data (bytes): Serialized ProcessedData protobuf
+            data (Protobuf): deserialized ProcessedData protobuf.
         """
-        self.processed_data = processeddata_pb2.ProcessedData()
-        self.processed_data.ParseFromString(data)
-
+        self.processed_data = data
         self._timestamps.append(self.processed_data.sequence_start_time)
 
         self._rx_rate = self.processed_data.rx_sample_rate
@@ -1168,6 +1166,8 @@ def main():
     current_experiment = None
     data_write = None
     first_time = True
+    expected_sqn_num = 0
+    queued_sqns = []
     while True:
 
         try:
@@ -1184,34 +1184,55 @@ def main():
             final_integration = integration_meta.last_seqn_num
 
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
-            data = so.recv_bytes(dsp_to_data_write, options.dsp_to_dw_identity, printing)
+            data = so.recv_bytes_from_any_iden(dsp_to_data_write)
 
-            if not first_time:
-                if data_parsing.sequence_num == final_integration:
+            processed_data = processeddata_pb2.ProcessedData()
+            processed_data.ParseFromString(data)
 
-                    if integration_meta.experiment_name != current_experiment:
-                        data_write = DataWrite(options)
-                        current_experiment = integration_meta.experiment_name
+            queued_sqns.append(processed_data)
+            # Check if any data processing finished out of order.
+            if processed_data.sequence_num != expected_sqn_num:
+                continue
 
-                    kwargs = dict(write_bfiq=args.enable_bfiq,
-                                           write_antenna_iq=args.enable_antenna_iq,
-                                           write_raw_rf=args.enable_raw_rf,
-                                           write_tx=args.enable_tx,
-                                           file_ext=args.file_type,
-                                           integration_meta=integration_meta,
-                                           data_parsing=data_parsing,
-                                           write_rawacf=args.enable_raw_acfs)
-                    thread = threading.Thread(target=data_write.output_data, kwargs=kwargs)
-                    thread.daemon = True
-                    thread.start()
-                    data_parsing = ParseData()
+            sorted_q = sorted(queued_sqns, key=lambda x:x.sequence_num)
 
-            first_time = False
+            # This is needed to check that if we have a backlog, there are no more
+            # skipped sequence numbers we are still waiting for.
+            for i, pd in enumerate(sorted_q):
+                if pd.sequence_num != expected_sqn_num + i:
+                    expected_sqn_num += i
+                    continue
+            expected_sqn_num = sorted_q[-1].sequence_num + 1
 
-            start = time.time()
-            data_parsing.update(data)
-            end = time.time()
-            printing("Time to parse: {} ms".format((end-start)*1000))
+            for pd in sorted_q:
+                if not first_time:
+                    if data_parsing.sequence_num == final_integration:
+
+                        if integration_meta.experiment_name != current_experiment:
+                            data_write = DataWrite(options)
+                            current_experiment = integration_meta.experiment_name
+
+                        kwargs = dict(write_bfiq=args.enable_bfiq,
+                                               write_antenna_iq=args.enable_antenna_iq,
+                                               write_raw_rf=args.enable_raw_rf,
+                                               write_tx=args.enable_tx,
+                                               file_ext=args.file_type,
+                                               integration_meta=integration_meta,
+                                               data_parsing=data_parsing,
+                                               write_rawacf=args.enable_raw_acfs)
+                        thread = threading.Thread(target=data_write.output_data, kwargs=kwargs)
+                        thread.daemon = True
+                        thread.start()
+                        data_parsing = ParseData()
+
+                first_time = False
+
+                start = time.time()
+                data_parsing.update(pd)
+                end = time.time()
+                printing("Time to parse: {} ms".format((end-start)*1000))
+
+            queued_sqns = []
 
 
 if __name__ == '__main__':

@@ -84,8 +84,7 @@ class DSPCore {
                                             std::vector<uint32_t> total_output_samples);
   void initial_memcpy_callback();
   //http://en.cppreference.com/w/cpp/language/explicit
-  explicit DSPCore(zmq::socket_t *ack_s, zmq::socket_t *timing_s, zmq::socket_t *data_write_socket,
-                    SignalProcessingOptions &options, uint32_t sq_num,
+  explicit DSPCore(zmq::context_t &context, SignalProcessingOptions &options, uint32_t sq_num,
                     double rx_rate, double output_sample_rate,
                     std::vector<std::vector<float>> filter_taps,
                     std::vector<cuComplex> beam_phases,
@@ -154,14 +153,8 @@ class DSPCore {
   //! Output sampling rate of the filtered, decimated, processed data.
   double output_sample_rate;
 
-  //! Pointer to the socket used to acknowledge the RF samples have been copied to device.
-  zmq::socket_t *ack_socket;
-
-  //! Pointer to the socket used to report the timing of GPU kernels.
-  zmq::socket_t *timing_socket;
-
-  //! Pointer to the data writing socket.
-  zmq::socket_t *data_socket;
+  //! The unique sockets for communicating between processes.
+  std::vector<zmq::socket_t> zmq_sockets;
 
   //! Stores the total GPU process timing once all the work is done.
   float total_process_timing_ms;

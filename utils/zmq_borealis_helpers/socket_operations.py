@@ -57,7 +57,6 @@ def recv_data(socket, sender_iden, pprint):
     else:
         return data.decode('utf-8')
 
-
 def send_data(socket, recv_iden, msg):
     """Sends data to another identity.
 
@@ -74,7 +73,7 @@ def send_data(socket, recv_iden, msg):
 # Aliases for sending to a socket
 send_reply = send_request = send_data
 
-# Aliases for receiving from a socket 
+# Aliases for receiving from a socket
 recv_reply = recv_request = recv_data
 
 def recv_bytes(socket, sender_iden, pprint):
@@ -97,6 +96,18 @@ def recv_bytes(socket, sender_iden, pprint):
         return None
     else:
         return bytes_object
+
+def recv_bytes_from_any_iden(socket):
+    """Receives data from a socket and verifies it comes from the correct sender.
+
+    :param socket: Socket to recv from.
+    :type socket: Zmq socket
+    :returns: Received data
+    :rtype: String or Protobuf or None
+    """
+
+    recv_identity, empty, bytes_object = socket.recv_multipart()
+    return bytes_object
 
 
 def send_bytes(socket, recv_iden, bytes_object):
