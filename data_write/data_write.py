@@ -1198,10 +1198,16 @@ def main():
 
             # This is needed to check that if we have a backlog, there are no more
             # skipped sequence numbers we are still waiting for.
+            break_now = False
             for i, pd in enumerate(sorted_q):
                 if pd.sequence_num != expected_sqn_num + i:
                     expected_sqn_num += i
-                    continue
+                    break_now = True
+                    break
+            if break_now:
+                continue
+                
+                
             expected_sqn_num = sorted_q[-1].sequence_num + 1
 
             for pd in sorted_q:
