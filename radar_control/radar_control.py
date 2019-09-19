@@ -421,8 +421,8 @@ def round_up_time(dt=None, roundTo=60):
    Will round to the nearest minute mark. Adds one minute if rounded down.
    """
    if dt == None : dt = datetime.utcnow()
-   minute = dt.replace(hour=0, minute=0, second=0)
-   seconds = (dt.replace(tzinfo=None) - minute).seconds
+   midnight = dt.replace(hour=0, minute=0, second=0)
+   seconds = (dt.replace(tzinfo=None) - midnight).seconds
    rounding = (seconds+roundTo/2) // roundTo * roundTo
    result = dt + timedelta(0,rounding-seconds,-dt.microsecond)
 
