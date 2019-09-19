@@ -679,10 +679,10 @@ def radar():
 
                             if beam_time < aveperiod.intt*1e-3:
                                     #TODO maybe log skipping beam?
-                                    msg = "Scan time too long, skipping beam {}"
-                                    msg = msg.format(sm.COLOR("yellow", beam_iter))
-                                    rad_ctrl_print(msg)
-                                    continue
+                                msg = "Scan time too long, skipping beam {}"
+                                msg = msg.format(sm.COLOR("yellow", beam_iter))
+                                rad_ctrl_print(msg)
+                                continue
                         integration_period_done_time = integration_period_start_time + \
                                             timedelta(milliseconds=aveperiod.intt) #ms
                     else:

@@ -83,7 +83,7 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
                     "beam_order", "scanbound", "txfreq", "rxfreq",
                     "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
                     "iwavetable", "qwavetable", "comment", "range_sep", "lag_table"])
-# TODO add scanboundt?
+
 """
 **Description of Slice Keys**
 

@@ -30,7 +30,7 @@ class Scan(ScanClassBase):
 
 
     scanbound
-        The time (not implemented) at which to start scans. To be implemented.
+        A list of seconds past the minute for scans to align to.
     """
 
     def __init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata):
@@ -45,7 +45,6 @@ class Scan(ScanClassBase):
                      combined in Scan""".format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
 
-        # TODO implement scanbound!!
 
         # NOTE: for now we assume that when INTTIME combined, the AveragingPeriods of the various slices in the scan are
         #   just interleaved 1 then the other.
