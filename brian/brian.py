@@ -58,14 +58,13 @@ def router(opts):
                 output = "Router input/// Sender -> {}: Receiver -> {}\n"
                 output = output.format(sender, receiver)
                 sys.stdout.write(output)
-            frames = [receiver,sender,empty,data]
-            frames_to_send.append(frames)
+            frames_received = [receiver,sender,empty,data]
+            frames_to_send.append(frames_received)
 
             if __debug__:
                 output = "Router output/// Receiver -> {}: Sender -> {}\n"
                 output = output.format(receiver, sender)
                 sys.stdout.write(output)
-        sent = False
         non_sent = []
         for frames in frames_to_send:
             try:

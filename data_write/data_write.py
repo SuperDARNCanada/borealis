@@ -1168,6 +1168,7 @@ def main():
     first_time = True
     expected_sqn_num = 0
     queued_sqns = []
+    abandon_list = []
     while True:
 
         try:
@@ -1191,6 +1192,7 @@ def main():
 
             queued_sqns.append(processed_data)
             # Check if any data processing finished out of order.
+
             if processed_data.sequence_num != expected_sqn_num:
                 continue
 
@@ -1205,9 +1207,12 @@ def main():
                     break_now = True
                     break
             if break_now:
+                if len(sorted_q) > 20:
+                    #TODO error out correctly
+                    printing("Lost sequence #{}. Exiting.".format(expected_sqn_num))
+                    sys.exit()
                 continue
-                
-                
+
             expected_sqn_num = sorted_q[-1].sequence_num + 1
 
             for pd in sorted_q:

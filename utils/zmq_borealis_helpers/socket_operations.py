@@ -98,7 +98,7 @@ def recv_bytes(socket, sender_iden, pprint):
         return bytes_object
 
 def recv_bytes_from_any_iden(socket):
-    """Receives data from a socket and verifies it comes from the correct sender.
+    """Receives data from a socket, returns just the data and strips off the identity
 
     :param socket: Socket to recv from.
     :type socket: Zmq socket
