@@ -19,7 +19,7 @@ Welcome to Borealis's documentation!
     /borealis_processes
     /borealis_data
     /monitoring
-
+    /lab_testing
 
 Indices and tables
 ==================

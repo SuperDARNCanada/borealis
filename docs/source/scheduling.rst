@@ -31,3 +31,5 @@ Here are the steps to configure scheduling:
     - If using Nextcloud, schedule `nextcloudcmd` via `cron` in order to routinely sync schedules. Use this command to initially sync the files. The `nextcloud` GUI client cannot be used since it doesn't initialize until a local login occurs.
 
     - Schedule a reboot task via `cron` to run the `start_radar.sh` helper script in order to run the radar according the radar schedule.
+
+    - Enable and start `atq` service.
