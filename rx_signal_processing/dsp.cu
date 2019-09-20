@@ -637,12 +637,7 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
 /**
  * @brief      Initializes the parameters needed in order to do asynchronous DSP processing.
  *
- * @param      ack_socket                  A pointer to the socket used for acknowledging when the
- *                                         transfer of RF samples has completed.
- * @param[in]  timing_socket               A pointer to the socket used for reporting GPU kernel
- *                                         timing.
- * @param      data_socket                 A pointer to the data socket used to sending processed
- *                                         data.
+ * @param      context                     ZMQ's application context from which to create sockets.
  * @param      sig_options                 The signal processing options.
  * @param[in]  sequence_num                The pulse sequence number for which will be acknowledged.
  * @param[in]  rx_rate                     The USRP sampling rate.
@@ -657,29 +652,29 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * The constructor creates a new CUDA stream and initializes the timing events. It then opens the
  * shared memory with the received RF samples for a pulse sequence.
  */
-DSPCore::DSPCore(zmq::socket_t *ack_socket, zmq::socket_t *timing_socket, zmq::socket_t *data_socket,
-                  SignalProcessingOptions &sig_options, uint32_t sequence_num,
-                  double rx_rate, double output_sample_rate,
+DSPCore::DSPCore(zmq::context_t &context, SignalProcessingOptions &sig_options,
+                  uint32_t sequence_num, double rx_rate, double output_sample_rate,
                   std::vector<std::vector<float>> filter_taps,
                   std::vector<cuComplex> beam_phases,
                   double driver_initialization_time, double sequence_start_time,
                   std::vector<uint32_t> dm_rates,
                   std::vector<rx_slice> slice_info) :
+  sig_options(sig_options),
   sequence_num(sequence_num),
   rx_rate(rx_rate),
   output_sample_rate(output_sample_rate),
-  ack_socket(ack_socket),
-  timing_socket(timing_socket),
-  data_socket(data_socket),
-  sig_options(sig_options),
   filter_taps(filter_taps),
   beam_phases(beam_phases),
   driver_initialization_time(driver_initialization_time),
   sequence_start_time(sequence_start_time),
-  slice_info(slice_info),
-  dm_rates(dm_rates)
-
+  dm_rates(dm_rates),
+  slice_info(slice_info)
 {
+  auto identities = {sig_options.get_dspbegin_brian_identity() + std::to_string(sequence_num),
+                      sig_options.get_dspend_brian_identity() + std::to_string(sequence_num),
+                      sig_options.get_dsp_dw_identity() + std::to_string(sequence_num)};
+
+  zmq_sockets = create_sockets(context, identities, sig_options.get_router_address());
 
   //https://devblogs.nvidia.com/parallelforall/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
   gpuErrchk(cudaStreamCreate(&stream));
@@ -949,8 +944,9 @@ void DSPCore::send_timing()
   std::string s_msg_str;
   sp.SerializeToString(&s_msg_str);
 
-  auto request = RECV_REQUEST(*timing_socket, sig_options.get_brian_dspend_identity());
-  SEND_REPLY(*timing_socket, sig_options.get_brian_dspend_identity(), s_msg_str);
+  auto &timing_socket = zmq_sockets[1];
+  auto request = RECV_REQUEST(timing_socket, sig_options.get_brian_dspend_identity());
+  SEND_REPLY(timing_socket, sig_options.get_brian_dspend_identity(), s_msg_str);
 
   DEBUG_MSG(COLOR_RED("Sent timing after processing with sequence #" << sequence_num));
 
@@ -1004,8 +1000,9 @@ void DSPCore::send_ack()
   std::string s_msg_str;
   sp.SerializeToString(&s_msg_str);
 
-  auto request = RECV_REQUEST(*ack_socket, sig_options.get_brian_dspbegin_identity());
-  SEND_REPLY(*ack_socket, sig_options.get_brian_dspbegin_identity(), s_msg_str);
+  auto &ack_socket = zmq_sockets[0];
+  auto request = RECV_REQUEST(ack_socket, sig_options.get_brian_dspbegin_identity());
+  SEND_REPLY(ack_socket, sig_options.get_brian_dspbegin_identity(), s_msg_str);
 
   DEBUG_MSG(COLOR_RED("Sent ack after copy for sequence_num #" << sequence_num));
 }
@@ -1020,7 +1017,8 @@ void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
   std::string p_msg_str;
   pd.SerializeToString(&p_msg_str);
 
-  SEND_REPLY(*data_socket, sig_options.get_dw_dsp_identity(), p_msg_str);
+  auto &data_socket = zmq_sockets[2];
+  SEND_REPLY(data_socket, sig_options.get_dw_dsp_identity(), p_msg_str);
 
   DEBUG_MSG(COLOR_RED("Send processed data to data_write for sequence #" << sequence_num));
 }
@@ -1033,7 +1031,6 @@ void DSPCore::send_processed_data(processeddata::ProcessedData &pd)
 void DSPCore::start_decimate_timing()
 {
   gpuErrchk(cudaEventRecord(kernel_start, stream));
-  gpuErrchk(cudaEventRecord(mem_transfer_end,stream));
 }
 
 /**
@@ -1042,6 +1039,7 @@ void DSPCore::start_decimate_timing()
  */
 void DSPCore::initial_memcpy_callback()
 {
+  gpuErrchk(cudaEventRecord(mem_transfer_end,stream));
   gpuErrchk(cudaStreamAddCallback(stream, initial_memcpy_callback_handler, this, 0));
 }
 
