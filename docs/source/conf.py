@@ -42,10 +42,24 @@ driverproto = proto_directory + "/driverpacket.proto"
 #call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, driverproto])
 
 
+# hack for readthedocs to cause it to run doxygen first
+# https://github.com/rtfd/readthedocs.org/issues/388
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:
+  from subprocess import call
+  call('doxygen')
+  cur_dir = os.path.abspath(os.path.dirname(__file__))
+  call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
+
+#from subprocess import call
+#call('doxygen')
+#cur_dir = os.path.abspath(os.path.dirname(__file__))
+#print cur_dir
+#call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/'])
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
-#needs_sphinx = '1.0'
+needs_sphinx = '2.1.2'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -56,13 +70,16 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
-    'sphinx.ext.pngmath',
+    'sphinx.ext.imgmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinxcontrib.programoutput',
-    'sphinxcontrib.autoprogram'
+    'sphinxcontrib.autoprogram',
+    'breathe'
 ]
 
+breathe_projects = {"borealis" : "xml/"}
+breathe_default_project = "borealis"
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 

@@ -1,15 +1,22 @@
+******************
+Borealis Processes
+******************
 
-Radar Processes
-===============
-
+=================
+Runtime Processes
+=================
 ..  toctree::
     :maxdepth: 4
 
     experiment_handler
     radar_control
+    brian
+    rx_signal_processing
+    usrp_n200_driver
 
-Experiment Writing
-==================
+=====================
+Experiment Components
+=====================
 
 ..  toctree::
     :maxdepth: 4
@@ -17,6 +24,7 @@ Experiment Writing
     experiment_prototype
     experiments
 
+=====
 Utils
 =====
 
