@@ -53,3 +53,4 @@ scons
 
 To compile the protobuf (example given for driverpacket):
 protoc -I=$SRC_DIR --python_out=$DST_DIR $SRC_DIR/driverpacket.proto
+
