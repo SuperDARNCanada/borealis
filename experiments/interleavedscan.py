@@ -13,7 +13,13 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
 class InterleavedScan(ExperimentPrototype):
-    """Notes on InterleavedScan purpose here TODO"""
+    """Interleavedscan was requested in 2016 by Tomo Hori to support the ERG mission.
+    On September 13th, 2016 Tomo and Evan sent emails to the darn-swg mailing list regarding
+    this request. It was requested to run starting Nov 2016 with the launch of the ERG Japanese
+    satellite. It interleaves the beam number, for example a 16-beam radar would proceed like:
+    0-4-8-12 - 2-6-10-14 - 1-5-9-13 - 3-711-15 for the forward, and the reverse of that for the
+    backward. They were looking to capture doppler velocity oscillations related to Pc3
+    geomagnetic pulsations near the cusp."""
     def __init__(self):
         cpid = 191
 

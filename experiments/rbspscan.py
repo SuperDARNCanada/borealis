@@ -13,7 +13,39 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
 class RBSPScan(ExperimentPrototype):
-    """notes on RBSPScan purpose here TODO"""
+    """rbspscan was first run in 2012 to support the Van Allen probes satellite mission
+    (initially called the RBSP mission or Radiation Belt Storm Probes). It had a trigger mode
+    where the DST (Disturbance Storm Time) index would be checked every 30 minutes, and if it
+    went below a threshold, then rbspscan would trigger for at least 30 minutes. This was
+    implemented via a python script that would update the schedule file on the CDN radars. The
+    scheduler for qnx4 was upgraded to allow this to happen. Both duration and priority of a
+    particularly scheduled radar control program were capabilities added to the scheduler, so
+    that a PI group could prioritize any discretionary time modes over rbspscan if they wanted to
+
+
+
+    Tim Yeoman - Fri Sept 21st, 2012
+    The proposed RBSP mode (in the first instance) is a follows:
+
+    CT-TRIG
+    An interleaved full scan and mini scan, giving 2 min full scan data for
+    convection, as was done in the old common time. So it is essentially the
+    Themis mode but with 3 camp beams, Standard lagfr and smsep, a 3 s dwell and
+    2 min scan boundaries.
+
+    So a mono beam pattern would go as follows for a forward scanning radar,
+    where n is the meridional beam:
+
+    0,n-1,1, n,2, n+2,3,n-1,4,n,5,n+2,6,n-1,7,n,8,n+2,9, ...
+
+    A first suggestion for the mini-scan beam choices is attached, although
+    individual PIs can change this if, for example, there is a key piece of
+    other instrumentation in their f-o-v which they would like to cover.
+
+    In the first instance, CT-TRIG and ST-APOG can be the same. The idea is
+    that ST-APOG can have its lag to first range and range gate size adjusted to
+    best match any apogee passes.
+    """
     def __init__(self,):
         cpid = 200
 

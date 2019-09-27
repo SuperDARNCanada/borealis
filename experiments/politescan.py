@@ -19,7 +19,7 @@ class Politescan(ExperimentPrototype):
         super(Politescan, self).__init__(cpid)
 
         if scf.IS_FORWARD_RADAR:
-            beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
+            beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
         else:
             beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
 
