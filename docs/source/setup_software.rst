@@ -34,6 +34,8 @@ SuperDARN Canada uses OpenSUSE for an operating system, but any Linux system tha
 9. Clone the Borealis software to a directory.
 
     - git clone https://github.com/SuperDARNCanada/borealis.git
+    - If Usask, git submodule init && git submodule update. Create symlink `config.ini` in borealis directory and link to the site specific config file.
+    - If not Usask, use a Usask `config.ini` file as a template or the config file documentation to create your own file in the borealis directory.
 
 10. Add an environment variable called BOREALISPATH that holds to path to the cloned directory in .bashrc or .profile and re-source the file.
 
