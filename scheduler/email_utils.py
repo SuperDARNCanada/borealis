@@ -75,3 +75,4 @@ class Emailer(object):
 
 
         self.smtp.sendmail(self.sender, self.emails, em.as_string())
+        self.smtp.quit()
