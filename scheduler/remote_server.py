@@ -38,13 +38,13 @@ def format_to_atq(dt, experiment, first_event_flag=False):
         str: Formatted atq str.
     """
 
-    start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.sh {experiment} release'" 
+    start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.sh {experiment} release'"
     start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment)
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
     else:
         cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
-    
+
     cmd_str = dt.strftime(cmd_str)
     return cmd_str
 
@@ -78,13 +78,14 @@ def timeline_to_dict(timeline):
         timeline_dict[line['order']].append(line)
     return timeline_dict
 
-def plot_timeline(timeline, scd_dir, time_of_interest):
+def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
     """Plots the timeline to better visualize runtime.
 
     Args:
         timeline (list): A list of entries ordered chronologically as scheduled
         scd_dir (str): The scd directory path.
         time_of_interest (datetime): The datetime holding the time of scheduling.
+        site_id (str): Site identifier for logs.
 
     Returns:
         (str, str): Paths to the saved plots.
@@ -210,11 +211,11 @@ def plot_timeline(timeline, scd_dir, time_of_interest):
     if not os.path.exists(plot_dir):
         os.makedirs(plot_dir)
 
-    plot_file = "{}/{}.png".format(plot_dir, plot_time_str)
+    plot_file = "{}/{}.{}.png".format(plot_dir, site_id, plot_time_str)
     fig.set_size_inches(14,8)
     fig.savefig(plot_file, dpi=80)
 
-    pkl_file = "{}/{}.pickle".format(plot_dir, plot_time_str)
+    pkl_file = "{}/{}.{}.pickle".format(plot_dir, site_id, plot_time_str)
     pkl.dump(fig, open(pkl_file, 'wb'))
 
     return (plot_file, pkl_file)
@@ -408,13 +409,14 @@ def convert_scd_to_timeline(scd_lines):
 
     return queued_lines, warnings
 
-def timeline_to_atq(timeline, scd_dir, time_of_interest):
+def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     """ Converts the created timeline to actual atq commands.
 
     Args:
         timeline (List): A list holding all timeline events.
         scd_dir (str): The directory with SCD files.
         time_of_interest (datetime): The datetime holding the time of scheduling.
+        site_id (str): Site identifier for logs.
 
     Log and backup the existing atq, remove old events and then schedule everything recent. The
     first entry should be the currently running event, so it gets scheduled immediately. This
@@ -433,7 +435,7 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest):
     if not os.path.exists(backup_dir):
         os.makedirs(backup_dir)
 
-    backup_file = "{}/{}.atq".format(backup_dir, backup_time_str)
+    backup_file = "{}/{}.{}.atq".format(backup_dir, backup_time_str, site_id)
 
     with open(backup_file, 'wb') as f:
         f.write(output)
@@ -525,14 +527,14 @@ def _main():
 
     emailer = email_utils.Emailer(args.emails_filepath)
 
-    i = inotify.adapters.Inotify()
+    inot = inotify.adapters.Inotify()
 
     options = rso.RemoteServerOptions()
     site_id = options.site_id
 
     scd_file = '{}/{}.scd'.format(scd_dir, site_id)
 
-    i.add_watch(scd_file)
+    inot.add_watch(scd_file)
     scd_util = scd_utils.SCDUtils(scd_file)
 
     log_dir = "{}/logs".format(scd_dir)
@@ -545,7 +547,7 @@ def _main():
         time_of_interest = datetime.datetime.utcnow()
 
         log_time_str = time_of_interest.strftime("%Y.%m.%d.%H.%M")
-        log_file = "{}/remote_server.{}.log".format(log_dir, log_time_str)
+        log_file = "{}/{}_remote_server.{}.log".format(log_dir, site_id, log_time_str)
 
         log_msg_header = "Updated at {}\n".format(time_of_interest)
         try:
@@ -566,8 +568,8 @@ def _main():
         else:
 
             timeline, warnings = convert_scd_to_timeline(relevant_lines)
-            plot_path, pickle_path = plot_timeline(timeline, scd_dir, time_of_interest)
-            new_atq_str = timeline_to_atq(timeline, scd_dir, time_of_interest)
+            plot_path, pickle_path = plot_timeline(timeline, scd_dir, time_of_interest, site_id)
+            new_atq_str = timeline_to_atq(timeline, scd_dir, time_of_interest, site_id)
 
             with open(log_file, 'wb') as f:
                 f.write(log_msg_header.encode())
@@ -584,15 +586,36 @@ def _main():
 
     # Make the schedule on restart of application
     make_schedule()
+    new_notify = False
     while True:
-        for event in i.event_gen(yield_nones=False):
-            (_, type_names, path, filename) = event
+        # "IN_IGNORED" was removing watch points and wouldnt monitor the path. This regens it.
+        if new_notify:
+            inot = inotify.adapters.Inotify()
+            inot.add_watch(scd_file)
+            new_notify = False
 
-            if site_id in path and "IN_CLOSE_WRITE" in type_names:
-                scd_utils.SCDUtils(path)
 
-                make_schedule()
+        events = inot.event_gen(yield_nones=False, timeout_s=10)
+        events = list(events)
 
+        if events:
+            event_types = []
+            for event in events:
+                (_, type_names, path, filename) = event
+                event_types.extend(type_names)
+
+            # File has been copied
+            print(event_types)
+            if site_id in path:
+                if all(i in event_types for i in ["IN_OPEN", "IN_ACCESS", "IN_CLOSE_WRITE"]):
+                    scd_utils.SCDUtils(path)
+                    make_schedule()
+
+                # Nextcloud/Vim triggers
+                if all(i in event_types for i in ["IN_ATTRIB", "IN_DELETE_SELF", "IN_IGNORED"]):
+                    scd_utils.SCDUtils(path)
+                    make_schedule()
+                    new_notify = True
 
 
 if __name__ == '__main__':

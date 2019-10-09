@@ -7,11 +7,13 @@ zypper install -y git
 zypper install -y scons
 zypper install -y python3-devel
 zypper install -y python3-pip
+zypper install -y gdb
 pip3 install --upgrade pip
 zypper install -y libX11-devel
 pip3 install deepdish
 pip3 install posix_ipc
 pip3 install inotify
+pip3 install matplotlib
 
 #### INSTALL PROTOBUF ####
 #https://github.com/google/protobuf/blob/master/src/README.md#c-installation---uni

@@ -45,6 +45,7 @@ uhd::time_spec_t box_time;
  * @brief      Makes a set of vectors of the samples for each TX channel from the driver packet.
  *
  * @param[in]  driver_packet    A received driver packet from radar_control.
+ * @param[in]  driver_options   The parsed config options needed by the driver.
  *
  * @return     A set of vectors of TX samples for each USRP channel.
  *

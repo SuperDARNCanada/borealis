@@ -1,50 +1,26 @@
+******************
+Starting the Radar
+******************
+
+===============
+Manual Start-up
+===============
+
+To more easily start the radar, there is a script called `steamed_hams.sh`. The name of this script is a goofy reference to a scene in an episode of The Simpsons in which Principal Skinner claims there is an aurora happening in his house. The script takes two arguments and can be invoked as follows:
+
+    * $BOREALISPATH/steamed_hams.sh experiment_name code_environment
+
+The experiment name must match to an experiment in the experiment folder, and does not include the .py extension. The code environment is the type of compilation environment that was compiled using scons such as release, debug, etc.
+
+The script will boot all the radar processes in a detached `screen` window that runs in the background. This window can be reattached in any terminal window locally or over ssh to track any outputs if needed.
+
+If starting the radar in normal operation according to the schedule, there is a helper script called `start_radar.sh`.
+
 ==================
-Starting the radar
+Automated Start-up
 ==================
 
-Writing an Experiment
----------------------
+The scheduling Python script, `remote_server.py`, is responsible for automating the control of the radar to follow the schedule. The
 
-All experiments must be written as their own class and
-must be built off of the built-in ExperimentPrototype
-class.  This means the ExperimentPrototype class must be imported
-at the start of the experiment file::
-
-    from experiments.experiment_prototype import ExperimentPrototype
-
-You must also build your class off of the ExperimentPrototype
-class, which involves inheritance. To do this, define your class
-like so::
-
-    class MyClass(ExperimentPrototype):
-
-        def __init__(self):
-            cpid = 123123  # this must be a unique id for your control program.
-            super(MyClass, self).__init__(cpid)
-
-The experiment handler will create an instance of your
-experiment when your experiment is scheduled to start running.
-Your class is a child class of ExperimentPrototype and because of this,
-the parent class needs to be instantiated when the experiment is
-instantiated. This is important because the experiment_handler will build the scans
-required by your class in a way that is easily readable and iterable
-by the radarcontrol program. This is done by methods that are set up
-in the ExperimentPrototype parent class.
-
-The next step is to add slices to your experiment. An experiment is
-defined by the slices in the class, and how the slices interface. You
-can think of a slice as an experiment of its own, and your experiment
-may only require one slice. However, more complicated functionality
-will require multiple slices, interfaced in one of four ways:
-
-..  TODO outline ways to interface
-
-..  TODO determine where users should write their experiments
-    because that will affect the import statement - putting them
-    directly in experiments?
-
-Checking your Experiment for Errors
------------------------------------
-
-..  TODO how to check your experiment for errors
+This script should be added the control computer bootup scripts so that it generate a new set of scheduled commands.
 

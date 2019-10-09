@@ -36,7 +36,7 @@ from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
 from datawritemetadata_pb2 import IntegrationTimeMetadata
 
-from sample_building.sample_building import azimuth_to_antenna_offset, create_debug_sequence_samples
+from sample_building.sample_building import rx_azimuth_to_antenna_offset, create_debug_sequence_samples
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from radar_status.radar_status import RadarStatus
@@ -217,7 +217,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             for antenna_num, phi in enumerate(beamdir):
                 phase_add = beam_add.phase.add()
                 if antenna_num in slice_dict[slice_id]['rx_main_antennas'] or antenna_num - main_antenna_count in slice_dict[slice_id]['rx_int_antennas']:
-                    phase = cmath.exp(-1 * phi * 1j)
+                    phase = cmath.exp(phi * 1j)
                 else:
                     phase = 0.0 + 0.0j
                 phase_add.real_phase = phase.real
@@ -575,11 +575,11 @@ def radar():
 
                             beamdir = slice_to_beamdir_dict[slice_id]
                             beam_phase_dict[slice_id] = \
-                                azimuth_to_antenna_offset(beamdir, options.main_antenna_count,
+                                rx_azimuth_to_antenna_offset(beamdir, options.main_antenna_count,
                                                           options.interferometer_antenna_count,
                                                           options.main_antenna_spacing,
                                                           options.interferometer_antenna_spacing,
-                                                          receive_freq)
+                                                          options.intf_offset, receive_freq)
 
                         beam_phase_dict_list.append(beam_phase_dict)
 
