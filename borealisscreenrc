@@ -25,4 +25,8 @@ split -v
 focus right
 screen -t "Radar Control" bash -c "START_RADCTRL"
 
+split -v
+focus right
+screen -t "Realtime" bash -c "START_RT"
+
 detach

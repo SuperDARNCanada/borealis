@@ -27,6 +27,7 @@ if [ "$2" = "release" ]; then
     start_datawrite="sleep 0.001s;python3 -O data_write/data_write.py --file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq; bash;"
     start_usrp_driver="sleep 0.001s; source mode "$2"; usrp_driver > usrp_output.txt; bash"
     start_dsp="sleep 0.001s; source mode "$2"; signal_processing; bash;"
+    start_rt="sleep 0.001s; python3 -O realtime/realtime.py; bash;"
 elif [ "$2" = "python-profiling" ]; then  # uses source mode release for C code.
     start_brian="python3 -O -m cProfile -o testing/python_testing/brian.cprof brian/brian.py; bash"
     start_exphan="sleep 0.001s; python3 -O -m cProfile -o testing/python_testing/experiment_handler.cprof experiment_handler/experiment_handler.py "$1" ; bash;"
@@ -54,7 +55,8 @@ sed -i.bak "s#START_BRIAN#$start_brian#; \
             s#START_RADCTRL#$start_radctrl#; \
             s#START_DATAWRITE#$start_datawrite#; \
             s#START_USRP_DRIVER#$start_usrp_driver#; \
-            s#START_DSP#$start_dsp#;" $BOREALISPATH/borealisscreenrc
+            s#START_DSP#$start_dsp#; \
+            s#START_RT#$start_rt#;" $BOREALISPATH/borealisscreenrc
 
 # Launch a detached screen with editted layout.
 screen -S borealis -c $BOREALISPATH/borealisscreenrc
