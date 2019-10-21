@@ -16,7 +16,7 @@ Here are the steps to configure scheduling:
 
 1. Configure a local campus computer to build schedules.
 
-    - Configure a cloud/network syncing service such as Nextcloud or NFS. Configure this service to share a directory where schedules and logs are to be stored.
+    - Configure a cloud/network syncing service such as unison or NFS. Configure this service to share a directory where schedules and logs are to be stored.
 
     - Git clone a copy of Borealis.
 
@@ -27,8 +27,8 @@ Here are the steps to configure scheduling:
     - The `local_scd_server.py` script has an option for running manually the first time to properly configure the scheduling directory with the schedules for the latest files available.
 
 2. Configure the Borealis computer.
-
-    - If using Nextcloud, schedule `nextcloudcmd` via `cron` in order to routinely sync schedules. Use this command to initially sync the files. The `nextcloud` GUI client cannot be used since it doesn't initialize until a local login occurs.
+        
+    - unison will execute on the remote and connect to this machine to sync.
 
     - Schedule a reboot task via `cron` to run the `start_radar.sh` helper script in order to run the radar according the radar schedule.
 
