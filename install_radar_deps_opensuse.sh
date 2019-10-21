@@ -8,6 +8,7 @@ zypper install -y scons
 zypper install -y python3-devel
 zypper install -y python3-pip
 zypper install -y gdb
+zypper install -y jq
 pip3 install --upgrade pip
 zypper install -y libX11-devel
 pip3 install deepdish
