@@ -80,10 +80,10 @@ PULSE
 slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas",
                     "rx_int_antennas", "pulse_sequence", "pulse_phase_offset", "tau_spacing",
                     "pulse_len", "num_ranges", "first_range", "intt", "intn", "beam_angle",
-                    "beam_order", "scanboundflag", "scanbound", "txfreq", "rxfreq",
+                    "beam_order", "scanbound", "txfreq", "rxfreq",
                     "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
                     "iwavetable", "qwavetable", "comment", "range_sep", "lag_table"])
-# TODO add scanboundt?
+
 """
 **Description of Slice Keys**
 
@@ -152,11 +152,8 @@ beam_order
     integration. When we do imaging we will still have to quantize the directions we
     are looking in to certain beam directions.
 
-scanboundflag
-    flag for whether there is a scan boundary to wait for in order to start a new scan.
-
 scanbound
-    time that is allotted for a scan before a new scan boundary occurs (ms).
+    A list of seconds past the minute for scans to align to.
 
 clrfrqrange
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
@@ -201,8 +198,8 @@ acfint
     False.
 
 range_sep
-    a calculated value from pulse_len. If already set, it will be overwritten to be the correct 
-    value determined by the pulse_len. Used for acfs. This is the range gate separation, 
+    a calculated value from pulse_len. If already set, it will be overwritten to be the correct
+    value determined by the pulse_len. Used for acfs. This is the range gate separation,
     in azimuthal direction, in km.
 
 lag_table
@@ -222,7 +219,7 @@ therefore ignored.
 """
 
 default_rx_bandwidth = 5.0e6
-default_output_rx_rate = 10.0e3/3 
+default_output_rx_rate = 10.0e3/3
 
 class ExperimentPrototype(object):
     """
@@ -270,7 +267,7 @@ class ExperimentPrototype(object):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
-        :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz. 
+        :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz.
          Cannot be changed after instantiation.
         :param rx_bandwidth: The desired bandwidth for the experiment. Directly determines rx
         sampling rate of the USRPs. Cannot be changed.
@@ -280,7 +277,7 @@ class ExperimentPrototype(object):
         :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
         :param decimation_scheme: an object defining the decimation and filtering stages for the
         signal processing module. If you would like something other than the default, you will
-        need to build an object of the DecimationScheme type before initiating your experiment. 
+        need to build an object of the DecimationScheme type before initiating your experiment.
         This cannot be changed after instantiation.
         :param comment_string: description of experiment for data files.
         """
@@ -341,10 +338,10 @@ class ExperimentPrototype(object):
         # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
         clock_multiples = self.options.usrp_master_clock_rate/2**32
         clock_divider = math.ceil(txctrfreq*1e3/clock_multiples)
-        self.__txctrfreq = (clock_divider * clock_multiples)/1e3 
+        self.__txctrfreq = (clock_divider * clock_multiples)/1e3
 
         clock_divider = math.ceil(rxctrfreq*1e3/clock_multiples)
-        self.__rxctrfreq = (clock_divider * clock_multiples)/1e3 
+        self.__rxctrfreq = (clock_divider * clock_multiples)/1e3
 
         # Load the config, hardware, and restricted frequency data
 
@@ -406,7 +403,7 @@ class ExperimentPrototype(object):
         The experiment class name.
         """
         return self.__experiment_name
-    
+
 
     @property
     def output_rx_rate(self):
@@ -808,8 +805,8 @@ class ExperimentPrototype(object):
         remove_keys = []
         for key1, key2 in self._interface.keys():
             if key1 == remove_slice_id or key2 == remove_slice_id:
-                remove_keys.append((key1, key2))            
-        
+                remove_keys.append((key1, key2))
+
         for keyset in remove_keys:
             del self._interface[keyset]
 
@@ -1248,22 +1245,8 @@ class ExperimentPrototype(object):
         if 'pulse_phase_offset' not in exp_slice:
             slice_with_defaults['pulse_phase_offset'] = [0.0 for i in range(0, len(
                 slice_with_defaults['pulse_sequence']))]
-        if 'scanboundflag' not in exp_slice and 'scanbound' not in exp_slice:
-            slice_with_defaults['scanboundflag'] = False  # TODO discuss defaults, discuss whether scanboundflag is necessary
+        if 'scanbound' not in exp_slice:
             slice_with_defaults['scanbound'] = None
-        elif 'scanboundflag' not in exp_slice:  # but scanbound is
-            slice_with_defaults['scanboundflag'] = True
-        elif not exp_slice['scanboundflag']: 
-            slice_with_defaults['scanbound'] = None
-
-        if 'scanboundflag' in exp_slice:
-            if exp_slice['scanboundflag']:
-                try:
-                    if exp_slice['scanbound'] is None:
-                        raise KeyError
-                except KeyError:
-                    errmsg = 'ScanboundFlag is set without a Scanbound specified.'
-                    raise ExperimentException(errmsg)
 
         # we only have one of intn or intt because of slice checks already completed in
         # check_slice_minimum_requirements.
@@ -1291,7 +1274,7 @@ class ExperimentPrototype(object):
             if 'range_sep' in exp_slice:
                 if not math.isclose(slice_with_defaults['range_sep'], correct_range_sep, abs_tol=0.01): # range_sep in km
                     errmsg = 'range_sep = {} was set incorrectly. range_sep will be overwritten based on \
-                        pulse_len, which must be equal to 1/rx_rate. The new range_sep = {}'.format(slice_with_defaults['range_sep'], 
+                        pulse_len, which must be equal to 1/rx_rate. The new range_sep = {}'.format(slice_with_defaults['range_sep'],
                             correct_range_sep)
                     if __debug__:  # TODO change to logging
                         print(errmsg)
@@ -1300,7 +1283,7 @@ class ExperimentPrototype(object):
             # This is the distance travelled by the wave in the length of the pulse, divided by
             # two because it's an echo (travels there and back). In km.
 
-            # The below check is an assumption that is made during acf calculation 
+            # The below check is an assumption that is made during acf calculation
             # (1 output received sample = 1 range separation)
             if not math.isclose(exp_slice['pulse_len'] * 1.0e-6, (1/self.output_rx_rate), abs_tol=0.000001):
                 errmsg = 'For an experiment slice with real-time acfs, pulse length must be equal (within 1 us) to ' \
@@ -1378,7 +1361,7 @@ class ExperimentPrototype(object):
         for key, value in complete_slice.items():
             if value is None:
                 remove_keys.append(key)
-        
+
         for key in remove_keys:
             complete_slice.pop(key)
 
@@ -1423,7 +1406,7 @@ class ExperimentPrototype(object):
             effective_length = 2 ** power_2
             if effective_length * self.num_slices > self.options.max_number_of_filter_taps_per_stage:
                 errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with \
-                    this many slices ({}) is too large for GPU max {}".format(len(stage.filter_taps), 
+                    this many slices ({}) is too large for GPU max {}".format(len(stage.filter_taps),
                         stage.stage_num, self.num_slices, self.options.max_number_of_filter_taps_per_stage)
 
         # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
@@ -1612,11 +1595,44 @@ class ExperimentPrototype(object):
                             exp_slice['slice_id'], bmnum))
 
         # check scan boundary not less than minimum required scan time.
-        if exp_slice['scanboundflag']:
-            if exp_slice['scanbound'] < (
-                        len(exp_slice['beam_order']) * exp_slice['intt']):
-                error_list.append("Slice {} Beam Order Too Long for ScanBoundary".format(
-                    exp_slice['slice_id']))
+        if exp_slice['scanbound']:
+            if not exp_slice['intt']:
+                error_list.append("Slice {} must have intt enabled to use scanbound".format(
+                        exp_slice['slice_id']))
+            elif len(exp_slice['scanbound']) != len(exp_slice['beam_order']):
+                error_list.append("Slice {} scanbound length needs to equal beam order length".format(
+                        exp_slice['slice_id']))
+            elif any(i<0 for i in exp_slice['scanbound']):
+                error_list.append("Slice {} scanbound times must be non-negative".format(
+                        exp_slice['slice_id']))
+            elif (len(exp_slice['scanbound']) > 1 and
+                not all(i<j for i,j in zip(exp_slice['scanbound'], exp_slice['scanbound'][1:]))):
+                error_list.append("Slice {} scanbound times must be increasing".format(
+                        exp_slice['slice_id']))
+            else:
+                # Last element with intt added determines
+                total_scan_time = (math.ceil((exp_slice['scanbound'][-1] + exp_slice['intt']*1e-3)/60) *
+                                    60000) # rounds up to scan boundary minute in ms
+
+                # Add in a safety factor of 1.1x to account for system time, jitter, etc.
+                if (len(exp_slice['beam_order']) * exp_slice['intt'] * 1.1) > total_scan_time:
+                        error_list.append("Slice {} Beam Order Too Long for scanbound".format(
+                            exp_slice['slice_id']))
+
+                # Check if any scanbound times are shorter than the intt.
+                if len(exp_slice['scanbound']) == 1:
+                    # Add in a safety factor of 1.1x to account for system time, jitter, etc.
+                    if exp_slice['scanbound'][0] * 1000 < exp_slice['intt'] * 1.1:
+                        error_list.append("Slice {} intt with safety factor of 1.1x is too long for "
+                                          " scanbound times".format(exp_slice['slice_id']))
+                else:
+                    for i in range(len(exp_slice['scanbound']) - 1):
+                        if ((exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000 <
+                            exp_slice['intt'] * 1.1):
+                            error_list.append("Slice {} intt with safety factor of 1.1x is too long"
+                                                " for scanbound times".format(exp_slice['slice_id']))
+                            break
+
 
         # TODO other checks
 
