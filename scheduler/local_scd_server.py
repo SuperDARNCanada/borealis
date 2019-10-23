@@ -198,28 +198,22 @@ class SWG(object):
 
             if "Special Time" in line:
 
-                if "THEMIS" in line:
-                        mode_to_use = modes["themis_time"]
+                if "ALL" in swg_lines[idx+1] or radar.upper() in swg_lines[idx+1]:
 
-                if "ST-APOG" in line:
-                    if radar.upper() in swg_lines[idx+1]:
+                    if "THEMIS" in line:
+                            mode_to_use = modes["themis_time"]
+                    elif "ST-APOG" in line or "RBSP" in line:
                         mode_to_use = modes["rbsp_time"]
-                    else:
-                        mode_to_use = modes["special_time_normal"]
-
-                if "ARASE" in line:
-                    if radar.upper() in swg_lines[idx+1]:
+                    elif "ARASE" in line:
                         if "themis" in swg_lines[idx+1]:
                             mode_to_use = modes["themis_time"]
                         if "interleaved" in swg_lines[idx+1]:
                             mode_to_use = modes["interleaved_time"]
                     else:
-                        mode_to_use = modes["special_time_normal"]
-
-
+                        print("Unknown Special Time: using default common time")
+                        mode_to_use = modes["htr_common_time"]
                 else:
-                    print("Unknown Special Time: using default common time")
-                    mode_to_use = modes["htr_common_time"]
+                    mode_to_use = modes["special_time_normal"]
 
                 # Skip next line
                 skip_line = True
