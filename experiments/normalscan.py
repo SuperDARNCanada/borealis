@@ -17,15 +17,25 @@ class Normalscan(ExperimentPrototype):
         cpid = 150
         super(Normalscan, self).__init__(cpid)
 
+        if scf.IS_FORWARD_RADAR:
+            beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
+        else:
+            beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
+
+        if scf.opts.site_id in ["cly", "rkn", "inv"]:
+            num_ranges = scf.POLARDARN_NUM_RANGES
+        if scf.opts.site_id in ["sas", "pgr"]:
+            num_ranges = scf.STD_NUM_RANGES
+
         self.add_slice({  # slice_id = 0, there is only one slice.
             "pulse_sequence": scf.SEQUENCE_7P,
             "tau_spacing": scf.TAU_SPACING_7P,
             "pulse_len": scf.PULSE_LEN_45KM,
-            "num_ranges": scf.STD_NUM_RANGES,
+            "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": scf.STD_16_REVERSE_BEAM_ORDER,
+            "beam_order": beams_to_use,
             "txfreq" : 10500, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing

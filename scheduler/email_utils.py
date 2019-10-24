@@ -35,8 +35,6 @@ class Emailer(object):
         except:
             self.emails = []
 
-        self.smtp = smtplib.SMTP('localhost')
-        self.sender = "borealis"
 
 
     def email_log(self, subject, log_file, attachments=[]):
@@ -54,6 +52,9 @@ class Emailer(object):
             body = "Unable to open log file {} with error:\n{}".format(log_file, str(e))
 
 
+        self.smtp = smtplib.SMTP('localhost')
+        self.sender = "borealis"
+        
         em = email.mime.multipart.MIMEMultipart()
 
         em['subject'] = subject
@@ -75,3 +76,4 @@ class Emailer(object):
 
 
         self.smtp.sendmail(self.sender, self.emails, em.as_string())
+        self.smtp.quit()
