@@ -27,7 +27,7 @@ if [ "$2" = "release" ]; then
     start_datawrite="sleep 0.001s;python3 -O data_write/data_write.py --file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq; bash;"
     start_usrp_driver="sleep 0.001s; source mode "$2"; usrp_driver > usrp_output.txt; bash"
     start_dsp="sleep 0.001s; source mode "$2"; signal_processing; bash;"
-    start_rt="sleep 0.001s; python3 -O realtime/realtime.py; bash;"
+    start_rt="sleep 0.001s; source borealisrt_env/bin/activate; python3 -O realtime/realtime.py; bash;"
 elif [ "$2" = "python-profiling" ]; then  # uses source mode release for C code.
     start_brian="python3 -O -m cProfile -o testing/python_testing/brian.cprof brian/brian.py; bash"
     start_exphan="sleep 0.001s; python3 -O -m cProfile -o testing/python_testing/experiment_handler.cprof experiment_handler/experiment_handler.py "$1" ; bash;"
@@ -35,6 +35,7 @@ elif [ "$2" = "python-profiling" ]; then  # uses source mode release for C code.
     start_datawrite="sleep 0.001s; python3 -O -m cProfile -o testing/python_testing/data_write.cprof data_write/data_write.py; bash;"
     start_usrp_driver="sleep 0.001s; source mode release; usrp_driver > usrp_output.txt ; read -p 'press enter' "
     start_dsp="sleep 0.001s; source mode release; signal_processing; bash;"
+    start_rt="sleep 0.001s; source borealisrt_env/bin/activate; python3 -O realtime/realtime.py; bash;"
 elif [ "$2" = "debug" ] || [ "$2" = "engineeringdebug" ]; then
     start_brian="python3 brian/brian.py; bash"
     start_exphan="sleep 0.001s; python3 experiment_handler/experiment_handler.py "$1" ; bash"
@@ -44,6 +45,7 @@ elif [ "$2" = "debug" ] || [ "$2" = "engineeringdebug" ]; then
     start_usrp_driver="sleep 0.001s; source mode "$2" ; gdb -ex start usrp_driver 2>usrp_output.txt; bash"
 #    start_dsp="sleep 0.001s; source mode "$2"; /usr/local/cuda/bin/cuda-gdb -ex start signal_processing; bash"
     start_dsp="sleep 0.001s; source mode release; signal_processing; bash;"
+    start_rt="sleep 0.001s; source borealisrt_env/bin/activate; python3 -O realtime/realtime.py; bash;"
 else
     echo "Mode '$2' is unknown, exiting without running Borealis"
     exit -1
