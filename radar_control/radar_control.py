@@ -679,12 +679,19 @@ def radar():
 
                             if beam_time < aveperiod.intt*1e-3:
                                     #TODO maybe log skipping beam?
-                                msg = "Scan time too long, skipping beam {}"
-                                msg = msg.format(sm.COLOR("yellow", beam_iter))
-                                rad_ctrl_print(msg)
-                                continue
-                        integration_period_done_time = integration_period_start_time + \
+                                # msg = "Scan time too long, skipping beam {}"
+                                # msg = msg.format(sm.COLOR("yellow", beam_iter))
+                                # rad_ctrl_print(msg)
+                                # continue
+                                integration_period_done_time = integration_period_start_time + \
+                                            timedelta(milliseconds=beam_time * 1e3) #ms
+                            else:
+                                integration_period_done_time = integration_period_start_time + \
                                             timedelta(milliseconds=aveperiod.intt) #ms
+                        else:
+                            integration_period_done_time = integration_period_start_time + \
+                                            timedelta(milliseconds=aveperiod.intt) #ms
+
                     else:
                         intt_break = False
                         ending_number_of_sequences = aveperiod.intn # this will exist

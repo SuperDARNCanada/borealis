@@ -1614,23 +1614,21 @@ class ExperimentPrototype(object):
                 total_scan_time = (math.ceil((exp_slice['scanbound'][-1] + exp_slice['intt']*1e-3)/60) *
                                     60000) # rounds up to scan boundary minute in ms
 
-                # Add in a safety factor of 1.1x to account for system time, jitter, etc.
-                if (len(exp_slice['beam_order']) * exp_slice['intt'] * 1.1) > total_scan_time:
+                if (len(exp_slice['beam_order']) * exp_slice['intt']) > total_scan_time:
                         error_list.append("Slice {} Beam Order Too Long for scanbound".format(
                             exp_slice['slice_id']))
 
                 # Check if any scanbound times are shorter than the intt.
                 if len(exp_slice['scanbound']) == 1:
-                    # Add in a safety factor of 1.1x to account for system time, jitter, etc.
-                    if exp_slice['scanbound'][0] * 1000 < exp_slice['intt'] * 1.1:
-                        error_list.append("Slice {} intt with safety factor of 1.1x is too long for "
-                                          " scanbound times".format(exp_slice['slice_id']))
+                    if exp_slice['scanbound'][0] * 1000 < exp_slice['intt']:
+                        error_list.append("Slice {} intt longer than "
+                            "scanbound times".format(exp_slice['slice_id']))
                 else:
                     for i in range(len(exp_slice['scanbound']) - 1):
                         if ((exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000 <
-                            exp_slice['intt'] * 1.1):
-                            error_list.append("Slice {} intt with safety factor of 1.1x is too long"
-                                                " for scanbound times".format(exp_slice['slice_id']))
+                            exp_slice['intt']):
+                            error_list.append("Slice {} intt longer than "
+                                "scanbound times".format(exp_slice['slice_id']))
                             break
 
 
