@@ -568,7 +568,7 @@ class DataWrite(object):
         :param integration_meta:    Metadata from radar control about integration period. Protobuf
         :param data_parsing:        All parsed and concatenated data from integration period stored
                                     in DataParsing object.
-        :param rt_dw_socket:        Pair of socket and iden for RT purposes.
+        :param rt_dw:               Pair of socket and iden for RT purposes.
         :param write_rawacf:        Should rawacfs be written to file? Bool, default True.
         """
 
