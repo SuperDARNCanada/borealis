@@ -555,7 +555,7 @@ class DataWrite(object):
         pass
 
     def output_data(self, write_bfiq, write_antenna_iq, write_raw_rf, write_tx, file_ext,
-                    integration_meta, data_parsing, write_rawacf=True):
+                    integration_meta, data_parsing, rt_dw, write_rawacf=True):
         """
         Parse through samples and write to file.
 
@@ -568,6 +568,7 @@ class DataWrite(object):
         :param integration_meta:    Metadata from radar control about integration period. Protobuf
         :param data_parsing:        All parsed and concatenated data from integration period stored
                                     in DataParsing object.
+        :param rt_dw:               Pair of socket and iden for RT purposes.
         :param write_rawacf:        Should rawacfs be written to file? Bool, default True.
         """
 
@@ -673,7 +674,8 @@ class DataWrite(object):
 
                 # TODO(keith): improve call to subprocess.
                 sp.call(cmd.split())
-                os.remove(tmp_file)
+                #os.remove(tmp_file)
+                so.send_data(rt_dw['socket'], rt_dw['iden'], tmp_file)
 
             elif file_ext == 'json':
                 self.write_json_file(tmp_file, final_data_dict)
@@ -1146,11 +1148,13 @@ def main():
 
 
     options = dwo.DataWriteOptions()
-    sockets = so.create_sockets([options.dw_to_dsp_identity, options.dw_to_radctrl_identity],
+    sockets = so.create_sockets([options.dw_to_dsp_identity, options.dw_to_radctrl_identity,
+                                 options.dw_to_rt_identity],
                                 options.router_address)
 
     dsp_to_data_write = sockets[0]
     radctrl_to_data_write = sockets[1]
+    realtime_to_data_write = sockets[2]
 
     poller = zmq.Poller()
     poller.register(dsp_to_data_write, zmq.POLLIN)
@@ -1230,6 +1234,8 @@ def main():
                                                file_ext=args.file_type,
                                                integration_meta=integration_meta,
                                                data_parsing=data_parsing,
+                                               rt_dw={"socket":realtime_to_data_write,
+                                                        "iden":options.rt_to_dw_identity},
                                                write_rawacf=args.enable_raw_acfs)
                         thread = threading.Thread(target=data_write.output_data, kwargs=kwargs)
                         thread.daemon = True
