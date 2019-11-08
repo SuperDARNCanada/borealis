@@ -58,8 +58,12 @@ def _main():
                 last_file_time = file_time
 
                 slice_num = int(fields[5])
-                converted = pydarn.BorealisConvert(filename, "rawacf", "/dev/null", slice_num,
+                try:
+                    converted = pydarn.BorealisConvert(filename, "rawacf", "/dev/null", slice_num,
                                                     "site")
+                except:
+                    rt_print("Error converting {}".format(filename))
+                    continue
 
                 data = converted.sdarn_dict
 
