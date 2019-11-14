@@ -2,9 +2,9 @@
 rawacf_mapping
 ==============
 
+RAWACF SDARN FIELDS
 
-
-RAWACF DARN FIELDS
+This conversion is done in SDARN IO here: `Link to Source <https://github.com/SuperDARN/pydarn/blob/feature/borealis_conversion/pydarn/io/borealis/borealis_convert.py#L726>`_
 
 | **Var name** | **type** | **description** | **Borealis conversion** |
 | --- | --- | --- | --- |
