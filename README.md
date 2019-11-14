@@ -1,5 +1,5 @@
-Borealis - A control system for USRP based digital radars formerly known as placeholderOS
-=========================================================================================
+Borealis - A control system for USRP based digital radars
+=========================================================
 
 See our latest documentation here: https://borealis.readthedocs.io/en/latest/ 
 
