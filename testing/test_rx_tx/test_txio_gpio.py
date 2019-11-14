@@ -35,9 +35,9 @@ class gpio_testing(object):
 			self._txo_pin = 3
 			self._tr_pin = 5
 			self._idle_pin = 7
-			self._tm_pin = 9
-			self._lp_pin = 11
-			self._agc_pin =  13
+			self._lp_pin = 9
+			self._agc_pin = 11
+			self._tm_pin =  13
 
 
 	def set_all_low(self):
