@@ -25,173 +25,184 @@ These files are zlib compressed which is native to hdf5 and no decompression is 
 
 The file fields in the bfiq array files are:
 
-+----------------------+----------------+----------------------+-------------------------------------------+
-|    **Field name**    | **numpy type** | **array dimensions** | **description**                           |
-+======================+================+======================+===========================================+
-| antenna_arrays_order | unicode        | num_antenna_arrays   | States what order the data is in and      |
-|                      |                |                      | describes the data layout for the         |
-|                      |                |                      | num_antenna_arrays data dimension         |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| beam_azms            | float64        | num_records x        | A list of the beam azimuths for each beam |
-|                      |                | max_num_beams (in    | in degrees off boresite. Note that this   |
-|                      |                | any record)          | is padded with zeroes for any record      |
-|                      |                |                      | which has num_beams less than the         |
-|                      |                |                      | max_num_beams. The num_beams field should | 
-|                      |                |                      | be used to read the correct number of     | 
-|                      |                |                      | beams for each record.                    |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| beam_nums            | uint32         | num_records x        | A list of beam numbers used in this slice |
-|                      |                | max_num_beams (in    | in this record. Note that this is padded  |
-|                      |                | any record)          | with zeroes for any record which has      |
-|                      |                |                      | num_beams less than the max_num_beams.    |
-|                      |                |                      | The num_beams field should be used to     |
-|                      |                |                      | read the correct number of beams for each |
-|                      |                |                      | record.                                   |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| blanked_samples      | uint32         | number of blanked    | Samples that should be blanked because    |
-|                      |                | samples              | they occurred during transmission times,  |
-|                      |                |                      | given by sample number (index into        |
-|                      |                |                      | decimated data). Can differ from the      |
-|                      |                |                      | pulses array due to multiple slices in a  |
-|                      |                |                      | single sequence.                          |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| borealis_git_hash    | unicode        | non-array            | Identifies the version of Borealis that   |
-|                      |                |                      | made this data. Contains git commit hash  |
-|                      |                |                      | characters. Typically begins with the     |
-|                      |                |                      | latest git tag of the software.           |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| data                 | complex64      | num_records x        | A set of samples (complex float) at given |
-|                      |                | num_antenna_arrays x | sample rate. Note that records that do not|
-|                      |                | max_num_sequences x  | have num_sequences = max_num_sequences or |
-|                      |                | max_num_beams x      | num_beams = max_num_beams will have       |
-|                      |                | num_samps            | padded zeros. The num_sequences and       |
-|                      |                |                      | num_beams arrays should be used to        |
-|                      |                |                      | determine the correct number of sequences |
-|                      |                |                      | and beams to read for the record.         |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| data_descriptors     | unicode        | 5                    | Denotes what each data dimension          |
-|                      |                |                      | represents. = 'num_records',              |
-|                      |                |                      | ‘num_antenna_arrays’,                     |
-|                      |                |                      | ‘max_num_sequences’, ‘max_num_beams’,     |
-|                      |                |                      | ‘num_samps’                               |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| data_normalization_  | float32        | non-array            | Scale of all the filters used,            |
-| factor               |                |                      | multiplied, for a total scale to          | 
-|                      |                |                      | normalize the data by.                    |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| experiment_comment   | unicode        | non-array            | Comment provided in experiment about the  | 
-|                      |                |                      | experiment as a whole.                    |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| experiment_id        | int64          | non-array            | Number used to identify the experiment.   |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| experiment_name      | unicode        | non-array            | Name of the experiment file.              |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| first_range          | float32        | non-array            | Distance to use for first range in km.    |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| first_range_rtt      | float32        | non-array            | Round trip time of flight to first range  |
-|                      |                |                      | in microseconds.                          |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| freq                 | uint32         | non-array            | The frequency used for this experiment,   |
-|                      |                |                      | in kHz. This is the frequency the data    |
-|                      |                |                      | has been filtered to.                     |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| int_time             | float32        | num_records          | Integration time in seconds.              |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| intf_antenna_count   | uint32         | non-array            | Number of interferometer array antennas   |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| lags                 | uint32         | number of lags x 2   | The lags created from two pulses in the   |
-|                      |                |                      | pulses array. Values have to be from      |
-|                      |                |                      | pulses array. The lag number is lag[1] -  |
-|                      |                |                      | lag[0] for each lag pair.                 |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| main_antenna_count   | uint32         | non-array            | Number of main array antennas             |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| noise_at_freq        | float64        | num_records x        | Noise at the receive frequency, with      |
-|                      |                | max_num_sequences    | dimension = number of sequences.          |
-|                      |                |                      | 20191114: not currently implemented and   |
-|                      |                |                      | filled with zeros. Still a TODO. Note     |
-|                      |                |                      | that records that do not have             |
-|                      |                |                      | num_sequences = max_num_sequences will    |
-|                      |                |                      | have padded zeros. The num_sequences      |
-|                      |                |                      | array should be used to determine the     |
-|                      |                |                      | correct number of sequences to read for   |
-|                      |                |                      | the record.                               |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| num_beams            | uint32         | num_records          | The number of beams calculated for each   |
-|                      |                |                      | record. Allows the user to correctly read |
-|                      |                |                      | the data up to the correct number and     |
-|                      |                |                      | remove the padded zeros in the data       |
-|                      |                |                      | array.                                    | 
-+----------------------+----------------+----------------------+-------------------------------------------+
-| num_ranges           | uint32         | non-array            | Number of ranges to calculate             |
-|                      |                |                      | correlations for.                         |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| num_samps            | uint32         | non-array            | Number of samples in the sampling         |
-|                      |                |                      | periods. Will also be provided as the     |
-|                      |                |                      | last data_dimension value.                |  
-+----------------------+----------------+----------------------+-------------------------------------------+
-| num_sequences        | int64          | num_records          | Number of sampling periods (equivalent to |
-|                      |                |                      | number sequences transmitted) in the      | 
-|                      |                |                      | integration time for each record. Allows  | 
-|                      |                |                      | the user to correctly read the data up to |
-|                      |                |                      | the correct number and remove the padded  |
-|                      |                |                      | zeros in the data array.                  |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| num_slices           | int64          | num_records          | Number of slices used simultaneously in   |
-|                      |                |                      | the record by the experiment. If more     |
-|                      |                |                      | than 1, data should exist in another file |
-|                      |                |                      | for the same time period as that record   |
-|                      |                |                      | for the other slice.                      |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| pulse_phase_offset   | float32        | number of pulses     | For pulse encoding phase, in degrees      |
-|                      |                |                      | offset. Contains one phase offset per     | 
-|                      |                |                      | pulse in pulses.                          |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| pulses               | uint32         | number of pulses     | The pulse sequence in units of the        |
-|                      |                |                      | tau_spacing.                              |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| range_sep            | float32        | non-array            | Range gate separation (conversion from    |
-|                      |                |                      | time (1/rx_sample_rate) to equivalent     |
-|                      |                |                      | distance between samples), in km.         |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| rx_sample_rate       | float64        | non-array            | Sampling rate of the samples in this      |
-|                      |                |                      | file's data in Hz.                        |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| samples_data_type    | unicode        | non-array            | C data type of the samples, provided for  |
-|                      |                |                      | user friendliness. = 'complex float'      |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| scan_start_marker    | bool           | num_records          | Designates if the record is the first in  | 
-|                      |                |                      | a scan (scan is defined by the            |
-|                      |                |                      | experiment).                              |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| slice_comment        | unicode        | non-array            | Additional text comment that describes    |
-|                      |                |                      | the slice written in this file. The slice |
-|                      |                |                      | number of this file is provided in the    |
-|                      |                |                      | filename.                                 | 
-+----------------------+----------------+----------------------+-------------------------------------------+
-| sqn_timestamps       | float64        | num_records x        | A list of GPS timestamps corresponding to |
-|                      |                | max_num_sequences    | the beginning of transmission for each    | 
-|                      |                |                      | sampling period in the integration time.  |
-|                      |                |                      | These timestamps come back from the USRP  | 
-|                      |                |                      | driver and the USRPs are GPS disciplined  |
-|                      |                |                      | and synchronized using the Octoclock.     |
-|                      |                |                      | Provided in milliseconds since epoch.     | 
-|                      |                |                      | Note that records that do not have        | 
-|                      |                |                      | num_sequences = max_num_sequences will    | 
-|                      |                |                      | have padded zeros. The num_sequences      | 
-|                      |                |                      | array should be used to determine the     | 
-|                      |                |                      | correct number of sequences to read for   | 
-|                      |                |                      | the record.                               |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| station              | unicode        | non-array            | Three-letter radar identifier.            |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| tau_spacing          | uint32         | non-array            | The minimum spacing between pulses in     | 
-|                      |                |                      | microseconds. Spacing between pulses is   | 
-|                      |                |                      | always a multiple of this.                |
-+----------------------+----------------+----------------------+-------------------------------------------+
-| tx_pulse_len         | uint32         | non-array            | Length of the transmit pulse in           | 
-|                      |                |                      | microseconds.                             |
-+----------------------+----------------+----------------------+-------------------------------------------+
++-----------------------------------+---------------------------------------------+
+| | **FIELD NAME**                  | **description**                             |
+| | *type*                          |                                             |
+| | [dimensions]                    |                                             |
++===================================+=============================================+
+| | **antenna_arrays_order**        | | States what order the data is in and      |
+| | *unicode*                       | | describes the data layout for the         |
+| | [num_antenna_arrays]            | | num_antenna_arrays data dimension         |
++-----------------------------------+---------------------------------------------+
+| | **beam_azms**                   | | A list of the beam azimuths for each beam |
+| | *float64*                       | | in degrees off boresite. Note that this   |
+| | [num_records x                  | | is padded with zeroes for any record      |
+| | max_num_beams]                  | | which has num_beams less than the         |
+| |                                 | | max_num_beams. The num_beams field should | 
+| |                                 | | be used to read the correct number of     | 
+| |                                 | | beams for each record.                    |
++-----------------------------------+---------------------------------------------+
+| | **beam_nums**                   | | A list of beam numbers used in this slice |
+| | *uint32*                        | | in this record. Note that this is padded  |
+| | [num_records x                  | | with zeroes for any record which has      |
+| | max_num_beams]                  | | num_beams less than the max_num_beams.    |
+| |                                 | | The num_beams field should be used to     |
+| |                                 | | read the correct number of beams for each |
+| |                                 | | record.                                   |
++-----------------------------------+---------------------------------------------+
+| | **blanked_samples**             | | Samples that should be blanked because    |
+| | *uint32*                        | | they occurred during transmission times,  |
+| | [number of blanked              | | given by sample number (index into        |
+| | samples]                        | | decimated data). Can differ from the      |
+| |                                 | | pulses array due to multiple slices in a  |
+| |                                 | | single sequence.                          |
++-----------------------------------+---------------------------------------------+
+| | **borealis_git_hash**           | | Identifies the version of Borealis that   |
+| | *unicode*                       | | made this data. Contains git commit hash  |
+| |                                 | | characters. Typically begins with the     |
+| |                                 | | latest git tag of the software.           |
++-----------------------------------+---------------------------------------------+
+| | **data**                        | | A set of samples (complex float) at given |
+| | *complex64*                     | | sample rate. Note that records that do not|
+| | [num_records x                  | | have num_sequences = max_num_sequences or |
+| | num_antenna_arrays x            | | num_beams = max_num_beams will have       |
+| | max_num_sequences x             | | padded zeros. The num_sequences and       |
+| | max_num_beams x                 | | num_beams arrays should be used to        |
+| | num_samps]                      | | determine the correct number of sequences |
+| |                                 | | and beams to read for the record.         |
++-----------------------------------+---------------------------------------------+
+| | **data_descriptors**            | | Denotes what each data dimension          |
+| | *unicode*                       | | represents. = 'num_records',              |
+| | [5]                             | | ‘num_antenna_arrays’,                     |
+| |                                 | | ‘max_num_sequences’, ‘max_num_beams’,     |
+| |                                 | | ‘num_samps’                               |
++-----------------------------------+---------------------------------------------+
+| | **data_normalization_factor**   | | Scale of all the filters used,            |
+| | *float32*                       | | multiplied, for a total scale to          | 
+| |                                 | | normalize the data by.                    |
++-----------------------------------+---------------------------------------------+
+| | **experiment_comment**          | | Comment provided in experiment about the  | 
+| | *unicode*                       | | experiment as a whole.                    |
++-----------------------------------+---------------------------------------------+
+| | **experiment_id**               | | Number used to identify the experiment.   |
+| | *int64*                         | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **experiment_name**             | | Name of the experiment file.              |
+| | *unicode*                       | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **first_range**                 | | Distance to use for first range in km.    |
+| | *float32*                       | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **first_range_rtt**             | | Round trip time of flight to first range  |
+| | *float32*                       | | in microseconds.                          |
++-----------------------------------+---------------------------------------------+
+| | **freq**                        | | The frequency used for this experiment,   |
+| | *uint32*                        | | in kHz. This is the frequency the data    |
+| |                                 | | has been filtered to.                     |
++-----------------------------------+---------------------------------------------+
+| | **int_time**                    | | Integration time in seconds.              |
+| | *float32*                       | |                                           | 
+| | [num_records]                   | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **intf_antenna_count**          | | Number of interferometer array antennas   |
+| | *uint32*                        | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **lags**                        | | The lags created from two pulses in the   |
+| | *uint32*                        | | pulses array. Values have to be from      |
+| | [number of lags, 2]             | | pulses array. The lag number is lag[1] -  |
+| |                                 | | lag[0] for each lag pair.                 |
++-----------------------------------+---------------------------------------------+
+| | **main_antenna_count**          | | Number of main array antennas             |
+| | *uint32*                        | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **noise_at_freq**               | | Noise at the receive frequency, with      |
+| | *float64*                       | | dimension = number of sequences.          |
+| | [num_records x                  | | 20191114: not currently implemented and   |
+| | max_num_sequences]              | | filled with zeros. Still a TODO. Note     |
+| |                                 | | that records that do not have             |
+| |                                 | | num_sequences = max_num_sequences will    |
+| |                                 | | have padded zeros. The num_sequences      |
+| |                                 | | array should be used to determine the     |
+| |                                 | | correct number of sequences to read for   |
+| |                                 | | the record.                               |
++-----------------------------------+---------------------------------------------+
+| | **num_beams**                   | | The number of beams calculated for each   |
+| | *uint32*                        | | record. Allows the user to correctly read |
+| | [num_records]                   | | the data up to the correct number and     |
+| |                                 | | remove the padded zeros in the data       |
+| |                                 | | array.                                    | 
++-----------------------------------+---------------------------------------------+
+| | **num_ranges**                  | | Number of ranges to calculate             |
+| | *uint32*                        | | correlations for.                         |
++-----------------------------------+---------------------------------------------+
+| | **num_samps**                   | | Number of samples in the sampling         |
+| | *uint32*                        | | periods. Will also be provided as the     |
+| |                                 | | last data_dimension value.                |  
++-----------------------------------+---------------------------------------------+
+| | **num_sequences**               | | Number of sampling periods (equivalent to |
+| | *int64*                         | | number sequences transmitted) in the      | 
+| | [num_records]                   | | integration time for each record. Allows  | 
+| |                                 | | the user to correctly read the data up to |
+| |                                 | | the correct number and remove the padded  |
+| |                                 | | zeros in the data array.                  |
++-----------------------------------+---------------------------------------------+
+| | **num_slices**                  | | Number of slices used simultaneously in   |
+| | *int64*                         | | the record by the experiment. If more     |
+| | [num_records]                   | | than 1, data should exist in another file |
+| |                                 | | for the same time period as that record   |
+| |                                 | | for the other slice.                      |
++-----------------------------------+---------------------------------------------+
+| | **pulse_phase_offset**          | | For pulse encoding phase, in degrees      |
+| | *float32*                       | | offset. Contains one phase offset per     | 
+| | [number of pulses]              | | pulse in pulses.                          |
++-----------------------------------+---------------------------------------------+
+| | **pulses**                      | | The pulse sequence in units of the        |
+| | *uint32*                        | | tau_spacing.                              |
+| | [number of pulses]              | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **range_sep**                   | | Range gate separation (conversion from    |
+| | *float32*                       | | time (1/rx_sample_rate) to equivalent     |
+| |                                 | | distance between samples), in km.         |
++-----------------------------------+---------------------------------------------+
+| | **rx_sample_rate**              | | Sampling rate of the samples in this      |
+| | *float64*                       | | file's data in Hz.                        |
++-----------------------------------+---------------------------------------------+
+| | **samples_data_type**           | | C data type of the samples, provided for  |
+| | *unicode*                       | | user friendliness. = 'complex float'      |
++-----------------------------------+---------------------------------------------+
+| | **scan_start_marker**           | | Designates if the record is the first in  | 
+| | *bool*                          | | a scan (scan is defined by the            |
+| | [num_records]                   | | experiment).                              |
++-----------------------------------+---------------------------------------------+
+| | **slice_comment**               | | Additional text comment that describes    |
+| | *unicode*                       | | the slice written in this file. The slice |
+| |                                 | | number of this file is provided in the    |
+| |                                 | | filename.                                 | 
++-----------------------------------+---------------------------------------------+
+| | **sqn_timestamps**              | | A list of GPS timestamps corresponding to |
+| | *float64*                       | | the beginning of transmission for each    | 
+| | [num_records x                  | | sampling period in the integration time.  |
+| | max_num_sequences]              | | These timestamps come back from the USRP  | 
+| |                                 | | driver and the USRPs are GPS disciplined  |
+| |                                 | | and synchronized using the Octoclock.     |
+| |                                 | | Provided in milliseconds since epoch.     | 
+| |                                 | | Note that records that do not have        | 
+| |                                 | | num_sequences = max_num_sequences will    | 
+| |                                 | | have padded zeros. The num_sequences      | 
+| |                                 | | array should be used to determine the     | 
+| |                                 | | correct number of sequences to read for   | 
+| |                                 | | the record.                               |
++-----------------------------------+---------------------------------------------+
+| | **station**                     | | Three-letter radar identifier.            |
+| | *unicode*                       | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **tau_spacing**                 | | The minimum spacing between pulses in     | 
+| | *uint32*                        | | microseconds. Spacing between pulses is   | 
+| |                                 | | always a multiple of this.                |
++-----------------------------------+---------------------------------------------+
+| | **tx_pulse_len**                | | Length of the transmit pulse in           | 
+| | *uint32*                        | | microseconds.                             |
++-----------------------------------+---------------------------------------------+
 
 ---------------
 bfiq site files
@@ -210,141 +221,149 @@ These files are often bzipped after they are produced.
 
 The file fields under the record name in bfiq site files are:
 
-+----------------------+----------------+-------------------------------------------+
-|    **Field name**    | **numpy type** | **description**                           |
-+======================+================+===========================================+
-| antenna_arrays_order | [unicode, ]    | States what order the data is in and      | 
-|                      |                | describes the data layout for the         |
-|                      |                | num_antenna_arrays data dimension         |
-+----------------------+----------------+-------------------------------------------+
-| beam_azms            | [float64, ]    | A list of the beam azimuths for each      |
-|                      |                | beam in degrees off boresite.             |
-+----------------------+----------------+-------------------------------------------+
-| beam_nums            | [uint32, ]     | A list of beam numbers used in this slice | 
-|                      |                | in this record.                           |
-+----------------------+----------------+-------------------------------------------+
-| blanked_samples      | [uint32, ]     | Samples that should be blanked because    | 
-|                      |                | they occurred during transmission times,  | 
-|                      |                | given by sample number (index into        | 
-|                      |                | decimated data). Can differ from the      | 
-|                      |                | pulses array due to multiple slices in a  | 
-|                      |                | single sequence.                          |
-+----------------------+----------------+-------------------------------------------+
-| borealis_git_hash    | unicode        | Identifies the version of Borealis that   | 
-|                      |                | made this data. Contains git commit hash  | 
-|                      |                | characters. Typically begins with the     | 
-|                      |                | latest git tag of the software.           |
-+----------------------+----------------+-------------------------------------------+
-| data                 | [complex64, ]  | A contiguous set of samples (complex      | 
-|                      |                | float) at given sample rate. Needs to be  | 
-|                      |                | reshaped by data_dimensions to be         | 
-|                      |                | correctly read.                           |
-+----------------------+----------------+-------------------------------------------+
-| data_descriptors     | [unicode, ]    | Denotes what each data dimension          | 
-|                      |                | represents. = ‘num_antenna_arrays’,       | 
-|                      |                | ‘num_sequences’, ‘num_beams’, ‘num_samps’ | 
-|                      |                | for bfiq                                  |
-+----------------------+----------------+-------------------------------------------+
-| data_dimensions      | [uint32, ]     | The dimensions in which to reshape the    | 
-|                      |                | data. Dimensions correspond to            |
-|                      |                | data_descriptors.                         |
-+----------------------+----------------+-------------------------------------------+
-| data_normalization_  | float32        | Scale of all the filters used, multiplied |
-| factor               |                | for a total scale to normalize the data   |
-|                      |                | by.                                       |
-+----------------------+----------------+-------------------------------------------+
-| experiment_comment   | unicode        | Comment provided in experiment about the  |
-|                      |                | experiment as a whole.                    |
-+----------------------+----------------+-------------------------------------------+
-| experiment_id        | int64          | Number used to identify the experiment.   |
-+----------------------+----------------+-------------------------------------------+
-| experiment_name      | unicode        | Name of the experiment file.              |
-+----------------------+----------------+-------------------------------------------+
-| first_range          | float32        | Distance to use for first range in km.    |
-+----------------------+----------------+-------------------------------------------+
-| first_range_rtt      | float32        | Round trip time of flight to first range  | 
-|                      |                | in microseconds.                          |
-+----------------------+----------------+-------------------------------------------+
-| freq                 | uint32         | The frequency used for this experiment,   | 
-|                      |                | in kHz. This is the frequency the data    | 
-|                      |                | has been filtered to.                     |
-+----------------------+----------------+-------------------------------------------+
-| int_time             | float32        | Integration time in seconds.              |
-+----------------------+----------------+-------------------------------------------+
-| intf_antenna_count   | uint32         | Number of interferometer array antennas   |
-+----------------------+----------------+-------------------------------------------+
-| lags                 | [[uint32, ], ] | The lags created from two pulses in the   | 
-|                      |                | pulses array. Dimensions are number of    | 
-|                      |                | lags x 2. Values have to be from pulses   | 
-|                      |                | array. The lag number is lag[1] - lag[0]  | 
-|                      |                | for each lag pair.                        |
-+----------------------+----------------+-------------------------------------------+
-| main_antenna_count   | uint32         | Number of main array antennas             |
-+----------------------+----------------+-------------------------------------------+
-| noise_at_freq        | [float64, ]    | Noise at the receive frequency, with      | 
-|                      |                | dimension = number of sequences.          | 
-|                      |                | 20191114: not currently implemented and   | 
-|                      |                | filled with zeros. Still a TODO.          |
-+----------------------+----------------+-------------------------------------------+
-| num_ranges           | uint32         | Number of ranges to calculate             | 
-|                      |                | correlations for.                         |
-+----------------------+----------------+-------------------------------------------+
-| num_samps            | uint32         | Number of samples in the sampling period. | 
-|                      |                | Will also be provided as the last         |
-|                      |                | data_dimensions value.                    |
-+----------------------+----------------+-------------------------------------------+
-| num_sequences        | int64          | Number of sampling periods (equivalent to | 
-|                      |                | number sequences transmitted) in the      | 
-|                      |                | integration time.                         |
-+----------------------+----------------+-------------------------------------------+
-| num_slices           | int64          | Number of slices used simultaneously in   | 
-|                      |                | this record by the experiment. If more    | 
-|                      |                | than 1, data should exist in another file | 
-|                      |                | for this time period for the other slice. |
-+----------------------+----------------+-------------------------------------------+
-| pulse_phase_offset   | [float32, ]    | For pulse encoding phase, in degrees      | 
-|                      |                | offset. Contains one phase offset per     | 
-|                      |                | pulse in pulses.                          |
-+----------------------+----------------+-------------------------------------------+
-| pulses               | [uint32, ]     | The pulse sequence in units of the        | 
-|                      |                | tau_spacing.                              |
-+----------------------+----------------+-------------------------------------------+
-| range_sep            | float32        | Range gate separation (conversion from    | 
-|                      |                | time (1/rx_sample_rate) to equivalent     | 
-|                      |                | distance between samples), in km.         |
-+----------------------+----------------+-------------------------------------------+
-| rx_sample_rate       | float64        | Sampling rate of the samples in this      | 
-|                      |                | file's data in Hz.                        |
-+----------------------+----------------+-------------------------------------------+
-| samples_data_type    | unicode        | C data type of the samples, provided for  | 
-|                      |                | user friendliness. = 'complex float'      |
-+----------------------+----------------+-------------------------------------------+
-| scan_start_marker    | bool           | Designates if the record is the first in  | 
-|                      |                | a scan (scan is defined by the            | 
-|                      |                | experiment).                              |
-+----------------------+----------------+-------------------------------------------+
-| slice_comment        | unicode        | Additional text comment that describes    | 
-|                      |                | the slice written in this file. The slice | 
-|                      |                | number of this file is provided in the    | 
-|                      |                | filename.                                 |
-+----------------------+----------------+-------------------------------------------+
-| sqn_timestamps       | [float64, ]    | A list of GPS timestamps corresponding to | 
-|                      |                | the beginning of transmission for each    | 
-|                      |                | sampling period in the integration time.  | 
-|                      |                | These timestamps come from the USRP       | 
-|                      |                | driver and the USRPs are GPS disciplined  | 
-|                      |                | and synchronized using the Octoclock.     | 
-|                      |                | Provided in milliseconds since epoch.     |
-+----------------------+----------------+-------------------------------------------+
-| station              | unicode        | Three-letter radar identifier.            |
-+----------------------+----------------+-------------------------------------------+
-| tau_spacing          | uint32         | The minimum spacing between pulses in     | 
-|                      |                | microseconds. Spacing between pulses is   | 
-|                      |                | always a multiple of this.                |
-+----------------------+----------------+-------------------------------------------+
-| tx_pulse_len         | uint32         | Length of the transmit pulse in           | 
-|                      |                | microseconds.                             |
-+----------------------+----------------+-------------------------------------------+
++----------------------------------+---------------------------------------------+
+| | **Field name**                 | **description**                             |
+| | *type*                         |                                             |  
++==================================+=============================================+
+| | **antenna_arrays_order**       | | States what order the data is in and      | 
+| | *[unicode, ]*                  | | describes the data layout for the         |
+| |                                | | num_antenna_arrays data dimension         |
++----------------------------------+---------------------------------------------+
+| | **beam_azms**                  | | A list of the beam azimuths for each      |
+| | *[float64, ]*                  | | beam in degrees off boresite.             |
++----------------------------------+---------------------------------------------+
+| | **beam_nums**                  | | A list of beam numbers used in this slice | 
+| | *[uint32, ]*                   | | in this record.                           |
++----------------------------------+---------------------------------------------+
+| | **blanked_samples**            | | Samples that should be blanked because    | 
+| | *[uint32, ]*                   | | they occurred during transmission times,  | 
+| |                                | | given by sample number (index into        | 
+| |                                | | decimated data). Can differ from the      | 
+| |                                | | pulses array due to multiple slices in a  | 
+| |                                | | single sequence.                          |
++----------------------------------+---------------------------------------------+
+| | **borealis_git_hash**          | | Identifies the version of Borealis that   | 
+| | *unicode*                      | | made this data. Contains git commit hash  | 
+| |                                | | characters. Typically begins with the     | 
+| |                                | | latest git tag of the software.           |
++----------------------------------+---------------------------------------------+
+| | **data**                       | | A contiguous set of samples (complex      | 
+| | *[complex64, ]*                | | float) at given sample rate. Needs to be  | 
+| |                                | | reshaped by data_dimensions to be         | 
+| |                                | | correctly read.                           |
++----------------------------------+---------------------------------------------+
+| | **data_descriptors**           | | Denotes what each data dimension          | 
+| | *[unicode, ]*                  | | represents. = ‘num_antenna_arrays’,       | 
+| |                                | | ‘num_sequences’, ‘num_beams’, ‘num_samps’ | 
+| |                                | | for bfiq                                  |
++----------------------------------+---------------------------------------------+
+| | **data_dimensions**            | | The dimensions in which to reshape the    | 
+| | *[uint32, ]*                   | | data. Dimensions correspond to            |
+| |                                | | data_descriptors.                         |
++----------------------------------+---------------------------------------------+
+| | **data_normalization_factor**  | | Scale of all the filters used, multiplied |
+| | *float32*                      | | for a total scale to normalize the data   |
+| |                                | | by.                                       |
++----------------------------------+---------------------------------------------+
+| | **experiment_comment**         | | Comment provided in experiment about the  |
+| | *unicode*                      | | experiment as a whole.                    |
++----------------------------------+---------------------------------------------+
+| | **experiment_id**              | | Number used to identify the experiment.   |
+| | *int64*                        | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **experiment_name**            | | Name of the experiment file.              |
+| | *unicode*                      | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **first_range**                | | Distance to use for first range in km.    |
+| | *float32*                      | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **first_range_rtt**            | | Round trip time of flight to first range  | 
+| | *float32*                      | | in microseconds.                          |
++----------------------------------+---------------------------------------------+
+| | **freq**                       | | The frequency used for this experiment,   | 
+| | *uint32*                       | | in kHz. This is the frequency the data    | 
+| |                                | | has been filtered to.                     |
++----------------------------------+---------------------------------------------+
+| | **int_time**                   | | Integration time in seconds.              |
+| | *float32*                      | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **intf_antenna_count**         | | Number of interferometer array antennas   |
+| | *uint32*                       | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **lags**                       | | The lags created from two pulses in the   | 
+| | *[[uint32, ], ]*               | | pulses array. Dimensions are number of    | 
+| |                                | | lags x 2. Values have to be from pulses   | 
+| |                                | | array. The lag number is lag[1] - lag[0]  | 
+| |                                | | for each lag pair.                        |
++----------------------------------+---------------------------------------------+
+| | **main_antenna_count**         | | Number of main array antennas             |
+| | *uint32*                       | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **noise_at_freq**              | | Noise at the receive frequency, with      | 
+| | *[float64, ]*                  | | dimension = number of sequences.          | 
+| |                                | | 20191114: not currently implemented and   | 
+| |                                | | filled with zeros. Still a TODO.          |
++----------------------------------+---------------------------------------------+
+| | **num_ranges**                 | | Number of ranges to calculate             | 
+| | *uint32*                       | | correlations for.                         |
++----------------------------------+---------------------------------------------+
+| | **num_samps**                  | | Number of samples in the sampling period. | 
+| | *uint32*                       | | Will also be provided as the last         |
+| |                                | | data_dimensions value.                    |
++----------------------------------+---------------------------------------------+
+| | **num_sequences**              | | Number of sampling periods (equivalent to | 
+| | *int64*                        | | number sequences transmitted) in the      | 
+| |                                | | integration time.                         |
++----------------------------------+---------------------------------------------+
+| | **num_slices**                 | | Number of slices used simultaneously in   | 
+| | *int64*                        | | this record by the experiment. If more    | 
+| |                                | | than 1, data should exist in another file | 
+| |                                | | for this time period for the other slice. |
++----------------------------------+---------------------------------------------+
+| | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      | 
+| | *[float32, ]*                  | | offset. Contains one phase offset per     | 
+| |                                | | pulse in pulses.                          |
++----------------------------------+---------------------------------------------+
+| | **pulses**                     | | The pulse sequence in units of the        | 
+| | *[uint32, ]*                   | | tau_spacing.                              |
++----------------------------------+---------------------------------------------+
+| | **range_sep**                  | | Range gate separation (conversion from    | 
+| | *float32*                      | | time (1/rx_sample_rate) to equivalent     | 
+| |                                | | distance between samples), in km.         |
++----------------------------------+---------------------------------------------+
+| | **rx_sample_rate**             | | Sampling rate of the samples in this      | 
+| | *float64*                      | | file's data in Hz.                        |
++----------------------------------+---------------------------------------------+
+| | **samples_data_type**          | | C data type of the samples, provided for  | 
+| | *unicode*                      | | user friendliness. = 'complex float'      |
++----------------------------------+---------------------------------------------+
+| | **scan_start_marker**          | | Designates if the record is the first in  | 
+| | *bool*                         | | a scan (scan is defined by the            | 
+| |                                | | experiment).                              |
++----------------------------------+---------------------------------------------+
+| | **slice_comment**              | | Additional text comment that describes    | 
+| | *unicode*                      | | the slice written in this file. The slice | 
+| |                                | | number of this file is provided in the    | 
+| |                                | | filename.                                 |
++----------------------------------+---------------------------------------------+
+| | **sqn_timestamps**             | | A list of GPS timestamps corresponding to | 
+| | *[float64, ]*                  | | the beginning of transmission for each    | 
+| |                                | | sampling period in the integration time.  | 
+| |                                | | These timestamps come from the USRP       | 
+| |                                | | driver and the USRPs are GPS disciplined  | 
+| |                                | | and synchronized using the Octoclock.     | 
+| |                                | | Provided in milliseconds since epoch.     |
++----------------------------------+---------------------------------------------+
+| | **station**                    | | Three-letter radar identifier.            |
+| | *unicode*                      | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **tau_spacing**                | | The minimum spacing between pulses in     | 
+| | *uint32*                       | | microseconds. Spacing between pulses is   | 
+| |                                | | always a multiple of this.                |
++----------------------------------+---------------------------------------------+
+| | **tx_pulse_len**               | | Length of the transmit pulse in           | 
+| | *uint32*                       | | microseconds.                             |
++----------------------------------+---------------------------------------------+
 
 ------------------
 File Restructuring
