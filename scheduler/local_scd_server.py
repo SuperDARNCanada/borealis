@@ -29,9 +29,9 @@ EXPERIMENTS = {
               "interleaved_time" : "interleavedscan"
     },
     "pgr" : {
-              "common_time" : "twofsound",
-              "discretionary_time" : "twofsound",
-              "htr_common_time" : " twofsound",
+              "common_time" : "normalscan",
+              "discretionary_time" : "normalscan",
+              "htr_common_time" : "normalscan",
               "themis_time" : "themisscan",
               "special_time_normal" : "normalscan",
               "rbsp_time" : "rbspscan",
@@ -198,7 +198,7 @@ class SWG(object):
 
             if "Special Time" in line:
 
-                if "ALL" in swg_lines[idx+1] or radar.upper() in swg_lines[idx+1]:
+                if "ALL" in line or radar.upper() in line:
 
                     if "THEMIS" in line:
                             mode_to_use = modes["themis_time"]
@@ -216,7 +216,7 @@ class SWG(object):
                     mode_to_use = modes["special_time_normal"]
 
                 # Skip next line
-                skip_line = True
+                #skip_line = True
 
             if "Discretionary Time" in line:
                 mode_to_use = modes["discretionary_time"]
