@@ -34,8 +34,8 @@ The file fields in the rawacf array files are:
 | | *float64*                       | | in degrees off boresite. Note that this   |
 | | [num_records x                  | | is padded with zeroes for any record      |
 | | max_num_beams]                  | | which has num_beams less than the         |
-| |                                 | | max_num_beams. The num_beams field should | 
-| |                                 | | be used to read the correct number of     | 
+| |                                 | | max_num_beams. The num_beams field should |
+| |                                 | | be used to read the correct number of     |
 | |                                 | | beams for each record.                    |
 +-----------------------------------+---------------------------------------------+
 | | **beam_nums**                   | | A list of beam numbers used in this slice |
@@ -193,7 +193,7 @@ The file fields in the rawacf array files are:
 | | *uint32*                        | | microseconds.                             |
 +-----------------------------------+---------------------------------------------+
 | | **xcfs**                        | | Cross correlations of interferometer to   | 
-| | *complex64*                     | | main array. Note
+| | *complex64*                     | | main array. Note                          |
 | | [num_records x                  | | that records that do not have num_beams = |
 | | max_num_beams x                 | | max_num_beams will have padded zeros. The |
 | | num_ranges x                    | | num_beams array should be used to         | 
