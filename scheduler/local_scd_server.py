@@ -29,9 +29,9 @@ EXPERIMENTS = {
               "interleaved_time" : "interleavedscan"
     },
     "pgr" : {
-              "common_time" : "twofsound",
-              "discretionary_time" : "twofsound",
-              "htr_common_time" : " twofsound",
+              "common_time" : "normalscan",
+              "discretionary_time" : "normalscan",
+              "htr_common_time" : "normalscan",
               "themis_time" : "themisscan",
               "special_time_normal" : "normalscan",
               "rbsp_time" : "rbspscan",
@@ -49,21 +49,21 @@ EXPERIMENTS = {
               "interleaved_time" : "interleavedscan"
     },
     "inv" : {
-              "common_time" : "twofsound",
-              "discretionary_time" : "twofsound",
-              "htr_common_time" : "twofsound",
+              "common_time" : "normalscan",
+              "discretionary_time" : "normalscan",
+              "htr_common_time" : "normalscan",
               "themis_time" : "themisscan",
-              "special_time_normal" : "twofsound",
+              "special_time_normal" : "normalscan",
               "rbsp_time" : "rbspscan",
               "no_switching_time" : "normalscan",
               "interleaved_time" : "interleavedscan"
     },
     "cly" : {
-              "common_time" : "twofsound",
-              "discretionary_time" : "twofsound",
-              "htr_common_time" : "twofsound",
+              "common_time" : "normalscan",
+              "discretionary_time" : "normalscan",
+              "htr_common_time" : "normalscan",
               "themis_time" : "themisscan",
-              "special_time_normal" : "twofsound",
+              "special_time_normal" : "normalscan",
               "rbsp_time" : "rbspscan",
               "no_switching_time" : "normalscan",
               "interleaved_time" : "interleavedscan"
@@ -198,31 +198,25 @@ class SWG(object):
 
             if "Special Time" in line:
 
-                if "THEMIS" in line:
-                        mode_to_use = modes["themis_time"]
+                if "ALL" in line or radar.upper() in line:
 
-                if "ST-APOG" in line:
-                    if radar.upper() in swg_lines[idx+1]:
+                    if "THEMIS" in line:
+                            mode_to_use = modes["themis_time"]
+                    elif "ST-APOG" in line or "RBSP" in line:
                         mode_to_use = modes["rbsp_time"]
-                    else:
-                        mode_to_use = modes["special_time_normal"]
-
-                if "ARASE" in line:
-                    if radar.upper() in swg_lines[idx+1]:
+                    elif "ARASE" in line:
                         if "themis" in swg_lines[idx+1]:
                             mode_to_use = modes["themis_time"]
                         if "interleaved" in swg_lines[idx+1]:
                             mode_to_use = modes["interleaved_time"]
                     else:
-                        mode_to_use = modes["special_time_normal"]
-
-
+                        print("Unknown Special Time: using default common time")
+                        mode_to_use = modes["htr_common_time"]
                 else:
-                    print("Unknown Special Time: using default common time")
-                    mode_to_use = modes["htr_common_time"]
+                    mode_to_use = modes["special_time_normal"]
 
                 # Skip next line
-                skip_line = True
+                #skip_line = True
 
             if "Discretionary Time" in line:
                 mode_to_use = modes["discretionary_time"]
