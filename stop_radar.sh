@@ -7,3 +7,5 @@ do
 	atrm $i
 done  
 
+screen -X -S borealis quit
+

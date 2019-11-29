@@ -193,7 +193,6 @@ def create_firwin_filter_by_attenuation(sample_rate, transition_width, cutoff_hz
 
     # Compute the order and Kaiser parameter for the FIR filter.
     N, beta = kaiserord(ripple_db, width_ratio)
-    print(N)
 
     # Use firwin with a Kaiser window to create a lowpass FIR filter
     if window_type == 'kaiser':
