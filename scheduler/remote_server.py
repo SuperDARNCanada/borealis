@@ -486,9 +486,17 @@ def get_relevant_lines(scd_util, time_of_interest):
 
             raise ValueError(msg)
 
-        if relevant_lines[0]['duration'] == '-':
-            found = True
-        else:
+        lines_dict = {}
+        for line in relevant_lines:
+            if line['timestamp'] not in lines_dict:
+                lines_dict['timestamp'] = []
+            lines_dict['timestamp'].append(line)
+
+        for line in lines_dict[list(lines_dict)[0]]:
+            if line['duration'] == '-':
+                found = True
+
+        if found != True:
             time -= datetime.timedelta(days=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
