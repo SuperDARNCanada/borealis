@@ -153,7 +153,7 @@ beam_order
     are looking in to certain beam directions.
 
 scanbound
-    A list of seconds past the minute for scans to align to.
+    A list of seconds past the minute for integration times in a scan to align to.
 
 clrfrqrange
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
@@ -205,10 +205,6 @@ range_sep
 lag_table
     used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
     8-pulse normalscan.
-
-Should add:
-
-scanboundt : time past the hour to start a scan at ?
 """
 
 hidden_key_set = frozenset(['rxonly', 'clrfrqflag', 'slice_interfacing'])
