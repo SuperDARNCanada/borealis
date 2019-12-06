@@ -81,8 +81,9 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
                     "rx_int_antennas", "pulse_sequence", "pulse_phase_offset", "tau_spacing",
                     "pulse_len", "num_ranges", "first_range", "intt", "intn", "beam_angle",
                     "beam_order", "scanbound", "txfreq", "rxfreq",
-                    "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
-                    "iwavetable", "qwavetable", "comment", "range_sep", "lag_table"])
+                    "clrfrqrange", "averaging_method", "acf", "xcf", "acfint", 
+                    "wavetype", "seqoffset", "iwavetable", "qwavetable", 
+                    "comment", "range_sep", "lag_table"])
 
 """
 **Description of Slice Keys**
@@ -187,6 +188,10 @@ seqoffset
 comment
     a comment string that will be placed in the borealis files describing the slice.
 
+averaging_method
+    a string defining the type of averaging to be done. Current methods are 'mean' or 'median.'
+    The default is 'mean'. 
+
 acf
     flag for rawacf and generation. The default is False.
 
@@ -214,6 +219,7 @@ time the experiment is run). If set by the user, the values will be overwritten 
 therefore ignored.
 """
 
+possible_averaging_methods = frozenset(['mean', 'median'])
 default_rx_bandwidth = 5.0e6
 default_output_rx_rate = 10.0e3/3
 
@@ -255,7 +261,7 @@ class ExperimentPrototype(object):
     __default_output_rx_rate = default_output_rx_rate
     __default_rx_bandwidth = default_rx_bandwidth
 
-    def __init__(self, cpid, output_rx_rate=default_output_rx_rate,
+    def __init__(self, cpid, scheduling_mode, output_rx_rate=default_output_rx_rate,
                  rx_bandwidth=default_rx_bandwidth, tx_bandwidth=5.0e6, txctrfreq=12000.0,
                  rxctrfreq=12000.0,
                  decimation_scheme=create_default_scheme(),
@@ -263,6 +269,8 @@ class ExperimentPrototype(object):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
+        :param scheduling_mode: the type of scheduling mode for this experiment time, 
+         current types are 'common', 'discretionary', or 'special'.
         :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz.
          Cannot be changed after instantiation.
         :param rx_bandwidth: The desired bandwidth for the experiment. Directly determines rx
@@ -286,6 +294,8 @@ class ExperimentPrototype(object):
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
 
         self.__cpid = cpid
+
+        self.__scheduling_mode = scheduling_mode
 
         self.__output_rx_rate = float(output_rx_rate)
 
@@ -393,6 +403,15 @@ class ExperimentPrototype(object):
 
         return self.__cpid
 
+    @property
+    def scheduling_mode(self):
+        """
+        This experiment's CPID (control program ID, a term that comes from ROS).
+
+        The CPID is read-only once established in instantiation.
+        """
+
+        return self.__scheduling_mode
     @property
     def experiment_name(self):
         """
@@ -513,7 +532,7 @@ class ExperimentPrototype(object):
         """
         The next unique slice id that is available to this instance of the experiment.
 
-        This gets incremented after each time it is called to ensure it returns
+        This gets incremented each time it is called to ensure it returns
         a unique ID each time.
         """
 
@@ -1287,6 +1306,16 @@ class ExperimentPrototype(object):
                 ' Hz.'.format(exp_slice['pulse_len'], self.output_rx_rate)
                 raise ExperimentException(errmsg)
 
+            if 'averaging_method' in exp_slice:
+                if exp_slice['averaging_method'] in possible_averaging_methods:
+                    slice_with_defaults['averaging_method'] = exp_slice['averaging_method']
+                else:
+                    errmsg = 'Averaging method {} not valid method. Possible methods are ' \
+                             '{}'.format(exp_slice['averaging_method'], possible_averaging_methods)
+                    raise ExperimentException(errmsg)
+            else:
+                slice_with_defaults['averaging_method'] = 'mean'
+
             if 'lag_table' in exp_slice:
                 # Check that lags are valid
                 for lag in exp_slice['lag_table']:
@@ -1306,15 +1335,18 @@ class ExperimentPrototype(object):
                 slice_with_defaults['lag_table'] = lag_table
 
         else:
-            # TODO log range_sep, lag_table, xcf, and acfint will not be used
+            # TODO log range_sep, lag_table, xcf, acfint, and averaging_method will not be used
             if __debug__:
-                print('range_sep, lag_table, xcf, and acfint will not be used because acf is '
-                              'not True.')
+                print('range_sep, lag_table, xcf, acfint, and averaging_method will not be used '
+                              'because acf is not True.')
             if 'range_sep' not in exp_slice.keys():
                 slice_with_defaults['range_sep'] = slice_with_defaults['pulse_len'] * 1.0e-9 * \
                                                       speed_of_light/2.0
             if 'lag_table' not in exp_slice.keys():
                 slice_with_defaults['lag_table'] = []
+
+            if 'averaging_method' not in exp_slice.keys():
+                slice_with_defaults['averaging_method'] = None
 
         if 'wavetype' not in exp_slice:
             slice_with_defaults['wavetype'] = 'SINE'
@@ -1335,8 +1367,7 @@ class ExperimentPrototype(object):
 
         The following are always able to be defaulted, so are optional:
         "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_phase_offset", "scanboundflag",
-        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset"
-
+        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset", "averaging_method"
 
         The following are always required for processing acf, xcf, and acfint which we will assume
         we are always doing:
