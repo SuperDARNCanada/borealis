@@ -1061,6 +1061,7 @@ class DataWrite(object):
                 parameters['experiment_comment'] = integration_meta.experiment_comment
                 parameters['scheduling_mode'] = integration_meta.scheduling_mode
                 parameters['slice_comment'] = rx_freq.slice_comment
+                parameters['slice_id'] = rx_freq.slice_id
                 parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = integration_meta.num_sequences
