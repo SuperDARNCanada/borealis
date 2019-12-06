@@ -58,6 +58,8 @@ DATA_TEMPLATE = {
     "experiment_name" : None, # Name of the experiment file.
     "experiment_comment" : None,  # Comment about the whole experiment
     "slice_comment" : None, # Additional text comment that describes the slice.
+    "slice_id" : None, # the slice id of the file and dataset.
+    "slice_interfacing" : None, # the interfacing of this slice to other slices.
     "num_slices" : None, # Number of slices in the experiment at this integration time.
     "station" : None, # Three letter radar identifier.
     "num_sequences": None, # Number of sampling periods in the integration time.
@@ -97,6 +99,8 @@ DATA_TEMPLATE = {
     "data" : [], # A contiguous set of samples (complex float) at given sample rate
     "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
     "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
+    "averaging_method" : None, # A string describing the averaging method. 
+    "scheduling_type" : None, # A string describing the type of scheduling time at the time of this dataset.
     "main_acfs" : [], # Main array autocorrelations
     "intf_acfs" : [], # Interferometer array autocorrelations
     "xcfs" : [] # Crosscorrelations between main and interferometer arrays
@@ -833,7 +837,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors",
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
-            "data_normalization_factor"]
+            "data_normalization_factor", "blanked_samples"]
 
             antenna_iq = data_parsing.antenna_iq_accumulator
 

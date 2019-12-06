@@ -53,6 +53,13 @@ The file fields in the antennas_iq array files are:
 | |                                 | | read the correct number of beams for each |
 | |                                 | | record.                                   |
 +-----------------------------------+---------------------------------------------+
+| | **blanked_samples**             | | Samples that should be blanked because    |
+| | *uint32*                        | | they occurred during transmission times,  |
+| | [number of blanked              | | given by sample number (index into        |
+| | samples]                        | | decimated data). Can differ from the      |
+| |                                 | | pulses array due to multiple slices in a  |
+| |                                 | | single sequence.                          |
++-----------------------------------+---------------------------------------------+
 | | **borealis_git_hash**           | | Identifies the version of Borealis that   |
 | | *unicode*                       | | made this data. Contains git commit hash  |
 | |                                 | | characters. Typically begins with the     |
