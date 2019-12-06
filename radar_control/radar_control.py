@@ -347,7 +347,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     packet.output_sample_rate = output_sample_rate
     packet.data_normalization_factor = reduce(lambda x,y: x*y, filter_scaling_factors) # multiply all
     packet.scheduling_mode = scheduling_mode
-    
+
     for sequence_index, sequence in enumerate(sequences):
         sequence_add = packet.sequences.add()
         sequence_add.blanks[:] = sequence.blanks
@@ -406,6 +406,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                     lag_add = rxchan_add.ltab.lag.add()
                     lag_add.pulse_position[:] = lag
                     lag_add.lag_num = int(lag[1] - lag[0])
+                rxchan_add.averaging_method = sequence.slice_dict[slice_id]['averaging_method']
 
     if __debug__:
         rad_ctrl_print('Sending metadata to datawrite.')

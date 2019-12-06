@@ -717,15 +717,21 @@ class DataWrite(object):
 
             def find_expectation_value(x, parameters, field_name):
                 """
-                Get the median of all correlations from all sequences in the
+                Get the mean or median of all correlations from all sequences in the
                 integration period - only this will be recorded.
                 This is effectively 'averaging' all correlations over the integration
-                time.
+                time, using a specified method for combining them.
                 """
                 # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
                 # so we get median of all sequences.
+                averaging_method = parameters['averaging_method']
                 array_2d = np.array(x, dtype=np.complex64)
-                array_expectation_value = np.mean(array_2d, axis=0) # or use np.median?
+                if averaging_method = 'mean':
+                    array_expectation_value = np.mean(array_2d, axis=0) 
+                elif averaging_method = 'median':
+                    array_expectation_value = np.median(array_2d, axis=0)
+                else:
+                    raise ValueError('Averaging Method could not be executed: {}'.format(averaging_method))                   
                 parameters[field_name] = array_expectation_value
 
             for slice_id in main_acfs:
@@ -739,7 +745,6 @@ class DataWrite(object):
             for slice_id in intf_acfs:
                 parameters = parameters_holder[slice_id]
                 find_expectation_value(intf_acfs[slice_id]['data'], parameters, 'intf_acfs')
-
 
             for slice_id, parameters in parameters_holder.items():
                 parameters['correlation_descriptors'] = ['num_beams', 'num_ranges', 'num_lags']
@@ -1062,6 +1067,7 @@ class DataWrite(object):
                 parameters['scheduling_mode'] = integration_meta.scheduling_mode
                 parameters['slice_comment'] = rx_freq.slice_comment
                 parameters['slice_id'] = rx_freq.slice_id
+                parameters['averaging_method'] = rx_freq.averaging_method
                 parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = integration_meta.num_sequences

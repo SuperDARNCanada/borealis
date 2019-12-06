@@ -412,13 +412,13 @@ class ExperimentPrototype(object):
         """
 
         return self.__scheduling_mode
+
     @property
     def experiment_name(self):
         """
         The experiment class name.
         """
         return self.__experiment_name
-
 
     @property
     def output_rx_rate(self):
