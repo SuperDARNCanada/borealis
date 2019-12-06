@@ -14,6 +14,7 @@ message IntegrationTimeMetadata {
   double integration_time  = 9;
   double output_sample_rate = 10;
   double data_normalization_factor = 11; // to give filter scaling factors in data output.
+  string scheduling_mode = 12; 
 
   message SequenceType {
     repeated RXChan rxchannel = 1;

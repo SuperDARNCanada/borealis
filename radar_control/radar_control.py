@@ -300,8 +300,9 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, num_sequences, scan_flag, inttime, sequences, beamdir_dict,
-                            experiment_id, experiment_name, output_sample_rate, experiment_comment,
-                            filter_scaling_factors, rx_centre_freq, debug_samples=None):
+                            experiment_id, experiment_name, scheduling_mode, output_sample_rate, 
+                            experiment_comment, filter_scaling_factors, rx_centre_freq, 
+                            debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
     :param packet: The IntegrationTimeMetadata protobuf packet.
@@ -318,6 +319,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     directions for that slice for this integration period.
     :param experiment_id: the ID of the experiment that is running
     :param experiment_name: the experiment name to be placed in the data files.
+    :param scheduling_mode: the type of scheduling mode running at this time, to write to file.
     :param output_sample_rate: The output sample rate of the output data, defined by the
     experiment, in Hz.
     :param experiment_comment: The comment string for the experiment, user-defined.
@@ -344,7 +346,8 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     packet.integration_time = inttime.total_seconds()
     packet.output_sample_rate = output_sample_rate
     packet.data_normalization_factor = reduce(lambda x,y: x*y, filter_scaling_factors) # multiply all
-
+    packet.scheduling_mode = scheduling_mode
+    
     for sequence_index, sequence in enumerate(sequences):
         sequence_add = packet.sequences.add()
         sequence_add.blanks[:] = sequence.blanks
@@ -802,7 +805,7 @@ def radar():
                                             options.dw_to_radctrl_identity, last_sequence_num, num_sequences,
                                             scan_flag, integration_period_time,
                                             aveperiod.sequences, slice_to_beamdir_dict,
-                                            experiment.cpid, experiment.experiment_name,
+                                            experiment.cpid, experiment.experiment_name, experiment.scheduling_mode,
                                             experiment.output_rx_rate, experiment.comment_string,
                                             experiment.decimation_scheme.filter_scaling_factors, experiment.rxctrfreq,
                                             debug_samples=debug_samples)

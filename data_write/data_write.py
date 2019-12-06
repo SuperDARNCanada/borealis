@@ -100,7 +100,7 @@ DATA_TEMPLATE = {
     "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
     "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
     "averaging_method" : None, # A string describing the averaging method. 
-    "scheduling_type" : None, # A string describing the type of scheduling time at the time of this dataset.
+    "scheduling_mode" : None, # A string describing the type of scheduling time at the time of this dataset.
     "main_acfs" : [], # Main array autocorrelations
     "intf_acfs" : [], # Interferometer array autocorrelations
     "xcfs" : [] # Crosscorrelations between main and interferometer arrays
@@ -703,7 +703,8 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs",
-            "xcfs", "noise_at_freq", "data_normalization_factor"]
+            "xcfs", "noise_at_freq", "data_normalization_factor", "slice_id", "slice_interfacing", 
+            "averaging_method", "scheduling_mode"]
             # note num_ranges not in needed_fields but are used to make
             # correlation_dimensions
 
@@ -772,7 +773,8 @@ class DataWrite(object):
             "pulses", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data",
             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range",
-            "lags", "num_ranges", "data_normalization_factor"]
+            "lags", "num_ranges", "data_normalization_factor", "slice_id", "slice_interfacing",
+            "scheduling_mode"]
 
             bfiq = data_parsing.bfiq_accumulator
 
@@ -837,7 +839,8 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors",
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
-            "data_normalization_factor", "blanked_samples"]
+            "data_normalization_factor", "blanked_samples", "slice_id", "slice_interfacing",
+            "scheduling_mode"]
 
             antenna_iq = data_parsing.antenna_iq_accumulator
 
@@ -928,7 +931,8 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
             "main_antenna_count", "intf_antenna_count", "samples_data_type",
             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
-            "rx_center_freq"]
+            "rx_center_freq", "blanked_samples", "slice_id", "slice_interfacing", 
+            "scheduling_mode"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
@@ -1055,6 +1059,7 @@ class DataWrite(object):
                 parameters['experiment_id'] = np.int64(integration_meta.experiment_id)
                 parameters['experiment_name'] = integration_meta.experiment_name
                 parameters['experiment_comment'] = integration_meta.experiment_comment
+                parameters['scheduling_mode'] = integration_meta.scheduling_mode
                 parameters['slice_comment'] = rx_freq.slice_comment
                 parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
