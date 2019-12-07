@@ -19,7 +19,6 @@ import numpy as np
 import itertools
 from scipy.constants import speed_of_light
 
-
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
@@ -36,9 +35,6 @@ interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
 
 INTERFACING TYPES:
-
-NONE
-    Only the default, must be changed.
 
 SCAN
     Scan by scan interfacing. exp_slice #1 will scan first
@@ -59,7 +55,7 @@ INTTIME
 
 INTEGRATION
     integration by integration interfacing (one
-    #pulse_sequence of one exp_slice, then the next). exp_slice #1 and
+    pulse_sequence of one exp_slice, then the next). exp_slice #1 and
     exp_slice #2 must have same intt and intn. Integrations will
     switch between one and the other until time is up/nave is
     reached.
@@ -375,10 +371,10 @@ class ExperimentPrototype(object):
         self._acf = False  # auto-correlation
         self._acfint = False  # interferometer auto-correlation.
 
-        self._interface = {}  # setup_interfacing(self.num_slices)
+        self.__interface = {} 
         # TODO discuss rephrasing the description of _interface as a graph with defined rules
-        # Dictionary of how each exp_slice interacts with the other slices. Default is "NONE" for
-        #  all, but must be modified in experiment. NOTE keys are as such: (0,1), (0,2), (1,2),
+        # Dictionary of how each exp_slice interacts with the other slices. 
+        # NOTE keys are as such: (0,1), (0,2), (1,2),
         # NEVER includes (2,0) etc. The only interface options are those specified in
         # interface_types.
 
@@ -724,7 +720,7 @@ class ExperimentPrototype(object):
         for all current slice_ids.
 
         """
-        return self._interface
+        return self.__interface
 
     @property
     def scan_objects(self):
@@ -751,7 +747,107 @@ class ExperimentPrototype(object):
             mapping[beam_num] = beam_dir
         return mapping
 
-    def add_slice(self, exp_slice, interfacing_dict=None):
+    def check_new_slice_interfacing(interfacing_dict):
+        """
+        Checks that the new slice plays well with its siblings (has interfacing
+        that is resolvable). If so, returns a new dictionary with all interfacing
+        values set. 
+
+        The interfacing assumes that the interfacing_dict given by the user defines 
+        the closest interfacing of the new slice with a slice. For example,
+        if the slice is to be PULSE combined with slice 0, the interfacing dict
+        should provide this information. If only 'SCAN' interfacing with slice 1
+        is provided, then that will be assumed to be the closest and therefore 
+        the interfacing with slice 0 will also be 'SCAN'.
+        
+        If no interfacing_dict is provided for a slice, the default 
+        is to do 'SCAN' type interfacing for the new slice with all other slices.
+
+        :param interfacing_dict: the user-provided interfacing dict, which may
+         be empty or incomplete. If empty, all interfacing is assumed to be = 
+         'SCAN' type. If it contains something, we ensure that the interfacing provided 
+         makes sense with the values already known for its closest sibling. 
+        :returns: full interfacing dictionary. 
+        :raises: ExperimentException if invalid interface types provided 
+         or if interfacing can not be resolved.
+        """
+                
+        for sibling_slice_id, interface_value in interfacing_dict.items():
+            if interface_value not in interface_types:
+                errmsg = 'Interface value with slice {}: {} not valid. Types available are:'\
+                         '{}'.format(sibling_slice_id, interface_value, interface_types)
+                raise ExperimentException(errmsg)
+
+        full_interfacing_dict = {}
+
+        # if this is not the first slice we are setting up, set up interfacing.
+        if len(self.slice_ids) != 0:       
+            if len(interfacing_dict.keys()) > 0:
+                # the user provided some keys, so check that keys are valid. 
+                # To do this, get the closest interface type.
+                # We assume that the user meant this to be the closest interfacing
+                # for this slice.
+                closest_sibling = list(interfacing_dict.keys())[0]
+                closest_interface_value = interfacing_dict[closest_sibling]
+                closest_interface_rank = interface_types.index(closest_interface_value)
+                for sibling_slice_id, sibling_interface_value in interfacing_dict:
+                    if sibling_slice_id not in self.slice_ids:
+                        errmsg = 'Cannot add slice: the interfacing_dict set interfacing to an unknown slice'\
+                                 '{} not in slice ids {}'.format(sibling_slice_id, self.slice_ids)
+                        raise ExperimentException(errmsg)
+                    sibling_interface_rank = interface_types.index(sibling_interface_value)
+                    if sibling_interface_rank > closest_interface_rank:
+                        closest_interface_value = sibling_interface_value
+                        closest_interface_rank = sibling_interface_rank
+                        closest_sibling = sibling_slice_id
+            else:
+                # the user provided no keys. The default is therefore 'SCAN'
+                # with all keys so the closest will be 'SCAN' (the furthest possible interface_type)
+                closest_sibling = self.slice_ids[0] 
+                closest_interface_value = 'SCAN'
+                closest_interface_rank = interface_types.index(closest_interface_value)
+
+            # now populate a full_interfacing_dict based on the closest sibling's
+            # interface values and knowing how we interface with that sibling.
+            # this is the only correct interfacing given the closest interfacing. 
+            full_interfacing_dict[closest_sibling] = closest_interface_value
+            for sibling_slice_id, siblings_interface_value in self.get_slice_interfacing(closest_sibling).items():
+                if interface_types.index(siblings_interface_value) >= closest_interface_rank:
+                    # in this case, the interfacing between the sibling 
+                    # and the closest sibling is closer than the closest interface for the new slice.
+                    # therefore interface with this sibling should be equal to the closest interface.
+                    # Or if they are all at the same rank, then the interfacing should equal that rank.
+                    # For example, slices 0 and 1 combined PULSE. New slice 2 is
+                    # added with closest interfacing INTEGRATION to slice 0. Slice
+                    # 0 will therefore also be interfaced with slice 1 as INTEGRATION
+                    # type, since both slices 0 and 1 are in a single INTEGRATION.
+                    full_interfacing_dict[sibling_slice_id] = closest_interface_value
+                else:  # the rank is less than the closest rank.
+                    # in this case, the interfacing to this sibling should be the same as the 
+                    # closest sibling interface to this sibling.
+                    # For example, slices 0 and 1 are combined SCAN and 
+                    # slice 2 is combined INTTIME with slice 0 (closest). Therefore if
+                    # should be combined SCAN with slice 1 since 0 and 2 are now 
+                    # within the same scan.       
+                    full_interfacing_dict[sibling_slice_id] = siblings_interface_value             
+
+            # now check everything provided by the user with the correct full_interfacing_dict 
+            # that was populated based on the closest sibling given by the user.
+            for sibling_slice_id, interface_value in interfacing_dict.items():
+                if interface_value != full_interfacing_dict[sibling_slice_id]:
+                    errmsg = 'The interfacing values of new slice cannot be reconciled. '\
+                             'Interfacing with slice {closest}: {interface1} and with slice '\
+                             '{other}: {interface2} does not make sense with existing interface between '\
+                             ' slices of {sibling_other}: {interface3}'.format(closest=closest_sibling,
+                                interface1=closest_interface_value, other=sibling_slice_id,
+                                interface2=interfacing_dict[sibling_slice_id], 
+                                sibling_other=([sibling_slice_id, closest_sibling].sort()),
+                                interface3=siblings_interface_value)
+                    raise ExperimentException() 
+
+        return full_interfacing_dict
+
+    def add_slice(self, exp_slice, interfacing_dict={}):
         """
         Add a slice to the experiment.
 
@@ -771,7 +867,7 @@ class ExperimentPrototype(object):
             # TODO multiple types of Exceptions so they can be caught by the experiment in these
             # add_slice, edit_slice, del_slice functions (and handled specifically)
 
-        exp_slice['slice_id'] = self.new_slice_id
+        add_slice_id = exp_slice['slice_id'] = self.new_slice_id
         # each added slice has a unique slice id, even if previous slices have been deleted.
         exp_slice['cpid'] = self.cpid
 
@@ -779,51 +875,49 @@ class ExperimentPrototype(object):
         # will complete a check_slice and raise any errors found.
         new_exp_slice = self.setup_slice(exp_slice)
 
+        # now check that the interfacing values make sense before appending. 
+        full_interfacing_dict = self.check_new_slice_interfacing(interfacing_dict)
+        for sibling_slice_id, interface_value in full_interfacing_dict:
+            # sibling_slice_id < new slice id so this maintains interface list requirement.
+            self.__interface[(sibling_slice_id, exp_slice['slice_id'])] = interface_value
+
         # if there were no errors raised in setup_slice, we will add the slice to the slice_dict.
-        self.__slice_dict[new_exp_slice['slice_id']] = new_exp_slice
+        self.__slice_dict[add_slice_id] = new_exp_slice
 
-        for ind in self.slice_ids:
-            if ind == new_exp_slice['slice_id']:
-                continue
-            try:
-                self._interface[(ind, new_exp_slice['slice_id'])] = interfacing_dict[ind]
-                # update to add interfacing. new slice_id will be greater than all others so
-                # we can add with ind first and maintain interfacing list rule of key1 < key2.
-            except (TypeError, IndexError, KeyError):
-                # if interfacing dictionary was not passed we will have TypeError
-                # if interfacing dictionary was passed but did not include all interfacing
-                # necessary (i.e. ind does not exist in interfacing dictionary), we will have
-                # IndexError - IndexError will always occur if called from  edit_slice because we
-                # have not removed the old slice_id yet and did not provide an interface for the
-                # new slice id with the old slice id TODO change this? (send an interface value of
-                # None for that key from edit_slice to add_slice?
-                self._interface[(ind, new_exp_slice['slice_id'])] = None
-                print('Interfacing not Fully Updated - Will Cause Errors so Please Update.')
-                # TODO log a warning if interfacing dictionary not updated at this time.
+        # reset all slice_interfacing since a slice has been added.
+        for slice_id in self.slice_ids:
+            self.__slice_dict[slice_id]['slice_interfacing'] = self.get_slice_interfacing(slice_id)   
 
-        return new_exp_slice['slice_id']
+        return add_slice_id
 
     def del_slice(self, remove_slice_id):
         """
         Remove a slice from the experiment.
 
         :param remove_slice_id: the id of the slice you'd like to remove.
+        :returns: a copy of the removed slice.
         :raises: exception if remove_slice_id does not exist in the slice dictionary.
         """
-
         try:
+            removed_slice = copy.deepcopy(self.slice_dict[remove_slice_id])
             del(self.slice_dict[remove_slice_id])
         except (IndexError, TypeError):
             errmsg = 'Cannot remove slice id {} : it does not exist in slice dictionary'.format(remove_slice_id)
             raise ExperimentException(errmsg)
 
         remove_keys = []
-        for key1, key2 in self._interface.keys():
+        for key1, key2 in self.__interface.keys():
             if key1 == remove_slice_id or key2 == remove_slice_id:
                 remove_keys.append((key1, key2))
 
         for keyset in remove_keys:
-            del self._interface[keyset]
+            del self.__interface[keyset]    
+
+        # reset all slice_interfacing since a slice has been removed.
+        for slice_id in self.slice_ids:
+            self.__slice_dict[slice_id]['slice_interfacing'] = self.get_slice_interfacing(slice_id)    
+
+        return removed_slice
 
     def edit_slice(self, edit_slice_id, **kwargs):
         """
@@ -832,16 +926,17 @@ class ExperimentPrototype(object):
         A quick way to edit a slice. In reality this is actually adding a new slice and
         deleting the old one. Useful for quick changes. Note that using this function
         will remove the slice_id that you are changing and will give it a new id. It will
-        account for this in the interfacing dictionary though.
+        account for this in the interfacing dictionary.
 
         :param edit_slice_id: the slice id of the slice to be edited.
         :param kwargs: dictionary of slice parameter to slice value that you want to
          change.
-        :returns new_slice_id: the new slice id of the edited slice.
+        :returns new_slice_id: the new slice id of the edited slice, or the edit_slice_id 
+         if no change has occurred due to failure of new slice parameters to pass experiment
+         checks.
         :raises: exceptions if the edit_slice_id does not exist in slice dictionary or
          the params or values do not make sense.
         """
-
         slice_params_to_edit = dict(kwargs)
 
         try:
@@ -859,24 +954,38 @@ class ExperimentPrototype(object):
                 errmsg = 'Cannot edit slice: {} not a valid slice parameter'.format(edit_slice_param)
                 raise ExperimentException(errmsg)
 
-        # Move the interface values from old slice to new slice.
-        new_interface_values = {}
-        for ifkey, ifvalue in self._interface.items():
-            if edit_slice_id == ifkey[0]:
-                new_interface_values[ifkey[1]] = ifvalue
-            elif edit_slice_id == ifkey[1]:
-                new_interface_values[ifkey[0]] = ifvalue
+        # Get the interface values of the slice. These are not editable, if 
+        # these are wished to be changed add_slice must be used explicitly 
+        # to interface a new slice.
+        interface_values = self.get_slice_interfacing(edit_slice_id) 
 
-        # This interface value will be removed when the slice is deleted.
-        new_interface_values[edit_slice_id] = None
+        removed_slice = self.del_slice(edit_slice_id)
 
-        # checks are done when slice is added.
-        new_slice_id = self.add_slice(edited_slice, new_interface_values)
+        try:
+            # checks are done on interfacing when slice is added.
+            # interfacing between existing slice_ids cannot be changed after addition.
+            new_slice_id = self.add_slice(edited_slice, interface_values)
+            return new_slice_id
 
-        # slice ids are checked after slice is removed, and interface values are removed.
-        self.del_slice(edit_slice_id)
+        except ExperimentException: 
+            # if any failure occurs when checking the slice, the slice has 
+            # not been added to the slice dictionary so we will 
+            # revert to old slice
+            self.__slice_dict[edit_slice_id] = removed_slice            
 
-        return new_slice_id
+            readd_keys = []
+            for key1, key1_interface in interface_values.items():
+                if key1 < edit_slice_id:
+                    self.__interface[(key1, edit_slice_id)] = key1_interface
+                else:
+                    self.__interface[(edit_slice_id, key1)] = key1_interface
+
+            # reset all slice_interfacing back
+            for slice_id in self.slice_ids:
+                self.__slice_dict[slice_id]['slice_interfacing'] = \
+                    self.get_slice_interfacing(slice_id)    
+
+            return edit_slice_id
 
     def __repr__(self):
         represent = 'self.cpid = {}\nself.num_slices = {}\nself.slice_ids = {}\nself.slice_keys = {}\nself.options = \
@@ -1455,8 +1564,6 @@ class ExperimentPrototype(object):
         if __debug__:
             print("No Self Check Errors. Continuing...")
 
-        self.check_interfacing()
-
     def check_slice(self, exp_slice):
         """
         Check the slice for errors.
@@ -1658,7 +1765,6 @@ class ExperimentPrototype(object):
                                 "scanbound times".format(exp_slice['slice_id']))
                             break
 
-
         # TODO other checks
 
         if exp_slice['wavetype'] != 'SINE':
@@ -1667,39 +1773,11 @@ class ExperimentPrototype(object):
 
         return error_list
 
-    def check_interfacing(self):
-        """
-        Check that the keys in the interface are not NONE and are valid. If they are valid,
-        update all slices' slice_interfacing key. This function is called whenever scans are built.
-        """
-
-        for key, interface_type in self.interface.items():
-            if interface_type == "NONE":
-                errmsg = 'Interfacing is still default, must set key {}'.format(key)
-                sys.exit(
-                    errmsg)  # TODO for error handling. Perhaps use exceptions instead. REPLY OK
-
-        for num1, num2 in self.interface.keys():
-            if num1 >= self.num_slices or num2 >= self.num_slices or num1 < 0 or num2 < 0:
-                # This is required for how I have it set up. Avoids any confusion
-                #  with keys [0,2] vs [2,0] for example. Because you could add your own keys I check it.
-                errmsg = """Interfacing key ({}, {}) is not valid, all keys must refer to (slice_id1,
-                slice_id2) where slice_id1 < slice_id2""".format(num1, num2)
-                sys.exit(errmsg)  # TODO for error handling. Perhaps use exceptions instead.
-            if self.interface[num1, num2] not in interface_types:
-                errmsg = 'Interfacing Not Valid Type between Slice_id {} and Slice_id {}'.format(
-                    num1, num2)
-                sys.exit(errmsg)  # TODO for error handling. Perhaps use exceptions instead.
-
-        # Interfacing is valid - set the slice dictionary's slice_interfacing key.
-        for slice_id in self.slice_ids:
-            self.__slice_dict[slice_id]['slice_interfacing'] = self.get_slice_interfacing(slice_id)
-
     def get_slice_interfacing(self, slice_id):
         """
         Check the experiment's interfacing dictionary for all interfacing that pertains to a
         given slice, and return the interfacing information in a dictionary.
-        :param slice_id: Slice ID to search the
+        :param slice_id: Slice ID to search the interface dictionary for.
         :return: interfacing dictionary for the slice.
         """
 
