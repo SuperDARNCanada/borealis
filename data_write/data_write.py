@@ -1068,6 +1068,7 @@ class DataWrite(object):
                 parameters['slice_comment'] = rx_freq.slice_comment
                 parameters['slice_id'] = rx_freq.slice_id
                 parameters['averaging_method'] = rx_freq.averaging_method
+                parameters['slice_interfacing'] = rx_freq.slice_interfacing
                 parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = integration_meta.num_sequences

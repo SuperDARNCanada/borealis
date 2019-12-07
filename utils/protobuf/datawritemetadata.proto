@@ -42,6 +42,7 @@ message IntegrationTimeMetadata {
       float range_sep = 18;
       LagTable ltab = 19;
       string averaging_method = 20;
+      string slice_interfacing = 21;
 
       message PulseTable {  // length = length of sequence
         repeated uint32 pulse_position = 1;
