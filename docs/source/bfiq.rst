@@ -174,10 +174,22 @@ The file fields in the bfiq array files are:
 | | *bool*                          | | a scan (scan is defined by the            |
 | | [num_records]                   | | experiment).                              |
 +-----------------------------------+---------------------------------------------+
+| | **scheduling_mode**             | | The mode being run during this time       | 
+| | *unicode*                       | | period (ex. 'common', 'special',          |
+| |                                 | | 'discretionary').                         |
++-----------------------------------+---------------------------------------------+
 | | **slice_comment**               | | Additional text comment that describes    |
 | | *unicode*                       | | the slice written in this file. The slice |
 | |                                 | | number of this file is provided in the    |
 | |                                 | | filename.                                 | 
++-----------------------------------+---------------------------------------------+
+| | **slice_id**                    | | The slice id of this file.                |
+| | *uint32*                        | |                                           |
++-----------------------------------+---------------------------------------------+ 
+| | **slice_interfacing**           | | The interfacing of this slice to          | 
+| | *unicode*                       | | other slices. String representation of    |
+| |                                 | | the python dictionary of                  | 
+| |                                 | | {slice : interface_type, ... }            | 
 +-----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**              | | A list of GPS timestamps corresponding to |
 | | *float64*                       | | the beginning of transmission for each    | 
@@ -341,11 +353,21 @@ The file fields under the record name in bfiq site files are:
 | | *bool*                         | | a scan (scan is defined by the            | 
 | |                                | | experiment).                              |
 +----------------------------------+---------------------------------------------+
-| | **slice_comment**              | | Additional text comment that describes    | 
-| | *unicode*                      | | the slice written in this file. The slice | 
-| |                                | | number of this file is provided in the    | 
-| |                                | | filename.                                 |
-+----------------------------------+---------------------------------------------+
+| | **scheduling_mode**            | | The mode being run during this time       | 
+| | *unicode*                      | | period (ex. 'common', 'special',          |
+| |                                | | 'discretionary').                         |
++-----------------------------------+--------------------------------------------+
+| | **slice_comment**              | | Additional text comment that describes    |
+| | *unicode*                      | | the slice written in this file.           |
++-----------------------------------+--------------------------------------------+
+| | **slice_id**                   | | The slice id of this file.                |
+| | *uint32*                       | |                                           |
++-----------------------------------+--------------------------------------------+ 
+| | **slice_interfacing**          | | The interfacing of this slice to          | 
+| | *unicode*                      | | other slices. String representation of    |
+| |                                | | the python dictionary of                  | 
+| |                                | | {slice : interface_type, ... }            | 
++-----------------------------------+--------------------------------------------+
 | | **sqn_timestamps**             | | A list of GPS timestamps corresponding to | 
 | | *[float64, ]*                  | | the beginning of transmission for each    | 
 | |                                | | sampling period in the integration time.  | 

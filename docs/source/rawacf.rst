@@ -26,10 +26,18 @@ These files are zlib compressed which is native to hdf5 and no decompression is 
 The file fields in the rawacf array files are:
 
 +-----------------------------------+---------------------------------------------+
-| | **FIELD NAME**                  | **description**                             |
-| | *type*                          |                                             |
-| | [dimensions]                    |                                             |
-+===================================+=============================================+
+| | **FIELD NAME**                  | **description**                             | 
+| | *type*                          |                                             | 
+| | [dimensions]                    |                                             | 
++===================================+=============================================+ 
+| | **averaging_method**            | | A string describing the averaging method. | 
+| | *unicode*                       | | Default is 'mean' but an experiment can   | 
+| |                                 | | set this to 'median' to get the median of | 
+| |                                 | | all sequences in an integration period,   | 
+| |                                 | | and other methods to combine all          | 
+| |                                 | | sequences in an integration period could  | 
+| |                                 | | be added in the future.                   | 
++-----------------------------------+---------------------------------------------+ 
 | | **beam_azms**                   | | A list of the beam azimuths for each beam |
 | | *float64*                       | | in degrees off boresite. Note that this   |
 | | [num_records x                  | | is padded with zeroes for any record      |
@@ -163,10 +171,20 @@ The file fields in the rawacf array files are:
 | | *bool*                          | | a scan (scan is defined by the            |
 | | [num_records]                   | | experiment).                              |
 +-----------------------------------+---------------------------------------------+
+| | **scheduling_mode**             | | The mode being run during this time       | 
+| | *unicode*                       | | period (ex. 'common', 'special',          |
+| |                                 | | 'discretionary').                         |
++-----------------------------------+---------------------------------------------+
 | | **slice_comment**               | | Additional text comment that describes    |
-| | *unicode*                       | | the slice written in this file. The slice |
-| |                                 | | number of this file is provided in the    |
-| |                                 | | filename.                                 | 
+| | *unicode*                       | | the slice written in this file.           |
++-----------------------------------+---------------------------------------------+
+| | **slice_id**                    | | The slice id of this file.                |
+| | *uint32*                        | |                                           |
++-----------------------------------+---------------------------------------------+ 
+| | **slice_interfacing**           | | The interfacing of this slice to          | 
+| | *unicode*                       | | other slices. String representation of    |
+| |                                 | | the python dictionary of                  | 
+| |                                 | | {slice : interface_type, ... }            | 
 +-----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**              | | A list of GPS timestamps corresponding to |
 | | *float64*                       | | the beginning of transmission for each    | 
@@ -222,6 +240,14 @@ The file fields under the record name in rawacf site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |  
 +==================================+=============================================+
+| | **averaging_method**           | | A string describing the averaging method. | 
+| | *unicode*                      | | Default is 'mean' but an experiment can   | 
+| |                                | | set this to 'median' to get the median of | 
+| |                                | | all sequences in an integration period,   | 
+| |                                | | and other methods to combine all          | 
+| |                                | | sequences in an integration period could  | 
+| |                                | | be added in the future.                   | 
++-----------------------------------+--------------------------------------------+ 
 | | **beam_azms**                  | | A list of the beam azimuths for each      |
 | | *[float64, ]*                  | | beam in degrees off boresite.             |
 +----------------------------------+---------------------------------------------+
@@ -324,11 +350,21 @@ The file fields under the record name in rawacf site files are:
 | | *bool*                         | | a scan (scan is defined by the            | 
 | |                                | | experiment).                              |
 +----------------------------------+---------------------------------------------+
-| | **slice_comment**              | | Additional text comment that describes    | 
-| | *unicode*                      | | the slice written in this file. The slice | 
-| |                                | | number of this file is provided in the    | 
-| |                                | | filename.                                 |
-+----------------------------------+---------------------------------------------+
+| | **scheduling_mode**            | | The mode being run during this time       | 
+| | *unicode*                      | | period (ex. 'common', 'special',          |
+| |                                | | 'discretionary').                         |
++-----------------------------------+--------------------------------------------+
+| | **slice_comment**              | | Additional text comment that describes    |
+| | *unicode*                      | | the slice written in this file.           |
++-----------------------------------+--------------------------------------------+
+| | **slice_id**                   | | The slice id of this file.                |
+| | *uint32*                       | |                                           |
++-----------------------------------+--------------------------------------------+ 
+| | **slice_interfacing**          | | The interfacing of this slice to          | 
+| | *unicode*                      | | other slices. String representation of    |
+| |                                | | the python dictionary of                  | 
+| |                                | | {slice : interface_type, ... }            | 
++-----------------------------------+--------------------------------------------+
 | | **sqn_timestamps**             | | A list of GPS timestamps corresponding to | 
 | | *[float64, ]*                  | | the beginning of transmission for each    | 
 | |                                | | sampling period in the integration time.  | 
