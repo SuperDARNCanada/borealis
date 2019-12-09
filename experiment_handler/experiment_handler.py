@@ -47,7 +47,7 @@ def usage_msg():
     :returns: the usage message
     """
 
-    usage_message = """ experiment_handler.py [-h] experiment_module
+    usage_message = """ experiment_handler.py [-h] experiment_module scheduling_mode_type
     
     Pass the module containing the experiment to the experiment handler as a required 
     argument. It will search for the module in the BOREALISPATH/experiment_prototype 
@@ -77,11 +77,13 @@ def experiment_parser():
     parser.add_argument("experiment_module", help="The name of the module in the experiment_prototype "
                                                   "package that contains your Experiment class, "
                                                   "e.g. normalscan")
+    parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
+                                                     "run, e.g. common, special, or discretionary.")
 
     return parser
 
 
-def retrieve_experiment():
+def retrieve_experiment(experiment_module_name):
     """
     Retrieve the experiment class from the provided module given as an argument.
 
@@ -90,13 +92,10 @@ def retrieve_experiment():
     :returns: Experiment, the experiment class, inherited from ExperimentPrototype.
     """
 
-    parser = experiment_parser()
-    args = parser.parse_args()
-
     if __debug__:
-        printing("Running the experiment: " + args.experiment_module)
-    experiment = args.experiment_module
-    experiment_mod = importlib.import_module("experiments." + experiment)
+        printing("Running the experiment: " + experiment_module_name)
+    experiment_mod = importlib.import_module("experiments." + experiment_module_name)
+
 
     experiment_classes = {}
     for class_name, obj in inspect.getmembers(experiment_mod, inspect.isclass):
@@ -170,7 +169,13 @@ def experiment_handler(semaphore):
     exp_handler_to_radar_control = sockets_list[0]
     exp_handler_to_dsp = sockets_list[1]
 
-    Experiment = retrieve_experiment()
+    parser = experiment_parser()
+    args = parser.parse_args()
+
+    experiment_name = args.experiment_module
+    scheduling_mode_type = args.scheduling_mode_type
+
+    Experiment = retrieve_experiment(experiment_name)
     experiment_update = False
     for method_name, obj in inspect.getmembers(Experiment, inspect.isfunction):
         if method_name == 'update':
@@ -181,6 +186,7 @@ def experiment_handler(semaphore):
             printing("Experiment has an updated method.")
 
     exp = Experiment()
+    exp._set_scheduling_mode(scheduling_mode_type)
     change_flag = True
 
     def update_experiment():

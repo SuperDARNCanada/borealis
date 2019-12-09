@@ -216,6 +216,7 @@ therefore ignored.
 """
 
 possible_averaging_methods = frozenset(['mean', 'median'])
+possible_scheduling_modes = frozenset(['common', 'special', 'discretionary'])
 default_rx_bandwidth = 5.0e6
 default_output_rx_rate = 10.0e3/3
 
@@ -257,7 +258,7 @@ class ExperimentPrototype(object):
     __default_output_rx_rate = default_output_rx_rate
     __default_rx_bandwidth = default_rx_bandwidth
 
-    def __init__(self, cpid, scheduling_mode, output_rx_rate=default_output_rx_rate,
+    def __init__(self, cpid, output_rx_rate=default_output_rx_rate,
                  rx_bandwidth=default_rx_bandwidth, tx_bandwidth=5.0e6, txctrfreq=12000.0,
                  rxctrfreq=12000.0,
                  decimation_scheme=create_default_scheme(),
@@ -265,8 +266,6 @@ class ExperimentPrototype(object):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
-        :param scheduling_mode: the type of scheduling mode for this experiment time, 
-         current types are 'common', 'discretionary', or 'special'.
         :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz.
          Cannot be changed after instantiation.
         :param rx_bandwidth: The desired bandwidth for the experiment. Directly determines rx
@@ -291,7 +290,7 @@ class ExperimentPrototype(object):
 
         self.__cpid = cpid
 
-        self.__scheduling_mode = scheduling_mode
+        self.__scheduling_mode = 'unknown'
 
         self.__output_rx_rate = float(output_rx_rate)
 
@@ -730,6 +729,29 @@ class ExperimentPrototype(object):
         These cannot be modified by the user, but are created using the slice dictionary.
         """
         return self.__scan_objects
+
+    @property
+    def scheduling_mode(self):
+        """
+        Return the scheduling mode time type that this experiment is running
+        in. Types are listed in possible_scheduling_modes. Initialized to 
+        'unknown' until set by the experiment handler. 
+        """
+        return self.__scheduling_mode
+
+    def _set_scheduling_mode(self, scheduling_mode):
+        """
+        Set the scheduling mode if the provided mode is valid. Should only
+        be called by the experiment handler after initializing the user's 
+        class.
+        """
+        if scheduling_mode in possible_scheduling_modes:
+            self.__scheduling_mode = scheduling_mode
+        else:
+            errmsg = 'Scheduling mode {} set by experiment handler is not '\
+                     ' a valid mode: {}'.format(scheduling_mode, 
+                            possible_scheduling_modes)
+            raise ExperimentException(errmsg)
 
     def slice_beam_directions_mapping(self, slice_id):
         """
