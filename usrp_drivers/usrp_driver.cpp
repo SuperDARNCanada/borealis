@@ -127,8 +127,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   uhd::time_spec_t sequence_start_time;
   uhd::time_spec_t initialization_time;
 
-  bool agc_high;
-  bool lp_high;
+  bool agc_status;
+  bool lp_status;
   double seqtime;
 
   double agc_signal_read_delay = driver_options.get_agc_signal_read_delay() * 1e-6;
@@ -142,7 +142,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   memcpy(&initialization_time, static_cast<uhd::time_spec_t*>(request.data()), request.size());
 
 
-   /*This loop accepts pulse by pulse from the radar_control. It parses the samples, configures the
+  /* Initialize previous states of agc and lp pins, so we can print it out only when they change.
+   * Use value of 2 for init state, since it will only ever be 0 (good) or 1 (bad) in operation */
+  auto prev_agc_status = 2;
+  auto prev_lp_status = 2;
+  /* Use a counter to print out the AGC status and Low power signals periodically */
+  auto counter = 0;
+
+  /*This loop accepts pulse by pulse from the radar_control. It parses the samples, configures the
     *USRP, sets up the timing, and then sends samples/timing to the USRPs.
     */
   while (1)
@@ -323,14 +330,23 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             usrp_d.set_command_time(read_time);
             uint32_t pin_status = usrp_d.get_gpio_state();
             usrp_d.clear_command_time();
-            if (pin_status & driver_options.get_agc_st())  {
+            agc_status = pin_status & driver_options.get_agc_st();
+	    lp_status = pin_status & driver_options.get_lo_pwr();
+	    /*if (pin_status & driver_options.get_agc_st())  {
               agc_high = true;
             }
             if (pin_status & driver_options.get_lo_pwr())  {
               lp_high = true;
-            }
+            }*/
+	    if (agc_status != prev_agc_status) RUNTIME_MSG("AGC: " << COLOR_BLUE(agc_status));
+	    if (lp_status != prev_lp_status) RUNTIME_MSG("LP: " << COLOR_BLUE(lp_status));
+	    prev_agc_status = agc_status;
+	    prev_lp_status = lp_status;
+            counter++;
+	    //if (counter % 50 == 0) RUNTIME_MSG("AGC: " << COLOR_BLUE(agc_status) << "LP: " << COLOR_MAGENTA(lp_status));
+	    if (counter % 50 == 0) RUNTIME_MSG("pin status " << COLOR_BLUE(pin_status));
 
-            for (uint32_t i=0; i<pulses.size(); i++) {
+	    for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
               std::vector<size_t> acks(tx_channels.size(),0);
               std::vector<size_t> lates(tx_channels.size(),0);
@@ -394,8 +410,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     samples_metadata.set_sequence_num(sqn_num);
     auto actual_finish = box_time;
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
-    samples_metadata.set_agc_high(agc_high);
-    samples_metadata.set_lp_high(lp_high);
+    samples_metadata.set_agc_high(agc_status);
+    samples_metadata.set_lp_high(lp_status);
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);
 

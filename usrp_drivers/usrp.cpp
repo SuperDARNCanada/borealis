@@ -437,17 +437,29 @@ void USRP::clear_command_time()
 void USRP::set_atr_gpios()
 {
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+	  /*
     usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0xFFFF, 0b11111111, i);
     usrp_->set_gpio_attr(gpio_bank_, "DDR", 0xFFFF, 0b11111111, i);
+    */
+    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0b11110000111111111, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_, "DDR",  0b11110000111111111, 0xFFFF, i);
 
     //XX is the actual TR signal
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, atr_xx_, i);
+    /*usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, atr_xx_, i);
 
     usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, atr_rx_, i);
 
     usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, atr_tx_, i);
 
     usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, atr_0x_, i);
+*/
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", atr_xx_, 0xFFFF, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", atr_rx_, 0xFFFF, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", atr_tx_, 0xFFFF, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", atr_0x_, 0xFFFF, i);
 
   }
 }
@@ -460,11 +472,11 @@ void USRP::set_input_gpios()
 {
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
     // CTRL 0 sets the pins in gpio mode, DDR 0 sets them as inputs
-    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0x0000, agc_st_, i);
-    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0x0000, lo_pwr_, i);
+    usrp_->set_gpio_attr(gpio_bank_, "CTRL", agc_st_, 0x0000, i);
+    usrp_->set_gpio_attr(gpio_bank_, "CTRL", lo_pwr_, 0x0000, i);
 
-    usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x0000, agc_st_, i);
-    usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x0000, lo_pwr_, i);
+    usrp_->set_gpio_attr(gpio_bank_, "DDR", agc_st_, 0x0000, i);
+    usrp_->set_gpio_attr(gpio_bank_, "DDR", lo_pwr_, 0x0000, i);
 
   }
 }
