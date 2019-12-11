@@ -399,16 +399,6 @@ class ExperimentPrototype(object):
         return self.__cpid
 
     @property
-    def scheduling_mode(self):
-        """
-        This experiment's CPID (control program ID, a term that comes from ROS).
-
-        The CPID is read-only once established in instantiation.
-        """
-
-        return self.__scheduling_mode
-
-    @property
     def experiment_name(self):
         """
         The experiment class name.
