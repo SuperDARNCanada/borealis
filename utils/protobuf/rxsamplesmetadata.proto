@@ -10,6 +10,6 @@ message RxSamplesMetadata {
   double initialization_time = 5;
   double sequence_start_time = 6;
   uint64 ringbuffer_size = 7;
-  bool agc_high = 8;
-  bool lp_high = 9;
+  repeated bool agc_status = 8;
+  repeated bool lp_status = 9;
 }
