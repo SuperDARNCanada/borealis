@@ -122,8 +122,8 @@ class Scan(ScanClassBase):
             self.nested_beamdir = {}
             for slice_id in inttime_list:
                 if len(self.scan_beams[slice_id]) != len(self.scan_beams[inttime_list[0]]):
-                    errmsg = """Slice {} and {} are combined within the AveragingPeriod but do not
-                        have the same number of AveragingPeriods in their
+                    errmsg = """Slice {} and {} are INTEGRATION or PULSE interfaced but do not
+                        have the same number of integrations in their
                         scan""".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
                 else:
