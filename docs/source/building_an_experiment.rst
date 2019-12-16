@@ -262,7 +262,8 @@ Integration interfacing allows for pulse sequences defined in the slices to alte
     Slices which are interfaced in this manner must share:
         - the same SCANBOUND value.
         - the same INTT or INTN value.
-
+        - the same BEAM_ORDER length (scan length)
+        
 4. PULSE. 
 Pulse interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences mixed and layered together so that the data transmits at the same time. For example, slices of different frequencies can be mixed simultaneously, and slices of different pulse sequences can also run together at the cost of having more blanked samples. When slices are interfaced in this way the radar is truly transmitting and receiving the slices simultaneously.
     Slices which are interfaced in this manner must share:
