@@ -665,27 +665,31 @@ def radar():
                             time_elapsed = integration_period_start_time - start_scan
                             if beam_iter < len(scan.scanbound) - 1:
                                 scanbound_time = scan.scanbound[beam_iter+1] - scan.scanbound[0]
-                                beam_time = scanbound_time - time_elapsed.total_seconds()
+                                bound_time_remaining = scanbound_time - time_elapsed.total_seconds()
                             else:
                                 bound_minute = round_up_time(integration_period_start_time +
                                                 timedelta(milliseconds=aveperiod.intt))
-                                beam_time = bound_minute - integration_period_start_time
-                                beam_time = beam_time.total_seconds()
+                                bound_time_remaining = bound_minute - integration_period_start_time
+                                bound_time_remaining = bound_time_remaining.total_seconds()
 
-                            msg = "beam {}: beam_time {}s"
+                            msg = "beam {}: bound_time_remaining {}s"
                             msg = msg.format(sm.COLOR("yellow", beam_iter),
-                                             sm.COLOR("blue", beam_time))
+                                             sm.COLOR("blue", bound_time_remaining))
                             rad_ctrl_print(msg)
 
-                            if beam_time < aveperiod.intt*1e-3:
-                                    #TODO maybe log skipping beam?
-                                msg = "Scan time too long, skipping beam {}"
-                                msg = msg.format(sm.COLOR("yellow", beam_iter))
-                                rad_ctrl_print(msg)
-                                continue
-                        integration_period_done_time = integration_period_start_time + \
+                            if bound_time_remaining < aveperiod.intt*1e-3:
+                                # reduce the integration period to only the time remaining
+                                # until the next scan boundary.
+                                integration_period_done_time = integration_period_start_time + \
+                                            timedelta(milliseconds=bound_time_remaining * 1e3) #ms
+                            else:
+                                integration_period_done_time = integration_period_start_time + \
                                             timedelta(milliseconds=aveperiod.intt) #ms
-                    else:
+                        else:  # no scanbound for this scan
+                            integration_period_done_time = integration_period_start_time + \
+                                            timedelta(milliseconds=aveperiod.intt) #ms
+
+                    else:  # intt does not exist, therefore using intn
                         intt_break = False
                         ending_number_of_sequences = aveperiod.intn # this will exist
 

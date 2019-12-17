@@ -45,6 +45,7 @@ class Twofsound(ExperimentPrototype):
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
+            "scanbound" : [i * 3.5 for i in range(len(beams_to_use))],
             "txfreq" : freqs[0], #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing

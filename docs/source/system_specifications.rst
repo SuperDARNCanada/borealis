@@ -4,14 +4,14 @@ SuperDARN Canada System Specifications
 =======================
 Digital Radio Equipment
 =======================
-
+- NOTE : ALL cables are phase matched unless specified otherwise
 - 17x Ettus USRP N200 (16 and 1 spare)
 
     - 17x Ettus LFTX daughterboards
     - 17x Ettus LFRX daughterboards
 - 1x Ettus Octoclock-g (includes GPSDO)
 - 2x Ettus Octoclock
-- 39x 10" SMA Female to Male RG-316 for daughterboards
+- 39x ~8 1/4" SMA bulkhead Female to Male RG-316 for daughterboards
 - 18x 24" SMA Male to Male RG-316 for PPS signals
 - 18x 24" SMA Male to Male RG-316 for 10MHz REF signals
 - GPS Antenna (SMA connector)
