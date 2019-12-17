@@ -99,7 +99,7 @@ DATA_TEMPLATE = {
     "data" : [], # A contiguous set of samples (complex float) at given sample rate
     "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
     "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
-    "averaging_method" : None, # A string describing the averaging method. 
+    "averaging_method" : None, # A string describing the averaging method.
     "scheduling_mode" : None, # A string describing the type of scheduling time at the time of this dataset.
     "main_acfs" : [], # Main array autocorrelations
     "intf_acfs" : [], # Interferometer array autocorrelations
@@ -703,7 +703,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs",
-            "xcfs", "noise_at_freq", "data_normalization_factor", "slice_id", "slice_interfacing", 
+            "xcfs", "noise_at_freq", "data_normalization_factor", "slice_id", "slice_interfacing",
             "averaging_method", "scheduling_mode"]
             # note num_ranges not in needed_fields but are used to make
             # correlation_dimensions
@@ -726,12 +726,12 @@ class DataWrite(object):
                 # so we get median of all sequences.
                 averaging_method = parameters['averaging_method']
                 array_2d = np.array(x, dtype=np.complex64)
-                if averaging_method = 'mean':
-                    array_expectation_value = np.mean(array_2d, axis=0) 
-                elif averaging_method = 'median':
+                if averaging_method == 'mean':
+                    array_expectation_value = np.mean(array_2d, axis=0)
+                elif averaging_method == 'median':
                     array_expectation_value = np.median(array_2d, axis=0)
                 else:
-                    raise ValueError('Averaging Method could not be executed: {}'.format(averaging_method))                   
+                    raise ValueError('Averaging Method could not be executed: {}'.format(averaging_method))
                 parameters[field_name] = array_expectation_value
 
             for slice_id in main_acfs:
@@ -936,7 +936,7 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
             "main_antenna_count", "intf_antenna_count", "samples_data_type",
             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
-            "rx_center_freq", "blanked_samples", "slice_id", "slice_interfacing", 
+            "rx_center_freq", "blanked_samples", "slice_id", "slice_interfacing",
             "scheduling_mode"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected

@@ -40,7 +40,7 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False):
     """
 
     start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.sh {experiment} {scheduling_mode} release'"
-    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment, 
+    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment,
         scheduling_mode=scheduling_mode)
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
