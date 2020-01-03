@@ -481,14 +481,22 @@ def get_relevant_lines(scd_util, time_of_interest):
     while not found:
 
         if not relevant_lines:
-            msg = "Error in schedule: Could not find any relevant_lines. Either no lines exist "
+            msg = "Error in schedule: Could not find any relevant_lines. Either no lines exist " \
             "or an infinite duration line could not be found."
 
             raise ValueError(msg)
 
-        if relevant_lines[0]['duration'] == '-':
-            found = True
-        else:
+        lines_dict = {}
+        for line in relevant_lines:
+            if line['timestamp'] not in lines_dict:
+                lines_dict[line['timestamp']] = []
+            lines_dict[line['timestamp']].append(line)
+
+        for line in lines_dict[list(lines_dict)[0]]:
+            if line['duration'] == '-':
+                found = True
+
+        if found != True:
             time -= datetime.timedelta(days=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
@@ -496,7 +504,7 @@ def get_relevant_lines(scd_util, time_of_interest):
 
             new_relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
             if not new_relevant_lines:
-                msg = "Error in schedule: Could not find any relevant_lines. Either no lines exist "
+                msg = "Error in schedule: Could not find any relevant_lines. Either no lines exist "\
                 "or an infinite duration line could not be found."
 
                 raise ValueError(msg)
