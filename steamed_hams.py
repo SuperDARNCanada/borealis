@@ -121,13 +121,6 @@ c_progs = ['usrp_driver', 'signal_processing']
 for cprg in c_progs:
     modules[cprg] = "source mode {}; {} {}".format(mode, c_debug_opts, cprg)
 
-
-# add sleep to other commands to allow router process to configure
-# sleep_time = "sleep 0.001s;"
-# for mod in modules:
-#     if mod != "brian":
-#         modules[mod] = sleep_time + modules[mod]
-
 #Configure terminal output to also go to file.
 logfile_timestamp = datetime.datetime.utcnow().strftime("%Y.%m.%d.%H:%M")
 for mod in modules:
