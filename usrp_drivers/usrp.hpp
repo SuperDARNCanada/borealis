@@ -45,6 +45,9 @@ class USRP{
     uhd::tx_streamer::sptr get_usrp_tx_stream();
     uhd::usrp::multi_usrp::sptr get_usrp();
     std::string to_string(std::vector<size_t> tx_chs, std::vector<size_t> rx_chs);
+    void invert_test_mode();
+    void set_test_mode();
+    void clear_test_mode();
 
   private:
     //! A shared pointer to a new multi-USRP device.
@@ -80,6 +83,9 @@ class USRP{
     //! Bitmask used for lo pwr signal
     uint32_t lo_pwr_;
 
+    //! Bitmask used for test mode signal
+    uint32_t test_mode_;
+
     //! The tx rate in Hz.
     float tx_rate_;
 
@@ -91,8 +97,11 @@ class USRP{
     uhd::rx_streamer::sptr rx_stream_;
 
     void set_atr_gpios();
+    
+    void set_output_gpios();
 
     void set_input_gpios();
+
 
 };
 

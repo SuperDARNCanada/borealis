@@ -36,6 +36,7 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   atr_xx_ = driver_options.get_atr_xx();
   atr_0x_ = driver_options.get_atr_0x();
   agc_st_ = driver_options.get_agc_st();
+  test_mode_ = driver_options.get_test_mode();
   lo_pwr_ = driver_options.get_lo_pwr();
   tx_rate_ = tx_rate;
   rx_rate_ = rx_rate;
@@ -51,6 +52,7 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   set_time_source(driver_options.get_pps(), driver_options.get_clk_addr());
   check_ref_locked();
   set_atr_gpios();
+  set_output_gpios();
   set_input_gpios();
 
   set_tx_rate(driver_options.get_transmit_channels());
@@ -441,7 +443,7 @@ void USRP::set_atr_gpios()
     usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0xFFFF, 0b11111111, i);
     usrp_->set_gpio_attr(gpio_bank_, "DDR", 0xFFFF, 0b11111111, i);
     */
-    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0b11110000111111111, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0b11000000111111111, 0xFFFF, i);
     usrp_->set_gpio_attr(gpio_bank_, "DDR",  0b11110000111111111, 0xFFFF, i);
 
     //XX is the actual TR signal
@@ -462,6 +464,38 @@ void USRP::set_atr_gpios()
     usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", atr_0x_, 0xFFFF, i);
 
   }
+}
+
+/**
+* @brief      Sets the pins mapping the test mode signal as GPIO
+*             outputs.
+*/
+void USRP::set_output_gpios()
+{
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    // CTRL 0 sets the pins in gpio mode, DDR 1 sets them as outputs
+    usrp_->set_gpio_attr(gpio_bank_, "CTRL", test_mode_, 0x0000, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "DDR", test_mode_, 0x1111, i);
+
+    usrp_->set_gpio_attr(gpio_bank_, "OUT", test_mode_, 0x0000, i);
+  }
+}
+
+void USRP::invert_test_mode()
+{
+  uint32_t tm_value = usrp_->get_gpio_attr(gpio_bank_, "OUT");
+  usrp_->set_gpio_attr(gpio_bank_, "OUT", test_mode_, ~tm_value);
+}
+
+void USRP::set_test_mode()
+{
+  usrp_->set_gpio_attr(gpio_bank_, "OUT", test_mode_, 0xFFFF);
+}
+
+void USRP::clear_test_mode()
+{
+  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0x0000, test_mode_);
 }
 
 /**

@@ -345,6 +345,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             counter++;
 	    //if (counter % 50 == 0) RUNTIME_MSG("AGC: " << COLOR_BLUE(agc_status) << "LP: " << COLOR_MAGENTA(lp_status));
 	    if (counter % 50 == 0) RUNTIME_MSG("pin status " << COLOR_BLUE(pin_status));
+	    if (counter % 100 == 0) {
+		/* alternate test mode */ 
+		if (pin_status & driver_options.get_test_mode()) {
+			usrp_d.clear_test_mode();
+		} else {
+			usrp_d.set_test_mode();
+		}
+	    }
 
 	    for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
