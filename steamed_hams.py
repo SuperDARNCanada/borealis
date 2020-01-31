@@ -122,11 +122,14 @@ for cprg in c_progs:
     modules[cprg] = "source mode {}; {} {}".format(mode, c_debug_opts, cprg)
 
 #Configure terminal output to also go to file.
-logfile_timestamp = datetime.datetime.utcnow().strftime("%Y.%m.%d.%H:%M")
+now = datetime.datetime.utcnow()
+day_dir = now.strftime("%Y%m%d")
+logfile_timestamp = now.strftime("%Y.%m.%d.%H:%M")
+log_dir = os.environ['BOREALISPATH'] + "/logs/" + day_dir
+sp.call("mkdir -p " + log_dir, shell=True)
 for mod in modules:
     basic_screen_cmd = modules[mod] + " 2>&1 | tee {path}/{timestamp}-{module}; bash"
-    path = os.environ['BOREALISPATH']+"/logs"
-    modules[mod] = basic_screen_cmd.format(path=path,timestamp=logfile_timestamp, module=mod)
+    modules[mod] = basic_screen_cmd.format(path=log_dir,timestamp=logfile_timestamp, module=mod)
 
 screenrc = BOREALISSCREENRC.format(
     START_RT=modules['realtime'],
