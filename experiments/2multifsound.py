@@ -41,7 +41,7 @@ class TwoMultifsound(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": 3500,  # duration of an integration, in ms
+            "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "txfreq" : freqs[0], #kHz

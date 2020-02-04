@@ -29,10 +29,10 @@ class Politescan(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": scf.STD_NUM_RANGES,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": 3500,  # duration of an integration, in ms
+            "intt": scf.INTT_8P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
-            "scanbound" : [i * 3.5 for i in range(len(beams_to_use))],
+            "scanbound" : [i * scf.INTT_8P * 1e-3 for i in range(len(beams_to_use))],
             "rxfreq" : 10500, #kHz
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

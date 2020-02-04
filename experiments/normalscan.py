@@ -33,10 +33,10 @@ class Normalscan(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": 3500,  # duration of an integration, in ms
+            "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
-            "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
+            "scanbound": [i * scf.INTT_7P * 1e-3 for i in range(len(beams_to_use))], #1 min scan
             "txfreq" : 10500, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing

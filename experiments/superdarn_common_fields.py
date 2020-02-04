@@ -12,9 +12,11 @@ RX_RATE_15KM = 10.0e3
 
 SEQUENCE_7P = [0, 9, 12, 20, 22, 26, 27]
 TAU_SPACING_7P = 2400 #us
+INTT_7P = 3750
 
 SEQUENCE_8P = [0, 14, 22, 24, 27, 31, 42, 43]
 TAU_SPACING_8P = 1500 #us
+INTT_8P = 3750
 
 STD_8P_LAG_TABLE = [[ 0, 0],
                     [42,43],
