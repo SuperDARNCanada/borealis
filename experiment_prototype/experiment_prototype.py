@@ -1616,13 +1616,15 @@ class ExperimentPrototype(object):
 
                 # Check if any scanbound times are shorter than the intt.
                 if len(exp_slice['scanbound']) == 1:
-                    if exp_slice['scanbound'][0] * 1000 < exp_slice['intt']:
+                    tolerance = math.isclose(exp_slice['scanbound'][0] * 1000, exp_slice['intt'])
+                    if not tolerance:
                         error_list.append("Slice {} intt longer than "
                             "scanbound times".format(exp_slice['slice_id']))
                 else:
                     for i in range(len(exp_slice['scanbound']) - 1):
-                        if ((exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000 <
-                            exp_slice['intt']):
+                        beam_time = (exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000
+                        tolerance = math.isclose(beam_time, exp_slice['intt'])
+                        if not tolerance:
                             error_list.append("Slice {} intt longer than "
                                 "scanbound times".format(exp_slice['slice_id']))
                             break

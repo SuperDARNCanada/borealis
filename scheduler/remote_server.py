@@ -224,7 +224,7 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
 
 
 
-def convert_scd_to_timeline(scd_lines):
+def convert_scd_to_timeline(scd_lines, time_of_interest):
     """ Creates a true timeline from the scd lines, accounting for priority and duration of each
     line. Will reorder and add breaks to lines to account for differing priorities and durations.
     Keep the same line format.
@@ -250,6 +250,7 @@ def convert_scd_to_timeline(scd_lines):
     Args:
         scd_lines (list): List of sorted lines by timestamp and priority,
                           scd lines to try convert to a timeline.
+        time_of_interest (datetime): The datetime holding the time of scheduling.
 
     Returns:
         queued_lines (dict): Groups of entries belonging to the same experiment.
@@ -308,6 +309,9 @@ def convert_scd_to_timeline(scd_lines):
         else:
             duration_td = datetime.timedelta(minutes=int(scd_line['duration']))
             finish_time = scd_line['time'] + duration_td
+
+            if finish_time < time_of_interest:
+                continue
 
             # if no lines added yet, just add the line to the queue. Check if an inf dur line is
             # running.
@@ -516,11 +520,6 @@ def get_relevant_lines(scd_util, time_of_interest):
                     relevant_lines.insert(0, line)
                     found = True
 
-
-    # Since SCDUtils relevant lines will return the last line run if the supplied time
-    # is in the beginning of two lines, we then only schedule that time if it's duration is
-    # infinite, otherwise we filter it out since we missed it's time.
-    relevant_lines = [l for l in relevant_lines if l['time'] > time_of_interest or l['duration'] == '-']
     return relevant_lines
 
 
@@ -575,7 +574,7 @@ def _main():
             emailer.email_log(subject, log_file)
         else:
 
-            timeline, warnings = convert_scd_to_timeline(relevant_lines)
+            timeline, warnings = convert_scd_to_timeline(relevant_lines, time_of_interest)
             plot_path, pickle_path = plot_timeline(timeline, scd_dir, time_of_interest, site_id)
             new_atq_str = timeline_to_atq(timeline, scd_dir, time_of_interest, site_id)
 

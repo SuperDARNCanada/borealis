@@ -41,7 +41,7 @@ class InterleavedScan(ExperimentPrototype):
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
-            "scanbound" : [i * scf.INTT_7P * 1e-3 for i in range(len(beams_to_use))],
+            "scanbound" : scf.easy_scanbound(scf.INTT_7P, beams_to_use),
             "txfreq" : 10500, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
