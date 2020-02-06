@@ -61,6 +61,7 @@ class ThemisScan(ExperimentPrototype):
             "intt": 2600,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
+            "scanbound" : [i * 3 for i in range(len(beams_to_use))],
             "txfreq" : freq, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
