@@ -99,7 +99,7 @@ DATA_TEMPLATE = {
     "data" : [], # A contiguous set of samples (complex float) at given sample rate
     "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
     "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
-    "averaging_method" : None, # A string describing the averaging method.
+    "averaging_method" : None, # A string describing the averaging method, ex. mean, median
     "scheduling_mode" : None, # A string describing the type of scheduling time at the time of this dataset.
     "main_acfs" : [], # Main array autocorrelations
     "intf_acfs" : [], # Interferometer array autocorrelations
@@ -1066,9 +1066,9 @@ class DataWrite(object):
                 parameters['experiment_comment'] = integration_meta.experiment_comment
                 parameters['scheduling_mode'] = integration_meta.scheduling_mode
                 parameters['slice_comment'] = rx_freq.slice_comment
-                parameters['slice_id'] = rx_freq.slice_id
-                parameters['averaging_method'] = rx_freq.averaging_method
-                parameters['slice_interfacing'] = rx_freq.slice_interfacing
+                parameters['slice_id'] = np.uint32(rx_freq.slice_id)
+                parameters['averaging_method'] = rx_freq.averaging_method # string
+                parameters['slice_interfacing'] = rx_freq.slice_interfacing # string
                 parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = integration_meta.num_sequences
