@@ -118,14 +118,14 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
             rad_ctrl_print(msg)
     else:
         # SETUP data to send to driver for transmit.
-        for samples in samples_array:
+        for ant_idx in range(samples_array.shape[0]):
             sample_add = driverpacket.channel_samples.add()
             # Add one Samples message for each channel possible in config.
             # Any unused channels will be sent zeros.
             # Protobuf expects types: int, long, or float, will reject numpy types and
             # throw a TypeError so we must convert the numpy arrays to lists
-            sample_add.real.extend(samples.real.tolist())
-            sample_add.imag.extend(samples.imag.tolist())
+            sample_add.real.extend(samples_array[ant_idx,:].real.tolist())
+            sample_add.imag.extend(samples_array[ant_idx,:].imag.tolist())
         driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
         driverpacket.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
         driverpacket.txrate = txrate
@@ -585,12 +585,6 @@ def radar():
 
                     slice_to_beamdir_dict = aveperiod.set_beamdirdict(beam_iter)
 
-                    # Build an ordered list of sequences
-                    # A sequence is a list of pulses in order
-                    # A pulse is a dictionary with all required information for that pulse.
-
-                    sequence_dict_list = aveperiod.build_sequences(slice_to_beamdir_dict)
-
                     beam_phase_dict_list = []
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
                         beam_phase_dict = {}
@@ -627,8 +621,6 @@ def radar():
 
                     # all phases are set up for this averaging period for the beams required. Time to start averaging
                     # in the below loop.
-                    num_sequences = 0
-                    time_remains = True
                     if not scan.scanbound:
                         integration_period_start_time = datetime.utcnow()  # ms
                         rad_ctrl_print("Integration start time: {}".format(integration_period_start_time))
@@ -699,9 +691,10 @@ def radar():
                         time_to_prep_aveperiod = datetime.utcnow() - time_start_of_aveperiod
                         rad_ctrl_print('Time to prep aveperiod: {}'.format(time_to_prep_aveperiod))
 
+                    num_sequences = 0
+                    time_remains = True
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
-
                             # Alternating sequences if there are multiple in the averaging_period.
                             time_now = datetime.utcnow()
                             if intt_break:
@@ -715,6 +708,7 @@ def radar():
                                     time_remains = False
                                     integration_period_time = time_now - integration_period_start_time
                                     break
+
                             beam_phase_dict = beam_phase_dict_list[sequence_index]
                             send_dsp_metadata(sigprocpacket,
                                            radar_control_to_dsp,
@@ -737,42 +731,19 @@ def radar():
                                 sequence_metadata_time = time_after_sequence_metadata - time_now
                                 rad_ctrl_print('Sequence Metadata time: {}'.format(sequence_metadata_time))
 
-                            # beam_phase_dict is slice_id : list of beamdirs, where beamdir = list
-                            # of antenna phase offsets for all antennas for that direction ordered
-                            # [0 ... main_antenna_count, 0 ... interferometer_antenna_count]
+                            pulse_transmit_metadata = sequence.make_sequence(beam_iter, num_sequences)
 
-                            # SEND ALL PULSES IN SEQUENCE.
-                            # If we have sent first sequence already and there is only one unique
-                            #  pulse in the averaging period, send all repeats until end of the
-                            #  averaging period.
-                            if first_sequence_out and aveperiod.one_pulse_only:
-                                for pulse_index, pulse_dict in \
-                                        enumerate(sequence_dict_list[sequence_index]):
-                                    data_to_driver(driverpacket, radar_control_to_driver,
-                                                   options.driver_to_radctrl_identity,
-                                                   pulse_dict['samples_array'], experiment.txctrfreq,
-                                                   experiment.rxctrfreq, experiment.txrate,
-                                                   experiment.rxrate,
-                                                   sequence.numberofreceivesamples,
-                                                   sequence.seqtime,
-                                                   pulse_dict['startofburst'], pulse_dict['endofburst'],
-                                                   pulse_dict['timing'], seqnum_start + num_sequences,
-                                                   repeat=True)
-                            else:
-                                for pulse_index, pulse_dict in \
-                                        enumerate(sequence_dict_list[sequence_index]):
-                                    data_to_driver(driverpacket, radar_control_to_driver,
-                                                   options.driver_to_radctrl_identity,
-                                                   pulse_dict['samples_array'], experiment.txctrfreq,
-                                                   experiment.rxctrfreq, experiment.txrate,
-                                                   experiment.rxrate,
-                                                   sequence.numberofreceivesamples,
-                                                   sequence.seqtime,
-                                                   pulse_dict['startofburst'], pulse_dict['endofburst'],
-                                                   pulse_dict['timing'], seqnum_start + num_sequences,
-                                                   repeat=pulse_dict['isarepeat'])
-                                first_sequence_out = True
-
+                            for transmit_metadata in pulse_transmit_metadata:
+                                data_to_driver(driverpacket, radar_control_to_driver,
+                                               options.driver_to_radctrl_identity,
+                                               transmit_metadata['samples_array'], experiment.txctrfreq,
+                                               experiment.rxctrfreq, experiment.txrate,
+                                               experiment.rxrate,
+                                               sequence.numberofreceivesamples,
+                                               sequence.seqtime,
+                                               transmit_metadata['startofburst'], transmit_metadata['endofburst'],
+                                               transmit_metadata['timing'], seqnum_start + num_sequences,
+                                               repeat=transmit_metadata['isarepeat'])
 
                             # TODO: Make sure you can have a slice that doesn't transmit, only receives on a frequency. # REVIEW #1 what do you mean, what is this TODO for? REPLY : driver acks wouldn't be required etc need to make sure this is possible
                             # Sequence is done
@@ -784,6 +755,8 @@ def radar():
                             if TIME_PROFILE:
                                 pulses_to_driver_time = datetime.utcnow() - time_after_sequence_metadata
                                 rad_ctrl_print('Time for pulses to driver: {}'.format(pulses_to_driver_time))
+
+
 
                     if TIME_PROFILE:
                         time_at_end_aveperiod = datetime.utcnow()

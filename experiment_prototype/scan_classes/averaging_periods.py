@@ -3,9 +3,9 @@
 """
     averaging_periods
     ~~~~~~~~~~~~~~~~~
-    This is the module containing the AveragingPeriod class. The AveragingPeriod class 
-    contains the ScanClassBase members, as well as clrfrqflag (to be implemented), 
-    intn (number of integrations to run), or intt(max time for integrations), 
+    This is the module containing the AveragingPeriod class. The AveragingPeriod class
+    contains the ScanClassBase members, as well as clrfrqflag (to be implemented),
+    intn (number of integrations to run), or intt(max time for integrations),
     and it contains sequences of class Sequence.
 
     :copyright: 2018 SuperDARN Canada
@@ -29,35 +29,35 @@ from experiment_prototype.experiment_exception import ExperimentException
 
 
 class AveragingPeriod(ScanClassBase):
-    """ 
+    """
     Set up the AveragingPeriods.
-    
-    An averagingperiod contains sequences and integrates one or multiple pulse sequences 
-    together in a given time frame or in a given number of averages, if that is the 
+
+    An averagingperiod contains sequences and integrates one or multiple pulse sequences
+    together in a given time frame or in a given number of averages, if that is the
     preferred limiter.
-    
+
     **The unique members of the averagingperiod are (not a member of the scanclassbase):**
-    
+
     slice_to_beamorder
-        passed in by the scan that this AveragingPeriod instance is contained in. A 
+        passed in by the scan that this AveragingPeriod instance is contained in. A
         dictionary of slice: beam_order for all slices contained in this aveperiod.
     slice_to_beamdir
-        passed in by the scan that this AveragingPeriod instance is contained in. A 
+        passed in by the scan that this AveragingPeriod instance is contained in. A
         dictionary of slice: beamdir(s) for all slices contained in this aveperiod.
     clrfrqflag
         Boolean, True if clrfrqsearch should be performed.
     clrfrqrange
         The range of frequency to search if clrfrqflag is True.  Otherwise empty.
     intt
-        The priority limitation. The time limit (ms) at which time the aveperiod will 
+        The priority limitation. The time limit (ms) at which time the aveperiod will
         end. If None, we will use intn to end the aveperiod (a number of sequences).
     intn
-        Number of averages (# of times the sequence transmits) to end after for the 
-        averagingperiod. 
+        Number of averages (# of times the sequence transmits) to end after for the
+        averagingperiod.
     sequences
         The list of sequences included in this aveperiod. This does not indicate how
-        many averages will be transmitted in the aveperiod. If there are multiple 
-        sequences in the list, they will be alternated between until the end of the 
+        many averages will be transmitted in the aveperiod. If there are multiple
+        sequences in the list, they will be alternated between until the end of the
         aveperiod.
     one_pulse_only
         boolean, True if this averaging period only has one unique set of pulse samples in it.
@@ -124,16 +124,16 @@ class AveragingPeriod(ScanClassBase):
 
     def get_sequence_slice_ids(self):
         """
-        Return the slice_ids that are within the Sequences in this AveragingPeriod 
+        Return the slice_ids that are within the Sequences in this AveragingPeriod
         instance.
-        
-        Take the interface keys inside this averagingperiod and return a list of lists 
-        where each inner list contains the slices that are in a sequence that is inside 
-        this averagingperiod. ie. len(nested_slice_list) = # of sequences in this 
-        averagingperiod, len(nested_slice_list[0]) = # of slices in the first sequence, 
+
+        Take the interface keys inside this averagingperiod and return a list of lists
+        where each inner list contains the slices that are in a sequence that is inside
+        this averagingperiod. ie. len(nested_slice_list) = # of sequences in this
+        averagingperiod, len(nested_slice_list[0]) = # of slices in the first sequence,
         etc.
-        
-        :returns: the nested_slice_list which is used when creating the sequences in 
+
+        :returns: the nested_slice_list which is used when creating the sequences in
          this averagingperiod.
         """
 
@@ -154,13 +154,13 @@ class AveragingPeriod(ScanClassBase):
     def set_beamdirdict(self, beamiter):
         """
         Get a dictionary of 'slice_id' : 'beamdir(s)' for this averaging period.
-        
-        At a given beam iteration, this averagingperiod instance will select the beam 
-        directions that it will shift to. 
-        
+
+        At a given beam iteration, this averagingperiod instance will select the beam
+        directions that it will shift to.
+
         :param beamiter: the index into the beam_order list, or the index of an averaging
-         period into the scan 
-        :returns: dictionary of slice to beamdir where beamdir is always a list (may be 
+         period into the scan
+        :returns: dictionary of slice to beamdir where beamdir is always a list (may be
          of length one though). Beamdir is azimuth angle.
         """
 
@@ -181,41 +181,3 @@ class AveragingPeriod(ScanClassBase):
 
         return slice_to_beamdir_dict
 
-    def build_sequences(self, slice_to_beamdir_dict):
-        """
-        Build a list of sequences to iterate through when transmitting.
-         
-        This includes building all pulses within the sequences, so it then contains all 
-        pulse samples data to iterate through when transmitting. If there is only one 
-        sequence type in the averaging period, this list will be of length 1. That 
-        would mean that that one sequence gets repeated throughout the averagingperiod 
-        (intn and intt still apply).
-        
-        :returns: sequence_dict_list, list of lists of pulse dictionaries. 
-        """
-
-        # Create a pulse dictionary before running through the
-        #   averaging period.
-        sequence_dict_list = []
-        # a list of sequence data.
-        # a sequence data is a list of pulses in the sequence in order.
-        # a pulse data is a dictionary of the required data for the pulse.
-        for sequence in self.sequences:
-            # create pulse dictionary.
-            sequence_dict = sequence.build_pulse_transmit_data(slice_to_beamdir_dict)
-
-            # Just alternating sequences
-
-            sequence_dict_list.append(sequence_dict)
-
-        if len(sequence_dict_list) == 1:
-            # only one sequence in the averaging period
-            for pulse_num, pulse_dict in enumerate(sequence_dict_list[0]):
-                if pulse_num == 0:
-                    continue
-                elif pulse_dict['isarepeat'] == False:
-                    break  # there is another unique pulse in the sequence.
-            else:  # no break
-                self.one_pulse_only = True  # there is only one unique pulse in the sequence.
-
-        return sequence_dict_list
