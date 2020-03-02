@@ -217,6 +217,9 @@ class SCDUtils(object):
 
         scd_lines = self.read_scd()
 
+        if not scd_lines:
+            raise IndexError("Schedule file is empty. No lines can be returned")
+
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
 
