@@ -1239,8 +1239,7 @@ class ExperimentPrototype(object):
             slice_with_defaults['rx_int_antennas'] = \
                 [i for i in range(0, self.options.interferometer_antenna_count)]
         if 'pulse_phase_offset' not in exp_slice:
-            slice_with_defaults['pulse_phase_offset'] = [0.0 for i in range(0, len(
-                slice_with_defaults['pulse_sequence']))]
+            slice_with_defaults['pulse_phase_offset'] = []
         if 'scanbound' not in exp_slice:
             slice_with_defaults['scanbound'] = None
 
@@ -1558,12 +1557,42 @@ class ExperimentPrototype(object):
                                                           # (ms) by 1000 to compare in us
                     error_list.append("Slice {} : Pulse Sequence is Too Long for Integration " \
                                          "Time Given".format(exp_slice['slice_id']))
-
-        if not exp_slice['pulse_sequence']:
+        else:
             if exp_slice['txfreq']:
                 error_list.append("Slice {} Has Transmission Frequency but no" \
                                             "Pulse Sequence defined".format(
                     exp_slice['slice_id']))
+
+        if exp_slice['pulse_phase_offset']:
+            num_samps = round(exp_slice['pulse_len'] * (exp_slice['pulse_len'] * 1e6))
+            num_pulses = len(exp_slice['pulse_sequence'])
+            phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses, num_samps)
+
+            if not isinstance(phase_encoding, np.ndarray):
+                error_list.append("Slice {} Phase encoding return is not numpy array".format(
+                exp_slice['slice_id']))
+            else:
+                if len(phase_encoding.shape) > 2:
+                    error_list.append("Slice {} Phase encoding return must be 1 or 2 dimensions "\
+                                        " and must be broadcastable to num samples".format(
+                                                                            exp_slice['slice_id']))
+                else:
+                    if len(phase_encoding.shape) == 1:
+                        phase_encoding.reshape(phase_encoding.shape + (1,))
+
+                    if phase_encoding.shape[0] != num_pulses:
+                        error_list.append("Slice {} Phase encoding return 1st dimension must be "\
+                                            "equal to number of pulses".format(
+                                                                            exp_slice['slice_id']))
+                    if phase_encoding.shape[1] != 1 or phase_encoding.shape[1] != num_samps:
+                        error_list.append("Slice {} Phase encoding return 2st dimension must be "\
+                                            "broadcastable to number of samples".format(
+                                                                            exp_slice['slice_id']))
+
+            if phase_encoding.shape[0] != num_pulses:
+                error_list.append("Slice {}".format(
+                exp_slice['slice_id']))
+
 
         if list_tests.has_duplicates(exp_slice['beam_angle']):
             error_list.append("Slice {} Beam Angles Has Duplicate Directions".format(

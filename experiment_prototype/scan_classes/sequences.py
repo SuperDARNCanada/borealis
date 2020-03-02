@@ -295,7 +295,6 @@ class Sequence(ScanClassBase):
 
             num_pulses = len(exp_slice['pulse_sequence'])
             encode_fn = exp_slice['pulse_phase_offset']
-            encode_fn = None
             if encode_fn:
                 num_samples = basic_samples.shape[1]
                 phase_encoding = encode_fn(beam_iter, sequence_num, num_pulses, num_samples)
@@ -303,8 +302,9 @@ class Sequence(ScanClassBase):
                 if len(phase_encoding.shape) == 1:
                     phase_encoding.reshape(phase_encoding.shape + (1,))
 
-                phase_encoding = phase_encoding[:,np.newaxis,:]
+                self.output_encodings.append(phase_encoding)
 
+                phase_encoding = np.exp(1j * phase_encoding[:,np.newaxis,:])
                 samples = phase_encoding * basic_samples
 
             else:
