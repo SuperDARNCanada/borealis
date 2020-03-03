@@ -63,6 +63,7 @@ def _main():
                                                     "site")
                 except:
                     rt_print("Error converting {}".format(filename))
+                    os.remove(filename)
                     continue
 
                 data = converted.sdarn_dict

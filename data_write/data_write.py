@@ -678,8 +678,8 @@ class DataWrite(object):
 
                 # TODO(keith): improve call to subprocess.
                 sp.call(cmd.split())
-                #os.remove(tmp_file)
                 so.send_data(rt_dw['socket'], rt_dw['iden'], tmp_file)
+                # temp file is removed in real time module.
 
             elif file_ext == 'json':
                 self.write_json_file(tmp_file, final_data_dict)
