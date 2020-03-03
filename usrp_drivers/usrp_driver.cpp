@@ -127,8 +127,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   uhd::time_spec_t sequence_start_time;
   uhd::time_spec_t initialization_time;
 
-  bool agc_high;
-  bool lp_high;
   double seqtime;
 
   double agc_signal_read_delay = driver_options.get_agc_signal_read_delay() * 1e-6;
@@ -149,6 +147,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   {
     auto more_pulses = true;
     std::vector<double> time_to_send_samples;
+    std::vector<uint32_t> pin_status_l;
+    std::vector<uint32_t> pin_status_h;
     while (more_pulses) {
       auto pulse_data = recv_data(driver_to_radar_control,
                                     driver_options.get_radctrl_to_driver_identity());
@@ -321,14 +321,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             usrp_d.clear_command_time();
             auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
-            uint32_t pin_status = usrp_d.get_gpio_state();
+            pin_status_h = usrp_d.get_gpio_bank_high_state();
+            pin_status_l = usrp_d.get_gpio_bank_low_state();
             usrp_d.clear_command_time();
-            if (pin_status & driver_options.get_agc_st())  {
-              agc_high = true;
-            }
-            if (pin_status & driver_options.get_lo_pwr())  {
-              lp_high = true;
-            }
 
             for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
@@ -394,8 +389,17 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     samples_metadata.set_sequence_num(sqn_num);
     auto actual_finish = box_time;
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
-    samples_metadata.set_agc_high(agc_high);
-    samples_metadata.set_lp_high(lp_high);
+
+    for (auto &mobo_pins : pin_status_h) {
+      samples_metadata.add_agc_status_bank_h(mobo_pins & driver_options.get_agc_st());
+      samples_metadata.add_lp_status_bank_h(mobo_pins & driver_options.get_lo_pwr());
+    }
+
+    for (auto &mobo_pins : pin_status_l) {
+      samples_metadata.add_agc_status_bank_l(mobo_pins & driver_options.get_agc_st());
+      samples_metadata.add_lp_status_bank_l(mobo_pins & driver_options.get_lo_pwr());
+    }
+
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);
 

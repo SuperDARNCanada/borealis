@@ -25,7 +25,8 @@ DriverOptions::DriverOptions() {
     ref_ = config_pt.get<std::string>("ref");
     cpu_ = config_pt.get<std::string>("cpu");
     otw_ = config_pt.get<std::string>("overthewire");
-    gpio_bank_ = config_pt.get<std::string>("gpio_bank");
+    gpio_bank_high_ = config_pt.get<std::string>("gpio_bank_high");
+    gpio_bank_low_ = config_pt.get<std::string>("gpio_bank_low");
 
     std::stringstream ss;
 
@@ -143,9 +144,14 @@ std::string DriverOptions::get_otw() const
     return otw_;
 }
 
-std::string DriverOptions::get_gpio_bank() const
+std::string DriverOptions::get_gpio_bank_high() const
 {
-    return gpio_bank_;
+    return gpio_bank_high_;
+}
+
+std::string DriverOptions::get_gpio_bank_low() const
+{
+    return gpio_bank_low_;
 }
 
 uint32_t DriverOptions::get_atr_rx() const
