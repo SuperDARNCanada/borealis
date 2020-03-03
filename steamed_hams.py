@@ -7,6 +7,12 @@ Keith Kotyk
 Borealis Start up script
 
 The Simpsons, Season 1 Episode 3 - Steamed Hams
+
+Should be run as follows: 
+    sys.argv[1] : experiment name e.g. twofsound, where twofsound.py exists under experiments subdir
+    sys.argv[2] : mode to run, e.g. release, debug, engineeringdebug, python-profiling
+    sys.argv[3] : scheduling_mode, e.g. discretionary, common, special
+
 """
 import sys
 import subprocess as sp
@@ -114,7 +120,7 @@ for mod in modules:
     modules[mod] = "python3 {opts} {module}/{module}.py".format(opts=opts, module=mod)
 
 modules['realtime'] = "source borealisrt_env/bin/activate;" + modules['realtime']
-modules['experiment_handler'] = modules['experiment_handler'] + " " +  sys.argv[1]
+modules['experiment_handler'] = modules['experiment_handler'] + " " +  sys.argv[1] + " " + sys.argv[3] 
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
 #Configure C progs
