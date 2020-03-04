@@ -382,7 +382,14 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 rxchan_add.rxfreq = sequence.slice_dict[slice_id]['txfreq']
 
             rxchan_add.ptab.pulse_position[:] = sequence.slice_dict[slice_id]['pulse_sequence']
-            rxchan_add.pulse_phase_offsets.pulse_phase[:] = sequence.slice_dict[slice_id]['pulse_phase_offset']
+
+            for encoding in sequence.output_encodings[slice_id]:
+                rx_encode = rxchan_add.sequence_encodings.add()
+                python_type = encoding.flatten().tolist()
+                rx_encode.encoding_value[:] = python_type
+            sequence.output_encodings[slice_id] = []
+
+
             rxchan_add.rx_main_antennas[:] = sequence.slice_dict[slice_id]['rx_main_antennas']
             rxchan_add.rx_intf_antennas[:] = sequence.slice_dict[slice_id]['rx_int_antennas']
 

@@ -19,6 +19,7 @@ import numpy as np
 from scipy.constants import speed_of_light
 import copy
 from operator import itemgetter
+import collections
 
 from sample_building.sample_building import get_samples
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
@@ -282,6 +283,8 @@ class Sequence(ScanClassBase):
 
         self.blanks = self.find_blanks()
 
+        self.output_encodings = collections.defaultdict(list)
+
     def make_sequence(self, beam_iter, sequence_num):
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         txrate = self.transmit_metadata['txrate']
@@ -299,10 +302,10 @@ class Sequence(ScanClassBase):
                 num_samples = basic_samples.shape[1]
                 phase_encoding = encode_fn(beam_iter, sequence_num, num_pulses, num_samples)
 
-                if len(phase_encoding.shape) == 1:
-                    phase_encoding.reshape(phase_encoding.shape + (1,))
+                # Reshape as vector if 1D, else stays the same.
+                phase_encoding = phase_encoding.reshape((phase_encoding.shape[0],-1))
 
-                self.output_encodings.append(phase_encoding)
+                self.output_encodings[slice_id].append(phase_encoding)
 
                 phase_encoding = np.exp(1j * phase_encoding[:,np.newaxis,:])
                 samples = phase_encoding * basic_samples

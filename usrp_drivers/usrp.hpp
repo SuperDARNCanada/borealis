@@ -39,7 +39,8 @@ class USRP{
     void create_usrp_tx_stream(std::string cpu_fmt, std::string otw_fmt, std::vector<size_t> chs);
     void set_command_time(uhd::time_spec_t cmd_time);
     void clear_command_time();
-    uint32_t get_gpio_state();
+    std::vector<uint32_t> get_gpio_bank_high_state();
+    std::vector<uint32_t> get_gpio_bank_low_state();
     uhd::time_spec_t get_current_usrp_time();
     uhd::rx_streamer::sptr get_usrp_rx_stream();
     uhd::tx_streamer::sptr get_usrp_tx_stream();
@@ -50,8 +51,11 @@ class USRP{
     //! A shared pointer to a new multi-USRP device.
     uhd::usrp::multi_usrp::sptr usrp_;
 
-    //! A string representing what GPIO bank to use on the USRPs.
-    std::string gpio_bank_;
+    //! A string representing what GPIO bank to use on the USRPs for active high sigs.
+    std::string gpio_bank_high_;
+
+    //! A string representing what GPIO bank to use on the USRPs for active low sigs.
+    std::string gpio_bank_low_;
 
     //! The bitmask to use for the scope sync GPIO.
     uint32_t scope_sync_mask_;

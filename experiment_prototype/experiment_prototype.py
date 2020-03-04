@@ -1577,22 +1577,17 @@ class ExperimentPrototype(object):
                                         " and must be broadcastable to num samples".format(
                                                                             exp_slice['slice_id']))
                 else:
-                    if len(phase_encoding.shape) == 1:
-                        phase_encoding.reshape(phase_encoding.shape + (1,))
+                    phase_encoding = phase_encoding.reshape((phase_encoding.shape[0],-1))
 
                     if phase_encoding.shape[0] != num_pulses:
                         error_list.append("Slice {} Phase encoding return 1st dimension must be "\
                                             "equal to number of pulses".format(
                                                                             exp_slice['slice_id']))
-                    if phase_encoding.shape[1] != 1 or phase_encoding.shape[1] != num_samps:
+
+                    if not (phase_encoding.shape[1] == 1 or phase_encoding.shape[1] == num_samps):
                         error_list.append("Slice {} Phase encoding return 2st dimension must be "\
                                             "broadcastable to number of samples".format(
                                                                             exp_slice['slice_id']))
-
-            if phase_encoding.shape[0] != num_pulses:
-                error_list.append("Slice {}".format(
-                exp_slice['slice_id']))
-
 
         if list_tests.has_duplicates(exp_slice['beam_angle']):
             error_list.append("Slice {} Beam Angles Has Duplicate Directions".format(

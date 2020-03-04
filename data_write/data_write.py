@@ -1072,7 +1072,15 @@ class DataWrite(object):
                 parameters['rx_center_freq'] = integration_meta.rx_centre_freq # Sorry, we'll convert to US English here
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
-                parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phase_offsets.pulse_phase, dtype=np.float32)
+
+                encodings = []
+                for encoding in rx_freq.sequence_encodings:
+                    encoding = np.array(encoding.encoding_value, dtype=np.float32)
+                    encoding = encoding.reshape((parameters['pulses'].shape[0],-1))
+                    encodings.append(encoding)
+
+                encodings = np.array(encodings, dtype=np.float32)
+                parameters['pulse_phase_offset'] = encodings
                 parameters['data_normalization_factor'] = integration_meta.data_normalization_factor
 
                 lags = []

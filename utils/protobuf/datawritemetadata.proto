@@ -29,7 +29,7 @@ message IntegrationTimeMetadata {
       uint32 tau_spacing = 6;
       float rxfreq = 7;
       PulseTable ptab = 8;
-      PulsePhase pulse_phase_offsets = 9;
+      repeated SequenceEncoding sequence_encodings = 9; //repeated val for each sequence.
       repeated uint32 rx_main_antennas = 10; // Main antennas received on for experiment slice.
       repeated uint32 rx_intf_antennas = 11;
       repeated Beam beams = 12;
@@ -45,8 +45,8 @@ message IntegrationTimeMetadata {
         repeated uint32 pulse_position = 1;
       }
 
-      message PulsePhase {  // length = length of sequence
-        repeated float pulse_phase = 1;
+      message SequenceEncoding {
+        repeated float encoding_value = 1; // pulse x encoding length
       }
 
       message Beam {
