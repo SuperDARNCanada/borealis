@@ -700,6 +700,7 @@ def radar():
 
                     num_sequences = 0
                     time_remains = True
+                    transmit_metadata_tracker = {}
                     while time_remains:
                         for sequence_index, sequence in enumerate(aveperiod.sequences):
                             # Alternating sequences if there are multiple in the averaging_period.
@@ -715,6 +716,25 @@ def radar():
                                     time_remains = False
                                     integration_period_time = time_now - integration_period_start_time
                                     break
+                            if sequence_index not in transmit_metadata_tracker:
+                                transmit_metadata_tracker[sequence_index] = sequence.make_sequence(beam_iter, num_sequences)
+
+                            for transmit_metadata in transmit_metadata_tracker[sequence_index]:
+                                data_to_driver(driverpacket, radar_control_to_driver,
+                                               options.driver_to_radctrl_identity,
+                                               transmit_metadata['samples_array'], experiment.txctrfreq,
+                                               experiment.rxctrfreq, experiment.txrate,
+                                               experiment.rxrate,
+                                               sequence.numberofreceivesamples,
+                                               sequence.seqtime,
+                                               transmit_metadata['startofburst'], transmit_metadata['endofburst'],
+                                               transmit_metadata['timing'], seqnum_start + num_sequences,
+                                               repeat=transmit_metadata['isarepeat'])
+
+                            if TIME_PROFILE:
+                                time_after_sequence_metadata = datetime.utcnow()
+                                pulses_to_driver_time = time_after_sequence_metadata - time_now
+                                rad_ctrl_print('Time for pulses to driver: {}'.format(pulses_to_driver_time))
 
                             beam_phase_dict = beam_phase_dict_list[sequence_index]
                             send_dsp_metadata(sigprocpacket,
@@ -729,40 +749,24 @@ def radar():
                                            beam_phase_dict, sequence.seqtime,
                                            sequence.first_rx_sample_time,
                                            options.main_antenna_count, experiment.rxctrfreq, decimation_scheme)
+
                             if first_integration:
                                 decimation_scheme = None
                                 first_integration = False
 
+
                             if TIME_PROFILE:
                                 time_after_sequence_metadata = datetime.utcnow()
-                                sequence_metadata_time = time_after_sequence_metadata - time_now
+                                sequence_metadata_time = time_after_sequence_metadata - pulses_to_driver_time
                                 rad_ctrl_print('Sequence Metadata time: {}'.format(sequence_metadata_time))
-
-                            pulse_transmit_metadata = sequence.make_sequence(beam_iter, num_sequences)
-
-                            for transmit_metadata in pulse_transmit_metadata:
-                                data_to_driver(driverpacket, radar_control_to_driver,
-                                               options.driver_to_radctrl_identity,
-                                               transmit_metadata['samples_array'], experiment.txctrfreq,
-                                               experiment.rxctrfreq, experiment.txrate,
-                                               experiment.rxrate,
-                                               sequence.numberofreceivesamples,
-                                               sequence.seqtime,
-                                               transmit_metadata['startofburst'], transmit_metadata['endofburst'],
-                                               transmit_metadata['timing'], seqnum_start + num_sequences,
-                                               repeat=transmit_metadata['isarepeat'])
 
                             # TODO: Make sure you can have a slice that doesn't transmit, only receives on a frequency. # REVIEW #1 what do you mean, what is this TODO for? REPLY : driver acks wouldn't be required etc need to make sure this is possible
                             # Sequence is done
                             num_sequences = num_sequences + 1
+                            transmit_metadata_tracker[sequence_index] = sequence.make_sequence(beam_iter, num_sequences)
 
                             if __debug__:
                                 time.sleep(1)
-
-                            if TIME_PROFILE:
-                                pulses_to_driver_time = datetime.utcnow() - time_after_sequence_metadata
-                                rad_ctrl_print('Time for pulses to driver: {}'.format(pulses_to_driver_time))
-
 
 
                     if TIME_PROFILE:
