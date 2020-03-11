@@ -719,11 +719,12 @@ def radar():
 
                             # on first sequence, we make the first set of samples.
                             if sequence_index not in transmit_metadata_tracker:
-                                transmit_metadata_tracker[sequence_index] = sequence.make_sequence(beam_iter, num_sequences)
+                                transmit_metadata_tracker[sequence_index] = {}
+                                transmit_metadata_tracker[sequence_index][num_sequences] = sequence.make_sequence(beam_iter, num_sequences)
 
 
                             def send_pulses():
-                                for transmit_metadata in transmit_metadata_tracker[sequence_index]:
+                                for transmit_metadata in transmit_metadata_tracker[sequence_index][num_sequences]:
                                     data_to_driver(driverpacket, radar_control_to_driver,
                                                    options.driver_to_radctrl_identity,
                                                    transmit_metadata['samples_array'],
@@ -768,7 +769,7 @@ def radar():
 
                             def make_next_samples():
                                 new_sequence = sequence.make_sequence(beam_iter, num_sequences + 1)
-                                transmit_metadata_tracker[sequence_index] = new_sequence
+                                transmit_metadata_tracker[sequence_index][num_sequences+1] = new_sequence
 
                                 if TIME_PROFILE:
                                     time_after_making_new_sqn = datetime.utcnow()
