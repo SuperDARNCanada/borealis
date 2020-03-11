@@ -45,9 +45,9 @@ class USRP{
     uhd::tx_streamer::sptr get_usrp_tx_stream();
     uhd::usrp::multi_usrp::sptr get_usrp();
     std::string to_string(std::vector<size_t> tx_chs, std::vector<size_t> rx_chs);
-    void invert_test_mode();
-    void set_test_mode();
-    void clear_test_mode();
+    void invert_test_mode(uint32_t mboard=0);
+    void set_test_mode(uint32_t mboard=0);
+    void clear_test_mode(uint32_t mboard=0);
 
   private:
     //! A shared pointer to a new multi-USRP device.

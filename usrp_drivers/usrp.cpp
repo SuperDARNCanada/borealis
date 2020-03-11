@@ -439,35 +439,23 @@ void USRP::clear_command_time()
 void USRP::set_atr_gpios()
 {
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-	  /*
-    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0xFFFF, 0b11111111, i);
-    usrp_->set_gpio_attr(gpio_bank_, "DDR", 0xFFFF, 0b11111111, i);
-    */
+    /* Set the CTRL bits so that pins on bank 0 through 8 and 15,16 are in 
+     * ATR mode and bits 9 through 14 are GPIO mode. Set the DDR bits so that
+     * pins 0 through 8 and 13-16 are outputs, and bits 9 to 12 are inputs.
+     */
     usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0b11000000111111111, 0xFFFF, i);
     usrp_->set_gpio_attr(gpio_bank_, "DDR",  0b11110000111111111, 0xFFFF, i);
 
-    //XX is the actual TR signal
-    /*usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, atr_xx_, i);
-
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, atr_rx_, i);
-
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, atr_tx_, i);
-
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, atr_0x_, i);
-*/
+    //Setup the ATR signals (RXonly, TXonly, TR and IDLE) XX is the actual TR signal
     usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", atr_xx_, 0xFFFF, i);
-
     usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", atr_rx_, 0xFFFF, i);
-
     usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", atr_tx_, 0xFFFF, i);
-
     usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", atr_0x_, 0xFFFF, i);
-
   }
 }
 
 /**
-* @brief      Sets the pins mapping the test mode signal as GPIO
+* @brief      Sets the pins mapping the output signals as GPIO
 *             outputs.
 */
 void USRP::set_output_gpios()
@@ -475,27 +463,40 @@ void USRP::set_output_gpios()
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
     // CTRL 0 sets the pins in gpio mode, DDR 1 sets them as outputs
     usrp_->set_gpio_attr(gpio_bank_, "CTRL", test_mode_, 0x0000, i);
-
     usrp_->set_gpio_attr(gpio_bank_, "DDR", test_mode_, 0x1111, i);
-
     usrp_->set_gpio_attr(gpio_bank_, "OUT", test_mode_, 0x0000, i);
   }
 }
 
-void USRP::invert_test_mode()
+/**
+ * @brief   Inverts the current test mode signal. Useful for testing
+ *
+ * @param[in]   mboard  The USRP to invert test mode on. Default 0.
+ */
+void USRP::invert_test_mode(uint32_t mboard=0)
 {
-  uint32_t tm_value = usrp_->get_gpio_attr(gpio_bank_, "OUT");
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", test_mode_, ~tm_value);
+  uint32_t tm_value = usrp_->get_gpio_attr(gpio_bank_, "OUT", mboard);
+  usrp_->set_gpio_attr(gpio_bank_, "OUT", test_mode_, ~tm_value, mboard);
 }
 
-void USRP::set_test_mode()
+/**
+ * @brief   Sets the test mode signal (HIGH)
+ *
+ * @param[in]   mboard  The USRP to set test mode on. Default 0.
+ */
+void USRP::set_test_mode(uint32_t mboard=0)
 {
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", test_mode_, 0xFFFF);
+  usrp_->set_gpio_attr(gpio_bank_, "OUT", test_mode_, 0xFFFF, mboard);
 }
 
-void USRP::clear_test_mode()
+/**
+ * @brief   Clears the test mode signal (LOW)
+ *
+ * @param[in]   mboard  The USRP to clear test mode on. Default 0.
+ */
+void USRP::clear_test_mode(uint32_t mboard=0)
 {
-  usrp_->set_gpio_attr(gpio_bank_, "OUT", 0x0000, test_mode_);
+  usrp_->set_gpio_attr(gpio_bank_, "OUT", test_mode_, 0x0000, mboard);
 }
 
 /**
@@ -511,7 +512,6 @@ void USRP::set_input_gpios()
 
     usrp_->set_gpio_attr(gpio_bank_, "DDR", agc_st_, 0x0000, i);
     usrp_->set_gpio_attr(gpio_bank_, "DDR", lo_pwr_, 0x0000, i);
-
   }
 }
 
