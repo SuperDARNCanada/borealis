@@ -64,41 +64,12 @@ class Sequence(ScanClassBase):
     blanks
         A list of sample indices that should not be used for acfs because they were samples
         taken when transmitting.
-
-    **Pulses is a list of pulse dictionaries. The pulse dictionary keys are:**
-
-    isarepeat
-        Boolean, True if the pulse is exactly the same as the last pulse in the sequence.
-    pulse_timing_us
-        The time past the start of sequence for this pulse to start at (us).
-    slice_id
-        The slice_id that corresponds to this pulse and gives the information about the
-        experiment and pulse information (frequency, num_ranges, first_range, etc.).
-    slice_pulse_index
-        The index of the pulse in its own slice's sequence.
-    pulse_len
-        The length of the pulse (us)
-    intra_pulse_start_time
-        If the pulse is combined with another pulse and they transmit in a single USRP
-        burst, then we need to know if there is an offset from one pulse's samples being
-        sent and the other pulse's samples being sent.
-    combined_pulse_index
-        The combined_pulse_index is the index corresponding with actual number of pulses
-        that will be sent to driver, after combinations are completed. Multiple pulse
-        dictionaries in self.pulses can have the same combined_pulse_index if they are
-        combined together, ie are close enough in timing that T/R will not go low
-        between them, and we will combine the samples of both pulses into one set to
-        send to the driver.
-    pulse_shift
-        Phase shift for this pulse, for doing pulse coding.
-    iscombined
-        Boolean, true if there is another pulse with the same combined_pulse_index.
-    combine_total
-        Total number of pulse dictionaries that have the same combined_pulse_index as
-        this one. (minimum number = 1, itself).
-    combine_index
-        Index of this pulse dictionary in regards to all the other pulse dictionaries that
-        have the same combined_pulse_index.
+    combined_pulses_metadata
+        This list holds dictionary metadata for all pulses in the sequence. This metadata holds all
+        the info needed to combine pulses if pulses are mixed.
+    output_encodings
+        This dict will hold a list of all the encodings used during an aveperiod for each slice.
+        These will be used for data write later.
     """
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
@@ -114,9 +85,6 @@ class Sequence(ScanClassBase):
         :param transmit_metadata: metadata from the config file that is useful here.
         """
 
-        # TODO make diagram(s) for pulse combining algorithm
-        # TODO make diagram for pulses that are repeats, showing clearly what intra_pulse_start_time,
-        # and pulse_shift are.
         ScanClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface,
                                transmit_metadata)
 
@@ -155,16 +123,23 @@ class Sequence(ScanClassBase):
                 temp = np.arange(main_antenna_count)
                 main_antennas[exp_slice['tx_antennas']] = temp[exp_slice['tx_antennas']]
 
+                # convert the beam angles to rads
                 beam_rads = np.pi / 180 * np.array(exp_slice['beam_angle'], dtype=np.float64)
+
 
                 x = ((main_antenna_count / 2.0 - main_antennas) * main_antenna_spacing)
                 x *= 2 * np.pi * (tx_freq_khz * 1000)
 
                 y = np.cos(np.pi / 2.0 - beam_rads) / speed_of_light
 
+                # split up the calculations for beams and antennas. Outer multiply of the two
+                # vectors will yield all antenna phases needed for each beam.
                 phase_shift = np.fmod(np.outer(y, x), 2.0 * np.pi) # beams by antenna
                 phase_shift = np.exp(1j * phase_shift)
 
+                # We want to apply all the phases to the basic samples. We can flatten the phases
+                # so that can multiply them all with the basic samples. This can later be reshaped
+                # so that each antenna has a set of phased samples for each beam.
                 phased_samps_for_beams = np.outer(phase_shift.flatten(), basic_samples)
 
                 #beams by antenna by samples
@@ -193,6 +168,7 @@ class Sequence(ScanClassBase):
         pulse_data = make_pulse_dict(single_pulse_timing[0])
         combined_pulses_metadata = []
 
+        # determine where pulses occur in the sequence. This will be important if there are overlaps
         for pulse_time in single_pulse_timing[1:]:
             pulse_timing_us = pulse_time['start_time_us']
             pulse_len_us = pulse_time['pulse_len_us']
@@ -212,6 +188,7 @@ class Sequence(ScanClassBase):
 
         combined_pulses_metadata.append(pulse_data)
 
+        # normalize all pulses to max usrp dac amplitude.
         power_divider = max([len(p['component_info']) for p in combined_pulses_metadata])
         all_antennas = []
         for slice_id in self.slice_ids:
@@ -221,6 +198,7 @@ class Sequence(ScanClassBase):
             all_antennas.extend(slice_tx_antennas)
 
 
+        # predetermine some of the transmit metadata.
         sequence_antennas = list(set(all_antennas))
         num_pulses = len(combined_pulses_metadata)
         for i in range(num_pulses):
@@ -286,11 +264,26 @@ class Sequence(ScanClassBase):
         self.output_encodings = collections.defaultdict(list)
 
     def make_sequence(self, beam_iter, sequence_num):
+        """
+        Create the samples needed for each pulse in the sequence. This function is optimized to
+        be able to generate new samples every sequence if needed.
+
+        :param      beam_iter:     The beam iterator
+        :type       beam_iter:     int
+        :param      sequence_num:  The sequence number in the ave period
+        :type       sequence_num:  int
+
+        :returns:   Transmit data for each pulse, including timing and samples
+        :rtype:     list
+        """
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         txrate = self.transmit_metadata['txrate']
         tr_window_time = self.transmit_metadata['tr_window_time']
 
-        sequence = np.zeros([main_antenna_count, self.numberofreceivesamples], dtype=np.complex64)
+        buffer_len = int(txrate * self.sstime * 1e-6)
+        # This is gonna act as buffer for mixing pulses. Its the length of the receive samples
+        # since we know this will be large enough to hold samples at any pulse position.
+        sequence = np.zeros([main_antenna_count, buffer_len], dtype=np.complex64)
 
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
@@ -307,12 +300,15 @@ class Sequence(ScanClassBase):
 
                 self.output_encodings[slice_id].append(phase_encoding)
 
+                # we have [p,e] and [a,s], but we want [p,a,(e*s)]. Adding null axis to encoding
+                # will produce this result.
                 phase_encoding = np.exp(1j * phase_encoding[:,np.newaxis,:])
                 samples = phase_encoding * basic_samples
 
             else:
                 samples = np.repeat(basic_samples[np.newaxis,:,:], num_pulses, axis=0)
 
+            # sum the samples into their position in the sequence buffer.
             tr_window_num_samps = round(tr_window_time * txrate)
             for i, pulse in enumerate(self.combined_pulses_metadata):
                 for component_info in pulse['component_info']:
@@ -327,6 +323,7 @@ class Sequence(ScanClassBase):
 
                         np.add(pulse_piece, samples[i], out=pulse_piece)
 
+        # copy the encoded and combined samples into the metadata for the sequence.
         pulse_data = []
         for i, pulse in enumerate(self.combined_pulses_metadata):
             pulse_timing_us = pulse['start_time_us']
