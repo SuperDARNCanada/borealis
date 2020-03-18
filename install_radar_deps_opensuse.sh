@@ -134,16 +134,31 @@ zypper install -y kernel-devel
 wget http://developer.download.nvidia.com/compute/cuda/10.1/Prod/local_installers/cuda_10.1.243_418.87.00_linux.run
 sh cuda_10.1.243_418.87.00_linux.run --silent --toolkit --samples 
 
+### INSTALL PYDARN FOR REALTIME AND TESTING ###
+cd $HOME
+git clone https://github.com/SuperDARN/pydarn.git 
+
 #### REALTIME ####
 cd /usr/local
 git clone https://github.com/vtsuperdarn/hdw.dat.git
-cd -
 mkdir $BOREALISPATH/borealisrt_env
 virtualenv $BOREALISPATH/borealisrt_env
 source $BOREALISPATH/borealisrt_env/bin/activate
 pip install zmq
 pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter
-git clone https://github.com/SuperDARN/pydarn.git
-cd pydarn
+cd $HOME/pydarn
 git checkout develop
 python setup.py install
+deactivate
+
+### TESTING AND DATA CONVERSIONS PACKAGES ###
+cd $HOME
+git clone https://github.com/SuperDARNCanada/borealis-data-utils.git 
+git clone https://github.com/SuperDARNCanada/data_flow.git
+mkdir $HOME/pydarn-env
+virtualenv $HOME/pydarn-env
+source $HOME/pydarn-env/bin/activate
+cd $HOME/pydarn
+git checkout rc_v1.0.0
+python3 setup.py install
+deactivate
