@@ -207,6 +207,7 @@ class SCDUtils(object):
 
         Raises:
             ValueError: If datetime could not be created from supplied arguments.
+            IndexError: If schedule file is empty
         """
 
         try:
