@@ -42,15 +42,18 @@ directions with each averaging period. A scan is defined by the number of beams 
 
 Knowing these definitions, the following types of interfacing are possible:
 
-1. **SCAN**  
+**1. SCAN**   
 The scan by scan interfacing allows for slices to run a scan of one slice, followed by a scan of the second. The scan mode of interfacing typically means that the slice will cycle through all of its beams before switching to another slice.
-2. **INTTIME**  
+
+**2. INTTIME**   
 This type of interfacing allows for an integration period to run for one slice, before switching to another. This type of interface effectively creates an interleaving scan where the scans for different slices are run simultaneously, however the pulse sequences are alternated integration time by 
 integration time rather than run concurrently.
-3. **INTEGRATION**  
+
+**3. INTEGRATION**   
 Integration interfacing allows for pulse sequences defined in the slices to alternate sequence by sequence each other within an integration period. Slices which are interfaced in this manner must share the same INTT and INTN values for this to work. It's important to remember that each sequence 
 only averages with sequences from the same slice. 
-4. **PULSE**  
+
+**4. PULSE**   
 Pulse interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences mixed and layered together so that the data transmits at the same time. Slices of different frequencies can be mixed simultaneously and slices of different pulse sequences can also run together at the cost of having more blanked samples.
 
 
