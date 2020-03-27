@@ -102,6 +102,129 @@ Here's a theoretical example showing all types of interfacing. In this example, 
    :alt: An example showing all types of slice interfacing 
    :align: center
 
+Slice Keys
+----------
+A slice is defined by the user as a dictionary, with the following preset keys:
+
+slice_id
+    The ID of this slice object. An experiment can have multiple slices.
+
+cpid
+    The ID of the experiment, consistent with existing radar control programs.
+
+tx_antennas
+    The antennas to transmit on, default is all main antennas given max
+    number from config.
+
+rx_main_antennas
+    The antennas to receive on in main array, default = all antennas
+    given max number from config.
+
+rx_int_antennas
+    The antennas to receive on in interferometer array, default is all
+    antennas given max number from config.
+
+pulse_sequence
+    The pulse sequence timing, given in quantities of tau_spacing, for example
+    normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
+
+tau_spacing
+    multi-pulse increment in us, Defines minimum space between pulses.
+
+pulse_phase_offset
+    Allows phase shifting between pulses, enabling encoding of pulses. Default all
+    zeros for all pulses in pulse_sequence.
+
+pulse_len
+    length of pulse in us. Range gate size is also determined by this.
+
+num_ranges
+    Number of range gates.
+
+first_range
+    first range gate, in km
+
+intt
+    duration of an integration, in ms. (maximum)
+
+intn
+    number of averages to make a single integration, if intt = None.
+
+beam_angle
+    list of beam directions, in degrees off azimuth. Positive is E of N. Array
+    length = number of beams. Traditionally beams have been 3.24 degrees separated but we
+    don't refer to them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will
+    be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
+    needed to write the beam_order list. This is like a mapping of beam number (list
+    index) to beam direction off boresight.
+
+beam_order
+    beam numbers written in order of preference, one element in this list corresponds to
+    one integration period. Can have lists within the list, resulting in multiple beams
+    running simultaneously in the averaging period, so imaging. A beam number of 0 in
+    this list gives us the direction of the 0th element in the beam_angle list. It is
+    up to the writer to ensure their beam pattern makes sense. Typically beam_order is
+    just in order (scanning W to E or E to W, ie. [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+    11, 12, 13, 14, 15]. You can list numbers multiple times in the beam_order list,
+    for example [0, 1, 1, 2, 1] or use multiple beam numbers in a single
+    integration time (example [[0, 1], [3, 4]], which would trigger an imaging
+    integration. When we do imaging we will still have to quantize the directions we
+    are looking in to certain beam directions.
+
+scanbound
+    A list of seconds past the minute for integration times in a scan to align to.
+
+clrfrqrange
+    range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
+    in kHz.
+
+txfreq
+    transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
+
+rxfreq
+    receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only
+    necessary to specify if you want a receive-only slice.
+
+wavetype
+    string for wavetype. The default is SINE. Any other wavetypes not currently supported but
+    possible to add in at later date.
+
+iwavetable
+    a list of numeric values to sample from. The default is None. Not currently supported
+    but could be set up (with caution) for non-SINE.
+
+qwavetable
+    a list of numeric values to sample from. The default is None. Not currently supported
+    but could be set up (with caution) for non-SINE.
+
+seqoffset
+    offset in us that this slice's sequence will begin at, after the start of the sequence.
+    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence
+    you can offset one slice's sequence from the other by a certain time value so as to not run both
+    frequencies in the same pulse, etc.
+
+comment
+    a comment string that will be placed in the borealis files describing the slice.
+
+acf
+    flag for rawacf and generation. The default is False.
+
+xcf
+    flag for cross-correlation data. The default is True if acf is True, otherwise False.
+
+acfint
+    flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
+    False.
+
+range_sep
+    a calculated value from pulse_len. If already set, it will be overwritten to be the correct
+    value determined by the pulse_len. Used for acfs. This is the range gate separation,
+    in azimuthal direction, in km.
+
+lag_table
+    used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
+    8-pulse normalscan.
+
 
 Writing an Experiment
 ---------------------
@@ -118,24 +241,42 @@ like so::
 
         def __init__(self):
             cpid = 123123  # this must be a unique id for your control program.
-            super(MyClass, self).__init__(cpid)
+            super(MyClass, self).__init__(cpid,
+                comment_string='My experiment explanation')
 
 The experiment handler will create an instance of your experiment when your experiment is scheduled to start running. Your class is a child class of ExperimentPrototype and because of this, the parent class needs to be instantiated when the experiment is instantiated. This is important because the experiment_handler will build the scans required by your class in a way that is easily readable and iterable by the radar control program. This is done by methods that are set up in the ExperimentPrototype parent class.
 
-The next step is to add slices to your experiment. An experiment is defined by the slices in the class, and how the slices interface. Slices are just dictionaries, with a preset list of keys available to define your experiment. ::
+The next step is to add slices to your experiment. An experiment is defined by the slices in the class, and how the slices interface. As mentioned above, slices are just dictionaries, with a preset list of keys available to define your experiment::
 
 
+        slice_1 = {  # slice_id = 0
+            "pulse_sequence": scf.SEQUENCE_7P,
+            "tau_spacing": scf.TAU_SPACING_7P,
+            "pulse_len": scf.PULSE_LEN_45KM,
+            "num_ranges": num_ranges,
+            "first_range": scf.STD_FIRST_RANGE,
+            "intt": 3500,  # duration of an integration, in ms
+            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "beam_order": beams_to_use,
+            "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
+            "txfreq" : 10500, #kHz
+            "acf": True,
+            "xcf": True,  # cross-correlation processing
+            "acfint": True,  # interferometer acfs
+            "comment": 'This slice is my first slice.'
+        }
 
-TODO
+        self.add_slice(slice_1)
 
-..  TODO outline ways to interface
+This slice would be assigned with slice_id = 0 if it's the first slice added to the experiment. The experiment could also add another slice::
 
-..  TODO determine where users should write their experiments
-    because that will affect the import statement - putting them
-    directly in experiments?
+        slice_2 = copy.deepcopy(slice_1)
+        slice_2['txfreq'] = 13200 #kHz
+        slice_2['comment'] = 'This is my second slice.'
 
-Checking your Experiment for Errors
------------------------------------
+        self.add_slice(slice_2, interfacing_dict={0: 'SCAN'})
 
-..  TODO how to check your experiment for errors
+Notice that you must specify interfacing to an existing slice when you add a second or greater order slice to the experiment. 
+
+This experiment is very similar to the twofsound experiment. To see examples of common experiments, look at :doc:`experiments`.
 
