@@ -54,7 +54,33 @@ Integration interfacing allows for pulse sequences defined in the slices to alte
 only averages with sequences from the same slice. 
 
 **4. PULSE**   
-Pulse interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences mixed and layered together so that the data transmits at the same time. Slices of different frequencies can be mixed simultaneously and slices of different pulse sequences can also run together at the cost of having more blanked samples.
+Pulse interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences mixed and layered together so that the data transmits at the same time. Slices of different frequencies can be 
+mixed simultaneously and slices of different pulse sequences can also run together at the cost of having more blanked samples.
+
+Let's look at some examples of common experiments that can easily be separated into multiple slices. 
+
+.. image:: img/cutlass.png
+   :width: 800px
+   :alt: CUTLASS-style experiment slice interfacing 
+   :align: center
+
+.. image:: img/themisscan.png
+   :width: 800px
+   :alt: THEMISSCAN slice interfacing 
+   :align: center
+
+.. image:: img/twofsound.png
+   :width: 800px
+   :alt: TWOFSOUND slice interfacing 
+   :align: center
+
+
+Here's a theoretical example showing all types of interfacing:
+
+.. image:: img/one-experiment-all-interfacing-types.png
+   :width: 800px
+   :alt: An example showing all types of slice interfacing 
+   :align: center
 
 
 Writing an Experiment
