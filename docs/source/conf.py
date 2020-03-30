@@ -57,7 +57,7 @@ if on_rtd:
 
   call(['df', '-h'])
 
-  call(['apt-get' , 'install', '-y', 'scons'])
+  call(['sudo','apt-get' , 'install', '-y', 'scons'])
 
   call(['ln', '-s', BOREALISPATH + '/hdw.dat/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
 
