@@ -55,7 +55,9 @@ if on_rtd:
 
   call(['git', 'clone', 'https://github.com/vtsuperdarn/hdw.dat', BOREALISPATH + '/hdw.dat'])
 
-  call(['ls' , '/bin', '/usr/bin'])
+  call(['df', '-h'])
+
+  call(['apt-get' , 'install', '-y', 'scons'])
 
   call(['ln', '-s', BOREALISPATH + '/hdw.dat/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
 
