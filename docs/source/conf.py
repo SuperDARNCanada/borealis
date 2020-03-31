@@ -46,24 +46,6 @@ if on_rtd:
 
   call(['ln', '-s', BOREALISPATH + '/hdw.dat/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
 
-  protoc_zip = "protoc-3.11.4-linux-x86_64.zip"
-  protoc_link = "https://github.com/protocolbuffers/protobuf/releases/download/v3.11.4/" + protoc_zip
-
-  call(["wget", "-P", BOREALISPATH + "/protoc", protoc_link])
-
-  call(["unzip", BOREALISPATH + "/protoc/" + protoc_zip, "-d", BOREALISPATH + "/protoc"])
-
-  proto_directory = BOREALISPATH + "/utils/protobuf"
-  proto_files = proto_directory + "/*.proto"
-  output_dir = BOREALISPATH + "/radar_control"
-
-  print(os.environ)
-  for x in ['release','utils']:
-    output = output_dir.format(x)
-    call(['mkdir', '-p', output])
-    call([BOREALISPATH + "/protoc/bin/protoc", "-I=" + proto_directory, "--python_out=" + output, proto_files])
-
-
 
 # -- General configuration ------------------------------------------------
 
