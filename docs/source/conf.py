@@ -31,17 +31,6 @@ sys.path.insert(1, BOREALISPATH + '/experiment_prototype')
 sys.path.insert(2, BOREALISPATH + '/utils')
 sys.path.insert(3, os.environ['PATH'])
 
-proto_directory = BOREALISPATH + "/utils/protobuf"
-#pb2_directory = BOREALISPATH + "/build/release/utils/protobuf/"
-sigprocproto = proto_directory + "/sigprocpacket.proto"
-driverproto = proto_directory + "/driverpacket.proto"
-
-# need to set up protobuf
-# just placed them in the proto directory so they can be found by radar_control.
-#call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, sigprocproto])
-#call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, driverproto])
-
-
 # hack for readthedocs to cause it to run doxygen first
 # https://github.com/rtfd/readthedocs.org/issues/388
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
@@ -51,11 +40,13 @@ if on_rtd:
   cur_dir = os.path.abspath(os.path.dirname(__file__))
   call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
 
-#from subprocess import call
-#call('doxygen')
-#cur_dir = os.path.abspath(os.path.dirname(__file__))
-#print cur_dir
-#call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/'])
+  call(['ln', '-s', BOREALISPATH + '/borealis_config_files/sas_config.ini', BOREALISPATH + '/config.ini'])
+
+  call(['git', 'clone', 'https://github.com/vtsuperdarn/hdw.dat', BOREALISPATH + '/hdw.dat'])
+
+  call(['ln', '-s', BOREALISPATH + '/hdw.dat/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
+
+
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
