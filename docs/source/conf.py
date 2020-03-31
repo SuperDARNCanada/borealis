@@ -37,6 +37,7 @@ sys.path.insert(3, os.environ['PATH'])
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
   from subprocess import call
+
   call('doxygen')
   cur_dir = os.path.abspath(os.path.dirname(__file__))
   call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
@@ -58,7 +59,7 @@ if on_rtd:
   proto_files = proto_directory + "/*.proto"
   output_dir = BOREALISPATH + "/build/{}/utils/protobuf"
 
-  print(os.listdir(BOREALISPATH))
+  print(os.environ)
   for x in ['release','utils']:
     output = output_dir.format(x)
     call(['mkdir', '-p', output])
