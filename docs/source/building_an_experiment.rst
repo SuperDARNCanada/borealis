@@ -31,24 +31,28 @@ The other necessary part of an experiment is specifying how slices will interfac
 
 **Sequence (integration)**  
 
-Made up of pulses with a specific spacing, at a specific frequency, and with a specified receive time 
-following the transmission (to gather information from the number of ranges specified).
+Made up of pulses with a specified spacing, at a specified frequency, and with a specified receive time 
+following the transmission (to gather information from the number of ranges specified). Researchers might 
+be familiar with a common SuperDARN 7 or 8 pulse sequence design. The sequence definition here is the time to 
+transmit one sequence and the time for receiving echoes from that sequence.
 
 **Averaging period (integration time)**  
 
 A time where the sequences are repeated to gather enough information to average and reduce the effect of 
 spurious emissions on the data. These are defined by either number of sequences, or a length of time during 
-which as many sequences as possible are transmitted.
+which as many sequences as possible are transmitted. For example, researchers may be familiar with the standard 
+3 second averaging period in which ~30 pulse sequences are sent out and received in a single beam direction.
 
 **Scan**  
 
-A time where the averaging periods are repeated, often with the pulses mixed to look in different beam 
+A time where the averaging periods are repeated, traditionally to look in different beam 
 directions with each averaging period. A scan is defined by the number of beams or integration times.
 
-Interfacing types
+Interfacing types 
 -----------------
 
-Knowing the basic building blocks of a SuperDARN-style experiment, the following types of interfacing are possible:
+Knowing the basic building blocks of a SuperDARN-style experiment, the following types of interfacing are possible, arranged
+from highest level to lowest level:
 
 **1. SCAN**   
 
@@ -61,17 +65,19 @@ integration time rather than run concurrently.
 
 **3. INTEGRATION**   
 
-Integration interfacing allows for pulse sequences defined in the slices to alternate sequence by sequence each other within an integration period. Slices which are interfaced in this manner must share the same INTT and INTN values for this to work. It's important to remember that each sequence 
+Integration interfacing allows for pulse sequences defined in the slices to alternate sequence by sequence within an integration period. Slices which are interfaced in this manner must share the same INTT and INTN values for this to work. It's important to remember that each sequence 
 only averages with sequences from the same slice. 
 
 **4. PULSE**   
 
-Pulse interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences mixed and layered together so that the data transmits at the same time. Slices of different frequencies can be 
-mixed simultaneously and slices of different pulse sequences can also run together at the cost of having more blanked samples.
+Pulse interfacing allows for pulse sequences to be run concurrently. Slices will have their pulse sequences mixed and layered together so that the data transmits at the same time. For example, slices of different frequencies can be mixed so the pulses from multiple slices transmit at once, or slices of different pulse sequences can also run together at the cost of having more blanked samples.
+
+Slice Interfacing Examples
+--------------------------
 
 Let's look at some examples of common experiments that can easily be separated into multiple slices. 
 
-In a CUTLASS-style experiment, the pulse in the sequence is actually two pulses of differing transmit frequency. This is a 'quasi'-simultaneous multi-frequency experiment. To build this experiment, two slices can be PULSE interfaced. The pulses from both slices are combined into a single sequence and data from those integrations are used for both slices (filtering the raw data separates the frequencies). 
+In a CUTLASS-style experiment, the pulse in the sequence is actually two pulses of differing transmit frequency. This is a 'quasi'-simultaneous multi-frequency experiment where the frequency changes in the middle of the pulse. To build this experiment, two slices can be PULSE interfaced. The pulses from both slices are combined into a single set of transmitted samples for that sequence and samples received from those sequences are used for both slices (filtering the raw data separates the frequencies). 
 
 .. image:: img/cutlass.png
    :width: 800px
@@ -104,7 +110,7 @@ Here's a theoretical example showing all types of interfacing. In this example, 
 
 Slice Keys
 ----------
-A slice is defined by the user as a dictionary, with the following preset keys:
+A slice is defined by the user as a python dictionary in an experiment file, with the following preset keys:
 
 slice_id
     The ID of this slice object. An experiment can have multiple slices.
@@ -163,7 +169,7 @@ beam_order
     one integration period. Can have lists within the list, resulting in multiple beams
     running simultaneously in the averaging period, so imaging. A beam number of 0 in
     this list gives us the direction of the 0th element in the beam_angle list. It is
-    up to the writer to ensure their beam pattern makes sense. Typically beam_order is
+    up to the user to ensure their beam pattern makes sense. Typically beam_order is
     just in order (scanning W to E or E to W, ie. [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
     11, 12, 13, 14, 15]. You can list numbers multiple times in the beam_order list,
     for example [0, 1, 1, 2, 1] or use multiple beam numbers in a single
@@ -176,7 +182,7 @@ scanbound
 
 clrfrqrange
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
-    in kHz.
+    in kHz. Not currently implemented. 
 
 txfreq
     transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
@@ -207,10 +213,11 @@ comment
     a comment string that will be placed in the borealis files describing the slice.
 
 acf
-    flag for rawacf and generation. The default is False.
+    flag for RAWACF and generation. The default is False.
 
 xcf
-    flag for cross-correlation data. The default is True if acf is True, otherwise False.
+    flag for cross-correlation data generation (between MAIN and INT array received data). 
+    The default is True if acf is True, otherwise False.
 
 acfint
     flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
