@@ -24,21 +24,18 @@ import sphinx_rtd_theme
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
-#BOREALISPATH = os.path.abspath('../..')
-#os.environ['BOREALISPATH'] = BOREALISPATH
-#sys.path.insert(0, BOREALISPATH)
-# sys.path.insert(1, BOREALISPATH + '/experiment_prototype')
-# sys.path.insert(2, BOREALISPATH + '/utils')
-# sys.path.insert(3, os.environ['PATH'])
+BOREALISPATH = os.path.abspath('../..')
+os.environ['BOREALISPATH'] = BOREALISPATH
+sys.path.insert(0, BOREALISPATH)
+sys.path.insert(1, BOREALISPATH + '/experiment_prototype')
+sys.path.insert(2, BOREALISPATH + '/utils')
+sys.path.insert(3, os.environ['PATH'])
 
-BOREALISPATH = os.environ['BOREALISPATH']
-print(BOREALISPATH)
 # hack for readthedocs to cause it to run doxygen first
 # https://github.com/rtfd/readthedocs.org/issues/388
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
   from subprocess import call
-
   call('doxygen')
   cur_dir = os.path.abspath(os.path.dirname(__file__))
   call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
@@ -58,7 +55,7 @@ if on_rtd:
 
   proto_directory = BOREALISPATH + "/utils/protobuf"
   proto_files = proto_directory + "/*.proto"
-  output_dir = BOREALISPATH + "/build/{}/utils/protobuf"
+  output_dir = BOREALISPATH + "/radar_control"
 
   print(os.environ)
   for x in ['release','utils']:
