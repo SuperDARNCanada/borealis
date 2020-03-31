@@ -45,10 +45,6 @@ if on_rtd:
 
   call(['git', 'clone', 'https://github.com/vtsuperdarn/hdw.dat', BOREALISPATH + '/hdw.dat'])
 
-  call(['df', '-h'])
-
-  call(['sudo','apt-get' , 'install', '-y', 'scons'])
-
   call(['ln', '-s', BOREALISPATH + '/hdw.dat/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
 
   protoc_zip = "protoc-3.11.4-linux-x86_64.zip"
