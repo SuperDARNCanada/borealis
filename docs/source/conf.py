@@ -58,6 +58,7 @@ if on_rtd:
   proto_files = proto_directory + "/*.proto"
   output_dir = BOREALISPATH + "/build/{}/utils/protobuf"
 
+  print(os.listdir(BOREALISPATH))
   for x in ['release','utils']:
     output = output_dir.format(x)
     call(['mkdir', '-p', output])
