@@ -24,14 +24,15 @@ import sphinx_rtd_theme
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
-BOREALISPATH = os.path.abspath('../..')
-os.environ['BOREALISPATH'] = BOREALISPATH
-sys.path.insert(0, BOREALISPATH)
-sys.path.insert(1, BOREALISPATH + '/experiment_prototype')
-sys.path.insert(2, BOREALISPATH + '/utils')
-sys.path.insert(3, os.environ['PATH'])
+#BOREALISPATH = os.path.abspath('../..')
+#os.environ['BOREALISPATH'] = BOREALISPATH
+#sys.path.insert(0, BOREALISPATH)
+# sys.path.insert(1, BOREALISPATH + '/experiment_prototype')
+# sys.path.insert(2, BOREALISPATH + '/utils')
+# sys.path.insert(3, os.environ['PATH'])
 
-
+BOREALISPATH = os.environ['BOREALISPATH']
+print(BOREALISPATH)
 # hack for readthedocs to cause it to run doxygen first
 # https://github.com/rtfd/readthedocs.org/issues/388
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
