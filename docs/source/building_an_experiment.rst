@@ -226,7 +226,7 @@ acfint
 range_sep
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct
     value determined by the pulse_len. Used for acfs. This is the range gate separation,
-    in azimuthal direction, in km.
+    in radial direction of the beam, in km.
 
 lag_table
     used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
