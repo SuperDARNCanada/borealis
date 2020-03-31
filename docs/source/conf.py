@@ -52,7 +52,7 @@ if on_rtd:
 
   call(["wget", "-P", BOREALISPATH + "/protoc", protoc_link])
 
-  call(["unzip", BOREALISPATH + "/protoc/" + protoc_zip], "-d", BOREALISPATH + "/protoc")
+  call(["unzip", BOREALISPATH + "/protoc/" + protoc_zip, "-d", BOREALISPATH + "/protoc"])
 
   proto_directory = BOREALISPATH + "/utils/protobuf"
   proto_files = proto_directory + "/*.proto"
