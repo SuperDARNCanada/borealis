@@ -126,4 +126,24 @@ The current latest version of OpenSuSe (15.1) is known to work.
 
     - /sbin/modprobe pps_ldisc && /usr/bin/ldattach 18 /dev/ttyS0 && /usr/local/bin/ntpd
 
-#. For further reading on networking and tuning with the USRP devices, see https://files.ettus.com/manual/page_transport.html and https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks
+#. Verify that the PPS signal incoming on the DCD line of ttyS0 is properly routed and being received. You'll get two lines every second corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since the epoch.
+
+.. code-block::
+
+    sudo ppstest /dev/pps0
+    [sudo] password for root:
+    trying PPS source "/dev/pps0"
+    found PPS source "/dev/pps0"
+    ok, found 1 source(s), now start fetching data...
+    source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755247.199734241, sequence: 249187
+    source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755248.199734605, sequence: 249188
+
+#. For further reading on networking and tuning with the USRP devices, see https://files.ettus.com/manual/page_transport.html and https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks. Also see http://doc.ntp.org/current-stable/drivers/driver22.html for information about the PPS ntp clock discipline, and the man pages for:
+
+    - tuned
+    - cpupower
+    - ethtool
+    - ip
+    - sysctl
+    - modprobe
+    - ldattach
