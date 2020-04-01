@@ -47,7 +47,7 @@ SuperDARN Canada uses OpenSUSE for an operating system, but any Linux system tha
     - cd ${BOREALISPATH} && ln -svi ${BOREALISPATH}/borealis_config_files/[radarcode]_config.ini config.ini
     - If not Usask, use a Usask `config.ini` file as a template or the config file documentation to create your own file in the borealis directory.
 
-#. The Borealis software has a script called install_radar_deps_opensuse.sh to help install dependencies. This script has to be run by the root user. This script can be modified to use the package manager of a different distribution. Make sure that the version of CUDA is up to date and supports your card. This script makes an attempt to correctly install Boost and create symbolic links to the Boost libraries the UHD understands. If UHD does not configure correctly, an improper Boost installation or library naming convention is the likely reason.
+#. The Borealis software has a script called install_radar_deps.py to help install dependencies. This script has to be run with root privileges. This script can be modified to add the package manager of a different distribution if it doesn't exist yet. Make sure that the version of CUDA is up to date and supports your card. This script makes an attempt to correctly install Boost and create symbolic links to the Boost libraries the UHD understands. If UHD does not configure correctly, an improper Boost installation or library naming convention is the likely reason.
 
 #. As part of the realtime capabilities, the hdw.dat repo will be cloned to the computer(default will be /usr/local/hdw.dat). The hdw.dat files are also used for radar operation. Create a symbolic link for this radar in the $BOREALISPATH directory.
 
