@@ -113,8 +113,10 @@ tau_spacing
     multi-pulse increment in us, Defines minimum space between pulses.
 
 pulse_phase_offset
-    Allows phase shifting between pulses, enabling encoding of pulses. Default all
-    zeros for all pulses in pulse_sequence.
+    a handle to a function that will be used to generate phases that will be applied to each pulse
+    in the sequence. If a function is supplied, the beam iterator, sequence number, number of pulses
+    in the sequence, and number of tx samples in each pulse are passed as arguments that can be used
+    in this function. The default is None if no function handle is supplied.
 
 pulse_len
     length of pulse in us. Range gate size is also determined by this.
@@ -1564,7 +1566,7 @@ class ExperimentPrototype(object):
                     exp_slice['slice_id']))
 
         if exp_slice['pulse_phase_offset']:
-            num_samps = round(exp_slice['pulse_len'] * (exp_slice['pulse_len'] * 1e6))
+            num_samps = round(self.txrate * (exp_slice['pulse_len'] * 1e6))
             num_pulses = len(exp_slice['pulse_sequence'])
             phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses, num_samps)
 
@@ -1640,15 +1642,15 @@ class ExperimentPrototype(object):
 
                 # Check if any scanbound times are shorter than the intt.
                 if len(exp_slice['scanbound']) == 1:
-                    tolerance = math.isclose(exp_slice['scanbound'][0] * 1000, exp_slice['intt'])
-                    if not tolerance:
+                    tolerance = 1e-9
+                    if exp_slice['intt'] > (exp_slice['scanbound'][0] * 1000 + tolerance):
                         error_list.append("Slice {} intt longer than "
                             "scanbound times".format(exp_slice['slice_id']))
                 else:
                     for i in range(len(exp_slice['scanbound']) - 1):
+                        tolerance = 1e-9
                         beam_time = (exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000
-                        tolerance = math.isclose(beam_time, exp_slice['intt'])
-                        if not tolerance:
+                        if exp_slice['intt'] < beam_time + tolerance:
                             error_list.append("Slice {} intt longer than "
                                 "scanbound times".format(exp_slice['slice_id']))
                             break

@@ -67,6 +67,10 @@ class Sequence(ScanClassBase):
     combined_pulses_metadata
         This list holds dictionary metadata for all pulses in the sequence. This metadata holds all
         the info needed to combine pulses if pulses are mixed.
+            start_time_us - start time of the pulse in us, relative to the first pulse in sqn
+            total_pulse_len - total length of the pulse that includes len of all combined pulses.
+            component_info - holds length and start time of all combined pulses. Also in us.
+            transmit_metadata - dictionary hold the transmit metadata that will be sent to driver.
     output_encodings
         This dict will hold a list of all the encodings used during an aveperiod for each slice.
         These will be used for data write later.
@@ -118,16 +122,11 @@ class Sequence(ScanClassBase):
                                                                                                 wave_freq_hz)
                     raise ExperimentException(errmsg)  # TODO change to warning? only happens on non-SINE
 
-                # this will zero out non tx antenna samples
-                main_antennas = np.zeros(main_antenna_count, dtype=np.int)
-                temp = np.arange(main_antenna_count)
-                main_antennas[exp_slice['tx_antennas']] = temp[exp_slice['tx_antennas']]
-
                 # convert the beam angles to rads
                 beam_rads = np.pi / 180 * np.array(exp_slice['beam_angle'], dtype=np.float64)
 
-
-                x = ((main_antenna_count / 2.0 - main_antennas) * main_antenna_spacing)
+                main_antennas = np.arange(main_antenna_count)
+                x = (((main_antenna_count - 1) / 2.0 - main_antennas) * main_antenna_spacing)
                 x *= 2 * np.pi * (tx_freq_khz * 1000)
 
                 y = np.cos(np.pi / 2.0 - beam_rads) / speed_of_light
@@ -142,8 +141,13 @@ class Sequence(ScanClassBase):
                 # so that each antenna has a set of phased samples for each beam.
                 phased_samps_for_beams = np.outer(phase_shift.flatten(), basic_samples)
 
-                #beams by antenna by samples
+                # beams by antenna by samples
                 phased_samps_for_beams = phased_samps_for_beams.reshape(phase_shift.shape + basic_samples.shape)
+
+                # zero out the antennas not being used.
+                temp = np.zeros_like(phased_samps_for_beams, dtype=phased_samps_for_beams.dtype)
+                temp[:,exp_slice['tx_antennas'],:] = phased_samps_for_beams[:,exp_slice['tx_antennas'],:]
+                phased_samps_for_beams = temp[:,exp_slice['tx_antennas'],:]
 
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:

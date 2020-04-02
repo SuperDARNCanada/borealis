@@ -78,7 +78,9 @@ DATA_TEMPLATE = {
     "rx_center_freq" : None, # the center frequency of this data (for rawrf), kHz
     "samples_data_type" : None, # C data type of the samples such as complex float.
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
-    "pulse_phase_offset" : None, # For pulse encoding phase. Contains one phase offset per pulse in pulses.
+    "pulse_phase_offset" : None, # For pulse encoding phase. Contains an encoding per pulse. Each
+                                 # encoding can either be a single value or one value for each
+                                 # sample.
     "lags" : None, # The lags created from two pulses in the pulses array.
     "blanked_samples" : None, # Samples that have been blanked because they occurred during transmission times.
                               # Can differ from the pulses array due to multiple slices in a single sequence.
