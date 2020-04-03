@@ -2,7 +2,7 @@
 
 # Copyright 2019 SuperDARN Canada
 #
-# schedule_modified.py
+# schedule_modifier.py
 # 2019-05-28
 # Safetly adds or removes events from the desired SCD file.
 #
