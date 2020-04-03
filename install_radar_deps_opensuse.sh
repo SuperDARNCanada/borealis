@@ -20,6 +20,10 @@ pip3 install posix_ipc
 pip3 install inotify
 pip3 install matplotlib
 pip3 install virtualenv
+pip3 install Sphinx
+pip3 install sphinxcontrib-programoutput
+pip3 install sphinxcontrib-autoprogram
+pip3 install breathe
 
 #### INSTALL PROTOBUF ####
 #https://github.com/google/protobuf/blob/master/src/README.md#c-installation---uni
