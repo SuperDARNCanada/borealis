@@ -34,7 +34,8 @@ Control Computer
 - 1x CPU socket compatible motherboard with serial port header for PPS discipline
 - 1x 256GB SSD 
 - 1x 1TB HDD
-- 1x Intel X550-T1 or X550-T2 10Gb PCIe network card
+- 1x Intel X550-T2 10Gb PCIe network card **NOTE**: Intel 82579LM controllers WILL NOT WORK
+
 
 ==========
 Networking
