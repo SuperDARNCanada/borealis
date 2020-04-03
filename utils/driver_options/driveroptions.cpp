@@ -54,6 +54,9 @@ DriverOptions::DriverOptions() {
     ss >> agc_st_;
     ss.clear();
 
+    ss << std::hex << config_pt.get<std::string>("tst_md");
+    ss >> test_mode_;
+    ss.clear();
 
     tr_window_time_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("tr_window_time"));
@@ -183,6 +186,11 @@ uint32_t DriverOptions::get_lo_pwr() const
 uint32_t DriverOptions::get_agc_st() const
 {
     return agc_st_;
+}
+
+uint32_t DriverOptions::get_test_mode() const
+{
+    return test_mode_;
 }
 
 double DriverOptions::get_tr_window_time() const
