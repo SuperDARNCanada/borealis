@@ -103,6 +103,7 @@ SYSSTATS_KEYS = [
 # TODO: place static methods into an NTPUtils class
 
 if __name__ == "__main__":
+    # TODO: Cleanup arguments to allow a list of plot types, or to plot all from available files
     parser = ap.ArgumentParser(description='Analyze and plot NTP statistics')
     parser.add_argument('--allan-deviation', help='Enable plotting Allan deviation',
                         action='store_true')
@@ -138,6 +139,7 @@ if __name__ == "__main__":
         print("WARNING: Could not open ntp config file: {}".format(e))
         print("You may not have accurate plots.")
 
+    # TODO: Ability to plot using all files available in the ntpstats directory
     if not ntp_config_options:
         print("No ntp config file options loaded")
     else:
@@ -189,6 +191,7 @@ if __name__ == "__main__":
         at_plotter.plot(at_dataset)
         at_plotter.show()
 
+    # TODO: Code reuse for most of the following:
     if args.offset:
         if proper_file_type != 'loopstats':
             raise ValueError("Invalid file type for producing offset plot. Expected loopstats")
