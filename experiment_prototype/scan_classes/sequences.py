@@ -228,22 +228,23 @@ class Sequence(ScanClassBase):
         # (numberofreceivesamples) using scope sync and send that to the driver to sample at
         # a specific rxrate (given by the config).
 
-        # number of samples for the first range for all slice ids
+        # number ranges to the first range for all slice ids
 
         range_as_samples = lambda x,y: int(math.ceil(x/y))
-        first_range_samples = {slice_id : range_as_samples(self.slice_dict[slice_id]['first_range'],
+        num_ranges_to_first_range = {slice_id : range_as_samples(self.slice_dict[slice_id]['first_range'],
                                                             self.slice_dict[slice_id]['range_sep'])
                                 for slice_id in self.slice_ids}
 
         # time for number of ranges given, in us, taking into account first_range and num_ranges.
-        self.ssdelay = max([(self.slice_dict[slice_id]['num_ranges'] + first_range_samples[slice_id]) *
-                            (1.0e6/self.transmit_metadata['output_rx_rate']) for slice_id in self.slice_ids])
-
+        # pulse_len is the amount of time for any range.
+        self.ssdelay = max([(self.slice_dict[slice_id]['num_ranges'] + num_ranges_to_first_range[slice_id]) *
+                            self.slice_dict[slice_id]['pulse_len'] for slice_id in self.slice_ids])
 
         # The delay is long enough for any slice's pulse length and num_ranges to be accounted for.
 
-        # FIND the sequence time. Time before the first pulse is 70 us when RX and TR set up for the first pulse. The
-        # timing to the last pulse is added, as well as its pulse length and the RX/TR delay at the end of last pulse.
+        # FIND the sequence time. Add some TR setup time before the first pulse. The
+        # timing to the last pulse is added, as well as its pulse length and the TR delay 
+        # at the end of last pulse.
         # tr_window_time is originally in seconds, convert to us.
         self.seqtime = (2 * tr_window_time * 1.0e6 +
                         self.combined_pulses_metadata[-1]['start_time_us'] +

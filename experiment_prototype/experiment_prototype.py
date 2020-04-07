@@ -122,7 +122,9 @@ pulse_len
     length of pulse in us. Range gate size is also determined by this.
 
 num_ranges
-    Number of range gates.
+    Number of range gates to receive for. 
+    Range gate time is equal to pulse_len and range gate distance is 
+    the range_sep, calculated from pulse_len.
 
 first_range
     first range gate, in km
