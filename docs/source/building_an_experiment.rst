@@ -9,7 +9,7 @@ Each slice contains the information needed about a specific pulse sequence to ru
 Writing an Experiment
 ---------------------
 
-All experiments must be written as their own class and must be built off of the built-in ExperimentPrototype class.  
+All experiments must be written as their own class and must be built off of the built-in ExperimentPrototype class.
 
 This means the ExperimentPrototype class must be imported at the start of the experiment file::
 
@@ -17,12 +17,12 @@ This means the ExperimentPrototype class must be imported at the start of the ex
 
 
 The only experiment-wide attribute that is required to be set by the user
-when initializing is the CPID, or control program identifier. This should 
-be unique to the experiment. 
+when initializing is the CPID, or control program identifier. This should
+be unique to the experiment.
 
 Other fields that are possible to be set experiment-wide are:
 
-output_rx_rate 
+output_rx_rate
     The sampling rate of the output data. The default is 10.0e3/3 Hz, or 3.333 kHz.
 
 rx_bandwidth
@@ -30,30 +30,30 @@ rx_bandwidth
     or 5 MHz.
 
 tx_bandwidth
-    The output sampling rate of the transmitted signal. The default is 5.0e6 Hz, 
+    The output sampling rate of the transmitted signal. The default is 5.0e6 Hz,
     or 5 MHz.
 
 txctrfreq
-    The centre frequency of the transmit chain. The default is 12000.0 kHz, or 
-    12 MHz. Note that this is tuned so will be set to a quantized value, and 
-    the value can be accessed by the user at this attribute after the experiment 
-    begins.
+    The centre frequency of the transmit chain. The default is 12000.0 kHz, or
+    12 MHz. Note that this is tuned so will be set to a quantized value, which
+    in general is not exactly 12 MHz, and the value can be accessed by the user
+    at this attribute after the experiment begins.
 
-rxctrfreq 
-    The centre frequency of the receive chain. The default is 12000.0 kHz, or 
-    12 MHz. Note that this is tuned so will be set to a quantized value, and 
-    the value can be accessed by the user at this attribute after the experiment 
-    begins.
+rxctrfreq
+    The centre frequency of the receive chain. The default is 12000.0 kHz, or
+    12 MHz. Note that this is tuned so will be set to a quantized value, which
+    in general is not exactly 12 MHz, and the value can be accessed by the user
+    at this attribute after the experiment begins.
 
 decimation_scheme
-    The decimation scheme for the experiment, provided by an instance of the 
-    class DecimationScheme. There is a default scheme specifically set for the 
-    default rates and centre frequencies above. 
+    The decimation scheme for the experiment, provided by an instance of the
+    class DecimationScheme. There is a default scheme specifically set for the
+    default rates and centre frequencies above.
 
 comment_string
     A comment string describing the experiment. It is highly encouraged to
-    provide some description of the experiment for the output data files. The 
-    default is '', or an empty string. 
+    provide some description of the experiment for the output data files. The
+    default is '', or an empty string.
 
 Below is an example of properly inheriting the prototype class and defining your own experiment::
 
@@ -70,23 +70,23 @@ The next step is to add slices to your experiment. An experiment is defined by t
 Experiment Slices
 -----------------
 
-Experiment slices are any individual component of an experiment. An experiment 
+Experiment slices are any individual component of an experiment. An experiment
 slice represents one defined pulse sequence at a single frequency and processed
-given certain parameters. A slice is defined using a dictionary and the 
+given certain parameters. A slice is defined using a dictionary and the
 necessary slice keys.
 
 Slice Keys
 ----------
 
-These are the keys that are set by the user when initializing a slice. Some 
-are required, some can be defaulted, and some are set by the experiment 
+These are the keys that are set by the user when initializing a slice. Some
+are required, some can be defaulted, and some are set by the experiment
 and are read-only.
 
 **Slice Keys Required by the User**
 
 pulse_sequence *required*
     The pulse sequence timing, given in quantities of tau_spacing, for example
-    normalscan = [0, 14, 22, 24, 27, 31, 42, 43]. 
+    normalscan = [0, 14, 22, 24, 27, 31, 42, 43].
 
 tau_spacing *required*
     multi-pulse increment in us, Defines minimum space between pulses.
@@ -104,10 +104,10 @@ intt *required or intn required*
     duration of an integration, in ms. (maximum)
 
 intn *required or intt required*
-    number of averages to make a single integration, if intt = None.
+    number of averages to make a single integration, only used if intt = None.
 
 beam_angle *required*
-    list of beam directions, in degrees off azimuth. Positive is E of N. Array
+    list of beam directions, in degrees off azimuth. Positive is E of N. The beam_angle list
     length = number of beams. Traditionally beams have been 3.24 degrees separated but we
     don't refer to them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will
     be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
@@ -155,8 +155,8 @@ acfint *defaults*
     False.
 
 averaging_method *defaults*
-    a string defining the type of averaging to be done. Current methods are 'mean' or 'median.'
-    The default is 'mean'. 
+    a string defining the type of averaging to be done. Current methods are 'mean' or 'median'.
+    The default is 'mean'.
 
 comment *defaults*
     a comment string that will be placed in the borealis files describing the slice. Defaults
@@ -164,7 +164,7 @@ comment *defaults*
 
 lag_table *defaults*
     used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
-    8-pulse normalscan. This defaults to a lagtable built by the pulse sequence 
+    8-pulse normalscan. This defaults to a lagtable built by the pulse sequence
     provided. All combinations of pulses will be calculated, with both the first pulses
     and last pulses used for lag-0.
 
@@ -206,26 +206,26 @@ xcf *defaults*
 **Read-only Slice Keys**
 
 clrfrqflag *read-only*
-    A boolean flag to indicate that a clear frequency search will be done. 
+    A boolean flag to indicate that a clear frequency search will be done.
     **Not currently supported.**
 
 cpid *read-only*
     The ID of the experiment, consistent with existing radar control programs.
-    This is actually an experiment-wide attribute but is stored within the 
-    slice as well. This is provided by the user but not within the slice, 
+    This is actually an experiment-wide attribute but is stored within the
+    slice as well. This is provided by the user but not within the slice,
     instead when the experiment is initialized.
 
 rx_only *read-only*
     A boolean flag to indicate that the slice doesn't transmit, only receives.
 
 slice_id *read-only*
-    The ID of this slice object. An experiment can have multiple slices. This 
-    is not set by the user but instead set by the experiment when the 
-    slice is added. It will be unique to an experiment run. When experiments
+    The ID of this slice object. An experiment can have multiple slices. This
+    is not set by the user but instead set by the experiment when the
+    slice is added. Each slice id within an experiment is unique. When experiments
     start, the first slice_id will be 0 and incremented from there.
 
 slice_interfacing *read-only*
-    A dictionary of slice_id : interface_type for each sibling slice in the 
+    A dictionary of slice_id : interface_type for each sibling slice in the
     experiment at any given time.
 
 
@@ -248,29 +248,28 @@ Interfacing Types Between Slices
 
 The other necessary part of an experiment is specifying how slices will interface with each other. Interfacing in this case refers to how these two components are meant to be run. The following types of interfacing are possible:
 
-1. SCAN. 
+1. SCAN.
 The scan by scan interfacing allows for slices to run a scan of one slice, followed by a scan of the second. The scan mode of interfacing typically means that the slice will cycle through all of its beams before switching to another slice.
     There are no requirements for slices interfaced in this manner.
 
-2. INTTIME. 
-This type of interfacing allows for once slice to run its integration period (also known as integration time or averaging period), before switching to another slice's integration period. This type of interface effectively creates an interleaving scan where the scans for multiple slices are run 'at the same time', by interleaving the integration times.
+2. INTTIME.
+This type of interfacing allows for one slice to run its integration period (also known as integration time or averaging period), before switching to another slice's integration period. This type of interface effectively creates an interleaving scan where the scans for multiple slices are run 'at the same time', by interleaving the integration times.
     Slices which are interfaced in this manner must share:
         - the same SCANBOUND value.
 
-3. INTEGRATION. 
+3. INTEGRATION.
 Integration interfacing allows for pulse sequences defined in the slices to alternate between each other within a single integration period. It's important to note that data from a single slice is averaged only with other data from that slice. So in this case, the integration period is running two slices and can produce two averaged datasets, but the sequences (integrations) within the integration period are interleaved.
     Slices which are interfaced in this manner must share:
         - the same SCANBOUND value.
         - the same INTT or INTN value.
         - the same BEAM_ORDER length (scan length)
-        
-4. PULSE. 
+
+4. PULSE.
 Pulse interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences mixed and layered together so that the data transmits at the same time. For example, slices of different frequencies can be mixed simultaneously, and slices of different pulse sequences can also run together at the cost of having more blanked samples. When slices are interfaced in this way the radar is truly transmitting and receiving the slices simultaneously.
     Slices which are interfaced in this manner must share:
         - the same SCANBOUND value.
         - the same INTT or INTN value.
         - the same BEAM_ORDER length (scan length)
-        TODO
 
 Slice Example
 -------------
@@ -295,7 +294,7 @@ An example of adding a slice to your experiment is as follows::
             "acfint": True,  # interferometer acfs
         })
 
-The above is an example that shows how you might create the normalscan fast experiment 
+The above is an example that shows how you might create the normalscan fast experiment
 for SuperDARN.
 
 Checking your Experiment for Errors

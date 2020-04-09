@@ -83,7 +83,6 @@ class SCDUtils(object):
                 "scheduling_mode" : scheduling_mode}
 
 
-
     def read_scd(self):
         """Read and parse the Borealis schedule file.
 
@@ -102,7 +101,7 @@ class SCDUtils(object):
         scd_lines = []
         for num, line in enumerate(raw_scd):
             if len(line) != 6:
-                raise ValueError("Line {} has too many arguments".format(num))
+                raise ValueError("Line {} has incorrect number of arguments; requires 6.".format(num))
             # date time experiment mode priority duration
             scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
 
@@ -262,19 +261,19 @@ if __name__ == "__main__":
 
     scd_util = SCDUtils(filename)
 
-    # scd_util.add_line("20190404", "10:43", "twofsound")
-    # #scd_util.add_line("04/04/2019", "10:43", "twofsound")
-    # scd_util.add_line("20190407", "10:43", "twofsound")
-    # scd_util.add_line("20190414", "10:43", "twofsound")
-    # scd_util.add_line("20190414", "10:43", "twofsound", prio=2)
-    # scd_util.add_line("20190414", "10:43", "twofsound", prio=1, duration=89)
-    # #scd_util.add_line("20190414", "10:43", "twofsound", prio=1, duration=24)
-    # scd_util.add_line("20190414", "11:43", "twofsound", duration=46)
-    # scd_util.add_line("20190414", "00:43", "twofsound")
-    # scd_util.add_line("20190408", "15:43", "twofsound", duration=57)
+    # scd_util.add_line("20190404", "10:43", "twofsound", "common")
+    # #scd_util.add_line("04/04/2019", "10:43", "twofsound", "common")
+    # scd_util.add_line("20190407", "10:43", "twofsound", "discretionary")
+    # scd_util.add_line("20190414", "10:43", "twofsound", "special")
+    # scd_util.add_line("20190414", "10:43", "twofsound", "special", prio=2)
+    # scd_util.add_line("20190414", "10:43", "twofsound", "discretionary", prio=1, duration=89)
+    # #scd_util.add_line("20190414", "10:43", "twofsound", "common", prio=1, duration=24)
+    # scd_util.add_line("20190414", "11:43", "twofsound", "common", duration=46)
+    # scd_util.add_line("20190414", "00:43", "twofsound", "common")
+    # scd_util.add_line("20190408", "15:43", "twofsound", , "common", duration=57)
 
 
-    # scd_util.remove_line("20190414", "10:43", "twofsound")
+    # scd_util.remove_line("20190414", "10:43", "twofsound", "special")
 
 
     # print(scd_util.get_relevant_lines("20190414", "10:44"))

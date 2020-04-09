@@ -104,18 +104,18 @@ detach
 def steamed_hams_parser():
     """
     Creates the parser.
-    
+
     :returns: parser, the argument parser for steamed_hams.
     """
 
     parser = argparse.ArgumentParser(usage=usage_msg())
     parser.add_argument("experiment_module", help="The name of the module in the experiments directory "
                                                   "that contains your Experiment class, "
-                                                  "e.g. normalscan")
+                                                  "e.g. 'normalscan'")
     parser.add_argument("run_mode", help="The mode to run, switches scons builds and some arguments to "
                                          "modules based on this mode. Commonly 'release'.")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
-                                                     "run, e.g. common, special, or discretionary.")
+                                                     "run, e.g. 'common', 'special', or 'discretionary'.")
 
     return parser
 
@@ -163,7 +163,7 @@ for mod in modules:
     modules[mod] = "python3 {opts} {module}/{module}.py".format(opts=opts, module=mod)
 
 modules['realtime'] = "source borealisrt_env/bin/activate;" + modules['realtime']
-modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type 
+modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
 #Configure C progs

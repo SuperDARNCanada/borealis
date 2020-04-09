@@ -34,42 +34,30 @@ from experiment_prototype.decimation_scheme.decimation_scheme import DecimationS
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
 
-INTERFACING TYPES:
+Interfacing in this case refers to how two or more components are meant to be run together. The following types of interfacing are possible:
 
-SCAN
-    Scan by scan interfacing. exp_slice #1 will scan first
-    followed by exp_slice #2 and subsequent exp_slice's.
+1. SCAN.
+The scan by scan interfacing allows for slices to run a scan of one slice, followed by a scan of the second. The scan mode of interfacing typically means that the slice will cycle through all of its beams before switching to another slice.
+    There are no requirements for slices interfaced in this manner.
 
-INTTIME
-    nave by nave interfacing (full integration time of
-    one pulse_sequence, then the next). Time/number of pulse_sequences
-    dependent on intt and intn in exp_slice. Effectively
-    simultaneous scan interfacing, interleaving each
-    integration time in the scans. exp_slice #1 first inttime or
-    beam direction will run followed by exp_slice #2's first inttime,
-    etc. if exp_slice #1's len(scan) is greater than exp_slice #2's, exp_slice
-    #2's last integration will run and then all the rest of exp_slice
-    #1's will continue until the full scan is over. exp_slice 1
-    and 2 must have the same scan boundary, if any boundary.
-    All other may differ.
+2. INTTIME.
+This type of interfacing allows for one slice to run its integration period (also known as integration time or averaging period), before switching to another slice's integration period. This type of interface effectively creates an interleaving scan where the scans for multiple slices are run 'at the same time', by interleaving the integration times.
+    Slices which are interfaced in this manner must share:
+        - the same SCANBOUND value.
 
-INTEGRATION
-    integration by integration interfacing (one
-    pulse_sequence of one exp_slice, then the next). exp_slice #1 and
-    exp_slice #2 must have same intt and intn. Integrations will
-    switch between one and the other until time is up/nave is
-    reached.
+3. INTEGRATION.
+Integration interfacing allows for pulse sequences defined in the slices to alternate between each other within a single integration period. It's important to note that data from a single slice is averaged only with other data from that slice. So in this case, the integration period is running two slices and can produce two averaged datasets, but the sequences (integrations) within the integration period are interleaved.
+    Slices which are interfaced in this manner must share:
+        - the same SCANBOUND value.
+        - the same INTT or INTN value.
+        - the same BEAM_ORDER length (scan length)
 
-PULSE
-    Simultaneous pulse_sequence interfacing, pulse by pulse
-    creates a single pulse_sequence. exp_slice A and B might have different
-    frequencies (stereo) and/or may have different pulse
-    length, tau_spacing, pulse_sequence, but must have the same integration
-    time. They must also have same len(scan), although they may
-    use different directions in scan. They must have the same
-    scan boundary if any. A time offset between the pulses
-    starting may be set (seq_timer in exp_slice). exp_slice A
-    and B will have integrations that run at the same time.
+4. PULSE.
+Pulse interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences mixed and layered together so that the data transmits at the same time. For example, slices of different frequencies can be mixed simultaneously, and slices of different pulse sequences can also run together at the cost of having more blanked samples. When slices are interfaced in this way the radar is truly transmitting and receiving the slices simultaneously.
+    Slices which are interfaced in this manner must share:
+        - the same SCANBOUND value.
+        - the same INTT or INTN value.
+        - the same BEAM_ORDER length (scan length)
 
 """
 
@@ -82,61 +70,43 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
                     "comment", "range_sep", "lag_table"])
 
 """
-**Description of Slice Keys**
+These are the keys that are set by the user when initializing a slice. Some
+are required, some can be defaulted, and some are set by the experiment
+and are read-only.
 
-slice_id
-    The ID of this slice object. An experiment can have multiple slices.
+**Slice Keys Required by the User**
 
-cpid
-    The ID of the experiment, consistent with existing radar control programs.
-
-tx_antennas
-    The antennas to transmit on, default is all main antennas given max
-    number from config.
-
-rx_main_antennas
-    The antennas to receive on in main array, default = all antennas
-    given max number from config.
-
-rx_int_antennas
-    The antennas to receive on in interferometer array, default is all
-    antennas given max number from config.
-
-pulse_sequence
+pulse_sequence *required*
     The pulse sequence timing, given in quantities of tau_spacing, for example
-    normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
+    normalscan = [0, 14, 22, 24, 27, 31, 42, 43].
 
-tau_spacing
+tau_spacing *required*
     multi-pulse increment in us, Defines minimum space between pulses.
 
-pulse_phase_offset
-    Allows phase shifting between pulses, enabling encoding of pulses. Default all
-    zeros for all pulses in pulse_sequence.
-
-pulse_len
+pulse_len *required*
     length of pulse in us. Range gate size is also determined by this.
 
-num_ranges
+num_ranges *required*
     Number of range gates.
 
-first_range
+first_range *required*
     first range gate, in km
 
-intt
+intt *required or intn required*
     duration of an integration, in ms. (maximum)
 
-intn
-    number of averages to make a single integration, if intt = None.
+intn *required or intt required*
+    number of averages to make a single integration, only used if intt = None.
 
-beam_angle
-    list of beam directions, in degrees off azimuth. Positive is E of N. Array
+beam_angle *required*
+    list of beam directions, in degrees off azimuth. Positive is E of N. The beam_angle list
     length = number of beams. Traditionally beams have been 3.24 degrees separated but we
     don't refer to them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will
     be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
     needed to write the beam_order list. This is like a mapping of beam number (list
     index) to beam direction off boresight.
 
-beam_order
+beam_order *required*
     beam numbers written in order of preference, one element in this list corresponds to
     one integration period. Can have lists within the list, resulting in multiple beams
     running simultaneously in the averaging period, so imaging. A beam number of 0 in
@@ -149,63 +119,121 @@ beam_order
     integration. When we do imaging we will still have to quantize the directions we
     are looking in to certain beam directions.
 
-scanbound
-    A list of seconds past the minute for integration times in a scan to align to.
-
-clrfrqrange
+clrfrqrange *required or txfreq or rxfreq required*
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
-    in kHz.
+    in kHz. **Not currently supported.**
 
-txfreq
+txfreq *required or clrfrqrange or rxfreq required*
     transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
 
-rxfreq
+rxfreq *required or clrfrqrange or txfreq required*
     receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only
     necessary to specify if you want a receive-only slice.
 
-wavetype
-    string for wavetype. The default is SINE. Any other wavetypes not currently supported but
-    possible to add in at later date.
 
-iwavetable
-    a list of numeric values to sample from. The default is None. Not currently supported
-    but could be set up (with caution) for non-SINE.
+**Defaultable Slice Keys**
 
-qwavetable
-    a list of numeric values to sample from. The default is None. Not currently supported
-    but could be set up (with caution) for non-SINE.
+acf *defaults*
+    flag for rawacf and generation. The default is False. If True, the following fields are
+    also used:
+    - averaging_method (default 'mean')
+    - xcf (default True if acf is True)
+    - acfint (default True if acf is True)
+    - lagtable (default built based on all possible pulse combos)
+    - range_sep (will be built by pulse_len to verify any provided value)
 
-seqoffset
-    offset in us that this slice's sequence will begin at, after the start of the sequence.
-    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence
-    you can offset one slice's sequence from the other by a certain time value so as to not run both
-    frequencies in the same pulse, etc.
-
-comment
-    a comment string that will be placed in the borealis files describing the slice.
-
-averaging_method
-    a string defining the type of averaging to be done. Current methods are 'mean' or 'median.'
-    The default is 'mean'.
-
-acf
-    flag for rawacf and generation. The default is False.
-
-xcf
-    flag for cross-correlation data. The default is True if acf is True, otherwise False.
-
-acfint
+acfint *defaults*
     flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
     False.
 
-range_sep
+averaging_method *defaults*
+    a string defining the type of averaging to be done. Current methods are 'mean' or 'median'.
+    The default is 'mean'.
+
+comment *defaults*
+    a comment string that will be placed in the borealis files describing the slice. Defaults
+    to empty string.
+
+lag_table *defaults*
+    used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
+    8-pulse normalscan. This defaults to a lagtable built by the pulse sequence
+    provided. All combinations of pulses will be calculated, with both the first pulses
+    and last pulses used for lag-0.
+
+pulse_phase_offset *defaults*
+    Allows phase shifting between pulses, enabling encoding of pulses. Default all
+    zeros for all pulses in pulse_sequence.
+
+range_sep *defaults*
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct
     value determined by the pulse_len. Used for acfs. This is the range gate separation,
     in azimuthal direction, in km.
 
-lag_table
-    used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
-    8-pulse normalscan.
+rx_int_antennas *defaults*
+    The antennas to receive on in interferometer array, default is all
+    antennas given max number from config.
+
+rx_main_antennas *defaults*
+    The antennas to receive on in main array, default is all antennas
+    given max number from config.
+
+scanbound *defaults*
+    A list of seconds past the minute for integration times in a scan to align to. Defaults
+    to None, not required.
+
+seqoffset *defaults*
+    offset in us that this slice's sequence will begin at, after the start of the sequence.
+    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence
+    you can offset one slice's sequence from the other by a certain time value so as to not run both
+    frequencies in the same pulse, etc. Default is 0 offset.
+
+tx_antennas *defaults*
+    The antennas to transmit on, default is all main antennas given max
+    number from config.
+
+xcf *defaults*
+    flag for cross-correlation data. The default is True if acf is True, otherwise False.
+
+
+**Read-only Slice Keys**
+
+clrfrqflag *read-only*
+    A boolean flag to indicate that a clear frequency search will be done.
+    **Not currently supported.**
+
+cpid *read-only*
+    The ID of the experiment, consistent with existing radar control programs.
+    This is actually an experiment-wide attribute but is stored within the
+    slice as well. This is provided by the user but not within the slice,
+    instead when the experiment is initialized.
+
+rx_only *read-only*
+    A boolean flag to indicate that the slice doesn't transmit, only receives.
+
+slice_id *read-only*
+    The ID of this slice object. An experiment can have multiple slices. This
+    is not set by the user but instead set by the experiment when the
+    slice is added. Each slice id within an experiment is unique. When experiments
+    start, the first slice_id will be 0 and incremented from there.
+
+slice_interfacing *read-only*
+    A dictionary of slice_id : interface_type for each sibling slice in the
+    experiment at any given time.
+
+
+**Not currently supported and will be removed**
+
+wavetype *defaults*
+    string for wavetype. The default is SINE. **Not currently supported.**
+
+iwavetable *defaults*
+    a list of numeric values to sample from. The default is None. Not currently supported
+    but could be set up (with caution) for non-SINE. **Not currently supported.**
+
+qwavetable *defaults*
+    a list of numeric values to sample from. The default is None. Not currently supported
+    but could be set up (with caution) for non-SINE. **Not currently supported.**
+
 """
 
 hidden_key_set = frozenset(['rxonly', 'clrfrqflag', 'slice_interfacing'])
@@ -792,7 +820,7 @@ class ExperimentPrototype(object):
 
         full_interfacing_dict = {}
 
-        interface_types_l = list(interface_types)
+        interface_types_list = list(interface_types)
         # if this is not the first slice we are setting up, set up interfacing.
         if len(self.slice_ids) != 0:
             if len(interfacing_dict.keys()) > 0:
@@ -800,46 +828,48 @@ class ExperimentPrototype(object):
                 # To do this, get the closest interface type.
                 # We assume that the user meant this to be the closest interfacing
                 # for this slice.
-                closest_sibling = list(interfacing_dict.keys())[0]
-                closest_interface_value = interfacing_dict[closest_sibling]
-                closest_interface_rank = interface_types_l.index(closest_interface_value)
-                for sibling_slice_id, sibling_interface_value in interfacing_dict.items():
+                for sibling_slice_id in interfacing_dict.keys():
                     if sibling_slice_id not in self.slice_ids:
                         errmsg = 'Cannot add slice: the interfacing_dict set interfacing to an unknown slice'\
                                  '{} not in slice ids {}'.format(sibling_slice_id, self.slice_ids)
                         raise ExperimentException(errmsg)
-                    sibling_interface_rank = interface_types_l.index(sibling_interface_value)
-                    if sibling_interface_rank > closest_interface_rank:
-                        closest_interface_value = sibling_interface_value
-                        closest_interface_rank = sibling_interface_rank
-                        closest_sibling = sibling_slice_id
+                try:
+                    closest_sibling = max(interfacing_dict.keys(),
+                                          key=lambda k: interface_types_list.index(
+                                               interfacing_dict[k]))
+                except ValueError as e:  # cannot find interface type in list
+                    errmsg = 'Interface types must be of valid types {}.'\
+                             ''.format(interface_types_list)
+                    raise ExperimentException(errmsg) from e
+                closest_interface_value = interfacing_dict[closest_sibling]
+                closest_interface_rank = interface_types_list.index(closest_interface_value)
             else:
                 # the user provided no keys. The default is therefore 'SCAN'
                 # with all keys so the closest will be 'SCAN' (the furthest possible interface_type)
                 closest_sibling = self.slice_ids[0]
                 closest_interface_value = 'SCAN'
-                closest_interface_rank = interface_types_l.index(closest_interface_value)
+                closest_interface_rank = interface_types_list.index(closest_interface_value)
 
             # now populate a full_interfacing_dict based on the closest sibling's
             # interface values and knowing how we interface with that sibling.
             # this is the only correct interfacing given the closest interfacing.
             full_interfacing_dict[closest_sibling] = closest_interface_value
             for sibling_slice_id, siblings_interface_value in self.get_slice_interfacing(closest_sibling).items():
-                if interface_types_l.index(siblings_interface_value) >= closest_interface_rank:
+                if interface_types_list.index(siblings_interface_value) >= closest_interface_rank:
                     # in this case, the interfacing between the sibling
                     # and the closest sibling is closer than the closest interface for the new slice.
                     # therefore interface with this sibling should be equal to the closest interface.
                     # Or if they are all at the same rank, then the interfacing should equal that rank.
                     # For example, slices 0 and 1 combined PULSE. New slice 2 is
                     # added with closest interfacing INTEGRATION to slice 0. Slice
-                    # 0 will therefore also be interfaced with slice 1 as INTEGRATION
+                    # 2 will therefore also be interfaced with slice 1 as INTEGRATION
                     # type, since both slices 0 and 1 are in a single INTEGRATION.
                     full_interfacing_dict[sibling_slice_id] = closest_interface_value
                 else:  # the rank is less than the closest rank.
                     # in this case, the interfacing to this sibling should be the same as the
                     # closest sibling interface to this sibling.
                     # For example, slices 0 and 1 are combined SCAN and
-                    # slice 2 is combined INTTIME with slice 0 (closest). Therefore if
+                    # slice 2 is combined INTTIME with slice 0 (closest). Therefore slice 2
                     # should be combined SCAN with slice 1 since 0 and 2 are now
                     # within the same scan.
                     full_interfacing_dict[sibling_slice_id] = siblings_interface_value
@@ -848,17 +878,28 @@ class ExperimentPrototype(object):
             # that was populated based on the closest sibling given by the user.
             for sibling_slice_id, interface_value in interfacing_dict.items():
                 if interface_value != full_interfacing_dict[sibling_slice_id]:
+                    siblings_interface_value = self.get_slice_interfacing(closest_sibling)[sibling_slice_id]
                     errmsg = 'The interfacing values of new slice cannot be reconciled. '\
                              'Interfacing with slice {closest}: {interface1} and with slice '\
                              '{other}: {interface2} does not make sense with existing interface between '\
                              ' slices of {sibling_other}: {interface3}'.format(closest=closest_sibling,
                                 interface1=closest_interface_value, other=sibling_slice_id,
-                                interface2=interfacing_dict[sibling_slice_id],
+                                interface2=interface_value,
                                 sibling_other=([sibling_slice_id, closest_sibling].sort()),
                                 interface3=siblings_interface_value)
-                    raise ExperimentException()
+                    raise ExperimentException(errmsg)
 
         return full_interfacing_dict
+
+    def __update_slice_interfacing():
+        """
+        Internal slice interfacing updater. This
+        should only be used internally when slice dictionary is
+        changed, to update all of the slices' interfacing dictionaries.
+        """
+        for slice_id in self.slice_ids:
+            self.__slice_dict[slice_id]['slice_interfacing'] = \
+                self.get_slice_interfacing(slice_id)
 
     def add_slice(self, exp_slice, interfacing_dict={}):
         """
@@ -898,8 +939,7 @@ class ExperimentPrototype(object):
         self.__slice_dict[add_slice_id] = new_exp_slice
 
         # reset all slice_interfacing since a slice has been added.
-        for slice_id in self.slice_ids:
-            self.__slice_dict[slice_id]['slice_interfacing'] = self.get_slice_interfacing(slice_id)
+        self.__update_slice_interfacing()
 
         return add_slice_id
 
@@ -914,9 +954,9 @@ class ExperimentPrototype(object):
         try:
             removed_slice = copy.deepcopy(self.slice_dict[remove_slice_id])
             del(self.slice_dict[remove_slice_id])
-        except (IndexError, TypeError):
+        except (IndexError, TypeError) as e:
             errmsg = 'Cannot remove slice id {} : it does not exist in slice dictionary'.format(remove_slice_id)
-            raise ExperimentException(errmsg)
+            raise ExperimentException(errmsg) from e
 
         remove_keys = []
         for key1, key2 in self.__interface.keys():
@@ -927,8 +967,7 @@ class ExperimentPrototype(object):
             del self.__interface[keyset]
 
         # reset all slice_interfacing since a slice has been removed.
-        for slice_id in self.slice_ids:
-            self.__slice_dict[slice_id]['slice_interfacing'] = self.get_slice_interfacing(slice_id)
+        self.__update_slice_interfacing()
 
         return removed_slice
 
@@ -994,9 +1033,7 @@ class ExperimentPrototype(object):
                     self.__interface[(edit_slice_id, key1)] = key1_interface
 
             # reset all slice_interfacing back
-            for slice_id in self.slice_ids:
-                self.__slice_dict[slice_id]['slice_interfacing'] = \
-                    self.get_slice_interfacing(slice_id)
+            self.__update_slice_interfacing()
 
             return edit_slice_id
 
