@@ -19,7 +19,7 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 class Politescan2(ExperimentPrototype):
 
     def __init__(self):
-        cpid = 
+        cpid = 3383
         super(Politescan2, 
               self).__init__(
                   cpid, comment_string='Politescan on two frequencies '
