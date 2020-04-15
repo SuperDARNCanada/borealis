@@ -24,10 +24,6 @@ import numpy as np
 import argparse as ap
 import allantools
 
-#if not os.environ["BOREALISPATH"]:
-#    raise ValueError("BOREALISPATH env variable not set")
-#config_path = os.environ["BOREALISPATH"] + "/config.ini"
-
 POSSIBLE_FILE_TYPES = frozenset(['loopstats', 'clockstats', 'peerstats', 'rawstats', 'sysstats'])
 
 # Loopstats present the NTP loop filter statistics.
