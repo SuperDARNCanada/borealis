@@ -39,7 +39,7 @@ class FullScanStepMode(ExperimentPrototype):
 
             for i in range(len(all_steps)):
                 for restrict in scf.opts.restricted_ranges:
-                    if all_steps[i] > restrict[0] and all_steps[i] < restrict[1]:
+                    if all_steps[i] > (restrict[0] - 25) and all_steps[i] < (restrict[1] + 25):
                         moved = False
                         while not moved:
                             if direction == "up":
@@ -64,7 +64,7 @@ class FullScanStepMode(ExperimentPrototype):
         move_freqs("up")
         move_freqs("down")
         all_steps = sorted(list(set(all_steps)))
-
+        
         if scf.IS_FORWARD_RADAR:
             beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
         else:
@@ -104,7 +104,8 @@ class FullScanStepMode(ExperimentPrototype):
 
 
         self.add_slice(slices[0])
-
+        interfacing_dict = {}
         for i in range(1, len(slices)):
-            self.add_slice(slices[i], interfacing_dict={0 : 'INTTIME'})
+            interfacing_dict[i-1] = 'INTTIME'
+            self.add_slice(slices[i], interfacing_dict=interfacing_dict)
 

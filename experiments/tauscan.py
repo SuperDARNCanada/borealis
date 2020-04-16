@@ -10,6 +10,7 @@ Keith Kotyk
 import os
 import sys
 import copy
+import numpy as np
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -27,7 +28,7 @@ class Tauscan(ExperimentPrototype):
             beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
         else:
             beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
-h
+
         if scf.opts.site_id in ["sas", "pgr", "cly"]:
             freq = 10500,
         if scf.opts.site_id in ["rkn"]:
@@ -41,12 +42,14 @@ h
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": scf.STD_NUM_RANGES,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": 5600,  # duration of an integration, in ms
+            "intt": 5500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
-            "scanbound" : [i * 5.6 for i in range(len(beams_to_use))],
+            "scanbound" : [i * 5.5 for i in range(len(beams_to_use))],
             "txfreq" : 10500, #kHz
         }
+        
+        super(Tauscan, self).__init__(cpid)
 
-        super(Tauscan, self).__init__()
+        self.add_slice(slice_1)
 
