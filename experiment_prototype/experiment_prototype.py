@@ -267,24 +267,20 @@ class ExperimentPrototype(object):
     The following are the user-modifiable attributes of the ExperimentPrototype that are
     used to make an experiment:
 
-    * xcf: boolean for cross-correlation data
-    * acf: boolean for auto-correlation data on main array
-    * acfint: boolean for auto-correlation data on interferometer array
-    * txctrfreq: transmit centre frequency (that RF chain is tuned to) - modifying
-      requires tuning time.
-    * rxctrfreq: receive centre frequency - modifying requires tuning time.
+    * xcf: boolean for cross-correlation data. A default can be set here for slices,
+      but any slice can override this setting with the xcf slice key. 
+    * acf: boolean for auto-correlation data on main array. A default can be set here for slices,
+      but any slice can override this setting with the acf slice key. 
+    * acfint: boolean for auto-correlation data on interferometer array. A default can be set here for slices,
+      but any slice can override this setting with the acfint slice key. 
+
     * slice_dict: modifiable only using the add_slice, edit_slice, and del_slice
       methods.
     * interface: modifiable using the add_slice, edit_slice, and del_slice
       methods, or by updating the interface dict directly.
 
+    Other parameters are set in the init and cannot be modified after instantiation.
     """
-
-    __slice_keys = slice_key_set
-
-    __hidden_slice_keys = hidden_key_set
-    __default_output_rx_rate = default_output_rx_rate
-    __default_rx_bandwidth = default_rx_bandwidth
 
     def __init__(self, cpid, output_rx_rate=default_output_rx_rate,
                  rx_bandwidth=default_rx_bandwidth, tx_bandwidth=5.0e6, txctrfreq=12000.0,
@@ -292,21 +288,27 @@ class ExperimentPrototype(object):
                  decimation_scheme=create_default_scheme(),
                  comment_string=''):
         """
-        Base initialization for your experiment.
-        :param cpid: unique id necessary for each control program (experiment)
+        Initialization for your experiment. Sets experiment-wide settings including cpid,
+        centre frequencies, sampling rates, and decimation and filtering schemes.
+        :param cpid: unique id necessary for each control program (experiment). Cannot be
+         changed after instantiation.
         :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz.
-         Cannot be changed after instantiation.
+         Cannot be changed after instantiation. Default 3.333 kHz.
         :param rx_bandwidth: The desired bandwidth for the experiment. Directly determines rx
-        sampling rate of the USRPs. Cannot be changed.
+        sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
         :param rx_bandwidth: The desired tx bandwidth for the experiment. Directly determines tx
-        sampling rate of the USRPs. Cannot be changed.
-        :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with.
+        sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
+        :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with. 
+         Since this requires tuning time to set, it cannot be modified after instantiation.
         :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
+         Since this requires tuning time to set, it cannot be modified after instantiation.
         :param decimation_scheme: an object defining the decimation and filtering stages for the
         signal processing module. If you would like something other than the default, you will
         need to build an object of the DecimationScheme type before initiating your experiment.
         This cannot be changed after instantiation.
-        :param comment_string: description of experiment for data files.
+        :param comment_string: description of experiment for data files. This should be 
+         used to describe your overall experiment design. Another comment string exists 
+         for every slice added, to describe information that is slice-specific.
         """
 
         if not isinstance(cpid, int):  # TODO add check for uniqueness
@@ -399,7 +401,6 @@ class ExperimentPrototype(object):
         self._acfint = False  # interferometer auto-correlation.
 
         self.__interface = {}
-        # TODO discuss rephrasing the description of _interface as a graph with defined rules
         # Dictionary of how each exp_slice interacts with the other slices.
         # NOTE keys are as such: (0,1), (0,2), (1,2),
         # NEVER includes (2,0) etc. The only interface options are those specified in
@@ -413,8 +414,12 @@ class ExperimentPrototype(object):
 
         self.__scan_objects = []
 
-        # TODO Remove above two variables after adding this type below
         self.__running_experiment = None  # this will be of ScanClassBase type
+
+    __slice_keys = slice_key_set
+    __hidden_slice_keys = hidden_key_set
+    __default_output_rx_rate = default_output_rx_rate
+    __default_rx_bandwidth = default_rx_bandwidth
 
     @property
     def cpid(self):
