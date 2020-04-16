@@ -67,4 +67,4 @@ class ListeningNormalscan1(ExperimentPrototype):
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
-        }, interfacing={0: 'SCAN'})
+        }, interfacing_dict={0: 'SCAN'})
