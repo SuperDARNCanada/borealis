@@ -51,7 +51,6 @@ class Twofsound(ExperimentPrototype):
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         }
-        print(slice_1['scanbound'])
 
         slice_2 = copy.deepcopy(slice_1)
         slice_2['txfreq'] = freqs[1]
