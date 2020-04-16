@@ -1,12 +1,10 @@
 =========
-bfiq v0.5
+bfiq v0.4
 =========
 
-This is the most up to date version of this file format produced by Borealis version 0.5, the current version. 
+The pydarn format class for this format is BorealisBfiqv0_4 found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
 
-For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
-
-The pydarn format class for this format is BorealisBfiq found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
+Borealis software version 0.4 is out of date, see the current format of the bfiq files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_. 
 
 The bfiq format is intended to hold beamformed i and q data for the main and interferometer arrays. The data is not averaged. 
 
@@ -59,11 +57,11 @@ The file fields in the bfiq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **blanked_samples**             | | Samples that should be blanked because    |
 | | *uint32*                        | | they occurred during transmission times,  |
-| | [num_records x                  | | given by sample number (index into        |
-| | max_num_blanked_samples ]       | | decimated data). Can differ from the      |
+| | [number of blanked              | | given by sample number (index into        |
+| | samples]                        | | decimated data). Can differ from the      |
 | |                                 | | pulses array due to multiple slices in a  |
-| |                                 | | single sequence and can differ from       |
-| |                                 | | record to record if a new slice is added. |
+| |                                 | | single sequence. Assumed shared between   |
+| |                                 | | records which was a bug fixed in v0.5.    |
 +-----------------------------------+---------------------------------------------+
 | | **borealis_git_hash**           | | Identifies the version of Borealis that   |
 | | *unicode*                       | | made this data. Contains git commit hash  |
@@ -138,11 +136,7 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | record. Allows the user to correctly read |
 | | [num_records]                   | | the data up to the correct number and     |
 | |                                 | | remove the padded zeros in the data       |
-| |                                 | | array.                                    |
-+-----------------------------------+---------------------------------------------+
-| | **num_blanked_samples**         | | The number of blanked samples for each    |
-| | *uint32*                        | | record.                                   | 
-| | [num_records]                   | |                                           |  
+| |                                 | | array.                                    | 
 +-----------------------------------+---------------------------------------------+
 | | **num_ranges**                  | | Number of ranges to calculate             |
 | | *uint32*                        | | correlations for.                         |
@@ -186,23 +180,10 @@ The file fields in the bfiq array files are:
 | | *bool*                          | | a scan (scan is defined by the            |
 | | [num_records]                   | | experiment).                              |
 +-----------------------------------+---------------------------------------------+
-| | **scheduling_mode**             | | The mode being run during this time       | 
-| | *unicode*                       | | period (ex. 'common', 'special',          |
-| |                                 | | 'discretionary').                         |
-+-----------------------------------+---------------------------------------------+
 | | **slice_comment**               | | Additional text comment that describes    |
 | | *unicode*                       | | the slice written in this file. The slice |
 | |                                 | | number of this file is provided in the    |
 | |                                 | | filename.                                 | 
-+-----------------------------------+---------------------------------------------+
-| | **slice_id**                    | | The slice id of this file.                |
-| | *uint32*                        | |                                           |
-+-----------------------------------+---------------------------------------------+ 
-| | **slice_interfacing**           | | The interfacing of this slice to          | 
-| | *unicode*                       | | other slices for each record. String      |
-| | [num_records]                   | | representation of the python dictionary   | 
-| |                                 | | of {slice : interface_type, ... }. Can    | 
-| |                                 | | differ between records if slices updated. | 
 +-----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**              | | A list of GPS timestamps corresponding to |
 | | *float64*                       | | the beginning of transmission for each    | 
@@ -260,11 +241,11 @@ The file fields under the record name in bfiq site files are:
 | | **beam_nums**                  | | A list of beam numbers used in this slice | 
 | | *[uint32, ]*                   | | in this record.                           |
 +----------------------------------+---------------------------------------------+
-| | **blanked_samples**            | | Samples that should be blanked because    |
-| | *[uint32, ]*                   | | they occurred during transmission times,  |
-| |                                | | given by sample number (index into        |
-| |                                | | decimated data). Can differ from the      |
-| |                                | | pulses array due to multiple slices in a  |
+| | **blanked_samples**            | | Samples that should be blanked because    | 
+| | *[uint32, ]*                   | | they occurred during transmission times,  | 
+| |                                | | given by sample number (index into        | 
+| |                                | | decimated data). Can differ from the      | 
+| |                                | | pulses array due to multiple slices in a  | 
 | |                                | | single sequence.                          |
 +----------------------------------+---------------------------------------------+
 | | **borealis_git_hash**          | | Identifies the version of Borealis that   | 
@@ -366,20 +347,8 @@ The file fields under the record name in bfiq site files are:
 | | *bool*                         | | a scan (scan is defined by the            | 
 | |                                | | experiment).                              |
 +----------------------------------+---------------------------------------------+
-| | **scheduling_mode**            | | The mode being run during this time       | 
-| | *unicode*                      | | period (ex. 'common', 'special',          |
-| |                                | | 'discretionary').                         |
-+----------------------------------+---------------------------------------------+
 | | **slice_comment**              | | Additional text comment that describes    |
 | | *unicode*                      | | the slice written in this file.           |
-+----------------------------------+---------------------------------------------+
-| | **slice_id**                   | | The slice id of this file.                |
-| | *uint32*                       | |                                           |
-+----------------------------------+---------------------------------------------+ 
-| | **slice_interfacing**          | | The interfacing of this slice to          | 
-| | *unicode*                      | | other slices. String representation of    |
-| |                                | | the python dictionary of                  | 
-| |                                | | {slice : interface_type, ... }            | 
 +----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**             | | A list of GPS timestamps corresponding to | 
 | | *[float64, ]*                  | | the beginning of transmission for each    | 
