@@ -68,5 +68,10 @@ if opts.site_id in ["cly", "pgr"]:
     IS_REVERSE_RADAR = True
 
 def easy_scanbound(intt, beams):
+"""
+Create integration time boundaries for the scan at the exact 
+integration time (intt) boundaries. For new experiments, you 
+may wish to ensure that your intt * len(beams) approaches a 
+minute mark to reduce delay in waiting for the next scanbound.
+"""
     return [i * (intt * 1e-3) for i in range(len(beams))]
-
