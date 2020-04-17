@@ -30,7 +30,7 @@ class Tauscan(ExperimentPrototype):
             beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
 
         if scf.opts.site_id in ["sas", "pgr", "cly"]:
-            freq = 10500,
+            freq = 13500,
         if scf.opts.site_id in ["rkn"]:
             freq = 10200
         if scf.opts.site_id in ["inv"]:
@@ -42,10 +42,10 @@ class Tauscan(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": scf.STD_NUM_RANGES,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": 5500,  # duration of an integration, in ms
+            "intt": 7000,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
-            "scanbound" : [i * 5.5 for i in range(len(beams_to_use))],
+            "scanbound" : [i * 7.0 for i in range(len(beams_to_use))],
             "txfreq" : 10500, #kHz
         }
         
