@@ -532,16 +532,14 @@ def radar():
             beam_iter = 0
 
             if scan.scanbound:
-                # align time to next minute.
+                # align scanbound reference time.
                 now = datetime.utcnow()
-                start_scan = round_up_time(now)
-                wait_time = start_scan - now
-                wait_time = wait_time.total_seconds()
+                dt = now.replace(second=0, microsecond=0) 
 
-                msg = "Scan: waiting {}s to align to {}"
-                msg = msg.format(sm.COLOR("blue", wait_time), sm.COLOR("red", start_scan))
-                rad_ctrl_print(msg)
-                time.sleep(wait_time)
+                if dt + timedelta(seconds=scan.scanbound[beam_iter]) >= now:
+                    start_scan = dt
+                else:
+                    start_scan = round_up_time(now)
 
             while beam_remaining and not new_experiment_waiting:
                 for aveperiod in scan.aveperiods:
