@@ -14,7 +14,7 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 class Normalscan(ExperimentPrototype):
 
     def __init__(self):
-        cpid = 150
+        cpid = 151
         super(Normalscan, self).__init__(cpid)
 
         if scf.IS_FORWARD_RADAR:
