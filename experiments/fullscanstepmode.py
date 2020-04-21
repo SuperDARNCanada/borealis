@@ -3,7 +3,6 @@
 # write an experiment that creates a new control program.
 import os
 import sys
-import copy
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
