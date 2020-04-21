@@ -392,13 +392,13 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 beam.beamnum = sequence.slice_dict[slice_id]["beam_angle"].index(beamdir)
                 beam.beamazimuth = beamdir
 
+            rxchan_add.first_range = sequence.slice_dict[slice_id]['first_range']
+            rxchan_add.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
+            rxchan_add.range_sep = sequence.slice_dict[slice_id]['range_sep']
             if sequence.slice_dict[slice_id]['acf']:
                 rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
                 rxchan_add.acfint = sequence.slice_dict[slice_id]['acfint']
-                rxchan_add.first_range = sequence.slice_dict[slice_id]['first_range']
-                rxchan_add.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
-                rxchan_add.range_sep = sequence.slice_dict[slice_id]['range_sep']
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = rxchan_add.ltab.lag.add()
                     lag_add.pulse_position[:] = lag
@@ -534,7 +534,7 @@ def radar():
             if scan.scanbound:
                 # align scanbound reference time.
                 now = datetime.utcnow()
-                dt = now.replace(second=0, microsecond=0) 
+                dt = now.replace(second=0, microsecond=0)
 
                 if dt + timedelta(seconds=scan.scanbound[beam_iter]) >= now:
                     start_scan = dt

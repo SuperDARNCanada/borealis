@@ -53,16 +53,21 @@ def _main():
 
                 # Make sure we only process the first slice for simulatenous multislice data for now
                 if file_time == last_file_time:
+                    os.remove(filename)
                     continue
 
                 last_file_time = file_time
 
                 slice_num = int(fields[5])
                 try:
+                    rt_print("Using pyDARN to convert {}".format(filename))
                     converted = pydarn.BorealisConvert(filename, "rawacf", "/dev/null", slice_num,
                                                     "site")
-                except:
+                    os.remove(filename)
+                except pydarn.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
                     rt_print("Error converting {}".format(filename))
+                    rt_print(str(e))
+                    os.remove(filename)
                     continue
 
                 data = converted.sdarn_dict
@@ -79,8 +84,10 @@ def _main():
                             tmp[k] = v.item()
 
                 q.put(tmp)
+            else:
+                os.remove(filename)
 
-            os.remove(filename)
+
 
     def handle_remote_connection():
         """
