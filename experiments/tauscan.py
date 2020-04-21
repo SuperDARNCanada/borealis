@@ -38,7 +38,6 @@ class Tauscan(ExperimentPrototype):
         if scf.opts.site_id in ["inv"]:
             freq = 10300
 
-        print(freq)
         slice_1 = {
             "pulse_sequence": [0, 10, 13, 14, 19, 21, 31, 33, 38, 39, 42],
             "tau_spacing": 3000,
@@ -54,7 +53,7 @@ class Tauscan(ExperimentPrototype):
             "xcf" : True,
             "acfint" : True,
         }
-        
+
 
         self.add_slice(slice_1)
 
