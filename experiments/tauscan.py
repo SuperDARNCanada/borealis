@@ -9,8 +9,6 @@ Keith Kotyk
 """
 import os
 import sys
-import copy
-import numpy as np
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
