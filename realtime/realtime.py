@@ -63,13 +63,12 @@ def _main():
                     rt_print("Using pyDARN to convert {}".format(filename))
                     converted = pydarn.BorealisConvert(filename, "rawacf", "/dev/null", slice_num,
                                                     "site")
-                except pydarn.BorealisConvert2RawacfError as e:
+                    os.remove(filename)
+                except pydarn.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
                     rt_print("Error converting {}".format(filename))
-                    rt_print(e)
-                finally:
+                    rt_print(str(e))
                     os.remove(filename)
                     continue
-
 
                 data = converted.sdarn_dict
 
@@ -85,6 +84,8 @@ def _main():
                             tmp[k] = v.item()
 
                 q.put(tmp)
+            else:
+                os.remove(filename)
 
 
 
