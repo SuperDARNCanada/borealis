@@ -33,7 +33,7 @@ class FullScanStepMode(ExperimentPrototype):
             Move frequency steps that lay in restricted bands into unrestricted bands. A 25 kHz
             buffer is used.
 
-            :param      direction:  The direction of which to try move the frequency.
+            :param      direction:  The direction of which to try move the frequency. 'up' or 'down'
             :type       direction:  str
             """
 
@@ -108,4 +108,3 @@ class FullScanStepMode(ExperimentPrototype):
         for i in range(1, len(slices)):
             interfacing_dict[i-1] = 'INTTIME'
             self.add_slice(slices[i], interfacing_dict=interfacing_dict)
-
