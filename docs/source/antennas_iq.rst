@@ -8,7 +8,7 @@ For data files from previous Borealis software versions, see `here <https://bore
 
 The pydarn format class for this format is BorealisAntennasIq found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
 
-The antennas_iq format is intended to hold individual antennas i and q data. The data is not averaged. 
+The antennas_iq format is intended to hold individual antennas I and Q data. The data is not averaged. 
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 

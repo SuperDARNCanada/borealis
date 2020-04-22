@@ -6,7 +6,7 @@ The pydarn format class for this format is BorealisBfiqv0_4 found in the `boreal
 
 Borealis software version 0.4 is out of date, see the current format of the bfiq files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_. 
 
-The bfiq format is intended to hold beamformed i and q data for the main and interferometer arrays. The data is not averaged. 
+The bfiq format is intended to hold beamformed I and Q data for the main and interferometer arrays. The data is not averaged. 
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 
@@ -391,4 +391,3 @@ The mapping from bfiq to iqdat dmap files is completed as follows:
     :maxdepth: 2
 
     iqdat_mapping
-

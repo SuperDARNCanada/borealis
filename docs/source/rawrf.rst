@@ -26,7 +26,7 @@ The naming convention of the rawrf site-structured files are:
 For example: 20191105.1400.02.sas.rawrf.hdf5.site
 
 This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data the experiment that ran at that time.
-Since rawrf is pre-filtered, this data does not need a slice identifier because it contains all the samples being taken at that time. Some familiarity 
+Since rawrf is not filtered, this data does not need a slice identifier because it contains all the samples being taken at that time. Some familiarity 
 with the experiment may be necessary to understand the data, or some access to the other file types produced concurrently. This is primarily a debug 
 format for engineering purposes and should only be produced for special cases.
 
@@ -129,4 +129,3 @@ Site/Array Restructuring
 ------------------------
 
 File restructuring to array files is not done for this format.
-

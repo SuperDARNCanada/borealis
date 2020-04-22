@@ -98,7 +98,7 @@ num_ranges *required*
     Number of range gates.
 
 first_range *required*
-    first range gate, in km
+    distance to the first range gate, in km
 
 intt *required or intn required*
     duration of an integration, in ms. (maximum)
@@ -311,4 +311,3 @@ Checking your Experiment for Errors
 TODO
 
 ..  TODO how to check your experiment for errors
-

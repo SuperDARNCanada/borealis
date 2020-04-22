@@ -6,7 +6,7 @@ The pydarn format class for this format is BorealisAntennasIqv0_4 found in the `
 
 Borealis software version 0.4 is out of date, see the current format of the antennas_iq files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_. 
 
-The antennas_iq format is intended to hold individual antennas i and q data. The data is not averaged. 
+The antennas_iq format is intended to hold individual antennas I and Q data. The data is not averaged. 
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 
@@ -325,4 +325,3 @@ Site/Array Restructuring
 File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARN <https://github.com/SuperDARN/pydarn>`_. It is expected that this code will be separated to its own IO code package in the near future.
 
 The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_. 
-
