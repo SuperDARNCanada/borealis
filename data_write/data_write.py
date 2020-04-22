@@ -58,6 +58,8 @@ DATA_TEMPLATE = {
     "experiment_name" : None, # Name of the experiment file.
     "experiment_comment" : None,  # Comment about the whole experiment
     "slice_comment" : None, # Additional text comment that describes the slice.
+    "slice_id" : None, # the slice id of the file and dataset.
+    "slice_interfacing" : None, # the interfacing of this slice to other slices.
     "num_slices" : None, # Number of slices in the experiment at this integration time.
     "station" : None, # Three letter radar identifier.
     "num_sequences": None, # Number of sampling periods in the integration time.
@@ -97,6 +99,8 @@ DATA_TEMPLATE = {
     "data" : [], # A contiguous set of samples (complex float) at given sample rate
     "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
     "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
+    "averaging_method" : None, # A string describing the averaging method, ex. mean, median
+    "scheduling_mode" : None, # A string describing the type of scheduling time at the time of this dataset.
     "main_acfs" : [], # Main array autocorrelations
     "intf_acfs" : [], # Interferometer array autocorrelations
     "xcfs" : [] # Crosscorrelations between main and interferometer arrays
@@ -674,8 +678,8 @@ class DataWrite(object):
 
                 # TODO(keith): improve call to subprocess.
                 sp.call(cmd.split())
-                #os.remove(tmp_file)
                 so.send_data(rt_dw['socket'], rt_dw['iden'], tmp_file)
+                # temp file is removed in real time module.
 
             elif file_ext == 'json':
                 self.write_json_file(tmp_file, final_data_dict)
@@ -699,7 +703,8 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs",
-            "xcfs", "noise_at_freq", "data_normalization_factor"]
+            "xcfs", "noise_at_freq", "data_normalization_factor", "slice_id", "slice_interfacing",
+            "averaging_method", "scheduling_mode"]
             # note num_ranges not in needed_fields but are used to make
             # correlation_dimensions
 
@@ -712,15 +717,21 @@ class DataWrite(object):
 
             def find_expectation_value(x, parameters, field_name):
                 """
-                Get the median of all correlations from all sequences in the
+                Get the mean or median of all correlations from all sequences in the
                 integration period - only this will be recorded.
                 This is effectively 'averaging' all correlations over the integration
-                time.
+                time, using a specified method for combining them.
                 """
                 # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
                 # so we get median of all sequences.
+                averaging_method = parameters['averaging_method']
                 array_2d = np.array(x, dtype=np.complex64)
-                array_expectation_value = np.mean(array_2d, axis=0) # or use np.median?
+                if averaging_method == 'mean':
+                    array_expectation_value = np.mean(array_2d, axis=0)
+                elif averaging_method == 'median':
+                    array_expectation_value = np.median(array_2d, axis=0)
+                else:
+                    raise ValueError('Averaging Method could not be executed: {}'.format(averaging_method))
                 parameters[field_name] = array_expectation_value
 
             for slice_id in main_acfs:
@@ -734,7 +745,6 @@ class DataWrite(object):
             for slice_id in intf_acfs:
                 parameters = parameters_holder[slice_id]
                 find_expectation_value(intf_acfs[slice_id]['data'], parameters, 'intf_acfs')
-
 
             for slice_id, parameters in parameters_holder.items():
                 parameters['correlation_descriptors'] = ['num_beams', 'num_ranges', 'num_lags']
@@ -768,7 +778,8 @@ class DataWrite(object):
             "pulses", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data",
             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range",
-            "lags", "num_ranges", "data_normalization_factor"]
+            "lags", "num_ranges", "data_normalization_factor", "slice_id", "slice_interfacing",
+            "scheduling_mode"]
 
             bfiq = data_parsing.bfiq_accumulator
 
@@ -833,7 +844,8 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors",
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
-            "data_normalization_factor"]
+            "data_normalization_factor", "blanked_samples", "slice_id", "slice_interfacing",
+            "scheduling_mode"]
 
             antenna_iq = data_parsing.antenna_iq_accumulator
 
@@ -924,7 +936,7 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
             "main_antenna_count", "intf_antenna_count", "samples_data_type",
             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
-            "rx_center_freq"]
+            "rx_center_freq", "blanked_samples", "scheduling_mode"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
@@ -1051,7 +1063,11 @@ class DataWrite(object):
                 parameters['experiment_id'] = np.int64(integration_meta.experiment_id)
                 parameters['experiment_name'] = integration_meta.experiment_name
                 parameters['experiment_comment'] = integration_meta.experiment_comment
+                parameters['scheduling_mode'] = integration_meta.scheduling_mode
                 parameters['slice_comment'] = rx_freq.slice_comment
+                parameters['slice_id'] = np.uint32(rx_freq.slice_id)
+                parameters['averaging_method'] = rx_freq.averaging_method # string
+                parameters['slice_interfacing'] = rx_freq.slice_interfacing # string
                 parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = integration_meta.num_sequences

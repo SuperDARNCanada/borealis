@@ -1,12 +1,10 @@
 ================
-antennas_iq v0.5
+antennas_iq v0.4
 ================
 
-This is the most up to date version of this file format produced by Borealis version 0.5, the current version. 
+The pydarn format class for this format is BorealisAntennasIqv0_4 found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
 
-For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
-
-The pydarn format class for this format is BorealisAntennasIq found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
+Borealis software version 0.4 is out of date, see the current format of the antennas_iq files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_. 
 
 The antennas_iq format is intended to hold individual antennas I and Q data. The data is not averaged. 
 
@@ -59,14 +57,6 @@ The file fields in the antennas_iq array files are:
 | |                                 | | The num_beams field should be used to     |
 | |                                 | | read the correct number of beams for each |
 | |                                 | | record.                                   |
-+-----------------------------------+---------------------------------------------+
-| | **blanked_samples**             | | Samples that should be blanked because    |
-| | *uint32*                        | | they occurred during transmission times,  |
-| | [num_records x                  | | given by sample number (index into        |
-| | max_num_blanked_samples ]       | | decimated data). Can differ from the      |
-| |                                 | | pulses array due to multiple slices in a  |
-| |                                 | | single sequence and can differ from       |
-| |                                 | | record to record if a new slice is added. |
 +-----------------------------------+---------------------------------------------+
 | | **borealis_git_hash**           | | Identifies the version of Borealis that   |
 | | *unicode*                       | | made this data. Contains git commit hash  |
@@ -128,10 +118,6 @@ The file fields in the antennas_iq array files are:
 | | *uint32*                        | | record.                                   | 
 | | [num_records]                   | |                                           | 
 +-----------------------------------+---------------------------------------------+
-| | **num_blanked_samples**         | | The number of blanked samples for each    |
-| | *uint32*                        | | record.                                   | 
-| | [num_records]                   | |                                           | 
-+-----------------------------------+---------------------------------------------+
 | | **num_samps**                   | | Number of samples in the sampling         |
 | | *uint32*                        | | periods. Will also be provided as the     |
 | |                                 | | last data_dimension value.                |  
@@ -167,23 +153,10 @@ The file fields in the antennas_iq array files are:
 | | *bool*                          | | a scan (scan is defined by the            |
 | | [num_records]                   | | experiment).                              |
 +-----------------------------------+---------------------------------------------+
-| | **scheduling_mode**             | | The mode being run during this time       | 
-| | *unicode*                       | | period (ex. 'common', 'special',          |
-| |                                 | | 'discretionary').                         |
-+-----------------------------------+---------------------------------------------+
 | | **slice_comment**               | | Additional text comment that describes    |
 | | *unicode*                       | | the slice written in this file. The slice |
 | |                                 | | number of this file is provided in the    |
 | |                                 | | filename.                                 | 
-+-----------------------------------+---------------------------------------------+
-| | **slice_id**                    | | The slice id of this file.                |
-| | *uint32*                        | |                                           |
-+-----------------------------------+---------------------------------------------+ 
-| | **slice_interfacing**           | | The interfacing of this slice to          | 
-| | *unicode*                       | | other slices for each record. String      |
-| | [num_records]                   | | representation of the python dictionary   | 
-| |                                 | | of {slice : interface_type, ... }. Can    | 
-| |                                 | | differ between records if slices updated. | 
 +-----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**              | | A list of GPS timestamps corresponding to |
 | | *float64*                       | | the beginning of transmission for each    | 
@@ -242,13 +215,6 @@ The file fields under the record name in antennas_iq site files are:
 +----------------------------------+---------------------------------------------+
 | | **beam_nums**                  | | A list of beam numbers used in this slice | 
 | | *[uint32, ]*                   | | in this record.                           |
-+----------------------------------+---------------------------------------------+
-| | **blanked_samples**            | | Samples that should be blanked because    |
-| | *[uint32, ]*                   | | they occurred during transmission times,  |
-| |                                | | given by sample number (index into        |
-| |                                | | decimated data). Can differ from the      |
-| |                                | | pulses array due to multiple slices in a  |
-| |                                | | single sequence.                          |
 +----------------------------------+---------------------------------------------+
 | | **borealis_git_hash**          | | Identifies the version of Borealis that   | 
 | | *unicode*                      | | made this data. Contains git commit hash  | 
@@ -330,20 +296,8 @@ The file fields under the record name in antennas_iq site files are:
 | | *bool*                         | | a scan (scan is defined by the            | 
 | |                                | | experiment).                              |
 +----------------------------------+---------------------------------------------+
-| | **scheduling_mode**            | | The mode being run during this time       | 
-| | *unicode*                      | | period (ex. 'common', 'special',          |
-| |                                | | 'discretionary').                         |
-+----------------------------------+---------------------------------------------+
 | | **slice_comment**              | | Additional text comment that describes    |
 | | *unicode*                      | | the slice written in this file.           |
-+----------------------------------+---------------------------------------------+
-| | **slice_id**                   | | The slice id of this file.                |
-| | *uint32*                       | |                                           |
-+----------------------------------+---------------------------------------------+ 
-| | **slice_interfacing**          | | The interfacing of this slice to          | 
-| | *unicode*                      | | other slices. String representation of    |
-| |                                | | the python dictionary of                  | 
-| |                                | | {slice : interface_type, ... }            | 
 +----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**             | | A list of GPS timestamps corresponding to | 
 | | *[float64, ]*                  | | the beginning of transmission for each    | 
