@@ -248,28 +248,36 @@ Interfacing Types Between Slices
 
 The other necessary part of an experiment is specifying how slices will interface with each other. Interfacing in this case refers to how these two components are meant to be run. The following types of interfacing are possible:
 
-1. SCAN.
-The scan by scan interfacing allows for slices to run a scan of one slice, followed by a scan of the second. The scan mode of interfacing typically means that the slice will cycle through all of its beams before switching to another slice.
-    There are no requirements for slices interfaced in this manner.
+1. **SCAN**
 
-2. INTTIME.
-This type of interfacing allows for one slice to run its integration period (also known as integration time or averaging period), before switching to another slice's integration period. This type of interface effectively creates an interleaving scan where the scans for multiple slices are run 'at the same time', by interleaving the integration times.
-    Slices which are interfaced in this manner must share:
-        - the same SCANBOUND value.
+   The scan by scan interfacing allows for slices to run a scan of one slice, followed by a scan of the second. The scan mode of interfacing typically means that the slice will cycle through all of its beams before switching to another slice.
 
-3. INTEGRATION.
-Integration interfacing allows for pulse sequences defined in the slices to alternate between each other within a single integration period. It's important to note that data from a single slice is averaged only with other data from that slice. So in this case, the integration period is running two slices and can produce two averaged datasets, but the sequences (integrations) within the integration period are interleaved.
-    Slices which are interfaced in this manner must share:
-        - the same SCANBOUND value.
-        - the same INTT or INTN value.
-        - the same BEAM_ORDER length (scan length)
+   There are no requirements for slices interfaced in this manner.
 
-4. PULSE.
-Pulse interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences mixed and layered together so that the data transmits at the same time. For example, slices of different frequencies can be mixed simultaneously, and slices of different pulse sequences can also run together at the cost of having more blanked samples. When slices are interfaced in this way the radar is truly transmitting and receiving the slices simultaneously.
-    Slices which are interfaced in this manner must share:
-        - the same SCANBOUND value.
-        - the same INTT or INTN value.
-        - the same BEAM_ORDER length (scan length)
+2. **INTTIME**
+
+   This type of interfacing allows for one slice to run its integration period (also known as integration time or averaging period), before switching to another slice's integration period. This type of interface effectively creates an interleaving scan where the scans for multiple slices are run 'at the same time', by interleaving the integration times.
+   
+   Slices which are interfaced in this manner must share:  
+    - the same SCANBOUND value.
+
+3. **INTEGRATION**
+   
+   Integration interfacing allows for pulse sequences defined in the slices to alternate between each other within a single integration period. It's important to note that data from a single slice is averaged only with other data from that slice. So in this case, the integration period is running two slices and can produce two averaged datasets, but the sequences (integrations) within the integration period are interleaved.
+   
+   Slices which are interfaced in this manner must share:  
+    - the same SCANBOUND value.
+    - the same INTT or INTN value.
+    - the same BEAM_ORDER length (scan length)
+
+4. **PULSE**
+   
+   Pulse interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences mixed and layered together so that the data transmits at the same time. For example, slices of different frequencies can be mixed simultaneously, and slices of different pulse sequences can also run together at the cost of having more blanked samples. When slices are interfaced in this way the radar is truly transmitting and receiving the slices simultaneously.
+   
+   Slices which are interfaced in this manner must share:  
+    - the same SCANBOUND value.
+    - the same INTT or INTN value.
+    - the same BEAM_ORDER length (scan length)
 
 Slice Example
 -------------
