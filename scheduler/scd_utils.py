@@ -216,6 +216,7 @@ class SCDUtils(object):
 
         Raises:
             ValueError: If datetime could not be created from supplied arguments.
+            IndexError: If schedule file is empty
         """
 
         try:
@@ -225,6 +226,9 @@ class SCDUtils(object):
             raise ValueError("Can not create datetime from supplied formats")
 
         scd_lines = self.read_scd()
+
+        if not scd_lines:
+            raise IndexError("Schedule file is empty. No lines can be returned")
 
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)

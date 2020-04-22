@@ -486,19 +486,7 @@ def get_relevant_lines(scd_util, time_of_interest):
     relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
     while not found:
 
-        if not relevant_lines:
-            msg = "Error in schedule: Could not find any relevant_lines. Either no lines exist " \
-            "or an infinite duration line could not be found."
-
-            raise ValueError(msg)
-
-        lines_dict = {}
         for line in relevant_lines:
-            if line['timestamp'] not in lines_dict:
-                lines_dict[line['timestamp']] = []
-            lines_dict[line['timestamp']].append(line)
-
-        for line in lines_dict[list(lines_dict)[0]]:
             if line['duration'] == '-':
                 found = True
 
@@ -509,11 +497,6 @@ def get_relevant_lines(scd_util, time_of_interest):
             hhmm = time.strftime("%H:%M")
 
             new_relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
-            if not new_relevant_lines:
-                msg = "Error in schedule: Could not find any relevant_lines. Either no lines exist "\
-                "or an infinite duration line could not be found."
-
-                raise ValueError(msg)
 
             lines_diff = [d for d in new_relevant_lines if d not in relevant_lines]
 
@@ -561,7 +544,7 @@ def _main():
         log_msg_header = "Updated at {}\n".format(time_of_interest)
         try:
             relevant_lines = get_relevant_lines(scd_util, time_of_interest)
-        except ValueError as e:
+        except (IndexError,ValueError) as e:
             error_msg = ("{logtime}: Unable to make schedule\n"
                          "\t Exception thrown:\n"
                          "\t\t {exception}\n")

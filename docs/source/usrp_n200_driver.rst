@@ -23,7 +23,7 @@ Receive Thread
 
 Under heavy load, the USRP does not seem to respond well to timed receive events. We use a continuous receive ringbuffer system to minimize dropped samples. Instead of using a time triggered receive event, we start sampling continuously at a time. We then use the timestamp of the transmit pulse sequence to calculate where in the ringbuffer the pulse sequence samples are located.
 
-.. figure:: ringbuffer.png
+.. figure:: img/ringbuffer.png
    :scale: 100%
    :alt: Ringbuffer Visualization
    :align: center
