@@ -216,6 +216,7 @@ therefore ignored.
 
 default_rx_bandwidth = 5.0e6
 default_output_rx_rate = 10.0e3/3
+transition_bandwidth = 750.0e3
 
 class ExperimentPrototype(object):
     """
@@ -636,7 +637,7 @@ class ExperimentPrototype(object):
         This is the maximum tx frequency possible in this experiment (either maximum in our license
         or maximum given by the centre frequency and sampling rate).
         """
-        max_freq = self.txctrfreq * 1000 + (self.txrate/2.0)
+        max_freq = self.txctrfreq * 1000 + (self.txrate/2.0) - transition_bandwidth
         if max_freq < self.options.max_freq:
             return max_freq
         else:
@@ -651,7 +652,7 @@ class ExperimentPrototype(object):
         This is the minimum tx frequency possible in this experiment (either minimum in our license
         or minimum given by the centre frequency and sampling rate).
         """
-        min_freq = self.txctrfreq * 1000 - (self.txrate/2.0)
+        min_freq = self.txctrfreq * 1000 - (self.txrate/2.0) + transition_bandwidth
         if min_freq > self.options.min_freq:
             return min_freq
         else:
@@ -673,7 +674,7 @@ class ExperimentPrototype(object):
         This is the maximum tx frequency possible in this experiment (maximum given by the centre
         frequency and sampling rate), as license doesn't matter for receiving.
         """
-        max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0)
+        max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0) - transition_bandwidth
         return max_freq
 
     @property
@@ -684,7 +685,7 @@ class ExperimentPrototype(object):
         This is the minimum rx frequency possible in this experiment (minimum given by the centre
         frequency and sampling rate) - license doesn't restrict receiving.
         """
-        min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0)
+        min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0) + transition_bandwidth
         if min_freq > 1000: #Hz
             return min_freq
         else:
