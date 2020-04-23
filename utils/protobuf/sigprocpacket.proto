@@ -18,7 +18,7 @@ message SigProcPacket {
         repeated BeamDirections beam_directions = 3;
         uint32 num_ranges = 4; 
         float first_range = 5; // km
-        float range_sep = 6; // will be = 0 if no acfs, km.
+        float range_sep = 6; // km
         uint32 tau_spacing = 7; // in us
         repeated LagPair lags = 8; // will be empty if no acfs.
 

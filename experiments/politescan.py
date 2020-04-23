@@ -34,6 +34,7 @@ class Politescan(ExperimentPrototype):
             "beam_order": beams_to_use,
             "scanbound" : [i * 3.5 for i in range(len(beams_to_use))],
             "rxfreq" : 10500, #kHz
+            "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         })
