@@ -1098,10 +1098,8 @@ class DataWrite(object):
 
                 parameters_holder[rx_freq.slice_id] = parameters
 
-        if write_rawacf:
-
+        if write_rawacf and data_parsing.mainacfs_available:
             write_correlations(copy.deepcopy(parameters_holder))
-            pass
 
         if write_bfiq and data_parsing.bfiq_available:
             write_bfiq_params(copy.deepcopy(parameters_holder))

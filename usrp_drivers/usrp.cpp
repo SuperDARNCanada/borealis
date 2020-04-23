@@ -511,7 +511,7 @@ void USRP::set_input_gpios()
  *
  * @param[in]   mboard  The USRP to invert test mode on. Default 0.
  */
-void USRP::invert_test_mode(uint32_t mboard=0)
+void USRP::invert_test_mode(uint32_t mboard /* =0 */)
 {
     uint32_t tm_value = usrp_->get_gpio_attr(gpio_bank_high_, "OUT", mboard);
     usrp_->set_gpio_attr(gpio_bank_high_, "OUT", test_mode_, ~tm_value, mboard);
@@ -523,7 +523,7 @@ void USRP::invert_test_mode(uint32_t mboard=0)
  *
  * @param[in]   mboard  The USRP to set test mode HIGH on. Default 0.
  */
-void USRP::set_test_mode(uint32_t mboard=0)
+void USRP::set_test_mode(uint32_t mboard /* =0 */)
 {
     usrp_->set_gpio_attr(gpio_bank_high_, "OUT", test_mode_, 0xFFFF, mboard);
     usrp_->set_gpio_attr(gpio_bank_low_, "OUT", test_mode_, 0x0000, mboard);
@@ -534,7 +534,7 @@ void USRP::set_test_mode(uint32_t mboard=0)
  *
  * @param[in]   mboard  The USRP to clear test mode LOW on. Default 0.
  */
-void USRP::clear_test_mode(uint32_t mboard=0)
+void USRP::clear_test_mode(uint32_t mboard /* =0 */)
 {
     usrp_->set_gpio_attr(gpio_bank_high_, "OUT", test_mode_, 0x0000, mboard);
     usrp_->set_gpio_attr(gpio_bank_low_, "OUT", test_mode_, 0xFFFF, mboard);
