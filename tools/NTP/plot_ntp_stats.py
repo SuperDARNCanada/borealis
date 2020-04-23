@@ -179,6 +179,8 @@ if __name__ == "__main__":
     if not ntp_config_options:
         print("No ntp config file options loaded")
     else:
+        # First, remove the comment lines
+        ntp_config_options = [line for line in ntp_config_options if "#" not in line]
         ntp_statsdir = [line for line in ntp_config_options if "statsdir" in line]
         ntp_statsdir = ntp_statsdir[0].split()[1]
         ntp_servers = [line for line in ntp_config_options if "server" in line]
