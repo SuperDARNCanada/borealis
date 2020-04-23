@@ -2,7 +2,7 @@
 antennas_iq
 ===========
 
-This format is intended to hold individual antennas i and q data. The data is not averaged. 
+This format stores individual antennas i and q data. The data is filtered, but not averaged.
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 

@@ -8,6 +8,6 @@ directory = sys.argv[1]
 
 for file in os.listdir(directory):
 	if file.endswith('bfiq.hdf5'):
-		command = 'python3 /home/radar/borealis/testing/dsp_testing/test_beamforming.py ' + file
+		command = 'python3 /home/radar/borealis/tools/dsp_testing/test_beamforming.py ' + file
 		string_output = sp.check_output(command.split()).decode('utf-8')
 		print(string_output)

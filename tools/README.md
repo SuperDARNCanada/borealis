@@ -1,5 +1,5 @@
-# Testing #
-This directory contains various programs, scripts, and test data used during the development of borealis.
+# Tools #
+This directory contains various tools: programs, scripts, and test data used during the development of borealis.
 
 # SIMULATORS #
 
@@ -26,11 +26,13 @@ Full scripts dedicated to testing loopback and other data.
 ## filter_testing ## 
 Scripts for building and plotting and testing filters. 
 
+# NTP #
+Contains test NTP statistics files for plotting, as well as a python NTP plotting utility.
+
 # OTHER #
 
 ## n200_gpio_test ##
 This directory contains a c++ program to run gpio tests on the n200's as well as python code to use a saleae logic analyzer's output file to test for proper gpio signal timing.
-
 
 ## octoclock_test	## 
 This directory contains a c++ program to explore all the functionality of the ettus octoclocks, with or without internal GPSDOs in them.
@@ -47,5 +49,3 @@ This direcotry has code written by Max to calculate the offsets for combinations
 ## dsp_testing ## 
 
 TODO: Keith
-
-
