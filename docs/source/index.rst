@@ -20,6 +20,7 @@ Welcome to Borealis's documentation!
     /borealis_data
     /monitoring
     /lab_testing
+    /tools
     /failure_modes
 
 Indices and tables
