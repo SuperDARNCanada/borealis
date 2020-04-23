@@ -49,7 +49,7 @@ def usage_msg():
     oscillator is more stable than it is over the short term. Phase noise and Allan deviation
     are closely related.
 
-    If you have a loopstats input file the you can plot two quantities:
+    If you have a loopstats input file then you can plot two quantities:
 
     1) The offset (in seconds) can be plotted. This plots the ntpd estimated time offset from
     true time in seconds vs time, obviously smaller values are better.
