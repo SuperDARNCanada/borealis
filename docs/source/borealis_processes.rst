@@ -8,6 +8,7 @@ Runtime Processes
 ..  toctree::
     :maxdepth: 4
 
+    experiment_handler
     radar_control
     brian
     rx_signal_processing
@@ -21,7 +22,6 @@ Experiment Components
 ..  toctree::
     :maxdepth: 4
 
-    experiment_handler
     experiment_prototype
     experiments
 

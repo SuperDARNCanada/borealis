@@ -37,9 +37,14 @@ Data Storage and Deletion
 
 Borealis file sizes can add up quickly to fill all available hard drive space, especially if antennas_iq and/or bfiq data types are being generated. However, it is convenient and recommended to keep a backlog of lower level data products such as antennas_iq for a period of time. These files are useful for debugging hardware issues and reproducing RAWACF files.
 
-In order to prevent system failure due to hard drives filling up, a method for deleting the oldest data files is employed. This is referred to as `rotating` the files.
 
 File Rotation
 -------------
 
-A utility script is scheduled via cron to check the filesystem that Borealis files are written to. If the filesystem usage is too high, it searches for and deletes the oldest files in a loop until the filesystem usage goes below the threshold. See the SuperDARN Canada `data flow repository <https://github.com/SuperDARNCanada/data_flow>`_ for more information.
+A utility script is scheduled via cron to check the filesystem that Borealis files are written to.
+If the filesystem usage is too high, it searches for and deletes the oldest files in a loop until
+the filesystem usage goes below the threshold. See the SuperDARN Canada
+`data flow repository <https://github.com/SuperDARNCanada/data_flow>`_ for more information.
+
+In order to prevent system failure due to hard drives filling up, a method for deleting the oldest
+data files is employed for SuperDARN Canada radars. This is referred to as `rotating` the files.

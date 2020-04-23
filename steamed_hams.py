@@ -86,7 +86,7 @@ elif sys.argv[2] == "debug":
     mode = "debug"
     data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq"
 elif sys.argv[2] == "pythonprofiling":
-    python_opts = "-O -u -m cProfile -o testing/python_testing/{module}.cprof"  # TODO: Does this need updating to tools? I don't see the python_testing directory
+    python_opts = "-O -u -m cProfile -o testing/python_testing/{module}.cprof"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
     data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq"
