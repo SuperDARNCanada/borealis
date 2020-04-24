@@ -5,12 +5,35 @@ Copyright SuperDARN Canada 2020
 Keith Kotyk
 
 Installation script for Borealis utilities.
-
+NOTE: This script has been tested and is known to work on:
+    OpenSuSe 15.1
+    
 """
 import subprocess as sp
 import sys
 import os
 import multiprocessing as mp
+import argparse as ap
+
+def usage_msg():
+    """
+    Return the usage message for this process.
+
+    This is used if a -h flag or invalid arguments are provided.
+
+    :returns: the usage message
+    """
+
+    usage_message = """ install_radar_deps.py [-h] installation_directory
+    
+    This script will download and configure all dependencies for the 
+    Borealis project. You must supply an installation directory.
+
+    Example usage:
+    python3 install_radar_deps.py /home/radar/borealis/
+
+    """
+    return usage_message
 
 def execute_cmd(cmd):
     """
@@ -40,13 +63,6 @@ def get_distribution():
 
     return distro
 
-DISTRO = get_distribution()
-
-# Set env variables that will be read by subshells
-os.environ['IDIR'] = sys.argv[1]
-os.environ['CORES'] = str(mp.cpu_count())
-
-
 def install_packages():
     """
     Install the needed packages used by Borealis. Multiple options are listed for distributions that
@@ -62,7 +78,10 @@ def install_packages():
                 "python3-pip",
                 "gdb",
                 "jq",
+
                 "hdf5",
+                "libhdf5-dev",
+                
                 "autoconf",
                 "automake",
                 "libtool",
@@ -71,17 +90,24 @@ def install_packages():
                 "unzip",
                 "libarmadillo9",
                 "pps-tools",
+                
                 "libboost_*_66_0",
+                "libboost-*67.0*",
+
                 "python3-mako",
                 "doxygen",
                 "python3-docutils",
                 "cmake",
+
                 "uhd-udev",
+                "libuhd-dev",
+
                 "libgps23",
                 "dpdk",
 
                 "net-snmp-devel",
                 "net-snmp-dev",
+                "libsnmp-dev",
 
                 "libevent-devel",
                 "libevent-dev",
@@ -91,15 +117,17 @@ def install_packages():
 
                 "pps-tools-devel",
                 "pps-tools-dev",
+                "pps-tools",
 
                 "libX11-devel",
-                "libX11-dev",
+                "libx11-dev",
 
                 "python3-devel",
                 "python3-dev",
 
                 "boost-devel",
                 "liboost-all-dev",
+                "libboost-dev",
 
                 "libusb-1_0-devel",
                 "libusb-1.0-0-dev",
@@ -128,6 +156,7 @@ def install_packages():
 
     for pck in packages:
         install_cmd = pck_mgr + " install -y " + pck
+        print(install_cmd)
         try:
             execute_cmd(install_cmd)
         except sp.CalledProcessError as e:
@@ -211,8 +240,14 @@ def install_uhd():
     def fix_boost_links():
         import glob
         import pathlib as pl
+        libpath = ""
 
-        files = glob.glob('/usr/lib64/libboost_*.so.*')
+        if "openSUSE" in DISTRO:
+            libpath = '/usr/lib64/'
+        elif "Ubuntu" in DISTRO:
+            libpath = '/usr/lib/x86_64-linux-gnu'
+
+        files = glob.glob('{}/libboost_*.so.*'.format(libpath))
         print(files)
 
         files_with_no_ext = []
@@ -226,14 +261,16 @@ def install_uhd():
         print(files_with_no_ext)
 
         for (f,n) in zip(files, files_with_no_ext):
-            cmd = 'ln -s -f {} /usr/lib64/{}.so'.format(f,n)
+            cmd = 'ln -s -f {} {}/{}.so'.format(f, libpath, n)
             execute_cmd(cmd)
 
-        cmd = 'ln -s -f /usr/lib64/libboost_python-py3.so /usr/lib64/libboost_python3.so'
+        if "openSUSE" in DISTRO:
+            cmd = 'ln -s -f {libpath}/libboost_python-py3.so {libpath}/libboost_python3.so'.format(libpath=libpath)
+        elif "Ubuntu" in DISTRO:
+            cmd = 'ln -s -f {libpath}/libboost_python37.so.1.67.0 {libpath}/libboost_python3.so'.format(libpath=libpath)
         execute_cmd(cmd)
 
-    if "openSUSE" in DISTRO:
-        fix_boost_links()
+    fix_boost_links()
 
     uhd_cmd = "cd ${IDIR};" \
     "git clone --recursive git://github.com/EttusResearch/uhd.git;" \
@@ -256,10 +293,14 @@ def install_cuda():
     """
     Install CUDA.
     """
+    if "openSUSE" in DISTRO:
+        cuda_file = 'cuda_10.2.89_440.33.01_linux.run'
+    elif 'Ubuntu' in DISTRO:
+        cuda_file = 'cuda_10.2.89_440.33.01_linux.run'
 
     cuda_cmd = "cd ${IDIR};" \
-    "wget http://developer.download.nvidia.com/compute/cuda/10.1/Prod/local_installers/cuda_10.1.243_418.87.00_linux.run;" \
-    "sh cuda_10.1.243_418.87.00_linux.run --silent --toolkit --samples;"
+    "wget http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};" \
+    "sh {cuda_file} --silent --toolkit --samples;".format(cuda_file=cuda_file)
 
     execute_cmd(cuda_cmd)
 
@@ -279,6 +320,16 @@ def install_realtime():
     "deactivate;"
 
     execute_cmd(rt_cmd)
+
+parser = ap.ArgumentParser(usage=usage_msg(), description="Installation script for Borealis utils")
+parser.add_argument("install_dir", help="Path to the installation directory.")
+args = parser.parse_args()
+
+DISTRO = get_distribution()
+
+# Set env variables that will be read by subshells
+os.environ['IDIR'] = args.install_dir
+os.environ['CORES'] = str(mp.cpu_count())
 
 install_packages()
 install_protobuf()
