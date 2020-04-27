@@ -2,10 +2,10 @@
 
 # write an experiment that creates a new control program.
 
-# normalscan and listen has an appended listening integration time 
-# at the end of a full scan. 
+# normalscan and listen has an appended listening integration time
+# at the end of a full scan.
 # integration times are reduced to 3s to allow time for this listening
-# integration time. 
+# integration time.
 
 import sys
 import os
@@ -20,7 +20,7 @@ class ListeningNormalscan1(ExperimentPrototype):
 
     def __init__(self):
         cpid = 3381
-        super(ListeningNormalscan1, 
+        super(ListeningNormalscan1,
               self).__init__(
                   cpid, comment_string='Normalscan with a second slice for'
                                        ' listening on the same frequency at'
@@ -47,7 +47,7 @@ class ListeningNormalscan1(ExperimentPrototype):
             "beam_order": beams_to_use,
             # scanbound ends at 48s.
             "scanbound": [i * 3.0 for i in range(len(beams_to_use))],
-            "txfreq" : 10500, #kHz
+            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
@@ -56,14 +56,14 @@ class ListeningNormalscan1(ExperimentPrototype):
         self.add_slice({  # slice_id = 1, receive only
             "pulse_sequence": scf.SEQUENCE_7P,
             "tau_spacing": scf.TAU_SPACING_7P,
-            "pulse_len": scf.PULSE_LEN_45KM, 
+            "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3000,  # duration of an integration, in ms
             "beam_angle": [0.0],  #boresite
             "beam_order": [0],
             "scanbound" : [50.0],  #50th second of minute
-            "rxfreq" : 10500, #kHz, same frequency but receive-only
+            "rxfreq" : scf.COMMON_MODE_FREQ_1, #kHz, same frequency but receive-only
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
