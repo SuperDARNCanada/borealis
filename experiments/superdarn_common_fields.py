@@ -64,3 +64,23 @@ if opts.site_id in ["sas", "rkn", "inv"]:
 
 if opts.site_id in ["cly", "pgr"]:
     IS_REVERSE_RADAR = True
+
+# set common mode operating frequencies with a slight offset.
+if opts.site_id == "sas":
+    COMMON_MODE_FREQ_1 = 10500
+    COMMON_MODE_FREQ_2 = 13000
+elif opts.site_id == "pgr":
+    COMMON_MODE_FREQ_1 = 10600
+    COMMON_MODE_FREQ_2 = 13100
+elif opts.site_id == "rkn":
+    COMMON_MODE_FREQ_1 = 10900
+    COMMON_MODE_FREQ_2 = 13150
+elif opts.site_id == "inv":
+    COMMON_MODE_FREQ_1 = 10800
+    COMMON_MODE_FREQ_2 = 13200
+elif opts.site_id == "cly":
+    COMMON_MODE_FREQ_1 = 10700
+    COMMON_MODE_FREQ_2 = 13050
+else:
+    COMMON_MODE_FREQ_1 = 10400
+    COMMON_MODE_FREQ_2 = 13200
