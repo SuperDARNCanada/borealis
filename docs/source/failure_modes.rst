@@ -100,3 +100,23 @@ has failed in some way, then some possible results are:
     - Transmitter may not be able to be placed into test mode
 
 To fix this issue, ensure that all connectors are secured.
+
+Shared memory full/Borealis unable to delete shared memory
+----------------------------------------------------------
+**NOTE** If you've just installed Borealis, this may be caused by a missing `h5copy` binary.
+Make sure you have it installed for your operating system. For new versions of Ubuntu this means
+installing `hdf5-tools`. For OpenSuSe it means installing `hdf5`.
+If the shared memory location written to by Borealis is full, or the shared memory files are unable
+to be deleted by Borealis, then some possible results are:
+
+    - N200's will be in RX only mode (green LED on front panel will be on only)
+    - Borealis will appear to halt when viewing the screen
+    - Signal processing will quietly die
+    - Data files, shared memory files and log files will cease being written
+
+To fix this issue and restart the radar:
+    - Make sure the `h5copy` binary is installed for your system
+    - remove all Borealis created files in the `/dev/shm` directory
+    - `/borealis/stop_radar.sh`
+    - `/borealis/start_radar.sh`
+
