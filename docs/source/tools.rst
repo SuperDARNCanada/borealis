@@ -6,14 +6,14 @@ Tools
 NEC
 ---
 
-A python script called `nec_sd_generator.py` in the tools/NEC Borealis directory contains
+A python script called `nec_sd_generator.py` in the `tools/NEC` Borealis directory contains
 functionality to produce the correct geometry and other inputs for a NEC engine program like
 4nec2 to simulate/model SuperDARN antenna arrays.
 
 This script can be used to generate some common orientations of the SuperDARN antenna arrays
 for use with a NEC engine. Some programs that can read NEC inputs are 4nec2 or eznec. This
 script has been tested with the free, latest version of 4nec2, 5.8.17, updated January 2020 and
-available here: `https://www.qsl.net/4nec2/`_
+available here: `<https://www.qsl.net/4nec2/>`_
 
 In order to use this with 4nec2, simply open 4nec2 and go to `File->Open 4nec2 in/out file` and
 select the file (it must end in '.nec'). Then hit `F7` or go to the `Calculate->NEC Output-data`
@@ -73,4 +73,86 @@ beamwidth of 8 degrees and a gain of 17.47dB. Note this is at a frequency of 10.
 .. image:: img/4nec2_ttfd_standard.png
    :width: 600px
    :alt: ttfd array modeled in 4nec2
+   :align: center
+
+
+---
+NTP
+---
+
+A python script called `plot_ntp_stats.py` located in the `tools/NTP` borealis directory contains
+functionality that can be used to plot some common statistics that the `ntpd` program can produce.
+
+It requires that you've set up `ntpd` to log statistics. Currently supported plots are basic,
+but still useful. This script also requires the ntp configuration file to be able to
+accurately calculate the Allan deviation for PPS drivers.
+
+The Allan deviation can be plotted if you have a `clockstats` file. The subject of Allan
+deviation is beyond the scope of this documentation, but it can give you an indication of
+your short, mid and long-term stability of your oscillator. In short, if you see a negative
+relationship between the y axis and the x axis that means that over the long term your
+oscillator is more stable than it is over the short term. Phase noise and Allan deviation
+are closely related.
+
+Here is an example of an Allan deviation plot:
+
+.. image:: img/ntp_adev_example.png
+   :width: 600px
+   :alt: NTP stats Allan Deviation plot
+   :align: center
+
+Looking at the above image, it's clear that the clock stats indicate the clock is more stable
+the longer you view it. This is generally true for GPS disciplined clocks. If you have a piezo
+crystal oscillator and generated an Allan deviation plot for it, you might see the opposite
+relationship. Combining the two types of clocks into a GPS disciplined oscillator will get you
+the best of both short and long term stability.
+
+If you have a `loopstats` input file then you can plot two quantities:
+
+ - The `ntpd` estimated time offset from true time in seconds vs time smaller values are better.
+
+ - The `ntpd` estimated frequency offset in PPM from a 'true oscillator' (ideal UTC clock) vs time, smaller values are better.
+
+Here are example plots of the `loopstats` offset and frequency offset:
+
+.. image:: img/ntp_loopstats_offset.png
+   :width: 600px
+   :alt: NTP stats loopstats offset
+   :align: center
+
+.. image:: img/ntp_loopstats_freqoffset.png
+   :width: 600px
+   :alt: NTP stats loopstats freq offset
+   :align: center
+
+If you have a peerstats input file then you can plot three quantities for each peer:
+
+ - The `ntpd` estimated time offset from true time in seconds vs time, smaller values mean `ntpd` thinks it's closer to true time.
+
+ - The estimated round-trip time for `ntpd` packets vs time. Very small values would indicate the peer is on the local network.
+
+ - The dispersion value (seconds) indicates how spread out the offsets are for this particular peer.
+
+Here are examples of the above three plots:
+
+.. image:: img/ntp_peerstats_offset.png
+   :width: 600px
+   :alt: NTP stats peerstats offset
+   :align: center
+
+.. image:: img/ntp_peerstats_delay.png
+   :width: 600px
+   :alt: NTP stats peerstats delay
+   :align: center
+
+.. image:: img/ntp_peerstats_dispersion.png
+   :width: 600px
+   :alt: NTP stats peerstats dispersion
+   :align: center
+
+That dispersion plot looks like there are a few outliers, so lets zoom in on a smaller section:
+
+.. image:: img/ntp_peerstats_dispersion_zoom.png
+   :width: 600px
+   :alt: NTP stats peerstats dispersion zoom
    :align: center
