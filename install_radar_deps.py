@@ -5,9 +5,10 @@ Copyright SuperDARN Canada 2020
 Keith Kotyk
 
 Installation script for Borealis utilities.
-NOTE: This script has been tested and is known to work on:
+NOTE: This script has been tested on:
     OpenSuSe 15.1
-    
+    Ubuntu 19.10 
+    Ubuntu 20.04
 """
 import subprocess as sp
 import sys
@@ -78,9 +79,11 @@ def install_packages():
                 "python3-pip",
                 "gdb",
                 "jq",
+                "screen",
 
                 "hdf5",
                 "libhdf5-dev",
+                "hdf5-tools",
                 
                 "autoconf",
                 "automake",
@@ -88,11 +91,15 @@ def install_packages():
                 "curl",
                 "make",
                 "unzip",
+                
                 "libarmadillo9",
+                "libarmadillo-dev",
+
                 "pps-tools",
                 
                 "libboost_*_66_0",
-                "libboost-*67.0*",
+                "libboost-*67.0*",  # Ubuntu 19.10
+                "libboost-*71.0*",  # Ubuntu 20.04
 
                 "python3-mako",
                 "doxygen",
@@ -222,7 +229,7 @@ def install_ntp():
 
     ntp_cmd = "cd ${IDIR};" \
     "cp -v /usr/include/sys/timepps.h /usr/include/ || exit;" \
-    "wget http://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-4.2.8p13.tar.gz;" \
+    "wget -N http://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-4.2.8p13.tar.gz;" \
     "tar xvf ntp-4.2.8p13.tar.gz;" \
     "cd ntp-4.2.8p13/ || exit;" \
     "./configure --enable-atom;" \
@@ -233,7 +240,7 @@ def install_ntp():
 
 def install_uhd():
     """
-    Install UHD.
+    Install UHD. UHD is particular about which version of boost it uses, so check that.
     """
 
 
@@ -244,10 +251,15 @@ def install_uhd():
 
         if "openSUSE" in DISTRO:
             libpath = '/usr/lib64/'
+            boost_version = "1.66"
         elif "Ubuntu" in DISTRO:
+            if "20.04" in DISTRO:
+                boost_version = "1.71"
+            elif "19.10" in DISTRO:
+                boost_version = "1.67"
             libpath = '/usr/lib/x86_64-linux-gnu'
 
-        files = glob.glob('{}/libboost_*.so.*'.format(libpath))
+        files = glob.glob('{}/libboost_*.so.{}*'.format(libpath, boost_version))
         print(files)
 
         files_with_no_ext = []
@@ -267,7 +279,8 @@ def install_uhd():
         if "openSUSE" in DISTRO:
             cmd = 'ln -s -f {libpath}/libboost_python-py3.so {libpath}/libboost_python3.so'.format(libpath=libpath)
         elif "Ubuntu" in DISTRO:
-            cmd = 'ln -s -f {libpath}/libboost_python37.so.1.67.0 {libpath}/libboost_python3.so'.format(libpath=libpath)
+            boost_python = glob.glob('{}/libboost_python3*.so.{}*'.format(libpath, boost_version))[0]
+            cmd = 'ln -s -f {} {}/libboost_python3.so'.format(boost_python, libpath)
         execute_cmd(cmd)
 
     fix_boost_links()
@@ -296,10 +309,18 @@ def install_cuda():
     if "openSUSE" in DISTRO:
         cuda_file = 'cuda_10.2.89_440.33.01_linux.run'
     elif 'Ubuntu' in DISTRO:
+        pre_cuda_setup_cmd = "apt-get install -y gcc-7 g++-7;" \
+        "update-alternatives --remove-all gcc;" \
+        "update-alternatives --remove-all g++;" \
+        "update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 50;" \
+        "update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 50;" \
+        "update-alternatives --config gcc;" \
+        "update-alternatives --config g++;" 
+        execute_cmd(pre_cuda_setup_cmd)
         cuda_file = 'cuda_10.2.89_440.33.01_linux.run'
 
-    cuda_cmd = "cd ${IDIR};" \
-    "wget http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};" \
+    cuda_cmd = "cd ${{IDIR}};" \
+    "wget -N http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};" \
     "sh {cuda_file} --silent --toolkit --samples;".format(cuda_file=cuda_file)
 
     execute_cmd(cuda_cmd)
@@ -309,11 +330,13 @@ def install_realtime():
     Create virtual environment and install utilities needed for RT capabilities.
     """
 
+    # 'source' is a shell builtin which means it won't work to call from here
+    # https://stackoverflow.com/questions/3503719/emulating-bash-source-in-python
     rt_cmd = "cd /usr/local;" \
     "git clone https://github.com/vtsuperdarn/hdw.dat.git;" \
     "mkdir $BOREALISPATH/borealisrt_env;" \
     "virtualenv $BOREALISPATH/borealisrt_env;" \
-    "source $BOREALISPATH/borealisrt_env/bin/activate;" \
+    "source $BOREALISPATH/borealisrt_env/bin/activate;" \      
     "pip install zmq;" \
     "pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
     "pip install pydarn;" \
@@ -321,9 +344,49 @@ def install_realtime():
 
     execute_cmd(rt_cmd)
 
+def install_directories():
+
+    mkdirs_cmd = "mkdir -p /data/borealis_logs;" \
+    "mkdir -p /data/borealis_data;" \
+    "chown {normal_user}:{normal_group} /data/borealis_*;"
+
+    mkdirs_cmd = mkdirs_cmd.format(normal_user=args.user, normal_group=args.group)
+
+    execute_cmd(mkdirs_cmd)
+
+def install_hdw_dat():
+    
+    install_hdw_cmd = "cp -v /usr/local/hdw.dat/hdw.dat.{radar_abbreviation} $BOREALISPATH"
+    install_hdw_cmd = install_hdw_cmd.format(radar_abbreviation=args.radar)
+
+def install_config():
+
+    install_config_cmd = "cd $BOREALISPATH; git submodule update --init;" \
+    "chown -R {normal_user}:{normal_group} borealis_config_files;"
+    install_config_cmd = install_config_cmd.format(normal_user=args.user, normal_group=args.group)
+    execute_cmd(install_config_cmd)
+
+
 parser = ap.ArgumentParser(usage=usage_msg(), description="Installation script for Borealis utils")
-parser.add_argument("install_dir", help="Path to the installation directory.")
+parser.add_argument("--borealis-dir", help="Path to the Borealis installation directory", default="")
+parser.add_argument("--user", help="The username of the user who will run borealis", default="radar")
+parser.add_argument("--group", help="The group name of the user who will run boralis", default="users")
+parser.add_argument("radar", help="The three letter abbreviation for this radar. Example: sas")
+parser.add_argument("install_dir", help="Path to the installation directory")
 args = parser.parse_args()
+
+if os.geteuid() != 0:
+    print("You must run this script as root.")
+    sys.exit(1)
+
+if args.borealis_dir == "":
+    try:
+        BOREALISPATH = os.environ['BOREALISPATH']
+    except KeyError as e:
+        print("You must have an environment variable set for BOREALISPATH.")
+        sys.exit(1)
+else:
+    os.environ['BOREALISPATH'] = args.borealis_dir
 
 DISTRO = get_distribution()
 
@@ -338,3 +401,6 @@ install_ntp()
 install_uhd()
 install_cuda()
 install_realtime()
+install_directories()
+install_hdw_dat()
+install_config()
