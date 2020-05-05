@@ -204,20 +204,24 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
         chan_add.first_range = slice_dict[slice_id]['first_range']
         chan_add.range_sep = slice_dict[slice_id]['range_sep']
-        for beamdir in beam_dict[slice_id]:
+
+        main_bms = beam_dict[slice_id]['main']
+        intf_bms = beam_dict[slice_id]['intf']
+
+        for i in range(main_bms.shape[0]):
             beam_add = chan_add.beam_directions.add()
             # Don't need to send channel numbers, will always send beamdir with length = total antennas.
             # Beam directions are formated e^i*phi so that a 0 will indicate not
             # to receive on that channel.
 
-            temp_main = np.zeros_like(beamdir['main'], beamdir['main'].dtype)
-            temp_intf = np.zeros_like(beamdir['intf'], beamdir['intf'].dtype)
+            temp_main = np.zeros_like(main_bms[i], main_bms[i].dtype)
+            temp_intf = np.zeros_like(intf_bms[i], intf_bms[i].dtype)
 
             mains = slice_dict[slice_id]['rx_main_antennas']
-            temp_main[main] = beamdir['main'][main]
+            temp_main[main] = main_bms[i][main]
 
             intfs = slice_dict[slice_id]['rx_int_antennas']
-            temp_intf[intfs] = beamdir['intf'][intfs]
+            temp_intf[intfs] = intf_bms[i][intfs]
 
             for phase in temp_main:
                 phase_add = beam_add.phase.add()
@@ -404,7 +408,15 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
             rxchan_add.rx_main_antennas[:] = sequence.slice_dict[slice_id]['rx_main_antennas']
             rxchan_add.rx_intf_antennas[:] = sequence.slice_dict[slice_id]['rx_int_antennas']
 
-            beamdirs = beamdir_dict[slice_id]
+            beams = sequence.slice_dict[slice_id]["beam_order"][beam_iter]
+            if isinstance(beams, int):
+                beams = list[beams]
+
+            for beam in beams:
+                beam_add = rxchan_add.beams.add()
+                beam_add.beamnum = sequence.slice_dict[slice_id]["beam_angle"][beam]
+                beam_add.beamazimuth = beam
+
             for index, beamdir in enumerate(beamdirs):
                 beam = rxchan_add.beams.add()
                 beam.beamnum = sequence.slice_dict[slice_id]["beam_angle"].index(beamdir)
@@ -801,7 +813,7 @@ def radar():
                         send_datawrite_metadata(integration_time_packet, radar_control_to_dw,
                                             options.dw_to_radctrl_identity, last_sequence_num,
                                             num_sequences, scan_flag, integration_period_time,
-                                            aveperiod.sequences, slice_to_beamdir_dict,
+                                            aveperiod.sequences, beam_iter,
                                             experiment.cpid, experiment.experiment_name,
                                             experiment.output_rx_rate, experiment.comment_string,
                                             experiment.decimation_scheme.filter_scaling_factors,
