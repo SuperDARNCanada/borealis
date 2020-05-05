@@ -69,7 +69,6 @@ def get_phase_shift(beam_angle, freq, num_antennas, antenna_spacing, centre_offs
     x *= 2 * np.pi * freq_hz
 
     y = np.cos(np.pi / 2.0 - beam_rads) / speed_of_light
-
     # split up the calculations for beams and antennas. Outer multiply of the two
     # vectors will yield all antenna phases needed for each beam.
     # If there are N antennas and M beams

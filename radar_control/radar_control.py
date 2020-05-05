@@ -22,6 +22,7 @@ import zmq
 import pickle
 import threading
 import math
+import numpy as np
 from functools import reduce
 
 sys.path.append(os.environ["BOREALISPATH"])
@@ -38,7 +39,6 @@ from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
 from datawritemetadata_pb2 import IntegrationTimeMetadata
 
-from sample_building.sample_building import rx_azimuth_to_antenna_offset, create_debug_sequence_samples
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from radar_status.radar_status import RadarStatus

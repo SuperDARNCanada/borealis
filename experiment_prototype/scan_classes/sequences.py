@@ -20,6 +20,8 @@ from scipy.constants import speed_of_light
 import copy
 from operator import itemgetter
 import collections
+import sys
+import os
 
 from sample_building.sample_building import get_samples, get_phase_shift
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
@@ -113,6 +115,7 @@ class Sequence(ScanClassBase):
         max_usrp_dac_amplitude = self.transmit_metadata['max_usrp_dac_amplitude']
         tr_window_time = self.transmit_metadata['tr_window_time']
         output_rx_rate = self.transmit_metadata['output_rx_rate']
+        intf_offset = self.transmit_metadata['intf_offset']
 
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
@@ -189,7 +192,6 @@ class Sequence(ScanClassBase):
                 self.basic_slice_pulses[slice_id] = []
 
             self.rx_beam_phases[slice_id] = {'main' : main_phase_shift, 'intf' : intf_phase_shift}
-
             for pulse_time in exp_slice['pulse_sequence']:
                 pulse_timing_us = pulse_time * exp_slice['tau_spacing'] + exp_slice['seqoffset']
                 pulse_sample_start = round((pulse_timing_us * 1e-6) * txrate)
@@ -280,8 +282,7 @@ class Sequence(ScanClassBase):
                                                                             cpm['pulse_sample_start'])
             sequence_print(message)
 
-            message = "          pulse length(us) {}  pulse num samples {}".format(i,
-                                                                                   cpm['pulse_len_us'],
+            message = "          pulse length(us) {}  pulse num samples {}".format(cpm['total_pulse_len'],
                                                                                    cpm['total_num_samps'])
             sequence_print(message)
 
@@ -338,7 +339,7 @@ class Sequence(ScanClassBase):
 
 
         # create debug dict for tx samples.
-        debug_dict = {'txrate' : txfreq,
+        debug_dict = {'txrate' : txrate,
                       'txctrfreq' : txctrfreq,
                       'pulse_timing' : [],
                       'pulse_sample_start' : [],
@@ -453,8 +454,8 @@ class Sequence(ScanClassBase):
             pulse_data.append(new_pulse_info)
 
 
-        debug_dict = copy.copy(self.debug_dict)
-        def fill_dbg_dict()
+        debug_dict = copy.deepcopy(self.debug_dict)
+        def fill_dbg_dict():
             """
             This needs major speed optimization to work at realtime
             """
@@ -503,7 +504,7 @@ class Sequence(ScanClassBase):
 
         return blanks
 
-    def get_rx_phases(beam_iter):
+    def get_rx_phases(self, beam_iter):
         """
         Gets the receive phases for a given beam
 
@@ -514,10 +515,9 @@ class Sequence(ScanClassBase):
         :rtype:     Array of phases for each antenna
         """
 
-        temp_dict = copy.copy(self.rx_beam_phases)
-
+        temp_dict = copy.deepcopy(self.rx_beam_phases)
         for k,v in temp_dict.items():
-            beam_num = self.slice_dict['beam_order'][beam_iter]
+            beam_num = self.slice_dict[k]['beam_order'][beam_iter]
             v['main'] = v['main'][beam_num]
             v['intf'] = v['intf'][beam_num]
 
