@@ -118,6 +118,13 @@ pulse_phase_offset
     in the sequence, and number of tx samples in each pulse are passed as arguments that can be used
     in this function. The default is None if no function handle is supplied.
 
+    encode_fn(beam_iter, sequence_num, num_pulses, num_samples):
+        return np.ones(size=(num_pulses, num_samples))
+
+    The return value must be numpy broadcastable elementwise to an array of num_pulses x num_samples
+    in size.
+
+
 pulse_len
     length of pulse in us. Range gate size is also determined by this.
 
@@ -349,14 +356,17 @@ class ExperimentPrototype(object):
         self.__transmit_metadata = {
             'output_rx_rate': self.output_rx_rate,
             'main_antenna_count': self.options.main_antenna_count,
+            'intf_antenna_count': self.options.interferometer_antenna_count,
             'tr_window_time': self.options.tr_window_time,
             'main_antenna_spacing': self.options.main_antenna_spacing,
+            'intf_antenna_spacing': self.options.interferometer_antenna_spacing,
             'pulse_ramp_time': self.options.pulse_ramp_time,
             'max_usrp_dac_amplitude': self.options.max_usrp_dac_amplitude,
             'rx_sample_rate': self.rxrate,
             'minimum_pulse_separation': self.options.minimum_pulse_separation,
             'txctrfreq': self.txctrfreq,
-            'txrate': self.txrate
+            'txrate': self.txrate,
+            'intf_offset' : self.options.intf_offset
         }
 
         # The following are processing defaults. These can be set by the experiment using the setter
@@ -1241,7 +1251,7 @@ class ExperimentPrototype(object):
             slice_with_defaults['rx_int_antennas'] = \
                 [i for i in range(0, self.options.interferometer_antenna_count)]
         if 'pulse_phase_offset' not in exp_slice:
-            slice_with_defaults['pulse_phase_offset'] = []
+            slice_with_defaults['pulse_phase_offset'] = None
         if 'scanbound' not in exp_slice:
             slice_with_defaults['scanbound'] = None
 
@@ -1568,6 +1578,8 @@ class ExperimentPrototype(object):
         if exp_slice['pulse_phase_offset']:
             num_samps = round(self.txrate * (exp_slice['pulse_len'] * 1e6))
             num_pulses = len(exp_slice['pulse_sequence'])
+
+            # Test the encoding fn with beam iterator of 0 and sequence num of 0.
             phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses, num_samps)
 
             if not isinstance(phase_encoding, np.ndarray):
@@ -1587,7 +1599,7 @@ class ExperimentPrototype(object):
                                                                             exp_slice['slice_id']))
 
                     if not (phase_encoding.shape[1] == 1 or phase_encoding.shape[1] == num_samps):
-                        error_list.append("Slice {} Phase encoding return 2st dimension must be "\
+                        error_list.append("Slice {} Phase encoding return 2nd dimension must be "\
                                             "broadcastable to number of samples".format(
                                                                             exp_slice['slice_id']))
 
@@ -1650,7 +1662,7 @@ class ExperimentPrototype(object):
                     for i in range(len(exp_slice['scanbound']) - 1):
                         tolerance = 1e-9
                         beam_time = (exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000
-                        if exp_slice['intt'] < beam_time + tolerance:
+                        if exp_slice['intt'] > beam_time + tolerance:
                             error_list.append("Slice {} intt longer than "
                                 "scanbound times".format(exp_slice['slice_id']))
                             break

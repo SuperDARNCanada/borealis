@@ -39,8 +39,7 @@ def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
     return beamdirs, amplitudes
 
 
-def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spacing,
-        centre_offset=0.0):
+def get_phase_shift(beam_angle, freq, num_antennas, antenna_spacing, centre_offset=0.0):
     """
     Find the phase shift for a given antenna and beam direction.
 
@@ -48,37 +47,44 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
     a specified extra phase shift if there is any, the number of antennas in the array, and the spacing
     between antennas.
 
-    :param beamdir: the azimuthal direction of the beam off boresight, in degrees, positive beamdir being to
+    :param beam_angle: list of azimuthal direction of the beam off boresight, in degrees, positive beamdir being to
         the right of the boresight (looking along boresight from ground). This is for this antenna.
     :param freq: transmit frequency in kHz
-    :param antenna: antenna number, INDEXED FROM ZERO, zero being the leftmost antenna if looking down the boresight
-        and positive beamdir right of boresight
-    :param pulse_shift: in degrees, for phase encoding
     :param num_antennas: number of antennas in this array
     :param antenna_spacing: distance between antennas in this array, in meters
     :param centre_offset: the phase reference for the midpoint of the array. Default = 0.0, in metres.
      Important if there is a shift in centre point between arrays in the direction along the array.
      Positive is shifted to the right when looking along boresight (from the ground).
-    :returns phshift: a phase shift for the samples for this antenna number, in radians.
+
+    :returns phase_shift: a 2D array of beam_phases x antennas in radians.
     """
 
-    freq = freq * 1000.0  # convert to Hz.
+    freq_hz = freq * 1000.0  # convert to Hz.
 
-    beamdir = float(beamdir)
+    # convert the beam angles to rads
+    beam_rads = (np.pi / 180) * np.array(beam_angle, dtype=np.float64)
 
-    beamrad = math.pi * float(beamdir) / 180.0
+    antennas = np.arange(num_antennas)
+    x = ((num_antennas - 1) / 2.0 - antennas) * antenna_spacing + centre_offset
+    x *= 2 * np.pi * freq_hz
+
+    y = np.cos(np.pi / 2.0 - beam_rads) / speed_of_light
+
+    # split up the calculations for beams and antennas. Outer multiply of the two
+    # vectors will yield all antenna phases needed for each beam.
+    # If there are N antennas and M beams
+    # Eventual matrix is now:
+    # [antenna0beam0 .. antenna1beam0 .... ... antennaN-1beam0
+    # antenna0beam1 ... antenna1beam1 .... ... antennaN-1beam1
+    # ...
+    # ...
+    # antenna0beamM-1 ... antenna1beamM-1... ... anteannaN-1beamM-1]
+    phase_shift = np.fmod(np.outer(y, x), 2.0 * np.pi) # beams by antenna
+    phase_shift = np.exp(1j * phase_shift)
+
 
     # Pointing to right of boresight, use point in middle (hypothetically antenna 7.5) as phshift=0
-    phshift = 2 * math.pi * freq * (((num_antennas-1)/2.0 - antenna) * \
-        antenna_spacing + centre_offset) * math.cos(math.pi / 2.0 - beamrad) \
-        / speed_of_light
-
-    # Add an extra phase shift if there is any specified
-    phshift = phshift + math.radians(pulse_shift)
-
-    phshift = math.fmod(phshift, 2 * math.pi)
-
-    return phshift
+    return phase_shift
 
 def get_wavetables(wavetype):
     """
@@ -231,138 +237,3 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
     return samples, actual_wave_freq
 
 
-def rx_azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenna_count,
-                              main_antenna_spacing, interferometer_antenna_spacing,
-                              intf_offset, freq):
-    """
-    Get all the necessary phase shifts for all antennas for all the beams for a pulse sequence.
-
-    Take all beam directions and resolve into a list of phase offsets for all antennas given the
-    spacing, frequency, and number of antennas to resolve for (provided in config).
-
-    If the experiment does not use all channels in config, that will be accounted for in the
-    send_dsp_metadata function, where the phase rotation will instead = 0.0 so all samples from
-    that receive channel will be multiplied by zero and therefore not included (in beamforming).
-
-    :param beamdir: list of length 1 or more.
-    :param main_antenna_count: the number of main antennas to calculate the phase offset for.
-    :param interferometer_antenna_count: the number of interferometer antennas to calculate the
-     phase offset for.
-    :param main_antenna_spacing: the spacing between the main array antennas (m).
-    :param interferometer_antenna_spacing: the spacing between the interferometer antennas (m).
-    :param intf_offset: The interferometer offset from the main array (from centre to centre),
-     in Cartesian coordinates. [x, y, z] where x is along line of antennas, y is along array
-     normal and z is altitude difference, in m.
-    :param freq: the frequency we are transmitting/receiving at.
-    :returns beams_antenna_phases: a list of length = beam directions, where each element is a list
-     of length = number of antennas (main array followed by interferometer array). The inner list
-     contains the phase shift for the corresponding antenna for the corresponding beam.
-    """
-
-    beams_antenna_phases = []
-    for beam in beamdir:
-        phase_array = []
-        for channel in range(0, main_antenna_count):
-            # Get phase shifts for all channels
-            # zero pulse shift b/w pulses when beamforming.
-            phase_array.append(get_phshift(beam, freq, channel, 0, main_antenna_count,
-                main_antenna_spacing))
-        for channel in range(0, interferometer_antenna_count):
-            # Get phase shifts for all channels, adding in the x - offset of the interferometer
-            # from the main array.
-            phase_array.append(get_phshift(beam, freq, channel, 0, interferometer_antenna_count,
-                interferometer_antenna_spacing, centre_offset=intf_offset[0]))
-        beams_antenna_phases.append(phase_array)
-
-    return beams_antenna_phases
-
-
-def create_debug_sequence_samples(txrate, txctrfreq, list_of_pulse_dicts,
-                          main_antenna_count, final_rx_sample_rate, ssdelay):
-    """
-    Build the samples for the whole sequence, to be recorded in datawrite.
-
-    :param txrate: The rate at which these samples will be transmitted at, Hz.
-    :param txctrfreq: The centre frequency that the N200 is tuned to (and will mix with
-     these samples, kHz).
-    :param list_of_pulse_dicts: The list of all pulse dictionaries for pulses included
-    in this sequence. Pulse dictionaries have all metadata and the samples for the
-    pulse.
-    :param file_path: location to place the json file.
-    :param main_antenna_count: The number of antennas available for transmitting on.
-    :param final_rx_sample_rate: The final sample rate after decimating on the receive
-    side (Hz).
-    :param ssdelay: Receiver time of flight for last echo. This is the time to continue
-     receiving after the last pulse is transmitted.
-    :return:
-    """
-
-    # Get full pulse sequence
-    pulse_sequence_us = []
-    sequence_of_samples = [[] for x in range(main_antenna_count)]
-    for pulse_index, pulse_dict in enumerate(list_of_pulse_dicts):
-        pulse_sequence_us.append(pulse_dict['timing'])
-        # Determine the time difference and number of samples between each start of pulse.
-
-    num_samples_list = []
-    pulse_offset_error = []
-    for pulse_index, pulse_time in enumerate(pulse_sequence_us):
-        if pulse_index == 0:
-            continue
-        num_samples = ((pulse_time - pulse_sequence_us[pulse_index - 1]) * txrate) * 1.0e-6
-        error = (num_samples - int(num_samples)) / txrate  # in seconds
-        num_samples = int(num_samples)
-        num_samples_list.append(num_samples)
-        pulse_offset_error.append(error)
-
-    current_pulse_samples = []
-    for pulse_index, pulse_dict in enumerate(list_of_pulse_dicts):
-        if pulse_dict['startofburst'] or not pulse_dict['isarepeat']:
-            current_pulse_samples = pulse_dict['samples_array']
-
-        if pulse_index != len(list_of_pulse_dicts) - 1:  # not the last index
-            # Add in zeros for the correct number of samples - all arrays in
-            # current_pulse_samples are the same length.
-            num_zero_samples = num_samples_list[pulse_index] - len(current_pulse_samples[0])
-        else:
-            num_zero_samples = int(ssdelay * 1.0e-6 * txrate)
-
-        zeros_list = [0.0] * num_zero_samples
-
-        for antenna, samples_array in enumerate(current_pulse_samples):
-            sequence_of_samples[antenna].extend(samples_array)
-            sequence_of_samples[antenna].extend(zeros_list)
-
-    sequence_of_samples = [np.array(samples_array) for samples_array in
-                           sequence_of_samples[:]]
-
-    dm_rate = txrate/final_rx_sample_rate
-    dm_rate_error = dm_rate - int(dm_rate)
-    dm_rate = int(dm_rate)
-
-    # Create a dictionary to be written in datawrite
-    write_dict = {
-        'txrate': txrate,
-        'txctrfreq': txctrfreq,
-        'pulse_sequence_timing': pulse_sequence_us,
-        'pulse_offset_error': pulse_offset_error,
-        'sequence_samples': {},
-        'decimated_sequence': {},
-        'dmrate_error': dm_rate_error,
-        'dmrate': dm_rate
-    }
-
-    for ant, samples in enumerate(sequence_of_samples):
-        write_dict['sequence_samples'][ant] = {
-            'real': samples.real.tolist(),
-            'imag': samples.imag.tolist()
-        }
-
-    for ant, samples in enumerate(sequence_of_samples):
-        decimated_samples = samples[::dm_rate]
-        write_dict['decimated_sequence'][ant] = {
-            'real': decimated_samples.real.tolist(),
-            'imag': decimated_samples.imag.tolist()
-        }
-
-    return write_dict
