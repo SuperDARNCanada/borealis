@@ -417,7 +417,7 @@ class Sequence(ScanClassBase):
                 phase_encoding = np.exp(1j * phase_encoding[:,np.newaxis,:])
                 samples = phase_encoding * basic_samples
 
-            else:
+            else:  # no encodings, all pulses in the slice are all the same
                 samples = np.repeat(basic_samples[np.newaxis,:,:], num_pulses, axis=0)
 
             # sum the samples into their position in the sequence buffer. Find where the relative
