@@ -376,7 +376,10 @@ class Sequence(ScanClassBase):
     def make_sequence(self, beam_iter, sequence_num):
         """
         Create the samples needed for each pulse in the sequence. This function is optimized to
-        be able to generate new samples every sequence if needed.
+        be able to generate new samples every sequence if needed. 
+        Modifies the samples_array and isarepeat fields of all pulse 
+        dictionaries needed for this sequence for 
+        radar_control to use in operation.
 
         :param      beam_iter:     The beam iterator
         :type       beam_iter:     int
