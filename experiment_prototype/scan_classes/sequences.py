@@ -238,6 +238,7 @@ class Sequence(ScanClassBase):
 
             # If there are overlaps (two pulses within minimum separation time) then make them
             # into one single pulse
+            # If there are overlaps (two pulses within minimum separation time) then make them into one single pulse
             min_sep = self.transmit_metadata['minimum_pulse_separation']
             if pulse_timing_us < last_timing_us + last_pulse_len_us + min_sep:
                 new_pulse_len = pulse_timing_us - last_timing_us + pulse_len_us
