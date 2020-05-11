@@ -37,23 +37,6 @@ class Sequence(ScanClassBase):
 
     **The members of the sequence are:**
 
-    pulses
-        a list of pre-combined, pre-sampled pulse dictionaries (one dictionary = one
-        basic pulse of single frequency). The dictionary keys are: isarepeat,
-        pulse_timing_us, slice_id, slice_pulse_index, pulse_len,
-        intra_pulse_start_time, combined_pulse_index, pulse_shift, iscombined,
-        combine_total, and combine_index.
-    total_combined_pulses
-        the total number of pulses to be sent by the driver. This may not
-        be the sum of pulses in all slices in the sequence, as some pulses may need to be
-        combined because they are overlapping in timing. This is the number of pulses in the
-        combined sequence, or the number of times T/R signal goes high in the sequence.
-    power_divider
-        the power ratio per slice. If there are multiple slices in the same
-        pulse then we must reduce the output amplitude to potentially accommodate multiple
-        frequencies.
-    last_pulse_len
-        the length of the last pulse (us)
     ssdelay
         delay past the end of the sequence to receive for (us) - function of num_ranges and
         pulse_len. ss stands for scope sync.
@@ -78,11 +61,13 @@ class Sequence(ScanClassBase):
     combined_pulses_metadata
         This list holds dictionary metadata for all pulses in the sequence. This metadata holds all
         the info needed to combine pulses if pulses are mixed.
-            start_time_us - start time of the pulse in us, relative to the first pulse in sqn
+            start_time_us - start time of the pulse in us, relative to the first pulse in sqn.
             total_pulse_len - total length of the pulse that includes len of all combined pulses.
+            pulse_sample_start - The tx sample number at which the pulse starts.
+            tr_window_num_samps - The number of tx samples of the tr window.
             component_info - a list of all the pre-combined pulse components
                         (incl their length and start time) that are in the combined pulseAlso in us.
-            transmit_metadata - dictionary hold the transmit metadata that will be sent to driver.
+            pulse_transmit_data - dictionary hold the transmit metadata that will be sent to driver.
     output_encodings
         This dict will hold a list of all the encodings used during an aveperiod for each slice.
         These will be used for data write later.

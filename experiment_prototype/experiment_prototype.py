@@ -124,6 +124,7 @@ pulse_phase_offset
     The return value must be numpy broadcastable elementwise to an array of num_pulses x num_samples
     in size.
 
+    Result is expected to be real and in degrees and will be converted to complex radians.
 
 pulse_len
     length of pulse in us. Range gate size is also determined by this.

@@ -416,7 +416,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 beam_add = rxchan_add.beams.add()
                 beam_add.beamazimuth = sequence.slice_dict[slice_id]["beam_angle"][beam]
                 beam_add.beamnum = beam
-            
+
             if sequence.slice_dict[slice_id]['acf']:
                 rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
