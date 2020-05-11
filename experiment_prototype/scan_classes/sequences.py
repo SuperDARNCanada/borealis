@@ -398,7 +398,7 @@ class Sequence(ScanClassBase):
 
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
-            basic_samples = self.basic_slice_pulses[slice_id][beam_iter]
+            basic_samples = self.basic_slice_pulses[slice_id][beam_iter]  # num_antennas x num_samps
 
             num_pulses = len(exp_slice['pulse_sequence'])
             encode_fn = exp_slice['pulse_phase_offset']
