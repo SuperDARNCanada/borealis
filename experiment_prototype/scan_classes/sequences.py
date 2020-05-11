@@ -277,6 +277,7 @@ class Sequence(ScanClassBase):
             # the samples array is populated as needed during operations
             pulse_transmit_data['samples_array'] = None
             pulse_transmit_data['timing'] = combined_pulses_metadata[i]['start_time_us']
+            # isarepeat is set as needed during operations
             pulse_transmit_data['isarepeat'] = False
 
         # print out pulse information for logging.
