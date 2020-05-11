@@ -412,7 +412,8 @@ class Sequence(ScanClassBase):
 
                 self.output_encodings[slice_id].append(phase_encoding)
 
-                # we have [p,e] and [a,s], but we want [p,a,(e*s)]. Adding null axis to encoding
+                # we have [pulses, encodings] and [antennas ,samples], but we want 
+                # [pulses, antennas, (encodings*samples)]. Adding null axis to encoding
                 # will produce this result.
                 phase_encoding = np.exp(1j * phase_encoding[:,np.newaxis,:])
                 samples = phase_encoding * basic_samples
