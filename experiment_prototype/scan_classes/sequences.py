@@ -120,6 +120,8 @@ class Sequence(ScanClassBase):
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
         single_pulse_timing = []
+        # For each slice calculate beamformed samples and place into the basic_slice_pulses dictionary.
+        # Also populate the pulse timing metadata and place into single_pulse_timing
 
         # For each slice calculate beamformed samples and place into the basic_slice_pulses dictionary.
         # Also populate the pulse timing metadata and place into single_pulse_timing
@@ -525,4 +527,3 @@ class Sequence(ScanClassBase):
             v['intf'] = v['intf'][beam_num][:,None]
 
         return temp_dict
-
