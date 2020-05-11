@@ -274,6 +274,7 @@ class Sequence(ScanClassBase):
             pulse_transmit_data['endofburst'] = i == (num_pulses - 1)
 
             pulse_transmit_data['pulse_antennas'] = sequence_antennas
+            # the samples array is populated as needed during operations
             pulse_transmit_data['samples_array'] = None
             pulse_transmit_data['timing'] = combined_pulses_metadata[i]['start_time_us']
             pulse_transmit_data['isarepeat'] = False
