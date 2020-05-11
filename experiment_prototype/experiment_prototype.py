@@ -1581,6 +1581,8 @@ class ExperimentPrototype(object):
             num_pulses = len(exp_slice['pulse_sequence'])
 
             # Test the encoding fn with beam iterator of 0 and sequence num of 0.
+            # test the user's phase encoding function on first beam (beam_iterator = 0) 
+            # and first sequence (sequence_number = 0)
             phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses, num_samps)
 
             if not isinstance(phase_encoding, np.ndarray):

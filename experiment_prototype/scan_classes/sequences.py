@@ -105,6 +105,8 @@ class Sequence(ScanClassBase):
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
         single_pulse_timing = []
+        # For each slice calculate beamformed samples and place into the basic_slice_pulses dictionary.
+        # Also populate the pulse timing metadata and place into single_pulse_timing
 
         # For each slice calculate beamformed samples and place into the basic_slice_pulses dictionary.
         # Also populate the pulse timing metadata and place into single_pulse_timing
@@ -221,6 +223,7 @@ class Sequence(ScanClassBase):
 
             # If there are overlaps (two pulses within minimum separation time) then make them
             # into one single pulse
+            # If there are overlaps (two pulses within minimum separation time) then make them into one single pulse
             min_sep = self.transmit_metadata['minimum_pulse_separation']
             if pulse_timing_us < last_timing_us + last_pulse_len_us + min_sep:
                 new_pulse_len = pulse_timing_us - last_timing_us + pulse_len_us
@@ -256,8 +259,10 @@ class Sequence(ScanClassBase):
             pulse_transmit_data['endofburst'] = i == (num_pulses - 1)
 
             pulse_transmit_data['pulse_antennas'] = sequence_antennas
+            # the samples array is populated as needed during operations
             pulse_transmit_data['samples_array'] = None
             pulse_transmit_data['timing'] = combined_pulses_metadata[i]['start_time_us']
+            # isarepeat is set as needed during operations
             pulse_transmit_data['isarepeat'] = False
 
         # print out pulse information for logging.
@@ -356,14 +361,17 @@ class Sequence(ScanClassBase):
     def make_sequence(self, beam_iter, sequence_num):
         """
         Create the samples needed for each pulse in the sequence. This function is optimized to
-        be able to generate new samples every sequence if needed.
+        be able to generate new samples every sequence if needed. 
+        Modifies the samples_array and isarepeat fields of all pulse 
+        dictionaries needed for this sequence for 
+        radar_control to use in operation.
 
         :param      beam_iter:     The beam iterator
         :type       beam_iter:     int
         :param      sequence_num:  The sequence number in the ave period
         :type       sequence_num:  int
 
-        :returns:   Transmit data for each pulse, including timing and samples
+        :returns:   Transmit data for each pulse where each pulse is a dict, including timing and samples
         :rtype:     list
         :returns:   The transmit sequence and related data to use for debug.
         :rtype:     Dict
@@ -380,7 +388,7 @@ class Sequence(ScanClassBase):
 
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
-            basic_samples = self.basic_slice_pulses[slice_id][beam_iter]
+            basic_samples = self.basic_slice_pulses[slice_id][beam_iter]  # num_antennas x num_samps
 
             num_pulses = len(exp_slice['pulse_sequence'])
             encode_fn = exp_slice['pulse_phase_offset']
@@ -394,12 +402,13 @@ class Sequence(ScanClassBase):
 
                 self.output_encodings[slice_id].append(phase_encoding)
 
-                # we have [p,e] and [a,s], but we want [p,a,(e*s)]. Adding null axis to encoding
+                # we have [pulses, encodings] and [antennas ,samples], but we want 
+                # [pulses, antennas, (encodings*samples)]. Adding null axis to encoding
                 # will produce this result.
                 phase_encoding = np.exp(1j * phase_encoding[:,np.newaxis,:])
                 samples = phase_encoding * basic_samples
 
-            else:
+            else:  # no encodings, all pulses in the slice are all the same
                 samples = np.repeat(basic_samples[np.newaxis,:,:], num_pulses, axis=0)
 
             # sum the samples into their position in the sequence buffer. Find where the relative
@@ -510,4 +519,3 @@ class Sequence(ScanClassBase):
             v['intf'] = v['intf'][beam_num][:,None]
 
         return temp_dict
-
