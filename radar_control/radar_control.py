@@ -218,7 +218,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             temp_intf = np.zeros_like(intf_bms[i], intf_bms[i].dtype)
 
             mains = slice_dict[slice_id]['rx_main_antennas']
-            temp_main[main] = main_bms[i][main]
+            temp_main[mains] = main_bms[i][mains]
 
             intfs = slice_dict[slice_id]['rx_int_antennas']
             temp_intf[intfs] = intf_bms[i][intfs]
@@ -314,7 +314,7 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
-                            seqnum, num_sequences, scan_flag, inttime, sequences, beamdir_dict,
+                            seqnum, num_sequences, scan_flag, inttime, sequences, beam_iter,
                             experiment_id, experiment_name, output_sample_rate, experiment_comment,
                             filter_scaling_factors, rx_centre_freq, debug_samples=None):
     """
@@ -410,18 +410,13 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
 
             beams = sequence.slice_dict[slice_id]["beam_order"][beam_iter]
             if isinstance(beams, int):
-                beams = list[beams]
+                beams = [beams]
 
             for beam in beams:
                 beam_add = rxchan_add.beams.add()
-                beam_add.beamnum = sequence.slice_dict[slice_id]["beam_angle"][beam]
-                beam_add.beamazimuth = beam
-
-            for index, beamdir in enumerate(beamdirs):
-                beam = rxchan_add.beams.add()
-                beam.beamnum = sequence.slice_dict[slice_id]["beam_angle"].index(beamdir)
-                beam.beamazimuth = beamdir
-
+                beam_add.beamazimuth = sequence.slice_dict[slice_id]["beam_angle"][beam]
+                beam_add.beamnum = beam
+            
             if sequence.slice_dict[slice_id]['acf']:
                 rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']

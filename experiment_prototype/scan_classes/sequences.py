@@ -518,8 +518,10 @@ class Sequence(ScanClassBase):
         temp_dict = copy.deepcopy(self.rx_beam_phases)
         for k,v in temp_dict.items():
             beam_num = self.slice_dict[k]['beam_order'][beam_iter]
-            v['main'] = v['main'][beam_num]
-            v['intf'] = v['intf'][beam_num]
+            # The indexing just reshapes the array to a 1-D vector. This is needed for indexing
+            # 1-D vectors in the dsp protobuf.
+            v['main'] = v['main'][beam_num][:,None]
+            v['intf'] = v['intf'][beam_num][:,None]
 
         return temp_dict
 
