@@ -31,21 +31,26 @@ sys.path.insert(1, BOREALISPATH + '/experiment_prototype')
 sys.path.insert(2, BOREALISPATH + '/utils')
 sys.path.insert(3, os.environ['PATH'])
 
-proto_directory = BOREALISPATH + "/utils/protobuf"
-#pb2_directory = BOREALISPATH + "/build/release/utils/protobuf/"
-sigprocproto = proto_directory + "/sigprocpacket.proto"
-driverproto = proto_directory + "/driverpacket.proto"
+# hack for readthedocs to cause it to run doxygen first
+# https://github.com/rtfd/readthedocs.org/issues/388
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:
+  from subprocess import call
+  call('doxygen')
+  cur_dir = os.path.abspath(os.path.dirname(__file__))
+  call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
 
-# need to set up protobuf
-# just placed them in the proto directory so they can be found by radar_control.
-#call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, sigprocproto])
-#call(["protoc", "-I=" + proto_directory, "--python_out=" + proto_directory, driverproto])
+  call(['ln', '-s', BOREALISPATH + '/borealis_config_files/sas_config.ini', BOREALISPATH + '/config.ini'])
+
+  call(['git', 'clone', 'https://github.com/vtsuperdarn/hdw.dat', BOREALISPATH + '/hdw.dat'])
+
+  call(['ln', '-s', BOREALISPATH + '/hdw.dat/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
 
 
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
-#needs_sphinx = '1.0'
+needs_sphinx = '2.1.2'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -56,13 +61,17 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
-    'sphinx.ext.pngmath',
+    'sphinx.ext.imgmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'sphinx.ext.autosectionlabel',
     'sphinxcontrib.programoutput',
-    'sphinxcontrib.autoprogram'
+    'sphinxcontrib.autoprogram',
+    'breathe'
 ]
 
+breathe_projects = {"borealis" : "xml/"}
+breathe_default_project = "borealis"
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
@@ -149,6 +158,13 @@ html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom themes here, relative to this directory.
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_static_path = ['_static']
+
+html_context = {
+    'css_files': [
+        '_static/theme_overrides.css', # override wide tables
+    ]
+}
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".

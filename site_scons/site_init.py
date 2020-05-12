@@ -152,7 +152,7 @@ class FlavorBuilder(object):
                 exports=shortcuts)
 
         # Add install targets for programs from all modules
-        for module, prog_nodes in self._progs.iteritems():
+        for module, prog_nodes in self._progs.items():
             for prog in prog_nodes:
                 assert isinstance(prog, Node.FS.File)
                 # If module is hierarchical, replace pathseps with periods

@@ -25,7 +25,8 @@ DriverOptions::DriverOptions() {
     ref_ = config_pt.get<std::string>("ref");
     cpu_ = config_pt.get<std::string>("cpu");
     otw_ = config_pt.get<std::string>("overthewire");
-    gpio_bank_ = config_pt.get<std::string>("gpio_bank");
+    gpio_bank_high_ = config_pt.get<std::string>("gpio_bank_high");
+    gpio_bank_low_ = config_pt.get<std::string>("gpio_bank_low");
 
     std::stringstream ss;
 
@@ -45,8 +46,22 @@ DriverOptions::DriverOptions() {
     ss >> atr_0x_;
     ss.clear();
 
+    ss << std::hex << config_pt.get<std::string>("lo_pwr");
+    ss >> lo_pwr_;
+    ss.clear();
+
+    ss << std::hex << config_pt.get<std::string>("agc_st");
+    ss >> agc_st_;
+    ss.clear();
+
+    ss << std::hex << config_pt.get<std::string>("tst_md");
+    ss >> test_mode_;
+    ss.clear();
+
     tr_window_time_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("tr_window_time"));
+    agc_signal_read_delay_ = boost::lexical_cast<double>(
+                                config_pt.get<std::string>("agc_signal_read_delay"));
     main_antenna_count_ = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("main_antenna_count"));
     interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
@@ -79,15 +94,9 @@ DriverOptions::DriverOptions() {
     driver_to_radctrl_identity_ = config_pt.get<std::string>("driver_to_radctrl_identity");
     driver_to_dsp_identity_ = config_pt.get<std::string>("driver_to_dsp_identity");
     driver_to_brian_identity_ = config_pt.get<std::string>("driver_to_brian_identity");
-    driver_to_mainaffinity_identity_ = config_pt.get<std::string>("driver_to_mainaffinity_identity");
-    driver_to_txaffinity_identity_ = config_pt.get<std::string>("driver_to_txaffinity_identity");
-    driver_to_rxaffinity_identity_ = config_pt.get<std::string>("driver_to_rxaffinity_identity");
     radctrl_to_driver_identity_ = config_pt.get<std::string>("radctrl_to_driver_identity");
     dsp_to_driver_identity_ = config_pt.get<std::string>("dsp_to_driver_identity");
     brian_to_driver_identity_ = config_pt.get<std::string>("brian_to_driver_identity");
-    mainaffinity_to_driver_identity_ = config_pt.get<std::string>("mainaffinity_to_driver_identity");
-    txaffinity_to_driver_identity_ = config_pt.get<std::string>("txaffinity_to_driver_identity");
-    rxaffinity_to_driver_identity_ = config_pt.get<std::string>("rxaffinity_to_driver_identity");
     ringbuffer_name_ = config_pt.get<std::string>("ringbuffer_name");
     ringbuffer_size_bytes_ = boost::lexical_cast<double>(
                                     config_pt.get<std::string>("ringbuffer_size_bytes"));
@@ -138,9 +147,14 @@ std::string DriverOptions::get_otw() const
     return otw_;
 }
 
-std::string DriverOptions::get_gpio_bank() const
+std::string DriverOptions::get_gpio_bank_high() const
 {
-    return gpio_bank_;
+    return gpio_bank_high_;
+}
+
+std::string DriverOptions::get_gpio_bank_low() const
+{
+    return gpio_bank_low_;
 }
 
 uint32_t DriverOptions::get_atr_rx() const
@@ -164,9 +178,29 @@ uint32_t DriverOptions::get_atr_0x() const
 
 }
 
+uint32_t DriverOptions::get_lo_pwr() const
+{
+    return lo_pwr_;
+}
+
+uint32_t DriverOptions::get_agc_st() const
+{
+    return agc_st_;
+}
+
+uint32_t DriverOptions::get_test_mode() const
+{
+    return test_mode_;
+}
+
 double DriverOptions::get_tr_window_time() const
 {
     return tr_window_time_;
+}
+
+double DriverOptions::get_agc_signal_read_delay() const
+{
+    return agc_signal_read_delay_;
 }
 
 uint32_t DriverOptions::get_main_antenna_count() const
@@ -235,34 +269,3 @@ std::string DriverOptions::get_ringbuffer_name() const
 {
     return ringbuffer_name_;
 }
-
-std::string DriverOptions::get_driver_to_mainaffinity_identity() const
-{
-    return driver_to_mainaffinity_identity_;
-}
-
-std::string DriverOptions::get_driver_to_txaffinity_identity() const
-{
-    return driver_to_txaffinity_identity_;
-}
-
-std::string DriverOptions::get_driver_to_rxaffinity_identity() const
-{
-    return driver_to_rxaffinity_identity_;
-}
-
-std::string DriverOptions::get_mainaffinity_to_driver_identity() const
-{
-    return mainaffinity_to_driver_identity_;
-}
-
-std::string DriverOptions::get_txaffinity_to_driver_identity() const
-{
-    return txaffinity_to_driver_identity_;
-}
-
-std::string DriverOptions::get_rxaffinity_to_driver_identity() const
-{
-    return rxaffinity_to_driver_identity_;
-}
-

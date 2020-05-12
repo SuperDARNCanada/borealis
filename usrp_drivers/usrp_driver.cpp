@@ -45,6 +45,7 @@ uhd::time_spec_t box_time;
  * @brief      Makes a set of vectors of the samples for each TX channel from the driver packet.
  *
  * @param[in]  driver_packet    A received driver packet from radar_control.
+ * @param[in]  driver_options   The parsed config options needed by the driver.
  *
  * @return     A set of vectors of TX samples for each USRP channel.
  *
@@ -80,7 +81,6 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
 
   return samples;
 }
-
 
 void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver_options)
 {
@@ -127,6 +127,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   uhd::time_spec_t sequence_start_time;
   uhd::time_spec_t initialization_time;
 
+  double seqtime;
+
+  double agc_signal_read_delay = driver_options.get_agc_signal_read_delay() * 1e-6;
+
   zmq::message_t request;
 
   start_trigger.recv(&request);
@@ -143,6 +147,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   {
     auto more_pulses = true;
     std::vector<double> time_to_send_samples;
+    std::vector<uint32_t> pin_status_l;
+    std::vector<uint32_t> pin_status_h;
     while (more_pulses) {
       auto pulse_data = recv_data(driver_to_radar_control,
                                     driver_options.get_radctrl_to_driver_identity());
@@ -157,6 +163,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
           }
 
           sqn_num = driver_packet.sequence_num();
+          seqtime = driver_packet.seqtime();
           if (sqn_num != expected_sqn_num){
             DEBUG_MSG("SEQUENCE NUMBER MISMATCH: SQN " << sqn_num << " EXPECTED: " <<
                         expected_sqn_num);
@@ -254,7 +261,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto time_now = box_time;
     auto sequence_start_time = time_now + delay;
 
-    TIMEIT_IF_TRUE_OR_DEBUG(true,COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
+    auto seqn_sampling_time = num_recv_samples/rx_rate;
+    TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
       [&]() {
 
         // Here we are time-aligning our time_zero to the start of a sample. Do this by recalculating
@@ -267,7 +275,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
         sequence_start_time = initialization_time + time_from_initialization;
 
-        TIMEIT_IF_TRUE_OR_DEBUG(true,COLOR_BLUE("TRANSMIT") << " time to send all samples to USRP: ",
+        TIMEIT_IF_TRUE_OR_DEBUG(false ,COLOR_BLUE("TRANSMIT") << " time to send all samples to USRP: ",
           [&]() {
             for (uint32_t i=0; i<pulses.size(); i++){
               auto md = TXMetadata();
@@ -285,7 +293,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               //0.1 seconds.
               auto samples_per_pulse = pulses[i][0].size();
 
-              TIMEIT_IF_TRUE_OR_DEBUG(true, COLOR_BLUE("TRANSMIT") << " time to send pulse " << i <<
+              TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " time to send pulse " << i <<
                                       " to USRP: ",
                 [&]() {
                   uint64_t total_samps_sent = 0;
@@ -308,6 +316,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                 }() //pulse lambda
               ); //pulse timeit macro
             }
+
+            // Read AGC and Low Power signals
+            usrp_d.clear_command_time();
+            auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
+            usrp_d.set_command_time(read_time);
+            pin_status_h = usrp_d.get_gpio_bank_high_state();
+            pin_status_l = usrp_d.get_gpio_bank_low_state();
+            usrp_d.clear_command_time();
 
             for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
@@ -334,14 +350,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               }
 
               for(uint32_t j=0; j<lates.size(); j++) {
-                RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": channel " << j <<
+                DEBUG_MSG(COLOR_BLUE("TRANSMIT") << ": channel " << j <<
                               " got " << lates[j] << " lates for pulse " << i);
               }
 
-              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num <<" Got "
+              DEBUG_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num <<" Got "
                             << channel_acks << " acks out of " << tx_channels.size()
                             << " channels for pulse " << i);
-              RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num << " Got "
+              DEBUG_MSG(COLOR_BLUE("TRANSMIT") << ": Sequence " << sqn_num << " Got "
                             << channel_lates << " lates out of " << tx_channels.size()
                             << " channels for pulse " << i);
               }
@@ -351,13 +367,12 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     ); // full usrp function timeit macro
 
 
-    auto seqn_sampling_time = num_recv_samples/rx_rate;
 
     auto end_time = box_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
 
-    RUNTIME_MSG(COLOR_BLUE("TRANSMIT") << ": Sleep time " << sleep_time.get_real_secs() * 1e6
+    DEBUG_MSG(COLOR_BLUE("TRANSMIT") << ": Sleep time " << sleep_time.get_real_secs() * 1e6
                   << " us");
 
     if(sleep_time.get_real_secs() > 0.0) {
@@ -374,6 +389,17 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     samples_metadata.set_sequence_num(sqn_num);
     auto actual_finish = box_time;
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
+
+    for (auto &mobo_pins : pin_status_h) {
+      samples_metadata.add_agc_status_bank_h(mobo_pins & driver_options.get_agc_st());
+      samples_metadata.add_lp_status_bank_h(mobo_pins & driver_options.get_lo_pwr());
+    }
+
+    for (auto &mobo_pins : pin_status_l) {
+      samples_metadata.add_agc_status_bank_l(mobo_pins & driver_options.get_agc_st());
+      samples_metadata.add_lp_status_bank_l(mobo_pins & driver_options.get_lo_pwr());
+    }
+
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);
 
@@ -543,14 +569,12 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
 
   //  Prepare our context
   zmq::context_t driver_context(1);
-  auto identities = {driver_options.get_driver_to_mainaffinity_identity(),
-                      driver_options.get_driver_to_radctrl_identity()};
+  auto identities = {driver_options.get_driver_to_radctrl_identity()};
 
   auto sockets_vector = create_sockets(driver_context, identities,
                                         driver_options.get_router_address());
 
-  zmq::socket_t &driver_to_mainaffinity = sockets_vector[0];
-  zmq::socket_t &driver_to_radar_control = sockets_vector[1];
+  zmq::socket_t &driver_to_radar_control = sockets_vector[0];
 
   // Begin setup process.
   // This exchange signals to radar control that the devices are ready to go so that it can
@@ -590,11 +614,6 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
 
   threads.push_back(std::move(transmit_t));
   threads.push_back(std::move(receive_t));
-
-  auto set_tid_msg = std::string("SET_TIDS");
-  SEND_REQUEST(driver_to_mainaffinity,
-                              driver_options.get_mainaffinity_to_driver_identity(), set_tid_msg);
-  RECV_REPLY(driver_to_mainaffinity, driver_options.get_mainaffinity_to_driver_identity());
 
 
   for (auto& th : threads) {

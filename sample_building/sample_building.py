@@ -19,11 +19,11 @@ from experiment_prototype.experiment_exception import ExperimentException
 def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
     """
     Resolve imaging directions to direction per antenna.
-    
+
     This function will take in a list of directions and resolve that to a direction for each
-    antenna. It will return a list of length num_antenna where each element is a direction off 
+    antenna. It will return a list of length num_antenna where each element is a direction off
     orthogonal for that antenna.
-    
+
     :param beamdirs_list: The list of beam directions for this pulse sequence.
     :param num_antennas: The number of antennas to calculate direcitonrs for.
     :param antenna_spacing: The spacing between the antennas.
@@ -39,23 +39,26 @@ def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
     return beamdirs, amplitudes
 
 
-def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spacing):
+def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spacing,
+        centre_offset=0.0):
     """
     Find the phase shift for a given antenna and beam direction.
-    
+
     Form the beam given the beam direction (degrees off boresite), the tx frequency, the antenna number,
-    a specified extra phase shift if there is any, the number of antennas in the array, and the spacing 
+    a specified extra phase shift if there is any, the number of antennas in the array, and the spacing
     between antennas.
-    
-    :param beamdir: the direction of the beam off boresight, in degrees, positive beamdir being to 
-        the right of the boresight. This is for this antenna.
+
+    :param beamdir: the azimuthal direction of the beam off boresight, in degrees, positive beamdir being to
+        the right of the boresight (looking along boresight from ground). This is for this antenna.
     :param freq: transmit frequency in kHz
-    :param antenna: antenna number, INDEXED FROM ZERO, zero being the leftmost antenna if looking down the azimuth 
-        and positive beamdir right of azimuth
-    :param pulse_shift: in radians, for phase encoding
+    :param antenna: antenna number, INDEXED FROM ZERO, zero being the leftmost antenna if looking down the boresight
+        and positive beamdir right of boresight
+    :param pulse_shift: in degrees, for phase encoding
     :param num_antennas: number of antennas in this array
     :param antenna_spacing: distance between antennas in this array, in meters
-    
+    :param centre_offset: the phase reference for the midpoint of the array. Default = 0.0, in metres.
+     Important if there is a shift in centre point between arrays in the direction along the array.
+     Positive is shifted to the right when looking along boresight (from the ground).
     :returns phshift: a phase shift for the samples for this antenna number, in radians.
     """
 
@@ -64,17 +67,14 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
     beamdir = float(beamdir)
 
     beamrad = math.pi * float(beamdir) / 180.0
+
     # Pointing to right of boresight, use point in middle (hypothetically antenna 7.5) as phshift=0
-    #   so all channels have a non-zero phase shift
-    if num_antennas % 2 == 1:
-        phshift = 2 * math.pi * freq * ((num_antennas-1)/2.0 - antenna) * antenna_spacing * math.cos(
-            math.pi / 2.0 - beamrad) / speed_of_light
-    else:
-        phshift = 2 * math.pi * freq * (num_antennas/2.0 - antenna) * antenna_spacing * math.cos(
-            math.pi / 2.0 - beamrad) / speed_of_light
+    phshift = 2 * math.pi * freq * (((num_antennas-1)/2.0 - antenna) * \
+        antenna_spacing + centre_offset) * math.cos(math.pi / 2.0 - beamrad) \
+        / speed_of_light
 
     # Add an extra phase shift if there is any specified
-    phshift = phshift + pulse_shift
+    phshift = phshift + math.radians(pulse_shift)
 
     phshift = math.fmod(phshift, 2 * math.pi)
 
@@ -84,23 +84,23 @@ def get_phshift(beamdir, freq, antenna, pulse_shift, num_antennas, antenna_spaci
 def get_wavetables(wavetype):
     """
     Find the wavetable to sample from for a given wavetype.
-    
-    If there are ever any other types of wavetypes besides 'SINE', set them up here. 
-    
-    NOTE: The wavetables should sample a single cycle of the waveform. Note that we will have to block frequencies 
-    that could interfere with our license, which will affect the waveform. This blocking of frequencies is not 
-    currently set up, so beware. Would have to get the spectrum of the wavetable waveform and then block frequencies 
+
+    If there are ever any other types of wavetypes besides 'SINE', set them up here.
+
+    NOTE: The wavetables should sample a single cycle of the waveform. Note that we will have to block frequencies
+    that could interfere with our license, which will affect the waveform. This blocking of frequencies is not
+    currently set up, so beware. Would have to get the spectrum of the wavetable waveform and then block frequencies
     that when mixed with the centre frequency, result in the restricted frequencies.
-    
+
     Also NOTE: wavetables create a fixed frequency resolution based on their length. This code is from get_samples:
-    
+
     f_norm = wave_freq / rate
-    
-    sample_skip = int(f_norm * wave_table_len) # THIS MUST BE AN INT, WHICH DEFINES 
+
+    sample_skip = int(f_norm * wave_table_len) # THIS MUST BE AN INT, WHICH DEFINES
     THE FREQUENCY RESOLUTION.
-    
-    actual_wave_freq = (float(sample_skip) / float(wave_table_len)) * rate 
-    
+
+    actual_wave_freq = (float(sample_skip) / float(wave_table_len)) * rate
+
     :param wavetype: A string descriptor of the wavetype.
     :returns iwavetable: an in-phase wavetable, or None if given 'SINE' wavetype.
     :returns qwavetable: a quadrature wavetable, or None if given 'SINE' wavetype.
@@ -130,28 +130,28 @@ def get_wavetables(wavetype):
 def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_table=None, qwave_table=None):
     """
     Get basic (not phase-shifted) samples for a given pulse.
-    
-    Find the normalized sample array given the rate (Hz), frequency (Hz), pulse length 
-    (s), and wavetables (list containing single cycle of waveform). Will shift for 
+
+    Find the normalized sample array given the rate (Hz), frequency (Hz), pulse length
+    (s), and wavetables (list containing single cycle of waveform). Will shift for
     beam later. No need to use wavetable if just a sine wave.
-    
+
     :param rate: tx sampling rate, in Hz.
-    :param wave_freq: frequency offset from the centre frequency on the USRP, given in 
-     Hz. To be mixed with the centre frequency before transmitting. (ex. centre = 12 
+    :param wave_freq: frequency offset from the centre frequency on the USRP, given in
+     Hz. To be mixed with the centre frequency before transmitting. (ex. centre = 12
      MHz, wave_freq = + 1.2 MHz, output = 13.2 MHz.
     :param pulse_len: length of the pulse (in seconds)
-    :param ramp_time: ramp up and ramp down time for the pulse, in seconds. Typical 
+    :param ramp_time: ramp up and ramp down time for the pulse, in seconds. Typical
      0.00001 s from config.
     :param max_amplitude: USRP's max DAC amplitude. N200 = 0.707 max
-    :param iwave_table: i samples (in-phase) wavetable if a wavetable is required 
+    :param iwave_table: i samples (in-phase) wavetable if a wavetable is required
      (ie. not a sine wave to be sampled)
-    :param qwave_table: q samples (quadrature) wavetable if a wavetable is required 
+    :param qwave_table: q samples (quadrature) wavetable if a wavetable is required
      (ie. not a sine wave to be sampled)
-    :returns samples: a numpy array of complex samples, representing all samples needed 
-     for a pulse of length pulse_len sampled at a rate of rate. 
-    :returns actual_wave_freq: the frequency possible given the wavetable. If wavetype 
-     != 'SINE' (i.e. calculated wavetables were used), then actual_wave_freq may not 
-     be equal to the requested wave_freq param. 
+    :returns samples: a numpy array of complex samples, representing all samples needed
+     for a pulse of length pulse_len sampled at a rate of rate.
+    :returns actual_wave_freq: the frequency possible given the wavetable. If wavetype
+     != 'SINE' (i.e. calculated wavetables were used), then actual_wave_freq may not
+     be equal to the requested wave_freq param.
     """
 
     wave_freq = float(wave_freq)
@@ -238,14 +238,14 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
 def shift_samples(basic_samples, phshift, amplitude):
     """
     Shift samples for a pulse by a given phase shift.
-    
-    Take the samples and shift by given phase shift in rads and adjust amplitude as 
+
+    Take the samples and shift by given phase shift in rads and adjust amplitude as
     required for imaging.
-    
+
     :param basic_samples: samples for this pulse, numpy array
-    :param phshift: phase for this antenna to offset by, float
+    :param phshift: phase for this antenna to offset by in rads, float
     :param amplitude: amplitude for this antenna (= 1 if not imaging), float
-    :returns samples: basic_samples that have been shaped for the antenna for the 
+    :returns samples: basic_samples that have been shaped for the antenna for the
      desired beam.
     """
 
@@ -259,36 +259,36 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
                        pulse_ramp_time, max_usrp_dac_amplitude, tr_window_time):
     """
     Make all necessary samples for all antennas for this pulse.
-    
-    Given a pulse_list (list of dictionaries of pulses that must be combined), make and 
-    phase shift samples for all antennas, and combine pulse dictionaries into one 
-    pulse if there are multiple waveforms to combine (e.g., multiple frequencies). 
-    
-    :param pulse_list: a list of dictionaries, each dict is a pulse. The list only 
-     contains pulses that will be sent as a single pulse (ie. have the same 
+
+    Given a pulse_list (list of dictionaries of pulses that must be combined), make and
+    phase shift samples for all antennas, and combine pulse dictionaries into one
+    pulse if there are multiple waveforms to combine (e.g., multiple frequencies).
+
+    :param pulse_list: a list of dictionaries, each dict is a pulse. The list only
+     contains pulses that will be sent as a single pulse (ie. have the same
      combined_pulse_index).
-    :param power_divider: an integer for number of pulses combined (max) in the whole 
-     sequence, so we can adjust the amplitude of each uncombined pulse accordingly. 
-    :param exp_slices: this is the slice dictionary containing the slices necessary for 
+    :param power_divider: an integer for number of pulses combined (max) in the whole
+     sequence, so we can adjust the amplitude of each uncombined pulse accordingly.
+    :param exp_slices: this is the slice dictionary containing the slices necessary for
      the sequence.
-    :param slice_to_beamdir_dict: a dictionary describing the beam directions for the 
+    :param slice_to_beamdir_dict: a dictionary describing the beam directions for the
      slice_ids.
     :param txrate: transmit sampling rate, in Hz.
     :param txctrfreq: transmit mixing frequency, in kHz.
     :param main_antenna_count: number of main antennas in the array to transmit.
     :param main_antenna_spacing: spacing between main array antennas, assumed uniform.
     :param pulse_ramp_time: time to ramp up the pulse at the start and end of the pulse. This
-    time counts as part of the total pulse length time.
+    time counts as part of the total pulse length time (in seconds).
     :param max_usrp_dac_amplitude: max voltage out of the digital-analog converter on the USRP
     :param tr_window_time: time in seconds to add zero-samples to the transmit waveform in order
     to count for the transmit/receive switching time. Windows the pulse on both sides.
-    :returns combined_samples: a list of arrays - each array corresponds to an antenna 
-     (the samples are phased). All arrays are the same length for a single pulse on 
-     that antenna. The length of the list is equal to main_antenna_count (all samples 
-     are calculated). If we are not using an antenna, that index is a numpy array of 
+    :returns combined_samples: a list of arrays - each array corresponds to an antenna
+     (the samples are phased). All arrays are the same length for a single pulse on
+     that antenna. The length of the list is equal to main_antenna_count (all samples
+     are calculated). If we are not using an antenna, that index is a numpy array of
      zeroes.
-    :returns pulse_channels: The antennas to actually send the corresponding array. If 
-     not all transmit antennas, then we will know that we are transmitting zeroes on 
+    :returns pulse_channels: The antennas to actually send the corresponding array. If
+     not all transmit antennas, then we will know that we are transmitting zeroes on
      any antennas not listed in this list but available as identified in the config file.
     """
 
@@ -366,29 +366,32 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
                              txrate, txctrfreq, main_antenna_count, main_antenna_spacing,
                              pulse_ramp_time, max_usrp_dac_amplitude):
     """
-    Create the samples for a given pulse_list and append those samples to the pulse_list. 
-    
-    Creates a list of numpy arrays where each numpy array is the pulse samples for a 
-    given pulse and a given transmit antenna (index of array in list provides antenna 
-    number). Adds the list of samples to the pulse dictionary (in the pulse_list list) 
-    under the key 'samples'. 
-    
-    :param pulse_list: a list of dictionaries, each dict is a pulse. The list includes 
-     all pulses that will be combined together. All dictionaries in this list (all 
-     'pulses') will be modified to include the 'samples' key which will be a list of 
+    Create the samples for a given pulse_list and append those samples to the pulse_list.
+
+    Creates a list of numpy arrays where each numpy array is the pulse samples for a
+    given pulse and a given transmit antenna (index of array in list provides antenna
+    number). Adds the list of samples to the pulse dictionary (in the pulse_list list)
+    under the key 'samples'.
+
+    If the antenna is listed in the config but is not used in the sequence, it is provided
+    an array of zeroes to transmit.
+
+    :param pulse_list: a list of dictionaries, each dict is a pulse. The list includes
+     all pulses that will be combined together. All dictionaries in this list (all
+     'pulses') will be modified to include the 'samples' key which will be a list of
      arrays where every array is a set of samples for a specific antenna.
-    :param power_divider: an integer for number of pulses combined (max) in the whole 
-     sequence, so we can adjust the amplitude of each uncombined pulse accordingly. 
-    :param exp_slices: slice dictionary containing all necessary slice_ids for this 
+    :param power_divider: an integer for number of pulses combined (max) in the whole
+     sequence, so we can adjust the amplitude of each uncombined pulse accordingly.
+    :param exp_slices: slice dictionary containing all necessary slice_ids for this
      pulse.
-    :param beamdir: the slice to beamdir dictionary to retrieve the phasing information 
+    :param beamdir: the slice to beamdir dictionary to retrieve the phasing information
      for each antenna in a certain slice's pulses.
     :param txrate: transmit sampling rate, in Hz.
     :param txctrfreq: transmit mixing frequency, in kHz.
     :param main_antenna_count: number of main antennas in the array to transmit.
     :param main_antenna_spacing: spacing between main array antennas, assumed uniform.
     :param pulse_ramp_time: time to ramp up the pulse at the start and end of the pulse. This
-    time counts as part of the total pulse length time.
+    time counts as part of the total pulse length time (in seconds).
     :param max_usrp_dac_amplitude: max voltage out of the digital-analog converter on the USRP
     """
 
@@ -419,7 +422,7 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
                 phase_for_antenna = \
                     get_phshift(beamdirs_for_antennas[antenna], exp_slices[pulse['slice_id']]['txfreq'],
                                 antenna,
-                                exp_slices[pulse['slice_id']]['pulse_shift'][pulse['slice_pulse_index']],
+                                exp_slices[pulse['slice_id']]['pulse_phase_offset'][pulse['slice_pulse_index']],
                                 main_antenna_count, main_antenna_spacing)
                 phase_array.append(phase_for_antenna)
         else: # rxonly operation.
@@ -458,15 +461,15 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
 
 def calculated_combined_pulse_samples_length(pulse_list, txrate):
     """
-    Get the total length of the array for the combined pulse. 
-    
-    Determine the length of the combined pulse in number of samples before combining the samples, 
-    using the length of the samples arrays and the starting sample number for each pulse to combine. 
+    Get the total length of the array for the combined pulse.
+
+    Determine the length of the combined pulse in number of samples before combining the samples,
+    using the length of the samples arrays and the starting sample number for each pulse to combine.
     (Not all pulse samples may start at sample zero due to differing intra_pulse_start_times.)
-    
+
     :param pulse_list: list of pulse dictionaries that must be combined to one pulse.
     :param txrate: sampling rate of transmission going to DAC.
-    :returns combined_pulse_length: the length of the pulse after combining slices if necessary.  
+    :returns combined_pulse_length: the length of the pulse after combining slices if necessary.
     """
 
     combined_pulse_length = 0
@@ -484,37 +487,47 @@ def calculated_combined_pulse_samples_length(pulse_list, txrate):
     return combined_pulse_length
 
 
-def azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenna_count,
-                              main_antenna_spacing, interferometer_antenna_spacing, freq):
+def rx_azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenna_count,
+                              main_antenna_spacing, interferometer_antenna_spacing, 
+                              intf_offset, freq):
     """
     Get all the necessary phase shifts for all antennas for all the beams for a pulse sequence.
-  
+
     Take all beam directions and resolve into a list of phase offsets for all antennas given the
-    spacing, frequency, and number of antennas to resolve for. 
-    
+    spacing, frequency, and number of antennas to resolve for (provided in config).
+
+    If the experiment does not use all channels in config, that will be accounted for in the
+    send_dsp_metadata function, where the phase rotation will instead = 0.0 so all samples from
+    that receive channel will be multiplied by zero and therefore not included (in beamforming).
+
     :param beamdir: list of length 1 or more.
     :param main_antenna_count: the number of main antennas to calculate the phase offset for.
-    :param interferometer_antenna_count: the number of interferometer antennas to calculate the 
+    :param interferometer_antenna_count: the number of interferometer antennas to calculate the
      phase offset for.
-    :param main_antenna_spacing: the spacing between the main array antennas (m). 
-    :param interferometer_antenna_spacing: the spacing between the interferometer antennas (m). 
+    :param main_antenna_spacing: the spacing between the main array antennas (m).
+    :param interferometer_antenna_spacing: the spacing between the interferometer antennas (m).
+    :param intf_offset: The interferometer offset from the main array (from centre to centre), 
+     in Cartesian coordinates. [x, y, z] where x is along line of antennas, y is along array
+     normal and z is altitude difference, in m.
     :param freq: the frequency we are transmitting/receiving at.
     :returns beams_antenna_phases: a list of length = beam directions, where each element is a list
      of length = number of antennas (main array followed by interferometer array). The inner list
-     contains the phase shift for the corresponding antenna for the corresponding beam. 
+     contains the phase shift for the corresponding antenna for the corresponding beam.
     """
-
+    
     beams_antenna_phases = []
     for beam in beamdir:
         phase_array = []
         for channel in range(0, main_antenna_count):
             # Get phase shifts for all channels
+            # zero pulse shift b/w pulses when beamforming.
             phase_array.append(get_phshift(beam, freq, channel, 0, main_antenna_count,
                 main_antenna_spacing))
-        for channel in range(0, interferometer_antenna_count):  # interferometer TODO interferometer offset ***
-            # Get phase shifts for all channels
+        for channel in range(0, interferometer_antenna_count): 
+            # Get phase shifts for all channels, adding in the x - offset of the interferometer
+            # from the main array.
             phase_array.append(get_phshift(beam, freq, channel, 0, interferometer_antenna_count,
-                interferometer_antenna_spacing))  # zero pulse shift b/w pulses when beamforming.
+                interferometer_antenna_spacing, centre_offset=intf_offset[0]))  
         beams_antenna_phases.append(phase_array)
 
     return beams_antenna_phases

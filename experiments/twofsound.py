@@ -3,102 +3,60 @@
 # write an experiment that creates a new control program.
 import os
 import sys
+import copy
 
 BOREALISPATH = os.environ['BOREALISPATH']
-#sys.path.append(BOREALISPATH + "/experiment_prototype")
+sys.path.append(BOREALISPATH)
 
-#import test
 from experiment_prototype.experiment_prototype import ExperimentPrototype
+import experiments.superdarn_common_fields as scf
+
 
 class Twofsound(ExperimentPrototype):
 
     def __init__(self):
         cpid = 3503
-        super(Twofsound, self).__init__(cpid)
 
-        tx_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-        rx_main_ant = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-        rx_int_ant = [0, 1, 2, 3]
+        if scf.IS_FORWARD_RADAR:
+            beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
+        else:
+            beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
+
+        if scf.opts.site_id in ["cly", "rkn", "inv"]:
+            num_ranges = scf.POLARDARN_NUM_RANGES
+        if scf.opts.site_id in ["sas", "pgr"]:
+            num_ranges = scf.STD_NUM_RANGES
+
         slice_1 = {  # slice_id = 0, the first slice
-            "tx_antennas": tx_ant,
-            "rx_main_antennas": rx_main_ant,
-            "rx_int_antennas": rx_int_ant,
-            "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
-            "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
-            "mpinc": 1500,  # us
-            "pulse_len": 300,  # us
-            "nrang": 75,  # range gates
-            "frang": 180,  # first range gate, in km
+            "pulse_sequence": scf.SEQUENCE_7P,
+            "tau_spacing": scf.TAU_SPACING_7P,
+            "pulse_len": scf.PULSE_LEN_45KM,
+            "num_ranges": num_ranges,
+            "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
-            "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
-                           -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
-                           26.25],
-            "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
-            "scanboundflag": True,  # there is a scan boundary
-            "scanbound": 60000,  # ms
-            #"clrfrqflag": True,  # search for clear frequency before transmitting
-            #"clrfrqrange": [13100, 13400],  # frequency range for clear frequency search,
-            "txfreq" : 13100,
-            # kHz including a clrfrqrange overrides rxfreq and txfreq so these are no
-            # longer necessary as they will be set by the frequency chosen from the
-            # range.
-            #"xcf": True,  # cross-correlation processing
-            #"acfint": True,  # interferometer acfs
+            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "beam_order": beams_to_use,
+            "scanbound" : [i * 3.5 for i in range(len(beams_to_use))],
+            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "acf": True,
+            "xcf": True,  # cross-correlation processing
+            "acfint": True,  # interferometer acfs
         }
 
-        slice_2 = {  # slice_id = 1
-            "tx_antennas": tx_ant,
-            "rx_main_antennas": rx_main_ant,
-            "rx_int_antennas": rx_int_ant,
-            "pulse_sequence": [0, 14, 22, 24, 27, 31, 42, 43],
-            "pulse_shift": [0, 0, 0, 0, 0, 0, 0, 0],
-            "mpinc": 1500,  # us
-            "pulse_len": 300,  # us
-            "nrang": 75,  # range gates
-            "frang": 90,  # first range gate, in km
-            "intt": 3500,  # duration of an integration, in ms
-            "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
-                           -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
-                           26.25],
-            "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
-            "scanboundflag": True,  # there is a scan boundary
-            "scanbound": 60000,  # ms
-            #"clrfrqflag": True,  # search for clear frequency before transmitting
-            #"clrfrqrange": [10200, 10500],  # range for clear frequency search, kHz
-            "txfreq": 14500,
-            #"xcf": True,  # cross-correlation processing
-            #"acfint": True,  # interferometer acfs
-        }
+        slice_2 = copy.deepcopy(slice_1)
+        slice_2['txfreq'] = scf.COMMON_MODE_FREQ_2
 
         list_of_slices = [slice_1, slice_2]
         sum_of_freq = 0
         for slice in list_of_slices:
             sum_of_freq += slice['txfreq']# kHz, oscillator mixer frequency on the USRP for TX
-        self.rxctrfreq = self.txctrfreq = int(sum_of_freq/len(list_of_slices))
+        rxctrfreq = txctrfreq = int(sum_of_freq/len(list_of_slices))
 
-        print(self.txctrfreq)
+
+        super(Twofsound, self).__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq,
+                comment_string='Twofsound classic scan-by-scan')
 
         self.add_slice(slice_1)
 
         self.add_slice(slice_2, interfacing_dict={0: 'SCAN'})
 
-        # Other things you can change if you wish. You may want to discuss with us about
-        # it beforehand.
-        # These apply to the experiment and all slices as a whole.
-
-
-        # self.txrate = 12000000 # Hz, sample rate fed to DAC
-
-        # Update the following interface dictionary if you have more than one slice
-        # dictionary in your slice_list and you did not specify the interfacing when
-        # adding the slice. The keys in the interface dictionary correspond to the
-        # slice_ids of the slices in your slice_list.
-        # Take a look at the documentation for the frozenset interface_types in
-        # experiment_prototype to understand the types of interfacing (PULSE,
-        # INTEGRATION, INTTIME, or SCAN).
-
-        # NOTE keys are as such: (0,1), (0,2), (1,2), NEVER includes (2,0) etc.
-
-        # self.interface.update({
-        #     (0, 1): 'SCAN'  # Full scan of one slice, then full scan of the next.
-        # })

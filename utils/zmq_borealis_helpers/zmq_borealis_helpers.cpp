@@ -57,9 +57,6 @@ void router(zmq::context_t &context, std::string router_address)
     auto empty = input.popstr();
     auto data_msg = input.popstr();
 
-    //std::cout << <<sender <<
-
-
     auto sent = false;
     while(!sent) {
       try {
