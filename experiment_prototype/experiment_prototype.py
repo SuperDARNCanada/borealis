@@ -351,6 +351,10 @@ class ExperimentPrototype(object):
 
         # Load the config, hardware, and restricted frequency data
 
+        dm_rate = 1
+        for stage in decimation_scheme.stages:
+            dm_rate *= stage.dm_rate
+
         # This is experiment-wide transmit metadata necessary to build the pulses. This data
         # cannot change within the experiment and is used in the scan classes to pass information
         # to where the samples are built.
@@ -368,6 +372,7 @@ class ExperimentPrototype(object):
             'txctrfreq': self.txctrfreq,
             'txrate': self.txrate,
             'intf_offset' : self.options.intf_offset
+            'dm_rate' : dm_rate
         }
 
         # The following are processing defaults. These can be set by the experiment using the setter
@@ -1581,7 +1586,7 @@ class ExperimentPrototype(object):
             num_pulses = len(exp_slice['pulse_sequence'])
 
             # Test the encoding fn with beam iterator of 0 and sequence num of 0.
-            # test the user's phase encoding function on first beam (beam_iterator = 0) 
+            # test the user's phase encoding function on first beam (beam_iterator = 0)
             # and first sequence (sequence_number = 0)
             phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses, num_samps)
 

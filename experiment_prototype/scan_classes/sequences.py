@@ -101,6 +101,8 @@ class Sequence(ScanClassBase):
         tr_window_time = self.transmit_metadata['tr_window_time']
         output_rx_rate = self.transmit_metadata['output_rx_rate']
         intf_offset = self.transmit_metadata['intf_offset']
+        dm_rate = self.transmit_metadata['dm_rate']
+
 
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
@@ -320,7 +322,8 @@ class Sequence(ScanClassBase):
                                           1e-6)
 
         first_slice_pulse_len = self.combined_pulses_metadata[0]['component_info'][0]['pulse_num_samps']
-        offset_to_start = int(first_slice_pulse_len / 2) + tr_window_num_samps
+        full_pulse_samps = first_slice_pulse_len + 2 * tr_window_num_samps
+        offset_to_start = int(full_pulse_samps/2)
         self.first_rx_sample_start = offset_to_start
 
         self.blanks = self.find_blanks()
@@ -335,16 +338,9 @@ class Sequence(ScanClassBase):
                       'pulse_sample_start' : [],
                       'sequence_samples' : {},
                       'decimated_samples' : {},
-                      'dmrate_error' : None,
-                      'dmrate' : None
+                      'dmrate' : dm_rate
                       }
 
-        dm_rate = txrate / output_rx_rate
-        dm_rate_error = dm_rate - round(dm_rate)
-        dm_rate = round(dm_rate)
-
-        debug_dict['dmrate'] = dm_rate
-        debug_dict['dmrate_error'] = dm_rate_error
 
         for i, cpm in enumerate(combined_pulses_metadata):
             debug_dict['pulse_timing'].append(cpm['start_time_us'])
@@ -493,7 +489,7 @@ class Sequence(ScanClassBase):
             rx_num_samps = round(num_samples/dm_rate)
 
             pulse_blanks = np.arange(rx_sample_start, rx_sample_start + rx_num_samps)
-            pulse_blanks += self.first_rx_sample_start
+            pulse_blanks += int(self.first_rx_sample_start / dm_rate)
 
             blanks.extend(pulse_blanks)
 

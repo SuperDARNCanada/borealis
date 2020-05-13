@@ -8,7 +8,7 @@ message SigProcPacket {
     uint32 sequence_num = 3;
     double kerneltime = 4;
     float sequence_time = 5;
-    float offset_to_first_rx_sample = 6;
+    uint32 offset_to_first_rx_sample = 6;
     double rxrate = 7;
     double output_sample_rate = 8;
 
@@ -16,7 +16,7 @@ message SigProcPacket {
         uint32 slice_id = 1;
         double rxfreq = 2; // this is offset frequency from centre freq, kHz
         repeated BeamDirections beam_directions = 3;
-        uint32 num_ranges = 4; 
+        uint32 num_ranges = 4;
         float first_range = 5; // km
         float range_sep = 6; // will be = 0 if no acfs, km.
         uint32 tau_spacing = 7; // in us

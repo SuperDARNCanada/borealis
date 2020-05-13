@@ -143,7 +143,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
 
 def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                    brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
-                   slice_dict, beam_dict, sequence_time, first_rx_sample_time,
+                   slice_dict, beam_dict, sequence_time, first_rx_sample_start,
                    main_antenna_count, rxctrfreq, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
         Happens every sequence.
@@ -163,7 +163,8 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         :param beam_dict: The dictionary containing beam directions for each slice.
         :param sequence_time: entire duration of sequence, including receive time after all
         transmissions.
-        :param first_rx_sample_time: Time between start of tx data and where the first RX sample
+        :param first_rx_sample_start: The sample where the first rx sample will start relative to the
+                                     tx data.
         should occur in the output data. This is equal to the time to the centre of the
         first pulse. In seconds.
         :param main_antenna_count: number of main array antennas, from the config file.
@@ -178,7 +179,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
     packet.Clear()
     packet.sequence_time = sequence_time
     packet.sequence_num = seqnum
-    packet.offset_to_first_rx_sample = first_rx_sample_time
+    packet.offset_to_first_rx_sample = first_rx_sample_start
     packet.rxrate = rxrate
     packet.output_sample_rate = output_sample_rate
 
@@ -744,7 +745,7 @@ def radar():
                                                   seqnum_start + num_sequences,
                                                   sequence.slice_ids, experiment.slice_dict,
                                                   rx_beam_phases, sequence.seqtime,
-                                                  sequence.first_rx_sample_time,
+                                                  sequence.first_rx_sample_start,
                                                   options.main_antenna_count, experiment.rxctrfreq,
                                                   decimation_scheme)
 

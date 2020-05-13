@@ -48,7 +48,8 @@ class ScanClassBase(object):
         'minimum_pulse_separation' [us],
         'txctrfreq' [kHz],
         'txrate' [Hz],
-        'intf_offset' [m,m,m]
+        'intf_offset' [m,m,m],
+        'dm_rate'
     """
 
     def __init__(self, object_keys, object_slice_dict, object_interface, transmit_metadata):
