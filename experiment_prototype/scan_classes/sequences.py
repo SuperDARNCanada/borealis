@@ -481,7 +481,7 @@ class Sequence(ScanClassBase):
         pulses_time = []
 
         blanks = []
-        for k, pulse in self.combined_pulses_metadata.items():
+        for pulse in self.combined_pulses_metadata:
             pulse_start = pulse['pulse_sample_start']
             num_samples = pulse['pulse_num_samps'] + 2.0 * pulse['tr_window_num_samps']
 
