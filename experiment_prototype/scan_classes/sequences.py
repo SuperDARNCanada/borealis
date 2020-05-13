@@ -48,9 +48,9 @@ class Sequence(ScanClassBase):
     numberofreceivesamples
         the number of receive samples to take, given the rx rate, during
         the sstime.
-    first_rx_sample_time
-        The location of the first sample for the RX data, in time, from the start of the TX data.
-        This will be calculated as the time at centre sample of the first pulse. In seconds.
+    first_rx_sample_start
+        The location of the first sample for the RX data from the start of the TX data.
+        This will be calculated as the center sample of the first occurring pulse(uncombined).
     blanks
         A list of sample indices that should not be used for acfs because they were samples
         taken when transmitting.
@@ -321,7 +321,7 @@ class Sequence(ScanClassBase):
 
         first_slice_pulse_len = self.combined_pulses_metadata[0]['component_info'][0]['pulse_num_samps']
         offset_to_start = int(first_slice_pulse_len / 2) + tr_window_num_samps
-        self.first_rx_sample_time = offset_to_start
+        self.first_rx_sample_start = offset_to_start
 
         self.blanks = self.find_blanks()
 
@@ -361,9 +361,9 @@ class Sequence(ScanClassBase):
     def make_sequence(self, beam_iter, sequence_num):
         """
         Create the samples needed for each pulse in the sequence. This function is optimized to
-        be able to generate new samples every sequence if needed. 
-        Modifies the samples_array and isarepeat fields of all pulse 
-        dictionaries needed for this sequence for 
+        be able to generate new samples every sequence if needed.
+        Modifies the samples_array and isarepeat fields of all pulse
+        dictionaries needed for this sequence for
         radar_control to use in operation.
 
         :param      beam_iter:     The beam iterator
@@ -402,7 +402,7 @@ class Sequence(ScanClassBase):
 
                 self.output_encodings[slice_id].append(phase_encoding)
 
-                # we have [pulses, encodings] and [antennas ,samples], but we want 
+                # we have [pulses, encodings] and [antennas ,samples], but we want
                 # [pulses, antennas, (encodings*samples)]. Adding null axis to encoding
                 # will produce this result.
                 phase_encoding = np.exp(1j * phase_encoding[:,np.newaxis,:])
@@ -480,22 +480,22 @@ class Sequence(ScanClassBase):
         Finds the blanked samples after all pulse positions are calculated.
         """
         blanks = []
-        rx_sample_period = 1.0/float(self.transmit_metadata['output_rx_rate'])
+        dm_rate = self.debug_dict['dmrate']
+
         pulses_time = []
 
-        for pulse in self.combined_pulses_metadata:
-            start_time = pulse['start_time_us']
-            pulse_len = pulse['total_pulse_len']
-            pulse_start_stop = [start_time * 1.0e-6, (start_time + pulse_len) * 1.0e-6]
-            pulses_time.append(pulse_start_stop)
+        blanks = []
+        for k, pulse in self.combined_pulses_metadata.items():
+            pulse_start = pulse['pulse_sample_start']
+            num_samples = pulse['pulse_num_samps'] + 2.0 * pulse['tr_window_num_samps']
 
-        output_samples_in_sequence = int(self.sstime * 1.0e-6/rx_sample_period)
-        sample_times = [self.first_rx_sample_time + i*rx_sample_period for i in
-                        range(0, output_samples_in_sequence)]
-        for sample_num, time_s in enumerate(sample_times):
-            for pulse_start_stop in pulses_time:
-                if pulse_start_stop[0] <= time_s <= pulse_start_stop[1]:
-                    blanks.append(sample_num)
+            rx_sample_start = int(pulse_start/dm_rate)
+            rx_num_samps = round(num_samples/dm_rate)
+
+            pulse_blanks = np.arange(rx_sample_start, rx_sample_start + rx_num_samps)
+            pulse_blanks += self.first_rx_sample_start
+
+            blanks.extend(pulse_blanks)
 
         return blanks
 
