@@ -321,13 +321,6 @@ class Sequence(ScanClassBase):
         self.numberofreceivesamples = int(self.transmit_metadata['rx_sample_rate'] * self.sstime *
                                           1e-6)
 
-        first_slice_pulse_len = self.combined_pulses_metadata[0]['component_info'][0]['pulse_num_samps']
-        full_pulse_samps = first_slice_pulse_len + 2 * tr_window_num_samps
-        offset_to_start = int(full_pulse_samps/2)
-        self.first_rx_sample_start = offset_to_start
-
-        self.blanks = self.find_blanks()
-
         self.output_encodings = collections.defaultdict(list)
 
 
@@ -351,6 +344,13 @@ class Sequence(ScanClassBase):
             debug_dict['decimated_samples'][i] = []
 
         self.debug_dict = debug_dict
+
+        first_slice_pulse_len = self.combined_pulses_metadata[0]['component_info'][0]['pulse_num_samps']
+        full_pulse_samps = first_slice_pulse_len + 2 * tr_window_num_samps
+        offset_to_start = int(full_pulse_samps/2)
+        self.first_rx_sample_start = offset_to_start
+
+        self.blanks = self.find_blanks()
 
 
 
