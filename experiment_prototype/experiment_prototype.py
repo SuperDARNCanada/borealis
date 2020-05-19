@@ -371,7 +371,7 @@ class ExperimentPrototype(object):
             'minimum_pulse_separation': self.options.minimum_pulse_separation,
             'txctrfreq': self.txctrfreq,
             'txrate': self.txrate,
-            'intf_offset' : self.options.intf_offset
+            'intf_offset' : self.options.intf_offset,
             'dm_rate' : dm_rate
         }
 

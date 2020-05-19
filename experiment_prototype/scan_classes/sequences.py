@@ -483,14 +483,13 @@ class Sequence(ScanClassBase):
         blanks = []
         for pulse in self.combined_pulses_metadata:
             pulse_start = pulse['pulse_sample_start']
-            num_samples = pulse['pulse_num_samps'] + 2.0 * pulse['tr_window_num_samps']
+            num_samples = pulse['total_num_samps'] + 2 * pulse['tr_window_num_samps']
 
             rx_sample_start = int(pulse_start/dm_rate)
-            rx_num_samps = round(num_samples/dm_rate)
+            rx_num_samps = math.ceil(num_samples/dm_rate)
 
             pulse_blanks = np.arange(rx_sample_start, rx_sample_start + rx_num_samps)
             pulse_blanks += int(self.first_rx_sample_start / dm_rate)
-
             blanks.extend(pulse_blanks)
 
         return blanks
