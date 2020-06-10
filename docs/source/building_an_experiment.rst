@@ -113,10 +113,14 @@ Slice Keys
 A slice is defined by the user as a python dictionary in an experiment file, with the following preset keys:
 
 slice_id
-    The ID of this slice object. An experiment can have multiple slices.
+    The ID of this slice object. An experiment can have multiple slices. These
+    are configured automatically by the experiment code, when you add a slice.
 
 cpid
-    The ID of the experiment, consistent with existing radar control programs.
+    The ID of the experiment, consistent with existing radar control programs. You will 
+    need to request this from your institution's radar operator. You should clearly 
+    document the name of the experiment and some operating details that correspond 
+    to the CPID.
 
 tx_antennas
     The antennas to transmit on, default is all main antennas given max
@@ -162,7 +166,11 @@ beam_angle
     don't refer to them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will
     be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
     needed to write the beam_order list. This is like a mapping of beam number (list
-    index) to beam direction off boresight.
+    index) to beam direction off boresight. Typically you can use the radar's common
+    beam angle list. For example, at Saskatoon site the beam angles are a standard
+    16-beam list: [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
+            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
+            26.25]
 
 beam_order
     beam numbers written in order of preference, one element in this list corresponds to
@@ -178,7 +186,15 @@ beam_order
     are looking in to certain beam directions.
 
 scanbound
-    A list of seconds past the minute for integration times in a scan to align to.
+    A list of seconds past the minute for integration times in a scan to align to. You
+    will want to ensure that there is a slightly larger amount of time in the scan
+    boundaries than the integration time set for the slice. For example, if you want
+    to align integration times at the 3 second mark, you may want to have a set 
+    integration time of ~2.9s to ensure that the experiment will start on time. 
+    Typically 50ms difference will be enough. This is especially important for the last integration
+    time in the scan, as the experiment will always wait for the next scan start boundary
+    (potentially causing a minute of downtime). You could also just leave a small amount
+    of downtime at the end of the scan.
 
 clrfrqrange
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]

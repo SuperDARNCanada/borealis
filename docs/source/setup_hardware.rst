@@ -9,7 +9,7 @@ System Overview and Rack Setup
 Below is a recommended configuration in comparison to a common SuperDARN system:
 
 .. figure:: img/USRP-rack-rev4.png
-   :scale: 25 %
+   :scale: 75 %
    :alt: Block diagram of RX DSP software
    :align: center
 
@@ -20,22 +20,22 @@ Here is an actual rack configuration as installed by SuperDARN Canada at the Sas
    :alt: Rack photo
    :align: center
 
-The items installed in the rack at the Saskatoon site are listed below in order from bottom to top in the rack:
+The items installed in the rack at the Saskatoon site are listed below in order from top to bottom in the rack:
 
-- 15V Acopian power supply
-- APC Smart UPS
-- Synology Network Attached Storage device
 - Netgear XS708E 10Gb switch
 - USRP rackmount shelf (in-house design) with 4 x N200s
 - Ettus Octoclock
 - USRP rackmount shelf (in-house design) with 4 x N200s
-- Ettus Octoclock-G (with GPSDO)
+- Netgear XS708E 10Gb switch
 - Rackmount shelf with 4 x low-noise amplifiers for the interferometer array channels, and a terminal strip for power (supplied by 15V Acopian)
-- Netgear XS708E 10Gb switch
+- Ettus Octoclock-G (with GPSDO)
 - USRP rackmount shelf (in-house design) with 4 x N200s
 - Ettus Octoclock
 - USRP rackmount shelf (in-house design) with 4 x N200s
 - Netgear XS708E 10Gb switch
+- Synology Network Attached Storage device
+- APC Smart UPS
+- 15V Acopian power supply
 
 (3 x APC PDUs (AP7900B) are mounted at the back of the rack)
 

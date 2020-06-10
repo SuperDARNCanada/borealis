@@ -640,14 +640,14 @@ def radar():
                             beam_scanbound = start_scan + timedelta(seconds=scan.scanbound[beam_iter])
                             time_diff = beam_scanbound - datetime.utcnow()
                             if time_diff.total_seconds() > 0:
-                                msg = "{}s until beam {} at time {}"
+                                msg = "{}s until averaging period {} at time {}"
                                 msg = msg.format(sm.COLOR("blue", time_diff.total_seconds()),
                                                 sm.COLOR("yellow", beam_iter),
                                                 sm.COLOR("red", beam_scanbound))
                                 rad_ctrl_print(msg)
                                 time.sleep(time_diff.total_seconds())
                             else:
-                                msg = "starting beam {} at time {}"
+                                msg = "starting averaging period {} at time {}"
                                 msg = msg.format(sm.COLOR("yellow", beam_iter),
                                                  sm.COLOR("red", beam_scanbound))
                                 rad_ctrl_print(msg)
