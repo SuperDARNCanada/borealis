@@ -395,13 +395,13 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 beam.beamnum = sequence.slice_dict[slice_id]["beam_angle"].index(beamdir)
                 beam.beamazimuth = beamdir
 
+            rxchan_add.first_range = sequence.slice_dict[slice_id]['first_range']
+            rxchan_add.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
+            rxchan_add.range_sep = sequence.slice_dict[slice_id]['range_sep']
             if sequence.slice_dict[slice_id]['acf']:
                 rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
                 rxchan_add.acfint = sequence.slice_dict[slice_id]['acfint']
-                rxchan_add.first_range = sequence.slice_dict[slice_id]['first_range']
-                rxchan_add.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
-                rxchan_add.range_sep = sequence.slice_dict[slice_id]['range_sep']
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = rxchan_add.ltab.lag.add()
                     lag_add.pulse_position[:] = lag
@@ -537,16 +537,14 @@ def radar():
             beam_iter = 0
 
             if scan.scanbound:
-                # align time to next minute.
+                # align scanbound reference time.
                 now = datetime.utcnow()
-                start_scan = round_up_time(now)
-                wait_time = start_scan - now
-                wait_time = wait_time.total_seconds()
+                dt = now.replace(second=0, microsecond=0)
 
-                msg = "Scan: waiting {}s to align to {}"
-                msg = msg.format(sm.COLOR("blue", wait_time), sm.COLOR("red", start_scan))
-                rad_ctrl_print(msg)
-                time.sleep(wait_time)
+                if dt + timedelta(seconds=scan.scanbound[beam_iter]) >= now:
+                    start_scan = dt
+                else:
+                    start_scan = round_up_time(now)
 
             while beam_remaining and not new_experiment_waiting:
                 for aveperiod in scan.aveperiods:
@@ -647,14 +645,14 @@ def radar():
                             beam_scanbound = start_scan + timedelta(seconds=scan.scanbound[beam_iter])
                             time_diff = beam_scanbound - datetime.utcnow()
                             if time_diff.total_seconds() > 0:
-                                msg = "{}s until beam {} at time {}"
+                                msg = "{}s until averaging period {} at time {}"
                                 msg = msg.format(sm.COLOR("blue", time_diff.total_seconds()),
                                                 sm.COLOR("yellow", beam_iter),
                                                 sm.COLOR("red", beam_scanbound))
                                 rad_ctrl_print(msg)
                                 time.sleep(time_diff.total_seconds())
                             else:
-                                msg = "starting beam {} at time {}"
+                                msg = "starting averaging period {} at time {}"
                                 msg = msg.format(sm.COLOR("yellow", beam_iter),
                                                  sm.COLOR("red", beam_scanbound))
                                 rad_ctrl_print(msg)

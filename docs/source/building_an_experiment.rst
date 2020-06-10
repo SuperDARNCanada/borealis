@@ -124,6 +124,7 @@ Here's a theoretical example showing all types of interfacing. In this example, 
    :alt: An example showing all types of slice interfacing 
    :align: center
 
+---------------------
 Writing an Experiment
 ---------------------
 
@@ -133,42 +134,45 @@ This means the ExperimentPrototype class must be imported at the start of the ex
 
     from experiments.experiment_prototype import ExperimentPrototype
 
+Experiment-Wide Attributes
+--------------------------
 
-The only experiment-wide attribute that is required to be set by the user
-when initializing is the CPID, or control program identifier. This should
-be unique to the experiment.
+cpid *required*
+    The only experiment-wide attribute that is required to be set by the user
+    when initializing is the CPID, or control program identifier. This should
+    be unique to the experiment. You will need to request this from your 
+    institution's radar operator. You should clearly document the name of the 
+    experiment and some operating details that correspond to the CPID.
 
-Other fields that are possible to be set experiment-wide are:
-
-output_rx_rate
+output_rx_rate *defaults*
     The sampling rate of the output data. The default is 10.0e3/3 Hz, or 3.333 kHz.
 
-rx_bandwidth
+rx_bandwidth *defaults*
     The sampling rate of the USRPs (before decimation). The default is 5.0e6 Hz,
     or 5 MHz.
 
-tx_bandwidth
+tx_bandwidth *defaults*
     The output sampling rate of the transmitted signal. The default is 5.0e6 Hz,
     or 5 MHz.
 
-txctrfreq
+txctrfreq *defaults*
     The centre frequency of the transmit chain. The default is 12000.0 kHz, or
     12 MHz. Note that this is tuned so will be set to a quantized value, which
     in general is not exactly 12 MHz, and the value can be accessed by the user
     at this attribute after the experiment begins.
 
-rxctrfreq
+rxctrfreq *defaults*
     The centre frequency of the receive chain. The default is 12000.0 kHz, or
     12 MHz. Note that this is tuned so will be set to a quantized value, which
     in general is not exactly 12 MHz, and the value can be accessed by the user
     at this attribute after the experiment begins.
 
-decimation_scheme
+decimation_scheme *defaults*
     The decimation scheme for the experiment, provided by an instance of the
     class DecimationScheme. There is a default scheme specifically set for the
     default rates and centre frequencies above.
 
-comment_string
+comment_string *defaults*
     A comment string describing the experiment. It is highly encouraged to
     provide some description of the experiment for the output data files. The
     default is '', or an empty string.
@@ -224,7 +228,11 @@ beam_angle *required*
     don't refer to them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will
     be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
     needed to write the beam_order list. This is like a mapping of beam number (list
-    index) to beam direction off boresight.
+    index) to beam direction off boresight. Typically you can use the radar's common
+    beam angle list. For example, at Saskatoon site the beam angles are a standard
+    16-beam list: [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
+            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
+            26.25]
 
 beam_order *required*
     beam numbers written in order of preference, one element in this list corresponds to
@@ -298,7 +306,14 @@ rx_main_antennas *defaults*
 
 scanbound *defaults*
     A list of seconds past the minute for integration times in a scan to align to. Defaults
-    to None, not required.
+    to None, not required. If you set this, you will want to ensure that there is a slightly 
+    larger amount of time in the scan boundaries than the integration time set for the slice. 
+    For example, if you want to align integration times at the 3n second marks, you may want to 
+    have a set integration time of ~2.9s to ensure that the experiment will start on time. 
+    Typically 50ms difference will be enough. This is especially important for the last integration
+    time in the scan, as the experiment will always wait for the next scan start boundary
+    (potentially causing a minute of downtime). You could also just leave a small amount
+    of downtime at the end of the scan.
 
 seqoffset *defaults*
     offset in us that this slice's sequence will begin at, after the start of the sequence.
@@ -331,7 +346,7 @@ rx_only *read-only*
 
 slice_id *read-only*
     The ID of this slice object. An experiment can have multiple slices. This
-    is not set by the user but instead set by the experiment when the
+    is not set by the user but instead set by the experiment automatically when the
     slice is added. Each slice id within an experiment is unique. When experiments
     start, the first slice_id will be 0 and incremented from there.
 

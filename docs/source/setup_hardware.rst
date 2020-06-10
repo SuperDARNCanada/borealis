@@ -2,11 +2,50 @@
 Hardware
 ========
 
+------------------------------
+System Overview and Rack Setup
+------------------------------
+
+Below is a recommended configuration in comparison to a common SuperDARN system:
+
+.. figure:: img/USRP-rack-rev4.png
+   :scale: 75 %
+   :alt: Block diagram of RX DSP software
+   :align: center
+
+Here is an actual rack configuration as installed by SuperDARN Canada at the Saskatoon (SAS) SuperDARN site. Note that space has been allowed between the rackmount items to allow for cable routing. There is a lot of cabling involved at the front of the devices.
+
+.. figure:: img/sas-borealis-rack1.jpg
+   :scale: 25 %
+   :alt: Rack photo
+   :align: center
+
+The items installed in the rack at the Saskatoon site are listed below in order from top to bottom in the rack:
+
+- Netgear XS708E 10Gb switch
+- USRP rackmount shelf (in-house design) with 4 x N200s
+- Ettus Octoclock
+- USRP rackmount shelf (in-house design) with 4 x N200s
+- Netgear XS708E 10Gb switch
+- Rackmount shelf with 4 x low-noise amplifiers for the interferometer array channels, and a terminal strip for power (supplied by 15V Acopian)
+- Ettus Octoclock-G (with GPSDO)
+- USRP rackmount shelf (in-house design) with 4 x N200s
+- Ettus Octoclock
+- USRP rackmount shelf (in-house design) with 4 x N200s
+- Netgear XS708E 10Gb switch
+- Synology Network Attached Storage device
+- APC Smart UPS
+- 15V Acopian power supply
+
+(3 x APC PDUs (AP7900B) are mounted at the back of the rack)
+
+The Borealis computer is not in a rackmount case, instead it is placed to the right of the rack. 
+
 -----
 USRPs
 -----
 
-This guide assumes set up of a brand new, unopened unit.
+This guide assumes set up of a brand new, unopened Ettus N200.
 
 Initial Test of the Unit
 ------------------------
@@ -221,7 +260,6 @@ Configuring the Unit for Borealis
 1. Use UHD utility usrp_burn_mb_eeprom to assign a unique IP address for the unit. Label the unit with the device IP address.
 2. The device should be configured and ready for use.
 
-
 --------
 Pre-amps
 --------
@@ -233,48 +271,6 @@ Note that existing channel filters (typically custom 8-20MHz filters) should be 
 It is also recommended to install all channels the same for all main array channels to avoid varying electrical path lengths in the array which will affect beamformed data.
 
 Interferometer channels will need to be routed to a separate plate and supplied with 15V by a separate supply capable of supplying the required amperage for a minimum of 4 pre-amps.
-
-----------
-Rack Setup
-----------
-
-Below is a recommended configuration in comparison to a common SuperDARN system:
-
-.. figure:: img/USRP-rack-rev3.png
-   :scale: 75 %
-   :alt: Block diagram of RX DSP software
-   :align: center
-
-Here is an actual rack configuration as installed by SuperDARN Canada at the Saskatoon (SAS) SuperDARN site. Note that space has been allowed between the rackmount items to allow for cable routing. There is a lot of cabling involved at the front of the devices.
-
-.. figure:: img/sas-borealis-rack.jpg
-   :scale: 50 %
-   :alt: Block diagram of RX DSP software
-   :align: center
-
-The items installed in the rack at the Saskatoon site are listed below in order from bottom to top in the rack:
-
-- APC PDU (AP7900B)
-- 15V Acopian power supply
-- APC Smart UPS
-- Custom-made logic signal testing box using Saleae logic analyzer (for test purposes only)
-- TrippLite power bar
-- Netgear XS708E 10Gb switch
-- USRP rackmount shelf (Ettus manufactured) with 4 x N200s
-- Ettus Octoclock
-- USRP rackmount shelf (Ettus manufactured) with 4 x N200s
-- Rackmount shelf with 4 x low-noise amplifiers for the interferometer array channels, and a terminal strip for power (supplied by 15V Acopian)
-- Ettus Octoclock-G (with GPSDO)
-- Netgear XS708E 10Gb switch
-- APC PDU (AP7900B)
-- USRP rackmount shelf (Ettus manufactured) with 4 x N200s
-- Ettus Octoclock
-- USRP rackmount shelf (Ettus manufactured) with 4 x N200s
-- Netgear XS708E 10Gb switch
-- APC PDU (AP7900B)
-
-You can also see the Borealis computer at this site is not in a rackmount case, instead it is shown to the right of the rack. 
-
 
 -----------------------
 Computer and Networking
