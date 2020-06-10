@@ -340,6 +340,11 @@ class ExperimentPrototype(object):
         if not isinstance(cpid, int):  # TODO add check for uniqueness
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
+        if cpid <= 0:
+            errmsg = 'The CPID should be a positive number in the experiment. Borealis'\
+                     ' will determine if it should be negative based on the scheduling mode.'\
+                     ' Only experiments run during discretionary time will have negative CPIDs.'
+            raise ExperimentException(errmsg)            
 
         self.__options = ExperimentOptions()
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
@@ -452,7 +457,9 @@ class ExperimentPrototype(object):
         """
         This experiment's CPID (control program ID, a term that comes from ROS).
 
-        The CPID is read-only once established in instantiation.
+        The CPID is read-only once established in instantiation. It may be 
+        modified at runtime by the set_scheduling_mode function, to set it to
+        a negative value during discretionary time.
         """
 
         return self.__cpid
@@ -804,6 +811,8 @@ class ExperimentPrototype(object):
         """
         if scheduling_mode in possible_scheduling_modes:
             self.__scheduling_mode = scheduling_mode
+            if scheduling_mode == 'discretionary':
+                self.__cpid = -1 * self.__cpid
         else:
             errmsg = 'Scheduling mode {} set by experiment handler is not '\
                      ' a valid mode: {}'.format(scheduling_mode,
