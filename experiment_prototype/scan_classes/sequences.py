@@ -305,7 +305,7 @@ class Sequence(ScanClassBase):
 
 
         # FIND the sequence time. Add some TR setup time before the first pulse. The
-        # timing to the last pulse is added, as well as its pulse length and the TR delay 
+        # timing to the last pulse is added, as well as its pulse length and the TR delay
         # at the end of last pulse.
 
         # tr_window_time is originally in seconds, convert to us.
@@ -509,3 +509,4 @@ class Sequence(ScanClassBase):
             v['intf'] = v['intf'][beam_num][:,None]
 
         return temp_dict
+
