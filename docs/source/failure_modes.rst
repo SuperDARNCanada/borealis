@@ -109,9 +109,10 @@ installing `hdf5-tools`. For OpenSuSe it means installing `hdf5`.
 If the shared memory location written to by Borealis is full, or the shared memory files are unable
 to be deleted by Borealis, then some possible results are:
 
-    - N200's will be in RX only mode (green LED on front panel will be on only)
-    - Borealis will appear to halt when viewing the screen
-    - Signal processing will quietly die
+    - N200's may be in RX only mode (green LED on front panel will be on only)
+    - Borealis may appear to halt when viewing the screen, or Borealis may be getting very 
+      few sequences per integration time (1-2 within seconds)
+    - Signal processing may quietly die
     - Data files, shared memory files and log files will cease being written
 
 To fix this issue and restart the radar:
