@@ -47,7 +47,7 @@ def create_15km_scheme():
 
 class IBCollabMode(ExperimentPrototype):
 
-    def __init__(self):
+    def __init__(self, freq=10800):
         cpid = 3700  # allocated by Marci Detwiller 20200609
         decimation_scheme = create_15km_scheme()
 
@@ -66,7 +66,7 @@ class IBCollabMode(ExperimentPrototype):
             "beam_angle": bangle,
             "beam_order": beams_arr,
             "scanbound": [i * 2.0 for i in range(len(beams_arr))],
-            "txfreq": 10800,  # kHz
+            "txfreq": freq,  # kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
