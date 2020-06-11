@@ -61,7 +61,7 @@ class IBCollabMode(ExperimentPrototype):
             "beam_angle": bangle,
             "beam_order": beams_arr,
             "scanbound" : [i * 2.0 for i in range(len(beams_arr))],
-            "txfreq" : 10800, #kHz 
+            "txfreq" : 13000, #kHz 
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
