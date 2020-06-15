@@ -139,3 +139,19 @@ The root cause is unknown, but symptoms are:
     
 To fix this issue and restart the radar:
     - Power cycle the machine
+
+'CPU stuck' messages from kernel, not possible to reboot
+--------------------------------------------------------
+This behaviour has been seen once at the Clyde River Borealis radar. The message shown is:
+
+`Message from syslogd@clyborealis at Jun 15 00:47:18 ... kernel:[9941421.042914] NMI watchdog: BUG:
+soft lockup - CPU#19 stuck for 22s! [kworker/u56:0:16764]`
+
+The root cause is unknown, but symptoms are:
+
+    - Radar stops with the same message across all screens and terminals from the kernel
+    - Attempting to reboot the computer results in nothing happening etc
+
+To fix this issue and restart the radar:
+    - Power cycle the machine
+
