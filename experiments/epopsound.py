@@ -14,7 +14,7 @@ sys.path.append(BOREALISPATH)
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
-EPOP_PASS_FILE = "/home/radar/borealis_schedules/{}.epop.passes"
+EPOP_PASS_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.epop.passes"
 
 class Epopsound(ExperimentPrototype):
     """Experiment for conjunction with EPOP RRI. This mode creates a transmission that is received
