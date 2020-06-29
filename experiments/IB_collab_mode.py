@@ -1,6 +1,18 @@
 #!/usr/bin/python
 
-# IB collab mode written by Devin Huyghebaert 20200609
+""" 
+IB collab mode written by Devin Huyghebaert 20200609
+
+This experiment depends on a complementary args file. The file should have
+name {radar}.ib.collab and located under the directory stored in the
+BOREALISSCHEDULEPATH env variable. Lines in the file have the following
+structure
+
+utctimestampfromepoch freq(kHz)
+
+The closest upcoming timestamp is used, so make sure this mode is scheduled
+to run before the timestamp with the required arguments. 
+"""
 import os
 import sys
 import datetime
@@ -69,7 +81,6 @@ class IBCollabMode(ExperimentPrototype):
             else:
                 freq = int(ll[1])
                 break
-
         decimation_scheme = create_15km_scheme()
 
         bangle = scf.STD_16_BEAM_ANGLE
