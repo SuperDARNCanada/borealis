@@ -2,10 +2,19 @@
 Copyright SuperDARN Canada 2020
 
 Keith Kotyk
+
+This experiment depends on a complementary passes file. The file should have name
+{radar}.epop.passes name and located under the directory stored in the BOREALISSCHEDULEPATH env
+variable. Lines in the file follow the structure:
+
+utctimestampfromepoch beam marker_period freq(khz)
+
+The closest upcoming timestamp is used, so make sure this mode begins running before the required
+line.
 """
+
 import os
 import sys
-import copy
 import datetime
 
 BOREALISPATH = os.environ['BOREALISPATH']
@@ -15,6 +24,7 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
 EPOP_PASS_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.epop.passes"
+
 
 class Epopsound(ExperimentPrototype):
     """Experiment for conjunction with EPOP RRI. This mode creates a transmission that is received
@@ -30,17 +40,17 @@ class Epopsound(ExperimentPrototype):
         time = datetime.datetime.utcnow()
 
         for line in lines:
-            l = line.split()
-            timestamp = int(l[0])
+            ll = line.split()
+            timestamp = int(ll[0])
 
             dt = datetime.datetime.utcfromtimestamp(timestamp)
 
             if dt < time:
                 continue
             else:
-                beam = int(l[1])
-                marker_period = int(l[2])
-                freq = int(l[3])
+                beam = int(ll[1])
+                marker_period = int(ll[2])
+                freq = int(ll[3])
                 break
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
@@ -58,7 +68,7 @@ class Epopsound(ExperimentPrototype):
             "intn": 10,
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
-            "txfreq" : freq, #kHz
+            "txfreq": freq,  # kHz
             "acf": True,
             "xcf": True,
             "acfint": True,
@@ -74,7 +84,7 @@ class Epopsound(ExperimentPrototype):
             "intn": 10,
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
-            "txfreq" : freq, #kHz
+            "txfreq": freq,  # kHz
             "acf": True,
             "xcf": True,
             "acfint": True,
@@ -82,5 +92,5 @@ class Epopsound(ExperimentPrototype):
 
         super(Epopsound, self).__init__(cpid=cpid, comment_string=Epopsound.__doc__)
         self.add_slice(slice_0)
-        self.add_slice(slice_1, interfacing_dict={0:'SCAN'})
+        self.add_slice(slice_1, interfacing_dict={0: 'SCAN'})
 
