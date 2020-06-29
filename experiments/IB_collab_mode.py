@@ -3,6 +3,7 @@
 # IB collab mode written by Devin Huyghebaert 20200609
 import os
 import sys
+import datetime
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -12,6 +13,7 @@ import experiments.superdarn_common_fields as scf
 from experiment_prototype.decimation_scheme.decimation_scheme import \
     DecimationScheme, DecimationStage, create_firwin_filter_by_attenuation
 
+IB_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.ib.collab"
 
 def create_15km_scheme():
     """
@@ -47,8 +49,27 @@ def create_15km_scheme():
 
 class IBCollabMode(ExperimentPrototype):
 
-    def __init__(self, freq=10800):
+    def __init__(self):
         cpid = 3700  # allocated by Marci Detwiller 20200609
+
+        ib_file = IB_FILE.format(scf.opts.site_id)
+        with open(ib_file) as f:
+            lines = f.readlines()
+
+        time = datetime.datetime.utcnow()
+
+        for line in lines:
+            ll = line.split()
+            timestamp = int(ll[0])
+
+            dt = datetime.datetime.utcfromtimestamp(timestamp)
+
+            if dt < time:
+                continue
+            else:
+                freq = int(ll[1])
+                break
+
         decimation_scheme = create_15km_scheme()
 
         bangle = scf.STD_16_BEAM_ANGLE
