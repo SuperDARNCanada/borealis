@@ -20,33 +20,23 @@ from scipy.constants import speed_of_light
 import copy
 from operator import itemgetter
 import collections
+import sys
+import os
 
-from sample_building.sample_building import get_samples
+from sample_building.sample_building import get_samples, get_phase_shift
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 from experiment_prototype.experiment_exception import ExperimentException
+
+sys.path.append(os.environ["BOREALISPATH"])
+import utils.shared_macros.shared_macros as sm
+
+sequence_print = sm.MODULE_PRINT("sequence building", "magenta")
 class Sequence(ScanClassBase):
     """
     Set up the sequence class.
 
     **The members of the sequence are:**
 
-    pulses
-        a list of pre-combined, pre-sampled pulse dictionaries (one dictionary = one
-        basic pulse of single frequency). The dictionary keys are: isarepeat,
-        pulse_timing_us, slice_id, slice_pulse_index, pulse_len,
-        intra_pulse_start_time, combined_pulse_index, pulse_shift, iscombined,
-        combine_total, and combine_index.
-    total_combined_pulses
-        the total number of pulses to be sent by the driver. This may not
-        be the sum of pulses in all slices in the sequence, as some pulses may need to be
-        combined because they are overlapping in timing. This is the number of pulses in the
-        combined sequence, or the number of times T/R signal goes high in the sequence.
-    power_divider
-        the power ratio per slice. If there are multiple slices in the same
-        pulse then we must reduce the output amplitude to potentially accommodate multiple
-        frequencies.
-    last_pulse_len
-        the length of the last pulse (us)
     ssdelay
         delay past the end of the sequence to receive for (us) - function of num_ranges and
         pulse_len. ss stands for scope sync.
@@ -58,19 +48,26 @@ class Sequence(ScanClassBase):
     numberofreceivesamples
         the number of receive samples to take, given the rx rate, during
         the sstime.
-    first_rx_sample_time
-        The location of the first sample for the RX data, in time, from the start of the TX data.
-        This will be calculated as the time at centre sample of the first pulse. In seconds.
+    first_rx_sample_start
+        The location of the first sample for the RX data from the start of the TX data.
+        This will be calculated as the center sample of the first occurring pulse(uncombined).
     blanks
         A list of sample indices that should not be used for acfs because they were samples
         taken when transmitting.
+    basic_slice_pulses
+        A dictionary that holds pre-computed tx samples for each slice. Each dictionary value is a
+        multi-dimensional array that holds a beamformed set of samples for each antenna for all
+        beam directions.
     combined_pulses_metadata
         This list holds dictionary metadata for all pulses in the sequence. This metadata holds all
         the info needed to combine pulses if pulses are mixed.
-            start_time_us - start time of the pulse in us, relative to the first pulse in sqn
+            start_time_us - start time of the pulse in us, relative to the first pulse in sqn.
             total_pulse_len - total length of the pulse that includes len of all combined pulses.
-            component_info - holds length and start time of all combined pulses. Also in us.
-            transmit_metadata - dictionary hold the transmit metadata that will be sent to driver.
+            pulse_sample_start - The tx sample number at which the pulse starts.
+            tr_window_num_samps - The number of tx samples of the tr window.
+            component_info - a list of all the pre-combined pulse components
+                        (incl their length and start time) that are in the combined pulseAlso in us.
+            pulse_transmit_data - dictionary hold the transmit metadata that will be sent to driver.
     output_encodings
         This dict will hold a list of all the encodings used during an aveperiod for each slice.
         These will be used for data write later.
@@ -97,12 +94,24 @@ class Sequence(ScanClassBase):
         txctrfreq = self.transmit_metadata['txctrfreq']
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         main_antenna_spacing = self.transmit_metadata['main_antenna_spacing']
+        intf_antenna_count = self.transmit_metadata['intf_antenna_count']
+        intf_antenna_spacing = self.transmit_metadata['intf_antenna_spacing']
         pulse_ramp_time = self.transmit_metadata['pulse_ramp_time']
         max_usrp_dac_amplitude = self.transmit_metadata['max_usrp_dac_amplitude']
         tr_window_time = self.transmit_metadata['tr_window_time']
+        output_rx_rate = self.transmit_metadata['output_rx_rate']
+        intf_offset = self.transmit_metadata['intf_offset']
+        dm_rate = self.transmit_metadata['dm_rate']
+
 
         self.basic_slice_pulses = {}
+        self.rx_beam_phases = {}
         single_pulse_timing = []
+        # For each slice calculate beamformed samples and place into the basic_slice_pulses dictionary.
+        # Also populate the pulse timing metadata and place into single_pulse_timing
+
+        # For each slice calculate beamformed samples and place into the basic_slice_pulses dictionary.
+        # Also populate the pulse timing metadata and place into single_pulse_timing
         for slice_id in self.slice_ids:
 
             exp_slice = self.slice_dict[slice_id]
@@ -122,27 +131,38 @@ class Sequence(ScanClassBase):
                                                                                                 wave_freq_hz)
                     raise ExperimentException(errmsg)  # TODO change to warning? only happens on non-SINE
 
-                # convert the beam angles to rads
-                beam_rads = np.pi / 180 * np.array(exp_slice['beam_angle'], dtype=np.float64)
-
-                main_antennas = np.arange(main_antenna_count)
-                x = (((main_antenna_count - 1) / 2.0 - main_antennas) * main_antenna_spacing)
-                x *= 2 * np.pi * (tx_freq_khz * 1000)
-
-                y = np.cos(np.pi / 2.0 - beam_rads) / speed_of_light
-
-                # split up the calculations for beams and antennas. Outer multiply of the two
-                # vectors will yield all antenna phases needed for each beam.
-                phase_shift = np.fmod(np.outer(y, x), 2.0 * np.pi) # beams by antenna
-                phase_shift = np.exp(1j * phase_shift)
-
+                main_phase_shift = get_phase_shift(exp_slice['beam_angle'], tx_freq_khz,
+                                                    main_antenna_count, main_antenna_spacing)
+                intf_phase_shift = get_phase_shift(exp_slice['beam_angle'], tx_freq_khz,
+                                                    intf_antenna_count, intf_antenna_spacing,
+                                                    intf_offset[0])
                 # We want to apply all the phases to the basic samples. We can flatten the phases
                 # so that can multiply them all with the basic samples. This can later be reshaped
                 # so that each antenna has a set of phased samples for each beam.
-                phased_samps_for_beams = np.outer(phase_shift.flatten(), basic_samples)
+                # If there are N antennas and M beams
+
+                # if we let antennaxbeamy = abxy from the previous matrix (now flattened to be able to multiply)
+                # and basic_samples[i] = bsi
+                # And there are S basic_samples then...
+
+                # Now we have:
+                # [ab00bs0 ab00bs1 ... ab00bsS-1
+                # ab10bs0 ab10bs1 ... ab10bsS-1
+                # ...
+                # ab(N-1)0bs0 ab(N-1)0bs1 ... ab(N-1)0bsS-1
+                # ab01bs0 ab01bs1 ... ab01bsS-1
+                # ...
+                # ab(N-1)1bs0 ab(N-1)1bs1 ... ab(N-1)1*bsS-1
+                # ...
+                # ab(N-1)(M-1)*bs0 ... ... ...........ab(N-1)(M-1)*bsS-1]
+
+                # And to access a sample for a specific beam and antenna:
+                # phased_samps_for_beams[antenna+(N)*beam][sample]
+                phased_samps_for_beams = np.outer(main_phase_shift.flatten(), basic_samples)
 
                 # beams by antenna by samples
-                phased_samps_for_beams = phased_samps_for_beams.reshape(phase_shift.shape + basic_samples.shape)
+                phased_samps_for_beams = phased_samps_for_beams.reshape(main_phase_shift.shape +
+                                                                        basic_samples.shape)
 
                 # zero out the antennas not being used.
                 temp = np.zeros_like(phased_samps_for_beams, dtype=phased_samps_for_beams.dtype)
@@ -151,44 +171,72 @@ class Sequence(ScanClassBase):
 
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
+                rx_freq_khz = experiment.slice_dict[slice_id]['rxfreq']
+                main_phase_shift = get_phase_shift(exp_slice['beam_angle'], rx_freq_khz,
+                                                    main_antenna_count, main_antenna_spacing)
+                intf_phase_shift = get_phase_shift(exp_slice['beam_angle'], rx_freq_khz,
+                                                    intf_antenna_count, intf_antenna_spacing,
+                                                    intf_offset[0])
+
                 self.basic_slice_pulses[slice_id] = []
 
+            self.rx_beam_phases[slice_id] = {'main' : main_phase_shift, 'intf' : intf_phase_shift}
             for pulse_time in exp_slice['pulse_sequence']:
                 pulse_timing_us = pulse_time * exp_slice['tau_spacing'] + exp_slice['seqoffset']
+                pulse_sample_start = round((pulse_timing_us * 1e-6) * txrate)
+
+                pulse_num_samps = round((exp_slice['pulse_len'] * 1e-6) * txrate)
 
                 single_pulse_timing.append({'start_time_us' : pulse_timing_us,
                                             'pulse_len_us' : exp_slice['pulse_len'],
+                                            'pulse_sample_start' : pulse_sample_start,
+                                            'pulse_num_samps' : pulse_num_samps,
                                             'slice_id' : slice_id})
 
 
         single_pulse_timing = sorted(single_pulse_timing, key=lambda d: d['start_time_us'])
 
-        def make_pulse_dict(pulse_timing_info):
+        # Combine any pulses closer than the minimum separation time into a single pulse data
+        # dictionary and append to the list of all combined pulses, combined_pulses_metadata.
+        tr_window_num_samps = round((tr_window_time * 1e-6) * txrate)
+        def initialize_combined_pulse_dict(pulse_timing_info):
             return {'start_time_us' : pulse_timing_info['start_time_us'],
                       'total_pulse_len' : pulse_timing_info['pulse_len_us'],
+                      'pulse_sample_start' : pulse_timing_info['pulse_sample_start'],
+                      'total_num_samps' : pulse_timing_info['pulse_num_samps'],
+                      'tr_window_num_samps' : tr_window_num_samps,
                       'component_info' : [pulse_timing_info]
                     }
 
-        pulse_data = make_pulse_dict(single_pulse_timing[0])
+        pulse_data = initialize_combined_pulse_dict(single_pulse_timing[0])
         combined_pulses_metadata = []
 
         # determine where pulses occur in the sequence. This will be important if there are overlaps
         for pulse_time in single_pulse_timing[1:]:
             pulse_timing_us = pulse_time['start_time_us']
             pulse_len_us = pulse_time['pulse_len_us']
+            pulse_sample_start = pulse_time['pulse_sample_start']
+            pulse_num_samps = pulse_time['pulse_num_samps']
 
-            cp_timing_us = pulse_data['start_time_us']
-            cp_pulse_len_us = pulse_data['total_pulse_len']
+            last_timing_us = pulse_data['start_time_us']
+            last_pulse_len_us = pulse_data['total_pulse_len']
+            last_sample_start = pulse_data['pulse_sample_start']
+            last_pulse_num_samps = pulse_data['total_num_samps']
 
+            # If there are overlaps (two pulses within minimum separation time) then make them
+            # into one single pulse
+            # If there are overlaps (two pulses within minimum separation time) then make them into one single pulse
             min_sep = self.transmit_metadata['minimum_pulse_separation']
-            if pulse_timing_us < cp_timing_us + cp_pulse_len_us + min_sep:
-                new_pulse_len = pulse_timing_us - cp_timing_us + pulse_len_us
+            if pulse_timing_us < last_timing_us + last_pulse_len_us + min_sep:
+                new_pulse_len = pulse_timing_us - last_timing_us + pulse_len_us
+                new_pulse_samps = pulse_sample_start - last_sample_start + pulse_num_samps
 
                 pulse_data['total_pulse_len'] = new_pulse_len
+                pulse_data['total_num_samps'] = new_pulse_samps
                 pulse_data['component_info'].append(pulse_time)
-            else:
+            else: # pulses do not overlap
                 combined_pulses_metadata.append(pulse_data)
-                pulse_data = make_pulse_dict(pulse_time)
+                pulse_data = initialize_combined_pulse_dict(pulse_time)
 
         combined_pulses_metadata.append(pulse_data)
 
@@ -201,21 +249,34 @@ class Sequence(ScanClassBase):
             slice_tx_antennas = self.slice_dict[slice_id]['tx_antennas']
             all_antennas.extend(slice_tx_antennas)
 
+        sequence_antennas = list(set(all_antennas))
 
         # predetermine some of the transmit metadata.
-        sequence_antennas = list(set(all_antennas))
         num_pulses = len(combined_pulses_metadata)
         for i in range(num_pulses):
-            combined_pulses_metadata[i]['transmit_metadata'] = {}
-            pulse_transmit_data = combined_pulses_metadata[i]['transmit_metadata']
+            combined_pulses_metadata[i]['pulse_transmit_data'] = {}
+            pulse_transmit_data = combined_pulses_metadata[i]['pulse_transmit_data']
 
             pulse_transmit_data['startofburst'] = i == 0
             pulse_transmit_data['endofburst'] = i == (num_pulses - 1)
 
             pulse_transmit_data['pulse_antennas'] = sequence_antennas
+            # the samples array is populated as needed during operations
             pulse_transmit_data['samples_array'] = None
             pulse_transmit_data['timing'] = combined_pulses_metadata[i]['start_time_us']
+            # isarepeat is set as needed during operations
             pulse_transmit_data['isarepeat'] = False
+
+        # print out pulse information for logging.
+        for i, cpm in enumerate(combined_pulses_metadata):
+            message = "Pulse {}: start time(us) {}  start sample {}".format(i,
+                                                                            cpm['start_time_us'],
+                                                                            cpm['pulse_sample_start'])
+            sequence_print(message)
+
+            message = "          pulse length(us) {}  pulse num samples {}".format(cpm['total_pulse_len'],
+                                                                                   cpm['total_num_samps'])
+            sequence_print(message)
 
         self.combined_pulses_metadata = combined_pulses_metadata
 
@@ -242,9 +303,11 @@ class Sequence(ScanClassBase):
 
         # The delay is long enough for any slice's pulse length and num_ranges to be accounted for.
 
+
         # FIND the sequence time. Add some TR setup time before the first pulse. The
         # timing to the last pulse is added, as well as its pulse length and the TR delay 
         # at the end of last pulse.
+
         # tr_window_time is originally in seconds, convert to us.
         self.seqtime = (2 * tr_window_time * 1.0e6 +
                         self.combined_pulses_metadata[-1]['start_time_us'] +
@@ -261,25 +324,56 @@ class Sequence(ScanClassBase):
         self.numberofreceivesamples = int(self.transmit_metadata['rx_sample_rate'] * self.sstime *
                                           1e-6)
 
-        sample_time = (int(self.combined_pulses_metadata[0]['total_pulse_len'] / 2) + tr_window_time) / txrate
-        self.first_rx_sample_time = sample_time
+        self.output_encodings = collections.defaultdict(list)
+
+
+        # create debug dict for tx samples.
+        debug_dict = {'txrate' : txrate,
+                      'txctrfreq' : txctrfreq,
+                      'pulse_timing' : [],
+                      'pulse_sample_start' : [],
+                      'sequence_samples' : {},
+                      'decimated_samples' : {},
+                      'dmrate' : dm_rate
+                      }
+
+
+        for i, cpm in enumerate(combined_pulses_metadata):
+            debug_dict['pulse_timing'].append(cpm['start_time_us'])
+            debug_dict['pulse_sample_start'].append(cpm['pulse_sample_start'])
+
+        for i in range(main_antenna_count):
+            debug_dict['sequence_samples'][i] = []
+            debug_dict['decimated_samples'][i] = []
+
+        self.debug_dict = debug_dict
+
+        first_slice_pulse_len = self.combined_pulses_metadata[0]['component_info'][0]['pulse_num_samps']
+        full_pulse_samps = first_slice_pulse_len + 2 * tr_window_num_samps
+        offset_to_start = int(full_pulse_samps/2)
+        self.first_rx_sample_start = offset_to_start
 
         self.blanks = self.find_blanks()
 
-        self.output_encodings = collections.defaultdict(list)
+
 
     def make_sequence(self, beam_iter, sequence_num):
         """
         Create the samples needed for each pulse in the sequence. This function is optimized to
         be able to generate new samples every sequence if needed.
+        Modifies the samples_array and isarepeat fields of all pulse
+        dictionaries needed for this sequence for
+        radar_control to use in operation.
 
         :param      beam_iter:     The beam iterator
         :type       beam_iter:     int
         :param      sequence_num:  The sequence number in the ave period
         :type       sequence_num:  int
 
-        :returns:   Transmit data for each pulse, including timing and samples
+        :returns:   Transmit data for each pulse where each pulse is a dict, including timing and samples
         :rtype:     list
+        :returns:   The transmit sequence and related data to use for debug.
+        :rtype:     Dict
         """
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         txrate = self.transmit_metadata['txrate']
@@ -287,12 +381,13 @@ class Sequence(ScanClassBase):
 
         buffer_len = int(txrate * self.sstime * 1e-6)
         # This is gonna act as buffer for mixing pulses. Its the length of the receive samples
-        # since we know this will be large enough to hold samples at any pulse position.
+        # since we know this will be large enough to hold samples at any pulse position. There will
+        # be a buffer for each antenna.
         sequence = np.zeros([main_antenna_count, buffer_len], dtype=np.complex64)
 
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
-            basic_samples = self.basic_slice_pulses[slice_id][beam_iter]
+            basic_samples = self.basic_slice_pulses[slice_id][beam_iter]  # num_antennas x num_samps
 
             num_pulses = len(exp_slice['pulse_sequence'])
             encode_fn = exp_slice['pulse_phase_offset']
@@ -302,27 +397,30 @@ class Sequence(ScanClassBase):
 
                 # Reshape as vector if 1D, else stays the same.
                 phase_encoding = phase_encoding.reshape((phase_encoding.shape[0],-1))
+                phase_encoding = np.radians(phase_encoding)
 
                 self.output_encodings[slice_id].append(phase_encoding)
 
-                # we have [p,e] and [a,s], but we want [p,a,(e*s)]. Adding null axis to encoding
+                # we have [pulses, encodings] and [antennas ,samples], but we want
+                # [pulses, antennas, (encodings*samples)]. Adding null axis to encoding
                 # will produce this result.
                 phase_encoding = np.exp(1j * phase_encoding[:,np.newaxis,:])
                 samples = phase_encoding * basic_samples
 
-            else:
+            else:  # no encodings, all pulses in the slice are all the same
                 samples = np.repeat(basic_samples[np.newaxis,:,:], num_pulses, axis=0)
 
-            # sum the samples into their position in the sequence buffer.
-            tr_window_num_samps = round(tr_window_time * txrate)
+            # sum the samples into their position in the sequence buffer. Find where the relative
+            # timing of each pulse matches the sample number in the buffer. Directly sum the samples
+            # for each pulse into the buffer position. If any pulses overlap, this is how they will
+            # be mixed.
             for i, pulse in enumerate(self.combined_pulses_metadata):
                 for component_info in pulse['component_info']:
                     if component_info['slice_id'] == slice_id:
-                        pulse_timing_us = component_info['start_time_us']
-                        pulse_sample_start = round(txrate * (pulse_timing_us * 1e-6))
-                        pulse_samples_len = samples.shape[-1]
+                        pulse_sample_start = component_info['pulse_sample_start']
+                        pulse_samples_len = component_info['pulse_num_samps']
 
-                        start = tr_window_num_samps + pulse_sample_start
+                        start = pulse['tr_window_num_samps'] + pulse_sample_start
                         end = start + pulse_samples_len
                         pulse_piece = sequence[...,start:end]
 
@@ -331,16 +429,14 @@ class Sequence(ScanClassBase):
         # copy the encoded and combined samples into the metadata for the sequence.
         pulse_data = []
         for i, pulse in enumerate(self.combined_pulses_metadata):
-            pulse_timing_us = pulse['start_time_us']
-            pulse_sample_start = round(txrate * (pulse_timing_us * 1e-6))
+            pulse_sample_start = pulse['pulse_sample_start']
 
-            pulse_len = pulse['total_pulse_len']
-            num_samples = round(txrate * (pulse_len * 1e-6))
+            num_samples = pulse['total_num_samps']
             start = pulse_sample_start
-            end = start + num_samples + 2 * tr_window_num_samps
+            end = start + num_samples + 2 * pulse['tr_window_num_samps']
             samples = sequence[...,start:end]
 
-            new_pulse_info = copy.deepcopy(pulse['transmit_metadata'])
+            new_pulse_info = copy.deepcopy(pulse['pulse_transmit_data'])
             new_pulse_info['samples_array'] = samples
 
             if i != 0:
@@ -351,30 +447,73 @@ class Sequence(ScanClassBase):
 
             pulse_data.append(new_pulse_info)
 
-        return pulse_data
+
+        debug_dict = copy.deepcopy(self.debug_dict)
+        def fill_dbg_dict():
+            """
+            This needs major speed optimization to work at realtime
+            """
+            decimated_samples = sequence[:,debug_dict['dmrate']]
+            for i in range(main_antenna_count):
+                samples = sequence[i]
+                deci_samples = decimated_samples[i]
+
+                samples_dict = {'real' : samples.real.tolist(),
+                                'imag' : samples.imag.tolist()}
+
+                deci_samples_dict = {'real' : decimated_samples.real.tolist(),
+                                     'imag' : decimated_samples.imag.tolist()}
+
+                debug_dict['sequence_samples'][i] = samples_dict
+                debug_dict['decimated_sequence'][i] = deci_samples_dict
+
+        if __debug__:
+            fill_dbg_dict()
+        else:
+            debug_dict = None
+
+        return pulse_data, debug_dict
 
     def find_blanks(self):
         """
-        Sets the blanks. Must be run after first_rx_sample_time is set inside the
-        build_pulse_transmit_data function. Called from inside the build_pulse_transmit_data
-        function.
+        Finds the blanked samples after all pulse positions are calculated.
         """
         blanks = []
-        sample_time = 1.0/float(self.transmit_metadata['output_rx_rate'])
+        dm_rate = self.debug_dict['dmrate']
+
         pulses_time = []
 
+        blanks = []
         for pulse in self.combined_pulses_metadata:
-            start_time = pulse['start_time_us']
-            pulse_len = pulse['total_pulse_len']
-            pulse_start_stop = [start_time * 1.0e-6, (start_time + pulse_len) * 1.0e-6]
-            pulses_time.append(pulse_start_stop)
+            pulse_start = pulse['pulse_sample_start']
+            num_samples = pulse['total_num_samps'] + 2 * pulse['tr_window_num_samps']
 
-        output_samples_in_sequence = int(self.sstime * 1.0e-6/sample_time)
-        sample_times = [self.first_rx_sample_time + i*sample_time for i in
-                        range(0, output_samples_in_sequence)]
-        for sample_num, time_s in enumerate(sample_times):
-            for pulse_start_stop in pulses_time:
-                if pulse_start_stop[0] <= time_s <= pulse_start_stop[1]:
-                    blanks.append(sample_num)
+            rx_sample_start = int(pulse_start/dm_rate)
+            rx_num_samps = math.ceil(num_samples/dm_rate)
+
+            pulse_blanks = np.arange(rx_sample_start, rx_sample_start + rx_num_samps)
+            pulse_blanks += int(self.first_rx_sample_start / dm_rate)
+            blanks.extend(pulse_blanks)
 
         return blanks
+
+    def get_rx_phases(self, beam_iter):
+        """
+        Gets the receive phases for a given beam
+
+        :param      beam_iter:  The beam iter in a scan.
+        :type       beam_iter:  int
+
+        :returns:   The receive phases.
+        :rtype:     Array of phases for each possible beam for each antenna
+        """
+
+        temp_dict = copy.deepcopy(self.rx_beam_phases)
+        for k,v in temp_dict.items():
+            beam_num = self.slice_dict[k]['beam_order'][beam_iter]
+            # The indexing just reshapes the array to a 1-D vector. This is needed for indexing
+            # 1-D vectors in the dsp protobuf.
+            v['main'] = v['main'][beam_num][:,None]
+            v['intf'] = v['intf'][beam_num][:,None]
+
+        return temp_dict

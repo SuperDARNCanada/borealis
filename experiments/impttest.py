@@ -22,7 +22,7 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
 
 def phase_encode(beam_iter, sequence_num, num_pulses, num_samples):
-    return np.random.uniform(-1*np.pi, np.pi, num_pulses)
+    return np.random.uniform(-180.0, 180, num_pulses)
 
 class ImptTest(ExperimentPrototype):
 
@@ -43,9 +43,9 @@ class ImptTest(ExperimentPrototype):
 
         impt_slice = copy.deepcopy(default_slice)
         impt_slice['pulse_phase_offset'] = phase_encode
-        
+
         super(ImptTest, self).__init__(cpid, comment_string="Reimer IMPT Experiment")
-        
+
         self.add_slice(default_slice)
 
         self.add_slice(impt_slice, interfacing_dict={0: 'SCAN'})
