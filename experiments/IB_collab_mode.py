@@ -1,8 +1,23 @@
 #!/usr/bin/python
 
-# IB collab mode written by Devin Huyghebaert 20200609
+""" 
+IB collab mode written by Devin Huyghebaert 20200609
+
+This experiment depends on a complementary args file. The file should have
+name {radar}.ib.collab and located under the directory stored in the
+BOREALISSCHEDULEPATH env variable. Lines in the file have the following
+structure
+
+YYYYmmDD HH:MM duration(minutes) freq(kHz)
+
+The frequency is chosen if the current time is within the time scheduled. 
+The experiment will choose the first frequency it finds in the file where
+the current time is within 
+(datetime(YYYYmmDD HH:MM), datetime(YYYYmmDD HH:MM) + duration(minutes))
+"""
 import os
 import sys
+import datetime
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -12,6 +27,7 @@ import experiments.superdarn_common_fields as scf
 from experiment_prototype.decimation_scheme.decimation_scheme import \
     DecimationScheme, DecimationStage, create_firwin_filter_by_attenuation
 
+IB_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.ib.collab"
 
 def create_15km_scheme():
     """
@@ -47,8 +63,38 @@ def create_15km_scheme():
 
 class IBCollabMode(ExperimentPrototype):
 
-    def __init__(self, freq=10800):
+    def __init__(self):
         cpid = 3700  # allocated by Marci Detwiller 20200609
+
+        ib_file = IB_FILE.format(scf.opts.site_id)
+        with open(ib_file) as f:
+            lines = f.readlines()
+
+        time = datetime.datetime.utcnow()
+
+        for line in lines:
+            ll = line.split()
+            YMD = ll[0]
+            HS = ll[1]
+            dt = datetime.datetime(int(YMD[:4]), int(YMD[4:6]), int(YMD[6:]),
+                                   hour=int(HS[:2]), minute=int(HS[3:]))
+
+            if dt <= time <= dt + datetime.timedelta(minutes=int(ll[2])):
+                freq = int(ll[3]) 
+                break
+            else:
+                continue
+
+        try:
+            freq
+        except NameError:
+            freq = scf.COMMON_MODE_FREQ_1
+            self.printing('Frequency not found: using default frequency {freq} kHz'
+                          .format(freq=freq))
+        else:
+            self.printing('Using frequency scheduled for {date}: {freq} kHz'
+                          .format(date=dt.strftime('%Y%m%d %H:%M'), freq=freq))
+
         decimation_scheme = create_15km_scheme()
 
         bangle = scf.STD_16_BEAM_ANGLE
