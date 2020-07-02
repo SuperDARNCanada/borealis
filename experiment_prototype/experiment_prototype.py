@@ -34,20 +34,20 @@ from experiment_prototype.decimation_scheme.decimation_scheme import DecimationS
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
 
-Interfacing in this case refers to how two or more components are 
+Interfacing in this case refers to how two or more components are
 meant to be run together. The following types of interfacing are possible:
 
 1. SCAN.
-The scan by scan interfacing allows for slices to run a scan of one slice, 
-followed by a scan of the second. The scan mode of interfacing typically 
-means that the slice will cycle through all of its beams before switching 
+The scan by scan interfacing allows for slices to run a scan of one slice,
+followed by a scan of the second. The scan mode of interfacing typically
+means that the slice will cycle through all of its beams before switching
 to another slice.
 
 There are no requirements for slices interfaced in this manner.
 
 2. INTTIME.
-This type of interfacing allows for one slice to run its integration period 
-(also known as integration time or averaging period), before switching to 
+This type of interfacing allows for one slice to run its integration period
+(also known as integration time or averaging period), before switching to
 another slice's integration period. This type of interface effectively creates
 an interleaving scan where the scans for multiple slices are run 'at the same
 time', by interleaving the integration times.
@@ -56,11 +56,11 @@ Slices which are interfaced in this manner must share:
     - the same SCANBOUND value.
 
 3. INTEGRATION.
-Integration interfacing allows for pulse sequences defined in the slices to 
-alternate between each other within a single integration period. It's important 
-to note that data from a single slice is averaged only with other data from that 
-slice. So in this case, the integration period is running two slices and can 
-produce two averaged datasets, but the sequences (integrations) within the 
+Integration interfacing allows for pulse sequences defined in the slices to
+alternate between each other within a single integration period. It's important
+to note that data from a single slice is averaged only with other data from that
+slice. So in this case, the integration period is running two slices and can
+produce two averaged datasets, but the sequences (integrations) within the
 integration period are interleaved.
 
 Slices which are interfaced in this manner must share:
@@ -69,12 +69,12 @@ Slices which are interfaced in this manner must share:
     - the same BEAM_ORDER length (scan length)
 
 4. PULSE.
-Pulse interfacing allows for pulse sequences to be run together concurrently. 
-Slices will have their pulse sequences summed together so that the 
-data transmits at the same time. For example, slices of different frequencies 
-can be mixed simultaneously, and slices of different pulse sequences can also 
-run together at the cost of having more blanked samples. When slices are 
-interfaced in this way the radar is truly transmitting and receiving the 
+Pulse interfacing allows for pulse sequences to be run together concurrently.
+Slices will have their pulse sequences summed together so that the
+data transmits at the same time. For example, slices of different frequencies
+can be mixed simultaneously, and slices of different pulse sequences can also
+run together at the cost of having more blanked samples. When slices are
+interfaced in this way the radar is truly transmitting and receiving the
 slices simultaneously.
 
 Slices which are interfaced in this manner must share:
@@ -110,8 +110,8 @@ pulse_len *required*
     length of pulse in us. Range gate size is also determined by this.
 
 num_ranges *required*
-    Number of range gates to receive for. 
-    Range gate time is equal to pulse_len and range gate distance is 
+    Number of range gates to receive for.
+    Range gate time is equal to pulse_len and range gate distance is
     the range_sep, calculated from pulse_len.
 
 first_range *required*
@@ -304,11 +304,11 @@ class ExperimentPrototype(object):
     used to make an experiment:
 
     * xcf: boolean for cross-correlation data. A default can be set here for slices,
-      but any slice can override this setting with the xcf slice key. 
+      but any slice can override this setting with the xcf slice key.
     * acf: boolean for auto-correlation data on main array. A default can be set here for slices,
-      but any slice can override this setting with the acf slice key. 
+      but any slice can override this setting with the acf slice key.
     * acfint: boolean for auto-correlation data on interferometer array. A default can be set here for slices,
-      but any slice can override this setting with the acfint slice key. 
+      but any slice can override this setting with the acfint slice key.
 
     * slice_dict: modifiable only using the add_slice, edit_slice, and del_slice
       methods.
@@ -334,7 +334,7 @@ class ExperimentPrototype(object):
         sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
         :param rx_bandwidth: The desired tx bandwidth for the experiment. Directly determines tx
         sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
-        :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with. 
+        :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with.
          Since this requires tuning time to set, it cannot be modified after instantiation.
         :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
          Since this requires tuning time to set, it cannot be modified after instantiation.
@@ -342,8 +342,8 @@ class ExperimentPrototype(object):
         signal processing module. If you would like something other than the default, you will
         need to build an object of the DecimationScheme type before initiating your experiment.
         This cannot be changed after instantiation.
-        :param comment_string: description of experiment for data files. This should be 
-         used to describe your overall experiment design. Another comment string exists 
+        :param comment_string: description of experiment for data files. This should be
+         used to describe your overall experiment design. Another comment string exists
          for every slice added, to describe information that is slice-specific.
         """
 
@@ -354,7 +354,7 @@ class ExperimentPrototype(object):
             errmsg = 'The CPID should be a positive number in the experiment. Borealis'\
                      ' will determine if it should be negative based on the scheduling mode.'\
                      ' Only experiments run during discretionary time will have negative CPIDs.'
-            raise ExperimentException(errmsg)            
+            raise ExperimentException(errmsg)
 
         self.__options = ExperimentOptions()
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
@@ -475,7 +475,7 @@ class ExperimentPrototype(object):
         """
         This experiment's CPID (control program ID, a term that comes from ROS).
 
-        The CPID is read-only once established in instantiation. It may be 
+        The CPID is read-only once established in instantiation. It may be
         modified at runtime by the set_scheduling_mode function, to set it to
         a negative value during discretionary time.
         """
@@ -836,6 +836,10 @@ class ExperimentPrototype(object):
                      ' a valid mode: {}'.format(scheduling_mode,
                             possible_scheduling_modes)
             raise ExperimentException(errmsg)
+
+    def printing(self, msg):
+        EXPERIMENT_P = "\033[34m" + self.__class__.__name__ + " : " + "\033[0m"
+        sys.stdout.write(EXPERIMENT_P + msg + "\n")
 
     def slice_beam_directions_mapping(self, slice_id):
         """
@@ -1419,7 +1423,7 @@ class ExperimentPrototype(object):
             if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
                                                                       float):
                 errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given centre frequency, sampling 
+                            the radar license and be within range given centre frequency, sampling
                             rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             if (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
