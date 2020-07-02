@@ -89,10 +89,10 @@ class IBCollabMode(ExperimentPrototype):
             freq
         except NameError:
             freq = scf.COMMON_MODE_FREQ_1
-            self.printing('Frequency not found: using default frequency {freq}'
+            self.printing('Frequency not found: using default frequency {freq} kHz'
                           .format(freq=freq))
         else:
-            self.printing('Using frequency scheduled for {date}: {freq}'
+            self.printing('Using frequency scheduled for {date}: {freq} kHz'
                           .format(date=dt.strftime('%Y%m%d %H:%M'), freq=freq))
 
         decimation_scheme = create_15km_scheme()
