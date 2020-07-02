@@ -80,7 +80,6 @@ class IBCollabMode(ExperimentPrototype):
                                    hour=int(HS[:2]), minute=int(HS[3:]))
 
             if dt <= time <= dt + datetime.timedelta(minutes=int(ll[2])):
-                # get freq from the correct line for that timestamp
                 freq = int(ll[3]) 
                 break
             else:
