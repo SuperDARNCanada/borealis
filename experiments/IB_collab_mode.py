@@ -24,6 +24,7 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 from experiment_prototype.decimation_scheme.decimation_scheme import \
     DecimationScheme, DecimationStage, create_firwin_filter_by_attenuation
+from experiment_handler.experiment_handler import printing
 
 IB_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.ib.collab"
 
@@ -81,6 +82,15 @@ class IBCollabMode(ExperimentPrototype):
             else:
                 freq = int(ll[1])
                 break
+
+        try:
+            freq
+        except NameError:
+            freq = scf.COMMON_MODE_FREQ_1
+            printing('IBCollabMode frequency not found: using default frequency {freq}'.format(freq=freq))
+        else:
+            printing('IBCollabMode frequency: {freq}'.format(freq=freq))
+
         decimation_scheme = create_15km_scheme()
 
         bangle = scf.STD_16_BEAM_ANGLE
