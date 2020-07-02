@@ -725,6 +725,11 @@ class ExperimentPrototype(object):
         """
         return self.__scan_objects
 
+    def printing(self, msg):
+        EXPERIMENT_P = "\033[34m" + self.__class__.__name__ + " : " + "\033[0m"
+        sys.stdout.write(EXPERIMENT_P + msg + "\n")
+
+
     def slice_beam_directions_mapping(self, slice_id):
         """
         A mapping of the beam directions in the given slice id.

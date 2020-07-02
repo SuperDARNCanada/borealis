@@ -8,10 +8,12 @@ name {radar}.ib.collab and located under the directory stored in the
 BOREALISSCHEDULEPATH env variable. Lines in the file have the following
 structure
 
-utctimestampfromepoch freq(kHz)
+YYYYmmDD HH:MM duration(minutes) freq(kHz)
 
-The closest upcoming timestamp is used, so make sure this mode is scheduled
-to run before the timestamp with the required arguments. 
+The frequency is chosen if the current time is within the time scheduled. 
+The experiment will choose the first frequency it finds in the file where
+the current time is within 
+(datetime(YYYYmmDD HH:MM), datetime(YYYYmmDD HH:MM) + duration(minutes))
 """
 import os
 import sys
@@ -24,7 +26,6 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 from experiment_prototype.decimation_scheme.decimation_scheme import \
     DecimationScheme, DecimationStage, create_firwin_filter_by_attenuation
-from experiment_handler.experiment_handler import printing
 
 IB_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.ib.collab"
 
@@ -73,23 +74,27 @@ class IBCollabMode(ExperimentPrototype):
 
         for line in lines:
             ll = line.split()
-            timestamp = int(ll[0])
+            YMD = ll[0]
+            HS = ll[1]
+            dt = datetime.datetime(int(YMD[:4]), int(YMD[4:6]), int(YMD[6:]),
+                                   hour=int(HS[:2]), minute=int(HS[3:]))
 
-            dt = datetime.datetime.utcfromtimestamp(timestamp)
-
-            if dt < time:
-                continue
-            else:
-                freq = int(ll[1])
+            if dt <= time <= dt + datetime.timedelta(minutes=int(ll[2])):
+                # get freq from the correct line for that timestamp
+                freq = int(ll[3]) 
                 break
+            else:
+                continue
 
         try:
             freq
         except NameError:
             freq = scf.COMMON_MODE_FREQ_1
-            printing('IBCollabMode frequency not found: using default frequency {freq}'.format(freq=freq))
+            self.printing('Frequency not found: using default frequency {freq}'
+                          .format(freq=freq))
         else:
-            printing('IBCollabMode frequency: {freq}'.format(freq=freq))
+            self.printing('Using frequency scheduled for {date}: {freq}'
+                          .format(date=dt.strftime('%Y%m%d %H:%M'), freq=freq))
 
         decimation_scheme = create_15km_scheme()
 
