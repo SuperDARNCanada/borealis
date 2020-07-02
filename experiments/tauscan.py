@@ -29,12 +29,12 @@ class Tauscan(ExperimentPrototype):
         else:
             beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
 
-        if scf.opts.site_id in ["sas", "pgr", "cly"]:
+        if scf.opts.site_id == "sas":
+            freq = 13200
+        elif scf.opts.site_id == "pgr":
+            freq = 13100
+        else:
             freq = 13500
-        if scf.opts.site_id in ["rkn"]:
-            freq = 10200
-        if scf.opts.site_id in ["inv"]:
-            freq = 10300
 
         slice_1 = {
             "pulse_sequence": [0, 10, 13, 14, 19, 21, 31, 33, 38, 39, 42],
@@ -52,7 +52,6 @@ class Tauscan(ExperimentPrototype):
             "acfint" : True,
             "comment" : Tauscan.__doc__
         }
-
 
         self.add_slice(slice_1)
 
