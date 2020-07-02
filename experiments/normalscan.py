@@ -14,7 +14,7 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 class Normalscan(ExperimentPrototype):
 
     def __init__(self):
-        cpid = 150
+        cpid = 151
         super(Normalscan, self).__init__(cpid)
 
         if scf.IS_FORWARD_RADAR:
@@ -37,7 +37,7 @@ class Normalscan(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "scanbound": scf.easy_scanbound(scf.INTT_7P, beams_to_use), #1 min scan
-            "txfreq" : 10500, #kHz
+            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

@@ -1,8 +1,14 @@
-===========
-antennas_iq
-===========
+================
+antennas_iq v0.5
+================
 
-This format is intended to hold individual antennas i and q data. The data is not averaged. 
+This is the most up to date version of this file format produced by Borealis version 0.5, the current version. 
+
+For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
+
+The pydarn format class for this format is BorealisAntennasIq found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
+
+The antennas_iq format is intended to hold individual antennas I and Q data. The data is filtered, but is not averaged. 
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 
@@ -19,6 +25,7 @@ The naming convention of the antennas_iq array-structured files are:
 [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].antennas_iq.hdf5
 
 For example: 20191105.1400.02.sas.0.antennas_iq.hdf5
+
 This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data for slice 0 of the experiment that ran at that time. It has been array restructured because it does not have a .site designation at the end of the filename.
 
 These files are zlib compressed which is native to hdf5 and no decompression is necessary before reading using your hdf5 library. 
@@ -52,6 +59,14 @@ The file fields in the antennas_iq array files are:
 | |                                 | | The num_beams field should be used to     |
 | |                                 | | read the correct number of beams for each |
 | |                                 | | record.                                   |
++-----------------------------------+---------------------------------------------+
+| | **blanked_samples**             | | Samples that should be blanked because    |
+| | *uint32*                        | | they occurred during transmission times,  |
+| | [num_records x                  | | given by sample number (index into        |
+| | max_num_blanked_samples ]       | | decimated data). Can differ from the      |
+| |                                 | | pulses array due to multiple slices in a  |
+| |                                 | | single sequence and can differ from       |
+| |                                 | | record to record if a new slice is added. |
 +-----------------------------------+---------------------------------------------+
 | | **borealis_git_hash**           | | Identifies the version of Borealis that   |
 | | *unicode*                       | | made this data. Contains git commit hash  |
@@ -113,6 +128,10 @@ The file fields in the antennas_iq array files are:
 | | *uint32*                        | | record.                                   | 
 | | [num_records]                   | |                                           | 
 +-----------------------------------+---------------------------------------------+
+| | **num_blanked_samples**         | | The number of blanked samples for each    |
+| | *uint32*                        | | record.                                   | 
+| | [num_records]                   | |                                           | 
++-----------------------------------+---------------------------------------------+
 | | **num_samps**                   | | Number of samples in the sampling         |
 | | *uint32*                        | | periods. Will also be provided as the     |
 | |                                 | | last data_dimension value.                |  
@@ -148,10 +167,23 @@ The file fields in the antennas_iq array files are:
 | | *bool*                          | | a scan (scan is defined by the            |
 | | [num_records]                   | | experiment).                              |
 +-----------------------------------+---------------------------------------------+
+| | **scheduling_mode**             | | The mode being run during this time       | 
+| | *unicode*                       | | period (ex. 'common', 'special',          |
+| |                                 | | 'discretionary').                         |
++-----------------------------------+---------------------------------------------+
 | | **slice_comment**               | | Additional text comment that describes    |
 | | *unicode*                       | | the slice written in this file. The slice |
 | |                                 | | number of this file is provided in the    |
 | |                                 | | filename.                                 | 
++-----------------------------------+---------------------------------------------+
+| | **slice_id**                    | | The slice id of this file.                |
+| | *uint32*                        | |                                           |
++-----------------------------------+---------------------------------------------+ 
+| | **slice_interfacing**           | | The interfacing of this slice to          | 
+| | *unicode*                       | | other slices for each record. String      |
+| | [num_records]                   | | representation of the python dictionary   | 
+| |                                 | | of {slice : interface_type, ... }. Can    | 
+| |                                 | | differ between records if slices updated. | 
 +-----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**              | | A list of GPS timestamps corresponding to |
 | | *float64*                       | | the beginning of transmission for each    | 
@@ -210,6 +242,13 @@ The file fields under the record name in antennas_iq site files are:
 +----------------------------------+---------------------------------------------+
 | | **beam_nums**                  | | A list of beam numbers used in this slice | 
 | | *[uint32, ]*                   | | in this record.                           |
++----------------------------------+---------------------------------------------+
+| | **blanked_samples**            | | Samples that should be blanked because    |
+| | *[uint32, ]*                   | | they occurred during transmission times,  |
+| |                                | | given by sample number (index into        |
+| |                                | | decimated data). Can differ from the      |
+| |                                | | pulses array due to multiple slices in a  |
+| |                                | | single sequence.                          |
 +----------------------------------+---------------------------------------------+
 | | **borealis_git_hash**          | | Identifies the version of Borealis that   | 
 | | *unicode*                      | | made this data. Contains git commit hash  | 
@@ -291,10 +330,20 @@ The file fields under the record name in antennas_iq site files are:
 | | *bool*                         | | a scan (scan is defined by the            | 
 | |                                | | experiment).                              |
 +----------------------------------+---------------------------------------------+
-| | **slice_comment**              | | Additional text comment that describes    | 
-| | *unicode*                      | | the slice written in this file. The slice | 
-| |                                | | number of this file is provided in the    | 
-| |                                | | filename.                                 |
+| | **scheduling_mode**            | | The mode being run during this time       | 
+| | *unicode*                      | | period (ex. 'common', 'special',          |
+| |                                | | 'discretionary').                         |
++----------------------------------+---------------------------------------------+
+| | **slice_comment**              | | Additional text comment that describes    |
+| | *unicode*                      | | the slice written in this file.           |
++----------------------------------+---------------------------------------------+
+| | **slice_id**                   | | The slice id of this file.                |
+| | *uint32*                       | |                                           |
++----------------------------------+---------------------------------------------+ 
+| | **slice_interfacing**          | | The interfacing of this slice to          | 
+| | *unicode*                      | | other slices. String representation of    |
+| |                                | | the python dictionary of                  | 
+| |                                | | {slice : interface_type, ... }            | 
 +----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**             | | A list of GPS timestamps corresponding to | 
 | | *[float64, ]*                  | | the beginning of transmission for each    | 
@@ -315,13 +364,10 @@ The file fields under the record name in antennas_iq site files are:
 | | *uint32*                       | | microseconds.                             |
 +----------------------------------+---------------------------------------------+
 
-------------------
-File Restructuring
-------------------
+------------------------
+Site/Array Restructuring
+------------------------
 
-File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARN <https://github.com/SuperDARN/pydarn/tree/feature/borealis_conversion>`_. It is expected that this code will be separated to its own code package in the near future.
+File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARN <https://github.com/SuperDARN/pydarn>`_. It is expected that this code will be separated to its own IO code package in the near future.
 
-The site to array file restructuring occurs here: `Link to Source <https://github.com/SuperDARN/pydarn/blob/feature/borealis_conversion/pydarn/io/borealis/restructure_borealis.py#L295>`_
-
-Array to site restructuring can also be done and is contained within the same file.
-
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_. 

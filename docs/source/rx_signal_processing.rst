@@ -9,7 +9,7 @@ each stage of decimation from Radar Control. The DSP block has been designed to 
 as many decimation stages as are configured in the decimation scheme. This allows SuperDARN users
 to have as much control as they want in designing filter characteristics.
 
-.. figure:: rx_sig_updated.png
+.. figure:: img/rx_sig_updated.png
    :scale: 75 %
    :alt: Block diagram of RX DSP software
    :align: center
@@ -30,7 +30,7 @@ A bandpass filtering CUDA kernel is written to perform the convolutions and the 
 
 A lowpass filtering CUDA kernel is similar in operation, however since there is now potentially one or more data sets that get individually reduced, the kernel dimensions get slightly changed. The grid now adds a third dimension for frequency data set and the block now only has one set of threads for a single lowpass filter.
 
-.. figure:: dsp_data_flow.jpg
+.. figure:: img/dsp_data_flow.jpg
    :scale: 75 %
    :alt: Diagram of Rx DSP data flow during decimation
    :align: center

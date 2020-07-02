@@ -2,7 +2,7 @@
 
 # Copyright 2019 SuperDARN Canada
 #
-# schedule_modified.py
+# schedule_modifier.py
 # 2019-05-28
 # Safetly adds or removes events from the desired SCD file.
 #
@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--date', metavar='YYYYMMDD', required=True, help='The date to run')
     parser.add_argument('--time', metavar='hh:mm', required=True, help='The time to run')
     parser.add_argument('--experiment', required=True, help='The experiment at the line')
+    parser.add_argument('--mode-type', required=True, help='The scheduling mode type for this time period ie common, special, discretionary')
     parser.add_argument('--prio', default=0, help='The priority of the line')
     parser.add_argument('--duration', default='-', help='The duration of the line')
 

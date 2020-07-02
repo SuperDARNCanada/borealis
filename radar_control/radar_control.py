@@ -316,8 +316,9 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, num_sequences, scan_flag, inttime, sequences, beam_iter,
-                            experiment_id, experiment_name, output_sample_rate, experiment_comment,
-                            filter_scaling_factors, rx_centre_freq, debug_samples=None):
+                            experiment_id, experiment_name, scheduling_mode, output_sample_rate, 
+                            experiment_comment, filter_scaling_factors, rx_centre_freq, 
+                            debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
     :param packet: The IntegrationTimeMetadata protobuf packet.
@@ -334,6 +335,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     directions for that slice for this integration period.
     :param experiment_id: the ID of the experiment that is running
     :param experiment_name: the experiment name to be placed in the data files.
+    :param scheduling_mode: the type of scheduling mode running at this time, to write to file.
     :param output_sample_rate: The output sample rate of the output data, defined by the
     experiment, in Hz.
     :param experiment_comment: The comment string for the experiment, user-defined.
@@ -360,6 +362,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     packet.integration_time = inttime.total_seconds()
     packet.output_sample_rate = output_sample_rate
     packet.data_normalization_factor = reduce(lambda x,y: x*y, filter_scaling_factors) # multiply all
+    packet.scheduling_mode = scheduling_mode
 
     for sequence_index, sequence in enumerate(sequences):
         sequence_add = packet.sequences.add()
@@ -418,17 +421,19 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 beam_add.beamazimuth = sequence.slice_dict[slice_id]["beam_angle"][beam]
                 beam_add.beamnum = beam
 
+            rxchan_add.first_range = sequence.slice_dict[slice_id]['first_range']
+            rxchan_add.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
+            rxchan_add.range_sep = sequence.slice_dict[slice_id]['range_sep']
             if sequence.slice_dict[slice_id]['acf']:
                 rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
                 rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
                 rxchan_add.acfint = sequence.slice_dict[slice_id]['acfint']
-                rxchan_add.first_range = sequence.slice_dict[slice_id]['first_range']
-                rxchan_add.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
-                rxchan_add.range_sep = sequence.slice_dict[slice_id]['range_sep']
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = rxchan_add.ltab.lag.add()
                     lag_add.pulse_position[:] = lag
                     lag_add.lag_num = int(lag[1] - lag[0])
+                rxchan_add.averaging_method = sequence.slice_dict[slice_id]['averaging_method']
+            rxchan_add.slice_interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
 
     if __debug__:
         rad_ctrl_print('Sending metadata to datawrite.')
@@ -558,16 +563,14 @@ def radar():
             beam_iter = 0
 
             if scan.scanbound:
-                # align time to next minute.
+                # align scanbound reference time.
                 now = datetime.utcnow()
-                start_scan = round_up_time(now)
-                wait_time = start_scan - now
-                wait_time = wait_time.total_seconds()
+                dt = now.replace(second=0, microsecond=0)
 
-                msg = "Scan: waiting {}s to align to {}"
-                msg = msg.format(sm.COLOR("blue", wait_time), sm.COLOR("red", start_scan))
-                rad_ctrl_print(msg)
-                time.sleep(wait_time)
+                if dt + timedelta(seconds=scan.scanbound[beam_iter]) >= now:
+                    start_scan = dt
+                else:
+                    start_scan = round_up_time(now)
 
             while beam_remaining and not new_experiment_waiting:
                 for aveperiod in scan.aveperiods:
@@ -624,14 +627,14 @@ def radar():
                             beam_scanbound = start_scan + timedelta(seconds=scan.scanbound[beam_iter])
                             time_diff = beam_scanbound - datetime.utcnow()
                             if time_diff.total_seconds() > 0:
-                                msg = "{}s until beam {} at time {}"
+                                msg = "{}s until averaging period {} at time {}"
                                 msg = msg.format(sm.COLOR("blue", time_diff.total_seconds()),
                                                 sm.COLOR("yellow", beam_iter),
                                                 sm.COLOR("red", beam_scanbound))
                                 rad_ctrl_print(msg)
                                 time.sleep(time_diff.total_seconds())
                             else:
-                                msg = "starting beam {} at time {}"
+                                msg = "starting averaging period {} at time {}"
                                 msg = msg.format(sm.COLOR("yellow", beam_iter),
                                                  sm.COLOR("red", beam_scanbound))
                                 rad_ctrl_print(msg)
@@ -811,6 +814,7 @@ def radar():
                                             num_sequences, scan_flag, integration_period_time,
                                             aveperiod.sequences, beam_iter,
                                             experiment.cpid, experiment.experiment_name,
+                                            experiment.scheduling_mode,
                                             experiment.output_rx_rate, experiment.comment_string,
                                             experiment.decimation_scheme.filter_scaling_factors,
                                             experiment.rxctrfreq,

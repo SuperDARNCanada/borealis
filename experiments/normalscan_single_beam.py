@@ -28,7 +28,7 @@ class NormalscanSingleBeam(ExperimentPrototype):
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": [2], # beam 3
-            "txfreq" : 10500, #kHz
+            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

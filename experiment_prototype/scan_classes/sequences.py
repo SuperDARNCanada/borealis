@@ -326,7 +326,6 @@ class Sequence(ScanClassBase):
 
         self.output_encodings = collections.defaultdict(list)
 
-
         # create debug dict for tx samples.
         debug_dict = {'txrate' : txrate,
                       'txctrfreq' : txctrfreq,
@@ -336,7 +335,6 @@ class Sequence(ScanClassBase):
                       'decimated_samples' : {},
                       'dmrate' : dm_rate
                       }
-
 
         for i, cpm in enumerate(combined_pulses_metadata):
             debug_dict['pulse_timing'].append(cpm['start_time_us'])
@@ -354,8 +352,6 @@ class Sequence(ScanClassBase):
         self.first_rx_sample_start = offset_to_start
 
         self.blanks = self.find_blanks()
-
-
 
     def make_sequence(self, beam_iter, sequence_num):
         """
@@ -480,10 +476,6 @@ class Sequence(ScanClassBase):
         """
         blanks = []
         dm_rate = self.debug_dict['dmrate']
-
-        pulses_time = []
-
-        blanks = []
         for pulse in self.combined_pulses_metadata:
             pulse_start = pulse['pulse_sample_start']
             num_samples = pulse['total_num_samps'] + 2 * pulse['tr_window_num_samps']

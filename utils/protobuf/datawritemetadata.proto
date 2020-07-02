@@ -14,6 +14,7 @@ message IntegrationTimeMetadata {
   double integration_time  = 9;
   double output_sample_rate = 10;
   double data_normalization_factor = 11; // to give filter scaling factors in data output.
+  string scheduling_mode = 12; 
 
   message SequenceType {
     repeated RXChan rxchannel = 1;
@@ -40,6 +41,8 @@ message IntegrationTimeMetadata {
       uint32 num_ranges = 17;
       float range_sep = 18;
       LagTable ltab = 19;
+      string averaging_method = 20;
+      string slice_interfacing = 21;
 
       message PulseTable {  // length = length of sequence
         repeated uint32 pulse_position = 1;

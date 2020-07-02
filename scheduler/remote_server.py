@@ -25,12 +25,13 @@ import matplotlib.dates as mdates
 
 import remote_server_options as rso
 
-def format_to_atq(dt, experiment, first_event_flag=False):
+def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False):
     """Turns an experiment line from the scd into a formatted atq command.
 
     Args:
         dt (datetime): Datetime of the experiment
         experiment (str): The experiment to run
+        scheduling_mode (str): The scheduling mode to run
         first_event_flag (bool, optional): Flag to signal whether the experiment is the first to
         run
 
@@ -38,8 +39,8 @@ def format_to_atq(dt, experiment, first_event_flag=False):
         str: Formatted atq str.
     """
 
-    start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release'"
-    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment)
+    start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}'"
+    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment,scheduling_mode=scheduling_mode)
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
     else:
@@ -235,6 +236,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         duration(minutes)
         prio(priority)
         experiment
+        scheduling_mode
 
     The true timeline queued_lines dictionary differs from the scd_lines list by the following:
         - duration is parsed, adding in events so that all event durations are equal to the next event's
@@ -452,10 +454,10 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     first_event = True
     for event in timeline:
         if first_event:
-            atq.append(format_to_atq(event['time'], event['experiment'], True))
+            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode'], True))
             first_event = False
         else:
-            atq.append(format_to_atq(event['time'], event['experiment']))
+            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode']))
     for cmd in atq:
         sp.call(cmd, shell=True)
 
@@ -484,19 +486,7 @@ def get_relevant_lines(scd_util, time_of_interest):
     relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
     while not found:
 
-        if not relevant_lines:
-            msg = "Error in schedule: Could not find any relevant_lines. Either no lines exist " \
-            "or an infinite duration line could not be found."
-
-            raise ValueError(msg)
-
-        lines_dict = {}
         for line in relevant_lines:
-            if line['timestamp'] not in lines_dict:
-                lines_dict[line['timestamp']] = []
-            lines_dict[line['timestamp']].append(line)
-
-        for line in lines_dict[list(lines_dict)[0]]:
             if line['duration'] == '-':
                 found = True
 
@@ -507,11 +497,6 @@ def get_relevant_lines(scd_util, time_of_interest):
             hhmm = time.strftime("%H:%M")
 
             new_relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
-            if not new_relevant_lines:
-                msg = "Error in schedule: Could not find any relevant_lines. Either no lines exist "\
-                "or an infinite duration line could not be found."
-
-                raise ValueError(msg)
 
             lines_diff = [d for d in new_relevant_lines if d not in relevant_lines]
 
@@ -559,7 +544,7 @@ def _main():
         log_msg_header = "Updated at {}\n".format(time_of_interest)
         try:
             relevant_lines = get_relevant_lines(scd_util, time_of_interest)
-        except ValueError as e:
+        except (IndexError,ValueError) as e:
             error_msg = ("{logtime}: Unable to make schedule\n"
                          "\t Exception thrown:\n"
                          "\t\t {exception}\n")

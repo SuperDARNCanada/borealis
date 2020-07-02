@@ -7,7 +7,7 @@ Brian is an administrator process for Borealis. It acts as a router for all mess
 Brian implements a ZMQ router in order for all the other processes to connect. Using a ZMQ router lets us to use a feature of ZMQ for named sockets. The premise of named sockets is that we can connect a single router address, and when we connect we can supply a name for the socket we are connecting from. ZMQ's router process will then automatically know how to send data to that socket if another socket sends to the identity instead of an address. This makes following the flow of messages much easier to track. By having all messages flow through a router, its possible to log the flow of data between sockets to make sure that the pipeline of messages is occuring in the correct order, and if not it is a helpful tool in debugging.
 
 
-.. figure:: brian_zmq.png
+.. figure:: img/brian_zmq.png
    :scale: 100 %
    :alt: Block diagram of ZMQ connections
    :align: center

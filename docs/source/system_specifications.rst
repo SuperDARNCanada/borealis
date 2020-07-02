@@ -6,20 +6,20 @@ Digital Radio Equipment
 =======================
 - NOTE : ALL cables are phase matched unless specified otherwise
 - 17x Ettus USRP N200 (16 and 1 spare)
-
     - 17x Ettus LFTX daughterboards
     - 17x Ettus LFRX daughterboards
 - 1x Ettus Octoclock-g (includes GPSDO)
 - 2x Ettus Octoclock
-- 39x ~8 1/4" SMA bulkhead Female to Male RG-316 for daughterboards
-- 18x 24" SMA Male to Male RG-316 for PPS signals
-- 18x 24" SMA Male to Male RG-316 for 10MHz REF signals
-- GPS Antenna (SMA connector)
-- 17x Custom TXIO board (for transmitter interfacing)
+- 51x ~8 1/4" SMA bulkhead Female to Male RG-316 for daughterboards
+- 18x 48" SMA Male to Male RG-316 for PPS signals
+- 18x 48" SMA Male to Male RG-316 for 10MHz REF signals
+- 1x SMA Male to 0.1" pin header RG-316 for PPS signal input to motherboard
+- GPS Antenna (Male SMA connector)
+- 17x Custom TXIO Revision 5.0 board (for transmitter interfacing)
 - 22x Mini-Circuits ZFL-500LN pre-amps (20 and 2 spare)
 - 8x coax cables and adapters for to/from INTF (interferometer) pre-amps
 - 32x coax cables for to/from main array filters and pre-amps inside transmitter
-- 1x 15V power supply (INTF pre-amps)
+- 1x 15V, 0.5A power supply (INTF pre-amps)
 
 ================
 Control Computer
@@ -28,21 +28,37 @@ Control Computer
 - 1x GeForce GTX 2080 or better
 - 2x 16GB DDR4
 - 1x Monitor
-- 1x Power supply
+- 1x Power supply, 1000W 80 Plus Gold or better
 - 1x Intel Core i9 10 core or better
 - 1x Cpu liquid cooling unit
-- 1x CPU socket compatible motherboard
-- 1x 256GB SSD
+- 1x CPU socket compatible motherboard with serial port header for PPS discipline
+- 1x 256GB SSD 
 - 1x 1TB HDD
-- 1x Intel X550-T2 10Gb PCIe network card
+- 1x Intel X550-T2 10Gb PCIe network card **NOTE**: Intel 82579LM controllers WILL NOT WORK
+
 
 ==========
 Networking
 ==========
 
-- 3x Netgear XS708E 10Gb switches
-- 27x SSTP CAT 6a 7ft cables
-- 2x SSTP CAT 6a 15ft cables
+- 3x Netgear XS708E-200NES (North American model #) 10Gb switches (parent model name is XS708Ev2)
+- 27x SSTP CAT 6a 7ft cables or better*
+- 2x SSTP CAT 6a 15ft cables*
+
+**Note** that the network cables needs to be verified for the whole system
+  as not all cables seem to work reliably.
+
+*Models tested and known to work include:*
+
+- Cab-CAT6AS-05[GR|BK|GY|RE|WH]
+- Cab-CAT6AS-15GR
+
+*Models that were tested and do not work:*
+
+- CAT 5e cables
+- Non SSTP cables (not dual shielded)
+- Cab-Cat7-6BL
+- Cab-Cat7-6WH
 
 ================
 Rack and Cabling

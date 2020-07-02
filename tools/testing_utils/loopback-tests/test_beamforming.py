@@ -40,7 +40,7 @@ def testing_parser():
     """
     Creates the parser for this script.
     
-    :returns: parser, the argument parser for the testing script. 
+    :returns: parser, the argument parser for the testing script.
     """
 
     parser = argparse.ArgumentParser()
@@ -479,7 +479,7 @@ if __name__ == '__main__':
 # #    print('File {} issues'.format(bf_iq_samples))
 
 
-#     #plt.savefig('/home/radar/borealis/testing/tmp/beamforming-plots/{}.png'.format(bf_iq_samples))
+#     #plt.savefig('/home/radar/borealis/tools/tmp/beamforming-plots/{}.png'.format(bf_iq_samples))
 
 #     #tx_angle = np.angle(beamformed_tx_pulses)
 #     #rx_angle = np.angle(beamformed_rx_pulses)
@@ -518,7 +518,7 @@ if __name__ == '__main__':
 # #ax3.plot(np.arange(len(good_snr)),np.angle(good_snr))
 # #ax4.plot(np.arange(len(corr)),np.abs(corr))
 
-# # #plt.savefig('/home/radar/borealis/testing/tmp/beamforming-plots/{}.png'.format(timestamp_of_file))
+# # #plt.savefig('/home/radar/borealis/tools/tmp/beamforming-plots/{}.png'.format(timestamp_of_file))
 # # #plt.close()
 
 # # stage_1_all = make_dict(stage_3)['antenna_0']
@@ -529,12 +529,12 @@ if __name__ == '__main__':
 # #fig2ax1.plot(np.arange(len(stage_1_all)), stage_1_all.real, np.arange(len(stage_1_all)), stage_1_all.imag)
 
 # #plt.show()
-# #plt.savefig('/home/radar/borealis/testing/tmp/beamforming-plots/{}.png'.format(timestamp_of_file + '-stage-1'))
+# #plt.savefig('/home/radar/borealis/tools/tmp/beamforming-plots/{}.png'.format(timestamp_of_file + '-stage-1'))
 
 # phase_offset_dict = {'phase_offsets': bf_phase_offsets.tolist(), 'tx_rx_offset': undec_tx_rx_offset}
-# with open("/home/radar/borealis/testing/tmp/beamforming-plots/{}.offsets".format(timestamp_of_file), 'w') as f:
+# with open("/home/radar/borealis/tools/tmp/beamforming-plots/{}.offsets".format(timestamp_of_file), 'w') as f:
 #     json.dump(phase_offset_dict, f)    
-# with open("/home/radar/borealis/testing/tmp/rx-pulse-phase-offsets/{}.offsets".format(timestamp_of_file), 'w') as f:
+# with open("/home/radar/borealis/tools/tmp/rx-pulse-phase-offsets/{}.offsets".format(timestamp_of_file), 'w') as f:
 #     json.dump({'rx_pulse_phase_offsets': rx_pulse_phase_offsets.tolist()}, f)
 
 
