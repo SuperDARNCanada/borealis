@@ -47,7 +47,6 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False):
         cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
     
     cmd_str = dt.strftime(cmd_str)
-    print(cmd_str)
     return cmd_str
 
 def get_next_month_from_date(date):
