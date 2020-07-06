@@ -45,8 +45,9 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False):
         cmd_str = start_cmd + " | at now + 1 minute"
     else:
         cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
-
+    
     cmd_str = dt.strftime(cmd_str)
+    print(cmd_str)
     return cmd_str
 
 def get_next_month_from_date(date):
@@ -492,7 +493,7 @@ def get_relevant_lines(scd_util, time_of_interest):
                 found = True
 
         if found != True:
-            time -= datetime.timedelta(days=1)
+            time -= datetime.timedelta(minutes=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
             hhmm = time.strftime("%H:%M")
