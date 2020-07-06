@@ -45,7 +45,6 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False):
         cmd_str = start_cmd + " | at now + 1 minute"
     else:
         cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
-    
     cmd_str = dt.strftime(cmd_str)
     return cmd_str
 
@@ -322,10 +321,11 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                     queued_lines.append(scd_line)
                 else:
                     if int(scd_line['prio']) > int(inf_dur_line['prio']):
-                        time_diff = scd_line['time'] - inf_dur_line['time']
-                        new_line = copy.deepcopy(inf_dur_line)
-                        new_line['duration'] = time_diff.total_seconds()//60
-                        queued_lines.append(new_line)
+                        if scd_line['time'] > time_of_interest:
+                            time_diff = scd_line['time'] - inf_dur_line['time']
+                            new_line = copy.deepcopy(inf_dur_line)
+                            new_line['duration'] = time_diff.total_seconds()//60
+                            queued_lines.append(new_line)
                         queued_lines.append(scd_line)
 
                         finish_time = scd_line['time'] + duration_td
