@@ -484,18 +484,18 @@ def get_relevant_lines(scd_util, time_of_interest):
     relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
     while not found:
 
-        if relevant_lines[0]['duration'] == '-':
-            found = True
-        else:
+        first_time_lines = [x for x in relevant_lines if x['timestamp'] == relevant_lines[0]['timestamp']]
+        for line in first_time_lines:
+            if line['duration'] == '-':
+                found = True
+
+        if found != True:
             time -= datetime.timedelta(days=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
             hhmm = time.strftime("%H:%M")
 
-            new_relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
-
-            if new_relevant_lines[0]['duration'] == '-':
-                relevant_lines.insert(0, new_relevant_lines[0])
+            relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
 
     return relevant_lines
 
