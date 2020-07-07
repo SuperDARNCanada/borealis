@@ -1,4 +1,4 @@
-Common Failure modes
+Common Failure Modes
 ====================
 
 Certain failures of the Borealis system can be generally attributed to a short list of common issues.
