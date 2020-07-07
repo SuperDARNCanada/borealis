@@ -194,7 +194,7 @@ def experiment_handler(semaphore):
         #                               "Need completed data")
 
         #data = socket_operations.recv_data(exp_handler_to_dsp,
-        #                                   options.dsp_to_exphan_identity, printing)
+        #                             options.dsp_to_exphan_identity, printing)
 
         some_data = None  # TODO get the data from data socket and pass to update
         
@@ -204,6 +204,8 @@ def experiment_handler(semaphore):
             if __debug__:
                 printing("Building an updated experiment.")
             exp.build_scans()
+            printing("Experiment {exp} with CPID {cp} successfully updated"
+                     .format(exp=exp, cp=exp.cpid))
         semaphore.release()
 
 
@@ -212,9 +214,12 @@ def experiment_handler(semaphore):
     while True:
 
         if not change_flag:
-            serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
+            serialized_exp = pickle.dumps(None, 
+                                          protocol=pickle.HIGHEST_PROTOCOL)
         else:
             exp.build_scans()
+            printing("Sucessful experiment {exp} built with CPID {cp}".format(
+                     exp=exp, cp=exp.cpid))
             serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
             # use the newest, fastest protocol (currently version 4 in python 3.4+)            
             change_flag = False
