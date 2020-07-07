@@ -315,7 +315,7 @@ class ExperimentPrototype(object):
                  comment_string=''):
         """
         Initialization for your experiment. Sets experiment-wide settings including cpid,
-        centre frequencies, sampling rates, and decimation and filtering schemes.
+        center frequencies, sampling rates, and decimation and filtering schemes.
         :param cpid: unique id necessary for each control program (experiment). Cannot be
          changed after instantiation.
         :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz.
@@ -324,9 +324,9 @@ class ExperimentPrototype(object):
         sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
         :param rx_bandwidth: The desired tx bandwidth for the experiment. Directly determines tx
         sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
-        :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with. 
+        :param txctrfreq: center frequency, in kHz, for the USRP to mix the samples with. 
          Since this requires tuning time to set, it cannot be modified after instantiation.
-        :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
+        :param rxctrfreq: center frequency, in kHz, used to mix to baseband.
          Since this requires tuning time to set, it cannot be modified after instantiation.
         :param decimation_scheme: an object defining the decimation and filtering stages for the
         signal processing module. If you would like something other than the default, you will
@@ -393,9 +393,9 @@ class ExperimentPrototype(object):
 
         self.__new_slice_id = 0
 
-        # Note - txctrfreq and rxctrfreq are set here and modify the actual centre frequency to a
+        # Note - txctrfreq and rxctrfreq are set here and modify the actual center frequency to a
         # multiple of the clock divider that is possible by the USRP - this default value set
-        # here is not exact (centre freq is never exactly 12 MHz).
+        # here is not exact (center freq is never exactly 12 MHz).
 
         # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
         clock_multiples = self.options.usrp_master_clock_rate/2**32
@@ -694,7 +694,7 @@ class ExperimentPrototype(object):
     @property
     def txctrfreq(self):
         """
-        The transmission centre frequency that USRP is tuned to (kHz).
+        The transmission center frequency that USRP is tuned to (kHz).
         """
         return self.__txctrfreq
 
@@ -704,8 +704,8 @@ class ExperimentPrototype(object):
         The maximum transmit frequency.
 
         This is the maximum tx frequency possible in this experiment (either maximum in our license
-        or maximum given by the centre frequency, and sampling rate). The maximum is slightly less
-        than that allowed by the centre frequency and txrate, to stay away from the edges of the
+        or maximum given by the center frequency, and sampling rate). The maximum is slightly less
+        than that allowed by the center frequency and txrate, to stay away from the edges of the
         possible transmission band where the signal is distorted.
         """
         max_freq = self.txctrfreq * 1000 + (self.txrate/2.0) - transition_bandwidth
@@ -721,8 +721,8 @@ class ExperimentPrototype(object):
         The minimum transmit frequency.
 
         This is the minimum tx frequency possible in this experiment (either minimum in our license
-        or minimum given by the centre frequency and sampling rate). The minimum is slightly more
-        than that allowed by the centre frequency and txrate, to stay away from the edges of the
+        or minimum given by the center frequency and sampling rate). The minimum is slightly more
+        than that allowed by the center frequency and txrate, to stay away from the edges of the
         possible transmission band where the signal is distorted.
         """
         min_freq = self.txctrfreq * 1000 - (self.txrate/2.0) + transition_bandwidth
@@ -735,7 +735,7 @@ class ExperimentPrototype(object):
     @property
     def rxctrfreq(self):
         """
-        The receive centre frequency that USRP is tuned to (kHz).
+        The receive center frequency that USRP is tuned to (kHz).
         """
         return self.__rxctrfreq
 
@@ -744,9 +744,9 @@ class ExperimentPrototype(object):
         """
         The maximum receive frequency.
 
-        This is the maximum tx frequency possible in this experiment (maximum given by the centre
+        This is the maximum tx frequency possible in this experiment (maximum given by the center
         frequency and sampling rate), as license doesn't matter for receiving. The maximum is
-        slightly less than that allowed by the centre frequency and rxrate, to stay away from the
+        slightly less than that allowed by the center frequency and rxrate, to stay away from the
         edges of the possible receive band where the signal may be distorted.
         """
         max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0) - transition_bandwidth
@@ -757,9 +757,9 @@ class ExperimentPrototype(object):
         """
         The minimum receive frequency.
 
-        This is the minimum rx frequency possible in this experiment (minimum given by the centre
+        This is the minimum rx frequency possible in this experiment (minimum given by the center
         frequency and sampling rate) - license doesn't restrict receiving. The minimum is
-        slightly more than that allowed by the centre frequency and rxrate, to stay away from the
+        slightly more than that allowed by the center frequency and rxrate, to stay away from the
         edges of the possible receive band where the signal may be distorted.
         """
         min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0) + transition_bandwidth
@@ -1330,7 +1330,7 @@ class ExperimentPrototype(object):
 
             if exp_slice['clrfrqrange'][0] >= exp_slice['clrfrqrange'][1]:
                 errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or centre frequencies / sampling
+                            frequencies {} according to license and/or center frequencies / sampling
                             rates / transition bands, and must have lower frequency first.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
@@ -1338,7 +1338,7 @@ class ExperimentPrototype(object):
             if (exp_slice['clrfrqrange'][1] * 1000) >= self.tx_maxfreq or \
                     (exp_slice['clrfrqrange'][1] * 1000) >= self.rx_maxfreq:
                 errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or centre frequencies / sampling
+                            frequencies {} according to license and/or center frequencies / sampling
                             rates / transition bands, and must have lower frequency first.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
@@ -1346,7 +1346,7 @@ class ExperimentPrototype(object):
             if (exp_slice['clrfrqrange'][0] * 1000) <= self.tx_minfreq or \
                     (exp_slice['clrfrqrange'][0] * 1000) <= self.rx_minfreq:
                 errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or centre frequencies / sampling
+                            frequencies {} according to license and/or center frequencies / sampling
                             rates / transition bands, and must have lower frequency first.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
@@ -1401,13 +1401,13 @@ class ExperimentPrototype(object):
             if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
                                                                       float):
                 errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given centre frequency, sampling 
+                            the radar license and be within range given center frequency, sampling 
                             rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             if (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
                                                                    1000) <= self.rx_minfreq:
                 errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given centre frequency, sampling
+                            the radar license and be within range given center frequency, sampling
                             rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
 
@@ -1417,7 +1417,7 @@ class ExperimentPrototype(object):
                                                                           float):
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies, sampling rates and transition band.
+                            given center frequencies, sampling rates and transition band.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1425,7 +1425,7 @@ class ExperimentPrototype(object):
                     self.rx_maxfreq:
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies, sampling rates and transition band.
+                            given center frequencies, sampling rates and transition band.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1433,7 +1433,7 @@ class ExperimentPrototype(object):
                     self.rx_minfreq:
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies, sampling rates and transition band.
+                            given center frequencies, sampling rates and transition band.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
