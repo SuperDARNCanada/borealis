@@ -205,7 +205,7 @@ def experiment_handler(semaphore):
                 printing("Building an updated experiment.")
             exp.build_scans()
             printing("Experiment {exp} with CPID {cp} successfully updated"
-                     .format(exp=exp, cp=exp.cpid))
+                     .format(exp=exp.__class__.__name__, cp=exp.cpid))
         semaphore.release()
 
 
