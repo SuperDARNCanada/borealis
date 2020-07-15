@@ -179,7 +179,6 @@ class Sequence(ScanClassBase):
                                                     intf_offset[0])
 
                 self.basic_slice_pulses[slice_id] = []
-
             self.rx_beam_phases[slice_id] = {'main' : main_phase_shift, 'intf' : intf_phase_shift}
             for pulse_time in exp_slice['pulse_sequence']:
                 pulse_timing_us = pulse_time * exp_slice['tau_spacing'] + exp_slice['seqoffset']
@@ -503,9 +502,9 @@ class Sequence(ScanClassBase):
         temp_dict = copy.deepcopy(self.rx_beam_phases)
         for k,v in temp_dict.items():
             beam_num = self.slice_dict[k]['beam_order'][beam_iter]
-            # The indexing just reshapes the array to a 1-D vector. This is needed for indexing
-            # 1-D vectors in the dsp protobuf.
-            v['main'] = v['main'][beam_num][:,None]
-            v['intf'] = v['intf'][beam_num][:,None]
+            if not isinstance(beam_num, list):
+                beam_num = [beam_num]
+            v['main'] = v['main'][beam_num,:]
+            v['intf'] = v['intf'][beam_num,:]
 
         return temp_dict
