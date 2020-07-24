@@ -116,6 +116,8 @@ def steamed_hams_parser():
                                          "modules based on this mode. Commonly 'release'.")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. 'common', 'special', or 'discretionary'.")
+    parser.add_argument("--kwargs_string", default='', 
+                        help="String of keyword arguments for the experiment.")
 
     return parser
 
@@ -163,9 +165,13 @@ for mod in modules:
     modules[mod] = "python3 {opts} {module}/{module}.py".format(opts=opts, module=mod)
 
 modules['realtime'] = "source borealisrt_env/bin/activate;" + modules['realtime']
-modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
+if args.kwargs_string:
+    modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type + " --kwargs_string " + args.kwargs_string
+else:
+    modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type
+    
 #Configure C progs
 c_progs = ['usrp_driver', 'signal_processing']
 for cprg in c_progs:

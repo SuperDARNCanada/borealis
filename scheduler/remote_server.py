@@ -25,7 +25,7 @@ import matplotlib.dates as mdates
 
 import remote_server_options as rso
 
-def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False):
+def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string=''):
     """Turns an experiment line from the scd into a formatted atq command.
 
     Args:
@@ -39,8 +39,11 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False):
         str: Formatted atq str.
     """
 
-    start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}'"
-    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment,scheduling_mode=scheduling_mode)
+    if kwargs_string:
+        start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode} --kwargs_string {kwargs_string}'"
+    else:
+        start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}'"
+    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment,scheduling_mode=scheduling_mode, kwargs_string=kwargs_string)
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
     else:

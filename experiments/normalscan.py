@@ -13,7 +13,13 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 class Normalscan(ExperimentPrototype):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        """
+        kwargs:
+
+        freq: int
+
+        """
         cpid = 151
         super(Normalscan, self).__init__(cpid)
 
@@ -26,6 +32,11 @@ class Normalscan(ExperimentPrototype):
             num_ranges = scf.POLARDARN_NUM_RANGES
         if scf.opts.site_id in ["sas", "pgr"]:
             num_ranges = scf.STD_NUM_RANGES
+
+        if kwargs['freq']:
+            freq = kwargs['freq']
+        else:
+            freq = scf.COMMON_MODE_FREQ_1
 
         self.add_slice({  # slice_id = 0, there is only one slice.
             "pulse_sequence": scf.SEQUENCE_7P,
