@@ -106,12 +106,19 @@ Shared memory full/Borealis unable to delete shared memory
 **NOTE** If you've just installed Borealis, this may be caused by a missing `h5copy` binary.
 Make sure you have it installed for your operating system. For new versions of Ubuntu this means
 installing `hdf5-tools`. For OpenSuSe it means installing `hdf5`.
+
+This may also be caused by the realtime/datawrite modules not deleting the individual
+record files. This is tied to issue [#203](https://github.com/SuperDARNCanada/borealis/issues/203),
+so check that the individual record files in the data output directory are being deleted 
+after being copied, and check the realtime logs to verify that realtime is running properly.
+
 If the shared memory location written to by Borealis is full, or the shared memory files are unable
 to be deleted by Borealis, then some possible results are:
 
-    - N200's will be in RX only mode (green LED on front panel will be on only)
-    - Borealis will appear to halt when viewing the screen
-    - Signal processing will quietly die
+    - N200's may be in RX only mode (green LED on front panel will be on only)
+    - Borealis may appear to halt when viewing the screen, or Borealis may be getting very 
+      few sequences transmitted per integration time (1-2 within seconds)
+    - Signal processing may quietly die
     - Data files, shared memory files and log files will cease being written
 
 To fix this issue and restart the radar:
@@ -132,3 +139,19 @@ The root cause is unknown, but symptoms are:
     
 To fix this issue and restart the radar:
     - Power cycle the machine
+
+'CPU stuck' messages from kernel, not possible to reboot
+--------------------------------------------------------
+This behaviour has been seen once at the Clyde River Borealis radar. The message shown is:
+
+`Message from syslogd@clyborealis at Jun 15 00:47:18 ... kernel:[9941421.042914] NMI watchdog: BUG:
+soft lockup - CPU#19 stuck for 22s! [kworker/u56:0:16764]`
+
+The root cause is unknown, but symptoms are:
+
+    - Radar stops with the same message across all screens and terminals from the kernel
+    - Attempting to reboot the computer results in nothing happening etc
+
+To fix this issue and restart the radar:
+    - Power cycle the machine
+

@@ -75,6 +75,34 @@ beamwidth of 8 degrees and a gain of 17.47dB. Note this is at a frequency of 10.
    :alt: ttfd array modeled in 4nec2
    :align: center
 
+So, why is this considered a tool? What happens when a transmitter goes down? What happens when
+two transmitters go down? What about if the power output from one transmitter is half of what it
+should be? How about phase errors? All of these questions are possible to answer with tools like
+this one. Here's a real example from Rankin Inlet, where transmitters #6 and #12 (indexed from 0)
+are both down:
+
+.. image:: img/pattern.png
+   :width: 49%
+.. image:: img/pattern_no_tx6_no_tx12_boresite.png
+   :width: 49%
+
+The above two images are generated for the radar at Rankin Inlet, the first image shows the standard
+pattern if everything is working properly at boresite. The second image shows the pattern resulting
+from transmitters #6 and #12 not contributing to the system. The effects are immediately visible
+in the higher power sidelobes. The main lobe gain is reduced from 17.47dB to 16.92dB. The main lobe
+remains the same shape and width in both azimuth and elevation angles.
+
+.. image:: img/pattern_bm1.png
+   :width: 49%
+.. image:: img/pattern_no_tx6_no_tx12_bm1.png
+   :width: 49%
+
+The above two images are generated for the radar at Rankin Inlet, the first image shows the standard
+pattern if everything is working properly at beam 1. The second image shows the pattern resulting
+from transmitters #6 and #12 not contributing to the system. The effects are immediately visible
+in the higher power sidelobes. The main lobe gain is reduced from 16.66dB to 16.13dB. The main lobe
+remains the same shape but is slightly smaller (~1 degree) in elevation angle.
+
 
 ---
 NTP

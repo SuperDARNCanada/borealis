@@ -449,8 +449,8 @@ class Sequence(ScanClassBase):
         sample_time = 1.0/float(self.transmit_metadata['output_rx_rate'])
         pulses_time = []
         for pulse in self.pulses:
-            pulse_start_stop = [pulse['pulse_timing_us'] * 1.0e-6, (pulse['pulse_timing_us'] + pulse[
-                'pulse_len']) * 1.0e-6]
+            pulse_start_stop = [pulse['pulse_timing_us'] * 1.0e-6 + self.transmit_metadata['tr_window_time'], 
+                (pulse['pulse_timing_us'] + pulse['pulse_len']) * 1.0e-6 + self.transmit_metadata['tr_window_time']]
             pulses_time.append(pulse_start_stop)
         output_samples_in_sequence = int(self.sstime * 1.0e-6/sample_time)
         sample_times = [self.first_rx_sample_time + i*sample_time for i in
@@ -460,3 +460,4 @@ class Sequence(ScanClassBase):
                 if pulse_start_stop[0] <= time_s <= pulse_start_stop[1]:
                     blanks.append(sample_num)
         self.blanks = sorted(set(blanks))  # remove repeated sample numbers
+

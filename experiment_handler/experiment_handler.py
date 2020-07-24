@@ -99,41 +99,42 @@ def retrieve_experiment(experiment_module_name):
         printing("Running the experiment: " + experiment_module_name)
     experiment_mod = importlib.import_module("experiments." + experiment_module_name)
 
+    # find the class or classes *defined* in this module.
+    # returns list of class name and object
+    experiment_classes = [(m[0], m[1]) for m in inspect.getmembers(
+                          experiment_mod, inspect.isclass) if
+                          m[1].__module__ == experiment_mod.__name__]
 
-    experiment_classes = {}
-    for class_name, obj in inspect.getmembers(experiment_mod, inspect.isclass):
-        experiment_classes[class_name] = obj
-
-    # need to have one ExperimentPrototype and one user-specified class.
-    try:
-        experiment_proto_class = experiment_classes['ExperimentPrototype']
-        del experiment_classes['ExperimentPrototype']
-    except KeyError:
-        errmsg = "Your experiment is not built from parent class ExperimentPrototype" \
-                 " so it cannot run."
-        raise ExperimentException(errmsg)
-
-    list_experiments = []
-    for class_name, class_obj in experiment_classes.items():
-        if experiment_proto_class in inspect.getmro(class_obj):
+    # remove any classes that do not have ExperimentPrototype as parent.
+    for (class_name, class_obj) in experiment_classes:
+        if ExperimentPrototype not in inspect.getmro(class_obj):
             # an experiment must inherit from ExperimentPrototype
             # other utility classes might be in the file but we will ignore them.
-            list_experiments.append(class_obj)
+            experiment_classes.remove((class_name, class_obj))
 
-    if len(list_experiments) != 1:
-        errmsg = "You have {} experiment classes in your experiment " \
-                 "file but to run correctly there must be exactly 1 class" \
-                 " that inherits from ExperimentPrototype.".format(len(list_experiments))
+    # experiment_classes should now only have classes *defined* in the module,
+    # that have ExperimentPrototype as parent.
+    if len(experiment_classes) == 0:
+        errmsg = "No experiment classes are present that are built from"\
+                 " parent class ExperimentPrototype - exiting"
+        raise ExperimentException(errmsg)
+    if len(experiment_classes) > 1:
+        errmsg = "You have more than one experiment class in your " \
+                 "experiment file - exiting"
         raise ExperimentException(errmsg)
 
-    Experiment = list_experiments[0]  # this is the experiment class that we need to run.
+    # this is the experiment class that we need to run.
+    Experiment = experiment_classes[0][1]
 
+    printing('Retrieving experiment: {} from module {}'.format(
+             experiment_classes[0][0], experiment_mod))
     try:
         return Experiment
-    except NameError as e:
-        errmsg = "Cannot find the experiment inside your module. Please make sure there is a " \
-                 "class that inherits from ExperimentPrototype in your module."
-        raise ExperimentException(errmsg) from e
+    except NameError:
+        errmsg = "Something went wrong: Cannot find the experiment inside " \
+                 "your module. Please make sure there is a class that " \
+                 "inherits from ExperimentPrototype in your module."
+        raise ExperimentException(errmsg)
 
 
 def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
@@ -201,7 +202,7 @@ def experiment_handler(semaphore):
         #                               "Need completed data")
 
         #data = socket_operations.recv_data(exp_handler_to_dsp,
-        #                                   options.dsp_to_exphan_identity, printing)
+        #                             options.dsp_to_exphan_identity, printing)
 
         some_data = None  # TODO get the data from data socket and pass to update
 
@@ -211,6 +212,8 @@ def experiment_handler(semaphore):
             if __debug__:
                 printing("Building an updated experiment.")
             exp.build_scans()
+            printing("Experiment {exp} with CPID {cp} successfully updated"
+                     .format(exp=exp.__class__.__name__, cp=exp.cpid))
         semaphore.release()
 
 
@@ -219,9 +222,12 @@ def experiment_handler(semaphore):
     while True:
 
         if not change_flag:
-            serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
+            serialized_exp = pickle.dumps(None, 
+                                          protocol=pickle.HIGHEST_PROTOCOL)
         else:
             exp.build_scans()
+            printing("Sucessful experiment {exp} built with CPID {cp}".format(
+                     exp=exp.__class__.__name__, cp=exp.cpid))
             serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
             # use the newest, fastest protocol (currently version 4 in python 3.4+)
             change_flag = False
