@@ -221,8 +221,6 @@ class ExperimentOptions:
                     \n    minimum_tau_spacing_length = {} \
                     \n    minimum_pulse_separation = {} \
                     \n    tr_window_time = {} \
-                    \n    atten_window_time_start = {} \
-                    \n    atten_window_time_end = {} \
                     \n    default_freq = {} \
                     \n    restricted_ranges = {} \
                      """.format(self.main_antenna_count, self.interferometer_antenna_count,
@@ -238,7 +236,6 @@ class ExperimentOptions:
                                 self.max_range_gates, self.max_beams, self.max_freq, self.min_freq,
                                 self. minimum_pulse_length, self.minimum_tau_spacing_length,
                                 self.minimum_pulse_separation, self.tr_window_time,
-                                self.atten_window_time_start, self.atten_window_time_end,
                                 self.default_freq, self.restricted_ranges)
         return return_str
 

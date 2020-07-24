@@ -818,6 +818,10 @@ class ExperimentPrototype(object):
                      ' a valid mode: {}'.format(scheduling_mode,
                             possible_scheduling_modes)
             raise ExperimentException(errmsg)
+    
+    def printing(self, msg):
+        EXPERIMENT_P = "\033[34m" + self.__class__.__name__ + " : " + "\033[0m"
+        sys.stdout.write(EXPERIMENT_P + msg + "\n")
 
     def slice_beam_directions_mapping(self, slice_id):
         """

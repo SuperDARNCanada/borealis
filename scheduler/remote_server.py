@@ -48,7 +48,6 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
         cmd_str = start_cmd + " | at now + 1 minute"
     else:
         cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
-
     cmd_str = dt.strftime(cmd_str)
     return cmd_str
 
@@ -325,10 +324,11 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                     queued_lines.append(scd_line)
                 else:
                     if int(scd_line['prio']) > int(inf_dur_line['prio']):
-                        time_diff = scd_line['time'] - inf_dur_line['time']
-                        new_line = copy.deepcopy(inf_dur_line)
-                        new_line['duration'] = time_diff.total_seconds()//60
-                        queued_lines.append(new_line)
+                        if scd_line['time'] > time_of_interest:
+                            time_diff = scd_line['time'] - inf_dur_line['time']
+                            new_line = copy.deepcopy(inf_dur_line)
+                            new_line['duration'] = time_diff.total_seconds()//60
+                            queued_lines.append(new_line)
                         queued_lines.append(scd_line)
 
                         finish_time = scd_line['time'] + duration_td
@@ -489,24 +489,18 @@ def get_relevant_lines(scd_util, time_of_interest):
     relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
     while not found:
 
-        for line in relevant_lines:
+        first_time_lines = [x for x in relevant_lines if x['timestamp'] == relevant_lines[0]['timestamp']]
+        for line in first_time_lines:
             if line['duration'] == '-':
                 found = True
 
         if found != True:
-            time -= datetime.timedelta(days=1)
+            time -= datetime.timedelta(minutes=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
             hhmm = time.strftime("%H:%M")
 
-            new_relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
-
-            lines_diff = [d for d in new_relevant_lines if d not in relevant_lines]
-
-            for line in reversed(lines_diff):
-                if line['duration'] == '-':
-                    relevant_lines.insert(0, line)
-                    found = True
+            relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
 
     return relevant_lines
 
