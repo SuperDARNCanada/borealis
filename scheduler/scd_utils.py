@@ -161,7 +161,7 @@ class SCDUtils(object):
             ValueError: If line parameters are invalid or if line is a duplicate.
         """
 
-        new_line = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration)
+        new_line = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string)
 
         scd_lines = self.read_scd()
 
@@ -171,7 +171,6 @@ class SCDUtils(object):
         if any([(new_line['timestamp'] == line['timestamp'] and
                     new_line['prio'] == line['prio']) for line in scd_lines]):
             raise ValueError("Priority already exists at this time")
-
 
         scd_lines.append(new_line)
 
@@ -199,7 +198,7 @@ class SCDUtils(object):
             ValueError: If line parameters are invalid or if line does not exist.
         """
 
-        line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration)
+        line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string)
 
         scd_lines = self.read_scd()
         try:
