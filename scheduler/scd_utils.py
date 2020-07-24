@@ -52,7 +52,6 @@ class SCDUtils(object):
             time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
         except:
             raise ValueError("Can not create datetime from supplied formats")
-
         try:
             int(prio)
         except ValueError as e:
@@ -160,7 +159,6 @@ class SCDUtils(object):
         Raises:
             ValueError: If line parameters are invalid or if line is a duplicate.
         """
-
         new_line = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string)
 
         scd_lines = self.read_scd()
