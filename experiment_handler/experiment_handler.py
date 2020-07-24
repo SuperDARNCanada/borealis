@@ -79,6 +79,8 @@ def experiment_parser():
                                                   "e.g. normalscan")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. common, special, or discretionary.")
+    parser.add_argument("--kwargs_string", default='', 
+                        help="String of keyword arguments for the experiment.")
 
     return parser
 
@@ -190,7 +192,17 @@ def experiment_handler(semaphore):
         if experiment_update:
             printing("Experiment has an updated method.")
 
-    exp = Experiment()
+    if args.kwargs_string:
+        # parse kwargs and pass to experiment
+        kwargs = {}
+        kwargs_list = args.kwargs_string.split(',')
+        for element in kwargs_list:
+            kwarg = element.split('=')
+            kwargs[kwarg[0]] = kwarg[1]
+        exp = Experiment(**kwargs)
+    else:
+        exp = Experiment()
+
     exp._set_scheduling_mode(scheduling_mode_type)
     change_flag = True
 

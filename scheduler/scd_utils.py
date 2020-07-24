@@ -25,9 +25,9 @@ class SCDUtils(object):
         super(SCDUtils, self).__init__()
         self.scd_filename = scd_filename
         self.scd_dt_fmt = "%Y%m%d %H:%M"
-        self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode}"
+        self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {kwargs_string}"
 
-    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration):
+    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string=''):
         """Checks the line parameters to see if they are valid and then returns a dict with all
         the valid fields.
 
@@ -38,6 +38,7 @@ class SCDUtils(object):
             scheduling_mode (str): The type of scheduling mode.
             prio (str or int): priority value.
             duration (str): an optional duration to run for.
+            kwargs_string (str, optional): kwargs for the experiment instantiation.
 
         Returns:
             TYPE: Dict of line params.
@@ -80,7 +81,8 @@ class SCDUtils(object):
                 "duration" : str(duration),
                 "prio" : str(prio),
                 "experiment" : experiment,
-                "scheduling_mode" : scheduling_mode}
+                "scheduling_mode" : scheduling_mode,
+                "kwargs_string": kwargs_string}
 
 
     def read_scd(self):
@@ -100,11 +102,13 @@ class SCDUtils(object):
 
         scd_lines = []
         for num, line in enumerate(raw_scd):
-            if len(line) != 6:
-                raise ValueError("Line {} has incorrect number of arguments; requires 6.".format(num))
+            if len(line) not in [6, 7]:
+                raise ValueError("Line {} has incorrect number of arguments; requires 6 or 7.".format(num))
             # date time experiment mode priority duration
-            scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
-
+            if len(line) == 6:
+                scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
+            else:
+                scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], line[6]))
         return scd_lines
 
     def fmt_line(self, line_dict):
@@ -120,7 +124,8 @@ class SCDUtils(object):
                                         prio=line_dict["prio"],
                                         experiment=line_dict["experiment"],
                                         scheduling_mode=line_dict["scheduling_mode"],
-                                        duration=line_dict["duration"])
+                                        duration=line_dict["duration"],
+                                        kwargs_string=line_dict["kwargs_string"])
         return line_str
 
     def write_scd(self, scd_lines):
@@ -139,7 +144,8 @@ class SCDUtils(object):
                 f.write("{}\n".format(line))
 
 
-    def add_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, duration='-'):
+    def add_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
+                 duration='-', kwargs_string=''):
         """Adds a new line to the SCD.
 
         Args:
@@ -149,6 +155,7 @@ class SCDUtils(object):
             scheduling_mode (str): The mode type running for this time period.
             prio (int or str, optional): priority value.
             duration (str, optional): an optional duration to run for.
+            kwargs_string (str, optional): kwargs for the experiment instantiation.
 
         Raises:
             ValueError: If line parameters are invalid or if line is a duplicate.
@@ -175,7 +182,8 @@ class SCDUtils(object):
 
         self.write_scd(new_scd)
 
-    def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, duration='-'):
+    def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
+                    duration='-', kwargs_string=''):
         """Summary
 
         Args:
@@ -185,6 +193,7 @@ class SCDUtils(object):
             scheduling_mode (str): The mode type running for this time period.
             prio (int or str, optional): priority value.
             duration (str, optional): an optional duration to run for.
+            kwargs_string (str, optional): kwargs for the experiment instantiation.
 
         Raises:
             ValueError: If line parameters are invalid or if line does not exist.
