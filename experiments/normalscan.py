@@ -33,10 +33,14 @@ class Normalscan(ExperimentPrototype):
         if scf.opts.site_id in ["sas", "pgr"]:
             num_ranges = scf.STD_NUM_RANGES
 
-        if kwargs['freq']:
-            freq = kwargs['freq']
-        else:
-            freq = scf.COMMON_MODE_FREQ_1
+        # default frequency set here
+        freq = scf.COMMON_MODE_FREQ_1
+        
+        if kwargs:
+            if 'freq' in kwargs.keys():
+                freq = kwargs['freq']
+        
+        self.printing('Frequency set to {}'.format(freq))
 
         self.add_slice({  # slice_id = 0, there is only one slice.
             "pulse_sequence": scf.SEQUENCE_7P,
