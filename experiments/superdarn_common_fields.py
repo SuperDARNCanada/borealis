@@ -87,11 +87,27 @@ else:
     COMMON_MODE_FREQ_1 = 10400
     COMMON_MODE_FREQ_2 = 13200
 
+
 def easy_scanbound(intt, beams):
     """
-    Create integration time boundaries for the scan at the exact 
-    integration time (intt) boundaries. For new experiments, you 
-    may wish to ensure that your intt * len(beams) approaches a 
+    Create integration time boundaries for the scan at the exact
+    integration time (intt) boundaries. For new experiments, you
+    may wish to ensure that your intt * len(beams) approaches a
     minute mark to reduce delay in waiting for the next scanbound.
     """
     return [i * (intt * 1e-3) for i in range(len(beams))]
+
+# set sounding frequencies
+if opts.site_id == "sas":
+    SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "pgr":
+    SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "rkn":
+    SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "inv":
+    SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "cly":
+    SOUNDING_FREQS = [9500, 10300, 11100, 11700, 13250, 14200, 15200]
+else:
+    SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+
