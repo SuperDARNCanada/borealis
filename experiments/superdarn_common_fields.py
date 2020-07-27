@@ -84,3 +84,18 @@ elif opts.site_id == "cly":
 else:
     COMMON_MODE_FREQ_1 = 10400
     COMMON_MODE_FREQ_2 = 13200
+
+# set sounding frequencies
+if opts.site_id == "sas":
+    SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "pgr":
+    SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "rkn":
+    SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "inv":
+    SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "cly":
+    SOUNDING_FREQS = [9500, 10300, 11100, 11700, 13250, 14200, 15200]
+else:
+    SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+
