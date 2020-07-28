@@ -280,7 +280,6 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         # if we have lines queued up, grab the last one to compare to.
         if queued_lines:
             last_queued_line, queued_finish = calculate_new_last_line_params()
-
         # handling infinite duration lines
         if scd_line['duration'] == '-':
             # if no line set, just assign it
@@ -411,9 +410,9 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                         queued_lines.append(item_to_add)
 
         if idx == len(scd_lines) - 1:
-            last_queued_line, queued_finish = calculate_new_last_line_params()
-
-            inf_dur_line['time'] = queued_finish
+            if queued_lines:
+                last_queued_line, queued_finish = calculate_new_last_line_params()
+                inf_dur_line['time'] = queued_finish
             queued_lines.append(inf_dur_line)
 
     return queued_lines, warnings
@@ -457,10 +456,10 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     first_event = True
     for event in timeline:
         if first_event:
-            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode'], True))
+            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode'], True, event['kwargs_string']))
             first_event = False
         else:
-            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode']))
+            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode'], False, event['kwargs_string']))
     for cmd in atq:
         sp.call(cmd, shell=True)
 
