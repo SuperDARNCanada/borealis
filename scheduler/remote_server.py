@@ -265,6 +265,10 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         line['order'] = i
 
     def calculate_new_last_line_params():
+        """
+        when the last line is of set duration, find its finish time so that
+        the infinite duration line can be set to run again at that point.
+        """
         last_queued_line = queued_lines[-1]
         queued_dur_td = datetime.timedelta(minutes=int(last_queued_line['duration']))
         queued_finish = last_queued_line['time'] + queued_dur_td
@@ -305,7 +309,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                                                                         dt=scd_line['time'])
                     warnings.append(warnings)
 
-        else:
+        else:  # line has a set duration
             duration_td = datetime.timedelta(minutes=int(scd_line['duration']))
             finish_time = scd_line['time'] + duration_td
 
@@ -406,9 +410,9 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                         queued_lines.append(item_to_add)
 
         if idx == len(scd_lines) - 1:
-            last_queued_line, queued_finish = calculate_new_last_line_params()
-
-            inf_dur_line['time'] = queued_finish
+            if queued_lines:  # infinite duration line starts after the last queued line
+                last_queued_line, queued_finish = calculate_new_last_line_params()
+                inf_dur_line['time'] = queued_finish
             queued_lines.append(inf_dur_line)
 
     return queued_lines, warnings
