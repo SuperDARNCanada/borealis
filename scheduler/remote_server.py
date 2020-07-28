@@ -415,12 +415,6 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                 inf_dur_line['time'] = queued_finish
             queued_lines.append(inf_dur_line)
 
-    if not queued_lines:
-        if not inf_dur_line:
-            raise ValueError("Schedule was missing an infinite duration line as a fallback")
-        else:
-            queued_lines.append(inf_dur_line)
-
     return queued_lines, warnings
 
 def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
