@@ -17,6 +17,7 @@ class SCDUtils(object):
 
     Attributes:
         line_fmt (str): String format for scd line.
+        scd_default (dict): Default event to run if no other infinite duration line is scheduled.
         scd_dt_fmt (str): String format for parsing/writing datetimes.
         scd_filename (str): The filename of schedule to use.
     """
@@ -26,6 +27,7 @@ class SCDUtils(object):
         self.scd_filename = scd_filename
         self.scd_dt_fmt = "%Y%m%d %H:%M"
         self.line_fmt = "{datetime} {duration} {prio} {experiment}"
+        self.scd_default = self.check_line('20000101', '00:00', 'normalscan', '0', '-')
 
     def check_line(self, yyyymmdd, hhmm, experiment, prio, duration):
         """Checks the line parameters to see if they are valid and then returns a dict with all
@@ -93,11 +95,18 @@ class SCDUtils(object):
         raw_scd = [line.split() for line in raw_scd]
 
         scd_lines = []
+
+        # add the default infinite duration line 
+        scd_lines.append(self.scd_default)
+
         for num, line in enumerate(raw_scd):
             if len(line) != 5:
                 raise ValueError("Line {} has too many arguments".format(num))
 
             scd_lines.append(self.check_line(line[0], line[1], line[4], line[3], line[2]))
+
+        if len(scd_lines) == 1:
+            print('WARNING: SCD file empty; default normalscan will run')
 
         return scd_lines
 
