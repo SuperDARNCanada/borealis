@@ -9,7 +9,7 @@ done
 
 NOW=`date +'%Y%m%d %H:%M:%S'`
 
-screen -X -S borealis quit | tee -a /data/borealis_logs/start_stop.log
+screen -X -S borealis quit
 
 retVal=$?
 if [[ $retVal -ne 0 ]]; then
