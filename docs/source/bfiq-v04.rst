@@ -142,8 +142,9 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | correlations for.                         |
 +-----------------------------------+---------------------------------------------+
 | | **num_samps**                   | | Number of samples in the sampling         |
-| | *uint32*                        | | periods. Will also be provided as the     |
-| |                                 | | last data_dimension value.                |  
+| | *uint32*                        | | period. Each sequence has its own         |
+| |                                 | | sampling period. Will also be provided    |
+| |                                 | | as the last data_dimension value.         |
 +-----------------------------------+---------------------------------------------+
 | | **num_sequences**               | | Number of sampling periods (equivalent to |
 | | *int64*                         | | number sequences transmitted) in the      | 
@@ -313,9 +314,10 @@ The file fields under the record name in bfiq site files are:
 | | **num_ranges**                 | | Number of ranges to calculate             | 
 | | *uint32*                       | | correlations for.                         |
 +----------------------------------+---------------------------------------------+
-| | **num_samps**                  | | Number of samples in the sampling period. | 
-| | *uint32*                       | | Will also be provided as the last         |
-| |                                | | data_dimensions value.                    |
+| | **num_samps**                  | | Number of samples in the sampling         |
+| | *uint32*                       | | period. Each sequence has its own         |
+| |                                | | sampling period. Will also be provided    |
+| |                                | | as the last data_dimension value.         |
 +----------------------------------+---------------------------------------------+
 | | **num_sequences**              | | Number of sampling periods (equivalent to | 
 | | *int64*                        | | number sequences transmitted) in the      | 

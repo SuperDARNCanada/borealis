@@ -57,7 +57,7 @@ class Sequence(ScanClassBase):
         the sstime.
     first_rx_sample_time
         The location of the first sample for the RX data, in time, from the start of the TX data.
-        This will be calculated as the time at centre sample of the first pulse. In seconds.
+        This will be calculated as the time at center sample of the first pulse. In seconds.
     blanks
         A list of sample indices that should not be used for acfs because they were samples
         taken when transmitting.
