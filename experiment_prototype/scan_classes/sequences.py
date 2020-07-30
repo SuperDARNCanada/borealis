@@ -304,7 +304,7 @@ class Sequence(ScanClassBase):
 
 
         # FIND the sequence time. Add some TR setup time before the first pulse. The
-        # timing to the last pulse is added, as well as its pulse length and the TR delay 
+        # timing to the last pulse is added, as well as its pulse length and the TR delay
         # at the end of last pulse.
 
         # tr_window_time is originally in seconds, convert to us.
@@ -460,7 +460,7 @@ class Sequence(ScanClassBase):
                                      'imag' : decimated_samples.imag.tolist()}
 
                 debug_dict['sequence_samples'][i] = samples_dict
-                debug_dict['decimated_sequence'][i] = deci_samples_dict
+                debug_dict['decimated_samples'][i] = deci_samples_dict
 
         if __debug__:
             fill_dbg_dict()

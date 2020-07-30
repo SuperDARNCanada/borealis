@@ -50,7 +50,7 @@ void lowpass_decimate2048_wrapper(cuComplex* input_samples,
  * @param[in]  dm_rate              Decimation rate.
  * @param[in]  samples_per_antenna  The number of samples per antenna in the input set of samples
  *                                  for one frequency.
- * @param[in]  num_taps_per_filter  Number of taps per filter.
+ * @param[in]  num_total_taps       Number of taps per stage.
  * @param[in]  num_freqs            Number of receive frequencies.
  * @param[in]  num_antennas         Number of antennas for which there are samples.
  * @param[in]  F_s                  The original sampling frequency.
@@ -68,7 +68,7 @@ template <DecimationType type>
 void call_decimate(cuComplex* input_samples,
   cuComplex* decimated_samples,
   cuComplex* filter_taps, uint32_t dm_rate,
-  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
+  uint32_t samples_per_antenna, uint32_t num_total_taps, uint32_t num_freqs,
   uint32_t num_antennas, double F_s, double* freqs, const char *output_msg, cudaStream_t stream) {
 
   DEBUG_MSG(COLOR_BLUE("Decimate: ") << output_msg);
@@ -79,30 +79,32 @@ void call_decimate(cuComplex* input_samples,
   if (type == DecimationType::bandpass) {
     DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running bandpass");
     //For now we have a kernel that will process 2 samples per thread if need be
-    if (num_taps_per_filter * num_freqs > 2 * gpu_properties[0].maxThreadsPerBlock) {
+    if (num_total_taps> 2 * gpu_properties[0].maxThreadsPerBlock) {
+      std::cerr << "Total taps exceeds the amount we can process!" << std::endl;
+      exit(-1);
       //TODO(Keith) : handle error
     }
-    else if (num_taps_per_filter * num_freqs > gpu_properties[0].maxThreadsPerBlock) {
+    else if (num_total_taps > gpu_properties[0].maxThreadsPerBlock) {
       bandpass_decimate2048_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
-        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, F_s, freqs, stream);
+        samples_per_antenna, num_total_taps, num_freqs, num_antennas, F_s, freqs, stream);
     }
     else {
       bandpass_decimate1024_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
-        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, F_s, freqs, stream);
+        samples_per_antenna, num_total_taps, num_freqs, num_antennas, F_s, freqs, stream);
     }
   }
   else if (type == DecimationType::lowpass){
     DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running lowpass");
-    if (num_taps_per_filter > 2 * gpu_properties[0].maxThreadsPerBlock) {
+    if (num_total_taps > 2 * gpu_properties[0].maxThreadsPerBlock) {
       //TODO(Keith) : handle error
     }
-    else if (num_taps_per_filter > gpu_properties[0].maxThreadsPerBlock) {
+    else if (num_total_taps > gpu_properties[0].maxThreadsPerBlock) {
       lowpass_decimate2048_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
-        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
+        samples_per_antenna, num_total_taps, num_freqs, num_antennas, stream);
     }
     else {
       lowpass_decimate1024_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
-        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
+        samples_per_antenna, num_total_taps, num_freqs, num_antennas, stream);
     }
   }
 

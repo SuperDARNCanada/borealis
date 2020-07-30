@@ -37,14 +37,14 @@ namespace {
   /**
    * @brief      Creates a new set of block dimensions for a bandpass decimate CUDA kernel.
    *
-   * @param[in]  num_taps_per_filter  Number of taps per filter.
+   * @param[in]  num_total_taps       Number of taps per stage.
    * @param[in]  num_freqs            Number of receive frequencies.
    *
    * @return     New block dimensions for the kernel.
    */
-  dim3 create_bandpass_block(uint32_t num_taps_per_filter, uint32_t num_freqs)
+  dim3 create_bandpass_block(uint32_t num_total_taps, uint32_t num_freqs)
   {
-    auto num_threads_x = num_taps_per_filter;
+    auto num_threads_x = num_total_taps/num_freqs;
     auto num_threads_y = num_freqs;
     auto num_threads_z = 1;
     DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Block size: " << num_threads_x << " x "
@@ -80,13 +80,13 @@ namespace {
   /**
    * @brief      Creates a new set of block dimensions for a lowpass decimate CUDA kernel.
    *
-   * @param[in]  num_taps_per_filter  Number of taps per filter.
+   * @param[in]  num_total_taps  Number of taps per stage.
    *
    * @return     New block dimensions for the kernel.
    */
-  dim3 create_lowpass_block(uint32_t num_taps_per_filter)
+  dim3 create_lowpass_block(uint32_t num_total_taps)
   {
-    auto num_threads_x = num_taps_per_filter;
+    auto num_threads_x = num_total_taps;
     auto num_threads_y = 1;
     auto num_threads_z = 1;
     DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Block size: " << num_threads_x << " x "
@@ -268,7 +268,6 @@ __global__ void bandpass_decimate1024(cuComplex* original_samples,
     sample = original_samples[final_offset];
   }
 
-
   filter_products[tap_offset] = cuCmulf(sample,filter_taps[tap_offset]);
   // Synchronizes all threads in a block, meaning 1 output sample per rx freq
   // is ready to be calculated with the parallel reduce
@@ -376,7 +375,6 @@ __global__ void bandpass_decimate2048(cuComplex* original_samples,
     sample_1 = original_samples[final_offset];
     sample_2 = original_samples[final_offset+1];
   }
-
 
   filter_products[tap_offset] = cuCmulf(sample_1,filter_taps[tap_offset]);
   filter_products[tap_offset+1] = cuCmulf(sample_2, filter_taps[tap_offset+1]);
