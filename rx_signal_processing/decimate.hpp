@@ -96,6 +96,8 @@ void call_decimate(cuComplex* input_samples,
   else if (type == DecimationType::lowpass){
     DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running lowpass");
     if (num_total_taps > 2 * gpu_properties[0].maxThreadsPerBlock) {
+      std::cerr << "Total taps exceeds the amount we can process!" << std::endl;
+      exit(-1);
       //TODO(Keith) : handle error
     }
     else if (num_total_taps > gpu_properties[0].maxThreadsPerBlock) {
