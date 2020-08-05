@@ -78,6 +78,6 @@ class InterleavedSound(ExperimentPrototype):
 
         self.add_slice(slices[0])
         self.add_slice(slices[1], {0:'SCAN'})
-        for slice_num in range(2:len(slices):
+        for slice_num in range(2,len(slices)):
             self.add_slice(slices[slice_num], {1:'INTTIME'})
 
