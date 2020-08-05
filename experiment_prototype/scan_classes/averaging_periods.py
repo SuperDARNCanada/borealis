@@ -110,6 +110,8 @@ class AveragingPeriod(ScanClassBase):
                     """.format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
 
+        self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]]['beam_order'])
+
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 
         # Determine how this averaging period is made by separating out the INTEGRATION interfaced.
@@ -120,6 +122,8 @@ class AveragingPeriod(ScanClassBase):
             self.sequences.append(Sequence(*params))
 
         self.one_pulse_only = False
+
+        self.beam_iter = 0 # used to keep track of place in beam order.
 
 
     def get_sequence_slice_ids(self):
@@ -180,4 +184,5 @@ class AveragingPeriod(ScanClassBase):
             raise ExperimentException(errmsg)
 
         return slice_to_beamdir_dict
+
 

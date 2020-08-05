@@ -46,6 +46,7 @@ class InterleavedSound(ExperimentPrototype):
             "intt": 2900,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
+            # this scanbound will be aligned because len(beam_order) = len(scanbound)
             "scanbound" : [i * 3 for i in range(len(beams_to_use))],
             "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
@@ -65,7 +66,7 @@ class InterleavedSound(ExperimentPrototype):
                 "intt": 1250,  # duration of an integration, in ms
                 "beam_angle": scf.STD_16_BEAM_ANGLE,
                 "beam_order": sounding_beams,
-                "scanbound" : [sounding_scanbound[num]],
+                "scanbound" : sounding_scanbound,
                 "txfreq" : freq,
                 "acf": True,
                 "xcf": True,  # cross-correlation processing
@@ -77,4 +78,6 @@ class InterleavedSound(ExperimentPrototype):
 
         self.add_slice(slices[0])
         self.add_slice(slices[1], {0:'SCAN'})
-        self.add_slice(slices[2], {1:'PULSE'})
+        for slice_num in range(2:len(slices):
+            self.add_slice(slices[slice_num], {1:'INTTIME'})
+

@@ -1881,9 +1881,6 @@ class ExperimentPrototype(object):
             if not exp_slice['intt']:
                 error_list.append("Slice {} must have intt enabled to use scanbound".format(
                         exp_slice['slice_id']))
-            elif len(exp_slice['scanbound']) != len(exp_slice['beam_order']):
-                error_list.append("Slice {} scanbound length needs to equal beam order length".format(
-                        exp_slice['slice_id']))
             elif any(i<0 for i in exp_slice['scanbound']):
                 error_list.append("Slice {} scanbound times must be non-negative".format(
                         exp_slice['slice_id']))
@@ -1892,14 +1889,6 @@ class ExperimentPrototype(object):
                 error_list.append("Slice {} scanbound times must be increasing".format(
                         exp_slice['slice_id']))
             else:
-                # Last element with intt added determines
-                total_scan_time = (math.ceil((exp_slice['scanbound'][-1] + exp_slice['intt']*1e-3)/60) *
-                                    60000) # rounds up to scan boundary minute in ms
-
-                if (len(exp_slice['beam_order']) * exp_slice['intt']) > total_scan_time:
-                        error_list.append("Slice {} Beam Order Too Long for scanbound".format(
-                            exp_slice['slice_id']))
-
                 # Check if any scanbound times are shorter than the intt.
                 if len(exp_slice['scanbound']) == 1:
                     tolerance = 1e-9
