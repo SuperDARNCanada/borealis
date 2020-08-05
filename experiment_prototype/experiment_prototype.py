@@ -1188,7 +1188,7 @@ class ExperimentPrototype(object):
             if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
                                                                       float):
                 errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given centre frequency, sampling 
+                            the radar license and be within range given centre frequency, sampling
                             rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             if (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
@@ -1608,9 +1608,6 @@ class ExperimentPrototype(object):
             if not exp_slice['intt']:
                 error_list.append("Slice {} must have intt enabled to use scanbound".format(
                         exp_slice['slice_id']))
-            elif len(exp_slice['scanbound']) != len(exp_slice['beam_order']):
-                error_list.append("Slice {} scanbound length needs to equal beam order length".format(
-                        exp_slice['slice_id']))
             elif any(i<0 for i in exp_slice['scanbound']):
                 error_list.append("Slice {} scanbound times must be non-negative".format(
                         exp_slice['slice_id']))
@@ -1619,14 +1616,6 @@ class ExperimentPrototype(object):
                 error_list.append("Slice {} scanbound times must be increasing".format(
                         exp_slice['slice_id']))
             else:
-                # Last element with intt added determines
-                total_scan_time = (math.ceil((exp_slice['scanbound'][-1] + exp_slice['intt']*1e-3)/60) *
-                                    60000) # rounds up to scan boundary minute in ms
-
-                if (len(exp_slice['beam_order']) * exp_slice['intt']) > total_scan_time:
-                        error_list.append("Slice {} Beam Order Too Long for scanbound".format(
-                            exp_slice['slice_id']))
-
                 # Check if any scanbound times are shorter than the intt.
                 if len(exp_slice['scanbound']) == 1:
                     if exp_slice['scanbound'][0] * 1000 < exp_slice['intt']:
@@ -1639,7 +1628,6 @@ class ExperimentPrototype(object):
                             error_list.append("Slice {} intt longer than "
                                 "scanbound times".format(exp_slice['slice_id']))
                             break
-
 
         # TODO other checks
 
