@@ -943,7 +943,7 @@ class ExperimentPrototype(object):
 
         return full_interfacing_dict
 
-    def __update_slice_interfacing():
+    def __update_slice_interfacing(self):
         """
         Internal slice interfacing updater. This
         should only be used internally when slice dictionary is
@@ -1882,3 +1882,4 @@ class ExperimentPrototype(object):
                 slice_interface[num1] = interfacing_type
 
         return slice_interface
+
