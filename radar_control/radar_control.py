@@ -54,8 +54,8 @@ def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrf
         :param driverpacket: the protobuf packet to fill and pass over zmq
         :param radctrl_to_driver: the sender socket for sending the driverpacket
         :param driver_to_radctrl_iden: the receiver socket identity on the driver side
-        :param txctrfreq: the transmit centre frequency to tune to, kHz.
-        :param rxctrfreq: the receive centre frequency to tune to. With rx_sample_rate from config.ini file, this
+        :param txctrfreq: the transmit center frequency to tune to, kHz.
+        :param rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
             determines the received signal band, kHz.
         :param txrate: the tx sampling rate (Hz).
         :param rxrate: the rx sampling rate (Hz).
@@ -83,8 +83,8 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
             numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
             numpy array of zeros of the same length as the rest. All arrays will have the same length according to
             the pulse length.
-        :param txctrfreq: the transmit centre frequency to tune to.
-        :param rxctrfreq: the receive centre frequency to tune to. With rx_sample_rate from config.ini file, this
+        :param txctrfreq: the transmit center frequency to tune to.
+        :param rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
             determines the received signal band.
         :param txrate: the tx sampling rate (Hz).
         :param rxrate: the rx sampling rate (Hz).
@@ -164,10 +164,10 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         :param sequence_time: entire duration of sequence, including receive time after all
         transmissions.
         :param first_rx_sample_time: Time between start of tx data and where the first RX sample
-        should occur in the output data. This is equal to the time to the centre of the
+        should occur in the output data. This is equal to the time to the center of the
         first pulse. In seconds.
         :param main_antenna_count: number of main array antennas, from the config file.
-        :param rxctrfreq: the centre frequency of receiving, to send the translation frequency from centre to dsp.
+        :param rxctrfreq: the center frequency of receiving, to send the translation frequency from center to dsp.
         :param decimation_scheme: object of type DecimationScheme that has all decimation and
             filtering data.
 
@@ -300,8 +300,9 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, num_sequences, scan_flag, inttime, sequences, beamdir_dict,
-                            experiment_id, experiment_name, output_sample_rate, experiment_comment,
-                            filter_scaling_factors, rx_centre_freq, debug_samples=None):
+                            experiment_id, experiment_name, scheduling_mode, output_sample_rate, 
+                            experiment_comment, filter_scaling_factors, rx_center_freq, 
+                            debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
     :param packet: The IntegrationTimeMetadata protobuf packet.
@@ -318,12 +319,13 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     directions for that slice for this integration period.
     :param experiment_id: the ID of the experiment that is running
     :param experiment_name: the experiment name to be placed in the data files.
+    :param scheduling_mode: the type of scheduling mode running at this time, to write to file.
     :param output_sample_rate: The output sample rate of the output data, defined by the
     experiment, in Hz.
     :param experiment_comment: The comment string for the experiment, user-defined.
     :param filter_scaling_factors: The decimation scheme scaling factors used for the experiment,
     to get the scaling for the data for accurate power measurements between experiments.
-    :param rx_centre_freq: The receive centre frequency (kHz)
+    :param rx_center_freq: The receive center frequency (kHz)
     :param debug_samples: the debug samples for this integration period, to be written to the
     file if debug is set. This is a list of dictionaries for each Sequence in the
     AveragingPeriod. The dictionary is set up in the sample_building module function
@@ -337,13 +339,14 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     packet.experiment_id = experiment_id
     packet.experiment_name = experiment_name
     packet.experiment_comment = experiment_comment
-    packet.rx_centre_freq = rx_centre_freq
+    packet.rx_center_freq = rx_center_freq
     packet.num_sequences = num_sequences
     packet.last_seqn_num = seqnum
     packet.scan_flag = scan_flag
     packet.integration_time = inttime.total_seconds()
     packet.output_sample_rate = output_sample_rate
     packet.data_normalization_factor = reduce(lambda x,y: x*y, filter_scaling_factors) # multiply all
+    packet.scheduling_mode = scheduling_mode
 
     for sequence_index, sequence in enumerate(sequences):
         sequence_add = packet.sequences.add()
@@ -403,6 +406,8 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                     lag_add = rxchan_add.ltab.lag.add()
                     lag_add.pulse_position[:] = lag
                     lag_add.lag_num = int(lag[1] - lag[0])
+                rxchan_add.averaging_method = sequence.slice_dict[slice_id]['averaging_method']
+            rxchan_add.slice_interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
 
     if __debug__:
         rad_ctrl_print('Sending metadata to datawrite.')
@@ -492,7 +497,7 @@ def radar():
     new_experiment_waiting = False
     new_experiment_loaded = True
 
-    # Send driver initial setup data - rates and centre frequency from experiment.
+    # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
     setup_driver(driverpacket, radar_control_to_driver, options.driver_to_radctrl_identity,
                  experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
@@ -798,7 +803,7 @@ def radar():
                                             options.dw_to_radctrl_identity, last_sequence_num, num_sequences,
                                             scan_flag, integration_period_time,
                                             aveperiod.sequences, slice_to_beamdir_dict,
-                                            experiment.cpid, experiment.experiment_name,
+                                            experiment.cpid, experiment.experiment_name, experiment.scheduling_mode,
                                             experiment.output_rx_rate, experiment.comment_string,
                                             experiment.decimation_scheme.filter_scaling_factors, experiment.rxctrfreq,
                                             debug_samples=debug_samples)

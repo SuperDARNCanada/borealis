@@ -36,6 +36,9 @@
 # Scons
 .sconsign*
 
+# ipynb notebook checkpoints directories
+*/.ipynb_checkpoints*
+
 *.swp
 bin/
 build/

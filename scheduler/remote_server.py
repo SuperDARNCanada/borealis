@@ -25,12 +25,13 @@ import matplotlib.dates as mdates
 
 import remote_server_options as rso
 
-def format_to_atq(dt, experiment, first_event_flag=False):
+def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False):
     """Turns an experiment line from the scd into a formatted atq command.
 
     Args:
         dt (datetime): Datetime of the experiment
         experiment (str): The experiment to run
+        scheduling_mode (str): The scheduling mode to run
         first_event_flag (bool, optional): Flag to signal whether the experiment is the first to
         run
 
@@ -38,8 +39,8 @@ def format_to_atq(dt, experiment, first_event_flag=False):
         str: Formatted atq str.
     """
 
-    start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release'"
-    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment)
+    start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}'"
+    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment,scheduling_mode=scheduling_mode)
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
     else:
@@ -234,6 +235,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         duration(minutes)
         prio(priority)
         experiment
+        scheduling_mode
 
     The true timeline queued_lines dictionary differs from the scd_lines list by the following:
         - duration is parsed, adding in events so that all event durations are equal to the next event's
@@ -265,6 +267,10 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         line['order'] = i
 
     def calculate_new_last_line_params():
+        """
+        when the last line is of set duration, find its finish time so that
+        the infinite duration line can be set to run again at that point.
+        """
         last_queued_line = queued_lines[-1]
         queued_dur_td = datetime.timedelta(minutes=int(last_queued_line['duration']))
         queued_finish = last_queued_line['time'] + queued_dur_td
@@ -305,7 +311,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                                                                         dt=scd_line['time'])
                     warnings.append(warnings)
 
-        else:
+        else:  # line has a set duration
             duration_td = datetime.timedelta(minutes=int(scd_line['duration']))
             finish_time = scd_line['time'] + duration_td
 
@@ -406,9 +412,9 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                         queued_lines.append(item_to_add)
 
         if idx == len(scd_lines) - 1:
-            last_queued_line, queued_finish = calculate_new_last_line_params()
-
-            inf_dur_line['time'] = queued_finish
+            if queued_lines:  # infinite duration line starts after the last queued line
+                last_queued_line, queued_finish = calculate_new_last_line_params()
+                inf_dur_line['time'] = queued_finish
             queued_lines.append(inf_dur_line)
 
     return queued_lines, warnings
@@ -452,10 +458,10 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     first_event = True
     for event in timeline:
         if first_event:
-            atq.append(format_to_atq(event['time'], event['experiment'], True))
+            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode'], True))
             first_event = False
         else:
-            atq.append(format_to_atq(event['time'], event['experiment']))
+            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode']))
     for cmd in atq:
         sp.call(cmd, shell=True)
 
