@@ -13,6 +13,7 @@
 from __future__ import print_function
 import sys
 import copy
+import operator
 import os
 import math
 import numpy as np
@@ -204,7 +205,8 @@ rx_main_antennas *defaults*
 
 scanbound *defaults*
     A list of seconds past the minute for integration times in a scan to align to. Defaults
-    to None, not required.
+    to None, not required. If one slice in an experiment has a scanbound, they all 
+    must.
 
 seqoffset *defaults*
     offset in us that this slice's sequence will begin at, after the start of the sequence.
@@ -444,7 +446,7 @@ class ExperimentPrototype(object):
         # interfacing specified.
 
         self.__scan_objects = []
-
+        self.__scanbound = False
         self.__running_experiment = None  # this will be of ScanClassBase type
 
     __slice_keys = slice_key_set
@@ -1121,7 +1123,18 @@ class ExperimentPrototype(object):
 
         self.__scan_objects = []
         for params in self.__running_experiment.prep_for_nested_scan_class():
-            self.scan_objects.append(Scan(*params))
+            self.__scan_objects.append(Scan(*params))
+        
+        for scan in self.__scan_objects:
+            if scan.scanbound != None:
+                self.__scanbound = True
+
+        if self.__scanbound:
+            try:
+                self.__scan_objects = sorted(self.__scan_objects, key=lambda scan: scan.scanbound[0])
+            except IndexError as e:  # scanbound is None in some scans
+                errmsg = 'If one slice has a scanbound, they all must to avoid up to minute-long downtimes.'
+                raise ExperimentException(errmsg) from e
 
         if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
