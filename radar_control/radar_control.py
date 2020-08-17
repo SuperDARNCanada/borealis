@@ -569,7 +569,7 @@ def radar():
                 scan_iter = scan_num
                 while next_scanbound == None:
                     scan_iter += 1
-                    if scan_iter == len(experiment.scan_objects) - 1:
+                    if scan_iter == len(experiment.scan_objects):
                         scan_iter = 0
                     next_scanbound = experiment.scan_objects[scan_iter].scanbound
 
