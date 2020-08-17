@@ -559,7 +559,7 @@ def radar():
 
                 last_aveperiod_intt = scan.aveperiods[(scan.num_aveperiods_in_scan % len(scan.aveperiods))].intt
                 # a scanbound necessitates intt
-                end_of_scan = start_minute + timedelta(seconds=scan.scanbound[-1]) + last_aveperiod_intt
+                end_of_scan = start_minute + timedelta(seconds=scan.scanbound[-1]) + timedelta(seconds=last_aveperiod_intt*1e-3)
                 end_minute = end_of_scan.replace(second=0, microsecond=0)
 
                 if end_minute + timedelta(seconds=next_scanbound[0]) >= end_of_scan:
