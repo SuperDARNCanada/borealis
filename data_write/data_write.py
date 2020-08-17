@@ -1063,7 +1063,7 @@ class DataWrite(object):
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
                 parameters[
-                    'rx_center_freq'] = integration_meta.rx_center_freq  # Sorry, we'll convert to US English here
+                    'rx_center_freq'] = integration_meta.rx_center_freq 
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
                 parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phase_offsets.pulse_phase, dtype=np.float32)
