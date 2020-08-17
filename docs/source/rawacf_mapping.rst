@@ -4,7 +4,7 @@ rawacf_mapping
 
 RAWACF SDARN FIELDS
 
-This conversion is done in SDARN IO here: `Link to Source <https://github.com/SuperDARN/pydarn/blob/feature/borealis_conversion/pydarn/io/borealis/borealis_convert.py#L726>`_
+This conversion is done in pydarn IO here in the __convert_rawacf_record method: `Link to Source <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_convert.py>`_
 
 +-----------------------------------+---------------------------------------------+
 | | **SDARN DMAP FIELD NAME**       | **Borealis Conversion**                     |

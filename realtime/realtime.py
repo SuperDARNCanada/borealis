@@ -66,7 +66,6 @@ def _main():
                     os.remove(filename)
                 except pydarn.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
                     rt_print("Error converting {}".format(filename))
-                    rt_print(str(e))
                     os.remove(filename)
                     continue
 

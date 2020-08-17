@@ -19,7 +19,6 @@ import numpy as np
 import itertools
 from scipy.constants import speed_of_light
 
-
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
@@ -35,45 +34,53 @@ from experiment_prototype.decimation_scheme.decimation_scheme import DecimationS
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
 
-INTERFACING TYPES:
+Interfacing in this case refers to how two or more components are 
+meant to be run together. The following types of interfacing are possible:
 
-NONE
-    Only the default, must be changed.
+1. SCAN.
+The scan by scan interfacing allows for slices to run a scan of one slice, 
+followed by a scan of the second. The scan mode of interfacing typically 
+means that the slice will cycle through all of its beams before switching 
+to another slice.
 
-SCAN
-    Scan by scan interfacing. exp_slice #1 will scan first
-    followed by exp_slice #2 and subsequent exp_slice's.
+There are no requirements for slices interfaced in this manner.
 
-INTTIME
-    nave by nave interfacing (full integration time of
-    one pulse_sequence, then the next). Time/number of pulse_sequences
-    dependent on intt and intn in exp_slice. Effectively
-    simultaneous scan interfacing, interleaving each
-    integration time in the scans. exp_slice #1 first inttime or
-    beam direction will run followed by exp_slice #2's first inttime,
-    etc. if exp_slice #1's len(scan) is greater than exp_slice #2's, exp_slice
-    #2's last integration will run and then all the rest of exp_slice
-    #1's will continue until the full scan is over. exp_slice 1
-    and 2 must have the same scan boundary, if any boundary.
-    All other may differ.
+2. INTTIME.
+This type of interfacing allows for one slice to run its integration period 
+(also known as integration time or averaging period), before switching to 
+another slice's integration period. This type of interface effectively creates
+an interleaving scan where the scans for multiple slices are run 'at the same
+time', by interleaving the integration times.
 
-INTEGRATION
-    integration by integration interfacing (one
-    #pulse_sequence of one exp_slice, then the next). exp_slice #1 and
-    exp_slice #2 must have same intt and intn. Integrations will
-    switch between one and the other until time is up/nave is
-    reached.
+Slices which are interfaced in this manner must share:
+    - the same SCANBOUND value.
 
-PULSE
-    Simultaneous pulse_sequence interfacing, pulse by pulse
-    creates a single pulse_sequence. exp_slice A and B might have different
-    frequencies (stereo) and/or may have different pulse
-    length, tau_spacing, pulse_sequence, but must have the same integration
-    time. They must also have same len(scan), although they may
-    use different directions in scan. They must have the same
-    scan boundary if any. A time offset between the pulses
-    starting may be set (seq_timer in exp_slice). exp_slice A
-    and B will have integrations that run at the same time.
+3. INTEGRATION.
+Integration interfacing allows for pulse sequences defined in the slices to 
+alternate between each other within a single integration period. It's important 
+to note that data from a single slice is averaged only with other data from that 
+slice. So in this case, the integration period is running two slices and can 
+produce two averaged datasets, but the sequences (integrations) within the 
+integration period are interleaved.
+
+Slices which are interfaced in this manner must share:
+    - the same SCANBOUND value.
+    - the same INTT or INTN value.
+    - the same BEAM_ORDER length (scan length)
+
+4. PULSE.
+Pulse interfacing allows for pulse sequences to be run together concurrently. 
+Slices will have their pulse sequences summed together so that the 
+data transmits at the same time. For example, slices of different frequencies 
+can be mixed simultaneously, and slices of different pulse sequences can also 
+run together at the cost of having more blanked samples. When slices are 
+interfaced in this way the radar is truly transmitting and receiving the 
+slices simultaneously.
+
+Slices which are interfaced in this manner must share:
+    - the same SCANBOUND value.
+    - the same INTT or INTN value.
+    - the same BEAM_ORDER length (scan length)
 
 """
 
@@ -81,65 +88,48 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
                     "rx_int_antennas", "pulse_sequence", "pulse_phase_offset", "tau_spacing",
                     "pulse_len", "num_ranges", "first_range", "intt", "intn", "beam_angle",
                     "beam_order", "scanbound", "txfreq", "rxfreq",
-                    "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
-                    "iwavetable", "qwavetable", "comment", "range_sep", "lag_table"])
+                    "clrfrqrange", "averaging_method", "acf", "xcf", "acfint",
+                    "wavetype", "seqoffset", "iwavetable", "qwavetable",
+                    "comment", "range_sep", "lag_table"])
 
 """
-**Description of Slice Keys**
+These are the keys that are set by the user when initializing a slice. Some
+are required, some can be defaulted, and some are set by the experiment
+and are read-only.
 
-slice_id
-    The ID of this slice object. An experiment can have multiple slices.
+**Slice Keys Required by the User**
 
-cpid
-    The ID of the experiment, consistent with existing radar control programs.
-
-tx_antennas
-    The antennas to transmit on, default is all main antennas given max
-    number from config.
-
-rx_main_antennas
-    The antennas to receive on in main array, default = all antennas
-    given max number from config.
-
-rx_int_antennas
-    The antennas to receive on in interferometer array, default is all
-    antennas given max number from config.
-
-pulse_sequence
+pulse_sequence *required*
     The pulse sequence timing, given in quantities of tau_spacing, for example
-    normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
+    normalscan = [0, 14, 22, 24, 27, 31, 42, 43].
 
-tau_spacing
-    multi-pulse increment in us, Defines minimum space between pulses.
+tau_spacing *required*
+    multi-pulse increment (mpinc) in us, Defines minimum space between pulses.
 
-pulse_phase_offset
-    Allows phase shifting between pulses, enabling encoding of pulses. Default all
-    zeros for all pulses in pulse_sequence.
-
-pulse_len
+pulse_len *required*
     length of pulse in us. Range gate size is also determined by this.
 
-num_ranges
+num_ranges *required*
     Number of range gates.
 
-first_range
+first_range *required*
     first range gate, in km
 
-intt
+intt *required or intn required*
     duration of an integration, in ms. (maximum)
 
-intn
-    number of averages to make a single integration, if intt = None.
+intn *required or intt required*
+    number of averages to make a single integration, only used if intt = None.
 
-beam_angle
-    list of beam directions, in degrees off azimuth. Positive is E of N. Array
+beam_angle *required*
+    list of beam directions, in degrees off azimuth. Positive is E of N. The beam_angle list
     length = number of beams. Traditionally beams have been 3.24 degrees separated but we
     don't refer to them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will
     be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
     needed to write the beam_order list. This is like a mapping of beam number (list
     index) to beam direction off boresight.
 
-beam_order
+beam_order *required*
     beam numbers written in order of preference, one element in this list corresponds to
     one integration period. Can have lists within the list, resulting in multiple beams
     running simultaneously in the averaging period, so imaging. A beam number of 0 in
@@ -152,59 +142,123 @@ beam_order
     integration. When we do imaging we will still have to quantize the directions we
     are looking in to certain beam directions.
 
-scanbound
-    A list of seconds past the minute for integration times in a scan to align to.
-
-clrfrqrange
+clrfrqrange *required or txfreq or rxfreq required*
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
-    in kHz.
+    in kHz. **Not currently supported.**
 
-txfreq
+txfreq *required or clrfrqrange or rxfreq required*
     transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
 
-rxfreq
+rxfreq *required or clrfrqrange or txfreq required*
     receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only
     necessary to specify if you want a receive-only slice.
 
-wavetype
-    string for wavetype. The default is SINE. Any other wavetypes not currently supported but
-    possible to add in at later date.
 
-iwavetable
-    a list of numeric values to sample from. The default is None. Not currently supported
-    but could be set up (with caution) for non-SINE.
+**Defaultable Slice Keys**
 
-qwavetable
-    a list of numeric values to sample from. The default is None. Not currently supported
-    but could be set up (with caution) for non-SINE.
+acf *defaults*
+    flag for rawacf and generation. The default is False. If True, the following fields are
+    also used:
+    - averaging_method (default 'mean')
+    - xcf (default True if acf is True)
+    - acfint (default True if acf is True)
+    - lagtable (default built based on all possible pulse combos)
+    - range_sep (will be built by pulse_len to verify any provided value)
 
-seqoffset
-    offset in us that this slice's sequence will begin at, after the start of the sequence.
-    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence
-    you can offset one slice's sequence from the other by a certain time value so as to not run both
-    frequencies in the same pulse, etc.
-
-comment
-    a comment string that will be placed in the borealis files describing the slice.
-
-acf
-    flag for rawacf and generation. The default is False.
-
-xcf
-    flag for cross-correlation data. The default is True if acf is True, otherwise False.
-
-acfint
+acfint *defaults*
     flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
     False.
 
-range_sep
+averaging_method *defaults*
+    a string defining the type of averaging to be done. Current methods are 'mean' or 'median'.
+    The default is 'mean'.
+
+comment *defaults*
+    a comment string that will be placed in the borealis files describing the slice. Defaults
+    to empty string.
+
+lag_table *defaults*
+    used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
+    8-pulse normalscan. This defaults to a lagtable built by the pulse sequence
+    provided. All combinations of pulses will be calculated, with both the first pulses
+    and last pulses used for lag-0.
+
+pulse_phase_offset *defaults*
+    Allows phase shifting of pulses, enabling encoding of pulses. Default all
+    zeros for all pulses in pulse_sequence. Pulses can be shifted with a single 
+    phase shift for each pulse or with a phase shift specified for each sample 
+    in the pulses of the slice.
+
+range_sep *defaults*
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct
     value determined by the pulse_len. Used for acfs. This is the range gate separation,
     in azimuthal direction, in km.
 
-lag_table
-    used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
-    8-pulse normalscan.
+rx_int_antennas *defaults*
+    The antennas to receive on in interferometer array, default is all
+    antennas given max number from config.
+
+rx_main_antennas *defaults*
+    The antennas to receive on in main array, default is all antennas
+    given max number from config.
+
+scanbound *defaults*
+    A list of seconds past the minute for integration times in a scan to align to. Defaults
+    to None, not required.
+
+seqoffset *defaults*
+    offset in us that this slice's sequence will begin at, after the start of the sequence.
+    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence
+    you can offset one slice's sequence from the other by a certain time value so as to not run both
+    frequencies in the same pulse, etc. Default is 0 offset.
+
+tx_antennas *defaults*
+    The antennas to transmit on, default is all main antennas given max
+    number from config.
+
+xcf *defaults*
+    flag for cross-correlation data. The default is True if acf is True, otherwise False.
+
+
+**Read-only Slice Keys**
+
+clrfrqflag *read-only*
+    A boolean flag to indicate that a clear frequency search will be done.
+    **Not currently supported.**
+
+cpid *read-only*
+    The ID of the experiment, consistent with existing radar control programs.
+    This is actually an experiment-wide attribute but is stored within the
+    slice as well. This is provided by the user but not within the slice,
+    instead when the experiment is initialized.
+
+rx_only *read-only*
+    A boolean flag to indicate that the slice doesn't transmit, only receives.
+
+slice_id *read-only*
+    The ID of this slice object. An experiment can have multiple slices. This
+    is not set by the user but instead set by the experiment when the
+    slice is added. Each slice id within an experiment is unique. When experiments
+    start, the first slice_id will be 0 and incremented from there.
+
+slice_interfacing *read-only*
+    A dictionary of slice_id : interface_type for each sibling slice in the
+    experiment at any given time.
+
+
+**Not currently supported and will be removed**
+
+wavetype *defaults*
+    string for wavetype. The default is SINE. **Not currently supported.**
+
+iwavetable *defaults*
+    a list of numeric values to sample from. The default is None. Not currently supported
+    but could be set up (with caution) for non-SINE. **Not currently supported.**
+
+qwavetable *defaults*
+    a list of numeric values to sample from. The default is None. Not currently supported
+    but could be set up (with caution) for non-SINE. **Not currently supported.**
+
 """
 
 hidden_key_set = frozenset(['rxonly', 'clrfrqflag', 'slice_interfacing'])
@@ -214,6 +268,8 @@ time the experiment is run). If set by the user, the values will be overwritten 
 therefore ignored.
 """
 
+possible_averaging_methods = frozenset(['mean', 'median'])
+possible_scheduling_modes = frozenset(['common', 'special', 'discretionary'])
 default_rx_bandwidth = 5.0e6
 default_output_rx_rate = 10.0e3/3
 transition_bandwidth = 750.0e3
@@ -237,24 +293,20 @@ class ExperimentPrototype(object):
     The following are the user-modifiable attributes of the ExperimentPrototype that are
     used to make an experiment:
 
-    * xcf: boolean for cross-correlation data
-    * acf: boolean for auto-correlation data on main array
-    * acfint: boolean for auto-correlation data on interferometer array
-    * txctrfreq: transmit centre frequency (that RF chain is tuned to) - modifying
-      requires tuning time.
-    * rxctrfreq: receive centre frequency - modifying requires tuning time.
+    * xcf: boolean for cross-correlation data. A default can be set here for slices,
+      but any slice can override this setting with the xcf slice key. 
+    * acf: boolean for auto-correlation data on main array. A default can be set here for slices,
+      but any slice can override this setting with the acf slice key. 
+    * acfint: boolean for auto-correlation data on interferometer array. A default can be set here for slices,
+      but any slice can override this setting with the acfint slice key. 
+
     * slice_dict: modifiable only using the add_slice, edit_slice, and del_slice
       methods.
     * interface: modifiable using the add_slice, edit_slice, and del_slice
       methods, or by updating the interface dict directly.
 
+    Other parameters are set in the init and cannot be modified after instantiation.
     """
-
-    __slice_keys = slice_key_set
-
-    __hidden_slice_keys = hidden_key_set
-    __default_output_rx_rate = default_output_rx_rate
-    __default_rx_bandwidth = default_rx_bandwidth
 
     def __init__(self, cpid, output_rx_rate=default_output_rx_rate,
                  rx_bandwidth=default_rx_bandwidth, tx_bandwidth=5.0e6, txctrfreq=12000.0,
@@ -262,31 +314,44 @@ class ExperimentPrototype(object):
                  decimation_scheme=create_default_scheme(),
                  comment_string=''):
         """
-        Base initialization for your experiment.
-        :param cpid: unique id necessary for each control program (experiment)
+        Initialization for your experiment. Sets experiment-wide settings including cpid,
+        center frequencies, sampling rates, and decimation and filtering schemes.
+        :param cpid: unique id necessary for each control program (experiment). Cannot be
+         changed after instantiation.
         :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz.
-         Cannot be changed after instantiation.
+         Cannot be changed after instantiation. Default 3.333 kHz.
         :param rx_bandwidth: The desired bandwidth for the experiment. Directly determines rx
-        sampling rate of the USRPs. Cannot be changed.
+        sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
         :param rx_bandwidth: The desired tx bandwidth for the experiment. Directly determines tx
-        sampling rate of the USRPs. Cannot be changed.
-        :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with.
-        :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
+        sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
+        :param txctrfreq: center frequency, in kHz, for the USRP to mix the samples with. 
+         Since this requires tuning time to set, it cannot be modified after instantiation.
+        :param rxctrfreq: center frequency, in kHz, used to mix to baseband.
+         Since this requires tuning time to set, it cannot be modified after instantiation.
         :param decimation_scheme: an object defining the decimation and filtering stages for the
         signal processing module. If you would like something other than the default, you will
         need to build an object of the DecimationScheme type before initiating your experiment.
         This cannot be changed after instantiation.
-        :param comment_string: description of experiment for data files.
+        :param comment_string: description of experiment for data files. This should be 
+         used to describe your overall experiment design. Another comment string exists 
+         for every slice added, to describe information that is slice-specific.
         """
 
         if not isinstance(cpid, int):  # TODO add check for uniqueness
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
+        if cpid <= 0:
+            errmsg = 'The CPID should be a positive number in the experiment. Borealis'\
+                     ' will determine if it should be negative based on the scheduling mode.'\
+                     ' Only experiments run during discretionary time will have negative CPIDs.'
+            raise ExperimentException(errmsg)            
 
         self.__options = ExperimentOptions()
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
 
         self.__cpid = cpid
+
+        self.__scheduling_mode = 'unknown'
 
         self.__output_rx_rate = float(output_rx_rate)
 
@@ -328,9 +393,9 @@ class ExperimentPrototype(object):
 
         self.__new_slice_id = 0
 
-        # Note - txctrfreq and rxctrfreq are set here and modify the actual centre frequency to a
+        # Note - txctrfreq and rxctrfreq are set here and modify the actual center frequency to a
         # multiple of the clock divider that is possible by the USRP - this default value set
-        # here is not exact (centre freq is never exactly 12 MHz).
+        # here is not exact (center freq is never exactly 12 MHz).
 
         # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
         clock_multiples = self.options.usrp_master_clock_rate/2**32
@@ -366,10 +431,9 @@ class ExperimentPrototype(object):
         self._acf = False  # auto-correlation
         self._acfint = False  # interferometer auto-correlation.
 
-        self._interface = {}  # setup_interfacing(self.num_slices)
-        # TODO discuss rephrasing the description of _interface as a graph with defined rules
-        # Dictionary of how each exp_slice interacts with the other slices. Default is "NONE" for
-        #  all, but must be modified in experiment. NOTE keys are as such: (0,1), (0,2), (1,2),
+        self.__interface = {}
+        # Dictionary of how each exp_slice interacts with the other slices.
+        # NOTE keys are as such: (0,1), (0,2), (1,2),
         # NEVER includes (2,0) etc. The only interface options are those specified in
         # interface_types.
 
@@ -381,15 +445,21 @@ class ExperimentPrototype(object):
 
         self.__scan_objects = []
 
-        # TODO Remove above two variables after adding this type below
         self.__running_experiment = None  # this will be of ScanClassBase type
+
+    __slice_keys = slice_key_set
+    __hidden_slice_keys = hidden_key_set
+    __default_output_rx_rate = default_output_rx_rate
+    __default_rx_bandwidth = default_rx_bandwidth
 
     @property
     def cpid(self):
         """
         This experiment's CPID (control program ID, a term that comes from ROS).
 
-        The CPID is read-only once established in instantiation.
+        The CPID is read-only once established in instantiation. It may be 
+        modified at runtime by the set_scheduling_mode function, to set it to
+        a negative value during discretionary time.
         """
 
         return self.__cpid
@@ -400,7 +470,6 @@ class ExperimentPrototype(object):
         The experiment class name.
         """
         return self.__experiment_name
-
 
     @property
     def output_rx_rate(self):
@@ -514,7 +583,7 @@ class ExperimentPrototype(object):
         """
         The next unique slice id that is available to this instance of the experiment.
 
-        This gets incremented after each time it is called to ensure it returns
+        This gets incremented each time it is called to ensure it returns
         a unique ID each time.
         """
 
@@ -625,7 +694,7 @@ class ExperimentPrototype(object):
     @property
     def txctrfreq(self):
         """
-        The transmission centre frequency that USRP is tuned to (kHz).
+        The transmission center frequency that USRP is tuned to (kHz).
         """
         return self.__txctrfreq
 
@@ -635,8 +704,8 @@ class ExperimentPrototype(object):
         The maximum transmit frequency.
 
         This is the maximum tx frequency possible in this experiment (either maximum in our license
-        or maximum given by the centre frequency, and sampling rate). The maximum is slightly less
-        than that allowed by the centre frequency and txrate, to stay away from the edges of the
+        or maximum given by the center frequency, and sampling rate). The maximum is slightly less
+        than that allowed by the center frequency and txrate, to stay away from the edges of the
         possible transmission band where the signal is distorted.
         """
         max_freq = self.txctrfreq * 1000 + (self.txrate/2.0) - transition_bandwidth
@@ -652,8 +721,8 @@ class ExperimentPrototype(object):
         The minimum transmit frequency.
 
         This is the minimum tx frequency possible in this experiment (either minimum in our license
-        or minimum given by the centre frequency and sampling rate). The minimum is slightly more
-        than that allowed by the centre frequency and txrate, to stay away from the edges of the
+        or minimum given by the center frequency and sampling rate). The minimum is slightly more
+        than that allowed by the center frequency and txrate, to stay away from the edges of the
         possible transmission band where the signal is distorted.
         """
         min_freq = self.txctrfreq * 1000 - (self.txrate/2.0) + transition_bandwidth
@@ -666,7 +735,7 @@ class ExperimentPrototype(object):
     @property
     def rxctrfreq(self):
         """
-        The receive centre frequency that USRP is tuned to (kHz).
+        The receive center frequency that USRP is tuned to (kHz).
         """
         return self.__rxctrfreq
 
@@ -675,9 +744,9 @@ class ExperimentPrototype(object):
         """
         The maximum receive frequency.
 
-        This is the maximum tx frequency possible in this experiment (maximum given by the centre
+        This is the maximum tx frequency possible in this experiment (maximum given by the center
         frequency and sampling rate), as license doesn't matter for receiving. The maximum is
-        slightly less than that allowed by the centre frequency and rxrate, to stay away from the
+        slightly less than that allowed by the center frequency and rxrate, to stay away from the
         edges of the possible receive band where the signal may be distorted.
         """
         max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0) - transition_bandwidth
@@ -688,9 +757,9 @@ class ExperimentPrototype(object):
         """
         The minimum receive frequency.
 
-        This is the minimum rx frequency possible in this experiment (minimum given by the centre
+        This is the minimum rx frequency possible in this experiment (minimum given by the center
         frequency and sampling rate) - license doesn't restrict receiving. The minimum is
-        slightly more than that allowed by the centre frequency and rxrate, to stay away from the
+        slightly more than that allowed by the center frequency and rxrate, to stay away from the
         edges of the possible receive band where the signal may be distorted.
         """
         min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0) + transition_bandwidth
@@ -714,7 +783,7 @@ class ExperimentPrototype(object):
         for all current slice_ids.
 
         """
-        return self._interface
+        return self.__interface
 
     @property
     def scan_objects(self):
@@ -725,6 +794,31 @@ class ExperimentPrototype(object):
         """
         return self.__scan_objects
 
+    @property
+    def scheduling_mode(self):
+        """
+        Return the scheduling mode time type that this experiment is running
+        in. Types are listed in possible_scheduling_modes. Initialized to
+        'unknown' until set by the experiment handler.
+        """
+        return self.__scheduling_mode
+
+    def _set_scheduling_mode(self, scheduling_mode):
+        """
+        Set the scheduling mode if the provided mode is valid. Should only
+        be called by the experiment handler after initializing the user's
+        class.
+        """
+        if scheduling_mode in possible_scheduling_modes:
+            self.__scheduling_mode = scheduling_mode
+            if scheduling_mode == 'discretionary':
+                self.__cpid = -1 * self.__cpid
+        else:
+            errmsg = 'Scheduling mode {} set by experiment handler is not '\
+                     ' a valid mode: {}'.format(scheduling_mode,
+                            possible_scheduling_modes)
+            raise ExperimentException(errmsg)
+    
     def printing(self, msg):
         EXPERIMENT_P = "\033[34m" + self.__class__.__name__ + " : " + "\033[0m"
         sys.stdout.write(EXPERIMENT_P + msg + "\n")
@@ -745,7 +839,121 @@ class ExperimentPrototype(object):
             mapping[beam_num] = beam_dir
         return mapping
 
-    def add_slice(self, exp_slice, interfacing_dict=None):
+    def check_new_slice_interfacing(self, interfacing_dict):
+        """
+        Checks that the new slice plays well with its siblings (has interfacing
+        that is resolvable). If so, returns a new dictionary with all interfacing
+        values set.
+
+        The interfacing assumes that the interfacing_dict given by the user defines
+        the closest interfacing of the new slice with a slice. For example,
+        if the slice is to be PULSE combined with slice 0, the interfacing dict
+        should provide this information. If only 'SCAN' interfacing with slice 1
+        is provided, then that will be assumed to be the closest and therefore
+        the interfacing with slice 0 will also be 'SCAN'.
+
+        If no interfacing_dict is provided for a slice, the default
+        is to do 'SCAN' type interfacing for the new slice with all other slices.
+
+        :param interfacing_dict: the user-provided interfacing dict, which may
+         be empty or incomplete. If empty, all interfacing is assumed to be =
+         'SCAN' type. If it contains something, we ensure that the interfacing provided
+         makes sense with the values already known for its closest sibling.
+        :returns: full interfacing dictionary.
+        :raises: ExperimentException if invalid interface types provided
+         or if interfacing can not be resolved.
+        """
+
+        for sibling_slice_id, interface_value in interfacing_dict.items():
+            if interface_value not in interface_types:
+                errmsg = 'Interface value with slice {}: {} not valid. Types available are:'\
+                         '{}'.format(sibling_slice_id, interface_value, interface_types)
+                raise ExperimentException(errmsg)
+
+        full_interfacing_dict = {}
+
+        interface_types_list = list(interface_types)
+        # if this is not the first slice we are setting up, set up interfacing.
+        if len(self.slice_ids) != 0:
+            if len(interfacing_dict.keys()) > 0:
+                # the user provided some keys, so check that keys are valid.
+                # To do this, get the closest interface type.
+                # We assume that the user meant this to be the closest interfacing
+                # for this slice.
+                for sibling_slice_id in interfacing_dict.keys():
+                    if sibling_slice_id not in self.slice_ids:
+                        errmsg = 'Cannot add slice: the interfacing_dict set interfacing to an unknown slice'\
+                                 '{} not in slice ids {}'.format(sibling_slice_id, self.slice_ids)
+                        raise ExperimentException(errmsg)
+                try:
+                    closest_sibling = max(interfacing_dict.keys(),
+                                          key=lambda k: interface_types_list.index(
+                                               interfacing_dict[k]))
+                except ValueError as e:  # cannot find interface type in list
+                    errmsg = 'Interface types must be of valid types {}.'\
+                             ''.format(interface_types_list)
+                    raise ExperimentException(errmsg) from e
+                closest_interface_value = interfacing_dict[closest_sibling]
+                closest_interface_rank = interface_types_list.index(closest_interface_value)
+            else:
+                # the user provided no keys. The default is therefore 'SCAN'
+                # with all keys so the closest will be 'SCAN' (the furthest possible interface_type)
+                closest_sibling = self.slice_ids[0]
+                closest_interface_value = 'SCAN'
+                closest_interface_rank = interface_types_list.index(closest_interface_value)
+
+            # now populate a full_interfacing_dict based on the closest sibling's
+            # interface values and knowing how we interface with that sibling.
+            # this is the only correct interfacing given the closest interfacing.
+            full_interfacing_dict[closest_sibling] = closest_interface_value
+            for sibling_slice_id, siblings_interface_value in self.get_slice_interfacing(closest_sibling).items():
+                if interface_types_list.index(siblings_interface_value) >= closest_interface_rank:
+                    # in this case, the interfacing between the sibling
+                    # and the closest sibling is closer than the closest interface for the new slice.
+                    # therefore interface with this sibling should be equal to the closest interface.
+                    # Or if they are all at the same rank, then the interfacing should equal that rank.
+                    # For example, slices 0 and 1 combined PULSE. New slice 2 is
+                    # added with closest interfacing INTEGRATION to slice 0. Slice
+                    # 2 will therefore also be interfaced with slice 1 as INTEGRATION
+                    # type, since both slices 0 and 1 are in a single INTEGRATION.
+                    full_interfacing_dict[sibling_slice_id] = closest_interface_value
+                else:  # the rank is less than the closest rank.
+                    # in this case, the interfacing to this sibling should be the same as the
+                    # closest sibling interface to this sibling.
+                    # For example, slices 0 and 1 are combined SCAN and
+                    # slice 2 is combined INTTIME with slice 0 (closest). Therefore slice 2
+                    # should be combined SCAN with slice 1 since 0 and 2 are now
+                    # within the same scan.
+                    full_interfacing_dict[sibling_slice_id] = siblings_interface_value
+
+            # now check everything provided by the user with the correct full_interfacing_dict
+            # that was populated based on the closest sibling given by the user.
+            for sibling_slice_id, interface_value in interfacing_dict.items():
+                if interface_value != full_interfacing_dict[sibling_slice_id]:
+                    siblings_interface_value = self.get_slice_interfacing(closest_sibling)[sibling_slice_id]
+                    errmsg = 'The interfacing values of new slice cannot be reconciled. '\
+                             'Interfacing with slice {closest}: {interface1} and with slice '\
+                             '{other}: {interface2} does not make sense with existing interface between '\
+                             ' slices of {sibling_other}: {interface3}'.format(closest=closest_sibling,
+                                interface1=closest_interface_value, other=sibling_slice_id,
+                                interface2=interface_value,
+                                sibling_other=([sibling_slice_id, closest_sibling].sort()),
+                                interface3=siblings_interface_value)
+                    raise ExperimentException(errmsg)
+
+        return full_interfacing_dict
+
+    def __update_slice_interfacing(self):
+        """
+        Internal slice interfacing updater. This
+        should only be used internally when slice dictionary is
+        changed, to update all of the slices' interfacing dictionaries.
+        """
+        for slice_id in self.slice_ids:
+            self.__slice_dict[slice_id]['slice_interfacing'] = \
+                self.get_slice_interfacing(slice_id)
+
+    def add_slice(self, exp_slice, interfacing_dict={}):
         """
         Add a slice to the experiment.
 
@@ -765,7 +973,7 @@ class ExperimentPrototype(object):
             # TODO multiple types of Exceptions so they can be caught by the experiment in these
             # add_slice, edit_slice, del_slice functions (and handled specifically)
 
-        exp_slice['slice_id'] = self.new_slice_id
+        add_slice_id = exp_slice['slice_id'] = self.new_slice_id
         # each added slice has a unique slice id, even if previous slices have been deleted.
         exp_slice['cpid'] = self.cpid
 
@@ -773,51 +981,47 @@ class ExperimentPrototype(object):
         # will complete a check_slice and raise any errors found.
         new_exp_slice = self.setup_slice(exp_slice)
 
+        # now check that the interfacing values make sense before appending.
+        full_interfacing_dict = self.check_new_slice_interfacing(interfacing_dict)
+        for sibling_slice_id, interface_value in full_interfacing_dict.items():
+            # sibling_slice_id < new slice id so this maintains interface list requirement.
+            self.__interface[(sibling_slice_id, exp_slice['slice_id'])] = interface_value
+
         # if there were no errors raised in setup_slice, we will add the slice to the slice_dict.
-        self.__slice_dict[new_exp_slice['slice_id']] = new_exp_slice
+        self.__slice_dict[add_slice_id] = new_exp_slice
 
-        for ind in self.slice_ids:
-            if ind == new_exp_slice['slice_id']:
-                continue
-            try:
-                self._interface[(ind, new_exp_slice['slice_id'])] = interfacing_dict[ind]
-                # update to add interfacing. new slice_id will be greater than all others so
-                # we can add with ind first and maintain interfacing list rule of key1 < key2.
-            except (TypeError, IndexError, KeyError):
-                # if interfacing dictionary was not passed we will have TypeError
-                # if interfacing dictionary was passed but did not include all interfacing
-                # necessary (i.e. ind does not exist in interfacing dictionary), we will have
-                # IndexError - IndexError will always occur if called from  edit_slice because we
-                # have not removed the old slice_id yet and did not provide an interface for the
-                # new slice id with the old slice id TODO change this? (send an interface value of
-                # None for that key from edit_slice to add_slice?
-                self._interface[(ind, new_exp_slice['slice_id'])] = None
-                print('Interfacing not Fully Updated - Will Cause Errors so Please Update.')
-                # TODO log a warning if interfacing dictionary not updated at this time.
+        # reset all slice_interfacing since a slice has been added.
+        self.__update_slice_interfacing()
 
-        return new_exp_slice['slice_id']
+        return add_slice_id
 
     def del_slice(self, remove_slice_id):
         """
         Remove a slice from the experiment.
 
         :param remove_slice_id: the id of the slice you'd like to remove.
+        :returns: a copy of the removed slice.
         :raises: exception if remove_slice_id does not exist in the slice dictionary.
         """
-
         try:
+            removed_slice = copy.deepcopy(self.slice_dict[remove_slice_id])
             del(self.slice_dict[remove_slice_id])
-        except (IndexError, TypeError):
+        except (IndexError, TypeError) as e:
             errmsg = 'Cannot remove slice id {} : it does not exist in slice dictionary'.format(remove_slice_id)
-            raise ExperimentException(errmsg)
+            raise ExperimentException(errmsg) from e
 
         remove_keys = []
-        for key1, key2 in self._interface.keys():
+        for key1, key2 in self.__interface.keys():
             if key1 == remove_slice_id or key2 == remove_slice_id:
                 remove_keys.append((key1, key2))
 
         for keyset in remove_keys:
-            del self._interface[keyset]
+            del self.__interface[keyset]
+
+        # reset all slice_interfacing since a slice has been removed.
+        self.__update_slice_interfacing()
+
+        return removed_slice
 
     def edit_slice(self, edit_slice_id, **kwargs):
         """
@@ -826,16 +1030,17 @@ class ExperimentPrototype(object):
         A quick way to edit a slice. In reality this is actually adding a new slice and
         deleting the old one. Useful for quick changes. Note that using this function
         will remove the slice_id that you are changing and will give it a new id. It will
-        account for this in the interfacing dictionary though.
+        account for this in the interfacing dictionary.
 
         :param edit_slice_id: the slice id of the slice to be edited.
         :param kwargs: dictionary of slice parameter to slice value that you want to
          change.
-        :returns new_slice_id: the new slice id of the edited slice.
+        :returns new_slice_id: the new slice id of the edited slice, or the edit_slice_id
+         if no change has occurred due to failure of new slice parameters to pass experiment
+         checks.
         :raises: exceptions if the edit_slice_id does not exist in slice dictionary or
          the params or values do not make sense.
         """
-
         slice_params_to_edit = dict(kwargs)
 
         try:
@@ -853,24 +1058,36 @@ class ExperimentPrototype(object):
                 errmsg = 'Cannot edit slice: {} not a valid slice parameter'.format(edit_slice_param)
                 raise ExperimentException(errmsg)
 
-        # Move the interface values from old slice to new slice.
-        new_interface_values = {}
-        for ifkey, ifvalue in self._interface.items():
-            if edit_slice_id == ifkey[0]:
-                new_interface_values[ifkey[1]] = ifvalue
-            elif edit_slice_id == ifkey[1]:
-                new_interface_values[ifkey[0]] = ifvalue
+        # Get the interface values of the slice. These are not editable, if
+        # these are wished to be changed add_slice must be used explicitly
+        # to interface a new slice.
+        interface_values = self.get_slice_interfacing(edit_slice_id)
 
-        # This interface value will be removed when the slice is deleted.
-        new_interface_values[edit_slice_id] = None
+        removed_slice = self.del_slice(edit_slice_id)
 
-        # checks are done when slice is added.
-        new_slice_id = self.add_slice(edited_slice, new_interface_values)
+        try:
+            # checks are done on interfacing when slice is added.
+            # interfacing between existing slice_ids cannot be changed after addition.
+            new_slice_id = self.add_slice(edited_slice, interface_values)
+            return new_slice_id
 
-        # slice ids are checked after slice is removed, and interface values are removed.
-        self.del_slice(edit_slice_id)
+        except ExperimentException:
+            # if any failure occurs when checking the slice, the slice has
+            # not been added to the slice dictionary so we will
+            # revert to old slice
+            self.__slice_dict[edit_slice_id] = removed_slice
 
-        return new_slice_id
+            readd_keys = []
+            for key1, key1_interface in interface_values.items():
+                if key1 < edit_slice_id:
+                    self.__interface[(key1, edit_slice_id)] = key1_interface
+                else:
+                    self.__interface[(edit_slice_id, key1)] = key1_interface
+
+            # reset all slice_interfacing back
+            self.__update_slice_interfacing()
+
+            return edit_slice_id
 
     def __repr__(self):
         represent = 'self.cpid = {}\nself.num_slices = {}\nself.slice_ids = {}\nself.slice_keys = {}\nself.options = \
@@ -1117,7 +1334,7 @@ class ExperimentPrototype(object):
 
             if exp_slice['clrfrqrange'][0] >= exp_slice['clrfrqrange'][1]:
                 errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or centre frequencies / sampling
+                            frequencies {} according to license and/or center frequencies / sampling
                             rates / transition bands, and must have lower frequency first.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
@@ -1125,7 +1342,7 @@ class ExperimentPrototype(object):
             if (exp_slice['clrfrqrange'][1] * 1000) >= self.tx_maxfreq or \
                     (exp_slice['clrfrqrange'][1] * 1000) >= self.rx_maxfreq:
                 errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or centre frequencies / sampling
+                            frequencies {} according to license and/or center frequencies / sampling
                             rates / transition bands, and must have lower frequency first.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
@@ -1133,7 +1350,7 @@ class ExperimentPrototype(object):
             if (exp_slice['clrfrqrange'][0] * 1000) <= self.tx_minfreq or \
                     (exp_slice['clrfrqrange'][0] * 1000) <= self.rx_minfreq:
                 errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or centre frequencies / sampling
+                            frequencies {} according to license and/or center frequencies / sampling
                             rates / transition bands, and must have lower frequency first.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
@@ -1188,13 +1405,13 @@ class ExperimentPrototype(object):
             if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
                                                                       float):
                 errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given centre frequency, sampling
+                            the radar license and be within range given center frequency, sampling 
                             rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             if (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
                                                                    1000) <= self.rx_minfreq:
                 errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given centre frequency, sampling
+                            the radar license and be within range given center frequency, sampling
                             rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
 
@@ -1204,7 +1421,7 @@ class ExperimentPrototype(object):
                                                                           float):
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies, sampling rates and transition band.
+                            given center frequencies, sampling rates and transition band.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1212,7 +1429,7 @@ class ExperimentPrototype(object):
                     self.rx_maxfreq:
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies, sampling rates and transition band.
+                            given center frequencies, sampling rates and transition band.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1220,7 +1437,7 @@ class ExperimentPrototype(object):
                     self.rx_minfreq:
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies, sampling rates and transition band.
+                            given center frequencies, sampling rates and transition band.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1300,6 +1517,16 @@ class ExperimentPrototype(object):
                 ' Hz.'.format(exp_slice['pulse_len'], self.output_rx_rate)
                 raise ExperimentException(errmsg)
 
+            if 'averaging_method' in exp_slice:
+                if exp_slice['averaging_method'] in possible_averaging_methods:
+                    slice_with_defaults['averaging_method'] = exp_slice['averaging_method']
+                else:
+                    errmsg = 'Averaging method {} not valid method. Possible methods are ' \
+                             '{}'.format(exp_slice['averaging_method'], possible_averaging_methods)
+                    raise ExperimentException(errmsg)
+            else:
+                slice_with_defaults['averaging_method'] = 'mean'
+
             if 'lag_table' in exp_slice:
                 # Check that lags are valid
                 for lag in exp_slice['lag_table']:
@@ -1319,15 +1546,18 @@ class ExperimentPrototype(object):
                 slice_with_defaults['lag_table'] = lag_table
 
         else:
-            # TODO log range_sep, lag_table, xcf, and acfint will not be used
+            # TODO log range_sep, lag_table, xcf, acfint, and averaging_method will not be used
             if __debug__:
-                print('range_sep, lag_table, xcf, and acfint will not be used because acf is '
-                              'not True.')
+                print('range_sep, lag_table, xcf, acfint, and averaging_method will not be used '
+                              'because acf is not True.')
             if 'range_sep' not in exp_slice.keys():
                 slice_with_defaults['range_sep'] = slice_with_defaults['pulse_len'] * 1.0e-9 * \
                                                       speed_of_light/2.0
             if 'lag_table' not in exp_slice.keys():
                 slice_with_defaults['lag_table'] = []
+
+            if 'averaging_method' not in exp_slice.keys():
+                slice_with_defaults['averaging_method'] = None
 
         if 'wavetype' not in exp_slice:
             slice_with_defaults['wavetype'] = 'SINE'
@@ -1348,8 +1578,7 @@ class ExperimentPrototype(object):
 
         The following are always able to be defaulted, so are optional:
         "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_phase_offset", "scanboundflag",
-        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset"
-
+        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset", "averaging_method"
 
         The following are always required for processing acf, xcf, and acfint which we will assume
         we are always doing:
@@ -1436,8 +1665,6 @@ class ExperimentPrototype(object):
 
         if __debug__:
             print("No Self Check Errors. Continuing...")
-
-        self.check_interfacing()
 
     def check_slice(self, exp_slice):
         """
@@ -1637,39 +1864,11 @@ class ExperimentPrototype(object):
 
         return error_list
 
-    def check_interfacing(self):
-        """
-        Check that the keys in the interface are not NONE and are valid. If they are valid,
-        update all slices' slice_interfacing key. This function is called whenever scans are built.
-        """
-
-        for key, interface_type in self.interface.items():
-            if interface_type == "NONE":
-                errmsg = 'Interfacing is still default, must set key {}'.format(key)
-                sys.exit(
-                    errmsg)  # TODO for error handling. Perhaps use exceptions instead. REPLY OK
-
-        for num1, num2 in self.interface.keys():
-            if num1 >= self.num_slices or num2 >= self.num_slices or num1 < 0 or num2 < 0:
-                # This is required for how I have it set up. Avoids any confusion
-                #  with keys [0,2] vs [2,0] for example. Because you could add your own keys I check it.
-                errmsg = """Interfacing key ({}, {}) is not valid, all keys must refer to (slice_id1,
-                slice_id2) where slice_id1 < slice_id2""".format(num1, num2)
-                sys.exit(errmsg)  # TODO for error handling. Perhaps use exceptions instead.
-            if self.interface[num1, num2] not in interface_types:
-                errmsg = 'Interfacing Not Valid Type between Slice_id {} and Slice_id {}'.format(
-                    num1, num2)
-                sys.exit(errmsg)  # TODO for error handling. Perhaps use exceptions instead.
-
-        # Interfacing is valid - set the slice dictionary's slice_interfacing key.
-        for slice_id in self.slice_ids:
-            self.__slice_dict[slice_id]['slice_interfacing'] = self.get_slice_interfacing(slice_id)
-
     def get_slice_interfacing(self, slice_id):
         """
         Check the experiment's interfacing dictionary for all interfacing that pertains to a
         given slice, and return the interfacing information in a dictionary.
-        :param slice_id: Slice ID to search the
+        :param slice_id: Slice ID to search the interface dictionary for.
         :return: interfacing dictionary for the slice.
         """
 
@@ -1683,3 +1882,4 @@ class ExperimentPrototype(object):
                 slice_interface[num1] = interfacing_type
 
         return slice_interface
+

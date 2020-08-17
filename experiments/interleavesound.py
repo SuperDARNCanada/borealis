@@ -12,8 +12,8 @@ sys.path.append(BOREALISPATH)
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
-class InterleavedSound(ExperimentPrototype):
-    """Interleavedsound is a modified version of Interleavedscan with added sounding
+class InterleaveSound(ExperimentPrototype):
+    """Interleavesound is a modified version of Interleavedscan with added sounding
     frequency data.
 
     Interleavedscan was requested in 2016 by Tomo Hori to support the ERG mission.
@@ -74,7 +74,7 @@ class InterleavedSound(ExperimentPrototype):
                 "lag_table": scf.STD_8P_LAG_TABLE, # lag table needed for 8P since not all lags used.
                 })
 
-        super(InterleavedSound, self).__init__(cpid, comment_string=InterleaveSound.__doc__)
+        super(InterleaveSound, self).__init__(cpid, comment_string=InterleaveSound.__doc__)
 
         self.add_slice(slices[0])
         self.add_slice(slices[1], {0:'SCAN'})
