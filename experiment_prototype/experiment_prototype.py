@@ -31,7 +31,7 @@ from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, DecimationStage, \
     create_default_scheme
 
-interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
+interface_types = tuple(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
 
 Interfacing in this case refers to how two or more components are 
@@ -872,7 +872,6 @@ class ExperimentPrototype(object):
 
         full_interfacing_dict = {}
 
-        interface_types_list = list(interface_types)
         # if this is not the first slice we are setting up, set up interfacing.
         if len(self.slice_ids) != 0:
             if len(interfacing_dict.keys()) > 0:
@@ -887,27 +886,27 @@ class ExperimentPrototype(object):
                         raise ExperimentException(errmsg)
                 try:
                     closest_sibling = max(interfacing_dict.keys(),
-                                          key=lambda k: interface_types_list.index(
+                                          key=lambda k: interface_types.index(
                                                interfacing_dict[k]))
                 except ValueError as e:  # cannot find interface type in list
                     errmsg = 'Interface types must be of valid types {}.'\
-                             ''.format(interface_types_list)
+                             ''.format(interface_types)
                     raise ExperimentException(errmsg) from e
                 closest_interface_value = interfacing_dict[closest_sibling]
-                closest_interface_rank = interface_types_list.index(closest_interface_value)
+                closest_interface_rank = interface_types.index(closest_interface_value)
             else:
                 # the user provided no keys. The default is therefore 'SCAN'
                 # with all keys so the closest will be 'SCAN' (the furthest possible interface_type)
                 closest_sibling = self.slice_ids[0]
                 closest_interface_value = 'SCAN'
-                closest_interface_rank = interface_types_list.index(closest_interface_value)
+                closest_interface_rank = interface_types.index(closest_interface_value)
 
             # now populate a full_interfacing_dict based on the closest sibling's
             # interface values and knowing how we interface with that sibling.
             # this is the only correct interfacing given the closest interfacing.
             full_interfacing_dict[closest_sibling] = closest_interface_value
             for sibling_slice_id, siblings_interface_value in self.get_slice_interfacing(closest_sibling).items():
-                if interface_types_list.index(siblings_interface_value) >= closest_interface_rank:
+                if interface_types.index(siblings_interface_value) >= closest_interface_rank:
                     # in this case, the interfacing between the sibling
                     # and the closest sibling is closer than the closest interface for the new slice.
                     # therefore interface with this sibling should be equal to the closest interface.
