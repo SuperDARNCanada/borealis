@@ -548,14 +548,16 @@ def radar():
                         scan_iter = 0
                     next_scanbound = experiment.scan_objects[scan_iter].scanbound
 
-                # align scanbound reference time to find when to start
-                now = datetime.utcnow()
-                dt = now.replace(second=0, microsecond=0)
+                if scan_num == 0:
+                    # on first scan object, reset start_minute
+                    # align scanbound reference time to find when to start
+                    now = datetime.utcnow()
+                    dt = now.replace(second=0, microsecond=0)
 
-                if dt + timedelta(seconds=scan.scanbound[scan.aveperiod_iter]) >= now:
-                    start_minute = dt
-                else:
-                    start_minute = round_up_time(now)
+                    if dt + timedelta(seconds=scan.scanbound[scan.aveperiod_iter]) >= now:
+                        start_minute = dt
+                    else:
+                        start_minute = round_up_time(now)
 
                 last_aveperiod_intt = scan.aveperiods[(scan.num_aveperiods_in_scan % len(scan.aveperiods))].intt
                 # a scanbound necessitates intt
@@ -686,7 +688,7 @@ def radar():
                             # we have enough time left to run the integration period.
                             time_elapsed = integration_period_start_time - start_minute
                             if scan.aveperiod_iter < len(scan.scanbound) - 1:
-                                scanbound_time = scan.scanbound[scan.aveperiod_iter+1] - scan.scanbound[0]
+                                scanbound_time = scan.scanbound[scan.aveperiod_iter+1]
                                 bound_time_remaining = scanbound_time - time_elapsed.total_seconds()
                             else:
                                 bound_time_remaining = next_scan_start - integration_period_start_time
