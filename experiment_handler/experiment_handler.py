@@ -240,7 +240,7 @@ def experiment_handler(semaphore):
                                           protocol=pickle.HIGHEST_PROTOCOL)
         else:
             exp.build_scans()
-            printing("Sucessful experiment {exp} built with CPID {cp}".format(
+            printing("Successful experiment {exp} built with CPID {cp}".format(
                      exp=exp.__class__.__name__, cp=exp.cpid))
             serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
             # use the newest, fastest protocol (currently version 4 in python 3.4+)
