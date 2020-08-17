@@ -30,7 +30,8 @@ class Scan(ScanClassBase):
 
 
     scanbound
-        A list of seconds past the minute for scans to align to.
+        A list of seconds past the minute for scans to align to. Must be increasing, 
+        and it is possible to have values greater than 60s.
     """
 
     def __init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata):
