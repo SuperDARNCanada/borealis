@@ -675,7 +675,7 @@ def radar():
                         beam_scanbound = start_minute + timedelta(seconds=scan.scanbound[scan_iter])
                         time_diff = beam_scanbound - datetime.utcnow()
                         if time_diff.total_seconds() > 0:
-                            if __debug__:
+                            if __debug__ or first_integration:
                                 msg = "{}s until averaging period {} at time {}"
                                 msg = msg.format(sm.COLOR("blue", time_diff.total_seconds()),
                                                 sm.COLOR("yellow", scan_iter),
@@ -705,9 +705,10 @@ def radar():
                             bound_time_remaining = next_scan_start - integration_period_start_time
                             bound_time_remaining = bound_time_remaining.total_seconds()
 
-                        msg = "averaging period {}: bound_time_remaining {}s"
-                        msg = msg.format(sm.COLOR("yellow", scan_iter),
-                                         sm.COLOR("blue", bound_time_remaining))
+                        msg = "scan {} averaging period {}: bound_time_remaining {}s"
+                        msg = msg.format(sm.COLOR("yellow", scan_num),
+                                         sm.COLOR("yellow", scan_iter),
+                                         sm.COLOR("blue", round(bound_time_remaining, 6)))
                         rad_ctrl_print(msg)
 
                         if bound_time_remaining < aveperiod.intt*1e-3:
