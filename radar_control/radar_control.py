@@ -524,7 +524,7 @@ def radar():
 
         for scan_num, scan in enumerate(experiment.scan_objects):
             # aveperiod iter is the iterator through the scanbound, or the iterator through all aveperiods' beams, if no scanbound.
-            scan.aveperiod_iter = 0
+            scan_iter = 0
             # if a new experiment was received during the last scan, it finished the integration period it was on and
             # returned here with new_experiment_waiting set to True. Break to load new experiment.
             if new_experiment_waiting:  # start anew on first scan if we have a new experiment.
@@ -554,7 +554,7 @@ def radar():
                     now = datetime.utcnow()
                     dt = now.replace(second=0, microsecond=0)
 
-                    if dt + timedelta(seconds=scan.scanbound[scan.aveperiod_iter]) >= now:
+                    if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now:
                         start_minute = dt
                     else:
                         start_minute = round_up_time(now)
@@ -569,10 +569,10 @@ def radar():
                 else:
                     next_scan_start = round_up_time(end_of_scan) + timedelta(seconds=next_scanbound[0])
 
-            while scan.aveperiod_iter < scan.num_aveperiods_in_scan and not new_experiment_waiting:
+            while scan_iter < scan.num_aveperiods_in_scan and not new_experiment_waiting:
                 # If there are multiple aveperiods in a scan they are alternated (INTTIME interfaced)
                 for aveperiod in scan.aveperiods:
-                    if scan.aveperiod_iter == scan.num_aveperiods_in_scan:
+                    if scan_iter == scan.num_aveperiods_in_scan:
                         break
                     if TIME_PROFILE:
                         time_start_of_aveperiod = datetime.utcnow()
@@ -663,20 +663,20 @@ def radar():
                             # calculate scan start time. First beam in the sequence will likely
                             # be ready to go if the first scan aligns directly to the minute. The
                             # rest will need to wait until their boundary time is up.
-                            beam_scanbound = start_minute + timedelta(seconds=scan.scanbound[scan.aveperiod_iter])
+                            beam_scanbound = start_minute + timedelta(seconds=scan.scanbound[scan_iter])
                             time_diff = beam_scanbound - datetime.utcnow()
                             if time_diff.total_seconds() > 0:
                                 if __debug__:
                                     msg = "{}s until averaging period {} at time {}"
                                     msg = msg.format(sm.COLOR("blue", time_diff.total_seconds()),
-                                                    sm.COLOR("yellow", scan.aveperiod_iter),
+                                                    sm.COLOR("yellow", scan_iter),
                                                     sm.COLOR("red", beam_scanbound))
                                     rad_ctrl_print(msg)
                                 time.sleep(time_diff.total_seconds())
                             else:
                                 if __debug__:
                                     msg = "starting averaging period {} at time {}"
-                                    msg = msg.format(sm.COLOR("yellow", scan.aveperiod_iter),
+                                    msg = msg.format(sm.COLOR("yellow", scan_iter),
                                                      sm.COLOR("red", beam_scanbound))
                                     rad_ctrl_print(msg)
 
@@ -689,15 +689,15 @@ def radar():
                             # of time we can integrate for this scan boundary. We can then see if
                             # we have enough time left to run the integration period.
                             time_elapsed = integration_period_start_time - start_minute
-                            if scan.aveperiod_iter < len(scan.scanbound) - 1:
-                                scanbound_time = scan.scanbound[scan.aveperiod_iter+1]
+                            if scan_iter < len(scan.scanbound) - 1:
+                                scanbound_time = scan.scanbound[scan_iter+1]
                                 bound_time_remaining = scanbound_time - time_elapsed.total_seconds()
                             else:
                                 bound_time_remaining = next_scan_start - integration_period_start_time
                                 bound_time_remaining = bound_time_remaining.total_seconds()
 
                             msg = "averaging period {}: bound_time_remaining {}s"
-                            msg = msg.format(sm.COLOR("yellow", scan.aveperiod_iter),
+                            msg = msg.format(sm.COLOR("yellow", scan_iter),
                                              sm.COLOR("blue", bound_time_remaining))
                             rad_ctrl_print(msg)
 
@@ -820,7 +820,7 @@ def radar():
                     msg = msg.format(sm.COLOR("magenta", num_sequences))
                     rad_ctrl_print(msg)
 
-                    if scan.aveperiod_iter == 0:  # The first integration time in the scan.
+                    if scan_iter == 0:  # The first integration time in the scan.
                         scan_flag = True
                     else:
                         scan_flag = False
@@ -845,7 +845,10 @@ def radar():
                         rad_ctrl_print('Time to finish aveperiod: {}'.format(time_to_finish_aveperiod))
 
                     aveperiod.beam_iter += 1
-                    scan.aveperiod_iter += 1
+                    scan_iter += 1
+                    scan.aveperiod_iter +=1
+                    if scan.aveperiod_iter == len(scan.aveperiods):
+                        scan.aveperiod_iter = 0
 
 
 if __name__ == "__main__":
