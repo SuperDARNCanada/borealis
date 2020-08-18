@@ -55,7 +55,7 @@ class InterleaveSound(ExperimentPrototype):
             "lag_table": scf.STD_8P_LAG_TABLE, # lag table needed for 8P since not all lags used.
         })
 
-        sounding_scanbound = [49 + i * 1.5 for i in range(len(scf.SOUNDING_FREQS))]
+        sounding_scanbound = [49 + i * 1.5 for i in range(7)]
         for num, freq in enumerate(scf.SOUNDING_FREQS):
             slices.append({
                 "pulse_sequence": scf.SEQUENCE_8P,
