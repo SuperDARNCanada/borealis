@@ -602,22 +602,6 @@ def radar():
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()
 
-                if aveperiod in aveperiods_done_list:
-                    continue  # beam_iter index is past the end of the beam_order list for this aveperiod, but other aveperiods must still contain a beam at index beam_iter in the beam_order list.
-                else:
-                    if aveperiod.beam_iter == aveperiod.num_beams_in_scan:
-                        # All slices in the aveperiod have the same length beam_order.
-                        # Check if we are at the end of the beam_order list (scan) for this aveperiod instance.
-                        # If we are, we still might not be done all of the beams in another aveperiod,
-                        # so we should just record that we are done with this one for this scan and
-                        # keep going to check the next aveperiod type.
-                        aveperiod.beam_iter = 0
-                        aveperiods_done_list.append(aveperiod)
-                        if len(aveperiods_done_list) == len(scan.aveperiods):
-                            aveperiods_done_list = [] # reset, all aveperiods are at beam_iter = 0, and continue
-                            break
-                        continue
-
                 # get new experiment here, before starting a new integration.
                 # if new_experiment_waiting is set here, we will implement the new_experiment after this integration
                 # period.
