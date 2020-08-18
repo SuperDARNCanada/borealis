@@ -59,7 +59,7 @@ class InterleaveSound(ExperimentPrototype):
         })
 
         sounding_scanbound_spacing = 1.5 # seconds
-        sounding_intt_ms = sounding_scanbound_spacing * 1.0e3 - 100
+        sounding_intt_ms = sounding_scanbound_spacing * 1.0e3 - 250
 
         sounding_scanbound = [48 + i * sounding_scanbound_spacing for i in range(8)]
         for num, freq in enumerate(scf.SOUNDING_FREQS):
