@@ -82,7 +82,7 @@ class Scan(ScanClassBase):
         else:
             self.num_aveperiods_in_scan = self.num_unique_aveperiods
 
-        self.aveperiod_iter = 0 # used to keep track of place in scan.
+        self.aveperiod_iter = 0 # used to keep track of index into aveperiods list.
         # AveragingPeriod will be in slice_id # order
 
     def get_inttime_slice_ids(self):
