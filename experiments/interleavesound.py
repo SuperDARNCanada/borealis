@@ -36,6 +36,9 @@ class InterleaveSound(ExperimentPrototype):
             beams_to_use = reverse_beams
 
         slices = []
+        
+        common_scanbound_spacing = 3.0 # seconds
+        common_intt_ms = common_scanbound_spacing * 1.0e3 - 100  # reduce by 100 ms for processing
 
         slices.append({  # slice_id = 0, the first slice
             "pulse_sequence": scf.SEQUENCE_8P,
@@ -43,11 +46,11 @@ class InterleaveSound(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": scf.STD_NUM_RANGES,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": 2900,  # duration of an integration, in ms
+            "intt": common_intt_ms,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             # this scanbound will be aligned because len(beam_order) = len(scanbound)
-            "scanbound" : [i * 3 for i in range(len(beams_to_use))],
+            "scanbound" : [i * common_scanbound_spacing for i in range(len(beams_to_use))],
             "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
@@ -55,7 +58,10 @@ class InterleaveSound(ExperimentPrototype):
             "lag_table": scf.STD_8P_LAG_TABLE, # lag table needed for 8P since not all lags used.
         })
 
-        sounding_scanbound = [49 + i * 1.5 for i in range(7)]
+        sounding_scanbound_spacing = 1.5 # seconds
+        sounding_intt_ms = sounding_scanbound_spacing * 1.0e3 - 100
+
+        sounding_scanbound = [48 + i * sounding_scanbound_spacing for i in range(8)]
         for num, freq in enumerate(scf.SOUNDING_FREQS):
             slices.append({
                 "pulse_sequence": scf.SEQUENCE_8P,
@@ -63,7 +69,7 @@ class InterleaveSound(ExperimentPrototype):
                 "pulse_len": scf.PULSE_LEN_45KM,
                 "num_ranges": scf.STD_NUM_RANGES,
                 "first_range": scf.STD_FIRST_RANGE,
-                "intt": 1250,  # duration of an integration, in ms
+                "intt": sounding_intt_ms,  # duration of an integration, in ms
                 "beam_angle": scf.STD_16_BEAM_ANGLE,
                 "beam_order": sounding_beams,
                 "scanbound" : sounding_scanbound,
