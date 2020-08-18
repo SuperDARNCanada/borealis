@@ -788,7 +788,7 @@ def radar():
                         intt_break = False
                         ending_number_of_sequences = aveperiod.intn # this will exist
 
-                    msg = "AvePeriod slices and beam directions: {}".format(
+                    msg = "AvePeriod slices and beam numbers: {}".format(
                             {x: y[aveperiod.beam_iter] for x,y in aveperiod.slice_to_beamorder.items()})
                     rad_ctrl_print(msg)
 
