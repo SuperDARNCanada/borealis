@@ -523,7 +523,7 @@ def radar():
             new_experiment_loaded = True
 
         for scan_num, scan in enumerate(experiment.scan_objects):
-            # aveperiod iter is the iterator through the scanbound, or the iterator through all aveperiods' beams, if no scanbound.
+            # scan iter is the iterator through the scanbound or through the number of averaging periods in the scan.
             scan_iter = 0
             # if a new experiment was received during the last scan, it finished the integration period it was on and
             # returned here with new_experiment_waiting set to True. Break to load new experiment.
@@ -541,12 +541,12 @@ def radar():
                 # find the start of the next scan with a scanbound so we can 
                 # determine time remaining for end of scan
                 next_scanbound = None
-                scan_iter = scan_num
+                next_scan_num = scan_num
                 while next_scanbound == None:
-                    scan_iter += 1
-                    if scan_iter == len(experiment.scan_objects):
-                        scan_iter = 0
-                    next_scanbound = experiment.scan_objects[scan_iter].scanbound
+                    next_scan_num += 1
+                    if next_scan_num == len(experiment.scan_objects):
+                        next_scan_num = 0
+                    next_scanbound = experiment.scan_objects[next_scan_num].scanbound
 
                 if scan_num == 0:
                     # on first scan object, reset start_minute
