@@ -1414,45 +1414,46 @@ class ExperimentPrototype(object):
 
         elif exp_slice['rxonly']:  # RX only mode.
             # In this mode, rxfreq is required.
+            freq_error = False
             if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
                                                                       float):
-                errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given center frequency, sampling 
-                            rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
-                raise ExperimentException(errmsg)
-            if (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
+                freq_error = True
+            elif (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
                                                                    1000) <= self.rx_minfreq:
+                freq_error = True
+
+            if freq_error:
                 errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given center frequency, sampling
-                            rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
+                            the radar license and be within range given center frequency {} kHz, sampling
+                            rate {} kHz, and transition band {} kHz.""".format((self.rx_minfreq/1.0e3, 
+                                    self.rx_maxfreq/1.0e3),
+                                    self.rxctrfreq, self.rx_bandwidth/1.0e3, transition_bandwidth/1.0e3)
                 raise ExperimentException(errmsg)
 
         else:  # TX-specific mode , without a clear frequency search.
             # In this mode, txfreq is required along with the other requirements.
+            freq_error = False
             if not isinstance(exp_slice['txfreq'], int) and not isinstance(exp_slice['txfreq'],
                                                                           float):
-                errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
-                            rx min and max frequencies {} for the radar license and be within range
-                            given center frequencies, sampling rates and transition band.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
-                                       (self.rx_minfreq, self.rx_maxfreq))
-                raise ExperimentException(errmsg)
-            if (exp_slice['txfreq'] * 1000) >= self.tx_maxfreq or (exp_slice['txfreq'] * 1000) >= \
+                freq_error = True
+            elif (exp_slice['txfreq'] * 1000) >= self.tx_maxfreq or (exp_slice['txfreq'] * 1000) >= \
                     self.rx_maxfreq:
-                errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
-                            rx min and max frequencies {} for the radar license and be within range
-                            given center frequencies, sampling rates and transition band.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
-                                       (self.rx_minfreq, self.rx_maxfreq))
-                raise ExperimentException(errmsg)
-            if (exp_slice['txfreq'] * 1000) <= self.tx_minfreq or (exp_slice['txfreq'] * 1000) <= \
+                freq_error = True
+            elif (exp_slice['txfreq'] * 1000) <= self.tx_minfreq or (exp_slice['txfreq'] * 1000) <= \
                     self.rx_minfreq:
+                freq_error = True
+            
+            if freq_error:
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
-                            given center frequencies, sampling rates and transition band.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
-                                       (self.rx_minfreq, self.rx_maxfreq))
+                            given center frequencies (tx: {} kHz, rx: {} kHz), sampling rates (tx: {} kHz, 
+                            rx: {} kHz), and transition band ({} kHz).
+                            """.format((self.tx_minfreq/1.0e3, self.tx_maxfreq/1.0e3),
+                                       (self.rx_minfreq/1.0e3, self.rx_maxfreq/1.0e3), self.txctrfreq, self.rxctrfreq, 
+                                       self.tx_bandwidth/1.0e3, self.rx_bandwidth/1.0e3, transition_bandwidth/1.0e3)
                 raise ExperimentException(errmsg)
+            
+            
             for freq_range in self.options.restricted_ranges:
                 if exp_slice['txfreq'] in range(freq_range[0], freq_range[1]):
                     errmsg = """txfreq is within a restricted frequency range {}
