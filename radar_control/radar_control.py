@@ -666,17 +666,19 @@ def radar():
                             beam_scanbound = start_minute + timedelta(seconds=scan.scanbound[scan.aveperiod_iter])
                             time_diff = beam_scanbound - datetime.utcnow()
                             if time_diff.total_seconds() > 0:
-                                msg = "{}s until averaging period {} at time {}"
-                                msg = msg.format(sm.COLOR("blue", time_diff.total_seconds()),
-                                                sm.COLOR("yellow", scan.aveperiod_iter),
-                                                sm.COLOR("red", beam_scanbound))
-                                rad_ctrl_print(msg)
+                                if __debug__:
+                                    msg = "{}s until averaging period {} at time {}"
+                                    msg = msg.format(sm.COLOR("blue", time_diff.total_seconds()),
+                                                    sm.COLOR("yellow", scan.aveperiod_iter),
+                                                    sm.COLOR("red", beam_scanbound))
+                                    rad_ctrl_print(msg)
                                 time.sleep(time_diff.total_seconds())
                             else:
-                                msg = "starting averaging period {} at time {}"
-                                msg = msg.format(sm.COLOR("yellow", scan.aveperiod_iter),
-                                                 sm.COLOR("red", beam_scanbound))
-                                rad_ctrl_print(msg)
+                                if __debug__:
+                                    msg = "starting averaging period {} at time {}"
+                                    msg = msg.format(sm.COLOR("yellow", scan.aveperiod_iter),
+                                                     sm.COLOR("red", beam_scanbound))
+                                    rad_ctrl_print(msg)
 
                             integration_period_start_time = datetime.utcnow()  # ms
                             msg = "Integration start time: {}"
@@ -714,6 +716,10 @@ def radar():
                     else:  # intt does not exist, therefore using intn
                         intt_break = False
                         ending_number_of_sequences = aveperiod.intn # this will exist
+
+                    msg = "AvePeriod slices and beam directions: {}".format( 
+                            {x: y[aveperiod.beam_iter] for x,y in aveperiod.slice_to_beamorder.items()})
+                    rad_ctrl_print(msg)
 
                     first_sequence_out = False
 
