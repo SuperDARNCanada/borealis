@@ -119,8 +119,9 @@ The file fields in the antennas_iq array files are:
 | | [num_records]                   | |                                           | 
 +-----------------------------------+---------------------------------------------+
 | | **num_samps**                   | | Number of samples in the sampling         |
-| | *uint32*                        | | periods. Will also be provided as the     |
-| |                                 | | last data_dimension value.                |  
+| | *uint32*                        | | period. Each sequence has its own         |
+| |                                 | | sampling period. Will also be provided    |
+| |                                 | | as the last data_dimension value.         | 
 +-----------------------------------+---------------------------------------------+
 | | **num_sequences**               | | Number of sampling periods (equivalent to |
 | | *int64*                         | | number sequences transmitted) in the      | 
@@ -266,9 +267,10 @@ The file fields under the record name in antennas_iq site files are:
 | |                                | | 20191114: not currently implemented and   | 
 | |                                | | filled with zeros. Still a TODO.          |
 +----------------------------------+---------------------------------------------+
-| | **num_samps**                  | | Number of samples in the sampling period. | 
-| | *uint32*                       | | Will also be provided as the last         |
-| |                                | | data_dimensions value.                    |
+| | **num_samps**                  | | Number of samples in the sampling         |
+| | *uint32*                       | | period. Each sequence has its own         |
+| |                                | | sampling period. Will also be provided    |
+| |                                | | as the last data_dimension value.         |
 +----------------------------------+---------------------------------------------+
 | | **num_sequences**              | | Number of sampling periods (equivalent to | 
 | | *int64*                        | | number sequences transmitted) in the      | 

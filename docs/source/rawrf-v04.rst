@@ -72,9 +72,10 @@ The file fields under the record name in rawrf site files are:
 | | **main_antenna_count**         | | Number of main array antennas             |
 | | *uint32*                       | |                                           | 
 +----------------------------------+---------------------------------------------+
-| | **num_samps**                  | | Number of samples in the sampling period. | 
-| | *uint32*                       | | Will also be provided as the last         |
-| |                                | | data_dimensions value.                    |
+| | **num_samps**                  | | Number of samples in the sampling         |
+| | *uint32*                       | | period. Each sequence has its own         |
+| |                                | | sampling period. Will also be provided    |
+| |                                | | as the last data_dimension value.         |
 +----------------------------------+---------------------------------------------+
 | | **num_sequences**              | | Number of sampling periods (equivalent to | 
 | | *int64*                        | | number sequences transmitted) in the      | 
