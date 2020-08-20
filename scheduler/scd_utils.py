@@ -27,7 +27,7 @@ class SCDUtils(object):
         self.scd_filename = scd_filename
         self.scd_dt_fmt = "%Y%m%d %H:%M"
         self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode}"
-        self.scd_default = self.check_line('20000101', '00:00', 'normalscan', '0', '-', 'common')
+        self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
     def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration):
         """Checks the line parameters to see if they are valid and then returns a dict with all
