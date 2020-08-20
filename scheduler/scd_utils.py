@@ -30,6 +30,7 @@ class SCDUtils(object):
         self.scd_default = self.check_line('20000101', '00:00', 'normalscan', '0', '-')
 
 
+
     def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string=''):
         """Checks the line parameters to see if they are valid and then returns a dict with all
         the valid fields.
@@ -108,7 +109,6 @@ class SCDUtils(object):
         scd_lines.append(self.scd_default)
 
         for num, line in enumerate(raw_scd):
-<<<<<<< HEAD
             if len(line) not in [6, 7]:
                 raise ValueError("Line {} has incorrect number of arguments; requires 6 or 7.".format(num))
             # date time experiment mode priority duration
@@ -116,16 +116,10 @@ class SCDUtils(object):
                 scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
             else:
                 scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], line[6]))
-=======
-            if len(line) != 5:
-                raise ValueError("Line {} has too many arguments".format(num))
-
-            scd_lines.append(self.check_line(line[0], line[1], line[4], line[3], line[2]))
 
         if len(scd_lines) == 1:
             print('WARNING: SCD file empty; default normalscan will run')
 
->>>>>>> Added default line
         return scd_lines
 
     def fmt_line(self, line_dict):
