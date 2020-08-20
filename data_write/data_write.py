@@ -53,59 +53,64 @@ def printing(msg):
 
 
 DATA_TEMPLATE = {
-    "borealis_git_hash": None,  # Identifies the version of Borealis that made this data.
-    "experiment_id": None,  # Number used to identify experiment.
-    "experiment_name": None,  # Name of the experiment file.
-    "experiment_comment": None,  # Comment about the whole experiment
-    "slice_comment": None,  # Additional text comment that describes the slice.
-    "num_slices": None,  # Number of slices in the experiment at this integration time.
-    "station": None,  # Three letter radar identifier.
-    "num_sequences": None,  # Number of sampling periods in the integration time.
-    "num_ranges": None,  # Number of ranges to calculate correlations for
-    "range_sep": None,  # range gate separation (equivalent distance between samples) in km.
-    "first_range_rtt": None,  # Round trip time of flight to first range in microseconds.
-    "first_range": None,  # Distance to first range in km.
-    "rx_sample_rate": None,  # Sampling rate of the samples being written to file in Hz.
-    "scan_start_marker": None,  # Designates if the record is the first in a scan.
-    "int_time": None,  # Integration time in seconds.
-    "tx_pulse_len": None,  # Length of the pulse in microseconds.
-    "tau_spacing": None,  # The minimum spacing between pulses in microseconds.
+    "borealis_git_hash" : None, # Identifies the version of Borealis that made this data.
+    "experiment_id" : None, # Number used to identify experiment.
+    "experiment_name" : None, # Name of the experiment file.
+    "experiment_comment" : None,  # Comment about the whole experiment
+    "slice_comment" : None, # Additional text comment that describes the slice.
+    "slice_id" : None, # the slice id of the file and dataset.
+    "slice_interfacing" : None, # the interfacing of this slice to other slices.
+    "num_slices" : None, # Number of slices in the experiment at this integration time.
+    "station" : None, # Three letter radar identifier.
+    "num_sequences": None, # Number of sampling periods in the integration time.
+    "num_ranges": None, # Number of ranges to calculate correlations for
+    "range_sep": None, # range gate separation (equivalent distance between samples) in km.
+    "first_range_rtt" : None, # Round trip time of flight to first range in microseconds.
+    "first_range" : None, # Distance to first range in km.
+    "rx_sample_rate" : None, # Sampling rate of the samples being written to file in Hz.
+    "scan_start_marker" : None, # Designates if the record is the first in a scan.
+    "int_time" : None, # Integration time in seconds.
+    "tx_pulse_len" : None, # Length of the pulse in microseconds.
+    "tau_spacing" : None, # The minimum spacing between pulses in microseconds.
     # Spacing between pulses is always a multiple of this.
-    "main_antenna_count": None,  # Number of main array antennas.
-    "intf_antenna_count": None,  # Number of interferometer array antennas.
-    "freq": None,  # The frequency used for this experiment slice in kHz.
-    # "filtered_3db_bandwidth" : None, # Bandwidth of the output iq data types? can add later
-    "rx_center_freq": None,  # the center frequency of this data (for rawrf), kHz
-    "samples_data_type": None,  # C data type of the samples such as complex float.
-    "pulses": None,  # The pulse sequence in units of the tau_spacing.
-    "pulse_phase_offset": None,  # For pulse encoding phase. Contains one phase offset per pulse in pulses.
-    "lags": None,  # The lags created from two pulses in the pulses array.
-    "blanked_samples": None,  # Samples that have been blanked because they occurred during transmission times.
+    "main_antenna_count" : None, # Number of main array antennas.
+    "intf_antenna_count" : None, # Number of interferometer array antennas.
+    "freq" : None, # The frequency used for this experiment slice in kHz.
+    #"filtered_3db_bandwidth" : None, # Bandwidth of the output iq data types? can add later
+    "rx_center_freq" : None, # the center frequency of this data (for rawrf), kHz
+    "samples_data_type" : None, # C data type of the samples such as complex float.
+    "pulses" : None, # The pulse sequence in units of the tau_spacing.
+    "pulse_phase_offset" : None, # For pulse encoding phase. Contains one phase offset per pulse in pulses.
+    "lags" : None, # The lags created from two pulses in the pulses array.
+    "blanked_samples" : None, # Samples that have been blanked because they occurred during transmission times.
     # Can differ from the pulses array due to multiple slices in a single sequence.
-    "sqn_timestamps": None,  # A list of GPS timestamps of the beginning of transmission for each
+    "sqn_timestamps" : None, # A list of GPS timestamps of the beginning of transmission for each
     # sampling period in the integration time. Seconds since epoch.
-    "beam_nums": None,  # A list of beam numbers used in this slice.
-    "beam_azms": None,  # A list of the beams azimuths for each beam in degrees off boresite.
-    "noise_at_freq": None,
-    # Noise at the receive frequency, should be an array (one value per sequence) (TODO units??) (TODO document FFT resolution bandwidth for this value, should be = output_sample rate?)
-    # "noise_in_raw_band" : None, # Average noise in the sampling band (input sample rate) (TODO units??)
-    # "rx_bandwidth" : None, # if the noise_in_raw_band is provided, the rx_bandwidth should be provided!
-    "num_samps": None,  # Number of samples in the sampling period.
-    "antenna_arrays_order": None,  # States what order the data is in. Describes the data layout.
-    "data_descriptors": None,  # Denotes what each data dimension represents.
-    "data_dimensions": None,  # The dimensions in which to reshape the data.
-    "data_normalization_factor": None,  # The scale of all filters, multiplied, for a total scaling factor to normalize.
-    "data": [],  # A contiguous set of samples (complex float) at given sample rate
-    "correlation_descriptors": None,  # Denotes what each acf/xcf dimension represents.
-    "correlation_dimensions": None,  # The dimensions in which to reshape the acf/xcf data.
-    "main_acfs": [],  # Main array autocorrelations
-    "intf_acfs": [],  # Interferometer array autocorrelations
-    "xcfs": []  # Crosscorrelations between main and interferometer arrays
+    "beam_nums" : None, # A list of beam numbers used in this slice.
+    "beam_azms" : None, # A list of the beams azimuths for each beam in degrees off boresite.
+    "noise_at_freq" : None, 
+    # Noise at the receive frequency, should be an array (one value per sequence) (TODO units??) 
+    # (TODO document FFT resolution bandwidth for this value, should be = output_sample rate?)
+    #"noise_in_raw_band" : None, # Average noise in the sampling band (input sample rate) (TODO units??)
+    #"rx_bandwidth" : None, # if the noise_in_raw_band is provided, the rx_bandwidth should be provided!
+    "num_samps" : None, # Number of samples in the sampling period.
+    "antenna_arrays_order" : None, # States what order the data is in. Describes the data layout.
+    "data_descriptors" : None, # Denotes what each data dimension represents.
+    "data_dimensions" : None, # The dimensions in which to reshape the data.
+    "data_normalization_factor" : None, # The scale of all of the filters, multiplied, for a total scaling factor to normalize by.
+    "data" : [], # A contiguous set of samples (complex float) at given sample rate
+    "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
+    "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
+    "averaging_method" : None, # A string describing the averaging method, ex. mean, median
+    "scheduling_mode" : None, # A string describing the type of scheduling time at the time of this dataset.
+    "main_acfs" : [], # Main array autocorrelations
+    "intf_acfs" : [], # Interferometer array autocorrelations
+    "xcfs" : [] # Crosscorrelations between main and interferometer arrays
 }
 
 TX_TEMPLATE = {
     "tx_rate": [],
-    "tx_centre_freq": [],
+    "tx_center_freq": [],
     "pulse_sequence_timing_us": [],
     "pulse_offset_error_us": [],
     "tx_samples": [],
@@ -663,8 +668,8 @@ class DataWrite(object):
 
                 # TODO(keith): improve call to subprocess.
                 sp.call(cmd.split())
-                # os.remove(tmp_file)
                 so.send_data(rt_dw['socket'], rt_dw['iden'], tmp_file)
+                # temp file is removed in real time module.
 
             elif file_ext == 'json':
                 self.write_json_file(tmp_file, final_data_dict)
@@ -682,13 +687,14 @@ class DataWrite(object):
             """
 
             needed_fields = ["borealis_git_hash", "experiment_id",
-                             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
-                             "num_sequences", "range_sep", "first_range_rtt", "first_range", "rx_sample_rate",
-                             "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
-                             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
-                             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
-                             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs",
-                             "xcfs", "noise_at_freq", "data_normalization_factor"]
+            "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
+            "num_sequences", "range_sep", "first_range_rtt", "first_range", "rx_sample_rate",
+            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
+            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
+            "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
+            "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs",
+            "xcfs", "noise_at_freq", "data_normalization_factor", "slice_id", "slice_interfacing",
+            "averaging_method", "scheduling_mode"]
             # note num_ranges not in needed_fields but are used to make
             # correlation_dimensions
 
@@ -701,15 +707,21 @@ class DataWrite(object):
 
             def find_expectation_value(x, parameters, field_name):
                 """
-                Get the median of all correlations from all sequences in the
+                Get the mean or median of all correlations from all sequences in the
                 integration period - only this will be recorded.
                 This is effectively 'averaging' all correlations over the integration
-                time.
+                time, using a specified method for combining them.
                 """
                 # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
                 # so we get median of all sequences.
+                averaging_method = parameters['averaging_method']
                 array_2d = np.array(x, dtype=np.complex64)
-                array_expectation_value = np.mean(array_2d, axis=0)  # or use np.median?
+                if averaging_method == 'mean':
+                    array_expectation_value = np.mean(array_2d, axis=0)
+                elif averaging_method == 'median':
+                    array_expectation_value = np.median(array_2d, axis=0)
+                else:
+                    raise ValueError('Averaging Method could not be executed: {}'.format(averaging_method))
                 parameters[field_name] = array_expectation_value
 
             for slice_id in main_acfs:
@@ -749,14 +761,15 @@ class DataWrite(object):
                 parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
             """
             needed_fields = ["borealis_git_hash", "experiment_id",
-                             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
-                             "num_sequences", "rx_sample_rate", "pulse_phase_offset",
-                             "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
-                             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
-                             "pulses", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
-                             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data",
-                             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range",
-                             "lags", "num_ranges", "data_normalization_factor"]
+            "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
+            "num_sequences", "rx_sample_rate", "pulse_phase_offset",
+            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
+            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
+            "pulses", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
+            "data_dimensions", "data_descriptors", "antenna_arrays_order", "data",
+            "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range",
+            "lags", "num_ranges", "data_normalization_factor", "slice_id", "slice_interfacing",
+            "scheduling_mode"]
 
             bfiq = data_parsing.bfiq_accumulator
 
@@ -814,14 +827,13 @@ class DataWrite(object):
             """
 
             needed_fields = ["borealis_git_hash", "experiment_id",
-                             "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
-                             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len",
-                             "tau_spacing",
-                             "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
-                             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions",
-                             "data_descriptors",
-                             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
-                             "data_normalization_factor"]
+            "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
+            "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
+            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
+            "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors",
+            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
+            "data_normalization_factor", "blanked_samples", "slice_id", "slice_interfacing",
+            "scheduling_mode"]
 
             antenna_iq = data_parsing.antenna_iq_accumulator
 
@@ -903,11 +915,11 @@ class DataWrite(object):
             """
 
             needed_fields = ["borealis_git_hash", "experiment_id",
-                             "experiment_name", "experiment_comment", "num_slices", "station",
-                             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
-                             "main_antenna_count", "intf_antenna_count", "samples_data_type",
-                             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
-                             "rx_center_freq"]
+            "experiment_name", "experiment_comment", "num_slices", "station",
+            "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
+            "main_antenna_count", "intf_antenna_count", "samples_data_type",
+            "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
+            "rx_center_freq", "blanked_samples", "scheduling_mode"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
@@ -975,7 +987,7 @@ class DataWrite(object):
             if tx_data is not None:
                 for meta in integration_meta.sequences:
                     tx_data['tx_rate'].append(meta.tx_data.txrate)
-                    tx_data['tx_centre_freq'].append(meta.tx_data.txctrfreq)
+                    tx_data['tx_center_freq'].append(meta.tx_data.txctrfreq)
                     tx_data['pulse_sequence_timing_us'].append(
                         meta.tx_data.pulse_sequence_timing_us)
                     tx_data['pulse_offset_error_us'].append(meta.tx_data.pulse_offset_error_us)
@@ -1028,7 +1040,11 @@ class DataWrite(object):
                 parameters['experiment_id'] = np.int64(integration_meta.experiment_id)
                 parameters['experiment_name'] = integration_meta.experiment_name
                 parameters['experiment_comment'] = integration_meta.experiment_comment
+                parameters['scheduling_mode'] = integration_meta.scheduling_mode
                 parameters['slice_comment'] = rx_freq.slice_comment
+                parameters['slice_id'] = np.uint32(rx_freq.slice_id)
+                parameters['averaging_method'] = rx_freq.averaging_method # string
+                parameters['slice_interfacing'] = rx_freq.slice_interfacing # string
                 parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = integration_meta.num_sequences
@@ -1047,7 +1063,7 @@ class DataWrite(object):
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
                 parameters[
-                    'rx_center_freq'] = integration_meta.rx_centre_freq  # Sorry, we'll convert to US English here
+                    'rx_center_freq'] = integration_meta.rx_center_freq 
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
                 parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phase_offsets.pulse_phase, dtype=np.float32)
