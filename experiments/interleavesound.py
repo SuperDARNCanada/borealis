@@ -11,6 +11,40 @@ sys.path.append(BOREALISPATH)
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
+from experiment_prototype.decimation_scheme.decimation_scheme import \
+    DecimationScheme, DecimationStage, create_firwin_filter_by_attenuation
+
+
+def decimate_10MHz_scheme():
+    """
+    Built off of the default scheme used for 45 km with minor changes to
+    accommodate the 10MHz input rate instead of 5 MHz.
+
+    :return DecimationScheme: a decimation scheme for use in experiment.
+    """
+
+    rates = [10.0e6, 500.0e3, 100.0e3, 50.0e3/3] 
+    dm_rates = [20, 5, 6, 5]  
+    transition_widths = [300.0e3, 50.0e3, 15.0e3, 1.0e3]  
+    # bandwidth is double cutoffs. 
+    cutoffs = [20.0e3, 10.0e3, 10.0e3, 5.0e3]
+    ripple_dbs = [150.0, 80.0, 35.0, 8.0]  
+    scaling_factors = [10.0, 100.0, 100.0, 100.0]  
+    all_stages = []
+
+    for stage in range(0, len(rates)):
+        filter_taps = list(
+            scaling_factors[stage] * create_firwin_filter_by_attenuation(
+                rates[stage], transition_widths[stage], cutoffs[stage],
+                ripple_dbs[stage]))
+        all_stages.append(DecimationStage(stage, rates[stage],
+                          dm_rates[stage], filter_taps))
+
+    # changed from 10e3/3->10e3
+    return (DecimationScheme(rates[0], rates[-1]/dm_rates[-1],
+                             stages=all_stages))
+
+
 
 class InterleaveSound(ExperimentPrototype):
     """Interleavesound is a modified version of Interleavedscan with added sounding
@@ -80,7 +114,10 @@ class InterleaveSound(ExperimentPrototype):
                 "lag_table": scf.STD_8P_LAG_TABLE, # lag table needed for 8P since not all lags used.
                 })
 
-        super(InterleaveSound, self).__init__(cpid, comment_string=InterleaveSound.__doc__)
+        super(InterleaveSound, self).__init__(cpid, rx_bandwidth=10.0e6, tx_bandwidth=10.0e6, 
+                                              txctrfreq=14000.0, rxctrfreq=14000.0,
+                                              decimation_scheme=decimate_10MHz_scheme(),
+                                              comment_string=InterleaveSound.__doc__)
 
         self.add_slice(slices[0])
         self.add_slice(slices[1], {0:'SCAN'})
