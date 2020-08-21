@@ -13,7 +13,6 @@
 from __future__ import print_function
 import sys
 import copy
-import operator
 import os
 import math
 import numpy as np
