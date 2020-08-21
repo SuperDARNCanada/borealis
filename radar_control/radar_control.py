@@ -530,9 +530,6 @@ def radar():
             if new_experiment_waiting:  # start anew on first scan if we have a new experiment.
                 break
 
-            # Make iterator for cycling through beam numbers
-            aveperiods_done_list = []
-
             if scan.scanbound:
                 if scan.align_scan_to_beamorder:
                     for aveperiod in scan.aveperiods:
@@ -559,7 +556,10 @@ def radar():
                     else:
                         start_minute = round_up_time(now)
 
-                last_aveperiod_intt = scan.aveperiods[(scan.num_aveperiods_in_scan % len(scan.aveperiods))].intt
+                # find the modulus of the number of aveperiod times to run in the scan and the number of AvePeriod classes.
+                # the classes will be alternated so we can determine which class will be running at the end of the scan.
+                index_of_last_aveperiod_in_scan = (scan.num_aveperiods_in_scan + scan.aveperiod_iter) % len(scan.aveperiods)
+                last_aveperiod_intt = scan.aveperiods[index_of_last_aveperiod_in_scan].intt
                 # a scanbound necessitates intt
                 end_of_scan = start_minute + timedelta(seconds=scan.scanbound[-1]) + timedelta(seconds=last_aveperiod_intt*1e-3)
                 end_minute = end_of_scan.replace(second=0, microsecond=0)
