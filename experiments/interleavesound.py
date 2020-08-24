@@ -115,7 +115,7 @@ class InterleaveSound(ExperimentPrototype):
                 })
 
         super(InterleaveSound, self).__init__(cpid, rx_bandwidth=10.0e6, tx_bandwidth=10.0e6, 
-                                              txctrfreq=14000.0, rxctrfreq=14000.0,
+                                              txctrfreq=13000.0, rxctrfreq=13000.0,
                                               decimation_scheme=decimate_10MHz_scheme(),
                                               comment_string=InterleaveSound.__doc__)
 
