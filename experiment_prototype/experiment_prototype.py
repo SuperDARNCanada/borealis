@@ -199,6 +199,7 @@ pulse_phase_offset *defaults*
 
     Result is expected to be real and in degrees and will be converted to complex radians.
 
+
 range_sep *defaults*
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct
     value determined by the pulse_len. Used for acfs. This is the range gate separation,
@@ -1388,8 +1389,10 @@ class ExperimentPrototype(object):
             still_checking = True
             while still_checking:
                 for freq_range in self.options.restricted_ranges:
-                    if exp_slice['clrfrqrange'][0] in range(freq_range[0], freq_range[1]):
-                        if exp_slice['clrfrqrange'][1] in range(freq_range[0], freq_range[1]):
+                    if ((exp_slice['clrfrqrange'][0] >= freq_range[0]) and
+                                                (exp_slice['clrfrqrange'][0] <= freq_range[1])):
+                        if ((exp_slice['clrfrqrange'][1] >= freq_range[0]) and
+                                                (exp_slice['clrfrqrange'][1] <= freq_range[1])):
                             # the range is entirely within the restricted range.
                             raise ExperimentException('clrfrqrange is entirely within restricted '
                                                       'range {}'.format(freq_range))
@@ -1405,7 +1408,8 @@ class ExperimentPrototype(object):
                             # check in case it's in another range.
                     else:
                         # lower end is not in restricted frequency range.
-                        if exp_slice['clrfrqrange'][1] in range(freq_range[0], freq_range[1]):
+                        if ((exp_slice['clrfrqrange'][1] >= freq_range[0]) and
+                                                (exp_slice['clrfrqrange'][1] <= freq_range[1])):
                             if __debug__:
                                 print('Clrfrqrange will be modified because it is partially in a ' +
                                 'restricted range.')
@@ -1417,8 +1421,8 @@ class ExperimentPrototype(object):
                             # checking in case it's in another range.
                         else:  # neither end of clrfrqrange is inside the restricted range but
                             # we should check if the range is inside the clrfrqrange.
-                            if freq_range[0] in range(exp_slice['clrfrqrange'][0],
-                                                                  exp_slice['clrfrqrange'][1]):
+                            if ((freq_range[0] >= exp_slice['clrfrqrange'][0]) and
+                                                (freq_range[0] <= exp_slice['clrfrqrange'][1])):
                                 if __debug__:
                                     print('There is a restricted range within the clrfrqrange - '
                                           'STOP.')
@@ -1435,7 +1439,7 @@ class ExperimentPrototype(object):
             if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
                                                                       float):
                 freq_error = True
-            elif (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
+            if (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
                                                                    1000) <= self.rx_minfreq:
                 freq_error = True
 
@@ -1472,7 +1476,9 @@ class ExperimentPrototype(object):
 
 
             for freq_range in self.options.restricted_ranges:
-                if exp_slice['txfreq'] in range(freq_range[0], freq_range[1]):
+                if ((exp_slice['txfreq'] >= freq_range[0]) and
+                                                (exp_slice['txfreq'] <= freq_range[1]))
+                exp_slice['txfreq'] in range(freq_range[0], freq_range[1]):
                     errmsg = """txfreq is within a restricted frequency range {}
                              """.format(freq_range)
                     raise ExperimentException(errmsg)
