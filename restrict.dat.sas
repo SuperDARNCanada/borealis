@@ -3,7 +3,7 @@
 # 15.010 MHZ, 19.990 - 20.010 MHZ
 # The use of the following frequencies is prohibited: 8.0115 MHz, 8.0765 MHz, 8.117 MHz, 8.1674 MHz, 9.2124 MHz,
 # 9.4815 MHz, 10.1965 MHz, 13.4115 MHz, 15.7345 MHz, 15.7995 MHz
-default=13500
+default=13500.0
 8011.5 8011.5
 8076.5 8076.5
 8117.0 8117.0
