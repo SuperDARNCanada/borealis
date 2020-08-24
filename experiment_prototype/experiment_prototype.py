@@ -1477,8 +1477,7 @@ class ExperimentPrototype(object):
 
             for freq_range in self.options.restricted_ranges:
                 if ((exp_slice['txfreq'] >= freq_range[0]) and
-                                                (exp_slice['txfreq'] <= freq_range[1]))
-                exp_slice['txfreq'] in range(freq_range[0], freq_range[1]):
+                                                (exp_slice['txfreq'] <= freq_range[1])):
                     errmsg = """txfreq is within a restricted frequency range {}
                              """.format(freq_range)
                     raise ExperimentException(errmsg)
