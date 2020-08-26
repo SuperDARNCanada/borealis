@@ -37,7 +37,8 @@ def main():
         scd_util.add_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, args.kwargs)
 
     if args.remove:
-        scd_util.remove_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, args.kwargs)    
+        scd_util.remove_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, args.kwargs)
+
 
 if __name__ == '__main__':
     main()
