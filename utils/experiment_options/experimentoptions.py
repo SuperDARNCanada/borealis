@@ -169,7 +169,7 @@ class ExperimentOptions:
             splitup = line.split("=")
             if len(splitup) == 2:
                 if splitup[0] == 'default' or splitup[0] == 'default ':
-                    self.__default_freq = float(splitup[1])  # kHz
+                    self.__default_freq = int(splitup[1])  # kHz
                     restricted.remove(line)
                     break
         else: #no break
@@ -181,7 +181,7 @@ class ExperimentOptions:
             if len(splitup) != 2:
                 raise Exception('Problem with Restricted Frequency: A Range Len != 2')
             try:
-                splitup = [float(freq) for freq in splitup]  # convert to ints
+                splitup = [int(float(freq)) for freq in splitup]  # convert to ints
             except ValueError:
                 raise ValueError('Error parsing Restrict.Dat Frequency Ranges, Invalid Literal')
             restricted_range = tuple(splitup)
