@@ -388,12 +388,12 @@ class ExperimentPrototype(object):
             raise ExperimentException(errmsg)
 
         if round(self.options.usrp_master_clock_rate / self.txrate, 3) % 2.0 != 0.0:
-            errmsg = "Experiment's transmit bandwidth {} is not possible as it must be an integer divisor of " \
+            errmsg = "Experiment's transmit bandwidth {} is not possible as it must be an integer divisor of" \
                      " USRP master clock rate {}".format(self.txrate, self.options.usrp_master_clock_rate)
             raise ExperimentException(errmsg)
 
         if round(self.options.usrp_master_clock_rate / self.rxrate, 3) % 2.0 != 0.0:
-            errmsg = "Experiment's receive bandwidth {} is not possible as it must be an integer divisor of " \
+            errmsg = "Experiment's receive bandwidth {} is not possible as it must be an integer divisor of" \
                      " USRP master clock rate {}".format(self.rxrate, self.options.usrp_master_clock_rate)
             raise ExperimentException(errmsg)
 

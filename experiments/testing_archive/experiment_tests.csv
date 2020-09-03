@@ -1,0 +1,11 @@
+testing_archive.test_no_slices::Invalid num_slices less than 1
+testing_archive.test_cpid_int::CPID must be a unique int
+testing_archive.test_cpid_pos::The CPID should be a positive number in the experiment. Borealis will determine if it should be negative based on the scheduling mode. Only experiments run during discretionary time will have negative CPIDs.
+testing_archive.test_output_rxrate_high::Experiment's output sample rate is too high
+testing_archive.test_rxrate_high::Experiment's receive bandwidth is too large
+testing_archive.test_rxbw_not_divisible::Experiment's receive bandwidth .* is not possible as it must be an integer divisor of USRP master clock rate
+testing_archive.test_txrate_high::Experiment's transmit bandwidth is too large
+testing_archive.test_txbw_not_divisible::Experiment's transmit bandwidth .* is not possible as it must be an integer divisor of USRP master clock rate
+testing_archive.test_no_class::No experiment classes are present that are built from parent class ExperimentPrototype - exiting
+#testing_archive.test_no_inheritance::Something went wrong: Cannot find the experiment inside your module. Please make sure there is a class that inherits from ExperimentPrototype in your module
+testing_archive.test_two_classes::You have more than one experiment class in your experiment file - exiting

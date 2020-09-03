@@ -79,7 +79,7 @@ def experiment_parser():
                                                   "e.g. normalscan")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. common, special, or discretionary.")
-    parser.add_argument("--kwargs_string", default='', 
+    parser.add_argument("--kwargs_string", default='',
                         help="String of keyword arguments for the experiment.")
 
     return parser
@@ -141,6 +141,7 @@ def retrieve_experiment(experiment_module_name):
     return Experiment
 
 
+
 def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
     """
     Send the experiment to radar_control module.
@@ -154,7 +155,8 @@ def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
     except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
         pass  # TODO handle this. Shutdown and restart all modules.
 
-def experiment_handler(semaphore):
+
+def experiment_handler(semaphore, args):
     """
     Run the experiment. This is the main process when this program is called.
 
@@ -178,9 +180,6 @@ def experiment_handler(semaphore):
 
     exp_handler_to_radar_control = sockets_list[0]
     exp_handler_to_dsp = sockets_list[1]
-
-    parser = experiment_parser()
-    args = parser.parse_args()
 
     experiment_name = args.experiment_module
     scheduling_mode_type = args.scheduling_mode_type
@@ -236,7 +235,7 @@ def experiment_handler(semaphore):
     while True:
 
         if not change_flag:
-            serialized_exp = pickle.dumps(None, 
+            serialized_exp = pickle.dumps(None,
                                           protocol=pickle.HIGHEST_PROTOCOL)
         else:
             exp.build_scans()
@@ -280,8 +279,14 @@ def experiment_handler(semaphore):
                 update_thread.start()
 
 
-if __name__ == "__main__":
-
+def main(sys_args):
     semaphore = threading.Semaphore()
-    experiment_handler(semaphore)
+    parser = experiment_parser()
+    args = parser.parse_args(args=sys_args)
+    experiment_handler(semaphore, args)
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])
 
