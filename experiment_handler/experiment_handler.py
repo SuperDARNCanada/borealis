@@ -130,7 +130,8 @@ def retrieve_experiment(experiment_module_name):
              experiment_classes[0][0], experiment_mod))
     try:
         return Experiment
-    except NameError:
+    except NameError:  # TODO: From testing, this appears to be redundant, unless there's a way to
+        # TODO    make this fail without making the above check fail (len(experiment_classes == 0)
         errmsg = "Something went wrong: Cannot find the experiment inside " \
                  "your module. Please make sure there is a class that " \
                  "inherits from ExperimentPrototype in your module."
@@ -150,7 +151,8 @@ def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
     except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
         pass  # TODO handle this. Shutdown and restart all modules.
 
-def experiment_handler(semaphore):
+
+def experiment_handler(semaphore, args):
     """
     Run the experiment. This is the main process when this program is called.
 
@@ -174,9 +176,6 @@ def experiment_handler(semaphore):
 
     exp_handler_to_radar_control = sockets_list[0]
     exp_handler_to_dsp = sockets_list[1]
-
-    parser = experiment_parser()
-    args = parser.parse_args()
 
     experiment_name = args.experiment_module
     scheduling_mode_type = args.scheduling_mode_type
@@ -266,8 +265,14 @@ def experiment_handler(semaphore):
                 update_thread.start()
 
 
-if __name__ == "__main__":
-
+def main(sys_args):
     semaphore = threading.Semaphore()
-    experiment_handler(semaphore)
+    parser = experiment_parser()
+    args = parser.parse_args(args=sys_args)
+    experiment_handler(semaphore, args)
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])
 
