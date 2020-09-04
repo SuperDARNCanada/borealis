@@ -1,4 +1,11 @@
-testing_archive.test_no_slices::Invalid num_slices less than 1
+
+# **** The following 3 tests are from experiment_handler module, retrieve_experiment() method ****
+testing_archive.test_no_class::No experiment classes are present that are built from parent class ExperimentPrototype - exiting
+#testing_archive.test_no_inheritance::Something went wrong: Cannot find the experiment inside your module. Please make sure there is a class that inherits from ExperimentPrototype in your module
+testing_archive.test_two_classes::You have more than one experiment class in your experiment file - exiting
+
+# **** The following 8 tests are from ExperimentPrototype class, __init__() method ****
+#testing_archive.test_cpid_unique::CPID must be a unique int, CPID: .* is in use by the experiment: .*
 testing_archive.test_cpid_int::CPID must be a unique int
 testing_archive.test_cpid_pos::The CPID should be a positive number in the experiment. Borealis will determine if it should be negative based on the scheduling mode. Only experiments run during discretionary time will have negative CPIDs.
 testing_archive.test_output_rxrate_high::Experiment's output sample rate is too high
@@ -6,6 +13,87 @@ testing_archive.test_rxrate_high::Experiment's receive bandwidth is too large
 testing_archive.test_rxbw_not_divisible::Experiment's receive bandwidth .* is not possible as it must be an integer divisor of USRP master clock rate
 testing_archive.test_txrate_high::Experiment's transmit bandwidth is too large
 testing_archive.test_txbw_not_divisible::Experiment's transmit bandwidth .* is not possible as it must be an integer divisor of USRP master clock rate
-testing_archive.test_no_class::No experiment classes are present that are built from parent class ExperimentPrototype - exiting
-#testing_archive.test_no_inheritance::Something went wrong: Cannot find the experiment inside your module. Please make sure there is a class that inherits from ExperimentPrototype in your module
-testing_archive.test_two_classes::You have more than one experiment class in your experiment file - exiting
+
+# **** The following test is from ExperimentPrototype class, add_slice() method ****
+testing_archive.test_bad_slice::Attempt to add a slice failed - .* is not a dictionary of slice parameters
+
+# **** The following 3 tests are from ExperimentPrototype class, check_new_slice_interfacing() method ****
+testing_archive.test_bad_interface::Interface value with slice .* not valid. Types available are
+testing_archive.test_bad_slice_id::Cannot add slice: the interfacing_dict set interfacing to an unknown slice .* not in slice ids
+testing_archive.test_bad_interfacing::The interfacing values of new slice cannot be reconciled. Interfacing with slice .* and with slice .* does not make sense with existing interface between slices of .*
+
+# **** The following test is from ExperimentPrototype class, check_slice() method ****
+#testing_archive.test_missing_param::Slice .* is missing Necessary Parameter .*
+
+# **** The following 22 tests (18+4 extra from the dne tests) are from ExperimentPrototype class, check_slice_minimum_requirements() method ****
+testing_archive.test_sequence_not_list::Slice must specify pulse_sequence that must be a list of integers
+testing_archive.test_sequence_not_int::Slice must specify pulse_sequence that must be a list of integers
+testing_archive.test_tau_dne::Slice must specify tau_spacing in us that must be an integer
+testing_archive.test_tau_not_int::Slice must specify tau_spacing in us that must be an integer
+testing_archive.test_pulse_len_dne::Slice must specify pulse_len in us that must be an integer
+testing_archive.test_pulse_len_not_int::Slice must specify pulse_len in us that must be an integer
+testing_archive.test_num_ranges_dne::Slice must specify num_ranges that must be an integer
+testing_archive.test_num_ranges_not_int::Slice must specify num_ranges that must be an integer
+testing_archive.test_first_range_dne::Slice must specify first_range in km that must be an integer
+testing_archive.test_first_range_not_int::Slice must specify first_range in km that must be an integer
+testing_archive.test_no_intt_intn::Slice must specify either an intn \(unitless\) or intt in ms
+testing_archive.test_intn_not_int::intn must be an integer
+testing_archive.test_intt_not_num::intt must be a number
+testing_archive.test_beam_angle_dne::Slice must specify beam_angle that must be a list of numbers \(ints or floats\) which are angles of degrees off boresight \(positive E of N\)
+testing_archive.test_beam_angle_not_list::Slice must specify beam_angle that must be a list of numbers \(ints or floats\) which are angles of degrees off boresight \(positive E of N\)
+testing_archive.test_beam_angle_not_num::.*Slice must specify beam_angle that must be a list of numbers \(ints or floats\) which are angles of degrees off boresight \(positive E of N\)
+testing_archive.test_beam_order_dne::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
+testing_archive.test_beam_order_not_list::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
+testing_archive.test_beam_order_not_ints_or_lists::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
+testing_archive.test_beam_order_lists_not_ints::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
+testing_archive.test_beam_order_lists_bad_index::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
+testing_archive.test_beam_order_bad_index::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
+
+
+# **** The following 13 tests are from ExperimentPrototype class, check_slice_specific_requirements() method ****
+testing_archive.test_clrfrqrng_not_list::clrfrqrange must be an integer list of length = 2
+testing_archive.test_clrfrqrng_not_2::clrfrqrange must be an integer list of length = 2
+testing_archive.test_clrfrqrng_not_ints::clrfrqrange must be an integer list of length = 2
+testing_archive.test_clrfrqrng_not_inc::clrfrqrange must be between min and max tx frequencies .* and rx frequencies .* according to license and/or center frequencies / sampling rates / transition bands, and must have lower frequency first
+testing_archive.test_clrfrqrng_too_high::clrfrqrange must be between min and max tx frequencies .* and rx frequencies .* according to license and/or center frequencies / sampling rates / transition bands, and must have lower frequency first
+testing_archive.test_clrfrqrng_too_low::clrfrqrange must be between min and max tx frequencies .* and rx frequencies .* according to license and/or center frequencies / sampling rates / transition bands, and must have lower frequency first
+testing_archive.test_clrfrqrng_restricted::clrfrqrange is entirely within restricted range .*
+testing_archive.test_rxfreq_not_num::rxfreq must be a number \(kHz\) between rx min and max frequencies .* for the radar license and be within range given center frequency, sampling rate and transition band
+testing_archive.test_rxfreq_too_high::rxfreq must be a number \(kHz\) between rx min and max frequencies .* for the radar license and be within range given center frequency, sampling rate and transition band
+testing_archive.test_rxfreq_too_low::rxfreq must be a number \(kHz\) between rx min and max frequencies .* for the radar license and be within range given center frequency, sampling rate and transition band
+testing_archive.test_txfreq_not_num::txfreq must be a number \(kHz\) between tx min and max frequencies .* and rx min and max frequencies .* for the radar license and be within range given center frequencies, sampling rates and transition band
+testing_archive.test_txfreq_too_high::txfreq must be a number \(kHz\) between tx min and max frequencies .* and rx min and max frequencies .* for the radar license and be within range given center frequencies, sampling rates and transition band
+testing_archive.test_txfreq_too_low::txfreq must be a number \(kHz\) between tx min and max frequencies .* and rx min and max frequencies .* for the radar license and be within range given center frequencies, sampling rates and transition band
+testing_archive.test_txfreq_restricted::txfreq is within a restricted frequency range .*
+
+# **** The following test is from ExperimentPrototype class, self_check() method ****
+testing_archive.test_no_slices::Invalid num_slices less than 1
+
+
+testing_archive.test_avg_method_dne::Averaging method .* not valid method. Possible methods are .*
+# **** The following 3 tests are from ExperimentPrototype class, set_slice_defaults() method ****
+testing_archive.test_pulse_len_bad::For an experiment slice with real-time acfs, pulse length must be equal \(within 1 us\) to 1\/output_rx_rate to make acfs valid. Current pulse length is .* us, output rate is .* Hz
+testing_archive.test_lag_table_bad::Lag .* not valid; One of the pulses does not exist in the sequence
+
+# **** The following test is from ExperimentPrototype class, set_slice_identifiers() method ****
+testing_archive.test_no_freq_set::An rxfreq, txfreq, or clrfrqrange must be specified in a slice
+
+# **** The following 4 tests are from DecimationScheme class, __init__() method ****
+testing_archive.test_too_many_dm_stages::Number of decimation stages .* is greater than max available .*
+testing_archive.test_stage0_bad_inputrate::Decimation stage 0 does not have input rate .* equal to USRP sampling rate .*
+testing_archive.test_stagex_bad_outputrate::Decimation stage .* output rate .* does not equal next stage .* input rate .*
+testing_archive.test_finalstage_bad_outputrate::Last decimation stage .* does not have output rate .* equal to requested output data rate .*
+
+# **** The following 3 tests are from DecimationStage class, __init__() method ****
+testing_archive.test_dm_rate_not_int::Decimation rate is not an integer
+testing_archive.test_taps_not_list::Filter taps .* of type .* must be a list in decimation stage .*
+testing_archive.test_taps_not_nums::Filter tap .* is not numeric in decimation stage .*
+
+# **** The following 3 tests are from AveragingPeriod class, __init__() method ****
+testing_archive.test_slices_intt_bad::Slices .* and .* are INTEGRATION or PULSE interfaced and do not have the same Averaging Period duration intt
+testing_archive.test_slices_intn_bad::Slices .* and .* are INTEGRATION or PULSE interfaced and do not have the same NAVE goal intn
+#testing_archive.test_slices_beam_order_bad::Slices .* and .* are INTEGRATION or PULSE interfaced and do not have the same length of beam_order \(number of integration periods\)
+
+# **** The following test is from Scan class, __init__() method ****
+testing_archive.test_slices_scanbound_bad::Scan boundary not the same between slices .* and .* for INTTIME or PULSE interfaced slices
+

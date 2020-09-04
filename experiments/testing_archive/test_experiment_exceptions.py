@@ -135,8 +135,8 @@ if __name__ == '__main__':
     try:
         with open(input_test_file) as test_suite_list:
             for test in test_suite_list.readlines():
-                # Remove commented out tests
-                if test.startswith('#'):
+                # Remove comment lines and empty lines
+                if test.startswith('#') or test.strip() == '':
                     continue
                 # Separate on double colon to ensure the regex msg isn't split
                 exp_module_name = test.split('::')[0]
