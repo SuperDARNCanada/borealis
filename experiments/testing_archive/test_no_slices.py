@@ -26,3 +26,5 @@ class TestExperiment(ExperimentPrototype):
             num_ranges = scf.POLARDARN_NUM_RANGES
         if scf.opts.site_id in ["sas", "pgr"]:
             num_ranges = scf.STD_NUM_RANGES
+
+        # Don't add any slices

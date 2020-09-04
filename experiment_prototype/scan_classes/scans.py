@@ -42,8 +42,8 @@ class Scan(ScanClassBase):
         self.scanbound = self.slice_dict[self.slice_ids[0]]['scanbound']
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id]['scanbound'] != self.scanbound:
-                errmsg = """Scan Boundary not the Same Between Slices {} and {}
-                     combined in Scan""".format(self.slice_ids[0], slice_id)
+                errmsg = "Scan boundary not the same between slices {} and {}" \
+                         " for INTTIME or PULSE interfaced slices".format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
 
         # NOTE: for now we assume that when INTTIME combined, the AveragingPeriods of the various slices in the scan are

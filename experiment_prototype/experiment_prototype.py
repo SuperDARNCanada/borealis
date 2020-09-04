@@ -902,7 +902,7 @@ class ExperimentPrototype(object):
                 for sibling_slice_id in interfacing_dict.keys():
                     if sibling_slice_id not in self.slice_ids:
                         errmsg = 'Cannot add slice: the interfacing_dict set interfacing to an unknown slice'\
-                                 '{} not in slice ids {}'.format(sibling_slice_id, self.slice_ids)
+                                 ' {} not in slice ids {}'.format(sibling_slice_id, self.slice_ids)
                         raise ExperimentException(errmsg)
                 try:
                     closest_sibling = max(interfacing_dict.keys(),
@@ -953,7 +953,7 @@ class ExperimentPrototype(object):
                     errmsg = 'The interfacing values of new slice cannot be reconciled. '\
                              'Interfacing with slice {closest}: {interface1} and with slice '\
                              '{other}: {interface2} does not make sense with existing interface between '\
-                             ' slices of {sibling_other}: {interface3}'.format(closest=closest_sibling,
+                             'slices of {sibling_other}: {interface3}'.format(closest=closest_sibling,
                                 interface1=closest_interface_value, other=sibling_slice_id,
                                 interface2=interface_value,
                                 sibling_other=([sibling_slice_id, closest_sibling].sort()),
@@ -987,7 +987,7 @@ class ExperimentPrototype(object):
 
         if not isinstance(exp_slice, dict):
             errmsg = 'Attempt to add a slice failed - {} is not a dictionary of slice' \
-                     'parameters'.format(exp_slice)
+                     ' parameters'.format(exp_slice)
             raise ExperimentException(errmsg)
             # TODO multiple types of Exceptions so they can be caught by the experiment in these
             # add_slice, edit_slice, del_slice functions (and handled specifically)
@@ -1212,12 +1212,12 @@ class ExperimentPrototype(object):
                 raise ExperimentException(errmsg, exp_slice)
 
         if 'tau_spacing' not in exp_slice.keys() or not isinstance(exp_slice['tau_spacing'], int):
-            errmsg = "Slice must specify tau_spacing that must be an integer"
+            errmsg = "Slice must specify tau_spacing in us that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
         # TODO may want to add a field for range_gate which could set this param.
         if 'pulse_len' not in exp_slice.keys() or not isinstance(exp_slice['pulse_len'], int):
-            errmsg = "Slice must specify pulse_len that must be an integer"
+            errmsg = "Slice must specify pulse_len in us that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
         if 'num_ranges' not in exp_slice.keys() or not isinstance(exp_slice['num_ranges'], int):
@@ -1230,15 +1230,15 @@ class ExperimentPrototype(object):
 
         if 'intt' not in exp_slice.keys():
             if 'intn' not in exp_slice.keys():
-                errmsg = "Slice must specify either an intn or intt"
-                raise ExperimentException(errmsg, exp_slice)
+                errmsg = "Slice must specify either an intn (unitless) or intt in ms. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
             elif not isinstance(exp_slice['intn'], int):
-                errmsg = "intn must be an integer"
-                raise ExperimentException(errmsg, exp_slice)
+                errmsg = "intn must be an integer. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
         else:
             if not isinstance(exp_slice['intt'], float) and not isinstance(exp_slice['intt'], int):
-                errmsg = "intt must be an number"
-                raise ExperimentException(errmsg, exp_slice)
+                errmsg = "intt must be a number. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
             else:
                 if 'intn' in exp_slice.keys():
                     if __debug__:
@@ -1248,49 +1248,49 @@ class ExperimentPrototype(object):
             exp_slice['intt'] = float(exp_slice['intt'])
 
         if 'beam_angle' not in exp_slice.keys(): # "beam_angle" is a required key
-            errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or
-                floats) which are angles of degrees off boresight (positive E of N)"""
-            raise ExperimentException(errmsg, exp_slice)
+            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
+                " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
         if not isinstance(exp_slice['beam_angle'], list):
-            errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or
-                floats) which are angles of degrees off boresight (positive E of N)"""
-            raise ExperimentException(errmsg, exp_slice)
+            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
+                " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
         for element in exp_slice['beam_angle']:
             if not isinstance(element, float) and not isinstance(element, int):
-                errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or
-                    floats) which are angles of degrees off boresight (positive E of N)"""
-                raise ExperimentException(errmsg, exp_slice)
+                errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
+                    " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
             if isinstance(element, int):
                 element = float(element)
 
         if 'beam_order' not in exp_slice.keys():
-            errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                     corresponding to the order of the angles in the beam_angle list."""
-            raise ExperimentException(errmsg, exp_slice)
+            errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                     " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
         if not isinstance(exp_slice['beam_order'], list):
-            errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                     corresponding to the order of the angles in the beam_angle list."""
-            raise ExperimentException(errmsg, exp_slice)
+            errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                     " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
         for element in exp_slice['beam_order']:
             if not isinstance(element, int) and not isinstance(element, list):
-                errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                         corresponding to the order of the angles in the beam_angle list."""
-                raise ExperimentException(errmsg, exp_slice)
+                errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                         " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
             if isinstance(element, list):
                 for beamnum in element:
                     if not isinstance(beamnum, int):
-                        errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                                 corresponding to the order of the angles in the beam_angle list."""
-                        raise ExperimentException(errmsg, exp_slice)
-                    if beamnum >= len(exp_slice['beam_angle']):
-                        errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                                 corresponding to the order of the angles in the beam_angle list."""
-                        raise ExperimentException(errmsg, exp_slice)
+                        errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                                 " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+                        raise ExperimentException(errmsg)
+                    if beamnum >= len(exp_slice['beam_angle']):  # TODO: Should these last two err msgs be reworded to indicate that one of the beam nubmers is too high?
+                        errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                                 " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+                        raise ExperimentException(errmsg)
             else:
                 if element >= len(exp_slice['beam_angle']):
-                    errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                             corresponding to the order of the angles in the beam_angle list."""
-                    raise ExperimentException(errmsg, exp_slice)
+                    errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                             " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+                    raise ExperimentException(errmsg)
 
     @staticmethod
     def set_slice_identifiers(exp_slice):
@@ -1363,26 +1363,26 @@ class ExperimentPrototype(object):
                 raise ExperimentException(errmsg)
 
             if exp_slice['clrfrqrange'][0] >= exp_slice['clrfrqrange'][1]:
-                errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or center frequencies / sampling
-                            rates / transition bands, and must have lower frequency first.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                errmsg = "clrfrqrange must be between min and max tx frequencies {} and rx" \
+                         " frequencies {} according to license and/or center frequencies / sampling" \
+                         " rates / transition bands, and must have lower frequency first." \
+                         .format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             if (exp_slice['clrfrqrange'][1] * 1000) >= self.tx_maxfreq or \
                     (exp_slice['clrfrqrange'][1] * 1000) >= self.rx_maxfreq:
-                errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or center frequencies / sampling
-                            rates / transition bands, and must have lower frequency first.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                errmsg = "clrfrqrange must be between min and max tx frequencies {} and rx" \
+                         " frequencies {} according to license and/or center frequencies / sampling" \
+                         " rates / transition bands, and must have lower frequency first." \
+                         .format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             if (exp_slice['clrfrqrange'][0] * 1000) <= self.tx_minfreq or \
                     (exp_slice['clrfrqrange'][0] * 1000) <= self.rx_minfreq:
-                errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or center frequencies / sampling
-                            rates / transition bands, and must have lower frequency first.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                errmsg = "clrfrqrange must be between min and max tx frequencies {} and rx" \
+                         " frequencies {} according to license and/or center frequencies / sampling" \
+                         " rates / transition bands, and must have lower frequency first." \
+                         .format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
 
@@ -1472,6 +1472,7 @@ class ExperimentPrototype(object):
                             """.format((self.tx_minfreq/1.0e3, self.tx_maxfreq/1.0e3),
                                        (self.rx_minfreq/1.0e3, self.rx_maxfreq/1.0e3), self.txctrfreq, self.rxctrfreq,
                                        self.tx_bandwidth/1.0e3, self.rx_bandwidth/1.0e3, transition_bandwidth/1.0e3)
+
                 raise ExperimentException(errmsg)
 
 
@@ -1480,6 +1481,7 @@ class ExperimentPrototype(object):
                                                 (exp_slice['txfreq'] <= freq_range[1])):
                     errmsg = """txfreq is within a restricted frequency range {}
                              """.format(freq_range)
+
                     raise ExperimentException(errmsg)
 
     def set_slice_defaults(self, exp_slice):
@@ -1725,8 +1727,8 @@ class ExperimentPrototype(object):
                     pass
                 elif param == 'clrfrqrange' and not exp_slice['clrfrqflag']:
                     pass
-                else:
-                    errmsg = "Slice {} is missing Necessary Parameter {}".format(
+                else:  # TODO: I don't think this test can be tested by an experiment file, seems to be superseded by other tests for necessary params
+                    errmsg = "Slice {} is missing necessary parameter {}".format(
                         exp_slice['slice_id'], param)
                     raise ExperimentException(errmsg)
             if param is None:
