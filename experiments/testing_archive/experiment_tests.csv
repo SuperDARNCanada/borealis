@@ -1,3 +1,59 @@
+# The following tests don't seem to be testable by writing an experiment file. Some of them are
+# testable by other methods.
+#
+# Class ExperimentPrototype:
+#
+# method set_scheduling_mode:
+#    1. scheduling_mode set by experiment handler is not in the possible_scheduling_modes list
+# method del_slice:
+#    1. slice ID to delete doesn't exist in the slice dictionary
+#method edit_slice:
+#    1. slice ID to edit doesn't exist in the slice dictionary
+#    2. slice parameter to edit is not a valid slice parameter in self.slice_keys
+# method self_check:
+#    2. self.check_slice(..) returned errors
+# method setup_slice:
+#    1. check_slice(...) returned errors
+#
+# Class DecimationScheme:
+# method __init__:
+#    1. rxrate is not 5.0e6 or the output rate is not 3.333e3 (for default filter if stages is None)
+#
+# Class ScanClassBase:
+# method prep_for_nested_scan_class:
+#    1. Slice ID not found
+#
+# Module radar_control:
+# method radar:
+#    1. zmq error setting up sockets with socket_operations.create_sockets(ids, options.router_address)
+#    2. If there's a new experiment, but there is a NameError exception (shouldn't really happen ever)
+# method search_for_experiment:
+#    1. zmq error when attempting socket_operations.send_request(radar_control_to_exp_handler, exphan_to_radctrl_iden, status)
+#    2. zmq error when trying socket_operations.recv_exp(radar_control_to_exp_handler, exphan_to_radctrl_iden, rad_ctrl_print)
+#
+# Module sample_building:
+# method create_uncombined_pulses:
+#    1. real_freq is not equal to wave_freq_hz (only for non-SINE wavetypes)
+# method get_samples:
+#    1. iwave_table or qwave_table passed to method, but not both
+# method get_wavetables:
+#    1. wavetype is not defined (typically 'SINE')
+# method make_pulse_samples:
+#    1. AssertionError (pulses in the pulse list don't have the same combined_pulse_index or pulse_timing_us)
+#    2. RuntimeWarning (I assume overflowing the variable with the accumulation)
+#
+# Class ExperimentOptions:
+# method __init__:
+#    1. Cannot open config_file (typically borealis_path/config.ini)
+#    2. Cannot open hdw.dat file (typically borealis_path/hdw.dat.[radar])
+#    3. Cannot find valid lines for current time period in hardware file
+#    4. Found incorrect number of parameters in hardware file (need 19)
+#    5. Cannot open restrict.dat file (typically at borealis_path/restrict.dat.[radar])
+#
+#
+#
+
+
 
 # **** The following 3 tests are from experiment_handler module, retrieve_experiment() method ****
 testing_archive.test_no_class::No experiment classes are present that are built from parent class ExperimentPrototype - exiting
