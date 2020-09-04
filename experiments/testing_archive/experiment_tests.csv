@@ -5,7 +5,7 @@ testing_archive.test_no_class::No experiment classes are present that are built 
 testing_archive.test_two_classes::You have more than one experiment class in your experiment file - exiting
 
 # **** The following 8 tests are from ExperimentPrototype class, __init__() method ****
-#testing_archive.test_cpid_unique::CPID must be a unique int, CPID: .* is in use by the experiment: .*
+testing_archive.test_cpid_unique::CPID must be unique. .* is in use by another local experiment
 testing_archive.test_cpid_int::CPID must be a unique int
 testing_archive.test_cpid_pos::The CPID should be a positive number in the experiment. Borealis will determine if it should be negative based on the scheduling mode. Only experiments run during discretionary time will have negative CPIDs.
 testing_archive.test_output_rxrate_high::Experiment's output sample rate is too high

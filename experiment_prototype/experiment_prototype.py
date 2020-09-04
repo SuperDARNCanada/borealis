@@ -18,6 +18,8 @@ import math
 import numpy as np
 import itertools
 from scipy.constants import speed_of_light
+import re
+from pathlib import Path
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -349,8 +351,23 @@ class ExperimentPrototype(object):
          for every slice added, to describe information that is slice-specific.
         """
 
-        if not isinstance(cpid, int):  # TODO add check for uniqueness
+        if not isinstance(cpid, int):
             errmsg = 'CPID must be a unique int'
+            raise ExperimentException(errmsg)
+        # Quickly check for uniqueness with a (recursive) search in the experiments directory first
+        # taking care not to look for CPID in any experiments that are just tests (start with the
+        # word 'test')
+        experiment_files_list = list(Path(BOREALISPATH + "/experiments/").rglob("[!test]*.py"))
+        cpid_list = []
+        for experiment_file in experiment_files_list:
+            with open(experiment_file) as file_to_search:
+                for line in file_to_search:
+                    # Find any lines that have 'cpid = [integer]'
+                    existing_cpid = re.findall("cpid = [0-9]+", line)
+                    if existing_cpid:
+                        cpid_list.append(existing_cpid[0].split()[2])
+        if str(cpid) in cpid_list:
+            errmsg = 'CPID must be unique. {} is in use by another local experiment'.format(cpid)
             raise ExperimentException(errmsg)
         if cpid <= 0:
             errmsg = 'The CPID should be a positive number in the experiment. Borealis'\
