@@ -354,7 +354,7 @@ class ExperimentPrototype(object):
                     existing_cpid = re.findall("cpid = [0-9]+", line)
                     if existing_cpid:
                         cpid_list.append(existing_cpid[0].split()[2])
-        if str(cpid) in cpid_list:
+        if str(cpid) in cpid_list:  # TODO : Need to exclude checking the current experiment
             errmsg = 'CPID must be unique. {} is in use by another local experiment'.format(cpid)
             raise ExperimentException(errmsg)
         if cpid <= 0:
