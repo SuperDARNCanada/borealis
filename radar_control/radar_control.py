@@ -805,7 +805,9 @@ def radar():
                 msg = msg.format(sm.COLOR("magenta", num_sequences))
                 rad_ctrl_print(msg)
 
-                if scan_iter == 0:  # The first integration time in the scan.
+                if scan.aveperiod_iter == 0 and aveperiod.beam_iter == 0: 
+                    # This is the first integration time in the scan object.
+                    # if scanbound is aligned to beamorder, the scan_iter will also = 0 at this point.
                     scan_flag = True
                 else:
                     scan_flag = False
