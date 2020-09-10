@@ -1115,7 +1115,7 @@ class DataWrite(object):
             write_tx_data()
 
         end = time.time()
-        printing("Time to write: {} ms".format((end - start) * 1000))
+        printing("Time to write to {}: {} ms".format(dataset_name, (end - start) * 1000))
 
 
 def main():
