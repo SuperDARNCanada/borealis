@@ -691,7 +691,6 @@ def radar():
                             # reduce the integration period to only the time remaining
                             # until the next scan boundary.
                             # TODO: Check for integration_period_done_time < 0
-                            # integration_period_done_time is in units of ms
                             integration_period_done_time = integration_period_start_time + \
                                             timedelta(milliseconds=bound_time_remaining * 1e3)
                         else:
