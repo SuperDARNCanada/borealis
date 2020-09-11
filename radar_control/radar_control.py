@@ -723,7 +723,7 @@ def radar():
 
                         # Alternating sequences if there are multiple in the averaging_period.
                         time_now = datetime.utcnow()
-                        if intt_break:  # TODO: Check if integration_period_done_time is in past
+                        if intt_break:
                             if time_now >= integration_period_done_time:
                                 time_remains = False
                                 integration_period_time = (time_now - integration_period_start_time)
