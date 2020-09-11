@@ -729,7 +729,6 @@ def radar():
                         integration_period_done_time = integration_period_start_time + \
                                             timedelta(milliseconds=aveperiod.intt)
 
-<<<<<<< HEAD
                     # all phases are set up for this averaging period for the beams required. Time to start averaging
                     # in the below loop.
                     if not scan.scanbound:
@@ -911,7 +910,6 @@ def radar():
                                 first_integration = False
 
                             # Sequence is done
-
                             if __debug__:
                                 time.sleep(1)
 
