@@ -718,7 +718,10 @@ def radar():
                         if bound_time_remaining < aveperiod.intt * 1e-3:
                             # reduce the integration period to only the time remaining
                             # until the next scan boundary.
-                            # TODO: Check for integration_period_done_time < 0
+                            # TODO: Check for bound_time_remaining > 0
+                            # to be sure there is actually time to run this intt
+                            # (if bound_time_remaining < 0, we need a solution to 
+                            # reset)
                             integration_period_done_time = integration_period_start_time + \
                                             timedelta(milliseconds=bound_time_remaining * 1e3)
                         else:
