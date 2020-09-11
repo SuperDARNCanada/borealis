@@ -674,7 +674,10 @@ def radar():
                         time_elapsed = integration_period_start_time - start_minute
                         if scan_iter < len(scan.scanbound) - 1:
                             scanbound_time = scan.scanbound[scan_iter + 1]
-                            # TODO: may be negative, perhaps calculate which 'beam' instead
+                            # TODO: scanbound_time could be in the past if system has taken 
+                            # too long, perhaps calculate which 'beam' (scan_iter) instead by 
+                            # rewriting this code for an experiment-wide scanbound attribute instead
+                            # of individual scanbounds inside the scan objects
                             # TODO: if scan_iter skips ahead, aveperiod.beam_iter may also need to if scan.align_to_beamorder is True
                             bound_time_remaining = scanbound_time - time_elapsed.total_seconds()
                         else:
