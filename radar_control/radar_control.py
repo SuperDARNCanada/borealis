@@ -632,7 +632,6 @@ def radar():
                         debug_samples.append(sequence_samples_dict)
 
                 # all phases are set up for this averaging period for the beams required.
-                # Time to start averaging in the below loop.
 
                 if not scan.scanbound:
                     integration_period_start_time = datetime.utcnow()  # ms
