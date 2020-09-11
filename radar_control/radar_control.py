@@ -791,7 +791,6 @@ def radar():
                                                repeat=pulse_dict['isarepeat'])
                             first_sequence_out = True
 
-                        # TODO: Make sure you can have a slice that doesn't transmit, only receives on a frequency. # REVIEW #1 what do you mean, what is this TODO for? REPLY : driver acks wouldn't be required etc need to make sure this is possible
                         # Sequence is done
                         num_sequences += 1
 
