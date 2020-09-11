@@ -715,6 +715,7 @@ def radar():
                     time_to_prep_aveperiod = datetime.utcnow() - time_start_of_aveperiod
                     rad_ctrl_print('Time to prep aveperiod: {}'.format(time_to_prep_aveperiod))
 
+                #  Time to start averaging in the below loop
                 num_sequences = 0
                 time_remains = True
                 while time_remains:
