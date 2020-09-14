@@ -29,7 +29,7 @@ BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 # Need to hardcode this, as unittest does weird things when you supply an argument on command line,
 # or if you use argparse. There is probably a better way
-input_test_file = "PATH_TO_/experiment_tests.csv"
+input_test_file = BOREALISPATH + "/experiments/testing_archive/experiment_tests.csv"
 
 # Call experiment handler main function like so: eh.main(['normalscan', 'discretionary'])
 import experiment_handler.experiment_handler as eh
@@ -76,28 +76,28 @@ class TestExperimentEnvSetup(unittest.TestCase):
         Test the code that checks for the config file
         """
         # Rename the config file temporarily
-        os.rename(BOREALISPATH + 'config.ini', BOREALISPATH + '_config.ini')
+        os.rename(BOREALISPATH + '/config.ini', BOREALISPATH + '/_config.ini')
         with self.assertRaisesRegex(ExperimentException, "Cannot open config file at "):
             ehmain()
         # experiment_prototype.experiment_exception.ExperimentException: Cannot open config file
         # at /home/kevin/PycharmProjects/borealis//config.ini
 
         # Now rename the config file and move on
-        os.rename(BOREALISPATH + '_config.ini', BOREALISPATH + 'config.ini')
+        os.rename(BOREALISPATH + '/_config.ini', BOREALISPATH + '/config.ini')
 
     def test_hdw_file(self):
         """
         Test the code that checks for the hdw.dat file
         """
         # Rename the hdw.dat file temporarily
-        os.rename(BOREALISPATH + 'hdw.dat.sas', BOREALISPATH + '_hdw.dat.sas')
+        os.rename(BOREALISPATH + '/hdw.dat.sas', BOREALISPATH + '/_hdw.dat.sas')
         with self.assertRaisesRegex(ExperimentException, "Cannot open hdw.dat.[a-z]{3} file at"):
              ehmain()
         # experiment_prototype.experiment_exception.ExperimentException: Cannot open hdw.dat.sas
         # file at /home/kevin/PycharmProjects/borealis//hdw.dat.sas
 
         # Now rename the hdw.dat file and move on
-        os.rename(BOREALISPATH + '_hdw.dat.sas', BOREALISPATH + 'hdw.dat.sas')
+        os.rename(BOREALISPATH + '/_hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas')
 
 
 class TestExperimentExceptions(unittest.TestCase):
