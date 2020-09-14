@@ -1,4 +1,4 @@
-# The following tests don't seem to be testable by writing an experiment file. Some of them are
+# The following error cases don't seem to be testable by writing an experiment file. Some of them are
 # testable by other methods.
 #
 # Class ExperimentPrototype:
@@ -152,4 +152,3 @@ testing_archive.test_slices_intn_bad::Slices .* and .* are INTEGRATION or PULSE 
 
 # **** The following test is from Scan class, __init__() method ****
 testing_archive.test_slices_scanbound_bad::Scan boundary not the same between slices .* and .* for INTTIME or PULSE interfaced slices
-
