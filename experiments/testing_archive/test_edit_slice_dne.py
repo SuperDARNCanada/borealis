@@ -2,6 +2,7 @@
 
 # write an experiment that raises an exception
 
+import copy
 import sys
 import os
 
@@ -28,7 +29,6 @@ class TestExperiment(ExperimentPrototype):
         if scf.opts.site_id in ["sas", "pgr"]:
             num_ranges = scf.STD_NUM_RANGES
 
-        # slice is missing a necessary parameter 
         slice_1 = {  # slice_id = 0, there is only one slice.
             "pulse_sequence": scf.SEQUENCE_7P,
             "tau_spacing": scf.TAU_SPACING_7P,
@@ -39,6 +39,11 @@ class TestExperiment(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
-            "txfreq": 12996,
+            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "acf": True,
+            "xcf": True,  # cross-correlation processing
+            "acfint": True,  # interferometer acfs
         }
         self.add_slice(slice_1)
+        self.edit_slice(7, txfreq=scf.COMMON_MODE_FREQ_2)  # Non-existent slice ID should fail
+        

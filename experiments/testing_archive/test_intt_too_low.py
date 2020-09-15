@@ -28,17 +28,19 @@ class TestExperiment(ExperimentPrototype):
         if scf.opts.site_id in ["sas", "pgr"]:
             num_ranges = scf.STD_NUM_RANGES
 
-        # slice is missing a necessary parameter 
         slice_1 = {  # slice_id = 0, there is only one slice.
             "pulse_sequence": scf.SEQUENCE_7P,
             "tau_spacing": scf.TAU_SPACING_7P,
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": 3500,  # duration of an integration, in ms
+            "intt": (max(scf.SEQUENCE_7P) * scf.TAU_SPACING_7P * 10e-3) - 10,  # duration of an integration, in ms, too low given the sequence and tau values, should fail
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
-            "txfreq": 12996,
+            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "acf": True,
+            "xcf": True,  # cross-correlation processing
+            "acfint": True,  # interferometer acfs
         }
         self.add_slice(slice_1)

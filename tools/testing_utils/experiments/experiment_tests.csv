@@ -5,10 +5,6 @@
 #
 # method set_scheduling_mode:
 #    1. scheduling_mode set by experiment handler is not in the possible_scheduling_modes list
-# method self_check:
-#    2. self.check_slice(..) returned errors
-# method setup_slice:
-#    1. check_slice(...) returned errors
 #
 # Class DecimationScheme:
 # method __init__:
@@ -32,8 +28,6 @@
 #    1. real_freq is not equal to wave_freq_hz (only for non-SINE wavetypes)
 # method get_samples:
 #    1. iwave_table or qwave_table passed to method, but not both
-# method get_wavetables:
-#    1. wavetype is not defined (typically 'SINE')
 # method make_pulse_samples:
 #    1. AssertionError (pulses in the pulse list don't have the same combined_pulse_index or pulse_timing_us)
 #    2. RuntimeWarning (I assume overflowing the variable with the accumulation)
@@ -48,6 +42,9 @@
 #
 #
 #
+
+# **** The following test is from module sample_building method get_wavetables:
+testing_archive.test_wavetype_not_defined::Wavetype .* not defined
 
 # **** The following 3 tests are from experiment_handler module, retrieve_experiment() method ****
 testing_archive.test_no_class::No experiment classes are present that are built from parent class ExperimentPrototype - exiting
