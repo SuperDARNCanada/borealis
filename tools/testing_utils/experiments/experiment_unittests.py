@@ -1,6 +1,6 @@
 """
 Test module for the experiment_handler/experiment_prototype code.
-It is run simply via 'python3 test_experiment_exceptions.py' and will go through all tests
+It is run simply via 'python3 experiment_unittests.py' and will go through all tests
 in the experiment_tests.csv file as well as the hardcoded tests here that don't fit nicely into
 a csv file.
 
@@ -29,7 +29,7 @@ BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 # Need to hardcode this, as unittest does weird things when you supply an argument on command line,
 # or if you use argparse. There is probably a better way
-input_test_file = BOREALISPATH + "/experiments/testing_archive/experiment_tests.csv"
+input_test_file = BOREALISPATH + "/tools/testing_utils/experiments/experiment_tests.csv"
 
 # Call experiment handler main function like so: eh.main(['normalscan', 'discretionary'])
 import experiment_handler.experiment_handler as eh

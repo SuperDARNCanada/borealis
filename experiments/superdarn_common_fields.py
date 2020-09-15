@@ -6,6 +6,9 @@ sys.path.append(BOREALISPATH)
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
+# TODO: We should protect these values from changing, I noticed during testing that I used a
+# TODO: call to reverse() on one and it affected the rest of the testing afterwards
+
 STD_RF_RX_RATE = 5.0e6
 RX_RATE_45KM = 10.0e3/3
 RX_RATE_15KM = 10.0e3

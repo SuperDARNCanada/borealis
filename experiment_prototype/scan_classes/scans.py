@@ -30,7 +30,8 @@ class Scan(ScanClassBase):
 
 
     scanbound
-        A list of seconds past the minute for scans to align to.
+        A list of seconds past the minute for scans to align to. Must be increasing,
+        and it is possible to have values greater than 60s.
     """
 
     def __init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata):
@@ -44,7 +45,6 @@ class Scan(ScanClassBase):
                 errmsg = "Scan boundary not the same between slices {} and {}" \
                          " for INTTIME or PULSE interfaced slices".format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
-
 
         # NOTE: for now we assume that when INTTIME combined, the AveragingPeriods of the various slices in the scan are
         #   just interleaved 1 then the other.

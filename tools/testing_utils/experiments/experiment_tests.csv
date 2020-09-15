@@ -5,11 +5,6 @@
 #
 # method set_scheduling_mode:
 #    1. scheduling_mode set by experiment handler is not in the possible_scheduling_modes list
-# method del_slice:
-#    1. slice ID to delete doesn't exist in the slice dictionary
-#method edit_slice:
-#    1. slice ID to edit doesn't exist in the slice dictionary
-#    2. slice parameter to edit is not a valid slice parameter in self.slice_keys
 # method self_check:
 #    2. self.check_slice(..) returned errors
 # method setup_slice:
@@ -21,6 +16,7 @@
 #
 # Class ScanClassBase:
 # method prep_for_nested_scan_class:
+#    1. Slice ID not found
 #    1. Slice ID not found
 #
 # Module radar_control:
@@ -53,15 +49,14 @@
 #
 #
 
-
-
 # **** The following 3 tests are from experiment_handler module, retrieve_experiment() method ****
 testing_archive.test_no_class::No experiment classes are present that are built from parent class ExperimentPrototype - exiting
 #testing_archive.test_no_inheritance::Something went wrong: Cannot find the experiment inside your module. Please make sure there is a class that inherits from ExperimentPrototype in your module
 testing_archive.test_two_classes::You have more than one experiment class in your experiment file - exiting
 
 # **** The following 8 tests are from ExperimentPrototype class, __init__() method ****
-testing_archive.test_cpid_unique::CPID must be unique. .* is in use by another local experiment
+######### NOTE THAT _cpid_unique.py is so named because the uniqueness test for the CPID doesn't check files that start with 'test' #######
+testing_archive._cpid_unique::CPID must be unique. .* is in use by another local experiment
 testing_archive.test_cpid_int::CPID must be a unique int
 testing_archive.test_cpid_pos::The CPID should be a positive number in the experiment. Borealis will determine if it should be negative based on the scheduling mode. Only experiments run during discretionary time will have negative CPIDs.
 testing_archive.test_output_rxrate_high::Experiment's output sample rate is too high
@@ -73,12 +68,57 @@ testing_archive.test_txbw_not_divisible::Experiment's transmit bandwidth .* is n
 # **** The following test is from ExperimentPrototype class, add_slice() method ****
 testing_archive.test_bad_slice::Attempt to add a slice failed - .* is not a dictionary of slice parameters
 
+# **** The following test is from ExperimentPrototype class, del_slice() method ****
+testing_archive.test_del_slice_dne::Cannot remove slice id .* : it does not exist in slice dictionary
+
+# **** The following 2 tests are from ExperimentPrototype class, edit_slice() method ****
+testing_archive.test_edit_slice_dne::Trying to edit .* but it does not exist in Slice_IDs list
+testing_archive.test_edit_slice_bad_param::Cannot edit slice ID .*: .* is not a valid slice parameter
+
 # **** The following 3 tests are from ExperimentPrototype class, check_new_slice_interfacing() method ****
 testing_archive.test_bad_interface::Interface value with slice .* not valid. Types available are
 testing_archive.test_bad_slice_id::Cannot add slice: the interfacing_dict set interfacing to an unknown slice .* not in slice ids
 testing_archive.test_bad_interfacing::The interfacing values of new slice cannot be reconciled. Interfacing with slice .* and with slice .* does not make sense with existing interface between slices of .*
 
-# **** The following test is from ExperimentPrototype class, check_slice() method ****
+# **** The following 27 tests are from ExperimentPrototype class, check_slice() method ****
+testing_archive.test_unused_param::Slice .* has a parameter that is not used: .* = .*
+testing_archive.test_too_many_tx_antennas::Slice .* has too many main TX antenna channels .* greater than config .*
+testing_archive.test_too_many_rx_antennas::Slice .* has too many main RX antenna channels .* greater than config .*
+testing_archive.test_too_many_int_antennas::Slice .* has too many RX interferometer antenna channels .* greater than config .*
+testing_archive.test_tx_antenna_dne::Slice .* specifies TX main array antenna numbers over config max .*
+testing_archive.test_tx_antenna_dups::Slice .* TX main antennas has duplicate antennas
+testing_archive.test_rx_antenna_dne::Slice .* specifies RX main array antenna numbers over config max .*
+testing_archive.test_rx_antenna_dups::Slice .* RX main antennas has duplicate antennas
+testing_archive.test_int_antenna_dne::Slice .* specifies interferometer array antenna numbers over config max .*
+testing_archive.test_int_antenna_dups::Slice .* RX interferometer antennas has duplicate antennas
+testing_archive.test_seq_not_increasing::Slice .* pulse_sequence not increasing
+testing_archive.test_pulse_len_too_high::Slice .* pulse length greater than tau_spacing
+testing_archive.test_pulse_len_too_low::Slice .* pulse length too small
+testing_archive.test_tau_too_small::Slice .* multi-pulse increment too small
+testing_archive.test_tau_not_multiple::Slice .* correlation lags will be off because tau_spacing .* us is not a multiple of the output rx sampling period \(1\/output_rx_rate .* Hz\).
+testing_archive.test_beam_angle_dups::Slice .* beam angles has duplicate directions
+##testing_archive.test_beam_angle_not_increasing::Slice .* beam_angle not increasing clockwise \(E of N is positive\)
+##testing_archive.test_beam_order_empty::Slice .* beam order scan empty
+##testing_archive.test_beam_order_num_too_high::Slice .* scan beam number .* DNE
+##testing_archive.test_beam_order_listnum_too_high::Slice .* scan beam number .* DNE
+##testing_archive.test_beam_order_too_long::Slice .* beam order too long for scanbound
+testing_archive.test_scanbound_but_no_intt::Slice .* must have intt enabled to use scanbound
+testing_archive.test_scanbound_bad_len::Slice .* scanbound length needs to equal beam order length
+testing_archive.test_scanbound_negative::Slice .* scanbound times must be non-negative
+testing_archive.test_scanbound_not_increasing::Slice .* scanbound times must be increasing
+testing_archive.test_intt_longer_than_scanbound::Slice .* intt longer than scanbound time
+testing_archive.test_intt_longer_than_scanbounds::Slice .* intt longer than scanbound times
+
+##### The following test appears to be superceded by a KeyError failure in experiment_prototype.py ~line 1200 in check_slice_minimum_requirements #####
+#testing_archive.test_no_seq::Slice .* has transmission frequency but no pulse sequence defined
+##### The below test seems to be superceded by sample_building.py: get_wavetables(...)
+#testing_archive.test_wavetype_not_supported::Slice .* wavetype of .* currently not supported
+##### The following test appears to be a duplicate of another test in check_slice_minimum_requirements(...) ####
+#testing_archive.test_no_intt_intn::Slice .* has transmission but no intt or intn
+##### The following tests don't appear to fail, and the radar operates with the message: "No Self Check Errors." for intt_too_low and "intn is set in experiment slice but will not be used due to intt No Self Check Errors." for both_intt_intn ####
+#testing_archive.test_both_intt_intn::Slice .* choose either intn or intt to be the limit for number of integrations in an integration period.
+#testing_archive.test_intt_too_low::Slice .* : pulse sequence is too long for integration time given
+##### The following test seems to be superceded by other specific parameter tests
 #testing_archive.test_missing_param::Slice .* is missing Necessary Parameter .*
 
 # **** The following 22 tests (18+4 extra from the dne tests) are from ExperimentPrototype class, check_slice_minimum_requirements() method ****
@@ -102,9 +142,8 @@ testing_archive.test_beam_order_dne::Slice must specify beam_order that must be 
 testing_archive.test_beam_order_not_list::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
 testing_archive.test_beam_order_not_ints_or_lists::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
 testing_archive.test_beam_order_lists_not_ints::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
-testing_archive.test_beam_order_lists_bad_index::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
-testing_archive.test_beam_order_bad_index::Slice must specify beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
-
+testing_archive.test_beam_order_lists_bad_index::Beam number .* could not index in beam_angle list of length .*. Slice: .*
+testing_archive.test_beam_order_bad_index::Beam number .* could not index in beam_angle list of length .*. Slice: .*
 
 # **** The following 13 tests are from ExperimentPrototype class, check_slice_specific_requirements() method ****
 testing_archive.test_clrfrqrng_not_list::clrfrqrange must be an integer list of length = 2

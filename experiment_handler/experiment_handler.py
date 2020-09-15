@@ -23,7 +23,6 @@ import inspect
 import importlib
 import threading
 import pickle
-import zlib
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -32,6 +31,7 @@ from utils.experiment_options.experimentoptions import ExperimentOptions
 from utils.zmq_borealis_helpers import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
+
 
 def printing(msg):
     EXPERIMENT_HANDLER = "\033[34m" + "EXPERIMENT HANDLER: " + "\033[0m"
@@ -128,14 +128,8 @@ def retrieve_experiment(experiment_module_name):
 
     printing('Retrieving experiment: {} from module {}'.format(
              experiment_classes[0][0], experiment_mod))
-    try:
-        return Experiment
-    except NameError:  # TODO: From testing, this appears to be redundant, unless there's a way to
-        # TODO    make this fail without making the above check fail (len(experiment_classes == 0)
-        errmsg = "Something went wrong: Cannot find the experiment inside " \
-                 "your module. Please make sure there is a class that " \
-                 "inherits from ExperimentPrototype in your module."
-        raise ExperimentException(errmsg)
+
+    return Experiment
 
 
 def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
@@ -215,14 +209,12 @@ def experiment_handler(semaphore, args):
                      .format(exp=exp.__class__.__name__, cp=exp.cpid))
         semaphore.release()
 
-
     update_thread = threading.Thread(target=update_experiment)
 
     while True:
 
         if not change_flag:
-            serialized_exp = pickle.dumps(None, 
-                                          protocol=pickle.HIGHEST_PROTOCOL)
+            serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             exp.build_scans()
             printing("Sucessful experiment {exp} built with CPID {cp}".format(
@@ -244,12 +236,12 @@ def experiment_handler(semaphore, args):
             printing("Sending new experiment from beginning")
             # starting anew
             send_experiment(exp_handler_to_radar_control,
-                                   options.radctrl_to_exphan_identity, serialized_exp)
+                            options.radctrl_to_exphan_identity, serialized_exp)
 
         elif message == 'NOERROR':
             # no errors
             send_experiment(exp_handler_to_radar_control,
-                                   options.radctrl_to_exphan_identity, serialized_exp)
+                            options.radctrl_to_exphan_identity, serialized_exp)
 
         # TODO: handle errors with revert back to original experiment. requires another
         # message
@@ -273,6 +265,4 @@ def main(sys_args):
 
 
 if __name__ == "__main__":
-    import sys
     main(sys.argv[1:])
-
