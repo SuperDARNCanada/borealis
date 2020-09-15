@@ -1788,7 +1788,7 @@ class ExperimentPrototype(object):
             error_list.append("Slice {} pulse length greater than tau_spacing".format(
                 exp_slice['slice_id']))
         if exp_slice['pulse_len'] < self.options.minimum_pulse_length and \
-                exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * 10.0e6:
+                exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * 1.0e6:
             error_list.append("Slice {} pulse length too small".format(exp_slice['slice_id']))
         if exp_slice['tau_spacing'] < self.options.minimum_tau_spacing_length:
             error_list.append("Slice {} multi-pulse increment too small".format(
