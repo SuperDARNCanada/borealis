@@ -15,7 +15,7 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 class TestExperiment(ExperimentPrototype):
 
     def __init__(self):
-        cpid = 151 # This is not a unique number 
+        cpid = 151  # This is not a unique number 
         super(TestExperiment, self).__init__(cpid)
 
         if scf.IS_FORWARD_RADAR:

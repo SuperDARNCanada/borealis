@@ -1197,6 +1197,9 @@ class ExperimentPrototype(object):
 
         # TODO: add checks for values that make sense, not just check for types
         # TODO: make lists of operations to run and use if any() to shorten up this code!
+        if 'pulse_sequence' not in exp_slice.keys():
+            errmsg = "Slice must specify pulse_sequence that must be a list of integers."
+            raise ExperimentException(errmsg, exp_slice)
         if not isinstance(exp_slice['pulse_sequence'], list):
             errmsg = "Slice must specify pulse_sequence that must be a list of integers"
             raise ExperimentException(errmsg, exp_slice)

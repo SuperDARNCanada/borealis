@@ -29,12 +29,11 @@ class TestExperiment(ExperimentPrototype):
             num_ranges = scf.STD_NUM_RANGES
 
         slice_1 = {  # slice_id = 0, there is only one slice.
-            "pulse_sequence": scf.SEQUENCE_7P,
-            "tau_spacing": scf.TAU_SPACING_7P,
+            "tau_spacing": scf.TAU_SPACING_7P,  # Missing pulse_sequence, should fail
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": (max(scf.SEQUENCE_7P) * scf.TAU_SPACING_7P * 1e-3) - 10,  # duration of an integration, in ms, too low given the sequence and tau values, should fail
+            "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan

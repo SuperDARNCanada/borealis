@@ -34,7 +34,7 @@ class TestExperiment(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": (max(scf.SEQUENCE_7P) * scf.TAU_SPACING_7P * 1e-3) - 10,  # duration of an integration, in ms, too low given the sequence and tau values, should fail
+            "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
@@ -42,5 +42,6 @@ class TestExperiment(ExperimentPrototype):
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
+            "wavetype": 'SIGN',  # if you can't read the signs, you're gonna fail
         }
         self.add_slice(slice_1)
