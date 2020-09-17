@@ -30,7 +30,8 @@ class Scan(ScanClassBase):
 
 
     scanbound
-        A list of seconds past the minute for scans to align to.
+        A list of seconds past the minute for scans to align to. Must be increasing, 
+        and it is possible to have values greater than 60s.
     """
 
     def __init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata):
@@ -44,7 +45,6 @@ class Scan(ScanClassBase):
                 errmsg = """Scan Boundary not the Same Between Slices {} and {}
                      combined in Scan""".format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
-
 
         # NOTE: for now we assume that when INTTIME combined, the AveragingPeriods of the various slices in the scan are
         #   just interleaved 1 then the other.
@@ -62,6 +62,27 @@ class Scan(ScanClassBase):
         for params in self.prep_for_nested_scan_class():
             self.aveperiods.append(AveragingPeriod(*params))
 
+        # determine how many beams in scan:
+        num_unique_aveperiods = 0
+        for aveperiod in self.aveperiods:
+            num_unique_aveperiods += aveperiod.num_beams_in_scan
+
+        self.num_unique_aveperiods = num_unique_aveperiods
+
+        if self.scanbound:
+            self.num_aveperiods_in_scan = len(self.scanbound)
+            if self.num_unique_aveperiods == self.num_aveperiods_in_scan:
+                # the number of beams to get through for all aveperiods in scan equals the length of the scanbound,
+                # so we can align the iterations of the beams to the scanbound list times.
+                self.align_scan_to_beamorder = True
+            else:
+                # the number of beams to get through for all aveperiods is not equal to the number of scanbound
+                # times, so the same beam will not always occur at the same scanbound time.
+                self.align_scan_to_beamorder = False
+        else:
+            self.num_aveperiods_in_scan = self.num_unique_aveperiods
+
+        self.aveperiod_iter = 0 # used to keep track of index into aveperiods list.
         # AveragingPeriod will be in slice_id # order
 
     def get_inttime_slice_ids(self):
