@@ -103,9 +103,6 @@ class SCDUtils(object):
 
         scd_lines = []
 
-        # add the default infinite duration line 
-        scd_lines.append(self.scd_default)
-
         for num, line in enumerate(raw_scd):
             if len(line) not in [6, 7]:
                 raise ValueError("Line {} has incorrect number of arguments; requires 6 or 7.".format(num))
@@ -118,8 +115,10 @@ class SCDUtils(object):
 =======
             scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
 
-        if len(scd_lines) == 1:
+        if len(scd_lines) == 0:
             print('WARNING: SCD file empty; default normalscan will run')
+            # add the default infinite duration line 
+            scd_lines.append(self.scd_default)
 
 >>>>>>> master
         return scd_lines
