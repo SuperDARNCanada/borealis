@@ -36,20 +36,20 @@ from experiment_prototype.decimation_scheme.decimation_scheme import DecimationS
 interface_types = tuple(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
 
-Interfacing in this case refers to how two or more components are 
+Interfacing in this case refers to how two or more components are
 meant to be run together. The following types of interfacing are possible:
 
 1. SCAN.
-The scan by scan interfacing allows for slices to run a scan of one slice, 
-followed by a scan of the second. The scan mode of interfacing typically 
-means that the slice will cycle through all of its beams before switching 
+The scan by scan interfacing allows for slices to run a scan of one slice,
+followed by a scan of the second. The scan mode of interfacing typically
+means that the slice will cycle through all of its beams before switching
 to another slice.
 
 There are no requirements for slices interfaced in this manner.
 
 2. INTTIME.
-This type of interfacing allows for one slice to run its integration period 
-(also known as integration time or averaging period), before switching to 
+This type of interfacing allows for one slice to run its integration period
+(also known as integration time or averaging period), before switching to
 another slice's integration period. This type of interface effectively creates
 an interleaving scan where the scans for multiple slices are run 'at the same
 time', by interleaving the integration times.
@@ -58,11 +58,11 @@ Slices which are interfaced in this manner must share:
     - the same SCANBOUND value.
 
 3. INTEGRATION.
-Integration interfacing allows for pulse sequences defined in the slices to 
-alternate between each other within a single integration period. It's important 
-to note that data from a single slice is averaged only with other data from that 
-slice. So in this case, the integration period is running two slices and can 
-produce two averaged datasets, but the sequences (integrations) within the 
+Integration interfacing allows for pulse sequences defined in the slices to
+alternate between each other within a single integration period. It's important
+to note that data from a single slice is averaged only with other data from that
+slice. So in this case, the integration period is running two slices and can
+produce two averaged datasets, but the sequences (integrations) within the
 integration period are interleaved.
 
 Slices which are interfaced in this manner must share:
@@ -71,12 +71,12 @@ Slices which are interfaced in this manner must share:
     - the same BEAM_ORDER length (scan length)
 
 4. PULSE.
-Pulse interfacing allows for pulse sequences to be run together concurrently. 
-Slices will have their pulse sequences summed together so that the 
-data transmits at the same time. For example, slices of different frequencies 
-can be mixed simultaneously, and slices of different pulse sequences can also 
-run together at the cost of having more blanked samples. When slices are 
-interfaced in this way the radar is truly transmitting and receiving the 
+Pulse interfacing allows for pulse sequences to be run together concurrently.
+Slices will have their pulse sequences summed together so that the
+data transmits at the same time. For example, slices of different frequencies
+can be mixed simultaneously, and slices of different pulse sequences can also
+run together at the cost of having more blanked samples. When slices are
+interfaced in this way the radar is truly transmitting and receiving the
 slices simultaneously.
 
 Slices which are interfaced in this manner must share:
@@ -187,8 +187,8 @@ lag_table *defaults*
 
 pulse_phase_offset *defaults*
     Allows phase shifting of pulses, enabling encoding of pulses. Default all
-    zeros for all pulses in pulse_sequence. Pulses can be shifted with a single 
-    phase shift for each pulse or with a phase shift specified for each sample 
+    zeros for all pulses in pulse_sequence. Pulses can be shifted with a single
+    phase shift for each pulse or with a phase shift specified for each sample
     in the pulses of the slice.
 
 range_sep *defaults*
@@ -206,7 +206,8 @@ rx_main_antennas *defaults*
 
 scanbound *defaults*
     A list of seconds past the minute for integration times in a scan to align to. Defaults
-    to None, not required.
+    to None, not required. If one slice in an experiment has a scanbound, they all 
+    must.
 
 seqoffset *defaults*
     offset in us that this slice's sequence will begin at, after the start of the sequence.
@@ -296,11 +297,11 @@ class ExperimentPrototype(object):
     used to make an experiment:
 
     * xcf: boolean for cross-correlation data. A default can be set here for slices,
-      but any slice can override this setting with the xcf slice key. 
+      but any slice can override this setting with the xcf slice key.
     * acf: boolean for auto-correlation data on main array. A default can be set here for slices,
-      but any slice can override this setting with the acf slice key. 
+      but any slice can override this setting with the acf slice key.
     * acfint: boolean for auto-correlation data on interferometer array. A default can be set here for slices,
-      but any slice can override this setting with the acfint slice key. 
+      but any slice can override this setting with the acfint slice key.
 
     * slice_dict: modifiable only using the add_slice, edit_slice, and del_slice
       methods.
@@ -326,7 +327,7 @@ class ExperimentPrototype(object):
         sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
         :param rx_bandwidth: The desired tx bandwidth for the experiment. Directly determines tx
         sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
-        :param txctrfreq: center frequency, in kHz, for the USRP to mix the samples with. 
+        :param txctrfreq: center frequency, in kHz, for the USRP to mix the samples with.
          Since this requires tuning time to set, it cannot be modified after instantiation.
         :param rxctrfreq: center frequency, in kHz, used to mix to baseband.
          Since this requires tuning time to set, it cannot be modified after instantiation.
@@ -334,8 +335,8 @@ class ExperimentPrototype(object):
         signal processing module. If you would like something other than the default, you will
         need to build an object of the DecimationScheme type before initiating your experiment.
         This cannot be changed after instantiation.
-        :param comment_string: description of experiment for data files. This should be 
-         used to describe your overall experiment design. Another comment string exists 
+        :param comment_string: description of experiment for data files. This should be
+         used to describe your overall experiment design. Another comment string exists
          for every slice added, to describe information that is slice-specific.
         """
 
@@ -468,7 +469,7 @@ class ExperimentPrototype(object):
         # interfacing specified.
 
         self.__scan_objects = []
-
+        self.__scanbound = False
         self.__running_experiment = None  # this will be of ScanClassBase type
 
     __slice_keys = slice_key_set
@@ -481,7 +482,7 @@ class ExperimentPrototype(object):
         """
         This experiment's CPID (control program ID, a term that comes from ROS).
 
-        The CPID is read-only once established in instantiation. It may be 
+        The CPID is read-only once established in instantiation. It may be
         modified at runtime by the set_scheduling_mode function, to set it to
         a negative value during discretionary time.
         """
@@ -842,7 +843,7 @@ class ExperimentPrototype(object):
                      ' a valid mode: {}'.format(scheduling_mode,
                             possible_scheduling_modes)
             raise ExperimentException(errmsg)
-    
+
     def printing(self, msg):
         EXPERIMENT_P = "\033[34m" + self.__class__.__name__ + " : " + "\033[0m"
         sys.stdout.write(EXPERIMENT_P + msg + "\n")
@@ -1146,7 +1147,18 @@ class ExperimentPrototype(object):
 
         self.__scan_objects = []
         for params in self.__running_experiment.prep_for_nested_scan_class():
-            self.scan_objects.append(Scan(*params))
+            self.__scan_objects.append(Scan(*params))
+        
+        for scan in self.__scan_objects:
+            if scan.scanbound != None:
+                self.__scanbound = True
+
+        if self.__scanbound:
+            try:
+                self.__scan_objects = sorted(self.__scan_objects, key=lambda scan: scan.scanbound[0])
+            except IndexError as e:  # scanbound is None in some scans
+                errmsg = 'If one slice has a scanbound, they all must to avoid up to minute-long downtimes.'
+                raise ExperimentException(errmsg) from e
 
         if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
@@ -1386,8 +1398,10 @@ class ExperimentPrototype(object):
             still_checking = True
             while still_checking:
                 for freq_range in self.options.restricted_ranges:
-                    if exp_slice['clrfrqrange'][0] in range(freq_range[0], freq_range[1]):
-                        if exp_slice['clrfrqrange'][1] in range(freq_range[0], freq_range[1]):
+                    if ((exp_slice['clrfrqrange'][0] >= freq_range[0]) and
+                                                (exp_slice['clrfrqrange'][0] <= freq_range[1])):
+                        if ((exp_slice['clrfrqrange'][1] >= freq_range[0]) and
+                                                (exp_slice['clrfrqrange'][1] <= freq_range[1])):
                             # the range is entirely within the restricted range.
                             raise ExperimentException('clrfrqrange is entirely within restricted '
                                                       'range {}'.format(freq_range))
@@ -1403,7 +1417,8 @@ class ExperimentPrototype(object):
                             # check in case it's in another range.
                     else:
                         # lower end is not in restricted frequency range.
-                        if exp_slice['clrfrqrange'][1] in range(freq_range[0], freq_range[1]):
+                        if ((exp_slice['clrfrqrange'][1] >= freq_range[0]) and
+                                                (exp_slice['clrfrqrange'][1] <= freq_range[1])):
                             if __debug__:
                                 print('Clrfrqrange will be modified because it is partially in a ' +
                                 'restricted range.')
@@ -1415,8 +1430,8 @@ class ExperimentPrototype(object):
                             # checking in case it's in another range.
                         else:  # neither end of clrfrqrange is inside the restricted range but
                             # we should check if the range is inside the clrfrqrange.
-                            if freq_range[0] in range(exp_slice['clrfrqrange'][0],
-                                                                  exp_slice['clrfrqrange'][1]):
+                            if ((freq_range[0] >= exp_slice['clrfrqrange'][0]) and
+                                                (freq_range[0] <= exp_slice['clrfrqrange'][1])):
                                 if __debug__:
                                     print('There is a restricted range within the clrfrqrange - '
                                           'STOP.')
@@ -1429,47 +1444,49 @@ class ExperimentPrototype(object):
 
         elif exp_slice['rxonly']:  # RX only mode.
             # In this mode, rxfreq is required.
+            freq_error = False
             if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
                                                                       float):
-                errmsg = "rxfreq must be a number (kHz) between rx min and max frequencies {} for" \
-                         " the radar license and be within range given center frequency, sampling" \
-                         " rate and transition band.".format((self.rx_minfreq, self.rx_maxfreq))
-                raise ExperimentException(errmsg)
-            if (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
+                freq_error = True
+            elif (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
                                                                    1000) <= self.rx_minfreq:
-                errmsg = "rxfreq must be a number (kHz) between rx min and max frequencies {} for" \
-                         " the radar license and be within range given center frequency, sampling" \
-                         " rate and transition band.".format((self.rx_minfreq, self.rx_maxfreq))
+                freq_error = True
+
+            if freq_error:
+                errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
+                            the radar license and be within range given center frequency {} kHz, sampling
+                            rate {} kHz, and transition band {} kHz.""".format((self.rx_minfreq/1.0e3, 
+                                    self.rx_maxfreq/1.0e3),
+                                    self.rxctrfreq, self.rx_bandwidth/1.0e3, transition_bandwidth/1.0e3)
                 raise ExperimentException(errmsg)
 
         else:  # TX-specific mode , without a clear frequency search.
             # In this mode, txfreq is required along with the other requirements.
+            freq_error = False
             if not isinstance(exp_slice['txfreq'], int) and not isinstance(exp_slice['txfreq'],
                                                                           float):
-                errmsg = "txfreq must be a number (kHz) between tx min and max frequencies {} and" \
-                         " rx min and max frequencies {} for the radar license and be within range" \
-                         " given center frequencies, sampling rates and transition band." \
-                         .format((self.tx_minfreq, self.tx_maxfreq),
-                                       (self.rx_minfreq, self.rx_maxfreq))
-                raise ExperimentException(errmsg)
-            if (exp_slice['txfreq'] * 1000) >= self.tx_maxfreq or (exp_slice['txfreq'] * 1000) >= \
+                freq_error = True
+            elif (exp_slice['txfreq'] * 1000) >= self.tx_maxfreq or (exp_slice['txfreq'] * 1000) >= \
                     self.rx_maxfreq:
-                errmsg = "txfreq must be a number (kHz) between tx min and max frequencies {} and" \
-                         " rx min and max frequencies {} for the radar license and be within range" \
-                         " given center frequencies, sampling rates and transition band." \
-                         .format((self.tx_minfreq, self.tx_maxfreq),
-                                       (self.rx_minfreq, self.rx_maxfreq))
-                raise ExperimentException(errmsg)
-            if (exp_slice['txfreq'] * 1000) <= self.tx_minfreq or (exp_slice['txfreq'] * 1000) <= \
+                freq_error = True
+            elif (exp_slice['txfreq'] * 1000) <= self.tx_minfreq or (exp_slice['txfreq'] * 1000) <= \
                     self.rx_minfreq:
-                errmsg = "txfreq must be a number (kHz) between tx min and max frequencies {} and" \
-                         " rx min and max frequencies {} for the radar license and be within range" \
-                         " given center frequencies, sampling rates and transition band." \
-                         .format((self.tx_minfreq, self.tx_maxfreq),
-                                       (self.rx_minfreq, self.rx_maxfreq))
+                freq_error = True
+            
+            if freq_error:
+                errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
+                            rx min and max frequencies {} for the radar license and be within range
+                            given center frequencies (tx: {} kHz, rx: {} kHz), sampling rates (tx: {} kHz, 
+                            rx: {} kHz), and transition band ({} kHz).
+                            """.format((self.tx_minfreq/1.0e3, self.tx_maxfreq/1.0e3),
+                                       (self.rx_minfreq/1.0e3, self.rx_maxfreq/1.0e3), self.txctrfreq, self.rxctrfreq, 
+                                       self.tx_bandwidth/1.0e3, self.rx_bandwidth/1.0e3, transition_bandwidth/1.0e3)
                 raise ExperimentException(errmsg)
+            
+            
             for freq_range in self.options.restricted_ranges:
-                if exp_slice['txfreq'] in range(freq_range[0], freq_range[1]):
+                if ((exp_slice['txfreq'] >= freq_range[0]) and
+                                                (exp_slice['txfreq'] <= freq_range[1])):
                     errmsg = "txfreq is within a restricted frequency range {}".format(freq_range)
                     raise ExperimentException(errmsg)
 
@@ -1859,9 +1876,6 @@ class ExperimentPrototype(object):
             if not exp_slice['intt']:
                 error_list.append("Slice {} must have intt enabled to use scanbound".format(
                         exp_slice['slice_id']))
-            elif len(exp_slice['scanbound']) != len(exp_slice['beam_order']):
-                error_list.append("Slice {} scanbound length needs to equal beam order length".format(
-                        exp_slice['slice_id']))
             elif any(i < 0 for i in exp_slice['scanbound']):
                 error_list.append("Slice {} scanbound times must be non-negative".format(
                         exp_slice['slice_id']))
@@ -1870,15 +1884,6 @@ class ExperimentPrototype(object):
                 error_list.append("Slice {} scanbound times must be increasing".format(
                         exp_slice['slice_id']))
             else:
-                # Last element in scanbound with intt added determines total_scan_time
-                # Make sure to round up intt to scan boundary minute in ms
-                total_scan_time = (math.ceil((exp_slice['scanbound'][-1] +
-                                              exp_slice['intt'] * 1e-3) / 60) * 60000)
-
-                if (len(exp_slice['beam_order']) * exp_slice['intt']) > total_scan_time:
-                    error_list.append("Slice {} beam order too long for scanbound".format(
-                            exp_slice['slice_id']))
-
                 # Check if any scanbound times are shorter than the intt.
                 if len(exp_slice['scanbound']) == 1:
                     if exp_slice['scanbound'][0] * 1000 < exp_slice['intt']:
@@ -1918,3 +1923,4 @@ class ExperimentPrototype(object):
                 slice_interface[num1] = interfacing_type
 
         return slice_interface
+

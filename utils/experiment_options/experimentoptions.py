@@ -144,7 +144,7 @@ class ExperimentOptions:
         self._analog_rx_attenuator = params[9]  # dB
         self._tdiff = params[10] # ns
         self._phase_sign = params[11]
-        self._intf_offset = [float(params[12]), float(params[13]), float(params[14])]  
+        self._intf_offset = [float(params[12]), float(params[13]), float(params[14])]
         # interferometer offset from
         # midpoint of main, metres [x, y, z] where x is along line of antennas, y is along array
         # normal and z is altitude difference, in m.
@@ -286,7 +286,7 @@ class ExperimentOptions:
     @property
     def max_number_of_filter_taps_per_stage(self):
         return self._max_number_of_filter_taps_per_stage
-  
+
     @property
     def site_id(self):
         return self._site_id
