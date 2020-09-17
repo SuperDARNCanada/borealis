@@ -25,19 +25,19 @@ def reshape_bfiq_data(record_dict):
     return record_dict
 
 
-def reshape_output_samples_iq(record_dict):
+def reshape_antennas_iq(record_dict):
     """
-    Reshape the flattened data from an output_samples_iq file.
+    Reshape the flattened data from an antennas_iq file.
 
-    :param record_dict: dict of the hdf5 data of a given record of output_samples_iq, ie deepdish.io.load(filename)[record_name]
+    :param record_dict: dict of the hdf5 data of a given record of antennas_iq, ie deepdish.io.load(filename)[record_name]
     """
     # data dimensions are num_antennas, num_sequences, num_samps
     number_of_antennas = len(record_dict['antenna_arrays_order'])
 
     flat_data = np.array(record_dict['data'])  
     # reshape to number of antennas (M0..... I3) x nave x number_of_samples
-    output_samples_iq_data = np.reshape(flat_data, (number_of_antennas, record_dict['num_sequences'], record_dict['num_samps']))
-    record_dict['data'] = output_samples_iq_data
+    antennas_iq_data = np.reshape(flat_data, (number_of_antennas, record_dict['num_sequences'], record_dict['num_samps']))
+    record_dict['data'] = antennas_iq_data
     return record_dict
 
 
@@ -112,14 +112,14 @@ def plot_bf_iq_data(record_dict, record_info_string, beam=0, sequence=0):
     plt.show()
 
 
-def plot_output_samples_iq_data(record_dict, record_info_string, sequence=0, real_only=True, antenna_indices=None):
+def plot_antennas_iq_data(record_dict, record_info_string, sequence=0, real_only=True, antenna_indices=None):
     """
-    :param record_dict: dict of the hdf5 data of a given record of output_samples_iq, ie deepdish.io.load(filename)[record_name]
+    :param record_dict: dict of the hdf5 data of a given record of antennas_iq, ie deepdish.io.load(filename)[record_name]
     :param record_info_string: a string indicating the type of data being plotted (to be used on the plot legend). Should 
-     be output_samples_iq type, but there might be multiple slices.
+     be antennas_iq type, but there might be multiple slices.
     """
 
-    record_dict = reshape_output_samples_iq(record_dict)
+    record_dict = reshape_antennas_iq(record_dict)
     # new data dimensions are num_antennas, num_sequences, num_samps
     antennas_present = [int(i.split('_')[-1]) for i in record_dict['antenna_arrays_order']]
 
@@ -243,15 +243,15 @@ def fft_and_plot_bfiq_data(record_dict, record_info_string, beam=0, sequence=0, 
     return fft_samps, xf, fig
 
 
-def fft_and_plot_output_samples_iq(record_dict, record_info_string, sequence=0, real_only=True, antenna_indices=None, plot_width=None):
+def fft_and_plot_antennas_iq(record_dict, record_info_string, sequence=0, real_only=True, antenna_indices=None, plot_width=None):
     """
-    :param record_dict: dict of the hdf5 data of a given record of output_samples_iq, ie deepdish.io.load(filename)[record_name]
+    :param record_dict: dict of the hdf5 data of a given record of antennas_iq, ie deepdish.io.load(filename)[record_name]
     :param record_info_string: a string indicating the type of data being plotted (to be used on the plot legend). Should 
-     be output_samples_iq type, but there might be multiple slices.
+     be antennas_iq type, but there might be multiple slices.
     :param plot_width: frequency bandwidth to plot fft (for higher resolution) 
     """
 
-    record_dict = reshape_output_samples_iq(record_dict)
+    record_dict = reshape_antennas_iq(record_dict)
     # new data dimensions are num_antennas, num_sequences, num_samps
     antennas_present = [int(i.split('_')[-1]) for i in record_dict['antenna_arrays_order']]
 
