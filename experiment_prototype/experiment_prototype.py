@@ -1156,11 +1156,32 @@ class ExperimentPrototype(object):
         if self.__scanbound:
             try:
                 self.__scan_objects = sorted(self.__scan_objects, key=lambda scan: scan.scanbound[0])
-            except IndexError as e:  # scanbound is None in some scans
+            except (IndexError, TypeError) as e:  # scanbound is None in some scans
                 errmsg = 'If one slice has a scanbound, they all must to avoid up to minute-long downtimes.'
                 raise ExperimentException(errmsg) from e
 
-        if __debug__:
+        # check that the number of slices can be accommodated by the decimation scheme.
+        max_num_concurrent_slices = 0
+        for scan in self.__scan_objects:
+            for aveperiod in scan.aveperiods:
+                for seq in aveperiod.sequences:
+                    if len(seq.slice_ids) > max_num_concurrent_slices:
+                        max_num_concurrent_slices = len(seq.slice_ids)
+
+        for stage in self.decimation_scheme.stages:
+            power_2 = 0
+            while 2 ** power_2 < len(stage.filter_taps):
+                power_2 += 1
+            effective_length = 2 ** power_2
+            if effective_length * max_num_concurrent_slices > \
+                    self.options.max_number_of_filter_taps_per_stage:
+                errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with" \
+                         " this many slices ({}) is too large for GPU max {}"
+                errmsg = errmsg.format(len(stage.filter_taps), stage.stage_num, self.num_slices,
+                                       self.options.max_number_of_filter_taps_per_stage)
+                raise ExperimentException(errmsg)
+
+        if True:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
             print("Number of AveragingPeriods in Scan #1: {}".format(len(self.__scan_objects[
                                                                              0].aveperiods)))
@@ -1168,6 +1189,7 @@ class ExperimentPrototype(object):
                 len(self.__scan_objects[0].aveperiods[0].sequences)))
             print("Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1:"
                   " {}".format(len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)))
+            print("Max concurrent slices: {}".format(max_num_concurrent_slices))
 
     def get_scan_slice_ids(self):
         # TODO add this to ScanClassBase method by just passing in the current type (Experiment, Scan, AvePeriod)
@@ -1453,11 +1475,12 @@ class ExperimentPrototype(object):
                 freq_error = True
 
             if freq_error:
-                errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given center frequency {} kHz, sampling
-                            rate {} kHz, and transition band {} kHz.""".format((self.rx_minfreq/1.0e3, 
-                                    self.rx_maxfreq/1.0e3),
-                                    self.rxctrfreq, self.rx_bandwidth/1.0e3, transition_bandwidth/1.0e3)
+                errmsg = "rxfreq must be a number (kHz) between rx min and max frequencies {} for"\
+                         " the radar license and be within range given center frequency {} kHz, " \
+                         "sampling rate {} kHz, and transition band {} kHz."
+                errmsg = errmsg.format((self.rx_minfreq/1.0e3, self.rx_maxfreq/1.0e3),
+                                       self.rxctrfreq, self.rx_bandwidth/1.0e3,
+                                       transition_bandwidth/1.0e3)
                 raise ExperimentException(errmsg)
 
         else:  # TX-specific mode , without a clear frequency search.
@@ -1474,16 +1497,16 @@ class ExperimentPrototype(object):
                 freq_error = True
             
             if freq_error:
-                errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
-                            rx min and max frequencies {} for the radar license and be within range
-                            given center frequencies (tx: {} kHz, rx: {} kHz), sampling rates (tx: {} kHz, 
-                            rx: {} kHz), and transition band ({} kHz).
-                            """.format((self.tx_minfreq/1.0e3, self.tx_maxfreq/1.0e3),
-                                       (self.rx_minfreq/1.0e3, self.rx_maxfreq/1.0e3), self.txctrfreq, self.rxctrfreq, 
-                                       self.tx_bandwidth/1.0e3, self.rx_bandwidth/1.0e3, transition_bandwidth/1.0e3)
+                errmsg = "txfreq must be a number (kHz) between tx min and max frequencies {} and"\
+                         " rx min and max frequencies {} for the radar license and be within range"\
+                         " given center frequencies (tx: {} kHz, rx: {} kHz), sampling rates (tx: "\
+                         "{} kHz, rx: {} kHz), and transition band ({} kHz)."
+                errmsg = errmsg.format((self.tx_minfreq/1.0e3, self.tx_maxfreq/1.0e3),
+                                       (self.rx_minfreq/1.0e3, self.rx_maxfreq/1.0e3),
+                                       self.txctrfreq, self.rxctrfreq, self.tx_bandwidth/1.0e3,
+                                       self.rx_bandwidth/1.0e3, transition_bandwidth/1.0e3)
                 raise ExperimentException(errmsg)
-            
-            
+
             for freq_range in self.options.restricted_ranges:
                 if ((exp_slice['txfreq'] >= freq_range[0]) and
                                                 (exp_slice['txfreq'] <= freq_range[1])):
@@ -1678,18 +1701,6 @@ class ExperimentPrototype(object):
 
         # TODO: check if self.cpid is not unique - incorporate known cpids from git repo
         # TODO: use pygit2 for this
-
-        # check that the number of slices can be accommodated by the decimation scheme.
-        for stage in self.decimation_scheme.stages:
-            power_2 = 0
-            while (2 ** power_2 < len(stage.filter_taps)):
-                power_2 += 1
-            effective_length = 2 ** power_2
-            if effective_length * self.num_slices > self.options.max_number_of_filter_taps_per_stage:
-                errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with \
-                    this many slices ({}) is too large for GPU max {}".format(len(stage.filter_taps),
-                        stage.stage_num, self.num_slices, self.options.max_number_of_filter_taps_per_stage)
-                # TODO: Is this supposed to have a 'raise ExperimentException(errmsg)' ?
 
         # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
         # any time after setup. We run it now in case the user has changed something
@@ -1898,10 +1909,6 @@ class ExperimentPrototype(object):
                             break
 
         # TODO other checks
-        # TODO: This check seems to be superceded by the check in sample_building.py: get_wavetables(...)
-        if exp_slice['wavetype'] != 'SINE':
-            error_list.append("Slice {} wavetype of {} currently not supported".format(
-                exp_slice['slice_id'], exp_slice['wavetype']))
 
         return error_list
 
