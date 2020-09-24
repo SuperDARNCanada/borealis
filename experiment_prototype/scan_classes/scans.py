@@ -141,14 +141,8 @@ class Scan(ScanClassBase):
             self.nested_beamorder = {}
             self.nested_beamdir = {}
             for slice_id in inttime_list:
-                if len(self.scan_beams[slice_id]) != len(self.scan_beams[inttime_list[0]]):
-                    errmsg = """Slice {} and {} are INTEGRATION or PULSE interfaced but do not
-                        have the same number of integrations in their
-                        scan""".format(self.slice_ids[0], slice_id)
-                    raise ExperimentException(errmsg)
-                else:
-                    self.nested_beamorder[slice_id] = self.scan_beams[slice_id]
-                    self.nested_beamdir[slice_id] = self.beamdir[slice_id]
+                self.nested_beamorder[slice_id] = self.scan_beams[slice_id]
+                self.nested_beamdir[slice_id] = self.beamdir[slice_id]
             params.append(self.nested_beamorder)
             params.append(self.nested_beamdir)
 

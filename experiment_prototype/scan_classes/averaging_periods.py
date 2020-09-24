@@ -103,10 +103,10 @@ class AveragingPeriod(ScanClassBase):
                              " same NAVE goal intn".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
 
-        for slice_id in self.slice_ids:  # TODO: This test seems to be superseded by the test for scan boundary being the same between slices
+        for slice_id in self.slice_ids: 
             if len(self.slice_dict[slice_id]['beam_order']) != len(self.slice_dict[self.slice_ids[0]]['beam_order']):
-                errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced and do not have the" \
-                         " same length of beam_order (number of integration periods)" \
+                errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced but do not have the" \
+                         " same number of integrations in their beam order" \
                          .format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
         self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]]['beam_order'])

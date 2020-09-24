@@ -38,7 +38,6 @@ class TestExperiment(ExperimentPrototype):
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
-            "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
             "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
@@ -46,6 +45,5 @@ class TestExperiment(ExperimentPrototype):
         }
         slice_2 = copy.deepcopy(slice_1)
         slice_2['beam_order'] = [0,1,2,3,4,5,6,7] # Only half of the beams, should fail
-        slice_2['scanbound'] = [x * 3.5 for x in range(len(slice_2['beam_order']))]
         self.add_slice(slice_1)
         self.add_slice(slice_2, interfacing_dict={0:'PULSE'})

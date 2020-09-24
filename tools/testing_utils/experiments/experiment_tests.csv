@@ -188,9 +188,8 @@ testing_archive.test_taps_not_nums::Filter tap .* is not numeric in decimation s
 # **** The following 2 tests are from AveragingPeriod class, __init__() method ****
 testing_archive.test_slices_intt_bad::Slices .* and .* are INTEGRATION or PULSE interfaced and do not have the same Averaging Period duration intt
 testing_archive.test_slices_intn_bad::Slices .* and .* are INTEGRATION or PULSE interfaced and do not have the same NAVE goal intn
-
-#### The following test may no longer be valid after the PR for interleavesound
-#testing_archive.test_slices_beam_order_bad::Slices .* and .* are INTEGRATION or PULSE interfaced and do not have the same length of beam_order \(number of integration periods\)
+testing_archive.test_slices_beam_order_bad::Slices .* and .* are INTEGRATION or PULSE interfaced but do not have the same number of integrations in their beam order
 
 # **** The following test is from Scan class, __init__() method ****
 testing_archive.test_slices_scanbound_bad::Scan boundary not the same between slices .* and .* for INTTIME or PULSE interfaced slices
+
