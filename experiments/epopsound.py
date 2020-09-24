@@ -30,28 +30,14 @@ class Epopsound(ExperimentPrototype):
     """Experiment for conjunction with EPOP RRI. This mode creates a transmission that is received
     by RRI"""
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         cpid = 3371
         epop_file = EPOP_PASS_FILE.format(scf.opts.site_id)
 
-        with open(epop_file) as f:
-            lines = f.readlines()
+        beam = kwargs['beam']
+        marker_period = kwargs['marker_period']
+        freq = kwargs['freq']
 
-        time = datetime.datetime.utcnow()
-
-        for line in lines:
-            ll = line.split()
-            timestamp = int(ll[0])
-
-            dt = datetime.datetime.utcfromtimestamp(timestamp)
-
-            if dt < time:
-                continue
-            else:
-                beam = int(ll[1])
-                marker_period = int(ll[2])
-                freq = int(ll[3])
-                break
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
@@ -90,7 +76,9 @@ class Epopsound(ExperimentPrototype):
             "acfint": True,
         }
 
-        super(Epopsound, self).__init__(cpid=cpid, comment_string=Epopsound.__doc__)
+
+        super(Epopsound, self).__init__(cpid=cpid, txctrfreq=freq, rxctrfreq=freq,
+                                        comment_string=Epopsound.__doc__)
         self.add_slice(slice_0)
         self.add_slice(slice_1, interfacing_dict={0: 'SCAN'})
 
