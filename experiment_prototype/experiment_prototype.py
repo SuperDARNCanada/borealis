@@ -1181,7 +1181,7 @@ class ExperimentPrototype(object):
                                        self.options.max_number_of_filter_taps_per_stage)
                 raise ExperimentException(errmsg)
 
-        if True:
+        if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
             print("Number of AveragingPeriods in Scan #1: {}".format(len(self.__scan_objects[
                                                                              0].aveperiods)))
@@ -1930,4 +1930,3 @@ class ExperimentPrototype(object):
                 slice_interface[num1] = interfacing_type
 
         return slice_interface
-
