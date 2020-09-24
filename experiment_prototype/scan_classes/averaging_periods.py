@@ -93,21 +93,21 @@ class AveragingPeriod(ScanClassBase):
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intt'] != self.intt:
-                    errmsg = """Slice {} and {} are INTEGRATION or PULSE interfaced and do not have the
-                        same Averaging Period duration intt""".format(self.slice_ids[0], slice_id)
+                    errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced and do not have the" \
+                             " same Averaging Period duration intt".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
         elif self.intn is not None:
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intn'] != self.intn:
-                    errmsg = """Slice {} and {} are INTEGRATION or PULSE  interfaced and do not have the
-                        same NAVE goal intn""".format(self.slice_ids[0], slice_id)
+                    errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced and do not have the" \
+                             " same NAVE goal intn".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
 
-        for slice_id in self.slice_ids:
+        for slice_id in self.slice_ids: 
             if len(self.slice_dict[slice_id]['beam_order']) != len(self.slice_dict[self.slice_ids[0]]['beam_order']):
-                errmsg = """Slice {} and {} are INTEGRATION or PULSE  interfaced and do not have the
-                    same length of beam_order (number of integration periods)
-                    """.format(self.slice_ids[0], slice_id)
+                errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced but do not have the" \
+                         " same number of integrations in their beam order" \
+                         .format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
         self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]]['beam_order'])
 

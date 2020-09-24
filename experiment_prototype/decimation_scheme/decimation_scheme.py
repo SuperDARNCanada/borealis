@@ -28,7 +28,7 @@ class DecimationStage(object):
         self.stage_num = stage_num
         self.input_rate = input_rate
         if not isinstance(dm_rate, int):
-            raise ExperimentException('Decimation Rate is not an Integer')
+            raise ExperimentException('Decimation rate is not an integer')
         self.output_rate = input_rate/dm_rate
         self.dm_rate = dm_rate
         if not isinstance(filter_taps, list):

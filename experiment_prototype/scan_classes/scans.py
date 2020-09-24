@@ -28,9 +28,8 @@ class Scan(ScanClassBase):
 
     **The unique members of the scan are (not a member of the scanclassbase):**
 
-
     scanbound
-        A list of seconds past the minute for scans to align to. Must be increasing, 
+        A list of seconds past the minute for scans to align to. Must be increasing,
         and it is possible to have values greater than 60s.
     """
 
@@ -42,8 +41,8 @@ class Scan(ScanClassBase):
         self.scanbound = self.slice_dict[self.slice_ids[0]]['scanbound']
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id]['scanbound'] != self.scanbound:
-                errmsg = """Scan Boundary not the Same Between Slices {} and {}
-                     combined in Scan""".format(self.slice_ids[0], slice_id)
+                errmsg = "Scan boundary not the same between slices {} and {}" \
+                         " for INTTIME or PULSE interfaced slices".format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
 
         # NOTE: for now we assume that when INTTIME combined, the AveragingPeriods of the various slices in the scan are
@@ -142,14 +141,8 @@ class Scan(ScanClassBase):
             self.nested_beamorder = {}
             self.nested_beamdir = {}
             for slice_id in inttime_list:
-                if len(self.scan_beams[slice_id]) != len(self.scan_beams[inttime_list[0]]):
-                    errmsg = """Slice {} and {} are INTEGRATION or PULSE interfaced but do not
-                        have the same number of integrations in their
-                        scan""".format(self.slice_ids[0], slice_id)
-                    raise ExperimentException(errmsg)
-                else:
-                    self.nested_beamorder[slice_id] = self.scan_beams[slice_id]
-                    self.nested_beamdir[slice_id] = self.beamdir[slice_id]
+                self.nested_beamorder[slice_id] = self.scan_beams[slice_id]
+                self.nested_beamdir[slice_id] = self.beamdir[slice_id]
             params.append(self.nested_beamorder)
             params.append(self.nested_beamdir)
 
