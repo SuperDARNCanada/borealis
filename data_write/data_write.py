@@ -112,7 +112,7 @@ DATA_TEMPLATE = {
 
 TX_TEMPLATE = {
     "tx_rate": [],
-    "tx_centre_freq": [],
+    "tx_center_freq": [],
     "pulse_sequence_timing_us": [],
     "pulse_offset_error_us": [],
     "tx_samples": [],
@@ -989,7 +989,7 @@ class DataWrite(object):
             if tx_data is not None:
                 for meta in integration_meta.sequences:
                     tx_data['tx_rate'].append(meta.tx_data.txrate)
-                    tx_data['tx_centre_freq'].append(meta.tx_data.txctrfreq)
+                    tx_data['tx_center_freq'].append(meta.tx_data.txctrfreq)
                     tx_data['pulse_sequence_timing_us'].append(
                         meta.tx_data.pulse_sequence_timing_us)
                     tx_data['pulse_offset_error_us'].append(meta.tx_data.pulse_offset_error_us)
@@ -1065,7 +1065,7 @@ class DataWrite(object):
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
                 parameters[
-                    'rx_center_freq'] = integration_meta.rx_centre_freq  # Sorry, we'll convert to US English here
+                    'rx_center_freq'] = integration_meta.rx_center_freq 
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
 
@@ -1125,7 +1125,7 @@ class DataWrite(object):
             write_tx_data()
 
         end = time.time()
-        printing("Time to write: {} ms".format((end - start) * 1000))
+        printing("Time to write to {}: {} ms".format(dataset_name, (end - start) * 1000))
 
 
 def main():

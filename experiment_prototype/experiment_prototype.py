@@ -18,6 +18,8 @@ import math
 import numpy as np
 import itertools
 from scipy.constants import speed_of_light
+import re
+from pathlib import Path
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -31,23 +33,23 @@ from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, DecimationStage, \
     create_default_scheme
 
-interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
+interface_types = tuple(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
 
-Interfacing in this case refers to how two or more components are 
+Interfacing in this case refers to how two or more components are
 meant to be run together. The following types of interfacing are possible:
 
 1. SCAN.
-The scan by scan interfacing allows for slices to run a scan of one slice, 
-followed by a scan of the second. The scan mode of interfacing typically 
-means that the slice will cycle through all of its beams before switching 
+The scan by scan interfacing allows for slices to run a scan of one slice,
+followed by a scan of the second. The scan mode of interfacing typically
+means that the slice will cycle through all of its beams before switching
 to another slice.
 
 There are no requirements for slices interfaced in this manner.
 
 2. INTTIME.
-This type of interfacing allows for one slice to run its integration period 
-(also known as integration time or averaging period), before switching to 
+This type of interfacing allows for one slice to run its integration period
+(also known as integration time or averaging period), before switching to
 another slice's integration period. This type of interface effectively creates
 an interleaving scan where the scans for multiple slices are run 'at the same
 time', by interleaving the integration times.
@@ -56,11 +58,11 @@ Slices which are interfaced in this manner must share:
     - the same SCANBOUND value.
 
 3. INTEGRATION.
-Integration interfacing allows for pulse sequences defined in the slices to 
-alternate between each other within a single integration period. It's important 
-to note that data from a single slice is averaged only with other data from that 
-slice. So in this case, the integration period is running two slices and can 
-produce two averaged datasets, but the sequences (integrations) within the 
+Integration interfacing allows for pulse sequences defined in the slices to
+alternate between each other within a single integration period. It's important
+to note that data from a single slice is averaged only with other data from that
+slice. So in this case, the integration period is running two slices and can
+produce two averaged datasets, but the sequences (integrations) within the
 integration period are interleaved.
 
 Slices which are interfaced in this manner must share:
@@ -69,12 +71,12 @@ Slices which are interfaced in this manner must share:
     - the same BEAM_ORDER length (scan length)
 
 4. PULSE.
-Pulse interfacing allows for pulse sequences to be run together concurrently. 
-Slices will have their pulse sequences summed together so that the 
-data transmits at the same time. For example, slices of different frequencies 
-can be mixed simultaneously, and slices of different pulse sequences can also 
-run together at the cost of having more blanked samples. When slices are 
-interfaced in this way the radar is truly transmitting and receiving the 
+Pulse interfacing allows for pulse sequences to be run together concurrently.
+Slices will have their pulse sequences summed together so that the
+data transmits at the same time. For example, slices of different frequencies
+can be mixed simultaneously, and slices of different pulse sequences can also
+run together at the cost of having more blanked samples. When slices are
+interfaced in this way the radar is truly transmitting and receiving the
 slices simultaneously.
 
 Slices which are interfaced in this manner must share:
@@ -195,7 +197,8 @@ pulse_phase_offset *defaults*
         return np.ones(size=(num_pulses, num_samples))
 
     The return value must be numpy broadcastable elementwise to an array of num_pulses x num_samples
-    in size.
+    in size.  The result is either a single phase shift for each pulse or a phase shift specified
+    for each sample in the pulses of the slice.
 
     Result is expected to be real and in degrees and will be converted to complex radians.
 
@@ -214,7 +217,8 @@ rx_main_antennas *defaults*
 
 scanbound *defaults*
     A list of seconds past the minute for integration times in a scan to align to. Defaults
-    to None, not required.
+    to None, not required. If one slice in an experiment has a scanbound, they all 
+    must.
 
 seqoffset *defaults*
     offset in us that this slice's sequence will begin at, after the start of the sequence.
@@ -304,11 +308,11 @@ class ExperimentPrototype(object):
     used to make an experiment:
 
     * xcf: boolean for cross-correlation data. A default can be set here for slices,
-      but any slice can override this setting with the xcf slice key. 
+      but any slice can override this setting with the xcf slice key.
     * acf: boolean for auto-correlation data on main array. A default can be set here for slices,
-      but any slice can override this setting with the acf slice key. 
+      but any slice can override this setting with the acf slice key.
     * acfint: boolean for auto-correlation data on interferometer array. A default can be set here for slices,
-      but any slice can override this setting with the acfint slice key. 
+      but any slice can override this setting with the acfint slice key.
 
     * slice_dict: modifiable only using the add_slice, edit_slice, and del_slice
       methods.
@@ -325,7 +329,7 @@ class ExperimentPrototype(object):
                  comment_string=''):
         """
         Initialization for your experiment. Sets experiment-wide settings including cpid,
-        centre frequencies, sampling rates, and decimation and filtering schemes.
+        center frequencies, sampling rates, and decimation and filtering schemes.
         :param cpid: unique id necessary for each control program (experiment). Cannot be
          changed after instantiation.
         :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz.
@@ -334,30 +338,52 @@ class ExperimentPrototype(object):
         sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
         :param rx_bandwidth: The desired tx bandwidth for the experiment. Directly determines tx
         sampling rate of the USRPs. Cannot be changed after instantiation. Default 5.0 MHz.
-        :param txctrfreq: centre frequency, in kHz, for the USRP to mix the samples with. 
+        :param txctrfreq: center frequency, in kHz, for the USRP to mix the samples with.
          Since this requires tuning time to set, it cannot be modified after instantiation.
-        :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
+        :param rxctrfreq: center frequency, in kHz, used to mix to baseband.
          Since this requires tuning time to set, it cannot be modified after instantiation.
         :param decimation_scheme: an object defining the decimation and filtering stages for the
         signal processing module. If you would like something other than the default, you will
         need to build an object of the DecimationScheme type before initiating your experiment.
         This cannot be changed after instantiation.
-        :param comment_string: description of experiment for data files. This should be 
-         used to describe your overall experiment design. Another comment string exists 
+        :param comment_string: description of experiment for data files. This should be
+         used to describe your overall experiment design. Another comment string exists
          for every slice added, to describe information that is slice-specific.
         """
 
-        if not isinstance(cpid, int):  # TODO add check for uniqueness
+        if not isinstance(cpid, int):
             errmsg = 'CPID must be a unique int'
+            raise ExperimentException(errmsg)
+        # Quickly check for uniqueness with a (recursive) search in the experiments directory first
+        # taking care not to look for CPID in any experiments that are just tests (start with the
+        # word 'test')
+        experiment_files_list = list(Path(BOREALISPATH + "/experiments/").rglob("[!test]*.py"))
+        self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
+        cpid_list = []
+        for experiment_file in experiment_files_list:
+            with open(experiment_file) as file_to_search:
+                for line in file_to_search:
+                    # Find the name of the class in the file and break if it matches this class
+                    experiment_class_name = re.findall("class.*\(ExperimentPrototype\):", line)
+                    if experiment_class_name:
+                        if self.__experiment_name in experiment_class_name[0]:
+                            break
+
+                    # Find any lines that have 'cpid = [integer]'
+                    existing_cpid = re.findall("cpid = [0-9]+", line)
+                    if existing_cpid:
+                        cpid_list.append(existing_cpid[0].split()[2])
+
+        if str(cpid) in cpid_list:
+            errmsg = 'CPID must be unique. {} is in use by another local experiment'.format(cpid)
             raise ExperimentException(errmsg)
         if cpid <= 0:
             errmsg = 'The CPID should be a positive number in the experiment. Borealis'\
                      ' will determine if it should be negative based on the scheduling mode.'\
                      ' Only experiments run during discretionary time will have negative CPIDs.'
-            raise ExperimentException(errmsg)            
+            raise ExperimentException(errmsg)
 
         self.__options = ExperimentOptions()
-        self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
 
         self.__cpid = cpid
 
@@ -386,12 +412,12 @@ class ExperimentPrototype(object):
             raise ExperimentException(errmsg)
 
         if round(self.options.usrp_master_clock_rate / self.txrate, 3) % 2.0 != 0.0:
-            errmsg = "Experiment's transmit bandwidth {} is not possible as it must be an integer divisor of " \
+            errmsg = "Experiment's transmit bandwidth {} is not possible as it must be an integer divisor of" \
                      " USRP master clock rate {}".format(self.txrate, self.options.usrp_master_clock_rate)
             raise ExperimentException(errmsg)
 
         if round(self.options.usrp_master_clock_rate / self.rxrate, 3) % 2.0 != 0.0:
-            errmsg = "Experiment's receive bandwidth {} is not possible as it must be an integer divisor of " \
+            errmsg = "Experiment's receive bandwidth {} is not possible as it must be an integer divisor of" \
                      " USRP master clock rate {}".format(self.rxrate, self.options.usrp_master_clock_rate)
             raise ExperimentException(errmsg)
 
@@ -403,9 +429,9 @@ class ExperimentPrototype(object):
 
         self.__new_slice_id = 0
 
-        # Note - txctrfreq and rxctrfreq are set here and modify the actual centre frequency to a
+        # Note - txctrfreq and rxctrfreq are set here and modify the actual center frequency to a
         # multiple of the clock divider that is possible by the USRP - this default value set
-        # here is not exact (centre freq is never exactly 12 MHz).
+        # here is not exact (center freq is never exactly 12 MHz).
 
         # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
         clock_multiples = self.options.usrp_master_clock_rate/2**32
@@ -462,7 +488,7 @@ class ExperimentPrototype(object):
         # interfacing specified.
 
         self.__scan_objects = []
-
+        self.__scanbound = False
         self.__running_experiment = None  # this will be of ScanClassBase type
 
     __slice_keys = slice_key_set
@@ -475,7 +501,7 @@ class ExperimentPrototype(object):
         """
         This experiment's CPID (control program ID, a term that comes from ROS).
 
-        The CPID is read-only once established in instantiation. It may be 
+        The CPID is read-only once established in instantiation. It may be
         modified at runtime by the set_scheduling_mode function, to set it to
         a negative value during discretionary time.
         """
@@ -712,7 +738,7 @@ class ExperimentPrototype(object):
     @property
     def txctrfreq(self):
         """
-        The transmission centre frequency that USRP is tuned to (kHz).
+        The transmission center frequency that USRP is tuned to (kHz).
         """
         return self.__txctrfreq
 
@@ -722,8 +748,8 @@ class ExperimentPrototype(object):
         The maximum transmit frequency.
 
         This is the maximum tx frequency possible in this experiment (either maximum in our license
-        or maximum given by the centre frequency, and sampling rate). The maximum is slightly less
-        than that allowed by the centre frequency and txrate, to stay away from the edges of the
+        or maximum given by the center frequency, and sampling rate). The maximum is slightly less
+        than that allowed by the center frequency and txrate, to stay away from the edges of the
         possible transmission band where the signal is distorted.
         """
         max_freq = self.txctrfreq * 1000 + (self.txrate/2.0) - transition_bandwidth
@@ -739,8 +765,8 @@ class ExperimentPrototype(object):
         The minimum transmit frequency.
 
         This is the minimum tx frequency possible in this experiment (either minimum in our license
-        or minimum given by the centre frequency and sampling rate). The minimum is slightly more
-        than that allowed by the centre frequency and txrate, to stay away from the edges of the
+        or minimum given by the center frequency and sampling rate). The minimum is slightly more
+        than that allowed by the center frequency and txrate, to stay away from the edges of the
         possible transmission band where the signal is distorted.
         """
         min_freq = self.txctrfreq * 1000 - (self.txrate/2.0) + transition_bandwidth
@@ -753,7 +779,7 @@ class ExperimentPrototype(object):
     @property
     def rxctrfreq(self):
         """
-        The receive centre frequency that USRP is tuned to (kHz).
+        The receive center frequency that USRP is tuned to (kHz).
         """
         return self.__rxctrfreq
 
@@ -762,9 +788,9 @@ class ExperimentPrototype(object):
         """
         The maximum receive frequency.
 
-        This is the maximum tx frequency possible in this experiment (maximum given by the centre
+        This is the maximum tx frequency possible in this experiment (maximum given by the center
         frequency and sampling rate), as license doesn't matter for receiving. The maximum is
-        slightly less than that allowed by the centre frequency and rxrate, to stay away from the
+        slightly less than that allowed by the center frequency and rxrate, to stay away from the
         edges of the possible receive band where the signal may be distorted.
         """
         max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0) - transition_bandwidth
@@ -775,9 +801,9 @@ class ExperimentPrototype(object):
         """
         The minimum receive frequency.
 
-        This is the minimum rx frequency possible in this experiment (minimum given by the centre
+        This is the minimum rx frequency possible in this experiment (minimum given by the center
         frequency and sampling rate) - license doesn't restrict receiving. The minimum is
-        slightly more than that allowed by the centre frequency and rxrate, to stay away from the
+        slightly more than that allowed by the center frequency and rxrate, to stay away from the
         edges of the possible receive band where the signal may be distorted.
         """
         min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0) + transition_bandwidth
@@ -837,6 +863,10 @@ class ExperimentPrototype(object):
                             possible_scheduling_modes)
             raise ExperimentException(errmsg)
 
+    def printing(self, msg):
+        EXPERIMENT_P = "\033[34m" + self.__class__.__name__ + " : " + "\033[0m"
+        sys.stdout.write(EXPERIMENT_P + msg + "\n")
+
     def slice_beam_directions_mapping(self, slice_id):
         """
         A mapping of the beam directions in the given slice id.
@@ -886,7 +916,6 @@ class ExperimentPrototype(object):
 
         full_interfacing_dict = {}
 
-        interface_types_list = list(interface_types)
         # if this is not the first slice we are setting up, set up interfacing.
         if len(self.slice_ids) != 0:
             if len(interfacing_dict.keys()) > 0:
@@ -897,31 +926,31 @@ class ExperimentPrototype(object):
                 for sibling_slice_id in interfacing_dict.keys():
                     if sibling_slice_id not in self.slice_ids:
                         errmsg = 'Cannot add slice: the interfacing_dict set interfacing to an unknown slice'\
-                                 '{} not in slice ids {}'.format(sibling_slice_id, self.slice_ids)
+                                 ' {} not in slice ids {}'.format(sibling_slice_id, self.slice_ids)
                         raise ExperimentException(errmsg)
                 try:
                     closest_sibling = max(interfacing_dict.keys(),
-                                          key=lambda k: interface_types_list.index(
+                                          key=lambda k: interface_types.index(
                                                interfacing_dict[k]))
                 except ValueError as e:  # cannot find interface type in list
                     errmsg = 'Interface types must be of valid types {}.'\
-                             ''.format(interface_types_list)
+                             ''.format(interface_types)
                     raise ExperimentException(errmsg) from e
                 closest_interface_value = interfacing_dict[closest_sibling]
-                closest_interface_rank = interface_types_list.index(closest_interface_value)
+                closest_interface_rank = interface_types.index(closest_interface_value)
             else:
                 # the user provided no keys. The default is therefore 'SCAN'
                 # with all keys so the closest will be 'SCAN' (the furthest possible interface_type)
                 closest_sibling = self.slice_ids[0]
                 closest_interface_value = 'SCAN'
-                closest_interface_rank = interface_types_list.index(closest_interface_value)
+                closest_interface_rank = interface_types.index(closest_interface_value)
 
             # now populate a full_interfacing_dict based on the closest sibling's
             # interface values and knowing how we interface with that sibling.
             # this is the only correct interfacing given the closest interfacing.
             full_interfacing_dict[closest_sibling] = closest_interface_value
             for sibling_slice_id, siblings_interface_value in self.get_slice_interfacing(closest_sibling).items():
-                if interface_types_list.index(siblings_interface_value) >= closest_interface_rank:
+                if interface_types.index(siblings_interface_value) >= closest_interface_rank:
                     # in this case, the interfacing between the sibling
                     # and the closest sibling is closer than the closest interface for the new slice.
                     # therefore interface with this sibling should be equal to the closest interface.
@@ -948,7 +977,7 @@ class ExperimentPrototype(object):
                     errmsg = 'The interfacing values of new slice cannot be reconciled. '\
                              'Interfacing with slice {closest}: {interface1} and with slice '\
                              '{other}: {interface2} does not make sense with existing interface between '\
-                             ' slices of {sibling_other}: {interface3}'.format(closest=closest_sibling,
+                             'slices of {sibling_other}: {interface3}'.format(closest=closest_sibling,
                                 interface1=closest_interface_value, other=sibling_slice_id,
                                 interface2=interface_value,
                                 sibling_other=([sibling_slice_id, closest_sibling].sort()),
@@ -982,7 +1011,7 @@ class ExperimentPrototype(object):
 
         if not isinstance(exp_slice, dict):
             errmsg = 'Attempt to add a slice failed - {} is not a dictionary of slice' \
-                     'parameters'.format(exp_slice)
+                     ' parameters'.format(exp_slice)
             raise ExperimentException(errmsg)
             # TODO multiple types of Exceptions so they can be caught by the experiment in these
             # add_slice, edit_slice, del_slice functions (and handled specifically)
@@ -1020,7 +1049,7 @@ class ExperimentPrototype(object):
         try:
             removed_slice = copy.deepcopy(self.slice_dict[remove_slice_id])
             del(self.slice_dict[remove_slice_id])
-        except (IndexError, TypeError) as e:
+        except (KeyError, TypeError) as e:
             errmsg = 'Cannot remove slice id {} : it does not exist in slice dictionary'.format(remove_slice_id)
             raise ExperimentException(errmsg) from e
 
@@ -1059,7 +1088,7 @@ class ExperimentPrototype(object):
 
         try:
             edited_slice = self.slice_dict[edit_slice_id].copy()
-        except (IndexError, TypeError):
+        except (KeyError, TypeError):
             # the edit_slice_id is not an index in the slice_dict
             errmsg = 'Trying to edit {} but it does not exist in Slice_IDs' \
                      ' list.'.format(edit_slice_id)
@@ -1069,7 +1098,8 @@ class ExperimentPrototype(object):
             if edit_slice_param in self.slice_keys:
                 edited_slice[edit_slice_param] = edit_slice_value
             else:
-                errmsg = 'Cannot edit slice: {} not a valid slice parameter'.format(edit_slice_param)
+                errmsg = 'Cannot edit slice ID {}: {} is not a valid slice parameter'
+                errmsg.format(edit_slice_id, edit_slice_param)
                 raise ExperimentException(errmsg)
 
         # Get the interface values of the slice. These are not editable, if
@@ -1136,7 +1166,39 @@ class ExperimentPrototype(object):
 
         self.__scan_objects = []
         for params in self.__running_experiment.prep_for_nested_scan_class():
-            self.scan_objects.append(Scan(*params))
+            self.__scan_objects.append(Scan(*params))
+        
+        for scan in self.__scan_objects:
+            if scan.scanbound != None:
+                self.__scanbound = True
+
+        if self.__scanbound:
+            try:
+                self.__scan_objects = sorted(self.__scan_objects, key=lambda scan: scan.scanbound[0])
+            except (IndexError, TypeError) as e:  # scanbound is None in some scans
+                errmsg = 'If one slice has a scanbound, they all must to avoid up to minute-long downtimes.'
+                raise ExperimentException(errmsg) from e
+
+        # check that the number of slices can be accommodated by the decimation scheme.
+        max_num_concurrent_slices = 0
+        for scan in self.__scan_objects:
+            for aveperiod in scan.aveperiods:
+                for seq in aveperiod.sequences:
+                    if len(seq.slice_ids) > max_num_concurrent_slices:
+                        max_num_concurrent_slices = len(seq.slice_ids)
+
+        for stage in self.decimation_scheme.stages:
+            power_2 = 0
+            while 2 ** power_2 < len(stage.filter_taps):
+                power_2 += 1
+            effective_length = 2 ** power_2
+            if effective_length * max_num_concurrent_slices > \
+                    self.options.max_number_of_filter_taps_per_stage:
+                errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with" \
+                         " this many slices ({}) is too large for GPU max {}"
+                errmsg = errmsg.format(len(stage.filter_taps), stage.stage_num, self.num_slices,
+                                       self.options.max_number_of_filter_taps_per_stage)
+                raise ExperimentException(errmsg)
 
         if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
@@ -1146,6 +1208,7 @@ class ExperimentPrototype(object):
                 len(self.__scan_objects[0].aveperiods[0].sequences)))
             print("Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1:"
                   " {}".format(len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)))
+            print("Max concurrent slices: {}".format(max_num_concurrent_slices))
 
     def get_scan_slice_ids(self):
         # TODO add this to ScanClassBase method by just passing in the current type (Experiment, Scan, AvePeriod)
@@ -1187,6 +1250,9 @@ class ExperimentPrototype(object):
 
         # TODO: add checks for values that make sense, not just check for types
         # TODO: make lists of operations to run and use if any() to shorten up this code!
+        if 'pulse_sequence' not in exp_slice.keys():
+            errmsg = "Slice must specify pulse_sequence that must be a list of integers."
+            raise ExperimentException(errmsg, exp_slice)
         if not isinstance(exp_slice['pulse_sequence'], list):
             errmsg = "Slice must specify pulse_sequence that must be a list of integers"
             raise ExperimentException(errmsg, exp_slice)
@@ -1196,12 +1262,12 @@ class ExperimentPrototype(object):
                 raise ExperimentException(errmsg, exp_slice)
 
         if 'tau_spacing' not in exp_slice.keys() or not isinstance(exp_slice['tau_spacing'], int):
-            errmsg = "Slice must specify tau_spacing that must be an integer"
+            errmsg = "Slice must specify tau_spacing in us that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
         # TODO may want to add a field for range_gate which could set this param.
         if 'pulse_len' not in exp_slice.keys() or not isinstance(exp_slice['pulse_len'], int):
-            errmsg = "Slice must specify pulse_len that must be an integer"
+            errmsg = "Slice must specify pulse_len in us that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
         if 'num_ranges' not in exp_slice.keys() or not isinstance(exp_slice['num_ranges'], int):
@@ -1214,15 +1280,15 @@ class ExperimentPrototype(object):
 
         if 'intt' not in exp_slice.keys():
             if 'intn' not in exp_slice.keys():
-                errmsg = "Slice must specify either an intn or intt"
-                raise ExperimentException(errmsg, exp_slice)
+                errmsg = "Slice must specify either an intn (unitless) or intt in ms. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
             elif not isinstance(exp_slice['intn'], int):
-                errmsg = "intn must be an integer"
-                raise ExperimentException(errmsg, exp_slice)
+                errmsg = "intn must be an integer. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
         else:
             if not isinstance(exp_slice['intt'], float) and not isinstance(exp_slice['intt'], int):
-                errmsg = "intt must be an number"
-                raise ExperimentException(errmsg, exp_slice)
+                errmsg = "intt must be a number. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
             else:
                 if 'intn' in exp_slice.keys():
                     if __debug__:
@@ -1232,49 +1298,49 @@ class ExperimentPrototype(object):
             exp_slice['intt'] = float(exp_slice['intt'])
 
         if 'beam_angle' not in exp_slice.keys(): # "beam_angle" is a required key
-            errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or
-                floats) which are angles of degrees off boresight (positive E of N)"""
-            raise ExperimentException(errmsg, exp_slice)
+            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
+                " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
         if not isinstance(exp_slice['beam_angle'], list):
-            errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or
-                floats) which are angles of degrees off boresight (positive E of N)"""
-            raise ExperimentException(errmsg, exp_slice)
+            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
+                " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
         for element in exp_slice['beam_angle']:
             if not isinstance(element, float) and not isinstance(element, int):
-                errmsg = """Slice must specify beam_angle that must be a list of numbers (ints or
-                    floats) which are angles of degrees off boresight (positive E of N)"""
-                raise ExperimentException(errmsg, exp_slice)
+                errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
+                    " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
             if isinstance(element, int):
                 element = float(element)
 
         if 'beam_order' not in exp_slice.keys():
-            errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                     corresponding to the order of the angles in the beam_angle list."""
-            raise ExperimentException(errmsg, exp_slice)
+            errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                     " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
         if not isinstance(exp_slice['beam_order'], list):
-            errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                     corresponding to the order of the angles in the beam_angle list."""
-            raise ExperimentException(errmsg, exp_slice)
+            errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                     " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
         for element in exp_slice['beam_order']:
             if not isinstance(element, int) and not isinstance(element, list):
-                errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                         corresponding to the order of the angles in the beam_angle list."""
-                raise ExperimentException(errmsg, exp_slice)
+                errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                         " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
             if isinstance(element, list):
                 for beamnum in element:
                     if not isinstance(beamnum, int):
-                        errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                                 corresponding to the order of the angles in the beam_angle list."""
-                        raise ExperimentException(errmsg, exp_slice)
+                        errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                                 " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+                        raise ExperimentException(errmsg)
                     if beamnum >= len(exp_slice['beam_angle']):
-                        errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                                 corresponding to the order of the angles in the beam_angle list."""
-                        raise ExperimentException(errmsg, exp_slice)
+                        errmsg = "Beam number {} could not index in beam_angle list of length {}." \
+                                 " Slice: {}".format(beamnum, len(exp_slice['beam_angle']), exp_slice)
+                        raise ExperimentException(errmsg)
             else:
                 if element >= len(exp_slice['beam_angle']):
-                    errmsg = """Slice must specify beam_order that must be a list of ints or lists (of ints)
-                             corresponding to the order of the angles in the beam_angle list."""
-                    raise ExperimentException(errmsg, exp_slice)
+                    errmsg = "Beam number {} could not index in beam_angle list of length {}." \
+                             " Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
+                    raise ExperimentException(errmsg)
 
     @staticmethod
     def set_slice_identifiers(exp_slice):
@@ -1347,34 +1413,36 @@ class ExperimentPrototype(object):
                 raise ExperimentException(errmsg)
 
             if exp_slice['clrfrqrange'][0] >= exp_slice['clrfrqrange'][1]:
-                errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or centre frequencies / sampling
-                            rates / transition bands, and must have lower frequency first.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                errmsg = "clrfrqrange must be between min and max tx frequencies {} and rx" \
+                         " frequencies {} according to license and/or center frequencies / sampling" \
+                         " rates / transition bands, and must have lower frequency first." \
+                         .format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             if (exp_slice['clrfrqrange'][1] * 1000) >= self.tx_maxfreq or \
                     (exp_slice['clrfrqrange'][1] * 1000) >= self.rx_maxfreq:
-                errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or centre frequencies / sampling
-                            rates / transition bands, and must have lower frequency first.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                errmsg = "clrfrqrange must be between min and max tx frequencies {} and rx" \
+                         " frequencies {} according to license and/or center frequencies / sampling" \
+                         " rates / transition bands, and must have lower frequency first." \
+                         .format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             if (exp_slice['clrfrqrange'][0] * 1000) <= self.tx_minfreq or \
                     (exp_slice['clrfrqrange'][0] * 1000) <= self.rx_minfreq:
-                errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
-                            frequencies {} according to license and/or centre frequencies / sampling
-                            rates / transition bands, and must have lower frequency first.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
+                errmsg = "clrfrqrange must be between min and max tx frequencies {} and rx" \
+                         " frequencies {} according to license and/or center frequencies / sampling" \
+                         " rates / transition bands, and must have lower frequency first." \
+                         .format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
 
             still_checking = True
             while still_checking:
                 for freq_range in self.options.restricted_ranges:
-                    if exp_slice['clrfrqrange'][0] in range(freq_range[0], freq_range[1]):
-                        if exp_slice['clrfrqrange'][1] in range(freq_range[0], freq_range[1]):
+                    if ((exp_slice['clrfrqrange'][0] >= freq_range[0]) and
+                                                (exp_slice['clrfrqrange'][0] <= freq_range[1])):
+                        if ((exp_slice['clrfrqrange'][1] >= freq_range[0]) and
+                                                (exp_slice['clrfrqrange'][1] <= freq_range[1])):
                             # the range is entirely within the restricted range.
                             raise ExperimentException('clrfrqrange is entirely within restricted '
                                                       'range {}'.format(freq_range))
@@ -1390,7 +1458,8 @@ class ExperimentPrototype(object):
                             # check in case it's in another range.
                     else:
                         # lower end is not in restricted frequency range.
-                        if exp_slice['clrfrqrange'][1] in range(freq_range[0], freq_range[1]):
+                        if ((exp_slice['clrfrqrange'][1] >= freq_range[0]) and
+                                                (exp_slice['clrfrqrange'][1] <= freq_range[1])):
                             if __debug__:
                                 print('Clrfrqrange will be modified because it is partially in a ' +
                                 'restricted range.')
@@ -1402,8 +1471,8 @@ class ExperimentPrototype(object):
                             # checking in case it's in another range.
                         else:  # neither end of clrfrqrange is inside the restricted range but
                             # we should check if the range is inside the clrfrqrange.
-                            if freq_range[0] in range(exp_slice['clrfrqrange'][0],
-                                                                  exp_slice['clrfrqrange'][1]):
+                            if ((freq_range[0] >= exp_slice['clrfrqrange'][0]) and
+                                                (freq_range[0] <= exp_slice['clrfrqrange'][1])):
                                 if __debug__:
                                     print('There is a restricted range within the clrfrqrange - '
                                           'STOP.')
@@ -1416,49 +1485,51 @@ class ExperimentPrototype(object):
 
         elif exp_slice['rxonly']:  # RX only mode.
             # In this mode, rxfreq is required.
+            freq_error = False
             if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
                                                                       float):
-                errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given centre frequency, sampling 
-                            rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
-                raise ExperimentException(errmsg)
-            if (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
+                freq_error = True
+            elif (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
                                                                    1000) <= self.rx_minfreq:
-                errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given centre frequency, sampling
-                            rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
+                freq_error = True
+
+            if freq_error:
+                errmsg = "rxfreq must be a number (kHz) between rx min and max frequencies {} for"\
+                         " the radar license and be within range given center frequency {} kHz, " \
+                         "sampling rate {} kHz, and transition band {} kHz."
+                errmsg = errmsg.format((self.rx_minfreq/1.0e3, self.rx_maxfreq/1.0e3),
+                                       self.rxctrfreq, self.rx_bandwidth/1.0e3,
+                                       transition_bandwidth/1.0e3)
                 raise ExperimentException(errmsg)
 
         else:  # TX-specific mode , without a clear frequency search.
             # In this mode, txfreq is required along with the other requirements.
+            freq_error = False
             if not isinstance(exp_slice['txfreq'], int) and not isinstance(exp_slice['txfreq'],
                                                                           float):
-                errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
-                            rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies, sampling rates and transition band.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
-                                       (self.rx_minfreq, self.rx_maxfreq))
-                raise ExperimentException(errmsg)
-            if (exp_slice['txfreq'] * 1000) >= self.tx_maxfreq or (exp_slice['txfreq'] * 1000) >= \
+                freq_error = True
+            elif (exp_slice['txfreq'] * 1000) >= self.tx_maxfreq or (exp_slice['txfreq'] * 1000) >= \
                     self.rx_maxfreq:
-                errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
-                            rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies, sampling rates and transition band.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
-                                       (self.rx_minfreq, self.rx_maxfreq))
-                raise ExperimentException(errmsg)
-            if (exp_slice['txfreq'] * 1000) <= self.tx_minfreq or (exp_slice['txfreq'] * 1000) <= \
+                freq_error = True
+            elif (exp_slice['txfreq'] * 1000) <= self.tx_minfreq or (exp_slice['txfreq'] * 1000) <= \
                     self.rx_minfreq:
-                errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
-                            rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies, sampling rates and transition band.
-                            """.format((self.tx_minfreq, self.tx_maxfreq),
-                                       (self.rx_minfreq, self.rx_maxfreq))
+                freq_error = True
+            
+            if freq_error:
+                errmsg = "txfreq must be a number (kHz) between tx min and max frequencies {} and"\
+                         " rx min and max frequencies {} for the radar license and be within range"\
+                         " given center frequencies (tx: {} kHz, rx: {} kHz), sampling rates (tx: "\
+                         "{} kHz, rx: {} kHz), and transition band ({} kHz)."
+                errmsg = errmsg.format((self.tx_minfreq/1.0e3, self.tx_maxfreq/1.0e3),
+                                       (self.rx_minfreq/1.0e3, self.rx_maxfreq/1.0e3),
+                                       self.txctrfreq, self.rxctrfreq, self.tx_bandwidth/1.0e3,
+                                       self.rx_bandwidth/1.0e3, transition_bandwidth/1.0e3)
                 raise ExperimentException(errmsg)
+
             for freq_range in self.options.restricted_ranges:
-                if exp_slice['txfreq'] in range(freq_range[0], freq_range[1]):
-                    errmsg = """txfreq is within a restricted frequency range {}
-                             """.format(freq_range)
+                if ((exp_slice['txfreq'] >= freq_range[0]) and
+                                                (exp_slice['txfreq'] <= freq_range[1])):
+                    errmsg = "txfreq is within a restricted frequency range {}".format(freq_range)
                     raise ExperimentException(errmsg)
 
     def set_slice_defaults(self, exp_slice):
@@ -1649,17 +1720,6 @@ class ExperimentPrototype(object):
         # TODO: check if self.cpid is not unique - incorporate known cpids from git repo
         # TODO: use pygit2 for this
 
-        # check that the number of slices can be accommodated by the decimation scheme.
-        for stage in self.decimation_scheme.stages:
-            power_2 = 0
-            while (2 ** power_2 < len(stage.filter_taps)):
-                power_2 += 1
-            effective_length = 2 ** power_2
-            if effective_length * self.num_slices > self.options.max_number_of_filter_taps_per_stage:
-                errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with \
-                    this many slices ({}) is too large for GPU max {}".format(len(stage.filter_taps),
-                        stage.stage_num, self.num_slices, self.options.max_number_of_filter_taps_per_stage)
-
         # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
         # any time after setup. We run it now in case the user has changed something
         # inappropriately (ie, any way other than using edit_slice, add_slice, or del_slice).
@@ -1704,8 +1764,8 @@ class ExperimentPrototype(object):
                     pass
                 elif param == 'clrfrqrange' and not exp_slice['clrfrqflag']:
                     pass
-                else:
-                    errmsg = "Slice {} is missing Necessary Parameter {}".format(
+                else:  # TODO: I don't think this test can be tested by an experiment file, seems to be superseded by other tests for necessary params
+                    errmsg = "Slice {} is missing necessary parameter {}".format(
                         exp_slice['slice_id'], param)
                     raise ExperimentException(errmsg)
             if param is None:
@@ -1713,24 +1773,24 @@ class ExperimentPrototype(object):
 
         for param in exp_slice.keys():
             if param not in self.slice_keys and param not in self.__hidden_slice_keys:
-                error_list.append("Slice {} has A Parameter that is not Used: {} = {}". \
-                    format(exp_slice['slice_id'], param, exp_slice[param]))
+                error_list.append("Slice {} has a parameter that is not used: {} = {}"
+                                  .format(exp_slice['slice_id'], param, exp_slice[param]))
 
         # TODO : tau_spacing needs to be an integer multiple of pulse_len in ros - is there a max ratio
         # allowed for pulse_len/tau_spacing ? Add this check and add check for each slice's tx duty-cycle
         # and make sure we aren't transmitting the entire time after combination with all slices
 
         if len(exp_slice['tx_antennas']) > options.main_antenna_count:
-            error_list.append("Slice {} Has Too Many Main TX Antenna Channels {} Greater than Config {}" \
-                .format(exp_slice['slice_id'], len(exp_slice['tx_antennas']),
-                        options.main_antenna_count))
+            error_list.append("Slice {} has too many main TX antenna channels {} greater than config {}"
+                              .format(exp_slice['slice_id'], len(exp_slice['tx_antennas']),
+                                      options.main_antenna_count))
         if len(exp_slice['rx_main_antennas']) > options.main_antenna_count:
-            error_list.append("Slice {} Has Too Many Main RX Antenna Channels {} Greater than Config {}" \
-                .format(exp_slice['slice_id'], len(exp_slice['rx_main_antennas']),
-                        options.main_antenna_count))
+            error_list.append("Slice {} has too many main RX antenna channels {} greater than config {}"
+                              .format(exp_slice['slice_id'], len(exp_slice['rx_main_antennas']),
+                                      options.main_antenna_count))
         if len(exp_slice['rx_int_antennas']) > options.interferometer_antenna_count:
-            error_list.append("Slice {} Has Too Many RX Interferometer Antenna Channels {} " \
-                               "Greater than Config {}".format(
+            error_list.append("Slice {} has too many RX interferometer antenna channels {} " \
+                               "greater than config {}".format(
                                     exp_slice['slice_id'],
                                     len(exp_slice['rx_int_antennas']),
                                     options.interferometer_antenna_count))
@@ -1739,53 +1799,51 @@ class ExperimentPrototype(object):
         # maximum antennas for all three of tx antennas, rx antennas and rx int antennas
         # Also check for duplicates
         if max(exp_slice['tx_antennas']) >= options.main_antenna_count:
-            error_list.append("Slice {} Specifies Main Array Antenna Numbers Over Config " \
-                               "Max {}" .format(exp_slice['slice_id'],
+            error_list.append("Slice {} specifies TX main array antenna numbers over config " \
+                               "max {}" .format(exp_slice['slice_id'],
                                                 options.main_antenna_count))
 
         if list_tests.has_duplicates(exp_slice['tx_antennas']):
-            error_list.append("Slice {} TX Main Antennas Has Duplicate Antennas".format(
+            error_list.append("Slice {} TX main antennas has duplicate antennas".format(
                 exp_slice['slice_id']))
 
         for i in range(len(exp_slice['rx_main_antennas'])):
             if exp_slice['rx_main_antennas'][i] >= options.main_antenna_count:
-                error_list.append("Slice {} Specifies Main Array Antenna Numbers Over Config " \
-                                   "Max {}" .format(exp_slice['slice_id'],
+                error_list.append("Slice {} specifies RX main array antenna numbers over config " \
+                                   "max {}" .format(exp_slice['slice_id'],
                                                     options.main_antenna_count))
 
         if list_tests.has_duplicates(exp_slice['rx_main_antennas']):
-            error_list.append("Slice {} RX Main Antennas Has Duplicate Antennas".format(
+            error_list.append("Slice {} RX main antennas has duplicate antennas".format(
                 exp_slice['slice_id']))
 
         for i in range(len(exp_slice['rx_int_antennas'])):
             if exp_slice['rx_int_antennas'][i] >= options.interferometer_antenna_count:
-                error_list.append("Slice {} Specifies Interferometer Array Antenna Numbers Over " \
-                                   "Config Max {}".format(exp_slice['slice_id'],
+                error_list.append("Slice {} specifies interferometer array antenna numbers over " \
+                                   "config max {}".format(exp_slice['slice_id'],
                                                           options.interferometer_antenna_count))
 
         if list_tests.has_duplicates(exp_slice['rx_int_antennas']):
-            error_list.append("Slice {} RX Interferometer Antennas Has Duplicate Antennas".format(
+            error_list.append("Slice {} RX interferometer antennas has duplicate antennas".format(
                 exp_slice['slice_id']))
 
         # Check if the pulse_sequence is not increasing, which would be an error
         if not list_tests.is_increasing(exp_slice['pulse_sequence']):
-            error_list.append("Slice {} pulse_sequence Not Increasing".format(
+            error_list.append("Slice {} pulse_sequence not increasing".format(
                 exp_slice['slice_id']))
 
         # Check that pulse_len and tau_spacing make sense (values in us)
         if exp_slice['pulse_len'] > exp_slice['tau_spacing']:
-            error_list.append("Slice {} Pulse Length Greater than tau_spacing".format(
+            error_list.append("Slice {} pulse length greater than tau_spacing".format(
                 exp_slice['slice_id']))
         if exp_slice['pulse_len'] < self.options.minimum_pulse_length and \
-                        exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * \
-                        10.0e6:
-            error_list.append("Slice {} Pulse Length Too Small".format(
-                exp_slice['slice_id']))
+                exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * 1.0e6:
+            error_list.append("Slice {} pulse length too small".format(exp_slice['slice_id']))
         if exp_slice['tau_spacing'] < self.options.minimum_tau_spacing_length:
-            error_list.append("Slice {} Multi-Pulse Increment Too Small".format(
+            error_list.append("Slice {} multi-pulse increment too small".format(
                 exp_slice['slice_id']))
         if not math.isclose((exp_slice['tau_spacing'] * self.output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
-            error_list.append('Slice {} Correlation lags will be off because tau_spacing {} us is not a '\
+            error_list.append('Slice {} correlation lags will be off because tau_spacing {} us is not a '\
                 'multiple of the output rx sampling period (1/output_rx_rate {} Hz).'.format(
                     exp_slice['slice_id'], exp_slice['tau_spacing'], self.output_rx_rate))
 
@@ -1798,24 +1856,23 @@ class ExperimentPrototype(object):
 
             if exp_slice['intt'] is None and exp_slice['intn'] is None:
                 # both are None and we are not rx - only
-                error_list.append("Slice {} Has Transmission but no Intt or IntN".format(
+                error_list.append("Slice {} has transmission but no intt or intn".format(
                     exp_slice['slice_id']))
 
             if exp_slice['intt'] is not None and exp_slice['intn'] is not None:
-                error_list.append("Slice {} Choose Either Intn or Intt to be the Limit " \
-                                            "for Number of Integrations in an Integration Period.".\
-                    format(exp_slice['slice_id']))
+                error_list.append("Slice {} choose either intn or intt to be the limit "
+                                  "for number of integrations in an integration period."
+                                  .format(exp_slice['slice_id']))
 
             if exp_slice['intt'] is not None:
                 if seq_len > (exp_slice['intt'] * 1000):  # seq_len in us, so multiply intt
                                                           # (ms) by 1000 to compare in us
-                    error_list.append("Slice {} : Pulse Sequence is Too Long for Integration " \
-                                         "Time Given".format(exp_slice['slice_id']))
+                    error_list.append("Slice {} : pulse sequence is too long for integration "
+                                      "time given".format(exp_slice['slice_id']))
         else:
             if exp_slice['txfreq']:
-                error_list.append("Slice {} Has Transmission Frequency but no" \
-                                            "Pulse Sequence defined".format(
-                    exp_slice['slice_id']))
+                error_list.append("Slice {} has transmission frequency but no"
+                                  "pulse sequence defined".format(exp_slice['slice_id']))
 
         if exp_slice['pulse_phase_offset']:
             num_samps = round(self.txrate * (exp_slice['pulse_len'] * 1e6))
@@ -1848,28 +1905,28 @@ class ExperimentPrototype(object):
                                                                             exp_slice['slice_id']))
 
         if list_tests.has_duplicates(exp_slice['beam_angle']):
-            error_list.append("Slice {} Beam Angles Has Duplicate Directions".format(
+            error_list.append("Slice {} beam angles has duplicate directions".format(
                 exp_slice['slice_id']))
 
         if not list_tests.is_increasing(exp_slice['beam_angle']):
-            error_list.append("Slice {} beam_angle Not Increasing Clockwise (E of N " \
-                                      "is positive)".format(exp_slice['slice_id']))
+            error_list.append("Slice {} beam_angle not increasing clockwise (E of N "
+                              "is positive)".format(exp_slice['slice_id']))
 
         # Check if the list of beams to transmit on is empty
         if not exp_slice['beam_order']:
-            error_list.append("Slice {} Beam Order Scan Empty".format(
+            error_list.append("Slice {} beam order scan empty".format(
                 exp_slice['slice_id']))
 
         # Check that the beam numbers in the beam_order exist
         for bmnum in exp_slice['beam_order']:
             if isinstance(bmnum, int):
                 if bmnum >= len(exp_slice['beam_angle']):
-                    error_list.append("Slice {} Scan Beam Number {} DNE".format(
+                    error_list.append("Slice {} scan beam number {} DNE".format(
                         exp_slice['slice_id'], bmnum))
             elif isinstance(bmnum, list):
                 for imaging_bmnum in bmnum:
                     if imaging_bmnum >= len(exp_slice['beam_angle']):
-                        error_list.append("Slice {} Scan Beam Number {} DNE".format(
+                        error_list.append("Slice {} scan beam number {} DNE".format(
                             exp_slice['slice_id'], bmnum))
 
         # check scan boundary not less than minimum required scan time.
@@ -1877,45 +1934,30 @@ class ExperimentPrototype(object):
             if not exp_slice['intt']:
                 error_list.append("Slice {} must have intt enabled to use scanbound".format(
                         exp_slice['slice_id']))
-            elif len(exp_slice['scanbound']) != len(exp_slice['beam_order']):
-                error_list.append("Slice {} scanbound length needs to equal beam order length".format(
-                        exp_slice['slice_id']))
-            elif any(i<0 for i in exp_slice['scanbound']):
+            elif any(i < 0 for i in exp_slice['scanbound']):
                 error_list.append("Slice {} scanbound times must be non-negative".format(
                         exp_slice['slice_id']))
-            elif (len(exp_slice['scanbound']) > 1 and
-                not all(i<j for i,j in zip(exp_slice['scanbound'], exp_slice['scanbound'][1:]))):
+            elif (len(exp_slice['scanbound']) > 1 and not
+                all(i < j for i, j in zip(exp_slice['scanbound'], exp_slice['scanbound'][1:]))):
                 error_list.append("Slice {} scanbound times must be increasing".format(
                         exp_slice['slice_id']))
             else:
-                # Last element with intt added determines
-                total_scan_time = (math.ceil((exp_slice['scanbound'][-1] + exp_slice['intt']*1e-3)/60) *
-                                    60000) # rounds up to scan boundary minute in ms
-
-                if (len(exp_slice['beam_order']) * exp_slice['intt']) > total_scan_time:
-                        error_list.append("Slice {} Beam Order Too Long for scanbound".format(
-                            exp_slice['slice_id']))
-
                 # Check if any scanbound times are shorter than the intt.
                 if len(exp_slice['scanbound']) == 1:
                     tolerance = 1e-9
                     if exp_slice['intt'] > (exp_slice['scanbound'][0] * 1000 + tolerance):
                         error_list.append("Slice {} intt longer than "
-                            "scanbound times".format(exp_slice['slice_id']))
+                                          "scanbound time".format(exp_slice['slice_id']))
                 else:
                     for i in range(len(exp_slice['scanbound']) - 1):
                         tolerance = 1e-9
                         beam_time = (exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000
                         if exp_slice['intt'] > beam_time + tolerance:
                             error_list.append("Slice {} intt longer than "
-                                "scanbound times".format(exp_slice['slice_id']))
+                                              "scanbound times".format(exp_slice['slice_id']))
                             break
 
         # TODO other checks
-
-        if exp_slice['wavetype'] != 'SINE':
-            error_list.append("Slice {} wavetype of {} currently not supported".format(
-                exp_slice['slice_id'], exp_slice['wavetype']))
 
         return error_list
 

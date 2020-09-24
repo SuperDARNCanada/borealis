@@ -6,6 +6,9 @@ sys.path.append(BOREALISPATH)
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
+# TODO: We should protect these values from changing, I noticed during testing that I used a
+# TODO: call to reverse() on one and it affected the rest of the testing afterwards
+
 STD_RF_RX_RATE = 5.0e6
 RX_RATE_45KM = 10.0e3/3
 RX_RATE_15KM = 10.0e3
@@ -95,3 +98,24 @@ def easy_scanbound(intt, beams):
     minute mark to reduce delay in waiting for the next scanbound.
     """
     return [i * (intt * 1e-3) for i in range(len(beams))]
+
+# set sounding frequencies
+if opts.site_id == "sas":
+    SOUNDING_FREQS = [10300, 11000, 11700, 13250]
+    #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "pgr":
+    SOUNDING_FREQS = [10350, 11050, 11750, 13300]
+    #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "rkn":
+    SOUNDING_FREQS = [10400, 11100, 11800, 13450]
+    #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "inv":
+    SOUNDING_FREQS = [10450, 11150, 11850, 13500]
+    #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "cly":
+    SOUNDING_FREQS = [10550, 11200, 11900, 13550]
+    #SOUNDING_FREQS = [9500, 10300, 11100, 11700, 13250, 14200, 15200]
+else:
+    SOUNDING_FREQS = [10600, 11250, 11950, 13600]
+    #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+

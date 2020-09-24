@@ -6,7 +6,7 @@ message IntegrationTimeMetadata {
   int64 experiment_id = 1;
   string experiment_name = 2;
   string experiment_comment = 3;
-  float rx_centre_freq = 4; // kHz
+  float rx_center_freq = 4; // kHz
   repeated SequenceType sequences = 5;
   uint32 num_sequences = 6;
   uint32 last_seqn_num = 7;

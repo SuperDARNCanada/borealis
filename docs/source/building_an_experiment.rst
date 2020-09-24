@@ -156,13 +156,13 @@ tx_bandwidth *defaults*
     or 5 MHz.
 
 txctrfreq *defaults*
-    The centre frequency of the transmit chain. The default is 12000.0 kHz, or
+    The center frequency of the transmit chain. The default is 12000.0 kHz, or
     12 MHz. Note that this is tuned so will be set to a quantized value, which
     in general is not exactly 12 MHz, and the value can be accessed by the user
     at this attribute after the experiment begins.
 
 rxctrfreq *defaults*
-    The centre frequency of the receive chain. The default is 12000.0 kHz, or
+    The center frequency of the receive chain. The default is 12000.0 kHz, or
     12 MHz. Note that this is tuned so will be set to a quantized value, which
     in general is not exactly 12 MHz, and the value can be accessed by the user
     at this attribute after the experiment begins.
@@ -170,7 +170,7 @@ rxctrfreq *defaults*
 decimation_scheme *defaults*
     The decimation scheme for the experiment, provided by an instance of the
     class DecimationScheme. There is a default scheme specifically set for the
-    default rates and centre frequencies above.
+    default rates and center frequencies above.
 
 comment_string *defaults*
     A comment string describing the experiment. It is highly encouraged to

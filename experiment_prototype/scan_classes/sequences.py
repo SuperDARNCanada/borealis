@@ -49,8 +49,9 @@ class Sequence(ScanClassBase):
         the number of receive samples to take, given the rx rate, during
         the sstime.
     first_rx_sample_start
-        The location of the first sample for the RX data from the start of the TX data.
-        This will be calculated as the center sample of the first occurring pulse(uncombined).
+        The location of the first sample for the RX data from the start of the TX data (in number
+        of samples, unitless). This will be calculated as the center sample of the first
+        occurring pulse (uncombined).
     blanks
         A list of sample indices that should not be used for acfs because they were samples
         taken when transmitting.

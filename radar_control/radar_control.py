@@ -23,6 +23,7 @@ import pickle
 import threading
 import math
 import numpy as np
+
 from functools import reduce
 
 sys.path.append(os.environ["BOREALISPATH"])
@@ -41,12 +42,12 @@ from datawritemetadata_pb2 import IntegrationTimeMetadata
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
-from radar_status.radar_status import RadarStatus
 from utils.zmq_borealis_helpers import socket_operations
 
 TIME_PROFILE = False
 
 rad_ctrl_print = sm.MODULE_PRINT("radar control", "green")
+
 
 def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq,
                  txrate, rxrate):
@@ -54,8 +55,8 @@ def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrf
         :param driverpacket: the protobuf packet to fill and pass over zmq
         :param radctrl_to_driver: the sender socket for sending the driverpacket
         :param driver_to_radctrl_iden: the receiver socket identity on the driver side
-        :param txctrfreq: the transmit centre frequency to tune to, kHz.
-        :param rxctrfreq: the receive centre frequency to tune to. With rx_sample_rate from config.ini file, this
+        :param txctrfreq: the transmit center frequency to tune to, kHz.
+        :param rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
             determines the received signal band, kHz.
         :param txrate: the tx sampling rate (Hz).
         :param rxrate: the rx sampling rate (Hz).
@@ -78,13 +79,13 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
     """ Place data in the driver packet and send it via zeromq to the driver.
         :param driverpacket: the protobuf packet to fill and pass over zmq
         :param radctrl_to_driver: the sender socket for sending the driverpacket
-	    :param driver_to_radctrl_iden: the reciever socket identity on the driver side
+        :param driver_to_radctrl_iden: the reciever socket identity on the driver side
         :param samples_array: this is a list of length main_antenna_count from the config file. It contains one
             numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
             numpy array of zeros of the same length as the rest. All arrays will have the same length according to
             the pulse length.
-        :param txctrfreq: the transmit centre frequency to tune to.
-        :param rxctrfreq: the receive centre frequency to tune to. With rx_sample_rate from config.ini file, this
+        :param txctrfreq: the transmit center frequency to tune to.
+        :param rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
             determines the received signal band.
         :param txrate: the tx sampling rate (Hz).
         :param rxrate: the rx sampling rate (Hz).
@@ -140,37 +141,34 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
     del driverpacket.channel_samples[:]  # TODO find out - Is this necessary in conjunction with .Clear()?
 
 
-
 def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
-                   brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
-                   slice_dict, beam_dict, sequence_time, first_rx_sample_start,
-                   main_antenna_count, rxctrfreq, decimation_scheme=None):
+                      brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
+                      slice_dict, beam_dict, sequence_time, first_rx_sample_start,
+                      main_antenna_count, rxctrfreq, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
         Happens every sequence.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
         :param radctrl_to_dsp: The sender socket for sending data to dsp
-	    :param dsp_radctrl_iden: The reciever socket identity on the dsp side
-	    :param rxrate: The receive sampling rate (Hz).
-	    :param output_sample_rate: The output sample rate desired for the output data (Hz).
+        :param dsp_radctrl_iden: The reciever socket identity on the dsp side
+        :param rxrate: The receive sampling rate (Hz).
+        :param output_sample_rate: The output sample rate desired for the output data (Hz).
         :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
-            with increasing sequences while radar_control is running. It is only reset when program restarts.
+             with increasing sequences while radar_control is running. It is only reset when program restarts.
         :param slice_ids: The identifiers of the slices that are combined in this sequence. These IDs tell us where to
-            look in the beam dictionary and slice dictionary for frequency information and beam direction information
-            about this sequence to give to the signal processing unit.
+             look in the beam dictionary and slice dictionary for frequency information and beam direction information
+             about this sequence to give to the signal processing unit.
         :param slice_dict: The slice dictionary, which contains information about all slices and will be referenced for
-            information about the slices in this sequence. Namely, we get the frequency we want to receive at, the
-            number of ranges and the first range information.
+             information about the slices in this sequence. Namely, we get the frequency we want to receive at, the
+             number of ranges and the first range information.
         :param beam_dict: The dictionary containing beam directions for each slice.
         :param sequence_time: entire duration of sequence, including receive time after all
-        transmissions.
+             transmissions.
         :param first_rx_sample_start: The sample where the first rx sample will start relative to the
-                                     tx data.
-        should occur in the output data. This is equal to the time to the centre of the
-        first pulse. In seconds.
+             tx data.
         :param main_antenna_count: number of main array antennas, from the config file.
-        :param rxctrfreq: the centre frequency of receiving, to send the translation frequency from centre to dsp.
+        :param rxctrfreq: the center frequency of receiving, to send the translation frequency from center to dsp.
         :param decimation_scheme: object of type DecimationScheme that has all decimation and
-            filtering data.
+             filtering data.
 
     """
 
@@ -194,7 +192,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
     for num, slice_id in enumerate(slice_ids):
         chan_add = packet.rxchannel.add()
         chan_add.slice_id = slice_id
-        chan_add.tau_spacing = slice_dict[slice_id]['tau_spacing'] # us
+        chan_add.tau_spacing = slice_dict[slice_id]['tau_spacing']  # us
         # send the translational frequencies to dsp in order to bandpass filter correctly.
         if slice_dict[slice_id]['rxonly']:
             chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['rxfreq'] * 1.0e3
@@ -241,8 +239,6 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             lag_add.pulse_2 = lag[1]
             lag_add.lag_num = int(lag[1] - lag[0])
 
-
-
     # Brian requests sequence metadata for timeouts
     if TIME_PROFILE:
         time_waiting = datetime.utcnow()
@@ -270,12 +266,12 @@ def search_for_experiment(radar_control_to_exp_handler,
                           status):
     """
     Check for new experiments from the experiment handler
+    :param radar_control_to_exp_handler:
     :param radctrl_to_exphan_iden: The
     :param status: status string (EXP_NEEDED or NO_ERROR).
     :returns new_experiment_received: boolean (True for new experiment received)
     :returns experiment: experiment instance (or None if there is no new experiment)
     """
-
 
     try:
         socket_operations.send_request(radar_control_to_exp_handler, exphan_to_radctrl_iden, status)
@@ -288,8 +284,8 @@ def search_for_experiment(radar_control_to_exp_handler,
 
     try:
         serialized_exp = socket_operations.recv_exp(radar_control_to_exp_handler,
-                                               exphan_to_radctrl_iden,
-                                               rad_ctrl_print)
+                                                    exphan_to_radctrl_iden,
+                                                    rad_ctrl_print)
     except zmq.ZMQBaseError as e:
         errmsg = "ZMQ ERROR"
         raise [ExperimentException(errmsg), e]
@@ -301,7 +297,7 @@ def search_for_experiment(radar_control_to_exp_handler,
         new_experiment_received = True
         if __debug__:
             rad_ctrl_print("NEW EXPERIMENT FOUND")
-    elif new_exp != None:
+    elif new_exp is not None:
         if __debug__:
             rad_ctrl_print("RECEIVED AN EXPERIMENT NOT OF TYPE EXPERIMENT_PROTOTYPE. CANNOT RUN.")
     else:
@@ -311,7 +307,6 @@ def search_for_experiment(radar_control_to_exp_handler,
         # properly
 
     return new_experiment_received, experiment
-
 
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
@@ -331,8 +326,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     :param scan_flag: True if this integration period is the first in a scan.
     :param inttime: The time that expired during this integration period.
     :param sequences: The sequences of class Sequence for this integration period (AveragingPeriod).
-    :param beamdir_dict: Dictionary where each slice_id key corresponds to a list of beam
-    directions for that slice for this integration period.
+    :param beam_iter: The beam iterator of this averaging period.
     :param experiment_id: the ID of the experiment that is running
     :param experiment_name: the experiment name to be placed in the data files.
     :param scheduling_mode: the type of scheduling mode running at this time, to write to file.
@@ -341,13 +335,13 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     :param experiment_comment: The comment string for the experiment, user-defined.
     :param filter_scaling_factors: The decimation scheme scaling factors used for the experiment,
     to get the scaling for the data for accurate power measurements between experiments.
-    :param rx_centre_freq: The receive centre frequency (kHz)
+    :param rx_center_freq: The receive center frequency (kHz)
     :param debug_samples: the debug samples for this integration period, to be written to the
     file if debug is set. This is a list of dictionaries for each Sequence in the
     AveragingPeriod. The dictionary is set up in the sample_building module function
-    create_debug_sequence_samples. The keys are 'txrate', 'txctrfreq', 'pulse_sequence_timing',
-    'pulse_offset_error', 'sequence_samples', 'decimated_sequence', 'dmrate_error', and 'dmrate'.
-    The 'sequence_samples' and 'decimated_sequence' values are themselves dictionaries, where the
+    create_debug_sequence_samples. The keys are 'txrate', 'txctrfreq', 'pulse_timing',
+    'pulse_sample_start', 'sequence_samples', 'decimated_sequence', 'dmrate_error', and 'dmrate'.
+    The 'sequence_samples' and 'decimated_samples' values are themselves dictionaries, where the
     keys are the antenna numbers (there is a sample set for each transmit antenna).
     """
 
@@ -355,13 +349,13 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     packet.experiment_id = experiment_id
     packet.experiment_name = experiment_name
     packet.experiment_comment = experiment_comment
-    packet.rx_centre_freq = rx_centre_freq
+    packet.rx_center_freq = rx_center_freq
     packet.num_sequences = num_sequences
     packet.last_seqn_num = seqnum
     packet.scan_flag = scan_flag
     packet.integration_time = inttime.total_seconds()
     packet.output_sample_rate = output_sample_rate
-    packet.data_normalization_factor = reduce(lambda x,y: x*y, filter_scaling_factors) # multiply all
+    packet.data_normalization_factor = reduce(lambda x, y: x * y, filter_scaling_factors)  # multiply all
     packet.scheduling_mode = scheduling_mode
 
     for sequence_index, sequence in enumerate(sequences):
@@ -442,24 +436,26 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                                  packet.SerializeToString())
 
 
-def round_up_time(dt=None, roundTo=60):
-   """Round a datetime object to any time lapse in seconds
-   dt : datetime.datetime object, default now.
-   roundTo : Closest number of seconds to round to, default 1 minute.
-   Author: Thierry Husson 2012 - Use it as you want but don't blame me.
-   Modified: K.Kotyk 2019
+def round_up_time(dt=None, round_to=60):
+    """Round a datetime object to any time lapse in seconds
+    dt : datetime.datetime object, default now.
+    roundTo : Closest number of seconds to round to, default 1 minute.
+    Author: Thierry Husson 2012 - Use it as you want but don't blame me.
+    Modified: K.Kotyk 2019
 
-   Will round to the nearest minute mark. Adds one minute if rounded down.
-   """
-   if dt == None : dt = datetime.utcnow()
-   midnight = dt.replace(hour=0, minute=0, second=0)
-   seconds = (dt.replace(tzinfo=None) - midnight).seconds
-   rounding = (seconds+roundTo/2) // roundTo * roundTo
-   result = dt + timedelta(0,rounding-seconds,-dt.microsecond)
+    Will round to the nearest minute mark. Adds one minute if rounded down.
+    """
+    if dt is None:
+        dt = datetime.utcnow()
+    midnight = dt.replace(hour=0, minute=0, second=0)
+    seconds = (dt.replace(tzinfo=None) - midnight).seconds
+    rounding = (seconds + round_to / 2) // round_to * round_to
+    result = dt + timedelta(0, rounding-seconds, -dt.microsecond)
 
-   if result < dt:
+    if result < dt:
         result += timedelta(minutes=1)
-   return result
+    return result
+
 
 def radar():
     """
@@ -523,13 +519,14 @@ def radar():
     new_experiment_waiting = False
     new_experiment_loaded = True
 
-    # Send driver initial setup data - rates and centre frequency from experiment.
+    # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
     setup_driver(driverpacket, radar_control_to_driver, options.driver_to_radctrl_identity,
                  experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
                  experiment.rxrate)
 
     first_integration = True
+    next_scan_start = None
     decimation_scheme = experiment.decimation_scheme
     while True:
         # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.
@@ -548,294 +545,322 @@ def radar():
             new_experiment = None
             new_experiment_loaded = True
 
-
-
-        for scan in experiment.scan_objects:
-
+        for scan_num, scan in enumerate(experiment.scan_objects):
+            if __debug__:
+                rad_ctrl_print("Scan number: {}".format(scan_num))
+            # scan iter is the iterator through the scanbound or through the number of averaging periods in the scan.
+            scan_iter = 0
             # if a new experiment was received during the last scan, it finished the integration period it was on and
             # returned here with new_experiment_waiting set to True. Break to load new experiment.
             if new_experiment_waiting:  # start anew on first scan if we have a new experiment.
                 break
-            beam_remaining = True  # started a new scan, therefore this must be True.
-
-            # Make iterator for cycling through beam numbers
-            aveperiods_done_list = []
-            beam_iter = 0
 
             if scan.scanbound:
-                # align scanbound reference time.
-                now = datetime.utcnow()
-                dt = now.replace(second=0, microsecond=0)
+                if scan.align_scan_to_beamorder:
+                    for aveperiod in scan.aveperiods:
+                        aveperiod.beam_iter = 0  # always align first beam at start of scan
 
-                if dt + timedelta(seconds=scan.scanbound[beam_iter]) >= now:
-                    start_scan = dt
-                else:
-                    start_scan = round_up_time(now)
+                # find the start of the next scan with a scanbound so we can
+                # determine time remaining for end of scan
+                next_scanbound = None
+                next_scan_num = scan_num
+                while next_scanbound is None:
+                    next_scan_num += 1
+                    if next_scan_num == len(experiment.scan_objects):
+                        next_scan_num = 0
+                    next_scanbound = experiment.scan_objects[next_scan_num].scanbound
 
-            while beam_remaining and not new_experiment_waiting:
-                for aveperiod in scan.aveperiods:
-                    if TIME_PROFILE:
-                        time_start_of_aveperiod = datetime.utcnow()
-                    # If there are multiple aveperiods in a scan they are alternated
-                    #   beam by beam. So we need to iterate through
-                    # Go through each aveperiod once then increase the beam
-                    #   iterator to the next beam in each scan.
+                if first_integration:
+                    # on the very first integration of Borealis starting, calculate the start minute
+                    # align scanbound reference time to find when to start
+                    now = datetime.utcnow()
+                    dt = now.replace(second=0, microsecond=0)
 
-                    # get new experiment here, before starting a new integration.
-                    # if new_experiment_waiting is set here, we will implement the new_experiment after this integration
-                    # period.
-
-                    # Check if there are beams remaining in this aveperiod, or in any aveperiods.
-                    if aveperiod in aveperiods_done_list:
-                        continue  # beam_iter index is past the end of the beam_order list for this aveperiod, but other aveperiods must still contain a beam at index beam_iter in the beam_order list.
+                    if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now:
+                        start_minute = dt
                     else:
-                        if beam_iter == len(scan.scan_beams[aveperiod.slice_ids[0]]):
-                            # All slices in the aveperiod have the same length beam_order.
-                            # Check if we are at the end of the beam_order list (scan) for this aveperiod instance.
-                            # If we are, we still might not be done all of the beams in another aveperiod,
-                            # so we should just record that we are done with this one for this scan and
-                            # keep going to check the next aveperiod type.
-                            aveperiods_done_list.append(aveperiod)
-                            if len(aveperiods_done_list) == len(scan.aveperiods):
-                                beam_remaining = False  # all aveperiods are at the end of their beam_order list - must restart scan of alternating aveperiod types.
-                                break
-                            continue
+                        start_minute = round_up_time(now)
+                else:  # At the start of a scan object that has scanbound, recalculate the start
+                    # minute to the previously calculated next_scan_start
+                    start_minute = next_scan_start.replace(second=0, microsecond=0)
 
-                    if not new_experiment_waiting and not new_experiment_loaded: # there could already be a new experiment waiting, or we could have just loaded a new experiment.
-                        new_experiment_waiting, new_experiment = search_for_experiment(
-                            radar_control_to_exp_handler,
-                            options.exphan_to_radctrl_identity, 'NOERROR')
-                    elif new_experiment_loaded:
-                        new_experiment_loaded = False
+                # find the modulus of the number of aveperiod times to run in the scan and the number of AvePeriod classes.
+                # the classes will be alternated so we can determine which class will be running at the end of the scan.
+                index_of_last_aveperiod_in_scan = (scan.num_aveperiods_in_scan + scan.aveperiod_iter) % len(scan.aveperiods)
+                last_aveperiod_intt = scan.aveperiods[index_of_last_aveperiod_in_scan].intt
+                # a scanbound necessitates intt
+                end_of_scan = start_minute + timedelta(seconds=scan.scanbound[-1]) + timedelta(seconds=last_aveperiod_intt * 1e-3)
+                end_minute = end_of_scan.replace(second=0, microsecond=0)
 
-                    if __debug__:
-                        rad_ctrl_print("New AveragingPeriod")
+                if end_minute + timedelta(seconds=next_scanbound[0]) >= end_of_scan:
+                    next_scan_start = end_minute + timedelta(seconds=next_scanbound[0])
+                else:
+                    next_scan_start = round_up_time(end_of_scan) + timedelta(seconds=next_scanbound[0])
 
+            while scan_iter < scan.num_aveperiods_in_scan and not new_experiment_waiting:
+                # If there are multiple aveperiods in a scan they are alternated (INTTIME interfaced)
+                aveperiod = scan.aveperiods[scan.aveperiod_iter]
+                if TIME_PROFILE:
+                    time_start_of_aveperiod = datetime.utcnow()
 
-                    # all phases are set up for this averaging period for the beams required. Time to start averaging
-                    # in the below loop.
-                    if not scan.scanbound:
-                        integration_period_start_time = datetime.utcnow()  # ms
-                        rad_ctrl_print("Integration start time: {}".format(integration_period_start_time))
-                    if aveperiod.intt is not None:
-                        intt_break = True
+                # get new experiment here, before starting a new integration.
+                # If new_experiment_waiting is set here, implement new_experiment after this
+                # integration period. There may be a new experiment waiting, or a new experiment.
+                if not new_experiment_waiting and not new_experiment_loaded:
+                    new_experiment_waiting, new_experiment = search_for_experiment(
+                        radar_control_to_exp_handler,
+                        options.exphan_to_radctrl_identity, 'NOERROR')
+                elif new_experiment_loaded:
+                    new_experiment_loaded = False
 
-                        if scan.scanbound:
-                            # calculate scan start time. First beam in the sequence will likely
-                            # be ready to go if the first scan aligns directly to the minute. The
-                            # rest will need to wait until their boundary time is up.
-                            beam_scanbound = start_scan + timedelta(seconds=scan.scanbound[beam_iter])
-                            time_diff = beam_scanbound - datetime.utcnow()
-                            if time_diff.total_seconds() > 0:
+                if __debug__:
+                    rad_ctrl_print("New AveragingPeriod")
+                
+                # all phases are set up for this averaging period for the beams required. 
+                # Time to start averaging in the below loop.            
+                if not scan.scanbound:
+                    integration_period_start_time = datetime.utcnow()  # ms
+                    rad_ctrl_print("Integration start time: {}".format(integration_period_start_time))
+                if aveperiod.intt is not None:
+                    intt_break = True
+
+                    if scan.scanbound:
+                        # calculate scan start time. First beam in the sequence will likely
+                        # be ready to go if the first scan aligns directly to the minute. The
+                        # rest will need to wait until their boundary time is up.
+                        beam_scanbound = start_minute + timedelta(seconds=scan.scanbound[scan_iter])
+                        time_diff = beam_scanbound - datetime.utcnow()
+                        if time_diff.total_seconds() > 0:
+                            if __debug__ or first_integration:
                                 msg = "{}s until averaging period {} at time {}"
                                 msg = msg.format(sm.COLOR("blue", time_diff.total_seconds()),
-                                                sm.COLOR("yellow", beam_iter),
-                                                sm.COLOR("red", beam_scanbound))
+                                                 sm.COLOR("yellow", scan_iter),
+                                                 sm.COLOR("red", beam_scanbound))
                                 rad_ctrl_print(msg)
-                                time.sleep(time_diff.total_seconds())
-                            else:
+                            # TODO: reduce sleep if we want to use GPS timestamped transmissions
+                            time.sleep(time_diff.total_seconds())
+                        else:
+                            if __debug__:
+                                # TODO: This will be wrong if the start time is in the past. 
+                                # maybe use datetime.utcnow() like below
+                                # TODO: instead of  beam_scanbound, or change wording to 
+                                # when the aveperiod should have started?
                                 msg = "starting averaging period {} at time {}"
-                                msg = msg.format(sm.COLOR("yellow", beam_iter),
+                                msg = msg.format(sm.COLOR("yellow", scan_iter),
                                                  sm.COLOR("red", beam_scanbound))
                                 rad_ctrl_print(msg)
 
-                            integration_period_start_time = datetime.utcnow()  # ms
-                            msg = "Integration start time: {}"
-                            msg = msg.format(sm.COLOR("red", integration_period_start_time))
-                            rad_ctrl_print(msg)
+                        integration_period_start_time = datetime.utcnow()  # ms
+                        msg = "Integration start time: {}"
+                        msg = msg.format(sm.COLOR("red", integration_period_start_time))
+                        rad_ctrl_print(msg)
 
-                            # Here we find how much system time has elapsed to find the true amount
-                            # of time we can integrate for this scan boundary. We can then see if
-                            # we have enough time left to run the integration period.
-                            time_elapsed = integration_period_start_time - start_scan
-                            if beam_iter < len(scan.scanbound) - 1:
-                                scanbound_time = scan.scanbound[beam_iter+1] - scan.scanbound[0]
-                                bound_time_remaining = scanbound_time - time_elapsed.total_seconds()
-                            else:
-                                bound_minute = round_up_time(integration_period_start_time +
-                                                timedelta(milliseconds=aveperiod.intt))
-                                bound_time_remaining = bound_minute - integration_period_start_time
-                                bound_time_remaining = bound_time_remaining.total_seconds()
+                        # Here we find how much system time has elapsed to find the true amount
+                        # of time we can integrate for this scan boundary. We can then see if
+                        # we have enough time left to run the integration period.
+                        time_elapsed = integration_period_start_time - start_minute
+                        if scan_iter < len(scan.scanbound) - 1:
+                            scanbound_time = scan.scanbound[scan_iter + 1]
+                            # TODO: scanbound_time could be in the past if system has taken 
+                            # too long, perhaps calculate which 'beam' (scan_iter) instead by 
+                            # rewriting this code for an experiment-wide scanbound attribute instead
+                            # of individual scanbounds inside the scan objects
+                            # TODO: if scan_iter skips ahead, aveperiod.beam_iter may also need to 
+                            # if scan.align_to_beamorder is True
+                            bound_time_remaining = scanbound_time - time_elapsed.total_seconds()
+                        else:
+                            bound_time_remaining = next_scan_start - integration_period_start_time
+                            bound_time_remaining = bound_time_remaining.total_seconds()
 
-                            msg = "beam {}: bound_time_remaining {}s"
-                            msg = msg.format(sm.COLOR("yellow", beam_iter),
-                                             sm.COLOR("blue", bound_time_remaining))
-                            rad_ctrl_print(msg)
+                        msg = "scan {} averaging period {}: bound_time_remaining {}s"
+                        msg = msg.format(sm.COLOR("yellow", scan_num),
+                                         sm.COLOR("yellow", scan_iter),
+                                         sm.COLOR("blue", round(bound_time_remaining, 6)))
+                        rad_ctrl_print(msg)
 
-                            if bound_time_remaining < aveperiod.intt*1e-3:
-                                # reduce the integration period to only the time remaining
-                                # until the next scan boundary.
-                                integration_period_done_time = integration_period_start_time + \
-                                            timedelta(milliseconds=bound_time_remaining * 1e3) #ms
-                            else:
-                                integration_period_done_time = integration_period_start_time + \
-                                            timedelta(milliseconds=aveperiod.intt) #ms
-                        else:  # no scanbound for this scan
+                        if bound_time_remaining < aveperiod.intt * 1e-3:
+                            # reduce the integration period to only the time remaining
+                            # until the next scan boundary.
+                            # TODO: Check for bound_time_remaining > 0
+                            # to be sure there is actually time to run this intt
+                            # (if bound_time_remaining < 0, we need a solution to 
+                            # reset)
                             integration_period_done_time = integration_period_start_time + \
-                                            timedelta(milliseconds=aveperiod.intt) #ms
+                                            timedelta(milliseconds=bound_time_remaining * 1e3)
+                        else:
+                            integration_period_done_time = integration_period_start_time + \
+                                            timedelta(milliseconds=aveperiod.intt)
+                    else:  # no scanbound for this scan
+                        integration_period_done_time = integration_period_start_time + \
+                                            timedelta(milliseconds=aveperiod.intt)
+                else:  # intt does not exist, therefore using intn
+                    intt_break = False
+                    ending_number_of_sequences = aveperiod.intn  # this will exist
 
-                    else:  # intt does not exist, therefore using intn
-                        intt_break = False
-                        ending_number_of_sequences = aveperiod.intn # this will exist
+                msg = "AvePeriod slices and beam numbers: {}".format(
+                    {x: y[aveperiod.beam_iter] for x, y in aveperiod.slice_to_beamorder.items()})
+                rad_ctrl_print(msg)
+                
+                if TIME_PROFILE:
+                    time_to_prep_aveperiod = datetime.utcnow() - time_start_of_aveperiod
+                    rad_ctrl_print('Time to prep aveperiod: {}'.format(time_to_prep_aveperiod))
 
-                    first_sequence_out = False
+                #  Time to start averaging in the below loop
+                
+                num_sequences = 0
+                time_remains = True
+                pulse_transmit_data_tracker = {}
+                debug_samples = []
+                
+                while time_remains:
+                    for sequence_index, sequence in enumerate(aveperiod.sequences):
 
-                    if TIME_PROFILE:
-                        time_to_prep_aveperiod = datetime.utcnow() - time_start_of_aveperiod
-                        rad_ctrl_print('Time to prep aveperiod: {}'.format(time_to_prep_aveperiod))
+                        # Alternating sequences if there are multiple in the averaging_period.
+                        start_time = datetime.utcnow()
+                        if intt_break:
+                            if start_time >= integration_period_done_time:
+                                time_remains = False
+                                integration_period_time = (start_time - integration_period_start_time)
+                                break
+                        else:  # break at a certain number of integrations
+                            if num_sequences == ending_number_of_sequences:
+                                time_remains = False
+                                integration_period_time = start_time - integration_period_start_time
+                                break
 
+                        # on first sequence, we make the first set of samples.
+                        if sequence_index not in pulse_transmit_data_tracker:
+                            pulse_transmit_data_tracker[sequence_index] = {}
+                            sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, num_sequences)
+                            if dbg:
+                                debug_samples.append(dbg)
+                            pulse_transmit_data_tracker[sequence_index][num_sequences] = sqn
 
-                    num_sequences = 0
-                    time_remains = True
-                    pulse_transmit_data_tracker = {}
-                    debug_samples = []
-                    while time_remains:
-                        for sequence_index, sequence in enumerate(aveperiod.sequences):
-                            # Alternating sequences if there are multiple in the averaging_period.
-                            start_time = datetime.utcnow()
-                            if intt_break:
-                                if start_time >= integration_period_done_time:
-                                    time_remains = False
-                                    integration_period_time = (start_time -
-                                                                    integration_period_start_time)
-                                    break
-                            else: # break at a certain number of integrations
-                                if num_sequences == ending_number_of_sequences:
-                                    time_remains = False
-                                    integration_period_time = start_time - integration_period_start_time
-                                    break
+                        def send_pulses():
+                            for pulse_transmit_data in pulse_transmit_data_tracker[sequence_index][num_sequences]:
+                                data_to_driver(driverpacket, radar_control_to_driver,
+                                               options.driver_to_radctrl_identity,
+                                               pulse_transmit_data['samples_array'],
+                                               experiment.txctrfreq,
+                                               experiment.rxctrfreq, experiment.txrate,
+                                               experiment.rxrate,
+                                               sequence.numberofreceivesamples,
+                                               sequence.seqtime,
+                                               pulse_transmit_data['startofburst'],
+                                               pulse_transmit_data['endofburst'],
+                                               pulse_transmit_data['timing'],
+                                               seqnum_start + num_sequences,
+                                               repeat=pulse_transmit_data['isarepeat'])
 
-                            # on first sequence, we make the first set of samples.
-                            if sequence_index not in pulse_transmit_data_tracker:
-                                pulse_transmit_data_tracker[sequence_index] = {}
-                                sqn, dbg = sequence.make_sequence(beam_iter, num_sequences)
-                                if dbg:
-                                    debug_samples.append(dbg)
-                                pulse_transmit_data_tracker[sequence_index][num_sequences] = sqn
+                            if TIME_PROFILE:
+                                time_after_pulses = datetime.utcnow()
+                                pulses_to_driver_time = time_after_pulses - start_time
+                                output = 'Time for pulses to driver: {}'.format(pulses_to_driver_time)
+                                rad_ctrl_print(output)
 
+                        def send_dsp_meta():
+                            rx_beam_phases = sequence.get_rx_phases(aveperiod.beam_iter)
+                            send_dsp_metadata(sigprocpacket,
+                                              radar_control_to_dsp,
+                                              options.dsp_to_radctrl_identity,
+                                              radar_control_to_brian,
+                                              options.brian_to_radctrl_identity,
+                                              experiment.rxrate,
+                                              experiment.output_rx_rate,
+                                              seqnum_start + num_sequences,
+                                              sequence.slice_ids, experiment.slice_dict,
+                                              rx_beam_phases, sequence.seqtime,
+                                              sequence.first_rx_sample_start,
+                                              options.main_antenna_count, experiment.rxctrfreq,
+                                              decimation_scheme)
 
-                            def send_pulses():
-                                for pulse_transmit_data in pulse_transmit_data_tracker[sequence_index][num_sequences]:
-                                    data_to_driver(driverpacket, radar_control_to_driver,
-                                                   options.driver_to_radctrl_identity,
-                                                   pulse_transmit_data['samples_array'],
-                                                   experiment.txctrfreq,
-                                                   experiment.rxctrfreq, experiment.txrate,
-                                                   experiment.rxrate,
-                                                   sequence.numberofreceivesamples,
-                                                   sequence.seqtime,
-                                                   pulse_transmit_data['startofburst'],
-                                                   pulse_transmit_data['endofburst'],
-                                                   pulse_transmit_data['timing'],
-                                                   seqnum_start + num_sequences,
-                                                   repeat=pulse_transmit_data['isarepeat'])
+                            if TIME_PROFILE:
+                                time_after_sequence_metadata = datetime.utcnow()
+                                sequence_metadata_time = time_after_sequence_metadata - start_time
+                                output = 'Time to send meta to DSP: {}'.format(sequence_metadata_time)
+                                rad_ctrl_print(output)
 
-                                if TIME_PROFILE:
-                                    time_after_pulses = datetime.utcnow()
-                                    pulses_to_driver_time = time_after_pulses - start_time
-                                    output = 'Time for pulses to driver: {}'.format(pulses_to_driver_time)
-                                    rad_ctrl_print(output)
+                        def make_next_samples():
+                            sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, num_sequences + 1)
+                            if dbg:
+                                debug_samples.append(dbg)
+                            pulse_transmit_data_tracker[sequence_index][num_sequences+1] = sqn
 
-                            def send_dsp_meta():
-                                rx_beam_phases = sequence.get_rx_phases(beam_iter)
-                                send_dsp_metadata(sigprocpacket,
-                                                  radar_control_to_dsp,
-                                                  options.dsp_to_radctrl_identity,
-                                                  radar_control_to_brian,
-                                                  options.brian_to_radctrl_identity,
-                                                  experiment.rxrate,
-                                                  experiment.output_rx_rate,
-                                                  seqnum_start + num_sequences,
-                                                  sequence.slice_ids, experiment.slice_dict,
-                                                  rx_beam_phases, sequence.seqtime,
-                                                  sequence.first_rx_sample_start,
-                                                  options.main_antenna_count, experiment.rxctrfreq,
-                                                  decimation_scheme)
+                            if TIME_PROFILE:
+                                time_after_making_new_sqn = datetime.utcnow()
+                                new_sequence_time = time_after_making_new_sqn - start_time
+                                output = 'Time to make new sequence: {}'.format(new_sequence_time)
+                                rad_ctrl_print(output)
 
-                                if TIME_PROFILE:
-                                    time_after_sequence_metadata = datetime.utcnow()
-                                    sequence_metadata_time = time_after_sequence_metadata - start_time
-                                    output = 'Time to send meta to DSP: {}'.format(sequence_metadata_time)
-                                    rad_ctrl_print(output)
+                        # These three things can happen simultaneously. We can spawn them as
+                        # threads.
+                        threads = [threading.Thread(target=send_pulses),
+                                   threading.Thread(target=send_dsp_meta),
+                                   threading.Thread(target=make_next_samples)]
 
-                            def make_next_samples():
-                                sqn, dbg = sequence.make_sequence(beam_iter, num_sequences + 1)
-                                if dbg:
-                                    debug_samples.append(dbg)
-                                pulse_transmit_data_tracker[sequence_index][num_sequences+1] = sqn
+                        for thread in threads:
+                            thread.daemon = True
+                            thread.start()
 
-                                if TIME_PROFILE:
-                                    time_after_making_new_sqn = datetime.utcnow()
-                                    new_sequence_time = time_after_making_new_sqn - start_time
-                                    output = 'Time to make new sequence: {}'.format(new_sequence_time)
-                                    rad_ctrl_print(output)
+                        for thread in threads:
+                            thread.join()
 
-                            # These three things can happen simultaneously. We can spawn them as
-                            # threads.
-                            threads = [threading.Thread(target=send_pulses),
-                                        threading.Thread(target=send_dsp_meta),
-                                        threading.Thread(target=make_next_samples)]
+                        num_sequences += 1
 
-                            for thread in threads:
-                                thread.daemon = True
-                                thread.start()
+                        if first_integration:
+                            decimation_scheme = None
+                            first_integration = False
 
-                            for thread in threads:
-                                thread.join()
+                        # Sequence is done
+                        if __debug__:
+                            time.sleep(1)
 
-                            num_sequences += 1
+                if TIME_PROFILE:
+                    time_at_end_aveperiod = datetime.utcnow()
 
-                            if first_integration:
-                                decimation_scheme = None
-                                first_integration = False
+                msg = "Number of sequences: {}"
+                msg = msg.format(sm.COLOR("magenta", num_sequences))
+                rad_ctrl_print(msg)
 
-                            # Sequence is done
+                if scan.aveperiod_iter == 0 and aveperiod.beam_iter == 0:
+                    # This is the first integration time in the scan object.
+                    # if scanbound is aligned to beamorder, the scan_iter will also = 0 at this point.
+                    scan_flag = True
+                else:
+                    scan_flag = False
 
-                            if __debug__:
-                                time.sleep(1)
+                last_sequence_num = seqnum_start + num_sequences - 1
+                def send_dw():
+                    send_datawrite_metadata(integration_time_packet, radar_control_to_dw,
+                                        options.dw_to_radctrl_identity, last_sequence_num,
+                                        num_sequences, scan_flag, integration_period_time,
+                                        aveperiod.sequences, aveperiod.beam_iter,
+                                        experiment.cpid, experiment.experiment_name,
+                                        experiment.scheduling_mode,
+                                        experiment.output_rx_rate, experiment.comment_string,
+                                        experiment.decimation_scheme.filter_scaling_factors,
+                                        experiment.rxctrfreq,
+                                        debug_samples=debug_samples)
 
+                thread = threading.Thread(target=send_dw)
+                thread.daemon = True
+                thread.start()
+                # end of the averaging period loop - move onto the next averaging period.
+                # Increment the sequence number by the number of sequences that were in this
+                # averaging period.
+                seqnum_start += num_sequences
 
-                    if TIME_PROFILE:
-                        time_at_end_aveperiod = datetime.utcnow()
+                if TIME_PROFILE:
+                    time_to_finish_aveperiod = datetime.utcnow() - time_at_end_aveperiod
+                    rad_ctrl_print('Time to finish aveperiod: {}'.format(time_to_finish_aveperiod))
 
-                    msg = "Number of sequences: {}"
-                    msg = msg.format(sm.COLOR("magenta", num_sequences))
-                    rad_ctrl_print(msg)
-
-                    if beam_iter == 0:  # The first integration time in the scan.
-                        scan_flag = True
-                    else:
-                        scan_flag = False
-
-                    last_sequence_num = seqnum_start + num_sequences - 1
-                    def send_dw():
-                        send_datawrite_metadata(integration_time_packet, radar_control_to_dw,
-                                            options.dw_to_radctrl_identity, last_sequence_num,
-                                            num_sequences, scan_flag, integration_period_time,
-                                            aveperiod.sequences, beam_iter,
-                                            experiment.cpid, experiment.experiment_name,
-                                            experiment.scheduling_mode,
-                                            experiment.output_rx_rate, experiment.comment_string,
-                                            experiment.decimation_scheme.filter_scaling_factors,
-                                            experiment.rxctrfreq,
-                                            debug_samples=debug_samples)
-
-                    thread = threading.Thread(target=send_dw)
-                    thread.daemon = True
-                    thread.start()
-
-                    # end of the averaging period loop - move onto the next averaging period.
-                    # Increment the sequence number by the number of sequences that were in this
-                    # averaging period.
-                    seqnum_start += num_sequences
-
-                    if TIME_PROFILE:
-                        time_to_finish_aveperiod = datetime.utcnow() - time_at_end_aveperiod
-                        rad_ctrl_print('Time to finish aveperiod: {}'.format(time_to_finish_aveperiod))
-
-                beam_iter = beam_iter + 1
-
+                aveperiod.beam_iter += 1
+                if aveperiod.beam_iter == aveperiod.num_beams_in_scan:
+                    aveperiod.beam_iter = 0
+                scan_iter += 1
+                scan.aveperiod_iter += 1
+                if scan.aveperiod_iter == len(scan.aveperiods):
+                    scan.aveperiod_iter = 0
 
 if __name__ == "__main__":
     radar()
-
