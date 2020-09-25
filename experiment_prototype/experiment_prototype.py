@@ -347,7 +347,7 @@ class ExperimentPrototype(object):
         # taking care not to look for CPID in any experiments that are just tests (start with the
         # word 'test')
 #        experiment_files_list = list(Path(BOREALISPATH + "/experiments/").rglob("[!test]*.py"))
-#        self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
+        self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
 #        cpid_list = []
 #        for experiment_file in experiment_files_list:
 #            with open(experiment_file) as file_to_search:
