@@ -34,10 +34,21 @@ class Epopsound(ExperimentPrototype):
         cpid = 3371
         epop_file = EPOP_PASS_FILE.format(scf.opts.site_id)
 
-        beam = kwargs['beam']
-        marker_period = kwargs['marker_period']
-        freq = kwargs['freq']
+        # default values
+        freq = scf.COMMON_MODE_FREQ_1
+        beam = 7
+        marker_period = 9
+        
+        if kwargs:
+            if 'freq' in kwargs.keys():
+                freq = int(kwargs['freq'])
+            if 'beam' in kwargs.keys():
+                beam = int(kwargs['beam'])
+            if 'marker_period' in kwargs.keys():
+                marker_period = int(kwargs['marker_period'])
 
+        self.printing('Freq: {} kHz, Beam: {}, Marker Period: {}'
+                .format(freq, beam, marker_period))
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
