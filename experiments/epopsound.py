@@ -87,33 +87,26 @@ class Epopsound(ExperimentPrototype):
             beams_to_use = basic_beams
 
         slices = []
+        base_slice = {
+            "pulse_sequence": scf.SEQUENCE_8P,
+            "tau_spacing": scf.TAU_SPACING_8P,
+            "pulse_len": scf.PULSE_LEN_45KM,
+            "num_ranges": num_ranges,
+            "first_range": scf.STD_FIRST_RANGE,
+            "intt": 1000, #ms
+            "scanbound": [1.0 * i for i in range(len(beams_to_use))],
+            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "beam_order": beams_to_use,
+            "acf": True,
+            "xcf": True,
+            "acfint": True
+        }
         for freq in freqs:
             # for each freq add 
-            slice_0 = {
-                "pulse_sequence": scf.SEQUENCE_8P,
-                "tau_spacing": scf.TAU_SPACING_8P,
-                "pulse_len": scf.PULSE_LEN_45KM,
-                "num_ranges": num_ranges,
-                "first_range": scf.STD_FIRST_RANGE,
-                "intn": 10,
-                "beam_angle": scf.STD_16_BEAM_ANGLE,
-                "beam_order": beams_to_use,
-                "txfreq": freq,  # kHz
-                "acf": True,
-                "xcf": True,
-                "acfint": True,
-            }
+            base_slice.update({
+                "txfreq": freq
+                })
             slices.append(slice_0)
-
-            if marker_period > 0:
-                # get the marker slice
-                slice_1 = copy.deepcopy(slice_0)
-                slice_1.update({
-                    "pulse_sequence": scf.SEQUENCE_7P,
-                    "tau_spacing": scf.TAU_SPACING_7P,
-                    "beam_order": marker_beam_to_use
-                    })
-                slices.append(slice_1)
 
         super(Epopsound, self).__init__(cpid=cpid, txctrfreq=centre_freq, rxctrfreq=centre_freq,
                                         comment_string=Epopsound.__doc__)
@@ -121,4 +114,15 @@ class Epopsound(ExperimentPrototype):
         self.add_slice(slices[0])
         if len(slices) > 1:
             for a_slice in slices[1:]:
-                self.add_slice(a_slice, interfacing_dict={0: 'SCAN'})
+                self.add_slice(a_slice, interfacing_dict={0: 'INTTIME'})
+
+        if marker_period > 0:
+            # get the marker slice
+            slice_1 = copy.deepcopy(base_slice)
+            slice_1.update({
+                "pulse_sequence": scf.SEQUENCE_7P,
+                "tau_spacing": scf.TAU_SPACING_7P,
+                "beam_order": marker_beam_to_use,
+                "txfreq": freqs[0]
+                })
+            self.add_slice(slice_1, interfacing_dict={0: 'SCAN'})
