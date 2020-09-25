@@ -23,7 +23,6 @@ import inspect
 import importlib
 import threading
 import pickle
-import zlib
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -32,6 +31,7 @@ from utils.experiment_options.experimentoptions import ExperimentOptions
 from utils.zmq_borealis_helpers import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
+
 
 def printing(msg):
     EXPERIMENT_HANDLER = "\033[34m" + "EXPERIMENT HANDLER: " + "\033[0m"
@@ -79,6 +79,8 @@ def experiment_parser():
                                                   "e.g. normalscan")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. common, special, or discretionary.")
+    parser.add_argument("--kwargs_string", default='', 
+                        help="String of keyword arguments for the experiment.")
 
     return parser
 
@@ -128,13 +130,8 @@ def retrieve_experiment(experiment_module_name):
 
     printing('Retrieving experiment: {} from module {}'.format(
              experiment_classes[0][0], experiment_mod))
-    try:
-        return Experiment
-    except NameError:
-        errmsg = "Something went wrong: Cannot find the experiment inside " \
-                 "your module. Please make sure there is a class that " \
-                 "inherits from ExperimentPrototype in your module."
-        raise ExperimentException(errmsg)
+
+    return Experiment
 
 
 def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
@@ -150,7 +147,8 @@ def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
     except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
         pass  # TODO handle this. Shutdown and restart all modules.
 
-def experiment_handler(semaphore):
+
+def experiment_handler(semaphore, args):
     """
     Run the experiment. This is the main process when this program is called.
 
@@ -175,9 +173,6 @@ def experiment_handler(semaphore):
     exp_handler_to_radar_control = sockets_list[0]
     exp_handler_to_dsp = sockets_list[1]
 
-    parser = experiment_parser()
-    args = parser.parse_args()
-
     experiment_name = args.experiment_module
     scheduling_mode_type = args.scheduling_mode_type
 
@@ -191,7 +186,17 @@ def experiment_handler(semaphore):
         if experiment_update:
             printing("Experiment has an updated method.")
 
-    exp = Experiment()
+    if args.kwargs_string:
+        # parse kwargs and pass to experiment
+        kwargs = {}
+        kwargs_list = args.kwargs_string.split(',')
+        for element in kwargs_list:
+            kwarg = element.split('=')
+            kwargs[kwarg[0]] = kwarg[1]
+        exp = Experiment(**kwargs)
+    else:
+        exp = Experiment()
+
     exp._set_scheduling_mode(scheduling_mode_type)
     change_flag = True
 
@@ -216,14 +221,12 @@ def experiment_handler(semaphore):
                      .format(exp=exp.__class__.__name__, cp=exp.cpid))
         semaphore.release()
 
-
     update_thread = threading.Thread(target=update_experiment)
 
     while True:
 
         if not change_flag:
-            serialized_exp = pickle.dumps(None, 
-                                          protocol=pickle.HIGHEST_PROTOCOL)
+            serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             exp.build_scans()
             printing("Successful experiment {exp} built with CPID {cp}".format(
@@ -245,12 +248,12 @@ def experiment_handler(semaphore):
             printing("Sending new experiment from beginning")
             # starting anew
             send_experiment(exp_handler_to_radar_control,
-                                   options.radctrl_to_exphan_identity, serialized_exp)
+                            options.radctrl_to_exphan_identity, serialized_exp)
 
         elif message == 'NOERROR':
             # no errors
             send_experiment(exp_handler_to_radar_control,
-                                   options.radctrl_to_exphan_identity, serialized_exp)
+                            options.radctrl_to_exphan_identity, serialized_exp)
 
         # TODO: handle errors with revert back to original experiment. requires another
         # message
@@ -266,8 +269,12 @@ def experiment_handler(semaphore):
                 update_thread.start()
 
 
-if __name__ == "__main__":
-
+def main(sys_args):
     semaphore = threading.Semaphore()
-    experiment_handler(semaphore)
+    parser = experiment_parser()
+    args = parser.parse_args(args=sys_args)
+    experiment_handler(semaphore, args)
 
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

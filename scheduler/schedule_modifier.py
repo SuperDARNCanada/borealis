@@ -22,6 +22,7 @@ def main():
     parser.add_argument('--mode-type', required=True, help='The scheduling mode type for this time period ie common, special, discretionary')
     parser.add_argument('--prio', default=0, help='The priority of the line')
     parser.add_argument('--duration', default='-', help='The duration of the line')
+    parser.add_argument('--kwargs', default='', help='String of text containing kwargs for experiment')
 
     args = parser.parse_args()
 
@@ -33,10 +34,10 @@ def main():
     scd_util = scd_utils.SCDUtils(scd_file)
 
     if args.add:
-        scd_util.add_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration)
+        scd_util.add_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, args.kwargs)
 
     if args.remove:
-        scd_util.remove_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration)
+        scd_util.remove_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, args.kwargs)    
 
 if __name__ == '__main__':
     main()
