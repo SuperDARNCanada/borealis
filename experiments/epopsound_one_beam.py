@@ -33,11 +33,10 @@ class EpopsoundOneBeam(ExperimentPrototype):
     This mode creates a transmission that is received
     by RRI. 
 
-    Up to 4 frequencies can be used, and given a certain
-    beam range the beams will be cycled through at the 
-    frequency using 8 pulse sequence, followed by one 
-    integration time of a 7 pulse sequence at the frequency
-    before moving on to the next frequency. 
+    Up to 4 frequencies can be used, one one beam.
+    The frequencies will cycle through, and after 
+    the nth integration time, one integration period
+    of 7 pulse sequence will occur.
     """
 
     def __init__(self, **kwargs):
@@ -66,7 +65,7 @@ class EpopsoundOneBeam(ExperimentPrototype):
                       'Marker Period: {}'
                 .format(freqs, beam, marker_period))
 
-        centre_freq = int(sum(freqs)/len(freqs))
+        center_freq = int(sum(freqs)/len(freqs))
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
@@ -110,7 +109,7 @@ class EpopsoundOneBeam(ExperimentPrototype):
 
             slices.append(new_slice)
 
-        super(EpopsoundOneBeam, self).__init__(cpid=cpid, txctrfreq=centre_freq, rxctrfreq=centre_freq,
+        super(EpopsoundOneBeam, self).__init__(cpid=cpid, txctrfreq=center_freq, rxctrfreq=center_freq,
                                         comment_string=EpopsoundOneBeam.__doc__)
 
         self.add_slice(slices[0])
