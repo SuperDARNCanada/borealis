@@ -105,7 +105,8 @@ class SCDUtils(object):
 
         for num, line in enumerate(raw_scd):
             if len(line) not in [6, 7]:
-                raise ValueError("Line {} has incorrect number of arguments; requires 6 or 7.".format(num))
+                raise ValueError("Line {} has incorrect number of arguments; requires 6 or 7."
+                                 " Line: {}".format(num, line))
             # date time experiment mode priority duration (kwargs if any)
             if len(line) == 6:
                 scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))

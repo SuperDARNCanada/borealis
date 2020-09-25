@@ -13,6 +13,7 @@ The closest upcoming timestamp is used, so make sure this mode begins running be
 line.
 """
 
+import copy
 import datetime
 import math
 import os
@@ -57,7 +58,7 @@ class Epopsound(ExperimentPrototype):
                     freqs.append(int(kwargs['freq2']))
                     if 'freq3' in kwargs.keys():
                         freqs.append(int(kwargs['freq3']))
-                        if 'freq4' in kwargs.keys();
+                        if 'freq4' in kwargs.keys():
                             freqs.append(int(kwargs['freq4']))
             if 'startbeam' in kwargs.keys():
                 startbeam = int(kwargs['startbeam'])

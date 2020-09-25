@@ -26,10 +26,8 @@ sys.path.append(BOREALISPATH)
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
-EPOP_PASS_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.epop.passes"
 
-
-class Epopsound(ExperimentPrototype):
+class EpopsoundOneBeam(ExperimentPrototype):
     """
     Experiment for conjunction with EPOP RRI. 
     This mode creates a transmission that is received
@@ -44,7 +42,6 @@ class Epopsound(ExperimentPrototype):
 
     def __init__(self, **kwargs):
         cpid = 3371
-        epop_file = EPOP_PASS_FILE.format(scf.opts.site_id)
 
         # default values
         freqs = [scf.COMMON_MODE_FREQ_1]
@@ -65,9 +62,9 @@ class Epopsound(ExperimentPrototype):
             if 'marker_period' in kwargs.keys():
                 marker_period = int(kwargs['marker_period'])
 
-        self.printing('Freqs (kHz): {}, Start Beam: {}, Stop Beam: {}, '
+        self.printing('Freqs (kHz): {}, Beam: {}, '
                       'Marker Period: {}'
-                .format(freqs, startbeam, stopbeam, marker_period))
+                .format(freqs, beam, marker_period))
 
         centre_freq = int(sum(freqs)/len(freqs))
 
@@ -113,8 +110,8 @@ class Epopsound(ExperimentPrototype):
 
             slices.append(new_slice)
 
-        super(Epopsound, self).__init__(cpid=cpid, txctrfreq=centre_freq, rxctrfreq=centre_freq,
-                                        comment_string=Epopsound.__doc__)
+        super(EpopsoundOneBeam, self).__init__(cpid=cpid, txctrfreq=centre_freq, rxctrfreq=centre_freq,
+                                        comment_string=EpopsoundOneBeam.__doc__)
 
         self.add_slice(slices[0])
         if len(slices) > 1:
