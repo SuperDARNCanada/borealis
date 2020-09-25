@@ -13,6 +13,7 @@ The closest upcoming timestamp is used, so make sure this mode begins running be
 line.
 """
 
+import copy
 import datetime
 import math
 import os
@@ -57,7 +58,7 @@ class Epopsound(ExperimentPrototype):
                     freqs.append(int(kwargs['freq2']))
                     if 'freq3' in kwargs.keys():
                         freqs.append(int(kwargs['freq3']))
-                        if 'freq4' in kwargs.keys();
+                        if 'freq4' in kwargs.keys():
                             freqs.append(int(kwargs['freq4']))
             if 'startbeam' in kwargs.keys():
                 startbeam = int(kwargs['startbeam'])
@@ -70,6 +71,8 @@ class Epopsound(ExperimentPrototype):
                       'Marker Period: {}, '
                 .format(freqs, startbeam, stopbeam, marker_period))
 
+        centre_freq = int(sum(freqs)/len(freqs))
+
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
         if scf.opts.site_id in ["sas", "pgr"]:
@@ -77,9 +80,9 @@ class Epopsound(ExperimentPrototype):
 
         basic_beams = list(range(startbeam, stopbeam + 1))
         if marker_period > 0:
-            beams_to_use = basic_beams * (math.ceil(marker_period/len(basic_beams)) + 1)
-            beams_to_use = beams_to_use[0:marker_period]
-            marker_beam_to_use = [beams_to_use[marker_period]]
+            lotta_beams = basic_beams * (math.ceil(marker_period/len(basic_beams)) + 1)
+            beams_to_use = lotta_beams[0:marker_period]
+            marker_beam_to_use = [lotta_beams[marker_period]]
         else:
             beams_to_use = basic_beams
 
@@ -112,7 +115,7 @@ class Epopsound(ExperimentPrototype):
                     })
                 slices.append(slice_1)
 
-        super(Epopsound, self).__init__(cpid=cpid, txctrfreq=freq, rxctrfreq=freq,
+        super(Epopsound, self).__init__(cpid=cpid, txctrfreq=centre_freq, rxctrfreq=centre_freq,
                                         comment_string=Epopsound.__doc__)
 
         self.add_slice(slices[0])
