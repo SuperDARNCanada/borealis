@@ -344,8 +344,8 @@ class ExperimentPrototype(object):
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
         # Quickly check for uniqueness with a search in the experiments directory first
-        # taking care not to look for CPID in any experiments that are just tests (start with the
-        # word 'test')
+        # taking care not to look for CPID in any experiments that are just tests (not located
+        # in the testing directory)
         experiment_files_list = list(Path(BOREALISPATH + "/experiments/").glob("*.py"))
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
         cpid_list = []
