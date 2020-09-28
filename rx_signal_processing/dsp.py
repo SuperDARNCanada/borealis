@@ -3,6 +3,7 @@ from scipy.fftpack import fft
 import matplotlib.pyplot as plt
 import math
 import time
+
 try:
     import cupy as xp
 except ImportError:
@@ -10,14 +11,6 @@ except ImportError:
     cupy_available = False
 else:
     cupy_available = True
-
-def get_backend(ndarray):
-    if cupy_available:
-        xp = cp.get_array_module(ndarray)
-    else:
-        xp = np
-
-    return xp
 
 
 def windowed_view(ndarray, window_len, step):
@@ -38,8 +31,6 @@ def windowed_view(ndarray, window_len, step):
     :rtype:     ndarray
     """
 
-    xp = get_backend(ndarray)
-
     nrows = ((ndarray.shape[-1] - window_len) // step) + 1
     last_dim_stride = ndarray.strides[-1]
     new_shape = ndarray.shape[:-1] + (nrows, window_len)
@@ -57,31 +48,14 @@ class DSP(object):
         self.filter_outputs = []
         self.beamformed_samples = None
 
-        a = time.time()
         self.create_filters(filter_taps, mixing_freqs, rx_rate)
-        b = time.time()
 
-        print("make filters", (b-a) * 1000)
-
-        a = time.time()
         self.apply_bandpass_decimate(input_samples, self.filters[0], mixing_freqs, dm_rates[0], rx_rate)
-        b = time.time()
 
-        print("bandpass", (b-a) * 1000)
-
-        a = time.time()
         for i in range(1, len(self.filters)):
             self.apply_lowpass_decimate(self.filter_outputs[i-1], self.filters[i], dm_rates[i])
 
-        b = time.time()
-
-        print("lowpass", (b-a) * 1000)
-
-        a = time.time()
         self.beamform_samples(self.filter_outputs[-1], beam_phases)
-        b = time.time()
-
-        print("beamform", (b-a) * 1000)
 
 
     def create_filters(self, filter_taps, mixing_freqs, rx_rate):
@@ -102,7 +76,7 @@ class DSP(object):
         filters = []
 
         bp = []
-        m = np.arange(taps[0].shape[0])
+        m = np.arange(taps[0].shape[0], dtype=np.complex64)
         for f in mixing_freqs:
             sampling_freq = 2j * np.pi * f/rx_rate
             bp.append(taps[0] * np.exp(sampling_freq * m))
@@ -132,8 +106,6 @@ class DSP(object):
         :type       rx_rate:        float
 
         """
-
-        xp = get_backend(input_samples)
 
         bp_filters = xp.array(bp_filters)
         input_samples = windowed_view(input_samples, bp_filters.shape[-1], dm_rate)
@@ -170,8 +142,6 @@ class DSP(object):
 
         """
 
-        xp = get_backend(input_samples)
-
         lp_filter = xp.array(lp_filter)
         input_samples = windowed_view(input_samples, lp_filter.shape[-1], dm_rate)
 
@@ -192,8 +162,6 @@ class DSP(object):
         :type       beam_phases:       list
 
         """
-
-        xp = get_backend(filtered_samples)
 
         beam_phases = xp.array(beam_phases)
 
@@ -222,15 +190,13 @@ class DSP(object):
         :rtype:     list
         """
 
-        xp = get_backend(beamformed_samples_1)
-
         # [num_slices, num_beams, num_samples]
         # [num_slices, num_beams, num_samples]
         correlated = xp.einsum('ijk,ijl->ijkl', beamformed_samples_1.conj(),
                                         beamformed_samples_2)
 
         if cupy_available:
-            correlated = correlated.asnumpy()
+            correlated = xp.asnumpy(correlated)
 
         values = []
         for s in slice_index_details:
@@ -300,7 +266,7 @@ def quick_test():
     for f in freqs:
         signal += np.exp(2j * np.pi * f/F_s * s).astype(np.complex64)
 
-    signals = np.repeat(signal[np.newaxis,:], 20, axis=0)
+    signals = xp.array(np.repeat(signal[np.newaxis,:], 20, axis=0))
 
 
     details = [{"num_range_gates" : 75,
@@ -332,10 +298,11 @@ def quick_test():
         a = time.time()
         processed_samples = DSP(signals, F_s, dm_rates, filter_taps, freqs, beam_phases)
         acf = DSP.correlations_from_samples(processed_samples.beamformed_samples, processed_samples.beamformed_samples, 5e6/1500,details)
+        x = xp.asnumpy(processed_samples.beamformed_samples)
         b = time.time()
 
         print((b-a) * 1000)
-    #fft_and_plot(processed_samples.beamformed_samples[0][0], F_s)
+    fft_and_plot(x[0][0], F_s)
 
 if __name__ == '__main__':
     quick_test()
