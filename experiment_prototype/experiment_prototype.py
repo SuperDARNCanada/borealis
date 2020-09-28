@@ -346,7 +346,7 @@ class ExperimentPrototype(object):
         # Quickly check for uniqueness with a search in the experiments directory first
         # taking care not to look for CPID in any experiments that are just tests (start with the
         # word 'test')
-        experiment_files_list = list(Path(BOREALISPATH + "/experiments/").glob("[!test]*.py"))
+        experiment_files_list = list(Path(BOREALISPATH + "/experiments/").glob("*.py"))
         self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
         cpid_list = []
         for experiment_file in experiment_files_list:
@@ -355,15 +355,16 @@ class ExperimentPrototype(object):
                     # Find the name of the class in the file and break if it matches this class
                     experiment_class_name = re.findall("class.*\(ExperimentPrototype\):", line)
                     if experiment_class_name:
-                        # Parse out just the name from the experiment, (format will be like this: ['class IBCollabMode(ExperimentPrototype):'] )
+                        # Parse out just the name from the experiment, format will be like this:
+                        # ['class IBCollabMode(ExperimentPrototype):']
                         atomic_class_name = experiment_class_name[0].split()[1].split('(')[0]
                         if self.__experiment_name == atomic_class_name:
                             break
 
                     # Find any lines that have 'cpid = [integer]'
-                    existing_cpid = re.findall("cpid = [0-9]+", line)
+                    existing_cpid = re.findall("cpid.?=.?[0-9]+", line)
                     if existing_cpid:
-                        cpid_list.append(existing_cpid[0].split()[2])
+                        cpid_list.append(existing_cpid[0].split('=')[1].strip())
 
         if str(cpid) in cpid_list:
             errmsg = 'CPID must be unique. {} is in use by another local experiment'.format(cpid)
