@@ -1901,14 +1901,17 @@ class ExperimentPrototype(object):
                 # Check if any scanbound times are shorter than the intt.
                 if len(exp_slice['scanbound']) == 1:
                     if exp_slice['scanbound'][0] * 1000 < exp_slice['intt']:
-                        error_list.append("Slice {} intt longer than "
-                                          "scanbound time".format(exp_slice['slice_id']))
+                        error_list.append("Slice {} intt {}ms longer than "
+                                          "scanbound time {}s".format(exp_slice['slice_id'],
+                                                                      exp_slice['intt'],
+                                                                      exp_slice['scanbound'][0]))
                 else:
                     for i in range(len(exp_slice['scanbound']) - 1):
                         if ((exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000 <
                                 exp_slice['intt']):
-                            error_list.append("Slice {} intt longer than "
-                                              "scanbound times".format(exp_slice['slice_id']))
+                            error_list.append("Slice {} intt {}ms longer than one of the "
+                                              "scanbound times".format(exp_slice['slice_id'],
+                                                                       exp_slice['intt']))
                             break
 
         # TODO other checks

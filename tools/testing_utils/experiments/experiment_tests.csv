@@ -97,8 +97,8 @@ testing_archive.test_beam_angle_not_increasing::Slice .* beam_angle not increasi
 testing_archive.test_scanbound_but_no_intt::Slice .* must have intt enabled to use scanbound
 testing_archive.test_scanbound_negative::Slice .* scanbound times must be non-negative
 testing_archive.test_scanbound_not_increasing::Slice .* scanbound times must be increasing
-testing_archive.test_intt_longer_than_scanbound::Slice .* intt longer than scanbound time
-testing_archive.test_intt_longer_than_scanbounds::Slice .* intt longer than scanbound times
+testing_archive.test_intt_longer_than_scanbound::Slice .* intt .*ms longer than scanbound time .*s
+testing_archive.test_intt_longer_than_scanbounds::Slice .* intt .*ms longer than one of the scanbound times
 
 ##### I'm not sure how to test the following 1 test right now #####
 #testing_archive.test_beam_order_too_long::Slice .* beam order too long for scanbound
