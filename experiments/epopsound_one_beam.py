@@ -31,8 +31,9 @@ class Epopsound(ExperimentPrototype):
     """
     Experiment for conjunction with EPOP RRI. 
     This mode creates a transmission that is received
-    by RRI. 
+    by RRI.
 
+    *This is the one-beam version of epopsound (epopsound_one_beam).*
     Up to 4 frequencies can be used, one one beam.
     The frequencies will cycle through, and after 
     the nth integration time, one integration period

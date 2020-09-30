@@ -124,9 +124,9 @@ Here's a theoretical example showing all types of interfacing. In this example, 
    :alt: An example showing all types of slice interfacing 
    :align: center
 
----------------------
+
 Writing an Experiment
----------------------
+=====================
 
 All experiments must be written as their own class and must be built off of the built-in ExperimentPrototype class.
 
@@ -134,12 +134,15 @@ This means the ExperimentPrototype class must be imported at the start of the ex
 
     from experiments.experiment_prototype import ExperimentPrototype
 
-Experiment-Wide Attributes
---------------------------
+Experiments must not be named starting the 'test' as this is reserved for code debugging purposes
+and unit tests. Please name the class within the experiment file in a similar fashion to the file
+as the class name is written to the datasets produced.
+
+The experiment has the following experiment-wide attributes:
 
 cpid *required*
     The only experiment-wide attribute that is required to be set by the user
-    when initializing is the CPID, or control program identifier. This should
+    when initializing is the CPID, or control program identifier. This must
     be unique to the experiment. You will need to request this from your 
     institution's radar operator. You should clearly document the name of the 
     experiment and some operating details that correspond to the CPID.

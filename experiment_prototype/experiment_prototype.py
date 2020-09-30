@@ -347,7 +347,12 @@ class ExperimentPrototype(object):
         # taking care not to look for CPID in any experiments that are just tests (located in the
         # testing directory)
         experiment_files_list = list(Path(BOREALISPATH + "/experiments/").glob("*.py"))
-        self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
+        self.__experiment_name = self.__class__.__name__  
+        # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
+        # TODO replace below cpid local uniqueness check with
+        # pygit2 or some reference to a database to to ensure CPID uniqueness and to 
+        # ensure CPID is entered in the database for this experiment (this CPID is unique AND its correct
+        # given experiment name)
         cpid_list = []
         for experiment_file in experiment_files_list:
             with open(experiment_file) as file_to_search:
