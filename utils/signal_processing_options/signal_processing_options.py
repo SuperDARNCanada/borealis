@@ -15,7 +15,7 @@ class SignalProcessingOptions(object):
 
     """
     def __init__(self):
-        super(DataWriteOptions, self).__init__()
+        super(SignalProcessingOptions, self).__init__()
 
         if not os.environ["BOREALISPATH"]:
             raise ValueError("BOREALISPATH env variable not set")
@@ -28,7 +28,7 @@ class SignalProcessingOptions(object):
             raise IOError(errmsg)
 
         self._router_address = raw_config["router_address"]
-        self._dsp_to_radctrl_identity = raw_config["dsp_to_radctrl_identity"]
+        self._dsp_radctrl_identity = raw_config["dsp_to_radctrl_identity"]
         self._dsp_driver_identity = raw_config["dsp_to_driver_identity"]
         self._dsp_exphan_identity = raw_config["dsp_to_exphan_identity"]
         self._dsp_dw_identity = raw_config["dsp_to_dw_identity"]
@@ -47,146 +47,166 @@ class SignalProcessingOptions(object):
 
 
 
-@property
-def router_address(self):
-    """
-    Gets the socket address of the router that routes interprocess messages.
+    @property
+    def router_address(self):
+        """
+        Gets the socket address of the router that routes interprocess messages.
 
-    :return:    socket address of the router that routes interprocess messages.
-    :rtype:     str
-    """
-    return self._router_address
+        :return:    socket address of the router that routes interprocess messages.
+        :rtype:     str
+        """
+        return self._router_address
 
-@property
-def dsp_to_radctrl_identity(self):
-    """
-    Gets the socket identity for dsp to radar control.
+    @property
+    def dsp_radctrl_identity(self):
+        """
+        Gets the socket identity for dsp to radar control.
 
-    :returns:   dsp to radar control identity.
-    :rtype:     str
-    """
+        :returns:   dsp to radar control identity.
+        :rtype:     str
+        """
 
-    return self._dsp_to_radctrl_identity
+        return self._dsp_radctrl_identity
 
-@property
-def dsp_driver_identity(self):
-    """
-    Gets the socket identity for dsp to driver.
+    @property
+    def dsp_driver_identity(self):
+        """
+        Gets the socket identity for dsp to driver.
 
-    :returns:   dsp to driver identity.
-    :rtype:     str
-    """
-    return self._dsp_driver_identity
+        :returns:   dsp to driver identity.
+        :rtype:     str
+        """
+        return self._dsp_driver_identity
 
-@property
-def dsp_exphan_identity(self):
-    """
-    Gets the socket identity for dsp to exphan.
+    @property
+    def dsp_exphan_identity(self):
+        """
+        Gets the socket identity for dsp to exphan.
 
-    :returns:   dsp to exphan identity.
-    :rtype:     str
-    """
-    return self._dsp_exphan_identity
+        :returns:   dsp to exphan identity.
+        :rtype:     str
+        """
+        return self._dsp_exphan_identity
 
-@property
-def dsp_dw_identity(self):
-    """
-    Gets the socket identity for dsp to dw.
+    @property
+    def dsp_dw_identity(self):
+        """
+        Gets the socket identity for dsp to dw.
 
-    :returns:   dsp to dw identity.
-    :rtype:     str
-    """
-    return self._dsp_dw_identity
+        :returns:   dsp to dw identity.
+        :rtype:     str
+        """
+        return self._dsp_dw_identity
 
-@property
-def dspbegin_brian_identity(self):
-    """
-    Gets the socket identity for dspbegin to brian.
+    @property
+    def dspbegin_brian_identity(self):
+        """
+        Gets the socket identity for dspbegin to brian.
 
-    :returns:   dspbegin to brian identity.
-    :rtype:     str
-    """
-    return self._dspbegin_brian_identity
+        :returns:   dspbegin to brian identity.
+        :rtype:     str
+        """
+        return self._dspbegin_brian_identity
 
-@property
-def dspend_brian_identity(self):
-    """
-    Gets the socket identity for dspend to brian.
+    @property
+    def dspend_brian_identity(self):
+        """
+        Gets the socket identity for dspend to brian.
 
-    :returns:   dspend to brian identity.
-    :rtype:     str
-    """
-    return self._dspend_brian_identity
+        :returns:   dspend to brian identity.
+        :rtype:     str
+        """
+        return self._dspend_brian_identity
 
-@property
-def radctrl_dsp_identity(self):
-    """
-    Gets the socket identity for radctrl to dsp.
+    @property
+    def radctrl_dsp_identity(self):
+        """
+        Gets the socket identity for radctrl to dsp.
 
-    :returns:   radctrl to dsp identity.
-    :rtype:     str
-    """
-    return self._radctrl_dsp_identity
+        :returns:   radctrl to dsp identity.
+        :rtype:     str
+        """
+        return self._radctrl_dsp_identity
 
-@property
-def driver_dsp_identity(self):
-    """
-    Gets the socket identity for driver to dsp.
+    @property
+    def driver_dsp_identity(self):
+        """
+        Gets the socket identity for driver to dsp.
 
-    :returns:   driver to dsp identity.
-    :rtype:     str
-    """
-    return self._driver_dsp_identity
+        :returns:   driver to dsp identity.
+        :rtype:     str
+        """
+        return self._driver_dsp_identity
 
-@property
-def brian_dspbegin_identity(self):
-    """
-    Gets the socket identity for brian to dspbegin.
+    @property
+    def brian_dspbegin_identity(self):
+        """
+        Gets the socket identity for brian to dspbegin.
 
-    :returns:   brian to dspbegin identity.
-    :rtype:     str
-    """
-    return self._brian_dspbegin_identity
+        :returns:   brian to dspbegin identity.
+        :rtype:     str
+        """
+        return self._brian_dspbegin_identity
 
-@property
-def brian_dspend_identity(self):
-    """
-    Gets the socket identity for brian to dspend.
+    @property
+    def brian_dspend_identity(self):
+        """
+        Gets the socket identity for brian to dspend.
 
-    :returns:   Brian to dspend identity.
-    :rtype:     str
-    """
-    return self._brian_dspend_identity
+        :returns:   Brian to dspend identity.
+        :rtype:     str
+        """
+        return self._brian_dspend_identity
 
-@property
-def exphan_dsp_identity(self):
-    """
-    Gets the socket identity for exphan to dsp.
+    @property
+    def exphan_dsp_identity(self):
+        """
+        Gets the socket identity for exphan to dsp.
 
-    :returns:   Exphan to dsp identity.
-    :rtype:     str
-    """
-    return self._exphan_dsp_identity
+        :returns:   Exphan to dsp identity.
+        :rtype:     str
+        """
+        return self._exphan_dsp_identity
 
-@property
-def dw_dsp_identity(self):
-    """
-    Gets the socket identity for dw to dsp.
+    @property
+    def dw_dsp_identity(self):
+        """
+        Gets the socket identity for dw to dsp.
 
-    :returns:   dw to dsp identity.
-    :rtype:     str
-    """
-    return self._dw_dsp_identity
+        :returns:   dw to dsp identity.
+        :rtype:     str
+        """
+        return self._dw_dsp_identity
 
-@property
-def ringbuffer_name(self):
-    """
-    Gets the shared memory ringbuffer name.
+    @property
+    def ringbuffer_name(self):
+        """
+        Gets the shared memory ringbuffer name.
 
-    :returns:   The ringbuffer name.
-    :rtype:     str
-    """
-    return self._ringbuffer_name
+        :returns:   The ringbuffer name.
+        :rtype:     str
+        """
+        return self._ringbuffer_name
+
+    @property
+    def main_antenna_count(self):
+        """
+        Gets the main antenna count.
+
+        :returns:   Number of main antennas.
+        :rtype:     int
+        """
+        return self._main_antenna_count
+
+    @property
+    def intf_antenna_count(self):
+        """
+        Gets the intf antenna count.
+
+        :returns:   Number of intf antennas.
+        :rtype:     int
+        """
+        return self._intf_antenna_count
 
 
 if __name__ == '__main__':
