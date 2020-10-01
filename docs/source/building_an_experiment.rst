@@ -134,8 +134,7 @@ This means the ExperimentPrototype class must be imported at the start of the ex
 
     from experiments.experiment_prototype import ExperimentPrototype
 
-Experiments must not be named starting the 'test' as this is reserved for code debugging purposes
-and unit tests. Please name the class within the experiment file in a similar fashion to the file
+Please name the class within the experiment file in a similar fashion to the file
 as the class name is written to the datasets produced.
 
 The experiment has the following experiment-wide attributes:
