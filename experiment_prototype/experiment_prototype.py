@@ -344,10 +344,15 @@ class ExperimentPrototype(object):
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
         # Quickly check for uniqueness with a search in the experiments directory first
-        # taking care not to look for CPID in any experiments that are just tests (start with the
-        # word 'test')
-        experiment_files_list = list(Path(BOREALISPATH + "/experiments/").glob("[!test]*.py"))
-        self.__experiment_name = self.__class__.__name__  # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
+        # taking care not to look for CPID in any experiments that are just tests (located in the
+        # testing directory)
+        experiment_files_list = list(Path(BOREALISPATH + "/experiments/").glob("*.py"))
+        self.__experiment_name = self.__class__.__name__  
+        # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for module name
+        # TODO replace below cpid local uniqueness check with
+        # pygit2 or some reference to a database to to ensure CPID uniqueness and to 
+        # ensure CPID is entered in the database for this experiment (this CPID is unique AND its correct
+        # given experiment name)
         cpid_list = []
         for experiment_file in experiment_files_list:
             with open(experiment_file) as file_to_search:
@@ -355,15 +360,16 @@ class ExperimentPrototype(object):
                     # Find the name of the class in the file and break if it matches this class
                     experiment_class_name = re.findall("class.*\(ExperimentPrototype\):", line)
                     if experiment_class_name:
-                        # Parse out just the name from the experiment, (format will be like this: ['class IBCollabMode(ExperimentPrototype):'] )
+                        # Parse out just the name from the experiment, format will be like this:
+                        # ['class IBCollabMode(ExperimentPrototype):']
                         atomic_class_name = experiment_class_name[0].split()[1].split('(')[0]
                         if self.__experiment_name == atomic_class_name:
                             break
 
                     # Find any lines that have 'cpid = [integer]'
-                    existing_cpid = re.findall("cpid = [0-9]+", line)
+                    existing_cpid = re.findall("cpid.?=.?[0-9]+", line)
                     if existing_cpid:
-                        cpid_list.append(existing_cpid[0].split()[2])
+                        cpid_list.append(existing_cpid[0].split('=')[1].strip())
 
         if str(cpid) in cpid_list:
             errmsg = 'CPID must be unique. {} is in use by another local experiment'.format(cpid)
@@ -1900,14 +1906,17 @@ class ExperimentPrototype(object):
                 # Check if any scanbound times are shorter than the intt.
                 if len(exp_slice['scanbound']) == 1:
                     if exp_slice['scanbound'][0] * 1000 < exp_slice['intt']:
-                        error_list.append("Slice {} intt longer than "
-                                          "scanbound time".format(exp_slice['slice_id']))
+                        error_list.append("Slice {} intt {}ms longer than "
+                                          "scanbound time {}s".format(exp_slice['slice_id'],
+                                                                      exp_slice['intt'],
+                                                                      exp_slice['scanbound'][0]))
                 else:
                     for i in range(len(exp_slice['scanbound']) - 1):
                         if ((exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000 <
                                 exp_slice['intt']):
-                            error_list.append("Slice {} intt longer than "
-                                              "scanbound times".format(exp_slice['slice_id']))
+                            error_list.append("Slice {} intt {}ms longer than one of the "
+                                              "scanbound times".format(exp_slice['slice_id'],
+                                                                       exp_slice['intt']))
                             break
 
         # TODO other checks

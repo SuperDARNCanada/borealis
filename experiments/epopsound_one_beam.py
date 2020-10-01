@@ -27,12 +27,13 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
 
-class EpopsoundOneBeam(ExperimentPrototype):
+class Epopsound(ExperimentPrototype):
     """
     Experiment for conjunction with EPOP RRI. 
     This mode creates a transmission that is received
-    by RRI. 
+    by RRI.
 
+    *This is the one-beam version of epopsound (epopsound_one_beam).*
     Up to 4 frequencies can be used, one one beam.
     The frequencies will cycle through, and after 
     the nth integration time, one integration period
@@ -109,8 +110,8 @@ class EpopsoundOneBeam(ExperimentPrototype):
 
             slices.append(new_slice)
 
-        super(EpopsoundOneBeam, self).__init__(cpid=cpid, txctrfreq=center_freq, rxctrfreq=center_freq,
-                                        comment_string=EpopsoundOneBeam.__doc__)
+        super(Epopsound, self).__init__(cpid=cpid, txctrfreq=center_freq, rxctrfreq=center_freq,
+                                        comment_string=Epopsound.__doc__)
 
         self.add_slice(slices[0])
         if len(slices) > 1:

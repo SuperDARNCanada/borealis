@@ -84,6 +84,12 @@ class Epopsound(ExperimentPrototype):
         else:
             beams_to_use = basic_beams
 
+        # Handle the single beam case
+        if len(beams_to_use) == 1:
+            scanbound = [1.0]
+        else:
+            scanbound = [1.0 * i for i in range(len(beams_to_use))]
+
         slices = []
         base_slice = {
             "pulse_sequence": scf.SEQUENCE_8P,
@@ -92,7 +98,7 @@ class Epopsound(ExperimentPrototype):
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 1000, #ms
-            "scanbound": [1.0 * i for i in range(len(beams_to_use))],
+            "scanbound": scanbound,
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "acf": True,
@@ -105,11 +111,11 @@ class Epopsound(ExperimentPrototype):
             base_slice.update({
                 "txfreq": freq
                 })
-            slices.append(slice_0)
+            slices.append(base_slice)
 
             if marker_period > 0:
                 # get the marker slice
-                slice_1 = copy.deepcopy(slice_0)
+                slice_1 = copy.deepcopy(base_slice)
                 slice_1.update({
                     "pulse_sequence": scf.SEQUENCE_7P,
                     "tau_spacing": scf.TAU_SPACING_7P,
