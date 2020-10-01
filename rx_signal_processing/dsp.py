@@ -108,7 +108,7 @@ class DSP(object):
         """
 
         bp_filters = xp.array(bp_filters)
-        input_samples = windowed_view(input_samples, bp_filters.shape[-1], dm_rate)
+        input_samples = windowed_view(xp.array(input_samples), bp_filters.shape[-1], dm_rate)
 
         # [num_slices, num_taps]
         # [num_antennas, num_output_samples, num_taps]
