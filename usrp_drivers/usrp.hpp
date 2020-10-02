@@ -11,6 +11,7 @@ See LICENSE for details.
 #define USRP_H
 
 #include <uhd/usrp/multi_usrp.hpp>
+#include <uhd/usrp_clock/multi_usrp_clock.hpp>
 #include "utils/driver_options/driveroptions.hpp"
 #include "utils/shared_macros/shared_macros.hpp"
 
@@ -49,10 +50,14 @@ class USRP{
     void invert_test_mode(uint32_t mboard=0);
     void set_test_mode(uint32_t mboard=0);
     void clear_test_mode(uint32_t mboard=0);
+    bool gps_locked(void);
 
   private:
     //! A shared pointer to a new multi-USRP device.
     uhd::usrp::multi_usrp::sptr usrp_;
+
+    //! A shared pointer to a new multi-USRP-clock device.
+    uhd::usrp_clock::multi_usrp_clock::sptr gps_clock_;
 
     //! A string representing what GPIO bank to use on the USRPs for active high sigs.
     std::string gpio_bank_high_;
