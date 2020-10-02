@@ -37,10 +37,10 @@ def main():
 
     sig_options = spo.SignalProcessingOptions()
 
-    sockets = so.create_sockets([sig_options.dsp_to_radctrl_identity,
-                                    sig_options.dsp_to_driver_identity,
-                                    sig_options.dsp_to_exphan_identity,
-                                    sig_options.dsp_to_dw_identity], sig_options.router_address)
+    sockets = so.create_sockets([sig_options.dsp_radctrl_identity,
+                                    sig_options.dsp_driver_identity,
+                                    sig_options.dsp_exphan_identity,
+                                    sig_options.dsp_dw_identity], sig_options.router_address)
 
     dsp_to_radar_control = sockets[0]
     dsp_to_driver = sockets[1]
@@ -57,12 +57,12 @@ def main():
     first_time = True
     while True:
 
-        reply = so.recv_bytes(dsp_to_radar_control, options.radctrl_to_dsp_identity, printing)
+        reply = so.recv_bytes(dsp_to_radar_control, sig_options.radctrl_dsp_identity, printing)
 
         sp_packet = sigprocpacket_pb2.SigProcPacket()
         sp_packet.ParseFromString(reply)
 
-        rx_rate = sp_packet.rx_rate
+        rx_rate = sp_packet.rxrate
         output_sample_rate = sp_packet.output_sample_rate
         mixing_freqs = []
         main_beam_angles = []
@@ -80,7 +80,7 @@ def main():
             detail['range_sep'] = chan.range_sep
             detail['tau_spacing'] = chan.tau_spacing
             detail['num_range_gates'] = chan.num_ranges
-
+            detail['first_range_off'] = sp_packet.offset_to_first_rx_sample
             lags = []
             for lag in chan.lags:
                 lags.append([lag.pulse_1,lag.pulse_2])
@@ -126,8 +126,8 @@ def main():
 
 
         message = "Need data to process"
-        so.send_data(dsp_to_driver, sig_options.driver_to_dsp_identity, message)
-        reply = so.recv_bytes(dsp_to_driver, sig_options.driver_to_dsp_identity, printing)
+        so.send_data(dsp_to_driver, sig_options.driver_dsp_identity, message)
+        reply = so.recv_bytes(dsp_to_driver, sig_options.driver_dsp_identity, printing)
 
         rx_metadata = rxsamplesmetadata_pb2.RxSamplesMetadata()
         rx_metadata.ParseFromString(reply)
@@ -165,11 +165,16 @@ def main():
         gpu_socks = so.create_sockets([sig_options.dspbegin_brian_identity + str(sp_packet.sequence_num),
                                         sig_options.dspend_brian_identity + str(sp_packet.sequence_num)],
                                         sig_options.router_address)
+        
+        reply_packet = sigprocpacket_pb2.SigProcPacket()
+        reply_packet.sequence_num = sp_packet.sequence_num
+        msg = reply_packet.SerializeToString()
 
         request = so.recv_bytes(gpu_socks[0], sig_options.brian_dspbegin_identity, printing)
-        msg = 'Send start ack for sequence num #' + str(sp_packet.sequence_num())
-        so.send_data(gpu_socks[0], sig_options.brian_dspbegin_identity, msg)
-
+        #msg = 'Send start ack for sequence num #' + str(sp_packet.sequence_num)
+        so.send_bytes(gpu_socks[0], sig_options.brian_dspbegin_identity, msg)
+        
+        start = time.time()
         main_buffer = ringbuffer[:sig_options.main_antenna_count,:]
         main_sequence_samples = main_buffer.take(indices, axis=1, mode='wrap')
 
@@ -193,11 +198,17 @@ def main():
                             processed_intf_samples.beamformed_samples, output_sample_rate,
                             slice_details)
 
+        end = time.time()
+
+        time_diff = (end - start) * 1000
+        reply_packet.kerneltime = time_diff
+        msg = reply_packet.SerializeToString()
         request = so.recv_bytes(gpu_socks[1], sig_options.brian_dspend_identity, printing)
-        msg = 'Send end for sequence num #' + str(sp_packet.sequence_num())
-        so.send_data(gpu_socks[1], sig_options.brian_dspend_identity, msg)
-
-
+        #msg = 'Send end for sequence num #' + str(sp_packet.sequence_num)
+        so.send_bytes(gpu_socks[1], sig_options.brian_dspend_identity, msg)
+        
+if __name__ == "__main__":
+    main()
 
 
 
