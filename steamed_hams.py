@@ -165,6 +165,7 @@ for mod in modules:
     modules[mod] = "python3 {opts} {module}/{module}.py".format(opts=opts, module=mod)
 
 modules['realtime'] = "source borealisrt_env/bin/activate;" + modules['realtime']
+modules['rx_signal_processing'] = "source /tmp/testcupy4/bin/activate;" + modules['rx_signal_processing']
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
 if args.kwargs_string:
