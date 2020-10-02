@@ -205,7 +205,7 @@ class DSP(object):
 
             tau_in_samples = s['tau_spacing'] * 1e-6 * output_sample_rate
 
-            lag_pulses_as_samples = s['lags'] * int(tau_in_samples)
+            lag_pulses_as_samples = np.array(s['lags']) * int(tau_in_samples)
 
             # [num_range_gates, 1, 1]
             # [1, num_lags, 2]
@@ -214,10 +214,10 @@ class DSP(object):
 
 
             # [num_range_gates, num_lags, 2]
-            row = samples_for_all_range_lags[...,1]
+            row = samples_for_all_range_lags[...,1].astype(int)
 
             # [num_range_gates, num_lags, 2]
-            column = samples_for_all_range_lags[...,0]
+            column = samples_for_all_range_lags[...,0].astype(int)
 
             values_for_slice = correlated[s['slice_num'],:,row,column]
 
