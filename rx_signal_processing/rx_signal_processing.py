@@ -67,9 +67,9 @@ def main():
         dspbegin_to_brian = gpu_socks[0]
         dspend_to_brian = gpu_socks[1]
 
-        rx_rate = sp_packet.rxrate
-        output_sample_rate = sp_packet.output_sample_rate
-        first_rx_sample_off = int(sp_packet.offset_to_first_rx_sample * rx_rate)
+        rx_rate = np.float64(sp_packet.rxrate)
+        output_sample_rate = np.float64(sp_packet.output_sample_rate)
+        first_rx_sample_off = np.uint32(sp_packet.offset_to_first_rx_sample * rx_rate)
 
         mixing_freqs = []
         main_beam_angles = []
@@ -83,17 +83,17 @@ def main():
 
             detail['slice_id'] = chan.slice_id
             detail['slice_num'] = i
-            detail['first_range'] = chan.first_range
-            detail['range_sep'] = chan.range_sep
-            detail['tau_spacing'] = chan.tau_spacing
-            detail['num_range_gates'] = chan.num_ranges
-            detail['first_range_off'] = first_rx_sample_off
+            detail['first_range'] = np.float32(chan.first_range)
+            detail['range_sep'] = np.float32(chan.range_sep)
+            detail['tau_spacing'] = np.uint32(chan.tau_spacing)
+            detail['num_range_gates'] = np.uint32(chan.num_ranges)
+            detail['first_range_off'] = np.uint32(chan.first_range / chan.range_sep)
 
             lags = []
             for lag in chan.lags:
                 lags.append([lag.pulse_1,lag.pulse_2])
 
-            detail['lags'] = np.array(lags)
+            detail['lags'] = np.array(lags, dtype=np.uint32)
 
             main_beams = []
             intf_beams = []
@@ -131,8 +131,10 @@ def main():
 
         pad_beams(main_beams, sig_options.main_antenna_count)
         pad_beams(intf_beams, sig_options.intf_antenna_count)
+        
         main_beam_angles = np.array(main_beam_angles, dtype=np.complex64)
         intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
+        mixing_freqs = np.array(mixing_freqs, dtype=np.float64)
 
 
 
@@ -148,6 +150,7 @@ def main():
             err = "sp_packet seq num {}, rx_metadata seq num {}".format(sp_packet.sequence_num,
                                                                     rx_metadata.sequence_num)
             pprint(sm.COLOR('red', err))
+            sys.exit(-1)
         else:
             pprint("Processing sequence number: {}".format(sp_packet.sequence_num))
 
@@ -163,32 +166,32 @@ def main():
             taps_msg = "Number of filter taps per stage: "
             for stage in sp_packet.decimation_stages:
                 dm_rates.append(stage.dm_rate)
-                dm_scheme_taps.append(stage.filter_taps)
+                dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
 
                 dm_msg += str(stage.dm_rate) + " "
                 taps_msg += str(len(stage.filter_taps)) + " "
-
+            
+            dm_rates = np.array(dm_rates, dtype=np.uint32)
             pprint(dm_msg)
             pprint(taps_msg)
 
             for dm,taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
                 extra_samples = (extra_samples * dm) + len(taps)/2
 
-            total_dm_rate = np.prod(np.array(dm_rates))
+            total_dm_rate = np.prod(dm_rates)
 
             first_time = False
 
 
 
         samples_needed = rx_metadata.numberofreceivesamples + 2 * extra_samples
-        samples_needed = int(math.ceil(float(samples_needed)/float(total_dm_rate))) * total_dm_rate
-
+        samples_needed = int(math.ceil(float(samples_needed)/float(total_dm_rate)) * total_dm_rate)
+        
         sample_time_diff = rx_metadata.sequence_start_time - rx_metadata.initialization_time
         sample_in_time = (sample_time_diff * rx_rate) + first_rx_sample_off - extra_samples
 
         start_sample = int(math.fmod(sample_in_time, ringbuffer.shape[1]))
         indices = np.arange(start_sample, start_sample + samples_needed)
-
 
 
         reply_packet = sigprocpacket_pb2.SigProcPacket()
@@ -203,7 +206,6 @@ def main():
         main_buffer = ringbuffer[:sig_options.main_antenna_count,:]
         main_sequence_samples = main_buffer.take(indices, axis=1, mode='wrap')
         pprint("Main buffer shape: {}".format(main_sequence_samples.shape))
-
         processed_main_samples = dsp.DSP(main_sequence_samples, rx_rate, dm_rates, dm_scheme_taps,
                                     mixing_freqs, main_beam_angles)
         main_corrs = dsp.DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
@@ -214,7 +216,6 @@ def main():
             intf_buffer = ringbuffer[sig_options.main_antenna_count:,:]
             intf_sequence_samples = intf_buffer.take(indices, axis=1, mode='wrap')
             pprint("Intf buffer shape: {}".format(intf_sequence_samples.shape))
-
             processed_intf_samples = dsp.DSP(intf_sequence_samples, rx_rate, dm_rates, dm_scheme_taps,
                                         mixing_freqs, intf_beam_angles)
 
