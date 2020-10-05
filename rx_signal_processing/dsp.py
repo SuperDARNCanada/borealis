@@ -71,19 +71,17 @@ class DSP(object):
         :type       rx_rate:       float
 
         """
-        taps = [np.array(ft, dtype=np.complex64) for ft in filter_taps]
-
         filters = []
 
         bp = []
-        m = np.arange(taps[0].shape[0], dtype=np.complex64)
+        m = np.arange(filter_taps[0].shape[0], dtype=np.complex64)
         for f in mixing_freqs:
             sampling_freq = 2j * np.pi * f/rx_rate
-            bp.append(taps[0] * np.exp(sampling_freq * m))
+            bp.append(filter_taps[0] * np.exp(sampling_freq * m))
 
         filters.append(np.array(bp))
 
-        for t in taps[1:]:
+        for t in filter_taps[1:]:
             filters.append(t[np.newaxis, :])
 
         self.filters = filters
@@ -106,7 +104,6 @@ class DSP(object):
         :type       rx_rate:        float
 
         """
-
         bp_filters = xp.array(bp_filters)
         input_samples = windowed_view(xp.array(input_samples), bp_filters.shape[-1], dm_rate)
 
@@ -114,7 +111,7 @@ class DSP(object):
         # [num_antennas, num_output_samples, num_taps]
         filtered = xp.einsum('ij,klj->ikl', bp_filters, input_samples)
 
-        ph = xp.arange(filtered.shape[-1])[xp.newaxis,:]
+        ph = xp.arange(filtered.shape[-1],dtype=np.float64)[xp.newaxis,:]
         freqs = xp.array(mixing_freqs)[:,xp.newaxis]
 
         # [1, num_output_samples]
@@ -141,10 +138,9 @@ class DSP(object):
         :type       dm_rate:        int
 
         """
-
         lp_filter = xp.array(lp_filter)
         input_samples = windowed_view(input_samples, lp_filter.shape[-1], dm_rate)
-
+        
         # [1, num_taps]
         # [num_slices, num_antennas, num_output_samples, num_taps]
         filtered = xp.einsum('ij,klmj->klm', lp_filter, input_samples)
@@ -201,11 +197,11 @@ class DSP(object):
         values = []
         for s in slice_index_details:
 
-            range_off = np.arange(s['num_range_gates']) + s['first_range_off']
+            range_off = np.arange(s['num_range_gates'], dtype=np.int32) + s['first_range_off']
 
             tau_in_samples = s['tau_spacing'] * 1e-6 * output_sample_rate
 
-            lag_pulses_as_samples = np.array(s['lags']) * int(tau_in_samples)
+            lag_pulses_as_samples = np.array(s['lags'], np.int32) * np.int32(tau_in_samples)
 
             # [num_range_gates, 1, 1]
             # [1, num_lags, 2]
@@ -214,10 +210,10 @@ class DSP(object):
 
 
             # [num_range_gates, num_lags, 2]
-            row = samples_for_all_range_lags[...,1].astype(int)
+            row = samples_for_all_range_lags[...,1].astype(np.int32)
 
             # [num_range_gates, num_lags, 2]
-            column = samples_for_all_range_lags[...,0].astype(int)
+            column = samples_for_all_range_lags[...,0].astype(np.int32)
 
             values_for_slice = correlated[s['slice_num'],:,row,column]
 
