@@ -105,22 +105,19 @@ class SCDUtils(object):
 
         for num, line in enumerate(raw_scd):
             if len(line) not in [6, 7]:
-                raise ValueError("Line {} has incorrect number of arguments; requires 6 or 7.".format(num))
-            # date time experiment mode priority duration
-<<<<<<< HEAD
+                raise ValueError("Line {} has incorrect number of arguments; requires 6 or 7."
+                                 " Line: {}".format(num, line))
+            # date time experiment mode priority duration (kwargs if any)
             if len(line) == 6:
                 scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
             else:
                 scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], line[6]))
-=======
-            scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
 
         if len(scd_lines) == 0:
             print('WARNING: SCD file empty; default normalscan will run')
             # add the default infinite duration line 
             scd_lines.append(self.scd_default)
 
->>>>>>> master
         return scd_lines
 
     def fmt_line(self, line_dict):

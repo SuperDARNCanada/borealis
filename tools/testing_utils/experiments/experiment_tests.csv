@@ -51,8 +51,7 @@ testing_archive.test_no_class::No experiment classes are present that are built 
 testing_archive.test_two_classes::You have more than one experiment class in your experiment file - exiting
 
 # **** The following 8 tests are from ExperimentPrototype class, __init__() method ****
-######### NOTE THAT _cpid_unique.py is so named because the uniqueness test for the CPID doesn't check files that start with 'test' #######
-testing_archive._cpid_unique::CPID must be unique. .* is in use by another local experiment
+testing_archive.test_cpid_unique::CPID must be unique. .* is in use by another local experiment
 testing_archive.test_cpid_int::CPID must be a unique int
 testing_archive.test_cpid_pos::The CPID should be a positive number in the experiment. Borealis will determine if it should be negative based on the scheduling mode. Only experiments run during discretionary time will have negative CPIDs.
 testing_archive.test_output_rxrate_high::Experiment's output sample rate is too high
@@ -98,8 +97,8 @@ testing_archive.test_beam_angle_not_increasing::Slice .* beam_angle not increasi
 testing_archive.test_scanbound_but_no_intt::Slice .* must have intt enabled to use scanbound
 testing_archive.test_scanbound_negative::Slice .* scanbound times must be non-negative
 testing_archive.test_scanbound_not_increasing::Slice .* scanbound times must be increasing
-testing_archive.test_intt_longer_than_scanbound::Slice .* intt longer than scanbound time
-testing_archive.test_intt_longer_than_scanbounds::Slice .* intt longer than scanbound times
+testing_archive.test_intt_longer_than_scanbound::Slice .* intt .*ms longer than scanbound time .*s
+testing_archive.test_intt_longer_than_scanbounds::Slice .* intt .*ms longer than one of the scanbound times
 
 ##### I'm not sure how to test the following 1 test right now #####
 #testing_archive.test_beam_order_too_long::Slice .* beam order too long for scanbound

@@ -26,29 +26,26 @@ sys.path.append(BOREALISPATH)
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
-EPOP_PASS_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.epop.passes"
-
 
 class Epopsound(ExperimentPrototype):
     """
     Experiment for conjunction with EPOP RRI. 
     This mode creates a transmission that is received
-    by RRI. 
+    by RRI.
 
-    Up to 4 frequencies can be used, and given a certain
-    beam range the beams will be cycled through at the 
-    frequency using 8 pulse sequence, followed by one 
-    integration time of a 7 pulse sequence at the frequency
-    before moving on to the next frequency. 
+    *This is the one-beam version of epopsound (epopsound_one_beam).*
+    Up to 4 frequencies can be used, one one beam.
+    The frequencies will cycle through, and after 
+    the nth integration time, one integration period
+    of 7 pulse sequence will occur.
     """
 
     def __init__(self, **kwargs):
         cpid = 3371
-        epop_file = EPOP_PASS_FILE.format(scf.opts.site_id)
 
         # default values
         freqs = [scf.COMMON_MODE_FREQ_1]
-        startbeam = stopbeam = 7
+        beam = 7
         marker_period = 0
         
         if kwargs:
@@ -60,35 +57,21 @@ class Epopsound(ExperimentPrototype):
                         freqs.append(int(kwargs['freq3']))
                         if 'freq4' in kwargs.keys():
                             freqs.append(int(kwargs['freq4']))
-            if 'startbeam' in kwargs.keys():
-                startbeam = int(kwargs['startbeam'])
-            if 'stopbeam' in kwargs.keys():
-                stopbeam = int(kwargs['stopbeam'])
+            if 'beam' in kwargs.keys():
+                beam = int(kwargs['beam'])
             if 'marker_period' in kwargs.keys():
                 marker_period = int(kwargs['marker_period'])
 
-        self.printing('Freqs (kHz): {}, Start Beam: {}, Stop Beam: {}, '
-                      'Marker Period: {}, '
-                .format(freqs, startbeam, stopbeam, marker_period))
+        self.printing('Freqs (kHz): {}, Beam: {}, '
+                      'Marker Period: {}'
+                .format(freqs, beam, marker_period))
+
+        center_freq = int(sum(freqs)/len(freqs))
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
         if scf.opts.site_id in ["sas", "pgr"]:
             num_ranges = scf.STD_NUM_RANGES
-
-        basic_beams = list(range(startbeam, stopbeam + 1))
-        if marker_period > 0:
-            beams_to_use = basic_beams * (math.ceil(marker_period/len(basic_beams)) + 1)
-            beams_to_use = beams_to_use[0:marker_period]
-            marker_beam_to_use = [beams_to_use[marker_period]]
-        else:
-            beams_to_use = basic_beams
-
-        # Handle the single beam case
-        if len(beams_to_use) == 1:
-            scanbound = [1.0]
-        else:
-            scanbound = [1.0 * i for i in range(len(beams_to_use))]
 
         slices = []
         base_slice = {
@@ -97,36 +80,51 @@ class Epopsound(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": 1000, #ms
-            "scanbound": scanbound,
+            "intn": 10,
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
             "acf": True,
             "xcf": True,
             "acfint": True
         }
-        
-        for freq in freqs:
+
+        for num, freq in enumerate(freqs):
             # for each freq add 
-            base_slice.update({
+            new_slice = copy.deepcopy(base_slice)
+            new_slice.update({
                 "txfreq": freq
                 })
-            slices.append(base_slice)
 
             if marker_period > 0:
-                # get the marker slice
-                slice_1 = copy.deepcopy(base_slice)
-                slice_1.update({
-                    "pulse_sequence": scf.SEQUENCE_7P,
-                    "tau_spacing": scf.TAU_SPACING_7P,
-                    "beam_order": marker_beam_to_use
+                beams_to_use = [beam] * math.floor(marker_period/len(freqs))
+                modulus = math.fmod(marker_period, len(freqs))
+                if num < modulus:
+                    # have to ensure the right num for marker_period
+                    beams_to_use.append(beam)
+                new_slice.update({
+                    "beam_order": beams_to_use,
                     })
-                slices.append(slice_1)
+            else:
+                new_slice.update({
+                    "beam_order": [beam],
+                    })
 
-        super(Epopsound, self).__init__(cpid=cpid, txctrfreq=freq, rxctrfreq=freq,
+            slices.append(new_slice)
+
+        super(Epopsound, self).__init__(cpid=cpid, txctrfreq=center_freq, rxctrfreq=center_freq,
                                         comment_string=Epopsound.__doc__)
 
         self.add_slice(slices[0])
         if len(slices) > 1:
             for a_slice in slices[1:]:
-                self.add_slice(a_slice, interfacing_dict={0: 'SCAN'})
+                self.add_slice(a_slice, interfacing_dict={0: 'INTTIME'})
+
+        if marker_period > 0:
+            # get the marker slice
+            slice_1 = copy.deepcopy(base_slice)
+            slice_1.update({
+                "pulse_sequence": scf.SEQUENCE_7P,
+                "tau_spacing": scf.TAU_SPACING_7P,
+                "beam_order": [beam],
+                "txfreq": freqs[0]
+                })
+            self.add_slice(slice_1, interfacing_dict={0: 'SCAN'})
