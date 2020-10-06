@@ -312,7 +312,7 @@ def search_for_experiment(radar_control_to_exp_handler,
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, num_sequences, scan_flag, inttime, sequences, beam_iter,
                             experiment_id, experiment_name, scheduling_mode, output_sample_rate, 
-                            experiment_comment, filter_scaling_factors, rx_centre_freq, 
+                            experiment_comment, filter_scaling_factors, rx_center_freq, 
                             debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
