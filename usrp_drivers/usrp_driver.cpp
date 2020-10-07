@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <tuple>
+#include <sys/mman.h>
 #include "utils/driver_options/driveroptions.hpp"
 #include "usrp_drivers/usrp.hpp"
 #include "utils/protobuf/driverpacket.pb.h"
@@ -446,7 +447,9 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   SharedMemoryHandler shrmem(driver_options.get_ringbuffer_name());
 
-  shrmem.create_shr_mem(receive_channels.size() * ringbuffer_size * sizeof(std::complex<float>));
+  auto total_rbuf_size = receive_channels.size() * ringbuffer_size * sizeof(std::complex<float>);
+  shrmem.create_shr_mem(total_rbuf_size);
+  mlock(shrmem.get_shrmem_addr(), total_rbuf_size);
 
 
   std::vector<std::complex<float>*> buffer_ptrs_start;

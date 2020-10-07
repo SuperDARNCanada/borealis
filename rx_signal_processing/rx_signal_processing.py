@@ -9,6 +9,13 @@ import zmq
 import dsp
 import math
 
+try:
+    import cupy as cp
+except:
+    cupy_available = False
+else:
+    cupy_available = True
+
 borealis_path = os.environ['BOREALISPATH']
 if not borealis_path:
     raise ValueError("BOREALISPATH env variable not set")
@@ -27,6 +34,7 @@ from zmq_borealis_helpers import socket_operations as so
 import shared_macros.shared_macros as sm
 
 pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
+
 
 def main():
 
@@ -52,6 +60,7 @@ def main():
     extra_samples = 0
     total_dm_rate = 0
 
+    threads = []
     first_time = True
     while True:
 
@@ -131,7 +140,7 @@ def main():
 
         pad_beams(main_beams, sig_options.main_antenna_count)
         pad_beams(intf_beams, sig_options.intf_antenna_count)
-        
+
         main_beam_angles = np.array(main_beam_angles, dtype=np.complex64)
         intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
         mixing_freqs = np.array(mixing_freqs, dtype=np.float64)
@@ -151,16 +160,14 @@ def main():
                                                                     rx_metadata.sequence_num)
             pprint(sm.COLOR('red', err))
             sys.exit(-1)
-        else:
-            pprint("Processing sequence number: {}".format(sp_packet.sequence_num))
-
-        pprint("Main beams shape: {}".format(main_beam_angles.shape))
-        pprint("Intf beams shape: {}".format(intf_beam_angles.shape))
 
         if first_time:
             shm = ipc.SharedMemory(sig_options.ringbuffer_name)
             mapped_mem = mmap.mmap(shm.fd, shm.size)
             ringbuffer = np.frombuffer(mapped_mem, dtype=np.complex64).reshape(total_antennas, -1)
+
+            if cupy_available:
+                cp.cuda.runtime.hostRegister(ringbuffer.ctypes.data, ringbuffer.size, 0)
 
             dm_msg = "Decimation rates: "
             taps_msg = "Number of filter taps per stage: "
@@ -170,7 +177,7 @@ def main():
 
                 dm_msg += str(stage.dm_rate) + " "
                 taps_msg += str(len(stage.filter_taps)) + " "
-            
+
             dm_rates = np.array(dm_rates, dtype=np.uint32)
             pprint(dm_msg)
             pprint(taps_msg)
@@ -182,60 +189,115 @@ def main():
 
             first_time = False
 
-
-
         samples_needed = rx_metadata.numberofreceivesamples + 2 * extra_samples
         samples_needed = int(math.ceil(float(samples_needed)/float(total_dm_rate)) * total_dm_rate)
-        
+
         sample_time_diff = rx_metadata.sequence_start_time - rx_metadata.initialization_time
         sample_in_time = (sample_time_diff * rx_rate) + first_rx_sample_off - extra_samples
 
         start_sample = int(math.fmod(sample_in_time, ringbuffer.shape[1]))
-        indices = np.arange(start_sample, start_sample + samples_needed)
+        end_sample = start_sample + samples_needed
+
+        def sequence_worker(**kwargs):
+            sequence_num = kwargs['sequence_num']
+            main_beam_angles = kwargs['main_beam_angles']
+            intf_beam_angles = kwargs['intf_beam_angles']
+            mixing_freqs = kwargs['mixing_freqs']
+            slice_details = kwargs['slice_details']
+            start_sample = kwargs['start_sample']
+            end_sample = kwargs['end_sample']
 
 
-        reply_packet = sigprocpacket_pb2.SigProcPacket()
-        reply_packet.sequence_num = sp_packet.sequence_num
-        msg = reply_packet.SerializeToString()
+            pprint(sm.COLOR('green',"Processing #{}".format(sequence_num)))
+            pprint("Main beams shape for #{}: {}".format(sequence_num, main_beam_angles.shape))
+            pprint("Intf beams shape for #{}: {}".format(sequence_num, intf_beam_angles.shape))
+            if cupy_available:
+                cp.cuda.runtime.setDevice(0)
 
-        request = so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, pprint)
-        so.send_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, msg)
+            seq_begin_iden = sig_options.dspbegin_brian_identity + str(sequence_num)
+            seq_end_iden = sig_options.dspend_brian_identity + str(sequence_num)
+            gpu_socks = so.create_sockets([seq_begin_iden, seq_end_iden],
+                                            sig_options.router_address)
 
-        start = time.time()
+            dspbegin_to_brian = gpu_socks[0]
+            dspend_to_brian = gpu_socks[1]
 
-        main_buffer = ringbuffer[:sig_options.main_antenna_count,:]
-        main_sequence_samples = main_buffer.take(indices, axis=1, mode='wrap')
-        pprint("Main buffer shape: {}".format(main_sequence_samples.shape))
-        processed_main_samples = dsp.DSP(main_sequence_samples, rx_rate, dm_rates, dm_scheme_taps,
-                                    mixing_freqs, main_beam_angles)
-        main_corrs = dsp.DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
-                            processed_main_samples.beamformed_samples, output_sample_rate,
-                            slice_details)
+            start = time.time()
 
-        if sig_options.intf_antenna_count > 0:
-            intf_buffer = ringbuffer[sig_options.main_antenna_count:,:]
-            intf_sequence_samples = intf_buffer.take(indices, axis=1, mode='wrap')
-            pprint("Intf buffer shape: {}".format(intf_sequence_samples.shape))
-            processed_intf_samples = dsp.DSP(intf_sequence_samples, rx_rate, dm_rates, dm_scheme_taps,
-                                        mixing_freqs, intf_beam_angles)
+            if cupy_available:
+                if end_sample > ringbuffer.shape[1]:
+                    piece1 = ringbuffer[:,start_sample:]
+                    piece2 = ringbuffer[:,:end_sample-start_sample]
 
-            intf_corrs = dsp.DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
-                            processed_intf_samples.beamformed_samples, output_sample_rate,
-                            slice_details)
-            cross_corrs = dsp.DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
-                            processed_intf_samples.beamformed_samples, output_sample_rate,
-                            slice_details)
+                    tmp1 = cp.array(piece1)
+                    tmp2 = cp.array(piece2)
 
-        end = time.time()
+                    sequence_samples = cp.concatenate((tmp1,tmp2), axis=1)
+                else:
+                    sequence_samples = cp.array(ringbuffer[:,start_sample:end_sample])
 
-        time_diff = (end - start) * 1000
-        reply_packet.kerneltime = time_diff
-        msg = reply_packet.SerializeToString()
+                cp.cuda.runtime.deviceSynchronize()
+            else:
+                indices = np.arange(start_sample, start_sample + samples_needed)
+                sequence_samples = ringbuffer.take(indices, axis=1, mode='wrap')
 
-        pprint("Time to decimate, beamform and correlate: {}ms".format(time_diff))
 
-        request = so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, pprint)
-        so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
+            reply_packet = sigprocpacket_pb2.SigProcPacket()
+            reply_packet.sequence_num = sequence_num
+            msg = reply_packet.SerializeToString()
+
+            request = so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, pprint)
+            so.send_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, msg)
+
+            main_sequence_samples = sequence_samples[:sig_options.main_antenna_count,:]
+            pprint("Main buffer shape: {}".format(main_sequence_samples.shape))
+            processed_main_samples = dsp.DSP(main_sequence_samples, rx_rate, dm_rates,
+                                                dm_scheme_taps, mixing_freqs, main_beam_angles)
+            main_corrs = dsp.DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
+                                    processed_main_samples.beamformed_samples, output_sample_rate,
+                                    slice_details)
+
+            if sig_options.intf_antenna_count > 0:
+                intf_sequence_samples = sequence_samples[sig_options.main_antenna_count:,:]
+                pprint("Intf buffer shape: {}".format(intf_sequence_samples.shape))
+                processed_intf_samples = dsp.DSP(intf_sequence_samples, rx_rate, dm_rates,
+                                                    dm_scheme_taps, mixing_freqs, intf_beam_angles)
+
+                intf_corrs = dsp.DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
+                                processed_intf_samples.beamformed_samples, output_sample_rate,
+                                slice_details)
+                cross_corrs = dsp.DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
+                                processed_intf_samples.beamformed_samples, output_sample_rate,
+                                slice_details)
+
+            end = time.time()
+
+            time_diff = (end - start) * 1000
+            reply_packet.kerneltime = time_diff
+            msg = reply_packet.SerializeToString()
+
+            pprint("Time to decimate, beamform and correlate: {}ms".format(time_diff))
+
+            request = so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, pprint)
+            so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
+
+        args = {"sequence_num" : copy.deepcopy(sp_packet.sequence_num),
+                "main_beam_angles" : copy.deepcopy(main_beam_angles),
+                "intf_beam_angles" : copy.deepcopy(intf_beam_angles),
+                "mixing_freqs" : copy.deepcopy(mixing_freqs),
+                "slice_details" : copy.deepcopy(slice_details),
+                "start_sample" : copy.deepcopy(start_sample),
+                "end_sample" : copy.deepcopy(end_sample)}
+
+        seq_thread = threading.Thread(target=sequence_worker, args=(args))
+        seq_thread.daemon = True
+        seq_thread.start()
+
+        threads.append(seq_thread)
+
+        if len(threads) > 1:
+            thread = threads.pop(0)
+            thread.join()
 
 if __name__ == "__main__":
     main()
