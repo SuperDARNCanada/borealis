@@ -8,7 +8,7 @@ import posix_ipc as ipc
 import zmq
 import dsp
 import math
-
+import copy
 try:
     import cupy as cp
 except:
@@ -68,13 +68,6 @@ def main():
 
         sp_packet = sigprocpacket_pb2.SigProcPacket()
         sp_packet.ParseFromString(reply)
-
-        seq_begin_iden = sig_options.dspbegin_brian_identity + str(sp_packet.sequence_num)
-        seq_end_iden = sig_options.dspend_brian_identity + str(sp_packet.sequence_num)
-        gpu_socks = so.create_sockets([seq_begin_iden, seq_end_iden], sig_options.router_address)
-
-        dspbegin_to_brian = gpu_socks[0]
-        dspend_to_brian = gpu_socks[1]
 
         rx_rate = np.float64(sp_packet.rxrate)
         output_sample_rate = np.float64(sp_packet.output_sample_rate)
@@ -241,7 +234,9 @@ def main():
                 indices = np.arange(start_sample, start_sample + samples_needed)
                 sequence_samples = ringbuffer.take(indices, axis=1, mode='wrap')
 
-
+            copy_end = time.time() 
+            time_diff = (copy_end - start) * 1000
+            pprint("Time to copy samples for #{}: {}ms".format(sequence_num, time_diff))
             reply_packet = sigprocpacket_pb2.SigProcPacket()
             reply_packet.sequence_num = sequence_num
             msg = reply_packet.SerializeToString()
@@ -272,11 +267,15 @@ def main():
 
             end = time.time()
 
-            time_diff = (end - start) * 1000
+            time_diff = (end - copy_end) * 1000
             reply_packet.kerneltime = time_diff
             msg = reply_packet.SerializeToString()
 
-            pprint("Time to decimate, beamform and correlate: {}ms".format(time_diff))
+            pprint("Time to decimate, beamform and correlate for #{}: {}ms".format(sequence_num, 
+                                                                                    time_diff))
+
+            time_diff = (end - start) * 1000
+            pprint("Total time for #{}: {}ms".format(sequence_num, time_diff))
 
             request = so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, pprint)
             so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
@@ -289,7 +288,7 @@ def main():
                 "start_sample" : copy.deepcopy(start_sample),
                 "end_sample" : copy.deepcopy(end_sample)}
 
-        seq_thread = threading.Thread(target=sequence_worker, args=(args))
+        seq_thread = threading.Thread(target=sequence_worker, kwargs=args)
         seq_thread.daemon = True
         seq_thread.start()
 
