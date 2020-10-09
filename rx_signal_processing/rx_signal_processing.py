@@ -123,7 +123,6 @@ def main():
 
 
         max_num_beams = max([len(x) for x in main_beam_angles])
-
         def pad_beams(angles, ant_count):
             for x in angles:
                 if len(x) < max_num_beams:
@@ -131,9 +130,9 @@ def main():
                     for i in range(max_num_beams - len(x)):
                         x.append(beam_pad)
 
-        pad_beams(main_beams, sig_options.main_antenna_count)
-        pad_beams(intf_beams, sig_options.intf_antenna_count)
-
+        pad_beams(main_beam_angles, sig_options.main_antenna_count)
+        pad_beams(intf_beam_angles, sig_options.intf_antenna_count)
+       
         main_beam_angles = np.array(main_beam_angles, dtype=np.complex64)
         intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
         mixing_freqs = np.array(mixing_freqs, dtype=np.float64)
@@ -220,7 +219,7 @@ def main():
             if cupy_available:
                 if end_sample > ringbuffer.shape[1]:
                     piece1 = ringbuffer[:,start_sample:]
-                    piece2 = ringbuffer[:,:end_sample-start_sample]
+                    piece2 = ringbuffer[:,:end_sample-ringbuffer.shape[1]]
 
                     tmp1 = cp.array(piece1)
                     tmp2 = cp.array(piece2)
@@ -229,7 +228,6 @@ def main():
                 else:
                     sequence_samples = cp.array(ringbuffer[:,start_sample:end_sample])
 
-                cp.cuda.runtime.deviceSynchronize()
             else:
                 indices = np.arange(start_sample, start_sample + samples_needed)
                 sequence_samples = ringbuffer.take(indices, axis=1, mode='wrap')
@@ -264,13 +262,12 @@ def main():
                 cross_corrs = dsp.DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
                                 processed_intf_samples.beamformed_samples, output_sample_rate,
                                 slice_details)
-
             end = time.time()
 
             time_diff = (end - copy_end) * 1000
             reply_packet.kerneltime = time_diff
             msg = reply_packet.SerializeToString()
-
+            
             pprint("Time to decimate, beamform and correlate for #{}: {}ms".format(sequence_num, 
                                                                                     time_diff))
 
