@@ -38,7 +38,7 @@ import shared_macros.shared_macros as sm
 pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
 
 def ndarray_in_shr_mem(ndarray):
-    new_shm = ipc.SharedMemory(flags=(ipc.O_CREAT|ipc.O_EXCL), size=ndarray.nbytes)
+    new_shm = ipc.SharedMemory(name=None, flags=(ipc.O_CREAT|ipc.O_EXCL), size=ndarray.nbytes)
     mapfile = mmap.mmap(new_shm.fd, new_shm.size)
 
     shr_arr = np.frombuffer(mapfile, dtype=ndarray.dtype).reshape(ndarray.shape)
@@ -48,7 +48,7 @@ def ndarray_in_shr_mem(ndarray):
 
 def create_datawrite_proto(processed_data, slice_details, data_outputs):
 
-    for sd, do in zip(slice_details, data_outputs):
+    for sd in slice_details:
         output_data_set = processed_data.outputdataset.add()
 
         output_data_set.slice_id = sd['slice_id']
@@ -62,29 +62,29 @@ def create_datawrite_proto(processed_data, slice_details, data_outputs):
                 o.imag = x.imag
 
 
-        main_corrs = do['main_corrs'][sd['slice_num']]
+        main_corrs = data_outputs['main_corrs'][sd['slice_num']]
         add_array(main_corrs, output_data_set.mainacf)
 
         try:
-            intf_corrs = do['intf_corrs'][sd['slice_num']]
+            intf_corrs = data_outputs['intf_corrs'][sd['slice_num']]
             add_array(intf_corrs, output_data_set.intacf)
 
-            cross_corrs = do['cross_corrs'][sd['slice_num']]
+            cross_corrs = data_outputs['cross_corrs'][sd['slice_num']]
             add_array(cross_corrs, output_data_set.xcf)
         except:
             # No interferometer data
             pass
 
 
-        for i in range(len(sd['num_beams'])):
+        for i in range(sd['num_beams']):
             beam = output_data_set.beamformedsamples.add()
             beam.beamnum = i
 
-            main_samps = do['beamformed_m'][sd['slice_num']][i]
+            main_samps = data_outputs['beamformed_m'][sd['slice_num']][i]
             add_array(main_samps, beam.mainsamples)
 
             try:
-                intf_samps = do['beamformed_i'][sd['slice_num']][i]
+                intf_samps = data_outputs['beamformed_i'][sd['slice_num']][i]
                 add_array(main_samps, beam.mainsamples)
             except:
                 # No interferometer data
@@ -92,12 +92,12 @@ def create_datawrite_proto(processed_data, slice_details, data_outputs):
 
         def add_debug_data(stage, name):
             debug_data = output_data_set.debugsamples.add()
-            debug_data.stage_name = name
+            debug_data.stagename = name
 
             all_ant_samps = stage[sd['slice_num']]
-            for j in range(ant_samps.shape[0]):
+            for j in range(all_ant_samps.shape[0]):
                 ant = debug_data.antennadata.add()
-                add_array(ant_samps[j], ant)
+                add_array(all_ant_samps[j], ant.antennasamples)
 
         for i, stage in enumerate(data_outputs['debug_outputs'][:-1]):
             add_debug_data(stage, "stage_" + str(i))
@@ -144,7 +144,7 @@ def main():
 
         processed_data = processeddata_pb2.ProcessedData()
 
-        processed_data.sequence_num = sequence_num
+        processed_data.sequence_num = sp_packet.sequence_num
         processed_data.rx_sample_rate = rx_rate
         processed_data.output_sample_rate = output_sample_rate
 
@@ -381,8 +381,6 @@ def main():
                 else:
                     filter_outputs = filter_outputs_m
 
-                debug_rf = ndarray_in_shr_mem(ringbuffer.take(indices, axis=1, mode='wrap'))
-                processed_data.rx_sample_location = debug_rf['name']
             else:
                 if cupy_available:
                     filter_outputs_m = [cp.asnumpy(processed_main_samples.filter_outputs[-1])]
@@ -402,7 +400,8 @@ def main():
                     filter_outputs = filter_outputs_m
 
             data_outputs['debug_outputs'] = filter_outputs
-
+            debug_rf = ndarray_in_shr_mem(ringbuffer.take(indices, axis=1, mode='wrap'))
+            processed_data.rf_samples_location = debug_rf['name']
             if cupy_available:
                 beamformed_m = cp.asnumpy(processed_main_samples.beamformed_samples)
 
@@ -430,7 +429,7 @@ def main():
             time_diff = (end-start) * 1000
             pprint("Time to serialize and send processed data for #{}: {}ms".format(sequence_num,
                                                                                     time_diff))
-            socket_operations.send_bytes(dsp_to_dw, sig_options.dw_dsp_idenity, message)
+            so.send_bytes(dsp_to_dw, sig_options.dw_dsp_identity, message)
 
 
 
