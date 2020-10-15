@@ -80,16 +80,21 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
 
 #. Clone the Borealis software to a directory **The following ensures that Borealis will be in the same directory that the `BOREALISPATH` env variable points to**.
 
+    - sudo zypper in git
     - git clone https://github.com/SuperDARNCanada/borealis.git $BOREALISPATH
 
 #. If you're building Borealis for a University of Saskatchewan radar, complete the following steps. If not, skip ahead to the next step. Create symlink `config.ini` in borealis directory and link to the site specific config file.
 
-    - git submodule init && git submodule update.
-    - cd ${BOREALISPATH} && ln -svi ${BOREALISPATH}/borealis_config_files/[radarcode]_config.ini config.ini
+    - cd $BOREALISPATH
+    - git submodule init && git submodule update
+    - ln -svi $BOREALISPATH/borealis_config_files/[radarcode]_config.ini config.ini
 
-#. If you're building Borealis for a non University of Saskatcheawn radar, use a Usask `config.ini` file as a template or the config file documentation (located here: TODO) to create your own file in the borealis directory.
+#. If you're building Borealis for a non University of Saskatcheawn radar, use a Usask `config.ini` file (located `here <https://github.com/SuperDARNCanada/borealis_config_files>`_) as a template or the config file `documentation <https://borealis.readthedocs.io/en/latest/config_options.html>`_ to create your own file in the borealis directory.
 
 #. The Borealis software has a script called `install_radar_deps_opensuse.sh` to help install dependencies. This script has to be run by the root user. This script can be modified to use the package manager of a different distribution. Make sure that the version of CUDA is up to date and supports your card. This script makes an attempt to correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD does not configure correctly, an improper Boost installation or library naming convention is the likely reason.
+
+    - cd $BOREALISPATH
+    - sudo ./install_radar_deps_opensuse.sh > install_log.txt 2>&1
 
 #. Install pydarn for realtime data support as well as testing and data conversion support:
 
@@ -178,7 +183,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - crontab -e
     - Add the line `@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log 2>&1`
 
-# Create necessary directories. Here is an example for a user named `radar`
+# Create necessary directories. Here is an example for a user named `radar` and the standard configuration in the 'config.ini' file:
 
     - sudo mkdir -p /data/borealis_logs
     - sudo mkdir -p /data/borealis_data

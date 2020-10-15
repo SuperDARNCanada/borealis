@@ -13,17 +13,17 @@ zypper install -y python3-pip
 zypper install -y gdb
 zypper install -y jq
 zypper install -y hdf5
-pip3 install --upgrade pip
+pip3 install -U --timeout 1000 --upgrade pip
 zypper install -y libX11-devel
-pip3 install deepdish
-pip3 install posix_ipc
-pip3 install inotify
-pip3 install matplotlib
-pip3 install virtualenv
-pip3 install Sphinx
-pip3 install sphinxcontrib-programoutput
-pip3 install sphinxcontrib-autoprogram
-pip3 install breathe
+pip3 install -U --timeout 1000 deepdish
+pip3 install -U --timeout 1000 posix_ipc
+pip3 install -U --timeout 1000 inotify
+pip3 install -U --timeout 1000 matplotlib
+pip3 install -U --timeout 1000 virtualenv
+pip3 install -U --timeout 1000 Sphinx
+pip3 install -U --timeout 1000 sphinxcontrib-programoutput
+pip3 install -U --timeout 1000 sphinxcontrib-autoprogram
+pip3 install -U --timeout 1000 breathe
 
 #### INSTALL PROTOBUF ####
 #https://github.com/google/protobuf/blob/master/src/README.md#c-installation---uni
@@ -35,7 +35,7 @@ cd protobuf ||exit
 make -j${CORES}
 make install
 ldconfig # refresh shared library cache.
-pip3 install protobuf
+pip3 install -U --timeout 1000 protobuf
 cd ../ || exit
 
 #### INSTALL ZMQ ####
@@ -65,7 +65,7 @@ cd cppzmq || exit
 cp zmq.hpp /usr/local/include/
 cp zmq_addon.hpp /usr/local/include
 cd ../ || exit
-pip3 install zmq
+pip3 install -U --timeout 1000 zmq
 
 #### INSTALL ARMADILLO ####
 zypper install -y libarmadillo9 armadillo-devel
