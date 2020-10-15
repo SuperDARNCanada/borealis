@@ -1,3 +1,7 @@
+"""
+Copyright SuperDARN Canada 2020
+Original Auth: Keith Kotyk
+"""
 import sys
 import os
 import mmap
@@ -38,6 +42,15 @@ import shared_macros.shared_macros as sm
 pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
 
 def ndarray_in_shr_mem(ndarray):
+    """
+    This function opens a new shared memory section and copys a ndarray into it.
+
+    :param      ndarray:  The ndarray
+    :type       ndarray:  ndarray
+
+    :returns:   Dict holding the name and new shr mem array.
+    :rtype:     dict
+    """
     new_shm = ipc.SharedMemory(name=None, flags=(ipc.O_CREAT|ipc.O_EXCL), size=ndarray.nbytes)
     mapfile = mmap.mmap(new_shm.fd, new_shm.size)
 
@@ -46,7 +59,17 @@ def ndarray_in_shr_mem(ndarray):
 
     return {'name' : new_shm.name, 'data' : shr_arr}
 
-def create_datawrite_proto(processed_data, slice_details, data_outputs):
+def fill_datawrite_proto(processed_data, slice_details, data_outputs):
+    """
+    Fills the datawrite protobuf with processed data.
+
+    :param      processed_data:  The processed data protobuf
+    :type       processed_data:  protobuf
+    :param      slice_details:   The details for each slice that was processed.
+    :type       slice_details:   list
+    :param      data_outputs:    The processed data outputs.
+    :type       data_outputs:    dict
+    """
 
     for sd in slice_details:
         output_data_set = processed_data.outputdataset.add()
@@ -76,6 +99,8 @@ def create_datawrite_proto(processed_data, slice_details, data_outputs):
             pass
 
 
+        # iterate over num beams since number of beams may have been padded to be longer
+        # during processing.
         for i in range(sd['num_beams']):
             beam = output_data_set.beamformedsamples.add()
             beam.beamnum = i
@@ -152,6 +177,9 @@ def main():
         main_beam_angles = []
         intf_beam_angles = []
 
+
+        # Parse out details and force the data type so that Cupy can optimize with standardized
+        # data types.
         slice_details = []
         for i,chan in enumerate(sp_packet.rxchannel):
             detail = {}
@@ -197,7 +225,9 @@ def main():
             intf_beam_angles.append(intf_beams)
 
 
-
+        # Different slices can have a different amount of beams used. Slices that use fewer beams
+        # than the max number of beams are padded with zeros so that matrix calculations can be
+        # used. The extra beams that are processed will be not be parsed for data writing.
         max_num_beams = max([len(x) for x in main_beam_angles])
         def pad_beams(angles, ant_count):
             for x in angles:
@@ -215,6 +245,8 @@ def main():
 
 
 
+
+        # Get meta from driver
         message = "Need data to process"
         so.send_data(dsp_to_driver, sig_options.driver_dsp_identity, message)
         reply = so.recv_bytes(dsp_to_driver, sig_options.driver_dsp_identity, pprint)
@@ -229,6 +261,9 @@ def main():
             pprint(sm.COLOR('red', err))
             sys.exit(-1)
 
+
+
+        # First time configuration
         if first_time:
             shm = ipc.SharedMemory(sig_options.ringbuffer_name)
             mapped_mem = mmap.mmap(shm.fd, shm.size)
@@ -257,6 +292,9 @@ def main():
 
             first_time = False
 
+
+
+        # Calculate where in the ringbuffer the samples are located.
         samples_needed = rx_metadata.numberofreceivesamples + 2 * extra_samples
         samples_needed = int(math.ceil(float(samples_needed)/float(total_dm_rate)) * total_dm_rate)
 
@@ -269,6 +307,8 @@ def main():
         processed_data.initialization_time = rx_metadata.initialization_time
         processed_data.sequence_start_time = rx_metadata.sequence_start_time
 
+
+        # This work is done in a thread
         def sequence_worker(**kwargs):
             sequence_num = kwargs['sequence_num']
             main_beam_angles = kwargs['main_beam_angles']
@@ -281,6 +321,7 @@ def main():
 
 
             pprint(sm.COLOR('green',"Processing #{}".format(sequence_num)))
+            pprint("Mixing freqs for #{}: {}".format(sequence_num,mixing_freqs))
             pprint("Main beams shape for #{}: {}".format(sequence_num, main_beam_angles.shape))
             pprint("Intf beams shape for #{}: {}".format(sequence_num, intf_beam_angles.shape))
             if cupy_available:
@@ -300,6 +341,9 @@ def main():
 
             indices = np.arange(start_sample, start_sample + samples_needed)
 
+            # x.take makes a copy of the array. We want to avoid making a copy using Cupy so that
+            # data is moved directly from the ring buffer to the GPU. Simple indexing creates a view
+            # of existing data without making a copy.
             if cupy_available:
                 if end_sample > ringbuffer.shape[1]:
                     piece1 = ringbuffer[:,start_sample:]
@@ -325,6 +369,8 @@ def main():
             request = so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, pprint)
             so.send_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, msg)
 
+
+            # Process main samples
             main_sequence_samples = sequence_samples[:sig_options.main_antenna_count,:]
             pprint("Main buffer shape: {}".format(main_sequence_samples.shape))
             processed_main_samples = dsp.DSP(main_sequence_samples, rx_rate, dm_rates,
@@ -333,6 +379,7 @@ def main():
                                     processed_main_samples.beamformed_samples, output_sample_rate,
                                     slice_details)
 
+            # If interferometer is used, process those samples too.
             if sig_options.intf_antenna_count > 0:
                 intf_sequence_samples = sequence_samples[sig_options.main_antenna_count:,:]
                 pprint("Intf buffer shape: {}".format(intf_sequence_samples.shape))
@@ -360,6 +407,9 @@ def main():
             request = so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, pprint)
             so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
 
+
+
+            # Extract outputs from processing into groups that will be put into proto fields.
             start = time.time()
             data_outputs = {}
             if __debug__:
@@ -421,7 +471,7 @@ def main():
                 data_outputs['cross_corrs'] = cross_corrs
                 data_outputs['intf_corrs'] = intf_corrs
 
-            create_datawrite_proto(processed_data, slice_details, data_outputs)
+            fill_datawrite_proto(processed_data, slice_details, data_outputs)
 
             message = processed_data.SerializeToString()
 
