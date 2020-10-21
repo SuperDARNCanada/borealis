@@ -268,7 +268,7 @@ def install_realtime():
     Create virtual environment and install utilities needed for RT capabilities.
     """
 
-    rt_cmd = "cd /usr/local;" \
+    rt_cmd = "bash -c \"cd /usr/local;" \
     "git clone https://github.com/vtsuperdarn/hdw.dat.git;" \
     "mkdir $BOREALISPATH/borealisrt_env;" \
     "virtualenv $BOREALISPATH/borealisrt_env;" \
@@ -276,7 +276,7 @@ def install_realtime():
     "pip install zmq;" \
     "pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
     "pip install pydarn;" \
-    "deactivate;"
+    "deactivate;\""
 
     execute_cmd(rt_cmd)
 
