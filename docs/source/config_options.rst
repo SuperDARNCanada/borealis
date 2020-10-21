@@ -91,8 +91,11 @@ Config Parameters
 |                                         |                         | on host CPU. Refer to UHD docs for   |
 |                                         |                         | data types.                          |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| gpio_bank                               | RXA                     | The daughterboard pin bank to use for|
-|                                         |                         | TR and I/O signals.                  |
+| gpio_bank_high                          | RXA                     | The daughterboard pin bank to use for|
+|                                         |                         | active-high TR and I/O signals.      |
++-----------------------------------------+-------------------------+--------------------------------------+
+| gpio_bank_low                           | TXA                     | The daughterboard pin bank to use for|
+|                                         |                         | active-low TR and I/O signals.       |
 +-----------------------------------------+-------------------------+--------------------------------------+
 | atr_rx                                  | 0x0006                  | The pin mask for the RX only mode.   |
 +-----------------------------------------+-------------------------+--------------------------------------+
@@ -185,3 +188,78 @@ Config Parameters
 +-----------------------------------------+-------------------------+--------------------------------------+
 | data_directory                          | /data/borealis_data     | Location of output data files.       |
 +-----------------------------------------+-------------------------+--------------------------------------+
+
+**********************
+Example configurations
+**********************
+There are several instances when you'll need to modify this file for correct operation.
+
+#. One of your main array antennas is not working properly (broken coax, blown lightning arrestor, etc)
+
+TODO
+
+#. One of your interferometer array antennas is not working properly (broken coax, blown lightning arrestor, etc)
+
+TODO
+
+#. One of your transmitter's transmit paths is not working, but the receive path is still working properly
+
+TODO
+
+#. One of your transmitter's receive paths is not working, but the transmit path is still working properly
+
+TODO
+
+#. One of your transmitters is not working at all
+
+TODO
+
+#. One of your N200s is not working properly and you've inserted the spare N200
+
+    In this instance, since you still have the same number of antennas as well as transmit and receive channels,
+    you simply need to change the IP adress of the N200 you replaced. This is done in the `devices` config option.
+    An example: if N200 with IP address 192.168.10.104 dies, and is replaced with the spare (ip address 192.168.10.116),
+    simply replace `addr4=192.168.10.104` with `addr4=192.168.10.116`.
+
+#. One of your N200s is not working properly but you're located remotely and cannot insert the spare N200
+
+TODO
+
+#. You have a non-standard array
+
+    One example of a non-standard array would be a different number of interferometer antennas than four.
+    If your interferometer array has only two antennas you'll need to modify the following:
+
+    #. interferometer_antenna_count = 2
+
+    #. interferometer_antenna_usrp_rx_channels = 1,3
+
+#. You want to change the location of ATR signals on the daughterboards
+
+    This can be done by changing the values of the following config parameters:
+    atr_rx, atr_tx, atr_xx, atr_0x, tst_md, lo_pwr, agc_st.
+    The value `atr_rx = 0x0006` means that the ATR_RX signal will appear on the pins 1 and 2 (referenced from 0). I.e. every bit that is a '1' in this hex value indicates which pin the signal will appear on.
+
+#. You want to change the polarity of the ATR signals on the daughterboards
+
+    This can be done by swapping the values of the two config parameters: `gpio_bank_high` and `gpio_bank_low`.
+    The default is for active-high signals to be on the LFRX daughterboard. This is done by setting `gpio_bank_high` to `RXA`.
+    The same signals, but active-low, are by default located on the LFTX daughterboard.
+
+#. You would like to make a test-system with only one N200 and don't have any Octoclocks
+
+    This can be done by changing the following parameters:
+
+#. `devices` - Should only have one address (addr0=192.168.10.xxx)
+
+    #. `main_antenna_count` - If you only have one N200, this should be set to 1, as there is only one transmit channel per N200.
+
+    #. `interferometer_antenna_count` - With only one N200, this should be set to 0 or 1.
+
+    #. `main_antenna_usrp_channels` - There will only be two rx channels available, so this should be a single element, and it should be `0`
+
+    #. `interferometer_antenna_usrp_rx_channels` - The second rx channel available should be placed here, so it will be `1`
+
+    #. `main_antenna_usrp_tx_channels` - As discussed above, only one transmit channel exists, so this should be set to `0`
+
+    #. `pps` and `ref` - These should both be set to `internal`, as you don't have an Octoclock to provide a reference PPS or 10MHz reference signal.
