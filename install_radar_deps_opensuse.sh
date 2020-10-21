@@ -13,17 +13,17 @@ zypper install -y python3-pip
 zypper install -y gdb
 zypper install -y jq
 zypper install -y hdf5
-pip3 install --upgrade pip
+pip3 install -U --timeout 1000 --upgrade pip
 zypper install -y libX11-devel
-pip3 install deepdish
-pip3 install posix_ipc
-pip3 install inotify
-pip3 install matplotlib
-pip3 install virtualenv
-pip3 install Sphinx
-pip3 install sphinxcontrib-programoutput
-pip3 install sphinxcontrib-autoprogram
-pip3 install breathe
+pip3 install -U --timeout 1000 deepdish
+pip3 install -U --timeout 1000 posix_ipc
+pip3 install -U --timeout 1000 inotify
+pip3 install -U --timeout 1000 matplotlib
+pip3 install -U --timeout 1000 virtualenv
+pip3 install -U --timeout 1000 Sphinx
+pip3 install -U --timeout 1000 sphinxcontrib-programoutput
+pip3 install -U --timeout 1000 sphinxcontrib-autoprogram
+pip3 install -U --timeout 1000 breathe
 
 #### INSTALL PROTOBUF ####
 #https://github.com/google/protobuf/blob/master/src/README.md#c-installation---uni
@@ -33,10 +33,9 @@ cd protobuf ||exit
 ./autogen.sh
 ./configure
 make -j${CORES}
-make -j${CORES} check
 make install
 ldconfig # refresh shared library cache.
-pip3 install protobuf
+pip3 install -U --timeout 1000 protobuf
 cd ../ || exit
 
 #### INSTALL ZMQ ####
@@ -66,7 +65,7 @@ cd cppzmq || exit
 cp zmq.hpp /usr/local/include/
 cp zmq_addon.hpp /usr/local/include
 cd ../ || exit
-pip3 install zmq
+pip3 install -U --timeout 1000 zmq
 
 #### INSTALL ARMADILLO ####
 zypper install -y libarmadillo9 armadillo-devel
@@ -137,32 +136,3 @@ cd ../../../ || exit
 zypper install -y kernel-devel
 wget http://developer.download.nvidia.com/compute/cuda/10.1/Prod/local_installers/cuda_10.1.243_418.87.00_linux.run
 sh cuda_10.1.243_418.87.00_linux.run --silent --toolkit --samples 
-
-### INSTALL PYDARN FOR REALTIME AND TESTING ###
-cd $HOME
-git clone https://github.com/SuperDARN/pydarn.git 
-
-#### REALTIME ####
-cd /usr/local
-git clone https://github.com/vtsuperdarn/hdw.dat.git
-mkdir $BOREALISPATH/borealisrt_env
-virtualenv $BOREALISPATH/borealisrt_env
-source $BOREALISPATH/borealisrt_env/bin/activate
-pip install zmq
-pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter
-cd $HOME/pydarn
-git checkout develop
-python setup.py install
-deactivate
-
-### TESTING AND DATA CONVERSIONS PACKAGES ###
-cd $HOME
-git clone https://github.com/SuperDARNCanada/borealis-data-utils.git 
-git clone https://github.com/SuperDARNCanada/data_flow.git
-mkdir $HOME/pydarn-env
-virtualenv $HOME/pydarn-env
-source $HOME/pydarn-env/bin/activate
-cd $HOME/pydarn
-git checkout rc_v1.0.0
-python3 setup.py install
-deactivate
