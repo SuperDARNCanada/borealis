@@ -83,15 +83,15 @@ class TestExperimentEnvSetup(unittest.TestCase):
    #     os.environ['BOREALISPATH'] = BOREALISPATH
    #     sys.path.append(BOREALISPATH)
 
-    def test_borealisschedulepath(self):
-        """
-        Test failure to have BOREALISSCHEDULEPATH in env
-        """
-        # Need to remove the environment variable, reset for other tests
-        os.environ.pop('BOREALISSCHEDULEPATH')
-        with self.assertRaises((FileNotFoundError, KeyError)):
-            ehmain(experiment='IB_collab_mode')
-        os.environ['BOREALISSCHEDULEPATH'] = BOREALISSCHEDULEPATH
+    # def test_borealisschedulepath(self):
+    #     """
+    #     Test failure to have BOREALISSCHEDULEPATH in env
+    #     """
+    #     # Need to remove the environment variable, reset for other tests
+    #     os.environ.pop('BOREALISSCHEDULEPATH')
+    #     with self.assertRaises((FileNotFoundError, KeyError)):
+    #         ehmain(experiment='IB_collab_mode')
+    #     os.environ['BOREALISSCHEDULEPATH'] = BOREALISSCHEDULEPATH
 
     def test_config_file(self):
         """

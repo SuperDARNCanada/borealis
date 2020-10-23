@@ -63,37 +63,29 @@ def create_15km_scheme():
 
 class IBCollabMode(ExperimentPrototype):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
+        """
+        kwargs:
+
+        freq: int
+
+        """
         cpid = 3700  # allocated by Marci Detwiller 20200609
 
-        ib_file = IB_FILE.format(scf.opts.site_id)
-        with open(ib_file) as f:
-            lines = f.readlines()
-
-        time = datetime.datetime.utcnow()
-
-        for line in lines:
-            ll = line.split()
-            YMD = ll[0]
-            HS = ll[1]
-            dt = datetime.datetime(int(YMD[:4]), int(YMD[4:6]), int(YMD[6:]),
-                                   hour=int(HS[:2]), minute=int(HS[3:]))
-
-            if dt <= time <= dt + datetime.timedelta(minutes=int(ll[2])):
-                freq = int(ll[3]) 
-                break
+        # default frequency set here
+        freq = 10800
+        
+        if kwargs:
+            if 'freq' in kwargs.keys():
+                freq = kwargs['freq']
+                self.printing('Using frequency scheduled for {date}: {freq} kHz'
+                              .format(date=dt.strftime('%Y%m%d %H:%M'), freq=freq))
             else:
-                continue
-
-        try:
-            freq
-        except NameError:
-            freq = scf.COMMON_MODE_FREQ_1
+                self.printing('Frequency not found: using default frequency {freq} kHz'
+                              .format(freq=freq))
+        else:
             self.printing('Frequency not found: using default frequency {freq} kHz'
                           .format(freq=freq))
-        else:
-            self.printing('Using frequency scheduled for {date}: {freq} kHz'
-                          .format(date=dt.strftime('%Y%m%d %H:%M'), freq=freq))
 
         decimation_scheme = create_15km_scheme()
 
