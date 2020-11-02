@@ -2,15 +2,6 @@
 Copyright SuperDARN Canada 2020
 
 Keith Kotyk
-
-This experiment depends on a complementary passes file. The file should have name
-{radar}.epop.passes name and located under the directory stored in the BOREALISSCHEDULEPATH env
-variable. Lines in the file follow the structure:
-
-utctimestampfromepoch beam marker_period freq(khz)
-
-The closest upcoming timestamp is used, so make sure this mode begins running before the required
-line.
 """
 
 import copy

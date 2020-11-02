@@ -2,18 +2,6 @@
 
 """ 
 IB collab mode written by Devin Huyghebaert 20200609
-
-This experiment depends on a complementary args file. The file should have
-name {radar}.ib.collab and located under the directory stored in the
-BOREALISSCHEDULEPATH env variable. Lines in the file have the following
-structure
-
-YYYYmmDD HH:MM duration(minutes) freq(kHz)
-
-The frequency is chosen if the current time is within the time scheduled. 
-The experiment will choose the first frequency it finds in the file where
-the current time is within 
-(datetime(YYYYmmDD HH:MM), datetime(YYYYmmDD HH:MM) + duration(minutes))
 """
 import os
 import sys
@@ -26,8 +14,6 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 from experiment_prototype.decimation_scheme.decimation_scheme import \
     DecimationScheme, DecimationStage, create_firwin_filter_by_attenuation
-
-IB_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.ib.collab"
 
 def create_15km_scheme():
     """
