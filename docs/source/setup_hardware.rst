@@ -283,3 +283,57 @@ To be able to run Borealis at high data rates, a powerful CPU with many cores an
 Not all networking equipment works well together or with USRP equipment. Some prototyping with different models may be required.
 
 Once these components are selected, the supporting components such as motherboard, cooling and hard drives can all be selected. Assemble the computer following the instructions that come with the motherboard.
+
+-----------------------
+NTP discipline with PPS
+-----------------------
+
+Some aspects of Borealis depend upon the operating system having the correct time. The Network Time Protocol (NTP)
+can be used to provide a stable and accurate system clock. A correct system clock, along with proper programming,
+can help to catch GPS issues and make sure that the Borealis scheduler starts and stops control programs
+as close as possible to the correct time.
+
+Though not strictly necessary for the Borealis radar to operate, a more stable and accurate clock can
+be achieved by disciplining NTP with a Pulse-Per-Second (PPS) signal. There are several unused outputs
+on the Octoclock-g clock distribution unit. An unused PPS signal can be used from the Octoclock-g to
+help NTP discipline the Borealis computer's onboard clock. In ideal conditions, with PPS disciplined
+NTP running, the Borealis computers at several SuperDARN Canada sites are disciplined to
+within a few microseconds of true GPS time. This is several orders of magnitude better than
+without a PPS signal.
+
+To utilize this ability of NTP, a coaxial cable needs to be modified so that one end connects to the
+DCD and GND pins of the motherboard's COM port. In addition to creating the cable and connecting it
+to the appropriate pins, see the next section's NTP setup
+guide to properly set up the software to handle the incoming PPS signal.
+
+The photo below shows how the center conductor and shield of a coaxial cable are stripped, so they can
+be soldered to hookup wire to connect to the header pins on the motherboard COM port. The other end of
+the coaxial cable is connected to one of the PPS outputs of the Octoclock-g clock distribution unit.
+
+The COM ports on off-the-shelf motherboards are typically 0.1" spaced header pins, in a shrouded connector.
+This means that you can use one of the 0.1" female-female jumper cables from the N200 assembly steps,
+cut it in half and solder the bare wire end to the coaxial cable stripped wire ends.
+Note that the *centre conductor* is attached to the *DCD* pin and the *braid* is connected to the *GND* pin.
+
+.. image:: img/pps_ntp_1.jpg
+   :scale: 80%
+   :alt: Modify one SMA coaxial cable to connect to the DCD and GND pins of the motherboard
+   :align: center
+
+A typical pinout for COM ports is shown below, but check with your motherboard's user manual to verify
+both the location and pinout:
+
+.. image:: img/typical_com_port.png
+   :scale: 80%
+   :alt: Typical motherboard COM port pinout
+   :align: center
+
+
+The photo below shows the modified coaxial cable in place. On the motherboard version in the photo,
+the onboard COM port is to the left of the 'AA' shown on the 7-segment display.
+
+.. image:: img/pps_ntp_2.jpg
+   :scale: 80%
+   :alt: Modified coaxial cable connected to the COM port DCD and GND pins on the motherboard
+   :align: center
+
