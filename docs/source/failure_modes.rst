@@ -90,6 +90,33 @@ Start the radar by:
 *NOTE* This may take a long time, and depends upon many factors including the antenna view of satellites, how long the
 octoclock-g has been powered off, temperature, etc. In testing it locked within 20 minutes.
 
+Front panel LEDS show incorrect pattern but Borealis continues to run normally
+------------------------------------------------------------------------------
+On several occasions, one of the N200 devices has shown a front panel LED pattern that doesn't match
+the expected pattern. The symptoms are:
+
+    - The IDLE (Yellow) or TXo (RED) LED(s) are lit when they should not be
+    - The N200 and Borealis system are operating normally
+
+Here is an example image from a webcam photo of the Saskatoon SuperDARN Borealis rack where the IDLE
+LED on N200 #4 is lit when it shouldn't be:
+
+.. image:: img/n200_LED_fault.jpg
+   :scale: 80%
+   :alt: N200 with IDLE LED incorrectly lit while Borealis operates normally
+   :align: center
+
+Fix this issue by:
+
+    - Stop Borealis, disconnect the N200 exhibiting problems
+    - Open the N200 case
+    - Reseat the jumper wires supplying power to the LED in question
+    - Ensure no LED wires/legs are shorting to anything, use electrical tape if you have to, or trim the LED legs shorter
+    - Reconnect the N200, ensure that when power is connected, all four LEDS on the front panel light up
+    - Start Borealis, ensure the problematic LED no longer lights up in normal operation
+
+If this doesn't solve the issue, a further investigation into the TXIO board and daughterboard hardware is required
+
 TXIO Cable disconnect from N200 or Transmitter
 ----------------------------------------------
 If the cable carrying differential signals to/from the transmitters and the N200s is removed, or
