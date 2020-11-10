@@ -298,7 +298,7 @@ be achieved by disciplining NTP with a Pulse-Per-Second (PPS) signal. There are 
 on the Octoclock-g clock distribution unit. An unused PPS signal can be used from the Octoclock-g to
 help NTP discipline the Borealis computer's onboard clock. In ideal conditions, with PPS disciplined
 NTP running, the Borealis computers at several SuperDARN Canada sites are disciplined to
-within a few microseconds of true GPS time. This is several orders of magnitude better than
+within a few microseconds of UTC time. This is several orders of magnitude better than
 without a PPS signal.
 
 To utilize this ability of NTP, a coaxial cable needs to be modified so that one end connects to the
