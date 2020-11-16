@@ -213,46 +213,83 @@ Installing the Custom-Made TXIO Board
        :alt: TXIO rear view
        :align: center
 
-#. Follow the testing procedure below to run a simple test of the TXIO outputs.
 
-    **TXIO OUTPUT TESTS**
+**TXIO OUTPUT TESTS**
 
-    - Connect a needle probe to channel one of your oscilloscope and set it to trigger on the rising edge of channel one.
+#. Follow the testing procedure below to run a simple test of the TXIO inputs and outputs. There are two types of tests, a single ended output test which tests the SMA outputs and LEDs, and a loopback test which tests the differential signal outputs and inputs without an expensive differential probe. Reference the above image of the rear of the N200 for pinouts.
 
-    - Run test_txio_gpio.py located in borealis/testing/n200_gpio_test. Usage is as follows:
+    #. Connect a needle probe to channel one of your oscilloscope and set it to trigger on the rising edge of channel one.
+
+    #. Connect a needle probe to channel two of your oscilloscope, to be used in later tests.
+
+    #. Run test_txio_gpio.py located in borealis/tools/n200_gpio_test/ [TODO: VERIFY LOCATION ONCE MERGED]. Usage is as follows:
 
         `python3 test_txio_gpio.py <N200_ip_address>`
 
-    - When prompted to enter the pins corresponding to the TXIO signals, press enter to accept the default pin settings. This will begin the tests. Pressing CTRL+C and entering "y" will tell the program to run the next test.
+    #. When prompted to enter the pins corresponding to the TXIO signals, press enter to accept the default pin settings. This will begin the tests.
 
-    - Insert the needle probe into the SMA output corresponding to RXO. The scope signal should be the inverse of the pattern flashed by the GREEN front LED. Then, proceed to the next test (CTRL+C, then enter "y").
+    #. Insert the needle probe into the SMA output corresponding to RXo, this should be the right-most SMA output when facing the N200 from the back.
 
-    - Insert the needle probe into the SMA output corresponding to TXO. The scope signal should be the inverse of the pattern flashed by the RED and BLUE front LEDs. Then, proceed to the next test (CTRL+C, then enter "y").
+        #. Verify that the GREEN LED is flashing, and all others are unlit.
+        #. Verify that the scope signal is the inverse of the pattern flashed by the GREEN front LED.
+        #. Then, proceed to the next test (CTRL+C, then enter "y").
 
-    - Insert the needle probe into the SMA output corresponding to TR. The scope signal should be the inverse of the pattern flashed by the BLUE and GREEN front LEDs. Then, proceed to the next test (CTRL+C, then enter "y").
+    #. Insert the needle probe into the SMA output corresponding to TXo, this should be the second SMA output from the left when facing the N200 from the back.
 
-        - Insert the needle probe into the hole corresponding to pin 7 of the D-Sub connector (TR+). The scope signal should follow the pattern flashed by the BLUE and GREEN front LEDs.
+        #. Verify that the RED and BLUE LEDs are flashing together, and both others are unlit.
+        #. Verify that the scope signal is the inverse of the pattern flashed by the RED and BLUE front LEDs.
+        #. Then, proceed to the next test (CTRL+C, then enter "y").
 
-        - Insert the needle probe into the hole corresponding to pin 2 of the D-Sub connector (TR-). The scope signal should be the inverse of the pattern flashed by the BLUE and GREEN front LEDs.
+    #. Insert the needle probe into the SMA output corresponding to TR, this should be the left-most SMA output when facing the N200 from the back.
 
-    - Insert the needle probe into SMA output corresponding to IDLE. The scope signal should be the inverse of the pattern flashed by the YELLOW front LED. Then, proceed to the next test (CTRL+C, then enter "y").
+        #. Verify that the BLUE and GREEN LEDs are flashing together, and both others are unlit.
+        #. Verify that the scope signal is the inverse of the pattern flashed by the BLUE and GREEN front LEDs.
+        #. Do NOT move to the next test yet.
 
-    - Insert the needle probe into the hole corresponding to pin 8 of the D-Sub. The scope signal should follow the sequence of numbers being printed to your terminal (high when the number is non-zero, low when the number is zero).
+    #. Insert the needle probe into the hole corresponding to pin 7 of the D-Sub connector (TR+, yellow wire, J2 pin 10).
 
-        - Insert the needle probe into the hole corresponding to pin 3 of the D-Sub. The scope signal should be the inverse of the sequence of numbers being printed to your terminal. Then, proceed to the next test (CTRL+C, then enter "y").
+        #. Verify that the scope signal is following the pattern flashed by the BLUE and GREEN front LEDs.
+        #. Do NOT move to the next test yet.
 
-    - To properly perform the loopback tests of the differential signals, connect the D-Sub pins to each other in the following configuration:
+    #. Insert the needle probe into the hole corresponding to pin 2 of the D-Sub connector (TR-, orange wire, J2 pin 8).
 
-        - Pin 6 to pin 7
-        - Pin 1 to pin 2
-        - Pin 8 to pin 9
-        - Pin 3 to pin 4
+        #. Verify that the scope signal is the inverse of the pattern flashed by the BLUE and GREEN front LEDs.
+        #. Then, proceed to the next test (CTRL+C, then enter "y").
 
-    - Once connected ensure that during the TR, AGC loopback test, the hex digit is non zero when the terminal indicates the output pin is low, and vice versa. Then, proceed to the next test (CTRL+C, then enter "y").
+    #. Insert the needle probe into SMA output corresponding to IDLE, this should be the third SMA output from the left when facing the N200 from the back.
 
-    - Ensure that during the TM, LP loopback test, the hex digit is non zero when the terminal indicates the output pin is low, and vice versa. Press CTRL+C, then enter "y" to end the tests.
+        #. Verify that the YELLOW LED is flashing, and all others are unlit.
+        #. Verify that the scope signal is the inverse of the pattern flashed by the YELLOW front LED.
+        #. Then, proceed to the next test (CTRL+C, then enter "y").
 
-    - This concludes the tests! If any of these signal output tests failed, additional troubleshooting is needed. To check the entire logic path of each signal, follow the testing procedures found in the TXIO notes document.
+    #. Insert the needle probe into the hole corresponding to pin 8 of the D-Sub (TM+, green wire, J2 pin 4)
+
+        #. Insert the needle probe from the oscilloscope channel two into the hole corresponding to pin 3 of the D-Sub (TM-, blue wire, J2 pin 2).
+        #. Verify that the scope signals for channel 1 and 2 are showing opposing pulses approximately 1 second in width, with a 2 second period (50% duty cycle). In other words, they are 180 degrees out of phase.
+        #. Do NOT move to the next test yet.
+
+    #. To properly perform the loopback tests of the differential signals, connect the D-Sub pins to each other in the following configuration:
+
+        #. Pin 6 to pin 7 - AGC+ to TR+, Red wire to Yellow wire
+        #. Pin 1 to pin 2 - AGC- to TR-, Brown wire to Orange wire
+        #. Pin 8 to pin 9 - TM+ to LP+, Green wire to Purple wire
+        #. Pin 3 to pin 4 - TM- to LP-, Blue wire to Grey wire
+
+    #. The first test is a loopback test which uses the TR differential signal output to test the AGC status input. If this test passes you can be confident that the entire path through the differential driver and receiver works properly. It will alternate between setting and clearing the TR signal. Move to this test with CTRL+C + "y".
+
+        #. Verify the hex digit printed by the script is `0x20` when the output pin is high.
+        #. Verify the hex digit printed by the script is `0x800` when the output pin is low.
+        #. If you see `0xa20` or `0xa00` during this test, verify the loop-back connections are in place
+        #. Then, proceed to the next test (CTRL+C, then enter "y")
+
+    #. The second test is a loopback test which uses the TM differential signal output to test the Low Power (LP) status input. If this test passes you can be confident that the entire path through the differential driver and receiver works properly. It will alternate between setting and clearning the TM signal.
+
+        #. Verify the hex digit printed by the script is `0x2000` when the output pin is high.
+        #. Verify the hex digit printed by the script is `0x200` when the output pin is low.
+        #. If you see `0x2a00` or `0xa00` during this test, verify the loop-back connections are in place
+        #. Press CTRL+C, then enter "y" to end the tests.
+
+    #. This concludes the tests! If any of these signal output tests failed, additional troubleshooting is needed. To check the entire logic path of each signal, follow the testing procedures found in the TXIO notes document.
 
 #. Install enclosure cover lid back in place, ensuring that no wires are pinched.
 
@@ -266,9 +303,9 @@ Configuring the Unit for Borealis
 Pre-amps
 --------
 
-For easy debugging, pre-amps are recommended to be installed inside existing SuperDARN transmitters where possible for SuperDARN main array channels. SuperDARN transmitters typically have a 15V supply and the low-noise amplifiers selected for pre-amplification (Mini-Circuits ZFL-500LN) operate at 15V, with max 60mA draw. The cable from the LPTR (low power transmit/receive) switch to the bulkhead on the transmitter can be replaced with a couple of cables to and from a filter and pre-amp. 
+For easy debugging, pre-amps are recommended to be installed inside existing SuperDARN transmitters where possible for SuperDARN main array channels. SuperDARN transmitters typically have a 15V supply and the low-noise amplifiers selected for pre-amplification (Mini-Circuits ZFL-500LN) operate at 15V, with max 60mA draw. The cable from the LPTR (low power transmit/receive) switch to the bulkhead on the transmitter can be replaced with a couple of cables to and from a filter and pre-amp.
 
-Note that existing channel filters (typically custom 8-20MHz filters) should be placed ahead of the pre-amps in line to avoid amplifying noise. 
+Note that existing channel filters (typically custom 8-20MHz filters) should be placed ahead of the pre-amps in line to avoid amplifying noise.
 
 It is also recommended to install all channels the same for all main array channels to avoid varying electrical path lengths in the array which will affect beamformed data.
 
