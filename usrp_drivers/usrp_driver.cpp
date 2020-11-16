@@ -256,7 +256,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       pulse_ptrs[i] = ptrs;
     }
 
-    // Getting usrp box time to find out when to send samples. box_time continously being updated.
+    // Getting usrp box time to find out when to send samples. box_time continuously being updated.
     auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
     auto time_now = box_time;
     auto sequence_start_time = time_now + delay;
@@ -488,6 +488,10 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   auto gps_unlocked_counter = 0;
   auto gps_unlocked_threshold = 1;
   auto time_diff_error_threshold = 0.5;
+  auto system_time = std::chrono::system_clock::now();
+  auto system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
+  auto gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
+  auto check_every_x_loops = 0;
   while (1) {
     // 3.0 is the timeout in seconds for the recv call, arbitrary number
     size_t num_rx_samples = rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
@@ -511,13 +515,15 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
     }
     // Time difference between the Octoclock-G and the system clock, should be close to 0
     // std::chrono::system_clock::now() takes on the order of a few microseconds
-    auto system_time = std::chrono::system_clock::now();
-    auto system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
+    system_time = std::chrono::system_clock::now();
+    system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
     // get_real_secs() may lose precision of the fractional seconds, but it's close enough to test
-    auto gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
-    if (gps_host_time_diff > time_diff_error_threshold) {
-        std::cout << "GPS and system time disagree! Difference (+ == system time in future): "
-        << gps_host_time_diff << std::endl;
+    gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
+    if (gps_host_time_diff > time_diff_error_threshold && check_every_x_loops++ % 10 == 0) {
+        std::cout << "GPS and system time disagree! Difference (+ == system time in future): " <<
+        gps_host_time_diff << std::endl <<
+        "GPS time: " << box_time.get_real_secs() << std::endl <<
+        "System time: " << system_since_epoch.count() << std::endl;
     }
     auto error_code = meta.error_code;
 
