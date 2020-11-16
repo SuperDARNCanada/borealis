@@ -193,7 +193,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
 
 #. Finally, add the GPS disciplined NTP lines to the root start up script.
 
-    - /sbin/modprobe pps_ldisc && /usr/bin/ldattach 18 /dev/ttyS0 && /usr/local/bin/ntpd
+    - /sbin/modprobe pps_ldisc && /usr/sbin/ldattach 18 /dev/ttyS0 && /usr/local/bin/ntpd
 
 #. Verify that the PPS signal incoming on the DCD line of ttyS0 is properly routed and being received. You'll get two lines every second corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since the epoch.
 
