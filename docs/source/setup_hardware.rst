@@ -277,14 +277,16 @@ Installing the Custom-Made TXIO Board
 
     #. The first test is a loopback test which uses the TR differential signal output to test the AGC status input. If this test passes you can be confident that the entire path through the differential driver and receiver works properly. It will alternate between setting and clearing the TR signal. Move to this test with CTRL+C + "y".
 
-        #. Verify the hex digit printed by the script is [TODO] when the output pin is high.
-        #. Verify the hex digit printed by the script is [TODO] when the output pin is low.
+        #. Verify the hex digit printed by the script is `0x20` when the output pin is high.
+        #. Verify the hex digit printed by the script is `0x800` when the output pin is low.
+        #. If you see `0xa20` or `0xa00` during this test, verify the loop-back connections are in place
         #. Then, proceed to the next test (CTRL+C, then enter "y")
 
     #. The second test is a loopback test which uses the TM differential signal output to test the Low Power (LP) status input. If this test passes you can be confident that the entire path through the differential driver and receiver works properly. It will alternate between setting and clearning the TM signal.
 
-        #. Verify the hex digit printed by the script is [TODO] when the output pin is high.
-        #. Verify the hex digit printed by the script is [TODO] when the output pin is low.
+        #. Verify the hex digit printed by the script is `0x2000` when the output pin is high.
+        #. Verify the hex digit printed by the script is `0x200` when the output pin is low.
+        #. If you see `0x2a00` or `0xa00` during this test, verify the loop-back connections are in place
         #. Press CTRL+C, then enter "y" to end the tests.
 
     #. This concludes the tests! If any of these signal output tests failed, additional troubleshooting is needed. To check the entire logic path of each signal, follow the testing procedures found in the TXIO notes document.
@@ -301,9 +303,9 @@ Configuring the Unit for Borealis
 Pre-amps
 --------
 
-For easy debugging, pre-amps are recommended to be installed inside existing SuperDARN transmitters where possible for SuperDARN main array channels. SuperDARN transmitters typically have a 15V supply and the low-noise amplifiers selected for pre-amplification (Mini-Circuits ZFL-500LN) operate at 15V, with max 60mA draw. The cable from the LPTR (low power transmit/receive) switch to the bulkhead on the transmitter can be replaced with a couple of cables to and from a filter and pre-amp. 
+For easy debugging, pre-amps are recommended to be installed inside existing SuperDARN transmitters where possible for SuperDARN main array channels. SuperDARN transmitters typically have a 15V supply and the low-noise amplifiers selected for pre-amplification (Mini-Circuits ZFL-500LN) operate at 15V, with max 60mA draw. The cable from the LPTR (low power transmit/receive) switch to the bulkhead on the transmitter can be replaced with a couple of cables to and from a filter and pre-amp.
 
-Note that existing channel filters (typically custom 8-20MHz filters) should be placed ahead of the pre-amps in line to avoid amplifying noise. 
+Note that existing channel filters (typically custom 8-20MHz filters) should be placed ahead of the pre-amps in line to avoid amplifying noise.
 
 It is also recommended to install all channels the same for all main array channels to avoid varying electrical path lengths in the array which will affect beamformed data.
 
