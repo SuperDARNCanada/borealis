@@ -57,6 +57,7 @@ def ndarray_in_shr_mem(ndarray):
     shr_arr = np.frombuffer(mapfile, dtype=ndarray.dtype).reshape(ndarray.shape)
     shr_arr[:] = ndarray
 
+    new_shm.close_fd()
     return {'name' : new_shm.name, 'data' : shr_arr}
 
 def fill_datawrite_proto(processed_data, slice_details, data_outputs):
@@ -110,7 +111,7 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
 
             try:
                 intf_samps = data_outputs['beamformed_i'][sd['slice_num']][i]
-                add_array(main_samps, beam.mainsamples)
+                add_array(intf_samps, beam.intfsamples)
             except:
                 # No interferometer data
                 pass
@@ -165,7 +166,7 @@ def main():
 
         rx_rate = np.float64(sp_packet.rxrate)
         output_sample_rate = np.float64(sp_packet.output_sample_rate)
-        first_rx_sample_off = np.uint32(sp_packet.offset_to_first_rx_sample * rx_rate)
+        first_rx_sample_off = sp_packet.offset_to_first_rx_sample
 
         processed_data = processeddata_pb2.ProcessedData()
 
