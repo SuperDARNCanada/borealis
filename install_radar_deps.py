@@ -60,7 +60,13 @@ def get_distribution():
     os_info = execute_cmd("cat /etc/os-release")
 
     os_info = os_info.splitlines()
-    distro = os_info[0].strip("NAME=").strip('"')
+    # get Pretty name if available
+    for line in os_info:
+        if 'PRETTY_NAME' in line:
+            distro = line.strip("PRETTY_NAME=").strip('"')
+            break
+    else:  # no break, no PRETTY_NAME
+        distro = os_info[0].strip("NAME=").strip('"')
 
     return distro
 
@@ -257,7 +263,13 @@ def install_uhd():
                 boost_version = "1.71"
             elif "19.10" in DISTRO:
                 boost_version = "1.67"
+            else:
+                print("Ubuntu version {} unrecognized; exiting".format(DISTRO))
+                sys.exit(1)
             libpath = '/usr/lib/x86_64-linux-gnu'
+        else:
+            print("Distro {} unrecognized; exiting".format(DISTRO))
+            sys.exit(1)
 
         files = glob.glob('{}/libboost_*.so.{}*'.format(libpath, boost_version))
         print(files)
