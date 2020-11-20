@@ -25,13 +25,13 @@ def usage_msg():
     :returns: the usage message
     """
 
-    usage_message = """ install_radar_deps.py [-h] installation_directory
+    usage_message = """ install_radar_deps.py [-h] radar install_dir
 
     This script will download and configure all dependencies for the
     Borealis project. You must supply an installation directory.
 
     Example usage:
-    python3 install_radar_deps.py /home/radar/borealis/
+    python3 install_radar_deps.py sas /home/radar/borealis/
 
     """
     return usage_message
@@ -375,6 +375,10 @@ args = parser.parse_args()
 
 if os.geteuid() != 0:
     print("You must run this script as root.")
+    sys.exit(1)
+
+if not os.path.isdir(args.install_dir):
+    print("Install directory does not exist: {}".format(args.install_dir))
     sys.exit(1)
 
 if args.borealis_dir == "":
