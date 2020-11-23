@@ -502,28 +502,32 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
       first_time = false;
     }
     box_time = meta.time_spec;
-
-    // Need to check that the GPS time is sane and that GPS is locked
-    if (!usrp_d.gps_locked()) {
-        if (gps_unlocked_counter++ > gps_unlocked_threshold) {
-            std::cout << "GPS unlocked!" << std::endl;
-        }
-    } else {
-        if (gps_unlocked_counter-- < 0) {
-            gps_unlocked_counter = 0;
-        }
-    }
-    // Time difference between the Octoclock-G and the system clock, should be close to 0
-    // std::chrono::system_clock::now() takes on the order of a few microseconds
-    system_time = std::chrono::system_clock::now();
-    system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
-    // get_real_secs() may lose precision of the fractional seconds, but it's close enough to test
-    gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
-    if (gps_host_time_diff > time_diff_error_threshold && check_every_x_loops++ % 10 == 0) {
-        std::cout << "GPS and system time disagree! Difference (+ == system time in future): " <<
-        gps_host_time_diff << std::endl <<
-        "GPS time: " << box_time.get_real_secs() << std::endl <<
-        "System time: " << system_since_epoch.count() << std::endl;
+    if(check_every_x_loops++ % 100000 == 0) {
+	    std::cout << "." << std::endl;
+	    // Need to check that the GPS time is sane and that GPS is locked
+	    if (!usrp_d.gps_locked()) {
+		if (gps_unlocked_counter++ > gps_unlocked_threshold) {
+		    std::cout << "GPS unlocked!" << std::endl;
+		}
+	    } else {
+		if (gps_unlocked_counter-- < 0) {
+		    gps_unlocked_counter = 0;
+		}
+	    }
+	    // Time difference between the Octoclock-G and the system clock, should be close to 0
+	    // std::chrono::system_clock::now() takes on the order of a few microseconds
+	    system_time = std::chrono::system_clock::now();
+	    system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
+	    // get_real_secs() may lose precision of the fractional seconds, but it's close enough to test
+	    gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
+	    // ** NOTE THAT DOING ALL THIS PRINTING CAUSES LATES, SHOULD PASS THE LOCK STATUS AND TIME DIFF TO ANOTHER MODULE **
+	    if (gps_host_time_diff > time_diff_error_threshold) {
+		std::cout.precision(17);
+		std::cout << "GPS and system time disagree! Difference (+ == system time in future): " <<
+		gps_host_time_diff << std::endl <<
+		"GPS time: " << std::fixed << box_time.get_real_secs() << std::endl <<
+		"System time: " << std::fixed << system_since_epoch.count() << std::endl;
+	    }
     }
     auto error_code = meta.error_code;
 
