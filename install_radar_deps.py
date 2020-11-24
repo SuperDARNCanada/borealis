@@ -379,8 +379,8 @@ def install_config():
 
 parser = ap.ArgumentParser(usage=usage_msg(), description="Installation script for Borealis utils")
 parser.add_argument("--borealis-dir", help="Path to the Borealis installation directory", default="")
-parser.add_argument("--user", help="The username of the user who will run borealis", default="radar")
-parser.add_argument("--group", help="The group name of the user who will run boralis", default="users")
+parser.add_argument("--user", help="The username of the user who will run borealis. Default 'radar'", default="radar")
+parser.add_argument("--group", help="The group name of the user who will run borealis. Default 'users'", default="users")
 parser.add_argument("radar", help="The three letter abbreviation for this radar. Example: sas")
 parser.add_argument("install_dir", help="Path to the installation directory")
 args = parser.parse_args()
