@@ -91,10 +91,11 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
 
 #. If you're building Borealis for a non University of Saskatcheawn radar, use a Usask `config.ini` file (located `here <https://github.com/SuperDARNCanada/borealis_config_files>`_) as a template or the config file `documentation <https://borealis.readthedocs.io/en/latest/config_options.html>`_ to create your own file in the borealis directory.
 
-#. The Borealis software has a script called `install_radar_deps_opensuse.sh` to help install dependencies. This script has to be run by the root user. This script can be modified to use the package manager of a different distribution. Make sure that the version of CUDA is up to date and supports your card. This script makes an attempt to correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD does not configure correctly, an improper Boost installation or library naming convention is the likely reason.
+#. The Borealis software has a script called `install_radar_deps.py` to help install dependencies. This script has to be run with root privileges. This script can be modified to add the package manager of a different distribution if it doesn't exist yet. Make sure that the version of CUDA is up to date and supports your card. This script makes an attempt to correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD does not configure correctly, an improper Boost installation or library naming convention is the likely reason. Note that you need python3 installed before you can run this script. If this script does not work for you, you can try the `install_radar_deps_opensuse.sh` shell script, which is known to work on OpenSuSe 15.1. The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
 
     - cd $BOREALISPATH
-    - sudo ./install_radar_deps_opensuse.sh > install_log.txt 2>&1
+    - chmod +x install_radar_deps.py
+    - sudo ./install_radar_deps.py [radar abbreviation] $BOREALISPATH > install_log.txt 2>&1
 
 #. Install pydarn for realtime data support as well as testing and data conversion support:
 
