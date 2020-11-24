@@ -371,7 +371,7 @@ def install_hdw_dat():
 
 def install_config():
 
-    install_config_cmd = "cd $BOREALISPATH; git submodule update --init;" \
+    install_config_cmd = "bash -c 'cd $BOREALISPATH'; git submodule update --init;" \
     "chown -R {normal_user}:{normal_group} borealis_config_files;"
     install_config_cmd = install_config_cmd.format(normal_user=args.user, normal_group=args.group)
     execute_cmd(install_config_cmd)
