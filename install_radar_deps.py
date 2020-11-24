@@ -344,7 +344,7 @@ def install_realtime():
 
     rt_cmd = "bash -c \"cd /usr/local;" \
     "git clone https://github.com/vtsuperdarn/hdw.dat.git;" \
-    "mkdir $BOREALISPATH/borealisrt_env;" \
+    "mkdir -p $BOREALISPATH/borealisrt_env;" \
     "virtualenv $BOREALISPATH/borealisrt_env;" \
     "source $BOREALISPATH/borealisrt_env/bin/activate;" \
     "pip install zmq;" \
