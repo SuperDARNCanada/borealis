@@ -25,12 +25,13 @@ import matplotlib.dates as mdates
 
 import remote_server_options as rso
 
-def format_to_atq(dt, experiment, first_event_flag=False):
+def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string=''):
     """Turns an experiment line from the scd into a formatted atq command.
 
     Args:
         dt (datetime): Datetime of the experiment
         experiment (str): The experiment to run
+        scheduling_mode (str): The scheduling mode to run
         first_event_flag (bool, optional): Flag to signal whether the experiment is the first to
         run
 
@@ -38,13 +39,15 @@ def format_to_atq(dt, experiment, first_event_flag=False):
         str: Formatted atq str.
     """
 
-    start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release'"
-    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment)
+    if kwargs_string:
+        start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode} --kwargs_string {kwargs_string}'"
+    else:
+        start_cmd = "echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}'"
+    start_cmd = start_cmd.format(borealis_path=os.environ['BOREALISPATH'],experiment=experiment,scheduling_mode=scheduling_mode, kwargs_string=kwargs_string)
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
     else:
         cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
-
     cmd_str = dt.strftime(cmd_str)
     return cmd_str
 
@@ -235,6 +238,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         duration(minutes)
         prio(priority)
         experiment
+        scheduling_mode
 
     The true timeline queued_lines dictionary differs from the scd_lines list by the following:
         - duration is parsed, adding in events so that all event durations are equal to the next event's
@@ -266,6 +270,10 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         line['order'] = i
 
     def calculate_new_last_line_params():
+        """
+        when the last line is of set duration, find its finish time so that
+        the infinite duration line can be set to run again at that point.
+        """
         last_queued_line = queued_lines[-1]
         queued_dur_td = datetime.timedelta(minutes=int(last_queued_line['duration']))
         queued_finish = last_queued_line['time'] + queued_dur_td
@@ -276,7 +284,6 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         # if we have lines queued up, grab the last one to compare to.
         if queued_lines:
             last_queued_line, queued_finish = calculate_new_last_line_params()
-
         # handling infinite duration lines
         if scd_line['duration'] == '-':
             # if no line set, just assign it
@@ -306,7 +313,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                                                                         dt=scd_line['time'])
                     warnings.append(warnings)
 
-        else:
+        else:  # line has a set duration
             duration_td = datetime.timedelta(minutes=int(scd_line['duration']))
             finish_time = scd_line['time'] + duration_td
 
@@ -320,10 +327,11 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                     queued_lines.append(scd_line)
                 else:
                     if int(scd_line['prio']) > int(inf_dur_line['prio']):
-                        time_diff = scd_line['time'] - inf_dur_line['time']
-                        new_line = copy.deepcopy(inf_dur_line)
-                        new_line['duration'] = time_diff.total_seconds()//60
-                        queued_lines.append(new_line)
+                        if scd_line['time'] > time_of_interest:
+                            time_diff = scd_line['time'] - inf_dur_line['time']
+                            new_line = copy.deepcopy(inf_dur_line)
+                            new_line['duration'] = time_diff.total_seconds()//60
+                            queued_lines.append(new_line)
                         queued_lines.append(scd_line)
 
                         finish_time = scd_line['time'] + duration_td
@@ -406,9 +414,9 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                         queued_lines.append(item_to_add)
 
         if idx == len(scd_lines) - 1:
-            last_queued_line, queued_finish = calculate_new_last_line_params()
-
-            inf_dur_line['time'] = queued_finish
+            if queued_lines:  # infinite duration line starts after the last queued line
+                last_queued_line, queued_finish = calculate_new_last_line_params()
+                inf_dur_line['time'] = queued_finish
             queued_lines.append(inf_dur_line)
 
     return queued_lines, warnings
@@ -452,10 +460,10 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     first_event = True
     for event in timeline:
         if first_event:
-            atq.append(format_to_atq(event['time'], event['experiment'], True))
+            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode'], True, event['kwargs_string']))
             first_event = False
         else:
-            atq.append(format_to_atq(event['time'], event['experiment']))
+            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode'], False, event['kwargs_string']))
     for cmd in atq:
         sp.call(cmd, shell=True)
 
@@ -484,41 +492,18 @@ def get_relevant_lines(scd_util, time_of_interest):
     relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
     while not found:
 
-        if not relevant_lines:
-            msg = "Error in schedule: Could not find any relevant_lines. Either no lines exist " \
-            "or an infinite duration line could not be found."
-
-            raise ValueError(msg)
-
-        lines_dict = {}
-        for line in relevant_lines:
-            if line['timestamp'] not in lines_dict:
-                lines_dict[line['timestamp']] = []
-            lines_dict[line['timestamp']].append(line)
-
-        for line in lines_dict[list(lines_dict)[0]]:
+        first_time_lines = [x for x in relevant_lines if x['timestamp'] == relevant_lines[0]['timestamp']]
+        for line in first_time_lines:
             if line['duration'] == '-':
                 found = True
 
         if found != True:
-            time -= datetime.timedelta(days=1)
+            time -= datetime.timedelta(minutes=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
             hhmm = time.strftime("%H:%M")
 
-            new_relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
-            if not new_relevant_lines:
-                msg = "Error in schedule: Could not find any relevant_lines. Either no lines exist "\
-                "or an infinite duration line could not be found."
-
-                raise ValueError(msg)
-
-            lines_diff = [d for d in new_relevant_lines if d not in relevant_lines]
-
-            for line in reversed(lines_diff):
-                if line['duration'] == '-':
-                    relevant_lines.insert(0, line)
-                    found = True
+            relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
 
     return relevant_lines
 
@@ -559,7 +544,7 @@ def _main():
         log_msg_header = "Updated at {}\n".format(time_of_interest)
         try:
             relevant_lines = get_relevant_lines(scd_util, time_of_interest)
-        except ValueError as e:
+        except (IndexError,ValueError) as e:
             error_msg = ("{logtime}: Unable to make schedule\n"
                          "\t Exception thrown:\n"
                          "\t\t {exception}\n")

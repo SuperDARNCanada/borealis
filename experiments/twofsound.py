@@ -22,15 +22,6 @@ class Twofsound(ExperimentPrototype):
         else:
             beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
 
-        if scf.opts.site_id in ["sas", "pgr"]:
-            freqs = (10500, 13000)
-        if scf.opts.site_id in ["rkn"]:
-            freqs = (10200, 12200)
-        if scf.opts.site_id in ["inv"]:
-            freqs = (10300, 12200)
-        if scf.opts.site_id in ["cly"]:
-            freqs = (10500, 12500)
-
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
         if scf.opts.site_id in ["sas", "pgr"]:
@@ -46,14 +37,14 @@ class Twofsound(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "scanbound" : [i * 3.5 for i in range(len(beams_to_use))],
-            "txfreq" : freqs[0], #kHz
+            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         }
 
         slice_2 = copy.deepcopy(slice_1)
-        slice_2['txfreq'] = freqs[1]
+        slice_2['txfreq'] = scf.COMMON_MODE_FREQ_2
 
         list_of_slices = [slice_1, slice_2]
         sum_of_freq = 0

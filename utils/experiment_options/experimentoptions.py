@@ -144,7 +144,7 @@ class ExperimentOptions:
         self._analog_rx_attenuator = params[9]  # dB
         self._tdiff = params[10] # ns
         self._phase_sign = params[11]
-        self._intf_offset = [float(params[12]), float(params[13]), float(params[14])]  
+        self._intf_offset = [float(params[12]), float(params[13]), float(params[14])]
         # interferometer offset from
         # midpoint of main, metres [x, y, z] where x is along line of antennas, y is along array
         # normal and z is altitude difference, in m.
@@ -221,8 +221,6 @@ class ExperimentOptions:
                     \n    minimum_tau_spacing_length = {} \
                     \n    minimum_pulse_separation = {} \
                     \n    tr_window_time = {} \
-                    \n    atten_window_time_start = {} \
-                    \n    atten_window_time_end = {} \
                     \n    default_freq = {} \
                     \n    restricted_ranges = {} \
                      """.format(self.main_antenna_count, self.interferometer_antenna_count,
@@ -238,7 +236,6 @@ class ExperimentOptions:
                                 self.max_range_gates, self.max_beams, self.max_freq, self.min_freq,
                                 self. minimum_pulse_length, self.minimum_tau_spacing_length,
                                 self.minimum_pulse_separation, self.tr_window_time,
-                                self.atten_window_time_start, self.atten_window_time_end,
                                 self.default_freq, self.restricted_ranges)
         return return_str
 
@@ -289,7 +286,7 @@ class ExperimentOptions:
     @property
     def max_number_of_filter_taps_per_stage(self):
         return self._max_number_of_filter_taps_per_stage
-  
+
     @property
     def site_id(self):
         return self._site_id

@@ -13,8 +13,14 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 class Normalscan(ExperimentPrototype):
 
-    def __init__(self):
-        cpid = 150
+    def __init__(self, **kwargs):
+        """
+        kwargs:
+
+        freq: int
+
+        """
+        cpid = 151
         super(Normalscan, self).__init__(cpid)
 
         if scf.IS_FORWARD_RADAR:
@@ -27,6 +33,15 @@ class Normalscan(ExperimentPrototype):
         if scf.opts.site_id in ["sas", "pgr"]:
             num_ranges = scf.STD_NUM_RANGES
 
+        # default frequency set here
+        freq = scf.COMMON_MODE_FREQ_1
+        
+        if kwargs:
+            if 'freq' in kwargs.keys():
+                freq = kwargs['freq']
+        
+        self.printing('Frequency set to {}'.format(freq))
+
         self.add_slice({  # slice_id = 0, there is only one slice.
             "pulse_sequence": scf.SEQUENCE_7P,
             "tau_spacing": scf.TAU_SPACING_7P,
@@ -37,7 +52,7 @@ class Normalscan(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
-            "txfreq" : 10500, #kHz
+            "txfreq" : freq, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

@@ -115,7 +115,7 @@ def get_wavetables(wavetype):
     else:
         iwave_table = []
         qwave_table = []
-        errmsg = "Wavetype %s not defined" % (wavetype)
+        errmsg = "Wavetype {} not defined".format(wavetype)
         raise ExperimentException(errmsg)
 
     # Example of a wavetable is below, if they were defined for SINE wavetypes.

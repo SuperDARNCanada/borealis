@@ -189,7 +189,7 @@ class SWG(object):
             end_hr = items[1][3:]
 
             if "Common Time" in line:
-
+                mode_type = "common"
                 # 2018 11 23 no longer scheduling twofsound as common time.
                 if "no switching" in line:
                     mode_to_use = modes["no_switching_time"]
@@ -197,7 +197,7 @@ class SWG(object):
                     mode_to_use = modes["htr_common_time"]
 
             if "Special Time" in line:
-
+                mode_type = "special"
                 if "ALL" in line or radar.upper() in line:
 
                     if "THEMIS" in line:
@@ -219,11 +219,13 @@ class SWG(object):
                 #skip_line = True
 
             if "Discretionary Time" in line:
+                mode_type = "discretionary"
                 mode_to_use = modes["discretionary_time"]
 
             param = {"yyyymmdd": "{}{}{}".format(year, month, start_day),
                      "hhmm" : "{}:00".format(start_hr),
-                     "experiment" : mode_to_use}
+                     "experiment" : mode_to_use,
+                     "scheduling_mode" : mode_type}
             parsed_params.append(param)
 
         return parsed_params
@@ -274,16 +276,18 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'])
+                        site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
                     except ValueError as e:
-                        error_msg = ("{logtime}: Unable to add line with parameters:\n"
-                                     "\t {date} {time} {experiment}\n"
+                        error_msg = ("{logtime} {sitescd}: Unable to add line with parameters:\n"
+                                     "\t {date} {time} {experiment} {mode}\n"
                                      "\t Exception thrown:\n"
                                      "\t\t {exception}\n")
-                        error_msg = error_msg.format(logtime = today.strftime("%c"),
+                        error_msg = error_msg.format(logtime=today.strftime("%c"),
+                                                        sitescd=site_scd.scd_filename,
                                                         date=ex['yyyymmdd'],
                                                         time=ex['hhmm'],
                                                         experiment=ex['experiment'],
+                                                        mode=ex['scheduling_mode'],
                                                         exception=str(e))
 
                         with open(scd_logs + scd_error_log, 'a') as f:

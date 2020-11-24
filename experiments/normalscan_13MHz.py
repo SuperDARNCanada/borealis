@@ -37,7 +37,7 @@ class Normalscan(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
-            "txfreq" : 13000, #kHz
+            "txfreq" : scf.COMMON_MODE_FREQ_2, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
