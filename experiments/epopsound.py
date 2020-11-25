@@ -2,15 +2,6 @@
 Copyright SuperDARN Canada 2020
 
 Keith Kotyk
-
-This experiment depends on a complementary passes file. The file should have name
-{radar}.epop.passes name and located under the directory stored in the BOREALISSCHEDULEPATH env
-variable. Lines in the file follow the structure:
-
-utctimestampfromepoch beam marker_period freq(khz)
-
-The closest upcoming timestamp is used, so make sure this mode begins running before the required
-line.
 """
 
 import copy
@@ -25,9 +16,6 @@ sys.path.append(BOREALISPATH)
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
-
-EPOP_PASS_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.epop.passes"
-
 
 class Epopsound(ExperimentPrototype):
     """
@@ -44,7 +32,6 @@ class Epopsound(ExperimentPrototype):
 
     def __init__(self, **kwargs):
         cpid = 3371
-        epop_file = EPOP_PASS_FILE.format(scf.opts.site_id)
 
         # default values
         freqs = [scf.COMMON_MODE_FREQ_1]

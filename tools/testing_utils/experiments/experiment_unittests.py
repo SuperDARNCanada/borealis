@@ -30,7 +30,6 @@ from pathlib import Path
 from importlib import import_module
 
 BOREALISPATH = os.environ['BOREALISPATH']
-BOREALISSCHEDULEPATH = os.environ['BOREALISSCHEDULEPATH']
 sys.path.append(BOREALISPATH)
 
 # Need to hardcode this, as unittest does weird things when you supply an argument on command line,
@@ -82,16 +81,6 @@ class TestExperimentEnvSetup(unittest.TestCase):
    #         ehmain()
    #     os.environ['BOREALISPATH'] = BOREALISPATH
    #     sys.path.append(BOREALISPATH)
-
-    def test_borealisschedulepath(self):
-        """
-        Test failure to have BOREALISSCHEDULEPATH in env
-        """
-        # Need to remove the environment variable, reset for other tests
-        os.environ.pop('BOREALISSCHEDULEPATH')
-        with self.assertRaises((FileNotFoundError, KeyError)):
-            ehmain(experiment='IB_collab_mode')
-        os.environ['BOREALISSCHEDULEPATH'] = BOREALISSCHEDULEPATH
 
     def test_config_file(self):
         """
