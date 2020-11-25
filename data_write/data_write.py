@@ -113,14 +113,11 @@ DATA_TEMPLATE = {
 TX_TEMPLATE = {
     "tx_rate": [],
     "tx_center_freq": [],
-    "pulse_sequence_timing_us": [],
-    "pulse_offset_error_us": [],
+    "pulse_timing_us": [],
+    "pulse_sample_start": [],
     "tx_samples": [],
     "dm_rate": [],
-    "dm_rate_error": [],
     "decimated_tx_samples": [],
-    "tx_antennas": [],
-    "decimated_tx_antennas": [],
 }
 
 
