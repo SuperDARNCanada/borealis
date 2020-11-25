@@ -32,7 +32,8 @@ def usage_msg():
     argument. The experiment handler will search for the module in the BOREALISPATH/experiments
     directory. It will retrieve the class from within the module (your experiment).
 
-    Pass the mode. Available modes are release, debug, engineeringdebug, and python-profiling.
+    Pass the mode to specify module run options and data outputs. Available modes are 
+    release, debug, testdata, engineeringdebug, and pythonprofiling. 
     Release should be most commonly used.
 
     Pass in the scheduling mode type, in general common, discretionary, or special.
@@ -125,32 +126,36 @@ def steamed_hams_parser():
 parser = steamed_hams_parser()
 args = parser.parse_args()
 
-#TODO: System likely needs some updating to get rawrf working properly.
 if args.run_mode == "release":
+    # python optimized, no debug for regular operations
     python_opts = "-O -u"
     c_debug_opts = ""
     mode = "release"
     data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq"
 elif args.run_mode == "debug":
+    # run all modules in debug with regular operations data outputs, for testing modules
     python_opts = "-u"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
     data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq"
 elif args.run_mode == "pythonprofiling":
+    # run all modules in debug with python profiling, for optimizing python modules
     python_opts = "-O -u -m cProfile -o testing/python_testing/{module}.cprof"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
     data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq"
+elif args.run_mode == "testdata":
+    # run in scons release with python debug for tx data and print raw rf and bfiq, for verifying data
+    python_opts = "-u"
+    c_debug_opts = ""
+    mode = "release"
+    data_write_args = "--file-type=hdf5 --enable-tx --enable-bfiq --enable-raw-rf"
 elif args.run_mode == "engineeringdebug":
+    # run all modules in debug with tx and rawrf data - this mode is very slow
     python_opts = "-u"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
-    data_write_args = "--file-type=hdf5 --enable-bfiq --enable-antenna-iq --enable-tx --enable-raw-rf;"
-elif args.run_mode == "rawrf":
-    python_opts = "-O -u"
-    c_debug_opts = ""
-    mode = "release"
-    data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq --enable-raw-rf"
+    data_write_args = "--file-type=hdf5 --enable-bfiq --enable-antenna-iq --enable-raw-rf --enable-tx;"
 else:
     print("Mode {} is unknown. Exiting without running Borealis".format(args.run_mode))
     sys.exit(-1)
