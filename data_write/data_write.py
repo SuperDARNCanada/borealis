@@ -990,11 +990,10 @@ class DataWrite(object):
                 for meta in integration_meta.sequences:
                     tx_data['tx_rate'].append(meta.tx_data.txrate)
                     tx_data['tx_center_freq'].append(meta.tx_data.txctrfreq)
-                    tx_data['pulse_sequence_timing_us'].append(
-                        meta.tx_data.pulse_sequence_timing_us)
-                    tx_data['pulse_offset_error_us'].append(meta.tx_data.pulse_offset_error_us)
+                    tx_data['pulse_timing_us'].append(
+                        meta.tx_data.pulse_timing_us)
+                    tx_data['pulse_sample_start'].append(meta.tx_data.pulse_sample_start)
                     tx_data['dm_rate'].append(meta.tx_data.dmrate)
-                    tx_data['dm_rate_error'].append(meta.tx_data.dmrate_error)
 
                     tx_samples = []
                     decimated_tx_samples = []
@@ -1017,14 +1016,9 @@ class DataWrite(object):
                         cmplx = np.array(real + 1j * imag, dtype=np.complex64)
                         decimated_tx_samples.append(cmplx)
 
-                    tx_data['tx_antennas'].append(tx_antennas)
-                    tx_data['decimated_tx_antennas'].append(decimated_tx_antennas)
                     tx_data['tx_samples'].append(tx_samples)
                     tx_data['decimated_tx_samples'].append(decimated_tx_samples)
 
-                tx_data['tx_antennas'] = np.array(tx_data['tx_antennas'], dtype=np.uint32)
-                tx_data['decimated_tx_antennas'] = np.array(tx_data['decimated_tx_antennas'],
-                                                            dtype=np.uint32)
                 tx_data['tx_samples'] = np.array(tx_data['tx_samples'], dtype=np.complex64)
                 tx_data['decimated_tx_samples'] = np.array(tx_data['decimated_tx_samples'],
                                                            dtype=np.complex64)
