@@ -425,13 +425,6 @@ def main():
                     if sig_options.intf_antenna_count > 0:
                         filter_outputs_i = processed_intf_samples.filter_outputs
 
-
-                if sig_options.intf_antenna_count > 0:
-                    filter_outputs = [np.concatenate((x,y)) for x,y in zip(filter_outputs_m,
-                                                                                filter_outputs_i)]
-                else:
-                    filter_outputs = filter_outputs_m
-
             else:
                 if cupy_available:
                     filter_outputs_m = [cp.asnumpy(processed_main_samples.filter_outputs[-1])]
@@ -439,16 +432,17 @@ def main():
                     if sig_options.intf_antenna_count > 0:
                         filter_outputs_i = [cp.asnumpy(processed_intf_samples.filter_outputs[-1])]
                 else:
-                    filter_outputs_m = processed_main_samples.filter_outputs[-1]
+                    filter_outputs_m = [processed_main_samples.filter_outputs[-1]]
 
                     if sig_options.intf_antenna_count > 0:
-                        filter_outputs_i = processed_intf_samples.filter_outputs[-1]
+                        filter_outputs_i = [processed_intf_samples.filter_outputs[-1]]
 
 
-                if sig_options.intf_antenna_count > 0:
-                    filter_outputs = [np.concatenate((filter_outputs_m,filter_outputs_i))]
-                else:
-                    filter_outputs = filter_outputs_m
+            if sig_options.intf_antenna_count > 0:
+                filter_outputs = [np.hstack((x,y)) for x,y in zip(filter_outputs_m,
+                                                                    filter_outputs_i)]
+            else:
+                filter_outputs = filter_outputs_m
 
             data_outputs['debug_outputs'] = filter_outputs
             debug_rf = ndarray_in_shr_mem(ringbuffer.take(indices, axis=1, mode='wrap'))
