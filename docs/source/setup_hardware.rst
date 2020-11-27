@@ -37,9 +37,11 @@ The items installed in the rack at the Saskatoon site are listed below in order 
 - APC Smart UPS
 - 15V Acopian power supply
 
-(3 x APC PDUs (AP7900B) are mounted at the back of the rack)
+In addition to these items, there are the following:
 
-The Borealis computer is not in a rackmount case, instead it is placed to the right of the rack. 
+ - 3 x APC PDUs (AP7900B) are mounted at the back of the rack
+ - 1x 5-port unmanaged network switch that can handle at minimum 10Mbps, 100Mbps link speeds (10BASE-T and 100BASE-T) for Octoclock networking
+ - The Borealis computer is not in a rackmount case, instead it is placed to the right of the rack.
 
 -----
 USRPs
@@ -214,7 +216,8 @@ Installing the Custom-Made TXIO Board
        :align: center
 
 
-**TXIO OUTPUT TESTS**
+TXIO OUTPUT TESTS
+-----------------
 
 #. Follow the testing procedure below to run a simple test of the TXIO inputs and outputs. There are two types of tests, a single ended output test which tests the SMA outputs and LEDs, and a loopback test which tests the differential signal outputs and inputs without an expensive differential probe. Reference the above image of the rear of the N200 for pinouts.
 
@@ -373,4 +376,16 @@ the onboard COM port is to the left of the 'AA' shown on the 7-segment display.
    :scale: 80%
    :alt: Modified coaxial cable connected to the COM port DCD and GND pins on the motherboard
    :align: center
+
+-------------------------
+Octoclocks and Networking
+-------------------------
+
+One issue with the Octoclock units is that they contain a very basic Ethernet controller chip,
+the ENC28J60. This means that the Octoclock units will only operate at 10Mbps link speed. The 10Gb
+network switches specified above (NetGear XS708E-200NES) only operate at 100Mbps, 1000Mbps and 10000Mbps.
+Therefore, a 5-port unmanaged switch is used to connect all three Octoclocks to one of the 10Gbps
+network switches. The 5-port switch must be capable of operating at both 10Mbps and 100Mbps so it can
+connect to both the Octoclocks as well as the XS708E switch. The network cables connecting the
+Octoclocks to the 5-port switch do not need to be dual shielded and any Cat5 cable (or better) should work.
 
