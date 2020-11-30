@@ -9,7 +9,7 @@ System Overview and Rack Setup
 Below is a recommended configuration in comparison to a common SuperDARN system, Note that the N200s are in custom made shelves, but shelves can also be purchased from National Instruments:
 
 .. figure:: img/USRP-rack-rev5.png
-   :scale: 75 %
+   :scale: 50 %
    :alt: Block diagram of RX DSP software
    :align: center
 
@@ -42,6 +42,7 @@ In addition to these items, there are the following:
  - 3 x APC PDUs (AP7900B) are mounted at the back of the rack
  - 1x 5-port unmanaged network switch that can handle at minimum 10Mbps, 100Mbps link speeds (10BASE-T and 100BASE-T) for Octoclock networking
  - The Borealis computer is not in a rackmount case, instead it is placed to the right of the rack.
+ - 16 x Mini-Circuits SLP-21.4 low pass filters on the TX outputs of each N200
 
 -----
 USRPs

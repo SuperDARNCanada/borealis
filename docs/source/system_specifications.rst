@@ -18,6 +18,7 @@ Digital Radio Equipment
 - GPS Antenna (Male SMA connector)
 - 17x Custom TXIO Revision 5.0 board (for transmitter interfacing)
 - 22x Mini-Circuits ZFL-500LN pre-amps (20 and 2 spare)
+- 16x Mini-Circuites SLP-21.4 low pass filters
 - 8x coax cables and adapters for to/from INTF (interferometer) pre-amps
 - 32x coax cables for to/from main array filters and pre-amps inside transmitter
 - 1x 15V, 0.5A power supply (INTF pre-amps)
