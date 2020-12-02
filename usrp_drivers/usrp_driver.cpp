@@ -131,6 +131,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   double agc_signal_read_delay = driver_options.get_agc_signal_read_delay() * 1e-6;
 
+  auto time_diff_error_threshold = 0.2;
+  auto system_time = std::chrono::system_clock::now();
+  auto system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
+  auto gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
+
   zmq::message_t request;
 
   start_trigger.recv(&request);
@@ -318,6 +323,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             }
 
             // Read AGC and Low Power signals
+            // TODO: Does this belong here or could it go in an out-of-band thread? Same with GPS lock info and time diff
+            // TODO: What about reading EACH motherboard's pin status', then putting all lp, agc stat into two 16 bit numbers?
             usrp_d.clear_command_time();
             auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
@@ -366,7 +373,23 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       }() // full usrp function lambda
     ); // full usrp function timeit macro
 
-
+    // Read GPS status and time difference between GPS (box time) and NTP (system time)
+    if (!usrp_d.gps_locked()) {
+        std::cout << "GPS unlocked!" << std::endl;
+    }
+    // Time difference between the Octoclock-G and the system clock, should be close to 0
+    // std::chrono::system_clock::now() takes on the order of a few microseconds
+    system_time = std::chrono::system_clock::now();
+    system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
+    // get_real_secs() may lose precision of the fractional seconds, but it's close enough to test
+    gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
+    // ** NOTE THAT DOING ALL THIS PRINTING CAUSES LATES, SHOULD PASS THE LOCK STATUS AND TIME DIFF TO ANOTHER MODULE **
+    if (gps_host_time_diff > time_diff_error_threshold) {
+    std::cout.precision(17);
+    std::cout << "GPS and system time disagree! Difference (+ == system time in future): " <<
+    gps_host_time_diff << std::endl <<
+    "GPS time: " << std::fixed << box_time.get_real_secs() << std::endl <<
+    "System time: " << std::fixed << system_since_epoch.count() << std::endl;
 
     auto end_time = box_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
@@ -478,20 +501,13 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   auto rx_rate = usrp_d.get_rx_rate();
 
-
   zmq::message_t ring_size(sizeof(ringbuffer_size));
   memcpy(ring_size.data(), &ringbuffer_size, sizeof(ringbuffer_size));
   start_trigger.send(ring_size);
 
   //This loop receives 1 pulse sequence worth of samples.
   auto first_time = true;
-  auto gps_unlocked_counter = 0;
-  auto gps_unlocked_threshold = 1;
-  auto time_diff_error_threshold = 0.5;
-  auto system_time = std::chrono::system_clock::now();
-  auto system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
-  auto gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
-  auto check_every_x_loops = 0;
+
   while (1) {
     // 3.0 is the timeout in seconds for the recv call, arbitrary number
     size_t num_rx_samples = rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
@@ -502,33 +518,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
       first_time = false;
     }
     box_time = meta.time_spec;
-    if(check_every_x_loops++ % 100000 == 0) {
-	    std::cout << "." << std::endl;
-	    // Need to check that the GPS time is sane and that GPS is locked
-	    if (!usrp_d.gps_locked()) {
-		if (gps_unlocked_counter++ > gps_unlocked_threshold) {
-		    std::cout << "GPS unlocked!" << std::endl;
-		}
-	    } else {
-		if (gps_unlocked_counter-- < 0) {
-		    gps_unlocked_counter = 0;
-		}
-	    }
-	    // Time difference between the Octoclock-G and the system clock, should be close to 0
-	    // std::chrono::system_clock::now() takes on the order of a few microseconds
-	    system_time = std::chrono::system_clock::now();
-	    system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
-	    // get_real_secs() may lose precision of the fractional seconds, but it's close enough to test
-	    gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
-	    // ** NOTE THAT DOING ALL THIS PRINTING CAUSES LATES, SHOULD PASS THE LOCK STATUS AND TIME DIFF TO ANOTHER MODULE **
-	    if (gps_host_time_diff > time_diff_error_threshold) {
-		std::cout.precision(17);
-		std::cout << "GPS and system time disagree! Difference (+ == system time in future): " <<
-		gps_host_time_diff << std::endl <<
-		"GPS time: " << std::fixed << box_time.get_real_secs() << std::endl <<
-		"System time: " << std::fixed << system_since_epoch.count() << std::endl;
-	    }
-    }
+
     auto error_code = meta.error_code;
 
     switch(error_code) {
