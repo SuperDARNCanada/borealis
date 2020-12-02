@@ -385,11 +385,12 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
     // ** NOTE THAT DOING ALL THIS PRINTING CAUSES LATES, SHOULD PASS THE LOCK STATUS AND TIME DIFF TO ANOTHER MODULE **
     if (gps_host_time_diff > time_diff_error_threshold) {
-    std::cout.precision(17);
-    std::cout << "GPS and system time disagree! Difference (+ == system time in future): " <<
-    gps_host_time_diff << std::endl <<
-    "GPS time: " << std::fixed << box_time.get_real_secs() << std::endl <<
-    "System time: " << std::fixed << system_since_epoch.count() << std::endl;
+        std::cout.precision(17);
+        std::cout << "GPS and system time disagree! Difference (+ == system time in future): " <<
+        gps_host_time_diff << std::endl <<
+        "GPS time: " << std::fixed << box_time.get_real_secs() << std::endl <<
+        "System time: " << std::fixed << system_since_epoch.count() << std::endl;
+    }
 
     auto end_time = box_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
@@ -438,7 +439,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     expected_sqn_num++;
     more_pulses = true;
     DEBUG_MSG(std::endl << std::endl);
-  }
+  } // while(1)
 
 }
 
