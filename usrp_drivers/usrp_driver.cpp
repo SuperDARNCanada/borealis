@@ -134,7 +134,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   auto time_diff_error_threshold = 0.1;  // seconds
   auto system_time = std::chrono::system_clock::now();
   auto system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
-  auto gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
+  auto gps_to_system_time_diff = system_since_epoch.count() - box_time.get_real_secs();
 
   zmq::message_t request;
 
