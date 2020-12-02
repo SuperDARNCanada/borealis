@@ -235,7 +235,7 @@ int main(int argc, char **argv){
                              filter_taps, beam_phases,
                              rx_metadata.initialization_time(),
                              rx_metadata.sequence_start_time(),
-                             rx_metadata.gps_locked, rx_metadata.gps_to_system_time_diff,
+                             rx_metadata.gps_locked(), rx_metadata.gps_to_system_time_diff(),
                              dm_rates, slice_info);
 
     if (rx_metadata.numberofreceivesamples() == 0){
