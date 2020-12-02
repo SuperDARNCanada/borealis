@@ -528,6 +528,8 @@ namespace {
     pd.set_processing_time(dp->get_decimate_timing());
     pd.set_initialization_time(dp->get_driver_initialization_time());
     pd.set_sequence_start_time(dp->get_sequence_start_time());
+    pd.set_gps_locked(dp->get_gps_locked());
+    pd.set_gps_to_system_time_diff(dp->get_gps_to_system_time_diff());
   }
 
   /**
@@ -657,6 +659,7 @@ DSPCore::DSPCore(zmq::context_t &context, SignalProcessingOptions &sig_options,
                   std::vector<std::vector<float>> filter_taps,
                   std::vector<cuComplex> beam_phases,
                   double driver_initialization_time, double sequence_start_time,
+                  bool gps_locked, double gps_to_system_time_diff,
                   std::vector<uint32_t> dm_rates,
                   std::vector<rx_slice> slice_info) :
   sig_options(sig_options),
@@ -667,6 +670,8 @@ DSPCore::DSPCore(zmq::context_t &context, SignalProcessingOptions &sig_options,
   beam_phases(beam_phases),
   driver_initialization_time(driver_initialization_time),
   sequence_start_time(sequence_start_time),
+  gps_locked(gps_locked),
+  gps_to_system_time_diff(gps_to_system_time_diff),
   dm_rates(dm_rates),
   slice_info(slice_info)
 {
@@ -685,8 +690,6 @@ DSPCore::DSPCore(zmq::context_t &context, SignalProcessingOptions &sig_options,
   gpuErrchk(cudaEventRecord(initial_start, stream));
 
   shm = SharedMemoryHandler(random_string(20));
-
-
 }
 
 /**
@@ -1228,4 +1231,24 @@ double DSPCore::get_sequence_start_time()
  std::vector<rx_slice> DSPCore::get_slice_info()
  {
   return slice_info;
+ }
+
+ /**
+ * @brief      Gets the boolean indicating if the GPS is locked or not.
+ *
+ * @return     The boolean value indicating if the GPS is locked. True if locked.
+ */
+ bool DSPCore::get_gps_locked()
+ {
+  return gps_locked;
+ }
+
+ /**
+ * @brief      Gets the time difference between the GPS (box_time) and system (NTP).
+ *
+ * @return     The time difference between GPS and system time in seconds. Negative if GPS ahead
+ */
+double DSPCore::get_gps_to_system_time_diff()
+ {
+  return gps_to_system_time_diff;
  }

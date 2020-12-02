@@ -131,7 +131,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   double agc_signal_read_delay = driver_options.get_agc_signal_read_delay() * 1e-6;
 
-  auto time_diff_error_threshold = 0.2;
+  auto time_diff_error_threshold = 0.1;  // seconds
   auto system_time = std::chrono::system_clock::now();
   auto system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
   auto gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
@@ -322,15 +322,15 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               ); //pulse timeit macro
             }
 
-            // Read AGC and Low Power signals
+            // Read AGC and Low Power signals after the pulse is sent, waiting for agc_signal_read_delay
             // TODO: Does this belong here or could it go in an out-of-band thread? Same with GPS lock info and time diff
-            // TODO: What about reading EACH motherboard's pin status', then putting all lp, agc stat into two 16 bit numbers?
             usrp_d.clear_command_time();
             auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
-            pin_status_h = usrp_d.get_gpio_bank_high_state();
-            pin_status_l = usrp_d.get_gpio_bank_low_state();
-            usrp_d.clear_command_time();
+            // Read all motherboards' gpio bank status into 32-bit pin_status_h and pin_status_l
+            pin_status_h = usrp_d.get_gpio_bank_high_state();  // TODO: This currently overwrites itself every pulse
+            pin_status_l = usrp_d.get_gpio_bank_low_state();  // TODO: either place it below and check it once, or use a logical OR with prev values
+            usrp_d.clear_command_time(); // TODO: that way we can get one value for each pulse sequence, and only report one value per record in data_write
 
             for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
@@ -373,24 +373,25 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       }() // full usrp function lambda
     ); // full usrp function timeit macro
 
+    rxsamplesmetadata::RxSamplesMetadata samples_metadata;
+
     // Read GPS status and time difference between GPS (box time) and NTP (system time)
-    if (!usrp_d.gps_locked()) {
-        std::cout << "GPS unlocked!" << std::endl;
-    }
+    samples_metadata.set_gps_locked(usrp_d.gps_locked());
     // Time difference between the Octoclock-G and the system clock, should be close to 0
     // std::chrono::system_clock::now() takes on the order of a few microseconds
     system_time = std::chrono::system_clock::now();
     system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
     // get_real_secs() may lose precision of the fractional seconds, but it's close enough to test
-    gps_host_time_diff = system_since_epoch.count() - box_time.get_real_secs();
+    gps_to_system_time_diff = system_since_epoch.count() - box_time.get_real_secs();
     // ** NOTE THAT DOING ALL THIS PRINTING CAUSES LATES, SHOULD PASS THE LOCK STATUS AND TIME DIFF TO ANOTHER MODULE **
-    if (gps_host_time_diff > time_diff_error_threshold) {
+    if (gps_to_system_time_diff > time_diff_error_threshold) {
         std::cout.precision(17);
         std::cout << "GPS and system time disagree! Difference (+ == system time in future): " <<
-        gps_host_time_diff << std::endl <<
+        gps_to_system_time_diff << std::endl <<
         "GPS time: " << std::fixed << box_time.get_real_secs() << std::endl <<
         "System time: " << std::fixed << system_since_epoch.count() << std::endl;
     }
+    samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff);
 
     auto end_time = box_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
@@ -404,7 +405,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       std::this_thread::sleep_for(duration);
     }
 
-    rxsamplesmetadata::RxSamplesMetadata samples_metadata;
+
     samples_metadata.set_rx_rate(rx_rate);
     samples_metadata.set_initialization_time(initialization_time.get_real_secs());
     samples_metadata.set_sequence_start_time(sequence_start_time.get_real_secs());
@@ -437,7 +438,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     SEND_REPLY(driver_to_brian, driver_options.get_brian_to_driver_identity(), samples_metadata_str);
 
     expected_sqn_num++;
-    more_pulses = true;
     DEBUG_MSG(std::endl << std::endl);
   } // while(1)
 
