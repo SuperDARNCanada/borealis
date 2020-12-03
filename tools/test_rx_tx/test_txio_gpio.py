@@ -184,18 +184,22 @@ class gpio_testing(object):
                 # State name of current test
                 if pin == self.signal_pins["TR"]:
                     print("Testing TR, AGC Loopback")
+                    read_mask = agc_mask
                 else:
                     print("Testing TM, LP Loopback")
+                    read_mask = lp_mask
 
                 # make sure that we are starting in an all pins 0 state
                 while True:
                     self._usrp.set_gpio_attr(self._bank, "OUT", 0xffff, mask)
                     print("State with output pin high:")
                     print(hex(self._usrp.get_gpio_attr(self._bank, "READBACK")))
+                    # Alt: print(self._usrp.get_gpio_attr(self._bank, "READBACK") & read_mask)
                     time.sleep(self.PULSE_TIME)
                     self._usrp.set_gpio_attr(self._bank, "OUT", 0x0000, mask)
                     print("State with output pin low:")
                     print(hex(self._usrp.get_gpio_attr(self._bank, "READBACK")))
+                    # Alt: print(self._usrp.get_gpio_attr(self._bank, "READBACK") & read_mask)
                     time.sleep(self.PULSE_TIME)
             except KeyboardInterrupt:
             # ask user whether they want to continue the test sequence
