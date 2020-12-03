@@ -383,14 +383,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
     // get_real_secs() may lose precision of the fractional seconds, but it's close enough to test
     gps_to_system_time_diff = system_since_epoch.count() - box_time.get_real_secs();
-    // ** NOTE THAT DOING ALL THIS PRINTING CAUSES LATES, SHOULD PASS THE LOCK STATUS AND TIME DIFF TO ANOTHER MODULE **
-    if (gps_to_system_time_diff > time_diff_error_threshold) {
-        std::cout.precision(17);
-        std::cout << "GPS and system time disagree! Difference (+ == system time in future): " <<
-        gps_to_system_time_diff << std::endl <<
-        "GPS time: " << std::fixed << box_time.get_real_secs() << std::endl <<
-        "System time: " << std::fixed << system_since_epoch.count() << std::endl;
-    }
     samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff);
 
     auto end_time = box_time;
