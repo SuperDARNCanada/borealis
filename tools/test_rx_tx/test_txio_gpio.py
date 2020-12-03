@@ -183,7 +183,7 @@ class gpio_testing(object):
                 # run current test
                 # State name of current test
                 if pin == self.signal_pins["TR"]:
-                    print("Testing TR AGC Loopback")
+                    print("Testing TR, AGC Loopback")
                 else:
                     print("Testing TM, LP Loopback")
 

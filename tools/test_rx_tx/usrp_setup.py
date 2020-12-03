@@ -54,13 +54,11 @@ class USRPSetup(object):
 			tt = time.time()
 			time.sleep(0.01)
 
-		curr_time = uhd.types.TimeSpec(tt)
-		self.usrp.set_time_now(curr_time)
-
 		# TODO: Figure out how to set this to an external source
 		self.usrp.set_time_source("none")
 
-
+		curr_time = uhd.types.TimeSpec(tt)
+		self.usrp.set_time_now(curr_time)
 
 	def set_tx_subdev(self, tx_subdev_str):
 		"""
