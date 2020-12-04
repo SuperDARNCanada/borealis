@@ -164,7 +164,7 @@ class ParseData(object):
         self._slice_ids = set()
         self._timestamps = []
 
-        self._gps_locked = False
+        self._gps_locked = True  # init True so that logical AND works properly in update() method 
         self._gps_to_system_time_diff = 0.0
 
         self._rawrf_locations = []
@@ -311,8 +311,8 @@ class ParseData(object):
         # Logical AND to catch any time the GPS may have been unlocked during the integration period
         self._gps_locked = self._gps_locked and self.processed_data.gps_locked
 
-        # Just find the maximum time difference between GPS and system time
-        if abs(self._gps_to_system_time_diff) > abs(self.processed_data.gps_to_system_time_diff):
+        # Find the max time diff between GPS and system time to report for this integration period
+        if abs(self._gps_to_system_time_diff) < abs(self.processed_data.gps_to_system_time_diff):
             self._gps_to_system_time_diff = self.processed_data.gps_to_system_time_diff
 
         # TODO(keith): Parallelize?
@@ -800,7 +800,7 @@ class DataWrite(object):
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data",
             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range",
             "lags", "num_ranges", "data_normalization_factor", "slice_id", "slice_interfacing",
-            "scheduling_mode"]
+            "scheduling_mode", "gps_locked", "gps_to_system_time_diff"]
 
             bfiq = data_parsing.bfiq_accumulator
 
@@ -864,7 +864,7 @@ class DataWrite(object):
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors",
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
             "data_normalization_factor", "blanked_samples", "slice_id", "slice_interfacing",
-            "scheduling_mode"]
+            "scheduling_mode", "gps_locked", "gps_to_system_time_diff"]
 
             antenna_iq = data_parsing.antenna_iq_accumulator
 
@@ -950,7 +950,8 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
             "main_antenna_count", "intf_antenna_count", "samples_data_type",
             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
-            "rx_center_freq", "blanked_samples", "scheduling_mode"]
+            "rx_center_freq", "blanked_samples", "scheduling_mode", "gps_locked", 
+            "gps_to_system_time_diff"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with

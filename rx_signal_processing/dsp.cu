@@ -528,6 +528,7 @@ namespace {
     pd.set_processing_time(dp->get_decimate_timing());
     pd.set_initialization_time(dp->get_driver_initialization_time());
     pd.set_sequence_start_time(dp->get_sequence_start_time());
+    RUNTIME_MSG("GPS lock and time diff: " << COLOR_GREEN(dp->get_gps_locked()) << " " << COLOR_RED(dp->get_gps_to_system_time_diff()*1000.0) << "ms");
     pd.set_gps_locked(dp->get_gps_locked());
     pd.set_gps_to_system_time_diff(dp->get_gps_to_system_time_diff());
   }
