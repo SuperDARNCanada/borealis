@@ -313,6 +313,8 @@ double USRP::get_rx_center_freq(uint32_t channel)
 {
   return usrp_->get_rx_freq(channel);
 }
+
+// TODO: Should we refactor this to use gps_clock_ member?
 /**
  * @brief      Sets the USRP time source.
  *

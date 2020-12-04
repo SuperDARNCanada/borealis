@@ -106,8 +106,8 @@ DATA_TEMPLATE = {
     "main_acfs" : [], # Main array autocorrelations
     "intf_acfs" : [], # Interferometer array autocorrelations
     "xcfs" : [], # Crosscorrelations between main and interferometer arrays
-    "gps_locked"  : None, # The boolean value indicating if the GPS was locked during the entire integration period
-    "gps_to_system_time_diff"  : None # Maximum time diff in seconds between GPS and system/NTP time during the integration period.
+    "gps_locked" : None, # Boolean True if the GPS was locked during the entire integration period
+    "gps_to_system_time_diff" : None # Max time diff in seconds between GPS and system/NTP time during the integration period.
 }
 
 TX_TEMPLATE = {

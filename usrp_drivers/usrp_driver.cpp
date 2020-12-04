@@ -131,7 +131,6 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   double agc_signal_read_delay = driver_options.get_agc_signal_read_delay() * 1e-6;
 
-  auto time_diff_error_threshold = 0.1;  // seconds
   auto system_time = std::chrono::system_clock::now();
   auto system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
   auto gps_to_system_time_diff = system_since_epoch.count() - box_time.get_real_secs();
@@ -323,6 +322,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             }
 
             // Read AGC and Low Power signals after the pulse is sent, waiting for agc_signal_read_delay
+            // to make sure the transmitter time-delay circuits have time to update the LP/AGC signals.
             // TODO: Does this belong here or could it go in an out-of-band thread? Same with GPS lock info and time diff
             usrp_d.clear_command_time();
             auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
@@ -375,14 +375,12 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
 
-    // Read GPS status and time difference between GPS (box time) and NTP (system time)
-    samples_metadata.set_gps_locked(usrp_d.gps_locked());
-    // Time difference between the Octoclock-G and the system clock, should be close to 0
-    // std::chrono::system_clock::now() takes on the order of a few microseconds
     system_time = std::chrono::system_clock::now();
     system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
-    // get_real_secs() may lose precision of the fractional seconds, but it's close enough to test
+    // get_real_secs() may lose precision of the fractional seconds, but it's close enough
     gps_to_system_time_diff = system_since_epoch.count() - box_time.get_real_secs();
+
+    samples_metadata.set_gps_locked(usrp_d.gps_locked());
     samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff);
 
     auto end_time = box_time;
@@ -500,7 +498,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   //This loop receives 1 pulse sequence worth of samples.
   auto first_time = true;
-
   while (1) {
     // 3.0 is the timeout in seconds for the recv call, arbitrary number
     size_t num_rx_samples = rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
@@ -511,7 +508,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
       first_time = false;
     }
     box_time = meta.time_spec;
-
     auto error_code = meta.error_code;
 
     switch(error_code) {

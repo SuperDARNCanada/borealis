@@ -521,6 +521,9 @@ namespace {
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     } // close loop over frequencies (number of slices).
 
+    RUNTIME_MSG("GPS lock and time diff: " << COLOR_GREEN(dp->get_gps_locked()) << " "
+    << COLOR_RED(dp->get_gps_to_system_time_diff()*1000.0) << "ms");
+
     pd.set_rf_samples_location(dp->get_shared_memory_name());
     pd.set_sequence_num(dp->get_sequence_num());
     pd.set_rx_sample_rate(dp->get_rx_rate());
@@ -528,7 +531,6 @@ namespace {
     pd.set_processing_time(dp->get_decimate_timing());
     pd.set_initialization_time(dp->get_driver_initialization_time());
     pd.set_sequence_start_time(dp->get_sequence_start_time());
-    RUNTIME_MSG("GPS lock and time diff: " << COLOR_GREEN(dp->get_gps_locked()) << " " << COLOR_RED(dp->get_gps_to_system_time_diff()*1000.0) << "ms");
     pd.set_gps_locked(dp->get_gps_locked());
     pd.set_gps_to_system_time_diff(dp->get_gps_to_system_time_diff());
   }
@@ -649,6 +651,8 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * @param[in]  beam_phases                 The beam phases.
  * @param[in]  driver_initialization_time  The driver initialization time.
  * @param[in]  sequence_start_time         The sequence start time.
+ * @param[in]  gps_locked                  The gps lock status, boolean True if locked.
+ * @param[in]  gps_to_system_time_diff     The time diff in seconds btw GPS and system (NTP) time.
  * @param[in]  dm_rates                    The decimation rates.
  * @param[in]  slice_info                  The slice info given as a vector of rx_slice structs.
  *
