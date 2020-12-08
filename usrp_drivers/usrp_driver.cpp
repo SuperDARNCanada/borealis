@@ -37,8 +37,15 @@
 #define SET_TIME_COMMAND_DELAY 5e-3 // seconds
 #define TUNING_DELAY 300e-3 // seconds
 
-// GPS clock variable. Gets updated every time an RX packet is recvd.
-uhd::time_spec_t box_time;
+
+// struct containing clocks: one for box_time (from the N200s, supplied by Octoclock-G)
+// as well as one for the operating system time (by NTP). Updated upon recv of RX packet.
+typedef struct {
+  uhd::time_spec_t box_time;            // GPS clock variable.
+  std::chrono::time_point system_time;  // Operating system clock variable.
+} clocks_t;
+
+static clocks_t borealis_clocks;
 
 
 /**
@@ -131,9 +138,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   double agc_signal_read_delay = driver_options.get_agc_signal_read_delay() * 1e-6;
 
-  auto system_time = std::chrono::system_clock::now();
-  auto system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
-  auto gps_to_system_time_diff = system_since_epoch.count() - box_time.get_real_secs();
+  auto clocks = borealis_clocks;
+  auto system_since_epoch = std::chrono::duration<double>(clocks.system_time.time_since_epoch());
+  auto gps_to_system_time_diff = system_since_epoch.count() - clocks.box_time.get_real_secs();
 
   zmq::message_t request;
 
@@ -262,7 +269,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
     // Getting usrp box time to find out when to send samples. box_time continuously being updated.
     auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
-    auto time_now = box_time;
+    auto time_now = borealis_clocks.box_time;
     auto sequence_start_time = time_now + delay;
 
     auto seqn_sampling_time = num_recv_samples/rx_rate;
@@ -375,15 +382,18 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
     rxsamplesmetadata::RxSamplesMetadata samples_metadata;
 
-    system_time = std::chrono::system_clock::now();
-    system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
+    clocks = borealis_clocks;
+    system_since_epoch = std::chrono::duration<double>(clocks.system_time.time_since_epoch());
     // get_real_secs() may lose precision of the fractional seconds, but it's close enough
-    gps_to_system_time_diff = system_since_epoch.count() - box_time.get_real_secs();
+    gps_to_system_time_diff = system_since_epoch.count() - clocks.box_time.get_real_secs();
 
     samples_metadata.set_gps_locked(usrp_d.gps_locked());
     samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff);
 
-    auto end_time = box_time;
+    RUNTIME_MSG("GPS lock and time diff: " << COLOR_GREEN(usrp_d.gps_locked()) << " "
+    << COLOR_RED(gps_to_system_time_diff*1000.0) << "ms");
+
+    auto end_time = borealis_clocks.box_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
 
@@ -402,7 +412,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     samples_metadata.set_ringbuffer_size(ringbuffer_size);
     samples_metadata.set_numberofreceivesamples(num_recv_samples);
     samples_metadata.set_sequence_num(sqn_num);
-    auto actual_finish = box_time;
+    auto actual_finish = borealis_clocks.box_time;
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
 
     for (auto &mobo_pins : pin_status_h) {
@@ -507,7 +517,8 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
       start_trigger.send(start_time);
       first_time = false;
     }
-    box_time = meta.time_spec;
+    borealis_clocks.system_time = std::chrono::system_clock::now();
+    borealis_clocks.box_time = meta.time_spec;
     auto error_code = meta.error_code;
 
     switch(error_code) {

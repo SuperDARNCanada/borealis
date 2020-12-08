@@ -521,9 +521,6 @@ namespace {
       DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
     } // close loop over frequencies (number of slices).
 
-    RUNTIME_MSG("GPS lock and time diff: " << COLOR_GREEN(dp->get_gps_locked()) << " "
-    << COLOR_RED(dp->get_gps_to_system_time_diff()*1000.0) << "ms");
-
     pd.set_rf_samples_location(dp->get_shared_memory_name());
     pd.set_sequence_num(dp->get_sequence_num());
     pd.set_rx_sample_rate(dp->get_rx_rate());
