@@ -42,7 +42,7 @@
 // as well as one for the operating system time (by NTP). Updated upon recv of RX packet.
 typedef struct {
   uhd::time_spec_t box_time;            // GPS clock variable.
-  std::chrono::time_point system_time;  // Operating system clock variable.
+  std::chrono::time_point<std::chrono::system_clock> system_time;  // Operating system clock variable.
 } clocks_t;
 
 static clocks_t borealis_clocks;
@@ -390,9 +390,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     samples_metadata.set_gps_locked(usrp_d.gps_locked());
     samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff);
 
-    RUNTIME_MSG("GPS lock and time diff: " << COLOR_GREEN(usrp_d.gps_locked()) << " "
-    << COLOR_RED(gps_to_system_time_diff*1000.0) << "ms");
-
+    if (!usrp_d.gps_locked()) {
+      RUNTIME_MSG("GPS UNLOCKED! time diff: " << COLOR_RED(gps_to_system_time_diff*1000.0) << "ms");
+    }
+    
     auto end_time = borealis_clocks.box_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
