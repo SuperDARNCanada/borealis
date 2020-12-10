@@ -37,8 +37,15 @@
 #define SET_TIME_COMMAND_DELAY 5e-3 // seconds
 #define TUNING_DELAY 300e-3 // seconds
 
-// GPS clock variable. Gets updated every time an RX packet is recvd.
-uhd::time_spec_t box_time;
+
+// struct containing clocks: one for box_time (from the N200s, supplied by Octoclock-G)
+// as well as one for the operating system time (by NTP). Updated upon recv of RX packet.
+typedef struct {
+  uhd::time_spec_t box_time;            // GPS clock variable.
+  std::chrono::time_point<std::chrono::system_clock> system_time;  // Operating system clock variable.
+} clocks_t;
+
+static clocks_t borealis_clocks;
 
 
 /**
@@ -130,6 +137,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   double seqtime;
 
   double agc_signal_read_delay = driver_options.get_agc_signal_read_delay() * 1e-6;
+
+  auto clocks = borealis_clocks;
+  auto system_since_epoch = std::chrono::duration<double>(clocks.system_time.time_since_epoch());
+  auto gps_to_system_time_diff = system_since_epoch.count() - clocks.box_time.get_real_secs();
 
   zmq::message_t request;
 
@@ -256,9 +267,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       pulse_ptrs[i] = ptrs;
     }
 
-    // Getting usrp box time to find out when to send samples. box_time continously being updated.
+    // Getting usrp box time to find out when to send samples. box_time continuously being updated.
     auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
-    auto time_now = box_time;
+    auto time_now = borealis_clocks.box_time;
     auto sequence_start_time = time_now + delay;
 
     auto seqn_sampling_time = num_recv_samples/rx_rate;
@@ -317,13 +328,16 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               ); //pulse timeit macro
             }
 
-            // Read AGC and Low Power signals
+            // Read AGC and Low Power signals after the pulse is sent, waiting for agc_signal_read_delay
+            // to make sure the transmitter time-delay circuits have time to update the LP/AGC signals.
+            // TODO: Does this belong here or could it go in an out-of-band thread? Same with GPS lock info and time diff
             usrp_d.clear_command_time();
             auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
-            pin_status_h = usrp_d.get_gpio_bank_high_state();
-            pin_status_l = usrp_d.get_gpio_bank_low_state();
-            usrp_d.clear_command_time();
+            // Read all motherboards' gpio bank status into 32-bit pin_status_h and pin_status_l
+            pin_status_h = usrp_d.get_gpio_bank_high_state();  // TODO: This currently overwrites itself every pulse
+            pin_status_l = usrp_d.get_gpio_bank_low_state();  // TODO: either place it below and check it once, or use a logical OR with prev values
+            usrp_d.clear_command_time(); // TODO: that way we can get one value for each pulse sequence, and only report one value per record in data_write
 
             for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
@@ -366,9 +380,21 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       }() // full usrp function lambda
     ); // full usrp function timeit macro
 
+    rxsamplesmetadata::RxSamplesMetadata samples_metadata;
 
+    clocks = borealis_clocks;
+    system_since_epoch = std::chrono::duration<double>(clocks.system_time.time_since_epoch());
+    // get_real_secs() may lose precision of the fractional seconds, but it's close enough
+    gps_to_system_time_diff = system_since_epoch.count() - clocks.box_time.get_real_secs();
 
-    auto end_time = box_time;
+    samples_metadata.set_gps_locked(usrp_d.gps_locked());
+    samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff);
+
+    if (!usrp_d.gps_locked()) {
+      RUNTIME_MSG("GPS UNLOCKED! time diff: " << COLOR_RED(gps_to_system_time_diff*1000.0) << "ms");
+    }
+    
+    auto end_time = borealis_clocks.box_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
 
@@ -380,14 +406,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       std::this_thread::sleep_for(duration);
     }
 
-    rxsamplesmetadata::RxSamplesMetadata samples_metadata;
+
     samples_metadata.set_rx_rate(rx_rate);
     samples_metadata.set_initialization_time(initialization_time.get_real_secs());
     samples_metadata.set_sequence_start_time(sequence_start_time.get_real_secs());
     samples_metadata.set_ringbuffer_size(ringbuffer_size);
     samples_metadata.set_numberofreceivesamples(num_recv_samples);
     samples_metadata.set_sequence_num(sqn_num);
-    auto actual_finish = box_time;
+    auto actual_finish = borealis_clocks.box_time;
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
 
     for (auto &mobo_pins : pin_status_h) {
@@ -413,9 +439,8 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     SEND_REPLY(driver_to_brian, driver_options.get_brian_to_driver_identity(), samples_metadata_str);
 
     expected_sqn_num++;
-    more_pulses = true;
     DEBUG_MSG(std::endl << std::endl);
-  }
+  } // while(1)
 
 }
 
@@ -478,7 +503,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   auto rx_rate = usrp_d.get_rx_rate();
 
-
   zmq::message_t ring_size(sizeof(ringbuffer_size));
   memcpy(ring_size.data(), &ringbuffer_size, sizeof(ringbuffer_size));
   start_trigger.send(ring_size);
@@ -494,7 +518,8 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
       start_trigger.send(start_time);
       first_time = false;
     }
-    box_time = meta.time_spec;
+    borealis_clocks.system_time = std::chrono::system_clock::now();
+    borealis_clocks.box_time = meta.time_spec;
     auto error_code = meta.error_code;
 
     switch(error_code) {

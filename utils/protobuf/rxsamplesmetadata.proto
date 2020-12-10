@@ -14,4 +14,6 @@ message RxSamplesMetadata {
   repeated bool lp_status_bank_l = 9;
   repeated bool agc_status_bank_h = 10;
   repeated bool lp_status_bank_h = 11;
+  bool gps_locked = 12;
+  double gps_to_system_time_diff = 13;
 }

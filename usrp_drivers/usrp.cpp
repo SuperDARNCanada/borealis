@@ -8,7 +8,6 @@ See LICENSE for details.
 
 */
 #include <uhd/usrp/multi_usrp.hpp>
-#include <uhd/usrp_clock/multi_usrp_clock.hpp>
 #include <memory>
 #include <string>
 #include <vector>
@@ -43,6 +42,7 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   rx_rate_ = rx_rate;
 
   usrp_ = uhd::usrp::multi_usrp::make(driver_options.get_device_args());
+  gps_clock_ = uhd::usrp_clock::multi_usrp_clock::make(driver_options.get_clk_addr());
 
 
   set_usrp_clock_source(driver_options.get_ref());
@@ -313,6 +313,8 @@ double USRP::get_rx_center_freq(uint32_t channel)
 {
   return usrp_->get_rx_freq(channel);
 }
+
+// TODO: Should we refactor this to use gps_clock_ member?
 /**
  * @brief      Sets the USRP time source.
  *
@@ -562,6 +564,17 @@ std::vector<uint32_t> USRP::get_gpio_bank_low_state()
     readback_values.push_back(usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i));
   }
   return readback_values;
+}
+
+/**
+ * @brief      Gets the current status of the GPS fix (locked or unlocked).
+ *
+ * @return     True if the GPS has a lock.
+ */
+bool USRP::gps_locked()
+{
+  // This takes on the order of a few microseconds
+  return gps_clock_->get_sensor("gps_locked").to_bool();
 }
 
 /**

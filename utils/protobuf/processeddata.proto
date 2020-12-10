@@ -11,6 +11,8 @@ message ProcessedData {
     double initialization_time = 6;
     double sequence_start_time = 7;
     string rf_samples_location = 8;
+    bool gps_locked = 9;
+    double gps_to_system_time_diff = 10;
 
     message OutputDataSet {
         repeated ComplexData mainacf = 1;

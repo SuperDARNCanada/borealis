@@ -105,7 +105,9 @@ DATA_TEMPLATE = {
     "scheduling_mode" : None, # A string describing the type of scheduling time at the time of this dataset.
     "main_acfs" : [], # Main array autocorrelations
     "intf_acfs" : [], # Interferometer array autocorrelations
-    "xcfs" : [] # Crosscorrelations between main and interferometer arrays
+    "xcfs" : [], # Crosscorrelations between main and interferometer arrays
+    "gps_locked" : None, # Boolean True if the GPS was locked during the entire integration period
+    "gps_to_system_time_diff" : None # Max time diff in seconds between GPS and system/NTP time during the integration period.
 }
 
 TX_TEMPLATE = {
@@ -161,6 +163,9 @@ class ParseData(object):
 
         self._slice_ids = set()
         self._timestamps = []
+
+        self._gps_locked = True  # init True so that logical AND works properly in update() method 
+        self._gps_to_system_time_diff = 0.0
 
         self._rawrf_locations = []
 
@@ -302,6 +307,13 @@ class ParseData(object):
             self._slice_ids.add(data_set.slice_id)
 
         self._rawrf_locations.append(self.processed_data.rf_samples_location)
+
+        # Logical AND to catch any time the GPS may have been unlocked during the integration period
+        self._gps_locked = self._gps_locked and self.processed_data.gps_locked
+
+        # Find the max time diff between GPS and system time to report for this integration period
+        if abs(self._gps_to_system_time_diff) < abs(self.processed_data.gps_to_system_time_diff):
+            self._gps_to_system_time_diff = self.processed_data.gps_to_system_time_diff
 
         # TODO(keith): Parallelize?
         procs = []
@@ -466,6 +478,25 @@ class ParseData(object):
         """
         return self._rawrf_locations
 
+    @property
+    def gps_locked(self):
+        """ Return the boolean value indicating if the GPS was locked during the entire int period
+
+        Returns:
+            TYPE: Boolean.
+        """
+        return self._gps_locked
+
+    @property
+    def gps_to_system_time_diff(self):
+        """ Gets the maximum time diff in seconds between the GPS (box_time) and system (NTP) during
+        the integration period. Negative if GPS time is ahead of system/NTP time.
+
+        Returns:
+            TYPE: Double.
+        """
+        return self._gps_to_system_time_diff
+
 
 class DataWrite(object):
     """This class contains the functions used to write out processed data to files.
@@ -566,7 +597,7 @@ class DataWrite(object):
         :param file_ext:            Type of file extention to use. String
         :param integration_meta:    Metadata from radar control about integration period. Protobuf
         :param data_parsing:        All parsed and concatenated data from integration period stored
-                                    in DataParsing object.
+                                    in ParseData object.
         :param rt_dw:               Pair of socket and iden for RT purposes.
         :param write_rawacf:        Should rawacfs be written to file? Bool, default True.
         """
@@ -694,7 +725,7 @@ class DataWrite(object):
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs",
             "xcfs", "noise_at_freq", "data_normalization_factor", "slice_id", "slice_interfacing",
-            "averaging_method", "scheduling_mode"]
+            "averaging_method", "scheduling_mode", "gps_locked", "gps_to_system_time_diff"]
             # note num_ranges not in needed_fields but are used to make
             # correlation_dimensions
 
@@ -769,7 +800,7 @@ class DataWrite(object):
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data",
             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range",
             "lags", "num_ranges", "data_normalization_factor", "slice_id", "slice_interfacing",
-            "scheduling_mode"]
+            "scheduling_mode", "gps_locked", "gps_to_system_time_diff"]
 
             bfiq = data_parsing.bfiq_accumulator
 
@@ -833,7 +864,7 @@ class DataWrite(object):
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors",
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
             "data_normalization_factor", "blanked_samples", "slice_id", "slice_interfacing",
-            "scheduling_mode"]
+            "scheduling_mode", "gps_locked", "gps_to_system_time_diff"]
 
             antenna_iq = data_parsing.antenna_iq_accumulator
 
@@ -919,7 +950,8 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
             "main_antenna_count", "intf_antenna_count", "samples_data_type",
             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
-            "rx_center_freq", "blanked_samples", "scheduling_mode"]
+            "rx_center_freq", "blanked_samples", "scheduling_mode", "gps_locked", 
+            "gps_to_system_time_diff"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
@@ -1085,6 +1117,9 @@ class DataWrite(object):
                     parameters['beam_azms'].append(beam.beamazimuth)
 
                 parameters['noise_at_freq'] = [0.0] * integration_meta.num_sequences  # TODO update. should come from data_parsing
+
+                parameters['gps_locked'] = data_parsing.gps_locked
+                parameters['gps_to_system_time_diff'] = data_parsing.gps_to_system_time_diff
 
                 # num_samps, antenna_arrays_order, data_descriptors, data_dimensions, data
                 # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs
