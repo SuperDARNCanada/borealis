@@ -14,6 +14,7 @@ testing_archive.my_test_experiment.py::Regex line that * matches the ExperimentE
 References:
 https://stackoverflow.com/questions/32899/how-do-you-generate-dynamic-parameterized-unit-tests-in-python
 https://docs.python.org/3/library/unittest.html
+https://www.bnmetrics.com/blog/dynamic-import-in-python3
 
 :copyright: 2020 SuperDARN Canada
 :author: Kevin Krieger
@@ -23,10 +24,14 @@ https://docs.python.org/3/library/unittest.html
 import unittest
 import os
 import sys
-import argparse
+import inspect
+import pkgutil
+from pathlib import Path
+from importlib import import_module
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
+
 # Need to hardcode this, as unittest does weird things when you supply an argument on command line,
 # or if you use argparse. There is probably a better way
 input_test_file = BOREALISPATH + "/tools/testing_utils/experiments/experiment_tests.csv"
@@ -35,6 +40,8 @@ input_test_file = BOREALISPATH + "/tools/testing_utils/experiments/experiment_te
 import experiment_handler.experiment_handler as eh
 from experiment_prototype.experiment_exception import ExperimentException
 import experiments.superdarn_common_fields as scf
+from experiment_prototype.experiment_prototype import ExperimentPrototype
+
 
 def ehmain(experiment='normalscan', scheduling_mode='discretionary'):
     """
@@ -61,15 +68,19 @@ class TestExperimentEnvSetup(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "2"):
             eh.main([])
 
-    def test_borealispath(self):
-        """
-        Test failure to have BOREALISPATH in env
-        """
+    #def test_borealispath(self):
+    #    """
+    #    Test failure to have BOREALISPATH in env
+    #    """
         # Need to remove the environment variable, reset for other tests
-        del os.environ['BOREALISPATH']
-        with self.assertRaisesRegex(KeyError, "BOREALISPATH"):
-            ehmain()
-        os.environ['BOREALISPATH'] = BOREALISPATH
+   #     os.environ.pop('BOREALISPATH')
+   #     sys.path.remove(BOREALISPATH)
+   #     del os.environ['BOREALISPATH']
+   #     os.unsetenv('BOREALISPATH')
+   #     with self.assertRaisesRegex(KeyError, "BOREALISPATH"):
+   #         ehmain()
+   #     os.environ['BOREALISPATH'] = BOREALISPATH
+   #     sys.path.append(BOREALISPATH)
 
     def test_config_file(self):
         """
@@ -89,16 +100,39 @@ class TestExperimentEnvSetup(unittest.TestCase):
         """
         Test the code that checks for the hdw.dat file
         """
-        # Rename the hdw.dat file temporarily
         site_name = scf.opts.site_id
-        os.rename(BOREALISPATH + '/hdw.dat.{}'.format(site_name), BOREALISPATH + '/_hdw.dat.{}'.format(site_name))
+        # Rename the hdw.dat file temporarily
+        os.rename(BOREALISPATH + '/hdw.dat.{}'.format(site_name),
+                  BOREALISPATH + '/_hdw.dat.{}'.format(site_name))
+
         with self.assertRaisesRegex(ExperimentException, "Cannot open hdw.dat.[a-z]{3} file at"):
              ehmain()
         # experiment_prototype.experiment_exception.ExperimentException: Cannot open hdw.dat.
         # file at /home/kevin/PycharmProjects/borealis//hdw.dat.
 
         # Now rename the hdw.dat file and move on
-        os.rename(BOREALISPATH + '/_hdw.dat.{}'.format(site_name), BOREALISPATH + '/hdw.dat.{}'.format(site_name))
+
+        os.rename(BOREALISPATH + '/_hdw.dat.{}'.format(site_name),
+                  BOREALISPATH + '/hdw.dat.{}'.format(site_name))
+
+    def test_all_experiments(self):
+        """
+        Test that all experiments in the experiments folder run without issues
+        """
+        # This iterates through modules in the experiments directory
+        for (_, name, _) in pkgutil.iter_modules([Path(BOREALISPATH + '/experiments/')]):
+            # This imports any module found in the experiments directory
+            imported_module = import_module('.' + name, package='experiments')
+            # This for loop goes through all attributes of the imported module
+            for i in dir(imported_module):
+                attribute = getattr(imported_module, i)
+                # If the attribute is the class, and it's a subclass of ExperimentPrototype,
+                # and it's not ExperimentPrototype, then run it
+                if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
+                    print("{}: {}".format(attribute, name))
+                    if 'ExperimentPrototype' in str(attribute):
+                        break
+                    attribute()
 
 
 class TestExperimentExceptions(unittest.TestCase):

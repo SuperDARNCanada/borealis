@@ -2,15 +2,6 @@
 Copyright SuperDARN Canada 2020
 
 Keith Kotyk
-
-This experiment depends on a complementary passes file. The file should have name
-{radar}.epop.passes name and located under the directory stored in the BOREALISSCHEDULEPATH env
-variable. Lines in the file follow the structure:
-
-utctimestampfromepoch beam marker_period freq(khz)
-
-The closest upcoming timestamp is used, so make sure this mode begins running before the required
-line.
 """
 
 import copy
@@ -25,9 +16,6 @@ sys.path.append(BOREALISPATH)
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
-
-EPOP_PASS_FILE = os.environ['BOREALISSCHEDULEPATH'] + "/{}.epop.passes"
-
 
 class Epopsound(ExperimentPrototype):
     """
@@ -44,7 +32,6 @@ class Epopsound(ExperimentPrototype):
 
     def __init__(self, **kwargs):
         cpid = 3371
-        epop_file = EPOP_PASS_FILE.format(scf.opts.site_id)
 
         # default values
         freqs = [scf.COMMON_MODE_FREQ_1]
@@ -84,6 +71,12 @@ class Epopsound(ExperimentPrototype):
         else:
             beams_to_use = basic_beams
 
+        # Handle the single beam case
+        if len(beams_to_use) == 1:
+            scanbound = [1.0]
+        else:
+            scanbound = [1.0 * i for i in range(len(beams_to_use))]
+
         slices = []
         base_slice = {
             "pulse_sequence": scf.SEQUENCE_8P,
@@ -92,7 +85,7 @@ class Epopsound(ExperimentPrototype):
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 1000, #ms
-            "scanbound": [1.0 * i for i in range(len(beams_to_use))],
+            "scanbound": scanbound,
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "acf": True,
@@ -105,11 +98,11 @@ class Epopsound(ExperimentPrototype):
             base_slice.update({
                 "txfreq": freq
                 })
-            slices.append(slice_0)
+            slices.append(base_slice)
 
             if marker_period > 0:
                 # get the marker slice
-                slice_1 = copy.deepcopy(slice_0)
+                slice_1 = copy.deepcopy(base_slice)
                 slice_1.update({
                     "pulse_sequence": scf.SEQUENCE_7P,
                     "tau_spacing": scf.TAU_SPACING_7P,

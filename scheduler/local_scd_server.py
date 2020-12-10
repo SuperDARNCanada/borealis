@@ -278,11 +278,12 @@ def main():
                     try:
                         site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
                     except ValueError as e:
-                        error_msg = ("{logtime}: Unable to add line with parameters:\n"
+                        error_msg = ("{logtime} {sitescd}: Unable to add line with parameters:\n"
                                      "\t {date} {time} {experiment} {mode}\n"
                                      "\t Exception thrown:\n"
                                      "\t\t {exception}\n")
-                        error_msg = error_msg.format(logtime = today.strftime("%c"),
+                        error_msg = error_msg.format(logtime=today.strftime("%c"),
+                                                        sitescd=site_scd.scd_filename,
                                                         date=ex['yyyymmdd'],
                                                         time=ex['hhmm'],
                                                         experiment=ex['experiment'],
