@@ -579,7 +579,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
  *
  * @return     EXIT_SUCCESS
  *
- * Creates a new multi-USRP object using parameters from config file. Starts control, receive,
+ * Creates a new multi-USRP object using parameters from config file. Starts receive
  * and transmit threads to operate on the multi-USRP object.
  */
 int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {

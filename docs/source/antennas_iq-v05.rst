@@ -1,14 +1,12 @@
 ================
-antennas_iq v0.6
+antennas_iq v0.5
 ================
 
-This is the most up to date version of this file format produced by Borealis version 0.6, the current version.
+The pyDARNio format class for this format is BorealisAntennasIqv0_5 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
-For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
+Borealis software version 0.5 is out of date, see the current format of the antennas_iq files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_.
 
-The pyDARNio format class for this format is BorealisAntennasIq found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
-
-The antennas_iq format is intended to hold individual antennas I and Q data. The data is filtered, but is not averaged. 
+The antennas_iq format is intended to hold individual antennas I and Q data. The data is not averaged.
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 
@@ -369,6 +367,7 @@ The file fields under the record name in antennas_iq site files are:
 ------------------------
 Site/Array Restructuring
 ------------------------
+
 
 File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 

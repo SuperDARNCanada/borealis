@@ -1,12 +1,12 @@
 ===========
-rawacf v0.5
+rawacf v0.6
 ===========
 
-This is the most up to date version of this file format produced by Borealis version 0.5, the current version. 
+This is the most up to date version of this file format produced by Borealis version 0.6, the current version.
 
 For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
 
-The pydarn format class for this format is BorealisRawacf found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisRawacf found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 The rawacf format is intended to hold beamformed, averaged, correlated data. 
 
@@ -404,9 +404,9 @@ The file fields under the record name in rawacf site files are:
 Site/Array Restructuring
 ------------------------
 
-File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARN <https://github.com/SuperDARN/pydarn>`_. It is expected that this code will be separated to its own IO code package in the near future.
+File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_. 
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 ----------------------------------------
 rawacf to rawacf SDARN (DMap) Conversion

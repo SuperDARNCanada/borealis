@@ -1,14 +1,12 @@
 ==========
-rawrf v0.6
+rawrf v0.5
 ==========
 
-This is the most up to date version of this file format produced by Borealis version 0.6, the current version.
+The pyDARNio format class for this format is BorealisRawrfv0_5 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
-For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
+Borealis software version 0.5 is out of date, see the current format of the rawrf files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_.
 
-The pyDARNio format class for this format is BorealisRawrf found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
-
-The rawrf format is intended to hold high bandwidth, non-filtered raw data from every antenna.
+This format is intended to hold high bandwidth, non-filtered raw data from every antenna.
 
 This format is only produced in a site-style, record by record format and is only available to be produced on request. Please note that this format
 can cause radar operating delays and may reduce number of averages in an integration, for example. 
