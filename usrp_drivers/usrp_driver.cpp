@@ -158,8 +158,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   {
     auto more_pulses = true;
     std::vector<double> time_to_send_samples;
-    std::vector<uint32_t> pin_status_l;
-    std::vector<uint32_t> pin_status_h;
+    uint32_t agc_status_h = 0b0;
+    uint32_t lp_status_h = 0b0;
+    uint32_t agc_status_l = 0b0;
+    uint32_t lp_status_l = 0b0;
     while (more_pulses) {
       auto pulse_data = recv_data(driver_to_radar_control,
                                     driver_options.get_radctrl_to_driver_identity());
@@ -328,16 +330,16 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               ); //pulse timeit macro
             }
 
-            // Read AGC and Low Power signals after the pulse is sent, waiting for agc_signal_read_delay
-            // to make sure the transmitter time-delay circuits have time to update the LP/AGC signals.
-            // TODO: Does this belong here or could it go in an out-of-band thread? Same with GPS lock info and time diff
+            // Read AGC and Low Power signals, logical OR to catch any time the signals are active
+            // during this sequence
             usrp_d.clear_command_time();
             auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
-            // Read all motherboards' gpio bank status into 32-bit pin_status_h and pin_status_l
-            pin_status_h = usrp_d.get_gpio_bank_high_state();  // TODO: This currently overwrites itself every pulse
-            pin_status_l = usrp_d.get_gpio_bank_low_state();  // TODO: either place it below and check it once, or use a logical OR with prev values
-            usrp_d.clear_command_time(); // TODO: that way we can get one value for each pulse sequence, and only report one value per record in data_write
+            agc_status_h = agc_status_h || usrp_d.get_agc_state_high();
+            lp_status_h = lp_status_h || usrp_d.get_low_power_state_high();
+            agc_status_l = agc_status_l || usrp_d.get_agc_state_low();
+            lp_status_l = lp_status_l || usrp_d.get_low_power_state_low();
+            usrp_d.clear_command_time();
 
             for (uint32_t i=0; i<pulses.size(); i++) {
               uhd::async_metadata_t async_md;
@@ -416,15 +418,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto actual_finish = borealis_clocks.box_time;
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
 
-    for (auto &mobo_pins : pin_status_h) {
-      samples_metadata.add_agc_status_bank_h(mobo_pins & driver_options.get_agc_st());
-      samples_metadata.add_lp_status_bank_h(mobo_pins & driver_options.get_lo_pwr());
-    }
-
-    for (auto &mobo_pins : pin_status_l) {
-      samples_metadata.add_agc_status_bank_l(mobo_pins & driver_options.get_agc_st());
-      samples_metadata.add_lp_status_bank_l(mobo_pins & driver_options.get_lo_pwr());
-    }
+    samples_metadata.add_agc_status_bank_h(agc_status_h);
+    samples_metadata.add_lp_status_bank_h(lp_status_h);
+    samples_metadata.add_agc_status_bank_l(agc_status_l);
+    samples_metadata.add_lp_status_bank_l(lp_status_l);
 
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);
