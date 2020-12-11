@@ -37,6 +37,11 @@ The file fields in the bfiq array files are:
 | | *type*                          |                                             |
 | | [dimensions]                    |                                             |
 +===================================+=============================================+
+| | **agc_status_word**             | | AGC status word. Bit position             |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates an agc fault |
+| |                                 | | occurred at least once during integration |
++-----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**        | | States what order the data is in and      |
 | | *unicode*                       | | describes the data layout for the         |
 | | [num_antenna_arrays]            | | num_antenna_arrays data dimension         |
@@ -108,6 +113,15 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | in kHz. This is the frequency the data    |
 | |                                 | | has been filtered to.                     |
 +-----------------------------------+---------------------------------------------+
+| | **gps_locked**                  | | Designates if the local GPS had a lock    |
+| | *bool*                          | | during the entire integration period.     |
+| | [num_records]                   | | False if it unlocked at least once.       |
++-----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**     | | The max time difference between box_time  |
+| | *float32*                       | | GPS time) and system time (NTP) during the|
+| | [num_records]                   | | integration. Negative when GPS time is    |
+| |                                 | | ahead of system time.                     |
++-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           | 
 | | [num_records]                   | |                                           | 
@@ -119,6 +133,11 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | pulses array. Values have to be from      |
 | | [number of lags, 2]             | | pulses array. The lag number is lag[1] -  |
 | |                                 | | lag[0] for each lag pair.                 |
++-----------------------------------+---------------------------------------------+
+| | **low_power_status_word**       | | Low power status word. Bit position       |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates low power    |
+| |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
 | | **main_antenna_count**          | | Number of main array antennas             |
 | | *uint32*                        | |                                           | 
@@ -251,6 +270,11 @@ The file fields under the record name in bfiq site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |  
 +==================================+=============================================+
+| | **agc_status_word**            | | AGC status word. Bit position             |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates an agc fault |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**       | | States what order the data is in and      | 
 | | *[unicode, ]*                  | | describes the data layout for the         |
 | |                                | | num_antenna_arrays data dimension         |
@@ -310,6 +334,14 @@ The file fields under the record name in bfiq site files are:
 | | *uint32*                       | | in kHz. This is the frequency the data    | 
 | |                                | | has been filtered to.                     |
 +----------------------------------+---------------------------------------------+
+| | **gps_locked**                 | | Designates if the local GPS had a lock    |
+| | *bool*                         | | during the entire integration period.     |
++----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
+| | *float32*                      | | GPS time) and system time (NTP) during the|
+| |                                | | integration. Negative when GPS time is    |
+| |                                | | ahead of system time.                     |
++----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
@@ -321,6 +353,11 @@ The file fields under the record name in bfiq site files are:
 | |                                | | lags x 2. Values have to be from pulses   | 
 | |                                | | array. The lag number is lag[1] - lag[0]  | 
 | |                                | | for each lag pair.                        |
++----------------------------------+---------------------------------------------+
+| | **low_power_status_word**      | | Low power status word. Bit position       |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates low power    |
+| |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
 | | **main_antenna_count**         | | Number of main array antennas             |
 | | *uint32*                       | |                                           | 

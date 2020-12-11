@@ -37,6 +37,11 @@ The file fields in the antennas_iq array files are:
 | | *type*                          |                                             |
 | | [dimensions]                    |                                             |
 +===================================+=============================================+
+| | **agc_status_word**             | | AGC status word. Bit position             |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates an agc fault |
+| |                                 | | occurred at least once during integration |
++-----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**        | | States what order the data is in and      |
 | | *unicode*                       | | describes the data layout for the         |
 | | [num_antennas]                  | | num_antennas data dimension               |
@@ -103,12 +108,26 @@ The file fields in the antennas_iq array files are:
 | | *uint32*                        | | in kHz. This is the frequency the data    |
 | |                                 | | has been filtered to.                     |
 +-----------------------------------+---------------------------------------------+
+| | **gps_locked**                  | | Designates if the local GPS had a lock    |
+| | *bool*                          | | during the entire integration period.     |
+| | [num_records]                   | | False if it unlocked at least once.       |
++-----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**     | | The max time difference between box_time  |
+| | *float32*                       | | GPS time) and system time (NTP) during the|
+| | [num_records]                   | | integration. Negative when GPS time is    |
+| |                                 | | ahead of system time.                     |
++-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           | 
 | | [num_records]                   | |                                           | 
 +-----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**          | | Number of interferometer array antennas   |
 | | *uint32*                        | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **low_power_status_word**       | | Low power status word. Bit position       |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates low power    |
+| |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
 | | **main_antenna_count**          | | Number of main array antennas             |
 | | *uint32*                        | |                                           | 
@@ -232,6 +251,11 @@ The file fields under the record name in antennas_iq site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |  
 +==================================+=============================================+
+| | **agc_status_word**            | | AGC status word. Bit position             |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates an agc fault |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**       | | States what order the data is in and      | 
 | | *[unicode, ]*                  | | describes the data layout for the         |
 | |                                | | num_antennas data dimension. Antennas are |
@@ -287,11 +311,24 @@ The file fields under the record name in antennas_iq site files are:
 | | *uint32*                       | | in kHz. This is the frequency the data    | 
 | |                                | | has been filtered to.                     |
 +----------------------------------+---------------------------------------------+
+| | **gps_locked**                 | | Designates if the local GPS had a lock    |
+| | *bool*                         | | during the entire integration period.     |
++----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
+| | *float32*                      | | GPS time) and system time (NTP) during the|
+| |                                | | integration. Negative when GPS time is    |
+| |                                | | ahead of system time.                     |
++----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**         | | Number of interferometer array antennas   |
 | | *uint32*                       | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **low_power_status_word**      | | Low power status word. Bit position       |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates low power    |
+| |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
 | | **main_antenna_count**         | | Number of main array antennas             |
 | | *uint32*                       | |                                           | 

@@ -38,6 +38,11 @@ The file fields under the record name in rawrf site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |  
 +==================================+=============================================+
+| | **agc_status_word**            | | AGC status word. Bit position             |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates an agc fault |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
 | | **blanked_samples**            | | Samples that should be blanked because    |
 | | *uint32*                       | | they occurred during transmission times,  |
 | | [number of blanked             | | given by sample number (index into        |
@@ -73,11 +78,24 @@ The file fields under the record name in rawrf site files are:
 | | **experiment_name**            | | Name of the experiment file.              |
 | | *unicode*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
+| | **gps_locked**                 | | Designates if the local GPS had a lock    |
+| | *bool*                         | | during the entire integration period.     |
++----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
+| | *float32*                      | | GPS time) and system time (NTP) during the|
+| |                                | | integration. Negative when GPS time is    |
+| |                                | | ahead of system time.                     |
++----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**         | | Number of interferometer array antennas   |
 | | *uint32*                       | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **low_power_status_word**      | | Low power status word. Bit position       |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates low power    |
+| |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
 | | **main_antenna_count**         | | Number of main array antennas             |
 | | *uint32*                       | |                                           | 

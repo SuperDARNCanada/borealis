@@ -36,7 +36,12 @@ The file fields in the rawacf array files are:
 | | **FIELD NAME**                  | **description**                             | 
 | | *type*                          |                                             | 
 | | [dimensions]                    |                                             | 
-+===================================+=============================================+ 
++===================================+=============================================+
+| | **agc_status_word**             | | AGC status word. Bit position             |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates an agc fault |
+| |                                 | | occurred at least once during integration |
++-----------------------------------+---------------------------------------------+
 | | **averaging_method**            | | A string describing the averaging method. | 
 | | *unicode*                       | | Default is 'mean' but an experiment can   | 
 | |                                 | | set this to 'median' to get the median of | 
@@ -102,6 +107,15 @@ The file fields in the rawacf array files are:
 | | *uint32*                        | | in kHz. This is the frequency the data    |
 | |                                 | | has been filtered to.                     |
 +-----------------------------------+---------------------------------------------+
+| | **gps_locked**                  | | Designates if the local GPS had a lock    |
+| | *bool*                          | | during the entire integration period.     |
+| | [num_records]                   | | False if it unlocked at least once.       |
++-----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**     | | The max time difference between box_time  |
+| | *float32*                       | | GPS time) and system time (NTP) during the|
+| | [num_records]                   | | integration. Negative when GPS time is    |
+| |                                 | | ahead of system time.                     |
++-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           | 
 | | [num_records]                   | |                                           | 
@@ -120,6 +134,11 @@ The file fields in the rawacf array files are:
 | | *uint32*                        | | pulses array. Values have to be from      |
 | | [number of lags, 2]             | | pulses array. The lag number is lag[1] -  |
 | |                                 | | lag[0] for each lag pair.                 |
++-----------------------------------+---------------------------------------------+
+| | **low_power_status_word**       | | Low power status word. Bit position       |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates low power    |
+| |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
 | | **main_acfs**                   | | Main array correlations. Note             | 
 | | *complex64*                     | | that records that do not have num_beams = |
@@ -253,6 +272,11 @@ The file fields under the record name in rawacf site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |  
 +==================================+=============================================+
+| | **agc_status_word**            | | AGC status word. Bit position             |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates an agc fault |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
 | | **averaging_method**           | | A string describing the averaging method. | 
 | | *unicode*                      | | Default is 'mean' but an experiment can   | 
 | |                                | | set this to 'median' to get the median of | 
@@ -311,6 +335,14 @@ The file fields under the record name in rawacf site files are:
 | | *uint32*                       | | in kHz. This is the frequency the data    | 
 | |                                | | has been filtered to.                     |
 +----------------------------------+---------------------------------------------+
+| | **gps_locked**                 | | Designates if the local GPS had a lock    |
+| | *bool*                         | | during the entire integration period.     |
++----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
+| | *float32*                      | | GPS time) and system time (NTP) during the|
+| |                                | | integration. Negative when GPS time is    |
+| |                                | | ahead of system time.                     |
++----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
@@ -325,6 +357,11 @@ The file fields under the record name in rawacf site files are:
 | |                                | | lags x 2. Values have to be from pulses   | 
 | |                                | | array. The lag number is lag[1] - lag[0]  | 
 | |                                | | for each lag pair.                        |
++----------------------------------+---------------------------------------------+
+| | **low_power_status_word**      | | Low power status word. Bit position       |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates low power    |
+| |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
 | | **main_acfs**                  | | Main array correlations.                  |
 | | *[complex64, ]*                | |                                           |
