@@ -6,6 +6,9 @@ sys.path.append(BOREALISPATH)
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
+# TODO: We should protect these values from changing, I noticed during testing that I used a
+# TODO: call to reverse() on one and it affected the rest of the testing afterwards
+
 STD_RF_RX_RATE = 5.0e6
 RX_RATE_45KM = 10.0e3/3
 RX_RATE_15KM = 10.0e3
@@ -87,7 +90,7 @@ else:
 
 # set sounding frequencies
 if opts.site_id == "sas":
-    SOUNDING_FREQS = [10300, 11000, 11700, 13250]
+    SOUNDING_FREQS = [10300, 11000, 11700, 13100]
     #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
 elif opts.site_id == "pgr":
     SOUNDING_FREQS = [10350, 11050, 11750, 13300]
@@ -102,6 +105,6 @@ elif opts.site_id == "cly":
     SOUNDING_FREQS = [10550, 11200, 11900, 13550]
     #SOUNDING_FREQS = [9500, 10300, 11100, 11700, 13250, 14200, 15200]
 else:
-    SOUNDING_FREQS = [10600, 11250, 11950, 13600]
+    SOUNDING_FREQS = [10600, 11250, 11950, 13150]
     #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
 

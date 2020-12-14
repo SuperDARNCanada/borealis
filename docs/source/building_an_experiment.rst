@@ -124,9 +124,9 @@ Here's a theoretical example showing all types of interfacing. In this example, 
    :alt: An example showing all types of slice interfacing 
    :align: center
 
----------------------
+
 Writing an Experiment
----------------------
+=====================
 
 All experiments must be written as their own class and must be built off of the built-in ExperimentPrototype class.
 
@@ -134,12 +134,14 @@ This means the ExperimentPrototype class must be imported at the start of the ex
 
     from experiments.experiment_prototype import ExperimentPrototype
 
-Experiment-Wide Attributes
---------------------------
+Please name the class within the experiment file in a similar fashion to the file
+as the class name is written to the datasets produced.
+
+The experiment has the following experiment-wide attributes:
 
 cpid *required*
     The only experiment-wide attribute that is required to be set by the user
-    when initializing is the CPID, or control program identifier. This should
+    when initializing is the CPID, or control program identifier. This must
     be unique to the experiment. You will need to request this from your 
     institution's radar operator. You should clearly document the name of the 
     experiment and some operating details that correspond to the CPID.
@@ -407,4 +409,15 @@ of interfacing that can be used, see above section 'Interfacing Types Between Sl
 
 This experiment is very similar to the twofsound experiment. To see examples of common experiments, look at :doc:`experiments`.
 
-..  TODO how to check your experiment for errors
+Checking Your Experiment for Errors
+-----------------------------------
+
+A suite of unit tests have been written to check experiments for errors. This suite of tests can be run on by doing the following:
+
+#. Make sure your experiment is located in the `experiments` directory
+#. Ensure the file has an appropriate name reflecting the name of the experiment.
+#. Run the following, which will run the extensive set of tests in the `experiment_unittests.py` file and tell you how many passed, how many failed and how many tests had errors:
+
+```
+python3 /path/to/borealis/tools/testing_utils/experiments/experiment_unittests.py /path/to/borealis/tools/testing_utils/experiments/experiment_tests.csv
+```

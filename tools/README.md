@@ -44,7 +44,7 @@ Test parallel reduce algorithm in cuda, as well as implementations of the algori
 There is an offset between the rx and tx chains in the USRPs. It is on the order of microseconds and is related to frequency, sampling rate and bandwidth. One person (Max Scharrenbroich) on the USRP-users mailing list has implemented a leading edge detect code to find these offsets.
 See: http://lists.ettus.com/pipermail/usrp-users_lists.ettus.com/2013-September/007500.html
 This is due to the reference points for time being different in TX and RX. In TX, it is before the DSP section, in RX it is after the DSP section.
-This direcotry has code written by Max to calculate the offsets for combinations of frequency and sampling rates.
+This directory has code written by Max to calculate the offsets for combinations of frequency and sampling rates.
 
 ## dsp_testing ## 
 
