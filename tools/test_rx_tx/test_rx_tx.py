@@ -8,7 +8,7 @@ import time
 import threading
 
 # Define constants
-ADDR = "num_recv_frames=512,num_send_frames=256,send_buff_size=2304000"
+DEV_ARGS = "num_recv_frames=512,num_send_frames=256,send_buff_size=2304000"
 CLKSRC = "internal"
 
 RXSUBDEV = "A:A A:B"
@@ -86,7 +86,7 @@ def recv(usrp_d, rx_chans):
 	"""
 	Function defines the operation of the recieve thread for the USRP
 	:param usrp_d: The MultiUSRP object
-	:param rx_chans: A list specifying the reciever channels
+	:param rx_chans: A list specifying the receiver channels
 	"""
 	# create the stream args object
 	rx_stream_args = usrp.StreamArgs("fc32", "sc16")
@@ -165,7 +165,7 @@ def recv(usrp_d, rx_chans):
 			print("Bad Packet!")
 			badp_count += 1
 
-		# test_trials += 1
+		test_trials += 1
 
 		if test_trials >= 1000000:
 			test_while = False
@@ -179,8 +179,6 @@ def recv(usrp_d, rx_chans):
 	print("Alignment count", align_count, "\n")
 	print("Bad packet count", badp_count, "\n")
 
-
-	return
 
 # TX THREAD
 def tx(usrp_d: usrp.MultiUSRP, tx_chans):
@@ -294,7 +292,7 @@ def UHD_SAFE_MAIN():
 
 	# Setup a usrp device
 
-	usrp_d = usrp.MultiUSRP(ADDR + ",addr=" + argv[2])
+	usrp_d = usrp.MultiUSRP(DEV_ARGS + ",addr=" + argv[2])
 	usrp_d.set_clock_source(CLKSRC)
 
 	rx_subdev = usrp.SubdevSpec(RXSUBDEV)
