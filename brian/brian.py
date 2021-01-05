@@ -32,7 +32,7 @@ import experimentoptions as options
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/zmq_borealis_helpers')
 import socket_operations as so
 
-TIME_PROFILE = False
+TIME_PROFILE = True
 
 def router(opts):
     """The router is responsible for moving traffic between modules by routing traffic using
@@ -47,28 +47,36 @@ def router(opts):
     router.bind(opts.router_address)
 
     sys.stdout.write("Starting router!\n")
+    frames_to_send = []
     while True:
-        dd = router.recv_multipart()
+        events = router.poll(timeout=1)
+        if events:
+            dd = router.recv_multipart()
 
-        sender, receiver, empty, data = dd
-        if __debug__:
-            output = "Router input/// Sender -> {}: Receiver -> {}\n"
-            output = output.format(sender, receiver)
-            sys.stdout.write(output)
-        frames = [receiver, sender,empty,data]
-        if __debug__:
-            output = "Router output/// Receiver -> {}: Sender -> {}\n"
-            output = output.format(receiver, sender)
-            sys.stdout.write(output)
-        sent = False
-        while not sent:
+            sender, receiver, empty, data = dd
+            if __debug__:
+                output = "Router input/// Sender -> {}: Receiver -> {}\n"
+                output = output.format(sender, receiver)
+                sys.stdout.write(output)
+            frames_received = [receiver,sender,empty,data]
+            frames_to_send.append(frames_received)
+
+            if __debug__:
+                output = "Router output/// Receiver -> {}: Sender -> {}\n"
+                output = output.format(receiver, sender)
+                sys.stdout.write(output)
+        non_sent = []
+        for frames in frames_to_send:
             try:
                 router.send_multipart(frames)
-                sent = True
             except zmq.ZMQError as e:
                 if __debug__:
-                    sys.stdout.write("Trying to send \n")
-                time.sleep(0.5)
+                    output = "Unable to send frame Receiver -> {}: Sender -> {}\n"
+                    output = output.format(frames[0], frames[1])
+                    sys.stdout.write(output)
+                non_sent.append(frames)
+        frames_to_send = non_sent
+
 
 def sequence_timing(opts):
     """Thread function for sequence timing
@@ -170,12 +178,9 @@ def sequence_timing(opts):
 
     time.sleep(1)
 
-    pulse_seq_times = {}
-    driver_times = {}
-    processing_times = {}
+    last_processing_time = 0
 
     first_time = True
-
     late_counter = 0
     while True:
 
@@ -201,15 +206,12 @@ def sequence_timing(opts):
                 reply_output = reply_output.format(meta.sequence_time*1e3, meta.sequence_num)
                 printing(reply_output)
 
-            driver_times[meta.sequence_num] = meta.sequence_time
-
             #Requesting acknowledgement of work begins from DSP
             if __debug__:
                 printing("Requesting work begins from DSP")
-            so.send_request(brian_to_dsp_begin, opts.dspbegin_to_brian_identity,
-                            "Requesting work begins")
+            iden = opts.dspbegin_to_brian_identity + str(meta.sequence_num)
+            so.send_request(brian_to_dsp_begin, iden, "Requesting work begins")
 
-            #acknowledge we want to start something new
             start_new_sock.send_string("want_to_start")
 
         if brian_to_radar_control in socks and socks[brian_to_radar_control] == zmq.POLLIN:
@@ -225,8 +227,6 @@ def sequence_timing(opts):
                 reply_output = reply_output.format(sigp.sequence_num, sigp.sequence_time)
                 printing(reply_output)
 
-            pulse_seq_times[sigp.sequence_num] = sigp.sequence_time
-
             #Request acknowledgement of sequence from driver
             if __debug__:
                 printing("Requesting ack from driver")
@@ -235,7 +235,8 @@ def sequence_timing(opts):
         if brian_to_dsp_begin in socks and socks[brian_to_dsp_begin] == zmq.POLLIN:
 
             #Get acknowledgement that work began in processing.
-            reply = so.recv_obj(brian_to_dsp_begin, opts.dspbegin_to_brian_identity, printing)
+            reply = so.recv_bytes_from_any_iden(brian_to_dsp_begin)
+
             sig_p = sigprocpacket_pb2.SigProcPacket()
             sig_p.ParseFromString(reply)
 
@@ -247,16 +248,17 @@ def sequence_timing(opts):
 
             if __debug__:
                 printing("Requesting work end from DSP")
-            so.send_request(brian_to_dsp_end, opts.dspend_to_brian_identity, "Requesting work ends")
+            iden = opts.dspend_to_brian_identity + str(sig_p.sequence_num)
+            so.send_request(brian_to_dsp_end, iden, "Requesting work ends")
 
-            #acknowledge that we are good and able to start something new
+            #acknowledge we want to start something new.
             start_new_sock.send_string("good_to_start")
 
 
         if brian_to_dsp_end in socks and socks[brian_to_dsp_end] == zmq.POLLIN:
 
             #Receive ack that work finished on previous sequence.
-            reply = so.recv_obj(brian_to_dsp_end, opts.dspend_to_brian_identity, printing)
+            reply = so.recv_bytes_from_any_iden(brian_to_dsp_end)
 
             sig_p = sigprocpacket_pb2.SigProcPacket()
             sig_p.ParseFromString(reply)
@@ -266,17 +268,17 @@ def sequence_timing(opts):
                 reply_output = reply_output.format(sig_p.kerneltime, sig_p.sequence_num)
                 printing(reply_output)
 
-            processing_times[sig_p.sequence_num] = sig_p.kerneltime
             if sig_p.sequence_num != 0:
-                if sig_p.kerneltime > processing_times[sig_p.sequence_num-1]:
+                if sig_p.kerneltime > last_processing_time:
                     late_counter += 1
                 else:
                     late_counter = 0
+            last_processing_time = sig_p.kerneltime
 
             if __debug__:
                 printing("Late counter {}".format(late_counter))
 
-            #acknowledge that we are good and able to start something new
+            #acknowledge that we are good and able to start something new.
             start_new_sock.send_string("extra_good_to_start")
 
 def main():

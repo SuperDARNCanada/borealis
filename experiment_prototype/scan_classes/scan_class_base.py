@@ -35,7 +35,17 @@ class ScanClassBase(object):
      (slice_id_1, slice_id_2) and values are of interface_types set up in 
      experiment_prototype.
     :param transmit_metadata: a dictionary of the experiment-wide transmit metadata for building
-    pulse sequences.
+    pulse sequences. The keys of the transmit_metadata are:
+        'output_rx_rate' [Hz],
+        'main_antenna_count',
+        'tr_window_time' [s],
+        'main_antenna_spacing' [m],
+        'pulse_ramp_time' [s],
+        'max_usrp_dac_amplitude' [V peak],
+        'rx_sample_rate' [Hz],
+        'minimum_pulse_separation' [us],
+        'txctrfreq' [kHz],
+        'txrate' [Hz]
     """
 
     def __init__(self, object_keys, object_slice_dict, object_interface, transmit_metadata):

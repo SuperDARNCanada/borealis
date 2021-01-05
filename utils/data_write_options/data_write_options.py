@@ -10,12 +10,6 @@
 import json
 import os
 
-
-def ascii_encode_dict(data):
-    ascii_encode = lambda x: x.encode('ascii')
-    return dict(map(ascii_encode, pair) for pair in data.items())
-
-
 class DataWriteOptions(object):
     """
     Parses the options from the config file that are relevant to data writing.
@@ -34,6 +28,8 @@ class DataWriteOptions(object):
             errmsg = 'Cannot open config file at {0}'.format(config_path)
             raise IOError(errmsg)
 
+        self._rt_to_dw_identity = raw_config["rt_to_dw_identity"]
+        self._dw_to_rt_identity = raw_config["dw_to_rt_identity"]
         self._dsp_to_dw_identity = raw_config["dsp_to_dw_identity"]
         self._dw_to_dsp_identity = raw_config["dw_to_dsp_identity"]
         self._radctrl_to_dw_identity = raw_config["radctrl_to_dw_identity"]
@@ -46,6 +42,26 @@ class DataWriteOptions(object):
         self._router_address = raw_config["router_address"]
         self._main_antenna_count = int(raw_config["main_antenna_count"])
         self._intf_antenna_count = int(raw_config["interferometer_antenna_count"])
+
+    @property
+    def rt_to_dw_identity(self):
+        """
+        Gets the identity used for the realtime to datawrite identity.
+
+        Returns:
+            String: The identity to use for realtime/datawrite socket.
+        """
+        return self._rt_to_dw_identity
+
+    @property
+    def dw_to_rt_identity(self):
+        """
+        Gets the identity used for the datawrite to realtime identity.
+
+        Returns:
+            String: The identity to use for the datawrite/realtime socket.
+        """
+        return self._dw_to_rt_identity
 
     @property
     def dsp_to_dw_identity(self):
@@ -86,15 +102,15 @@ class DataWriteOptions(object):
         return self._dw_to_radctrl_identity
 
 
-    @property
-    def debug_file(self):
-        """
-        Gets the name of the file to output debug data to.
+    # @property
+    # def debug_file(self):
+    #     """
+    #     Gets the name of the file to output debug data to.
 
-        :returns:   debug file name
-        :rtype:     str
-        """
-        return self._debug_file
+    #     :returns:   debug file name
+    #     :rtype:     str
+    #     """
+    #     return self._debug_file
 
     @property
     def data_directory(self):

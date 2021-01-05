@@ -26,15 +26,3 @@ beams), therefore the interfacing between slices 0 and 1 should be 'SCAN'.
 
 ..  literalinclude:: ../../experiments/twofsound.py
     :linenos:
-
-Example of experiment update() method
--------------------------------------
-
-Experiments are a class of their own, built off the base class of ExperimentPrototype,
-with an initializer and optionally an update() method. Update is currently not
-implemented as datawrite is not currently passing the data back to experiment_handler.
-The update() method will be called from within experiment_handler. A blank update
-method would look like the following.
-
-.. literalinclude:: ../../experiments/blank_experiment.py
-    :pyobject: Blank.update

@@ -213,6 +213,8 @@ __device__ __forceinline__ cuComplex _exp (cuComplex z)
  * @param[in]  dm_rate              Decimation rate.
  * @param[in]  samples_per_antenna  The number of samples per antenna in the original set of
  *                                  samples.
+ * @param[in]  F_s                  The sampling frequency in hertz.
+ * @param[in]  freqs                A pointer to the frequencies used in mixing.
  *
  * This function performs a parallel version of filtering+downsampling on the GPU to be able
  * process data in realtime. This algorithm will use 1 GPU thread per filter tap if there are less
@@ -308,6 +310,8 @@ __global__ void bandpass_decimate1024(cuComplex* original_samples,
  * @param[in]  dm_rate              Decimation rate.
  * @param[in]  samples_per_antenna  The number of samples per antenna in the original set of
  *                                  samples.
+ * @param[in]  F_s                  The sampling frequency in hertz.
+ * @param[in]  freqs                A pointer to the frequencies used in mixing.
  *
  * This function performs a parallel version of filtering+downsampling on the GPU to be able process
  * data in realtime. This algorithm will use 1 GPU thread to process two filter taps if there are

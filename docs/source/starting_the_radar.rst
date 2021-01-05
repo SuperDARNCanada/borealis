@@ -1,50 +1,50 @@
+*******************************
+Starting and Stopping the Radar
+*******************************
+
+===============
+Manual Start-up
+===============
+
+To more easily start the radar, there is a script called `steamed_hams.sh`. The name of this script is a goofy reference to a scene in an episode of The Simpsons in which Principal Skinner claims there is an aurora happening in his house. The script takes two arguments and can be invoked as follows:
+
+    * $BOREALISPATH/steamed_hams.sh experiment_name code_environment
+
+An example invocation to run twofsound in release mode would be:
+
+    * /home/radar/borealis/steamed_hams.sh twofsound release
+
+Another example invocation running normalscan in debug mode:
+
+    * /home/radar/borealis/steamed_hams.sh normalscan debug
+
+The experiment name must match to an experiment in the `experiment` folder, and does not include the `.py` extension. The code environment is the type of compilation environment that was compiled using `scons` such as release, debug, etc. **NOTE** This script will kill the Borealis software if it is currently running, before it starts it anew.
+
+The script will boot all the radar processes in a detached `screen` window that runs in the background. This window can be reattached in any terminal window locally or over ssh (`screen -r`) to track any outputs if needed.
+
+If starting the radar in normal operation according to the schedule, there is a helper script called `start_radar.sh`.
+
 ==================
-Starting the radar
+Automated Start-up
 ==================
 
-Writing an Experiment
----------------------
+In order to start the radar automatically, the script `start_radar.sh` should be added to a startup script of the Borealis computer. It can also be called manually by the non-root user (typically `radar`).
+The scheduling Python script, `remote_server.py`, is responsible for automating the control of the radar to follow the schedule, and is started via the `start_radar.sh` script with the appropriate arguments
 
-All experiments must be written as their own class and
-must be built off of the built-in ExperimentPrototype
-class.  This means the ExperimentPrototype class must be imported
-at the start of the experiment file::
+..  literalinclude:: ../../start_radar.sh
 
-    from experiments.experiment_prototype import ExperimentPrototype
+This script should be added to the control computer boot-up scripts so that it generates a new set of scheduled commands.
 
-You must also build your class off of the ExperimentPrototype
-class, which involves inheritance. To do this, define your class
-like so::
+==================
+Stopping the Radar
+==================
 
-    class MyClass(ExperimentPrototype):
+There are several ways to stop the Borealis radar. They are ranked here from most acceptable to last-resort:
 
-        def __init__(self):
-            cpid = 123123  # this must be a unique id for your control program.
-            super(MyClass, self).__init__(cpid)
+#. Run the script `stop_radar.sh` from the Borealis project directory. This script kills the scheduling server, removes all entries from the schedule and kills the screen session running the Borealis software modules.
 
-The experiment handler will create an instance of your
-experiment when your experiment is scheduled to start running.
-Your class is a child class of ExperimentPrototype and because of this,
-the parent class needs to be instantiated when the experiment is
-instantiated. This is important because the experiment_handler will build the scans
-required by your class in a way that is easily readable and iterable
-by the radarcontrol program. This is done by methods that are set up
-in the ExperimentPrototype parent class.
+#. While viewing the screen session running the Borealis software modules, type `ctrl-A, ctrl-\\`. This will kill the screen session and all software modules running within it.
 
-The next step is to add slices to your experiment. An experiment is
-defined by the slices in the class, and how the slices interface. You
-can think of a slice as an experiment of its own, and your experiment
-may only require one slice. However, more complicated functionality
-will require multiple slices, interfaced in one of four ways:
+#. Restart the Borealis computer. **NOTE** In a normal circumstance, the Borealis software will start back up again once the computer reboots.
 
-..  TODO outline ways to interface
-
-..  TODO determine where users should write their experiments
-    because that will affect the import statement - putting them
-    directly in experiments?
-
-Checking your Experiment for Errors
------------------------------------
-
-..  TODO how to check your experiment for errors
-
+#. Shut down the Borealis computer.

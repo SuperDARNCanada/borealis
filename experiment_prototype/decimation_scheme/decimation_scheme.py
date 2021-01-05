@@ -2,8 +2,7 @@
 import os
 import sys
 import math
-from scipy import signal
-
+from scipy.signal import firwin, remez, kaiserord, kaiser_beta
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -11,6 +10,7 @@ sys.path.append(BOREALISPATH)
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.experiment_exception import ExperimentException
 from functools import reduce
+
 
 class DecimationStage(object):
 
@@ -53,12 +53,8 @@ class DecimationScheme(object):
         :param output_sample_rate: desired output rate of the data, to decimate to, in Hz.
         :param stages: a list of DecimationStages, or None, if they will be set up as default here.
         """
-        options = ExperimentOptions()
-        self.__num_stages = options.number_of_filtering_stages
-        self.rxrate = rxrate
-        self.output_sample_rate = output_sample_rate
 
-        if stages is None:  # create the default filters, using remez.
+        if stages is None:  # create the default filters according to default scheme.
             # Currently only creating default filters if sampling rate and output rate are set
             # up as per original design. TODO: make this more general.
             if rxrate != 5.0e6 or round(output_sample_rate, 0) != 3.333e3:
@@ -67,43 +63,16 @@ class DecimationScheme(object):
                 raise ExperimentException(errmsg)
 
             # set up defaults as per design.
-            self.dm_rates = [5, 10, 30, 1]
-            total_rates = [reduce((lambda a, b: a * b), decimation_list) for decimation_list in
-                           [self.dm_rates[:x] for x in range(1, len(self.dm_rates) + 1)]]
-            self.output_rates = [rxrate / x for x in total_rates]
-            input_rates = [rxrate]
-            input_rates.extend(self.output_rates[:-1])
-            self.input_rates = input_rates
-            self.filter_scaling_factors = [1.0, 1.0, 12.0, 1.0]
+            return(create_default_scheme())
 
-            # defaults for remez filters for first three stages per design.
-            filter_transition_widths = [500.0e3, 50.0e3, 0.833e3]  # Hz
-            filter_cutoffs = [1.0e6, 100.0e3, 3.333e3]  # Hz
-
-            stages = []
-            for stage_num in range(0, self.num_stages):
-                dm_rate = self.dm_rates[stage_num]
-                input_rate = self.input_rates[stage_num]
-                filter_scaling_factor = self.filter_scaling_factors[stage_num]
-
-                if stage_num in range(0, 3):
-                    transition_width = filter_transition_widths[stage_num]
-                    cutoff = filter_cutoffs[stage_num]
-                    unity_gain_filter_taps = create_remez_filter(input_rate, cutoff,
-                                                                 transition_width)
-                else:  # append last stage - default is decimation = 1, filter = [1]
-                    unity_gain_filter_taps = [1.0]
-
-                filter_taps = [filter_scaling_factor * i for i in unity_gain_filter_taps]
-
-                dec_stage = DecimationStage(stage_num, input_rate, dm_rate, filter_taps)
-                stages.append(dec_stage)
-            self.stages = stages
         else:
+            options = ExperimentOptions()
+            self.rxrate = rxrate
+            self.output_sample_rate = output_sample_rate
             # check that number of stages is correct
-            if len(stages) != self.num_stages:
-                errmsg = 'Decimation stages provided do not meet the required number of stages ' \
-                         '{}'.format(self.num_stages)
+            if len(stages) > options.max_number_of_filtering_stages:
+                errmsg = 'Number of decimation stages ({}) is greater than max available {}' \
+                         ''.format(len(stages), options.max_number_of_filtering_stages)
                 raise ExperimentException(errmsg)
             self.dm_rates = []
             self.output_rates = []
@@ -125,7 +94,7 @@ class DecimationScheme(object):
                          'rate {}'.format(self.input_rates[0], self.rxrate)
                 raise ExperimentException(errmsg)
 
-            for stage_num in range(0, self.num_stages -1):
+            for stage_num in range(0, len(stages) -1):
                 if not math.isclose(self.output_rates[stage_num], self.input_rates[stage_num + 1], abs_tol=0.001):
                     errmsg = 'Decimation stage {} output rate {} does not equal next stage {} ' \
                              'input rate {}'.format(stage_num, self.output_rates[stage_num],
@@ -134,13 +103,13 @@ class DecimationScheme(object):
 
             if self.output_rates[-1] != self.output_sample_rate:
                 errmsg = 'Last decimation stage {} does not have output rate {} equal to ' \
-                         'requested output data rate {}'.format(self.num_stages - 1,
+                         'requested output data rate {}'.format(len(stages) - 1,
                                                                 self.output_rates[-1],
                                                                 self.output_sample_rate)
                 raise ExperimentException(errmsg)
 
     def __repr__(self):
-        repr_str = 'Decimation Scheme with {} stages:\n'.format(self.num_stages)
+        repr_str = 'Decimation Scheme with {} stages:\n'.format(len(stages))
         for stage in self.stages:
             repr_str += '\nStage {}:'.format(stage.stage_num)
             repr_str += '\nInput Rate: {} Hz'.format(stage.input_rate)
@@ -150,9 +119,32 @@ class DecimationScheme(object):
             #repr_str += '\nFilter Taps: {}\n'.format(stage.filter_taps)
         return repr_str
 
-    @property
-    def num_stages(self):
-        return self.__num_stages
+
+def create_default_scheme(): 
+    """
+    Previously known as create_test_scheme_9 until July 23/2019! 
+    Create four stages of FIR filters and a decimation scheme. Returns a decimation scheme of type DecimationScheme. 
+    This filter will have a wider receive bandwidth than the previous.
+    Pasha recommends a 10kHz bandwidth for the final stage. I believe there will be aliasing caused by this but 
+    perhaps the concern is not critical because of the small bandwidth overlapping. I will test this anyways.
+
+    :return DecimationScheme: a decimation scheme for use in experiment.
+    """
+
+    rates = [5.0e6, 500.0e3, 100.0e3, 50.0e3/3]
+    dm_rates = [10, 5, 6, 5]
+    transition_widths = [150.0e3, 40.0e3, 15.0e3, 1.0e3]
+    cutoffs = [20.0e3, 10.0e3, 10.0e3, 5.0e3] # bandwidth is double this
+    ripple_dbs = [150.0, 80.0, 35.0, 9.0]
+    scaling_factors = [10.0, 100.0, 100.0, 100.0]
+    all_stages = []
+
+    for stage in range(0,4):
+        filter_taps = list(scaling_factors[stage] * create_firwin_filter_by_attenuation(rates[stage], transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
+        all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], filter_taps))
+
+    return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
+
 
 def calculate_num_filter_taps(sampling_freq, trans_width, k):
     """
@@ -178,7 +170,57 @@ def create_remez_filter(sampling_freq, cutoff_freq, trans_width):
 
     num_taps = calculate_num_filter_taps(sampling_freq, trans_width, 3)
 
-    lpass = signal.remez(num_taps, [0, cutoff_freq, cutoff_freq + trans_width,
+    lpass = remez(num_taps, [0, cutoff_freq, cutoff_freq + trans_width,
                                     0.5 * sampling_freq], [1, 0], Hz=sampling_freq)
 
     return lpass
+
+
+def create_firwin_filter_by_attenuation(sample_rate, transition_width, cutoff_hz, ripple_db, 
+    window_type='kaiser'):
+    """
+    Create a firwin filter. 
+
+    :param ripple_db: The desired attenuation in the stop band, in dB.
+    """
+
+    # The Nyquist rate of the signal.
+    nyq_rate = sample_rate  # because we have complex sampled data. 
+
+    # The desired width of the transition from pass to stop,
+    # relative to the Nyquist rate. '
+    width_ratio = transition_width/nyq_rate
+
+    # Compute the order and Kaiser parameter for the FIR filter.
+    N, beta = kaiserord(ripple_db, width_ratio)
+
+    # Use firwin with a Kaiser window to create a lowpass FIR filter
+    if window_type == 'kaiser':
+        window = ('kaiser', beta)
+    else:
+        window = window_type
+
+    taps = firwin(N, 2*cutoff_hz/nyq_rate, window=window)
+
+    return taps
+
+
+def create_firwin_filter_by_num_taps(sample_rate, transition_width, cutoff_hz, num_taps, 
+    window_type=('kaiser', 8.0)):
+    """
+    Create a firwin filter. 
+
+    :param ripple_db: The desired attenuation in the stop band, in dB.
+    """
+
+    # The Nyquist rate of the signal.
+    nyq_rate = sample_rate  # because we have complex sampled data. 
+
+    # The desired width of the transition from pass to stop,
+    # relative to the Nyquist rate. '
+    width_ratio = transition_width/nyq_rate
+
+    taps = firwin(num_taps, 2*cutoff_hz/nyq_rate, window=window_type)
+
+    return taps
+    

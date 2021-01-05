@@ -6,13 +6,22 @@
 Welcome to Borealis's documentation!
 ====================================
 
-Contents - THIS NEEDS WORK:
-
 ..  toctree::
     :maxdepth: 2
+    :glob:
 
+    /system_specifications
+    /system_setup
     /starting_the_radar
-    /modules
+    /scheduling
+    /building_an_experiment
+    /config_options
+    /borealis_processes
+    /borealis_data
+    /monitoring
+    /lab_testing
+    /tools
+    /failure_modes
 
 Indices and tables
 ==================
@@ -20,4 +29,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

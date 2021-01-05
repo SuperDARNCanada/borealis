@@ -39,19 +39,13 @@ int main(int argc, char **argv){
   zmq::context_t context(1); // 1 is context num. Only need one per program as per examples
   auto identities = {sig_options.get_dsp_radctrl_identity(),
                    sig_options.get_dsp_driver_identity(),
-                   sig_options.get_dsp_exphan_identity(),
-                   sig_options.get_dsp_dw_identity(),
-                   sig_options.get_dspbegin_brian_identity(),
-                   sig_options.get_dspend_brian_identity()};
+                   sig_options.get_dsp_exphan_identity()};
 
   auto sockets_vector = create_sockets(context, identities, sig_options.get_router_address());
 
   zmq::socket_t &dsp_to_radar_control = sockets_vector[0];
   zmq::socket_t &dsp_to_driver = sockets_vector[1];
   zmq::socket_t &dsp_to_experiment_handler = sockets_vector[2];
-  zmq::socket_t &dsp_to_data_write = sockets_vector[3];
-  zmq::socket_t &dsp_to_brian_begin = sockets_vector[4];
-  zmq::socket_t &dsp_to_brian_end = sockets_vector[5];
 
   auto gpu_properties = get_gpu_properties();
   print_gpu_properties(gpu_properties);
@@ -158,24 +152,36 @@ int main(int argc, char **argv){
     if (sp_packet.rxchannel_size() == 0) {
       //TODO(keith): handle error
     }
-    std::vector<double> rx_freqs;
-    std::vector<uint32_t> slice_ids;
-    for(uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
-      rx_freqs.push_back(sp_packet.rxchannel(channel).rxfreq());
-      slice_ids.push_back(sp_packet.rxchannel(channel).slice_id());
-    }
 
 
-    // Parse out the beam phases from the radar control signal proc packet.
+    // Parse out the beam phases and other relevant info from the radar control signal proc packet.
     std::vector<cuComplex> beam_phases;
-    std::vector<uint32_t> beam_direction_counts;
+    std::vector<rx_slice> slice_info;
 
     for (uint32_t channel=0; channel<sp_packet.rxchannel_size(); channel++) {
       // In this case each channel is the info for a new RX frequency
       auto rx_channel = sp_packet.rxchannel(channel);
 
-      // Keep track of the number of beams each RX freq has. We will need this for beamforming.
-      beam_direction_counts.push_back(rx_channel.beam_directions_size());
+      auto rx_freq = rx_channel.rxfreq();
+      auto slice_id = rx_channel.slice_id();
+      auto num_ranges = rx_channel.num_ranges();
+      auto first_range = rx_channel.first_range();
+      auto range_sep = rx_channel.range_sep();
+      auto beam_count = rx_channel.beam_directions_size();
+      auto tau_spacing = rx_channel.tau_spacing();
+      auto new_rx_slice = rx_slice(rx_freq, slice_id, num_ranges, beam_count, first_range, range_sep,
+                                    tau_spacing);
+
+      auto num_lags = sp_packet.rxchannel(channel).lags_size();
+      for (uint32_t lag_counter=0; lag_counter<num_lags; lag_counter++) {
+        auto lag_num = sp_packet.rxchannel(channel).lags(lag_counter).lag_num();
+        auto pulse_1 = sp_packet.rxchannel(channel).lags(lag_counter).pulse_1();
+        auto pulse_2 = sp_packet.rxchannel(channel).lags(lag_counter).pulse_2();
+        new_rx_slice.lags.push_back({pulse_1, pulse_2, lag_num});
+      }
+      slice_info.push_back(new_rx_slice);
+
+
 
       // We are going to use two intermediate vectors here to rearrange the phase data so that
       // all M data comes first, followed by all I data. This way can we directly treat each
@@ -212,26 +218,27 @@ int main(int argc, char **argv){
       }
     }
 
+    std::vector<double> rx_freqs;
+    for (auto &s : slice_info) {
+      rx_freqs.push_back(s.rx_freq);
+    }
     TIMEIT_IF_TRUE_OR_DEBUG(false, "   NCO mix timing: ",
       [&]() {
         filters.mix_first_stage_to_bandpass(rx_freqs,rx_rate);
       }()
     );
 
-
-
     auto complex_taps = filters.get_mixed_filter_taps();
 
-    DSPCore *dp = new DSPCore(&dsp_to_brian_begin, &dsp_to_brian_end, &dsp_to_data_write,
-                             sig_options, sp_packet.sequence_num(), rx_rate, output_sample_rate,
-                             rx_freqs, filter_taps, beam_phases,
-                             beam_direction_counts, rx_metadata.initialization_time(),
-                             rx_metadata.sequence_start_time(), slice_ids, dm_rates);
+    DSPCore *dp = new DSPCore(std::ref(context), sig_options, sp_packet.sequence_num(),
+                             rx_rate, output_sample_rate,
+                             filter_taps, beam_phases,
+                             rx_metadata.initialization_time(),
+                             rx_metadata.sequence_start_time(), dm_rates, slice_info);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
     }
-
 
     //We need to sample early to account for propagating samples through filters. The number of
     //required early samples is equal to adding half the filter length of each stage, starting with
@@ -313,7 +320,7 @@ int main(int argc, char **argv){
       prev_output = last_filter_output;
     }
 
-    dp->cuda_postprocessing_callback(rx_freqs, total_antennas, samples_needed, samples_per_antenna,
+    dp->cuda_postprocessing_callback(total_antennas, samples_needed, samples_per_antenna,
                                       total_output_samples);
 
   } //for(;;)

@@ -29,7 +29,8 @@ from experiment_prototype import list_tests
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, DecimationStage
+from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, DecimationStage, \
+    create_default_scheme
 
 interface_types = frozenset(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
 """ The types of interfacing available for slices in the experiment.
@@ -67,7 +68,7 @@ PULSE
     Simultaneous pulse_sequence interfacing, pulse by pulse
     creates a single pulse_sequence. exp_slice A and B might have different
     frequencies (stereo) and/or may have different pulse
-    length, mpinc, pulse_sequence, but must have the same integration
+    length, tau_spacing, pulse_sequence, but must have the same integration
     time. They must also have same len(scan), although they may
     use different directions in scan. They must have the same
     scan boundary if any. A time offset between the pulses
@@ -77,12 +78,12 @@ PULSE
 """
 
 slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas",
-                    "rx_int_antennas", "pulse_sequence", "pulse_shift", "mpinc",
-                    "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
-                    "beam_order", "scanboundflag", "scanbound", "txfreq", "rxfreq",
+                    "rx_int_antennas", "pulse_sequence", "pulse_phase_offset", "tau_spacing",
+                    "pulse_len", "num_ranges", "first_range", "intt", "intn", "beam_angle",
+                    "beam_order", "scanbound", "txfreq", "rxfreq",
                     "clrfrqrange", "acf", "xcf", "acfint", "wavetype", "seqoffset",
-                    "iwavetable", "qwavetable", "comment", "rsep", "lag_table"])
-# TODO add scanboundt?
+                    "iwavetable", "qwavetable", "comment", "range_sep", "lag_table"])
+
 """
 **Description of Slice Keys**
 
@@ -105,23 +106,23 @@ rx_int_antennas
     antennas given max number from config.
 
 pulse_sequence
-    The pulse sequence timing, given in quantities of mpinc, for example
+    The pulse sequence timing, given in quantities of tau_spacing, for example
     normalscan = [0, 14, 22, 24, 27, 31, 42, 43]
 
-mpinc
+tau_spacing
     multi-pulse increment in us, Defines minimum space between pulses.
 
-pulse_shift
+pulse_phase_offset
     Allows phase shifting between pulses, enabling encoding of pulses. Default all
     zeros for all pulses in pulse_sequence.
 
 pulse_len
     length of pulse in us. Range gate size is also determined by this.
 
-nrang
+num_ranges
     Number of range gates.
 
-frang
+first_range
     first range gate, in km
 
 intt
@@ -151,11 +152,8 @@ beam_order
     integration. When we do imaging we will still have to quantize the directions we
     are looking in to certain beam directions.
 
-scanboundflag
-    flag for whether there is a scan boundary to wait for in order to start a new scan.
-
 scanbound
-    time that is allotted for a scan before a new scan boundary occurs (ms).
+    A list of seconds past the minute for integration times in a scan to align to.
 
 clrfrqrange
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
@@ -199,18 +197,14 @@ acfint
     flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
     False.
 
-rsep
-    a calculated value from pulse_len. If already set, it will be overwritten to be the correct 
-    value determined by the pulse_len. Used for acfs. This is the range gate separation, 
+range_sep
+    a calculated value from pulse_len. If already set, it will be overwritten to be the correct
+    value determined by the pulse_len. Used for acfs. This is the range gate separation,
     in azimuthal direction, in km.
 
 lag_table
     used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from
     8-pulse normalscan.
-
-Should add:
-
-scanboundt : time past the hour to start a scan at ?
 """
 
 hidden_key_set = frozenset(['rxonly', 'clrfrqflag', 'slice_interfacing'])
@@ -221,7 +215,8 @@ therefore ignored.
 """
 
 default_rx_bandwidth = 5.0e6
-default_output_rx_rate = 10.0e3/3 
+default_output_rx_rate = 10.0e3/3
+transition_bandwidth = 750.0e3
 
 class ExperimentPrototype(object):
     """
@@ -264,12 +259,12 @@ class ExperimentPrototype(object):
     def __init__(self, cpid, output_rx_rate=default_output_rx_rate,
                  rx_bandwidth=default_rx_bandwidth, tx_bandwidth=5.0e6, txctrfreq=12000.0,
                  rxctrfreq=12000.0,
-                 decimation_scheme=DecimationScheme(default_rx_bandwidth, default_output_rx_rate),
+                 decimation_scheme=create_default_scheme(),
                  comment_string=''):
         """
         Base initialization for your experiment.
         :param cpid: unique id necessary for each control program (experiment)
-        :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz. 
+        :param output_rx_rate: The desired output rate for the data, to be decimated to, in Hz.
          Cannot be changed after instantiation.
         :param rx_bandwidth: The desired bandwidth for the experiment. Directly determines rx
         sampling rate of the USRPs. Cannot be changed.
@@ -279,7 +274,7 @@ class ExperimentPrototype(object):
         :param rxctrfreq: centre frequency, in kHz, used to mix to baseband.
         :param decimation_scheme: an object defining the decimation and filtering stages for the
         signal processing module. If you would like something other than the default, you will
-        need to build an object of the DecimationScheme type before initiating your experiment. 
+        need to build an object of the DecimationScheme type before initiating your experiment.
         This cannot be changed after instantiation.
         :param comment_string: description of experiment for data files.
         """
@@ -340,10 +335,10 @@ class ExperimentPrototype(object):
         # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
         clock_multiples = self.options.usrp_master_clock_rate/2**32
         clock_divider = math.ceil(txctrfreq*1e3/clock_multiples)
-        self.__txctrfreq = (clock_divider * clock_multiples)/1e3 
+        self.__txctrfreq = (clock_divider * clock_multiples)/1e3
 
         clock_divider = math.ceil(rxctrfreq*1e3/clock_multiples)
-        self.__rxctrfreq = (clock_divider * clock_multiples)/1e3 
+        self.__rxctrfreq = (clock_divider * clock_multiples)/1e3
 
         # Load the config, hardware, and restricted frequency data
 
@@ -405,12 +400,12 @@ class ExperimentPrototype(object):
         The experiment class name.
         """
         return self.__experiment_name
-    
+
 
     @property
     def output_rx_rate(self):
         """
-        The output receive rate of the data.
+        The output receive rate of the data, Hz.
 
         This is read-only once established in instantiation.
         """
@@ -631,7 +626,6 @@ class ExperimentPrototype(object):
     def txctrfreq(self):
         """
         The transmission centre frequency that USRP is tuned to (kHz).
-        If you would like to change this value, note that it will take tuning time.
         """
         return self.__txctrfreq
 
@@ -641,9 +635,11 @@ class ExperimentPrototype(object):
         The maximum transmit frequency.
 
         This is the maximum tx frequency possible in this experiment (either maximum in our license
-        or maximum given by the centre frequency and sampling rate).
+        or maximum given by the centre frequency, and sampling rate). The maximum is slightly less
+        than that allowed by the centre frequency and txrate, to stay away from the edges of the
+        possible transmission band where the signal is distorted.
         """
-        max_freq = self.txctrfreq * 1000 + (self.txrate/2.0)
+        max_freq = self.txctrfreq * 1000 + (self.txrate/2.0) - transition_bandwidth
         if max_freq < self.options.max_freq:
             return max_freq
         else:
@@ -656,9 +652,11 @@ class ExperimentPrototype(object):
         The minimum transmit frequency.
 
         This is the minimum tx frequency possible in this experiment (either minimum in our license
-        or minimum given by the centre frequency and sampling rate).
+        or minimum given by the centre frequency and sampling rate). The minimum is slightly more
+        than that allowed by the centre frequency and txrate, to stay away from the edges of the
+        possible transmission band where the signal is distorted.
         """
-        min_freq = self.txctrfreq * 1000 - (self.txrate/2.0)
+        min_freq = self.txctrfreq * 1000 - (self.txrate/2.0) + transition_bandwidth
         if min_freq > self.options.min_freq:
             return min_freq
         else:
@@ -669,7 +667,6 @@ class ExperimentPrototype(object):
     def rxctrfreq(self):
         """
         The receive centre frequency that USRP is tuned to (kHz).
-        If you would like to change this, note that it will take tuning time.
         """
         return self.__rxctrfreq
 
@@ -679,9 +676,11 @@ class ExperimentPrototype(object):
         The maximum receive frequency.
 
         This is the maximum tx frequency possible in this experiment (maximum given by the centre
-        frequency and sampling rate), as license doesn't matter for receiving.
+        frequency and sampling rate), as license doesn't matter for receiving. The maximum is
+        slightly less than that allowed by the centre frequency and rxrate, to stay away from the
+        edges of the possible receive band where the signal may be distorted.
         """
-        max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0)
+        max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0) - transition_bandwidth
         return max_freq
 
     @property
@@ -690,9 +689,11 @@ class ExperimentPrototype(object):
         The minimum receive frequency.
 
         This is the minimum rx frequency possible in this experiment (minimum given by the centre
-        frequency and sampling rate) - license doesn't restrict receiving.
+        frequency and sampling rate) - license doesn't restrict receiving. The minimum is
+        slightly more than that allowed by the centre frequency and rxrate, to stay away from the
+        edges of the possible receive band where the signal may be distorted.
         """
-        min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0)
+        min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0) + transition_bandwidth
         if min_freq > 1000: #Hz
             return min_freq
         else:
@@ -809,8 +810,8 @@ class ExperimentPrototype(object):
         remove_keys = []
         for key1, key2 in self._interface.keys():
             if key1 == remove_slice_id or key2 == remove_slice_id:
-                remove_keys.append((key1, key2))            
-        
+                remove_keys.append((key1, key2))
+
         for keyset in remove_keys:
             del self._interface[keyset]
 
@@ -942,7 +943,7 @@ class ExperimentPrototype(object):
         Check the required slice keys.
 
         Check for the minimum requirements of the slice. The following keys are always required:
-        "pulse_sequence", "mpinc", "pulse_len", "nrang", "frang", (one of "intt" or "intn"),
+        "pulse_sequence", "tau_spacing", "pulse_len", "num_ranges", "first_range", (one of "intt" or "intn"),
         "beam_angle", and "beam_order". This function may modify the values in this slice dictionary
         to ensure that it is able to be run and that the values make sense.
 
@@ -959,8 +960,8 @@ class ExperimentPrototype(object):
                 errmsg = "Slice must specify pulse_sequence that must be a list of integers"
                 raise ExperimentException(errmsg, exp_slice)
 
-        if 'mpinc' not in exp_slice.keys() or not isinstance(exp_slice['mpinc'], int):
-            errmsg = "Slice must specify mpinc that must be an integer"
+        if 'tau_spacing' not in exp_slice.keys() or not isinstance(exp_slice['tau_spacing'], int):
+            errmsg = "Slice must specify tau_spacing that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
         # TODO may want to add a field for range_gate which could set this param.
@@ -968,12 +969,12 @@ class ExperimentPrototype(object):
             errmsg = "Slice must specify pulse_len that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
-        if 'nrang' not in exp_slice.keys() or not isinstance(exp_slice['nrang'], int):
-            errmsg = "Slice must specify nrang that must be an integer"
+        if 'num_ranges' not in exp_slice.keys() or not isinstance(exp_slice['num_ranges'], int):
+            errmsg = "Slice must specify num_ranges that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
-        if 'frang' not in exp_slice.keys() or not isinstance(exp_slice['frang'], int):
-            errmsg = "Slice must specify frang that must be an integer"
+        if 'first_range' not in exp_slice.keys() or not isinstance(exp_slice['first_range'], int):
+            errmsg = "Slice must specify first_range in km that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
         if 'intt' not in exp_slice.keys():
@@ -1113,7 +1114,7 @@ class ExperimentPrototype(object):
             if exp_slice['clrfrqrange'][0] >= exp_slice['clrfrqrange'][1]:
                 errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
                             frequencies {} according to license and/or centre frequencies / sampling
-                            rates, and must have lower frequency first.
+                            rates / transition bands, and must have lower frequency first.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1121,7 +1122,7 @@ class ExperimentPrototype(object):
                     (exp_slice['clrfrqrange'][1] * 1000) >= self.rx_maxfreq:
                 errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
                             frequencies {} according to license and/or centre frequencies / sampling
-                            rates, and must have lower frequency first.
+                            rates / transition bands, and must have lower frequency first.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1129,7 +1130,7 @@ class ExperimentPrototype(object):
                     (exp_slice['clrfrqrange'][0] * 1000) <= self.rx_minfreq:
                 errmsg = """clrfrqrange must be between min and max tx frequencies {} and rx
                             frequencies {} according to license and/or centre frequencies / sampling
-                            rates, and must have lower frequency first.
+                            rates / transition bands, and must have lower frequency first.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1183,14 +1184,14 @@ class ExperimentPrototype(object):
             if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
                                                                       float):
                 errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given centre frequency and
-                            sampling rate.""".format((self.rx_minfreq, self.rx_maxfreq))
+                            the radar license and be within range given centre frequency, sampling 
+                            rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
             if (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
                                                                    1000) <= self.rx_minfreq:
                 errmsg = """rxfreq must be a number (kHz) between rx min and max frequencies {} for
-                            the radar license and be within range given centre frequency and
-                            sampling rate.""".format((self.rx_minfreq, self.rx_maxfreq))
+                            the radar license and be within range given centre frequency, sampling
+                            rate and transition band.""".format((self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
 
         else:  # TX-specific mode , without a clear frequency search.
@@ -1199,7 +1200,7 @@ class ExperimentPrototype(object):
                                                                           float):
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies and sampling rates.
+                            given centre frequencies, sampling rates and transition band.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1207,7 +1208,7 @@ class ExperimentPrototype(object):
                     self.rx_maxfreq:
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies and sampling rates.
+                            given centre frequencies, sampling rates and transition band.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1215,7 +1216,7 @@ class ExperimentPrototype(object):
                     self.rx_minfreq:
                 errmsg = """txfreq must be a number (kHz) between tx min and max frequencies {} and
                             rx min and max frequencies {} for the radar license and be within range
-                            given centre frequencies and sampling rates.
+                            given centre frequencies, sampling rates and transition band.
                             """.format((self.tx_minfreq, self.tx_maxfreq),
                                        (self.rx_minfreq, self.rx_maxfreq))
                 raise ExperimentException(errmsg)
@@ -1246,25 +1247,11 @@ class ExperimentPrototype(object):
         if 'rx_int_antennas' not in exp_slice:
             slice_with_defaults['rx_int_antennas'] = \
                 [i for i in range(0, self.options.interferometer_antenna_count)]
-        if 'pulse_shift' not in exp_slice:
-            slice_with_defaults['pulse_shift'] = [0 for i in range(0, len(
+        if 'pulse_phase_offset' not in exp_slice:
+            slice_with_defaults['pulse_phase_offset'] = [0.0 for i in range(0, len(
                 slice_with_defaults['pulse_sequence']))]
-        if 'scanboundflag' not in exp_slice and 'scanbound' not in exp_slice:
-            slice_with_defaults['scanboundflag'] = False  # TODO discuss defaults, discuss whether scanboundflag is necessary
+        if 'scanbound' not in exp_slice:
             slice_with_defaults['scanbound'] = None
-        elif 'scanboundflag' not in exp_slice:  # but scanbound is
-            slice_with_defaults['scanboundflag'] = True
-        elif not exp_slice['scanboundflag']: 
-            slice_with_defaults['scanbound'] = None
-
-        if 'scanboundflag' in exp_slice:
-            if exp_slice['scanboundflag']:
-                try:
-                    if exp_slice['scanbound'] is None:
-                        raise KeyError
-                except KeyError:
-                    errmsg = 'ScanboundFlag is set without a Scanbound specified.'
-                    raise ExperimentException(errmsg)
 
         # we only have one of intn or intt because of slice checks already completed in
         # check_slice_minimum_requirements.
@@ -1288,17 +1275,26 @@ class ExperimentPrototype(object):
             slice_with_defaults['acfint'] = False
 
         if slice_with_defaults['acf']:
-            if 'rsep' in exp_slice:
-                if slice_with_defaults['rsep'] != int(round(slice_with_defaults['pulse_len'] *
-                                                            1.0e-6 * speed_of_light/2.0)):
-                    errmsg = 'Rsep was set incorrectly. Rsep will be overwritten'
+            correct_range_sep = slice_with_defaults['pulse_len'] * 1.0e-9 * speed_of_light / 2.0
+            if 'range_sep' in exp_slice:
+                if not math.isclose(slice_with_defaults['range_sep'], correct_range_sep, abs_tol=0.01): # range_sep in km
+                    errmsg = 'range_sep = {} was set incorrectly. range_sep will be overwritten based on \
+                        pulse_len, which must be equal to 1/rx_rate. The new range_sep = {}'.format(slice_with_defaults['range_sep'],
+                            correct_range_sep)
                     if __debug__:  # TODO change to logging
                         print(errmsg)
 
-            slice_with_defaults['rsep'] = int(round(slice_with_defaults['pulse_len'] * 1.0e-6 *
-                                                      speed_of_light/2.0))
+            slice_with_defaults['range_sep'] = correct_range_sep
             # This is the distance travelled by the wave in the length of the pulse, divided by
-            # two because it's an echo (travels there and back).
+            # two because it's an echo (travels there and back). In km.
+
+            # The below check is an assumption that is made during acf calculation
+            # (1 output received sample = 1 range separation)
+            if not math.isclose(exp_slice['pulse_len'] * 1.0e-6, (1/self.output_rx_rate), abs_tol=0.000001):
+                errmsg = 'For an experiment slice with real-time acfs, pulse length must be equal (within 1 us) to ' \
+                '1/output_rx_rate to make acfs valid. Current pulse length is {} us, output rate is {}' \
+                ' Hz.'.format(exp_slice['pulse_len'], self.output_rx_rate)
+                raise ExperimentException(errmsg)
 
             if 'lag_table' in exp_slice:
                 # Check that lags are valid
@@ -1312,17 +1308,20 @@ class ExperimentPrototype(object):
                 lag_table = list(itertools.combinations(slice_with_defaults['pulse_sequence'], 2))
                 lag_table.append([slice_with_defaults['pulse_sequence'][0], slice_with_defaults[
                     'pulse_sequence'][0]])  # lag 0
+                # sort by lag number
+                lag_table = sorted(lag_table, key=lambda x: x[1] - x[0])
                 lag_table.append([slice_with_defaults['pulse_sequence'][-1], slice_with_defaults[
                     'pulse_sequence'][-1]])  # alternate lag 0
                 slice_with_defaults['lag_table'] = lag_table
 
         else:
-            # TODO log rsep, lag_table, xcf, and acfint will not be used
+            # TODO log range_sep, lag_table, xcf, and acfint will not be used
             if __debug__:
-                print('Rsep, lag_table, xcf, and acfint will not be used because acf is '
+                print('range_sep, lag_table, xcf, and acfint will not be used because acf is '
                               'not True.')
-            if 'rsep' not in exp_slice.keys():
-                slice_with_defaults['rsep'] = None
+            if 'range_sep' not in exp_slice.keys():
+                slice_with_defaults['range_sep'] = slice_with_defaults['pulse_len'] * 1.0e-9 * \
+                                                      speed_of_light/2.0
             if 'lag_table' not in exp_slice.keys():
                 slice_with_defaults['lag_table'] = []
 
@@ -1344,13 +1343,13 @@ class ExperimentPrototype(object):
         keys and check values of keys that are needed, and set defaults of keys that are optional.
 
         The following are always able to be defaulted, so are optional:
-        "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_shift", "scanboundflag",
+        "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_phase_offset", "scanboundflag",
         "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset"
 
 
         The following are always required for processing acf, xcf, and acfint which we will assume
         we are always doing:
-        "pulse_sequence", "mpinc", "pulse_len", "nrang", "frang", "intt", "intn", "beam_angle",
+        "pulse_sequence", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt", "intn", "beam_angle",
         "beam_order"
 
         The following are required depending on slice type:
@@ -1367,7 +1366,7 @@ class ExperimentPrototype(object):
         for key, value in complete_slice.items():
             if value is None:
                 remove_keys.append(key)
-        
+
         for key in remove_keys:
             complete_slice.pop(key)
 
@@ -1412,7 +1411,7 @@ class ExperimentPrototype(object):
             effective_length = 2 ** power_2
             if effective_length * self.num_slices > self.options.max_number_of_filter_taps_per_stage:
                 errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with \
-                    this many slices ({}) is too large for GPU max {}".format(len(stage.filter_taps), 
+                    this many slices ({}) is too large for GPU max {}".format(len(stage.filter_taps),
                         stage.stage_num, self.num_slices, self.options.max_number_of_filter_taps_per_stage)
 
         # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
@@ -1473,8 +1472,8 @@ class ExperimentPrototype(object):
                 error_list.append("Slice {} has A Parameter that is not Used: {} = {}". \
                     format(exp_slice['slice_id'], param, exp_slice[param]))
 
-        # TODO : mpinc needs to be an integer multiple of pulse_len in ros - is there a max ratio
-        # allowed for pulse_len/mpinc ? Add this check and add check for each slice's tx duty-cycle
+        # TODO : tau_spacing needs to be an integer multiple of pulse_len in ros - is there a max ratio
+        # allowed for pulse_len/tau_spacing ? Add this check and add check for each slice's tx duty-cycle
         # and make sure we aren't transmitting the entire time after combination with all slices
 
         if len(exp_slice['tx_antennas']) > options.main_antenna_count:
@@ -1529,24 +1528,29 @@ class ExperimentPrototype(object):
             error_list.append("Slice {} pulse_sequence Not Increasing".format(
                 exp_slice['slice_id']))
 
-        # Check that pulse_len and mpinc make sense (values in us)
-        if exp_slice['pulse_len'] > exp_slice['mpinc']:
-            error_list.append("Slice {} Pulse Length Greater than MPINC".format(
+        # Check that pulse_len and tau_spacing make sense (values in us)
+        if exp_slice['pulse_len'] > exp_slice['tau_spacing']:
+            error_list.append("Slice {} Pulse Length Greater than tau_spacing".format(
                 exp_slice['slice_id']))
         if exp_slice['pulse_len'] < self.options.minimum_pulse_length and \
                         exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * \
                         10.0e6:
             error_list.append("Slice {} Pulse Length Too Small".format(
                 exp_slice['slice_id']))
-        if exp_slice['mpinc'] < self.options.minimum_mpinc_length:
+        if exp_slice['tau_spacing'] < self.options.minimum_tau_spacing_length:
             error_list.append("Slice {} Multi-Pulse Increment Too Small".format(
                 exp_slice['slice_id']))
+        if not math.isclose((exp_slice['tau_spacing'] * self.output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
+            error_list.append('Slice {} Correlation lags will be off because tau_spacing {} us is not a '\
+                'multiple of the output rx sampling period (1/output_rx_rate {} Hz).'.format(
+                    exp_slice['slice_id'], exp_slice['tau_spacing'], self.output_rx_rate))
 
-        # check intn and intt make sense given mpinc, and pulse_sequence.
+        # check intn and intt make sense given tau_spacing, and pulse_sequence.
         if exp_slice['pulse_sequence']:  # if not empty
             # Sequence length is length of pulse sequence plus the scope sync delay time.
-            seq_len = exp_slice['mpinc'] * (exp_slice['pulse_sequence'][-1]) \
-                      + (exp_slice['nrang'] + 19 + 10) * exp_slice['pulse_len']  # us
+            # TODO this is an old check and seqtime now set in sequences class, update.
+            seq_len = exp_slice['tau_spacing'] * (exp_slice['pulse_sequence'][-1]) \
+                      + (exp_slice['num_ranges'] + 19 + 10) * exp_slice['pulse_len']  # us
 
             if exp_slice['intt'] is None and exp_slice['intn'] is None:
                 # both are None and we are not rx - only
@@ -1596,11 +1600,42 @@ class ExperimentPrototype(object):
                             exp_slice['slice_id'], bmnum))
 
         # check scan boundary not less than minimum required scan time.
-        if exp_slice['scanboundflag']:
-            if exp_slice['scanbound'] < (
-                        len(exp_slice['beam_order']) * exp_slice['intt']):
-                error_list.append("Slice {} Beam Order Too Long for ScanBoundary".format(
-                    exp_slice['slice_id']))
+        if exp_slice['scanbound']:
+            if not exp_slice['intt']:
+                error_list.append("Slice {} must have intt enabled to use scanbound".format(
+                        exp_slice['slice_id']))
+            elif len(exp_slice['scanbound']) != len(exp_slice['beam_order']):
+                error_list.append("Slice {} scanbound length needs to equal beam order length".format(
+                        exp_slice['slice_id']))
+            elif any(i<0 for i in exp_slice['scanbound']):
+                error_list.append("Slice {} scanbound times must be non-negative".format(
+                        exp_slice['slice_id']))
+            elif (len(exp_slice['scanbound']) > 1 and
+                not all(i<j for i,j in zip(exp_slice['scanbound'], exp_slice['scanbound'][1:]))):
+                error_list.append("Slice {} scanbound times must be increasing".format(
+                        exp_slice['slice_id']))
+            else:
+                # Last element with intt added determines
+                total_scan_time = (math.ceil((exp_slice['scanbound'][-1] + exp_slice['intt']*1e-3)/60) *
+                                    60000) # rounds up to scan boundary minute in ms
+
+                if (len(exp_slice['beam_order']) * exp_slice['intt']) > total_scan_time:
+                        error_list.append("Slice {} Beam Order Too Long for scanbound".format(
+                            exp_slice['slice_id']))
+
+                # Check if any scanbound times are shorter than the intt.
+                if len(exp_slice['scanbound']) == 1:
+                    if exp_slice['scanbound'][0] * 1000 < exp_slice['intt']:
+                        error_list.append("Slice {} intt longer than "
+                            "scanbound times".format(exp_slice['slice_id']))
+                else:
+                    for i in range(len(exp_slice['scanbound']) - 1):
+                        if ((exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000 <
+                            exp_slice['intt']):
+                            error_list.append("Slice {} intt longer than "
+                                "scanbound times".format(exp_slice['slice_id']))
+                            break
+
 
         # TODO other checks
 

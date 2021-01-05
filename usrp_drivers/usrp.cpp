@@ -30,11 +30,15 @@ See LICENSE for details.
 USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
 {
 
-  gpio_bank_ = driver_options.get_gpio_bank();
+  gpio_bank_high_ = driver_options.get_gpio_bank_high();
+  gpio_bank_low_ = driver_options.get_gpio_bank_low();
   atr_rx_ = driver_options.get_atr_rx();
   atr_tx_ = driver_options.get_atr_tx();
   atr_xx_ = driver_options.get_atr_xx();
   atr_0x_ = driver_options.get_atr_0x();
+  agc_st_ = driver_options.get_agc_st();
+  test_mode_ = driver_options.get_test_mode();
+  lo_pwr_ = driver_options.get_lo_pwr();
   tx_rate_ = tx_rate;
   rx_rate_ = rx_rate;
 
@@ -49,6 +53,8 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   set_time_source(driver_options.get_pps(), driver_options.get_clk_addr());
   check_ref_locked();
   set_atr_gpios();
+  set_output_gpios();
+  set_input_gpios();
 
   set_tx_rate(driver_options.get_transmit_channels());
   set_rx_rate(driver_options.get_receive_channels());
@@ -433,20 +439,129 @@ void USRP::clear_command_time()
  */
 void USRP::set_atr_gpios()
 {
+
+  auto output_pins = 0;
+  output_pins |= atr_xx_ | atr_rx_ | atr_tx_ | atr_0x_;
+
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0xFFFF, 0b11111111, i);
-    usrp_->set_gpio_attr(gpio_bank_, "DDR", 0xFFFF, 0b11111111, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "CTRL", 0xFFFF, output_pins, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "DDR", 0xFFFF, output_pins, i);
+
+    usrp_->set_gpio_attr(gpio_bank_low_, "CTRL", 0xFFFF, output_pins, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "DDR", 0xFFFF, output_pins, i);
 
     //XX is the actual TR signal
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, atr_xx_, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "ATR_XX", atr_xx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "ATR_RX", atr_rx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "ATR_TX", atr_tx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "ATR_0X", atr_0x_, 0xFFFF, i);
 
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, atr_rx_, i);
-
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, atr_tx_, i);
-
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, atr_0x_, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "ATR_XX", ~atr_xx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "ATR_RX", ~atr_rx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "ATR_TX", ~atr_tx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "ATR_0X", ~atr_0x_, 0xFFFF, i);
 
   }
+}
+
+/**
+* @brief      Sets the pins mapping the test mode signals as GPIO
+*             outputs.
+*/
+void USRP::set_output_gpios()
+{
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    // CTRL 0 sets the pins in gpio mode, DDR 1 sets them as outputs
+    usrp_->set_gpio_attr(gpio_bank_high_, "CTRL", 0x0000, test_mode_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_high_, "DDR", 0xFFFF, test_mode_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_low_, "CTRL", 0x0000, test_mode_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_low_, "DDR", 0xFFFF, test_mode_, i);
+
+  }
+}
+
+/**
+* @brief      Sets the pins mapping the AGC and low power signals as GPIO
+*             inputs.
+*/
+void USRP::set_input_gpios()
+{
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    // CTRL 0 sets the pins in gpio mode, DDR 0 sets them as inputs
+    usrp_->set_gpio_attr(gpio_bank_high_, "CTRL", 0x0000, agc_st_, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "CTRL", 0x0000, lo_pwr_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_high_, "DDR", 0x0000, agc_st_, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "DDR", 0x0000, lo_pwr_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_low_, "CTRL", 0x0000, agc_st_, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "CTRL", 0x0000, lo_pwr_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_low_, "DDR", 0x0000, agc_st_, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "DDR", 0x0000, lo_pwr_, i);
+
+  }
+}
+
+/**
+ * @brief   Inverts the current test mode signal. Useful for testing
+ *
+ * @param[in]   mboard  The USRP to invert test mode on. Default 0.
+ */
+void USRP::invert_test_mode(uint32_t mboard /* =0 */)
+{
+    uint32_t tm_value = usrp_->get_gpio_attr(gpio_bank_high_, "OUT", mboard);
+    usrp_->set_gpio_attr(gpio_bank_high_, "OUT", test_mode_, ~tm_value, mboard);
+    usrp_->set_gpio_attr(gpio_bank_low_, "OUT", test_mode_, tm_value, mboard);
+}
+
+/**
+ * @brief   Sets the current test mode signal HIGH.
+ *
+ * @param[in]   mboard  The USRP to set test mode HIGH on. Default 0.
+ */
+void USRP::set_test_mode(uint32_t mboard /* =0 */)
+{
+    usrp_->set_gpio_attr(gpio_bank_high_, "OUT", test_mode_, 0xFFFF, mboard);
+    usrp_->set_gpio_attr(gpio_bank_low_, "OUT", test_mode_, 0x0000, mboard);
+}
+
+/**
+ * @brief   Clears the current test mode signal LOW.
+ *
+ * @param[in]   mboard  The USRP to clear test mode LOW on. Default 0.
+ */
+void USRP::clear_test_mode(uint32_t mboard /* =0 */)
+{
+    usrp_->set_gpio_attr(gpio_bank_high_, "OUT", test_mode_, 0x0000, mboard);
+    usrp_->set_gpio_attr(gpio_bank_low_, "OUT", test_mode_, 0xFFFF, mboard);
+}
+
+/**
+* @brief      Gets the state of the GPIO bank represented as a decimal number
+*/
+std::vector<uint32_t> USRP::get_gpio_bank_high_state()
+{
+  std::vector<uint32_t> readback_values;
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    readback_values.push_back(usrp_->get_gpio_attr(gpio_bank_high_, "READBACK", i));
+  }
+  return readback_values;
+}
+
+/**
+* @brief      Gets the state of the GPIO bank represented as a decimal number
+*/
+std::vector<uint32_t> USRP::get_gpio_bank_low_state()
+{
+  std::vector<uint32_t> readback_values;
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    readback_values.push_back(usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i));
+  }
+  return readback_values;
 }
 
 /**
