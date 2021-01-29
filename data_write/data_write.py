@@ -107,7 +107,9 @@ DATA_TEMPLATE = {
     "intf_acfs" : [], # Interferometer array autocorrelations
     "xcfs" : [], # Crosscorrelations between main and interferometer arrays
     "gps_locked" : None, # Boolean True if the GPS was locked during the entire integration period
-    "gps_to_system_time_diff" : None # Max time diff in seconds between GPS and system/NTP time during the integration period.
+    "gps_to_system_time_diff" : None, # Max time diff in seconds between GPS and system/NTP time during the integration period.
+    "agc_status_word" : None, # 32 bits, a '1' in bit position corresponds to an AGC fault on that transmitter
+    "low_power_status_word" : None # 32 bits, a '1' in bit position corresponds to a low power condition on that transmitter
 }
 
 TX_TEMPLATE = {
@@ -166,6 +168,9 @@ class ParseData(object):
 
         self._gps_locked = True  # init True so that logical AND works properly in update() method 
         self._gps_to_system_time_diff = 0.0
+
+        self._agc_status_word = 0b0
+        self._lp_status_word = 0b0
 
         self._rawrf_locations = []
 
@@ -314,6 +319,12 @@ class ParseData(object):
         # Find the max time diff between GPS and system time to report for this integration period
         if abs(self._gps_to_system_time_diff) < abs(self.processed_data.gps_to_system_time_diff):
             self._gps_to_system_time_diff = self.processed_data.gps_to_system_time_diff
+
+        # Bitwise OR to catch any AGC faults during the integration period
+        self._agc_status_word = self._agc_status_word | self.processed_data.agc_status_bank_h
+
+        # Bitwise OR to catch any low power conditions during the integration period
+        self._lp_status_word = self._lp_status_word | self.processed_data.lp_status_bank_h
 
         # TODO(keith): Parallelize?
         procs = []

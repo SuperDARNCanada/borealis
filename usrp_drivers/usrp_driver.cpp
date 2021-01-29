@@ -158,10 +158,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   {
     auto more_pulses = true;
     std::vector<double> time_to_send_samples;
-    uint32_t agc_status_h = 0b0;
-    uint32_t lp_status_h = 0b0;
-    uint32_t agc_status_l = 0b0;
-    uint32_t lp_status_l = 0b0;
+    uint32_t agc_status_bank_h = 0b0;
+    uint32_t lp_status_bank_h = 0b0;
+    uint32_t agc_status_bank_l = 0b0;
+    uint32_t lp_status_bank_l = 0b0;
     while (more_pulses) {
       auto pulse_data = recv_data(driver_to_radar_control,
                                     driver_options.get_radctrl_to_driver_identity());
@@ -330,15 +330,15 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
               ); //pulse timeit macro
             }
 
-            // Read AGC and Low Power signals, logical OR to catch any time the signals are active
-            // during this sequence
+            // Read AGC and Low Power signals, bitwise OR to catch any time the signals are active
+            // during this sequence for each USRP individually
             usrp_d.clear_command_time();
             auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
-            agc_status_h = agc_status_h || usrp_d.get_agc_state_high();
-            lp_status_h = lp_status_h || usrp_d.get_low_power_state_high();
-            agc_status_l = agc_status_l || usrp_d.get_agc_state_low();
-            lp_status_l = lp_status_l || usrp_d.get_low_power_state_low();
+            agc_status_bank_h = agc_status_bank_h | usrp_d.get_agc_state_high();
+            lp_status_bank_h = lp_status_bank_h | usrp_d.get_low_power_state_high();
+            agc_status_bank_l = agc_status_bank_l | usrp_d.get_agc_state_low();
+            lp_status_bank_l = lp_status_bank_l | usrp_d.get_low_power_state_low();
             usrp_d.clear_command_time();
 
             for (uint32_t i=0; i<pulses.size(); i++) {
@@ -418,10 +418,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto actual_finish = borealis_clocks.box_time;
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
 
-    samples_metadata.add_agc_status_bank_h(agc_status_h);
-    samples_metadata.add_lp_status_bank_h(lp_status_h);
-    samples_metadata.add_agc_status_bank_l(agc_status_l);
-    samples_metadata.add_lp_status_bank_l(lp_status_l);
+    samples_metadata.add_agc_status_bank_h(agc_status_bank_h);
+    samples_metadata.add_lp_status_bank_h(lp_status_bank_h);
+    samples_metadata.add_agc_status_bank_l(agc_status_bank_l);
+    samples_metadata.add_lp_status_bank_l(lp_status_bank_l);
 
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);

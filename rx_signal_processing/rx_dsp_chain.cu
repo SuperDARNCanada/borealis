@@ -236,6 +236,8 @@ int main(int argc, char **argv){
                              rx_metadata.initialization_time(),
                              rx_metadata.sequence_start_time(),
                              rx_metadata.gps_locked(), rx_metadata.gps_to_system_time_diff(),
+                             rx_metadata.agc_status_bank_h(), rx_metadata.lp_status_bank_h(),
+                             rx_metadata.agc_status_bank_l(), rx_metadata.lp_status_bank_l(),
                              dm_rates, slice_info);
 
     if (rx_metadata.numberofreceivesamples() == 0){

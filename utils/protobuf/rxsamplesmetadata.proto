@@ -10,10 +10,10 @@ message RxSamplesMetadata {
   double initialization_time = 5;
   double sequence_start_time = 6;
   uint64 ringbuffer_size = 7;
-  repeated bool agc_status_bank_l = 8;
-  repeated bool lp_status_bank_l = 9;
-  repeated bool agc_status_bank_h = 10;
-  repeated bool lp_status_bank_h = 11;
+  uint32 agc_status_bank_h = 8;
+  uint32 lp_status_bank_h = 9;
+  uint32 agc_status_bank_l = 10;
+  uint32 lp_status_bank_l = 11;
   bool gps_locked = 12;
   double gps_to_system_time_diff = 13;
 }

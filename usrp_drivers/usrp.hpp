@@ -42,10 +42,10 @@ class USRP{
     void clear_command_time();
     std::vector<uint32_t> get_gpio_bank_high_state();
     std::vector<uint32_t> get_gpio_bank_low_state();
-    uint32_t get_agc_state_high();
-    uint32_t get_low_power_state_high();
-    uint32_t get_agc_state_low();
-    uint32_t get_low_power_state_low();
+    uint32_t get_agc_status_bank_h();
+    uint32_t get_lp_status_bank_h();
+    uint32_t get_agc_status_bank_l();
+    uint32_t get_lp_status_bank_l();
     uhd::time_spec_t get_current_usrp_time();
     uhd::rx_streamer::sptr get_usrp_rx_stream();
     uhd::tx_streamer::sptr get_usrp_tx_stream();

@@ -578,60 +578,60 @@ bool USRP::gps_locked()
 }
 
 /**
-* @brief      Gets the state of all of the active-high AGC fault signals as a single binary number.
+* @brief      Gets the status of all of the active-high AGC fault signals as a single binary number.
 *             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
 */
-uint32_t USRP::get_agc_state_high()
+uint32_t USRP::get_agc_status_bank_h()
 {
   uint32_t agc_status = 0b0;
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-    if (usrp_->get_gpio_attr(gpio_bank_high_, "READBACK", i) && agc_st_) {
-        agc_status = agc_status || 1<<i;
+    if (usrp_->get_gpio_attr(gpio_bank_high_, "READBACK", i) & agc_st_) {
+        agc_status = agc_status | 1<<i;
     }
   }
   return agc_status;
 }
 
 /**
-* @brief      Gets the state of all of the active-high Low power signals as a single binary number.
+* @brief      Gets the status of all of the active-high Low power signals as a single binary number.
 *             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
 */
-uint32_t USRP::get_low_power_state_high()
+uint32_t USRP::get_lp_status_bank_h()
 {
   uint32_t low_power_status = 0b0;
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-    if (usrp_->get_gpio_attr(gpio_bank_high_, "READBACK", i) && lo_pwr_) {
-        low_power_status = low_power_status || 1<<i;
+    if (usrp_->get_gpio_attr(gpio_bank_high_, "READBACK", i) & lo_pwr_) {
+        low_power_status = low_power_status | 1<<i;
     }
   }
   return low_power_status;
 }}
 
 /**
-* @brief      Gets the state of all of the active-low AGC fault signals as a single binary number.
+* @brief      Gets the status of all of the active-low AGC fault signals as a single binary number.
 *             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
 */
-uint32_t USRP::get_agc_state_low()
+uint32_t USRP::get_agc_status_bank_l()
 {
   uint32_t agc_status = 0b0;
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-    if (usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i) && agc_st_) {
-        agc_status = agc_status || 1<<i;
+    if (usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i) & agc_st_) {
+        agc_status = agc_status | 1<<i;
     }
   }
   return agc_status;
 }
 
 /**
-* @brief      Gets the state of all of the active-low Low power signals as a single binary number.
+* @brief      Gets the status of all of the active-low Low power signals as a single binary number.
 *             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
 */
-uint32_t USRP::get_low_power_state_low()
+uint32_t USRP::get_lp_status_bank_l()
 {
   uint32_t low_power_status = 0b0;
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-    if (usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i) && lo_pwr_) {
-        low_power_status = low_power_status || 1<<i;
+    if (usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i) & lo_pwr_) {
+        low_power_status = low_power_status | 1<<i;
     }
   }
   return low_power_status;
