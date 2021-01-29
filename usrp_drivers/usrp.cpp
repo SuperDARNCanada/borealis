@@ -605,7 +605,7 @@ uint32_t USRP::get_lp_status_bank_h()
     }
   }
   return low_power_status;
-}}
+}
 
 /**
 * @brief      Gets the status of all of the active-low AGC fault signals as a single binary number.
@@ -635,7 +635,7 @@ uint32_t USRP::get_lp_status_bank_l()
     }
   }
   return low_power_status;
-}}
+}
 
 /**
  * @brief      Gets the current USRP time.

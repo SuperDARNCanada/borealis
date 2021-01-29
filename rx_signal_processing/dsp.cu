@@ -687,8 +687,8 @@ DSPCore::DSPCore(zmq::context_t &context, SignalProcessingOptions &sig_options,
   gps_to_system_time_diff(gps_to_system_time_diff),
   agc_status_bank_h(agc_status_bank_h),
   lp_status_bank_h(lp_status_bank_h),
-  agc_status_bank_h(agc_status_bank_l),
-  lp_status_bank_h(lp_status_bank_l),
+  agc_status_bank_l(agc_status_bank_l),
+  lp_status_bank_l(lp_status_bank_l),
   dm_rates(dm_rates),
   slice_info(slice_info)
 {

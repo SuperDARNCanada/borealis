@@ -335,10 +335,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
             usrp_d.clear_command_time();
             auto read_time = sequence_start_time + (seqtime * 1e-6) + agc_signal_read_delay;
             usrp_d.set_command_time(read_time);
-            agc_status_bank_h = agc_status_bank_h | usrp_d.get_agc_state_high();
-            lp_status_bank_h = lp_status_bank_h | usrp_d.get_low_power_state_high();
-            agc_status_bank_l = agc_status_bank_l | usrp_d.get_agc_state_low();
-            lp_status_bank_l = lp_status_bank_l | usrp_d.get_low_power_state_low();
+            agc_status_bank_h = agc_status_bank_h | usrp_d.get_agc_status_bank_h();
+            lp_status_bank_h = lp_status_bank_h | usrp_d.get_lp_status_bank_h();
+            agc_status_bank_l = agc_status_bank_l | usrp_d.get_agc_status_bank_l();
+            lp_status_bank_l = lp_status_bank_l | usrp_d.get_lp_status_bank_l();
             usrp_d.clear_command_time();
 
             for (uint32_t i=0; i<pulses.size(); i++) {
@@ -418,10 +418,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto actual_finish = borealis_clocks.box_time;
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
 
-    samples_metadata.add_agc_status_bank_h(agc_status_bank_h);
-    samples_metadata.add_lp_status_bank_h(lp_status_bank_h);
-    samples_metadata.add_agc_status_bank_l(agc_status_bank_l);
-    samples_metadata.add_lp_status_bank_l(lp_status_bank_l);
+    samples_metadata.set_agc_status_bank_h(agc_status_bank_h);
+    samples_metadata.set_lp_status_bank_h(lp_status_bank_h);
+    samples_metadata.set_agc_status_bank_l(agc_status_bank_l);
+    samples_metadata.set_lp_status_bank_l(lp_status_bank_l);
 
     std::string samples_metadata_str;
     samples_metadata.SerializeToString(&samples_metadata_str);
