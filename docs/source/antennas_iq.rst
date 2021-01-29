@@ -124,7 +124,7 @@ The file fields in the antennas_iq array files are:
 | | **intf_antenna_count**          | | Number of interferometer array antennas   |
 | | *uint32*                        | |                                           | 
 +-----------------------------------+---------------------------------------------+
-| | **low_power_status_word**       | | Low power status word. Bit position       |
+| | **lp_status_word**              | | Low power status word. Bit position       |
 | | *uint32*                        | | corresponds to the USRP motherboard/      |
 | | [num_records]                   | | transmitter. A '1' indicates low power    |
 | |                                 | | occurred at least once during integration |
@@ -325,7 +325,7 @@ The file fields under the record name in antennas_iq site files are:
 | | **intf_antenna_count**         | | Number of interferometer array antennas   |
 | | *uint32*                       | |                                           | 
 +----------------------------------+---------------------------------------------+
-| | **low_power_status_word**      | | Low power status word. Bit position       |
+| | **lp_status_word**             | | Low power status word. Bit position       |
 | | *uint32*                       | | corresponds to the USRP motherboard/      |
 | |                                | | transmitter. A '1' indicates low power    |
 | |                                | | occurred at least once during integration |

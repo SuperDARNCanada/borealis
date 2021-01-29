@@ -134,7 +134,7 @@ The file fields in the bfiq array files are:
 | | [number of lags, 2]             | | pulses array. The lag number is lag[1] -  |
 | |                                 | | lag[0] for each lag pair.                 |
 +-----------------------------------+---------------------------------------------+
-| | **low_power_status_word**       | | Low power status word. Bit position       |
+| | **lp_status_word**              | | Low power status word. Bit position       |
 | | *uint32*                        | | corresponds to the USRP motherboard/      |
 | | [num_records]                   | | transmitter. A '1' indicates low power    |
 | |                                 | | occurred at least once during integration |
@@ -354,7 +354,7 @@ The file fields under the record name in bfiq site files are:
 | |                                | | array. The lag number is lag[1] - lag[0]  | 
 | |                                | | for each lag pair.                        |
 +----------------------------------+---------------------------------------------+
-| | **low_power_status_word**      | | Low power status word. Bit position       |
+| | **lp_status_word**             | | Low power status word. Bit position       |
 | | *uint32*                       | | corresponds to the USRP motherboard/      |
 | |                                | | transmitter. A '1' indicates low power    |
 | |                                | | occurred at least once during integration |
