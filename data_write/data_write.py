@@ -109,7 +109,7 @@ DATA_TEMPLATE = {
     "gps_locked" : None, # Boolean True if the GPS was locked during the entire integration period
     "gps_to_system_time_diff" : None, # Max time diff in seconds between GPS and system/NTP time during the integration period.
     "agc_status_word" : None, # 32 bits, a '1' in bit position corresponds to an AGC fault on that transmitter
-    "low_power_status_word" : None # 32 bits, a '1' in bit position corresponds to a low power condition on that transmitter
+    "lp_status_word" : None # 32 bits, a '1' in bit position corresponds to a low power condition on that transmitter
 }
 
 TX_TEMPLATE = {
@@ -508,6 +508,26 @@ class ParseData(object):
         """
         return self._gps_to_system_time_diff
 
+    @property
+    def agc_status_word(self):
+        """
+        AGC Status, a '1' in bit position corresponds to an AGC fault on that transmitter
+
+        Returns:
+             TYPE: Int
+        """
+        return self._agc_status_word
+
+    @property
+    def lp_status_word(self):
+        """
+        Low Power, a '1' in bit position corresponds to a low power condition on that transmitter
+
+        Returns:
+             TYPE: Int
+        """
+        return self._lp_status_word
+
 
 class DataWrite(object):
     """This class contains the functions used to write out processed data to files.
@@ -736,7 +756,8 @@ class DataWrite(object):
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs",
             "xcfs", "noise_at_freq", "data_normalization_factor", "slice_id", "slice_interfacing",
-            "averaging_method", "scheduling_mode", "gps_locked", "gps_to_system_time_diff"]
+            "averaging_method", "scheduling_mode", "gps_locked", "gps_to_system_time_diff",
+            "agc_status_word", "lp_status_word"]
             # note num_ranges not in needed_fields but are used to make
             # correlation_dimensions
 
@@ -811,7 +832,8 @@ class DataWrite(object):
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data",
             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range",
             "lags", "num_ranges", "data_normalization_factor", "slice_id", "slice_interfacing",
-            "scheduling_mode", "gps_locked", "gps_to_system_time_diff"]
+            "scheduling_mode", "gps_locked", "gps_to_system_time_diff",
+            "agc_status_word", "lp_status_word"]
 
             bfiq = data_parsing.bfiq_accumulator
 
@@ -875,7 +897,8 @@ class DataWrite(object):
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors",
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
             "data_normalization_factor", "blanked_samples", "slice_id", "slice_interfacing",
-            "scheduling_mode", "gps_locked", "gps_to_system_time_diff"]
+            "scheduling_mode", "gps_locked", "gps_to_system_time_diff",
+            "agc_status_word", "lp_status_word"]
 
             antenna_iq = data_parsing.antenna_iq_accumulator
 
@@ -962,7 +985,7 @@ class DataWrite(object):
             "main_antenna_count", "intf_antenna_count", "samples_data_type",
             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
             "rx_center_freq", "blanked_samples", "scheduling_mode", "gps_locked", 
-            "gps_to_system_time_diff"]
+            "gps_to_system_time_diff", "agc_status_word", "lp_status_word"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
@@ -1131,6 +1154,9 @@ class DataWrite(object):
 
                 parameters['gps_locked'] = data_parsing.gps_locked
                 parameters['gps_to_system_time_diff'] = data_parsing.gps_to_system_time_diff
+
+                parameters['agc_status_word'] = np.uint32(data_parsing.agc_status_word)
+                parameters['lp_status_word'] = np.uint32(data_parsing.lp_status_word)
 
                 # num_samps, antenna_arrays_order, data_descriptors, data_dimensions, data
                 # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs
