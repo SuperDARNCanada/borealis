@@ -97,11 +97,11 @@ This conversion is done in pyDARNio here in the __convert_bfiq_record method: `L
 | | *short*                         | |                                           |
 | | Error code                      | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **stat.agc**                    | | = 0 (filler)                              |
+| | **stat.agc**                    | | = *agc_status_word*                       |
 | | *short*                         | |                                           |
 | | AGC status word                 | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **stat.lopwr**                  | | = 0 (filler)                              |
+| | **stat.lopwr**                  | | = *lp_status_word*                        |
 | | *short*                         | |                                           |
 | | LOPWR status word               | |                                           |
 +-----------------------------------+---------------------------------------------+
