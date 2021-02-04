@@ -42,8 +42,6 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   rx_rate_ = rx_rate;
 
   usrp_ = uhd::usrp::multi_usrp::make(driver_options.get_device_args());
-  gps_clock_ = uhd::usrp_clock::multi_usrp_clock::make(driver_options.get_clk_addr());
-
 
   set_usrp_clock_source(driver_options.get_ref());
   set_tx_subdev(driver_options.get_tx_subdev());
@@ -314,7 +312,6 @@ double USRP::get_rx_center_freq(uint32_t channel)
   return usrp_->get_rx_freq(channel);
 }
 
-// TODO: Should we refactor this to use gps_clock_ member?
 /**
  * @brief      Sets the USRP time source.
  *
@@ -339,21 +336,20 @@ void USRP::set_time_source(std::string source, std::string clk_addr)
     usleep(10000);
   }
   if (source == "external"){
-    uhd::usrp_clock::multi_usrp_clock::sptr clock;
-    clock = uhd::usrp_clock::multi_usrp_clock::make(uhd::device_addr_t(clk_addr));
+    gps_clock_ = uhd::usrp_clock::multi_usrp_clock::make(uhd::device_addr_t(clk_addr));
 
     //Make sure Clock configuration is correct
-    if(clock->get_sensor("gps_detected").value == "false"){
+    if(gps_clock_->get_sensor("gps_detected").value == "false"){
       throw uhd::runtime_error("No GPSDO detected on Clock.");
     }
-    if(clock->get_sensor("using_ref").value != "internal"){
+    if(gps_clock_->get_sensor("using_ref").value != "internal"){
       std::ostringstream msg;
       msg << "Clock must be using an internal reference. Using "
-          << clock->get_sensor("using_ref").value;
+          << gps_clock_->get_sensor("using_ref").value;
       throw uhd::runtime_error(msg.str());
     }
 
-    while(! (clock->get_sensor("gps_locked").to_bool())) {
+    while(! (gps_clock_->get_sensor("gps_locked").to_bool())) {
       std::this_thread::sleep_for(std::chrono::seconds(2));
       RUNTIME_MSG("Waiting for gps lock...");
     }
@@ -372,11 +368,11 @@ void USRP::set_time_source(std::string source, std::string clk_addr)
 
     wait_for_update();
 
-    usrp_->set_time_next_pps(uhd::time_spec_t(double(clock->get_time() + 1)));
+    usrp_->set_time_next_pps(uhd::time_spec_t(double(gps_clock_->get_time() + 1)));
 
     wait_for_update();
 
-    auto clock_time = uhd::time_spec_t(double(clock->get_time()));
+    auto clock_time = uhd::time_spec_t(double(gps_clock_->get_time()));
 
     for (uint32_t board=0; board<usrp_->get_num_mboards(); board++){
       auto usrp_time = usrp_->get_time_last_pps(board);
@@ -574,7 +570,12 @@ std::vector<uint32_t> USRP::get_gpio_bank_low_state()
 bool USRP::gps_locked()
 {
   // This takes on the order of a few microseconds
-  return gps_clock_->get_sensor("gps_locked").to_bool();
+  if (gps_clock_ == nullptr){
+    return false;
+  }
+  else {
+    return gps_clock_->get_sensor("gps_locked").to_bool();
+  }
 }
 
 /**
