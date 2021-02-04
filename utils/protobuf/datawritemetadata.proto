@@ -74,8 +74,7 @@ message IntegrationTimeMetadata {
       repeated uint32 pulse_sample_start = 4;
       repeated SamplesBuffer tx_samples = 5;
       uint32 dmrate = 6;
-      float dmrate_error = 7;
-      repeated SamplesBuffer decimated_tx_samples = 8;
+      repeated SamplesBuffer decimated_tx_samples = 7;
 
       message SamplesBuffer {
         repeated double real = 1;

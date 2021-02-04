@@ -340,7 +340,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     file if debug is set. This is a list of dictionaries for each Sequence in the
     AveragingPeriod. The dictionary is set up in the sample_building module function
     create_debug_sequence_samples. The keys are 'txrate', 'txctrfreq', 'pulse_timing',
-    'pulse_sample_start', 'sequence_samples', 'decimated_sequence', 'dmrate_error', and 'dmrate'.
+    'pulse_sample_start', 'sequence_samples', 'decimated_sequence', and 'dmrate'.
     The 'sequence_samples' and 'decimated_samples' values are themselves dictionaries, where the
     keys are the antenna numbers (there is a sample set for each transmit antenna).
     """
@@ -374,7 +374,6 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 tx_samples_add.imag[:] = ant_samples['imag']
                 tx_samples_add.tx_antenna_number = ant
             sequence_add.tx_data.dmrate = debug_samples[sequence_index]['dmrate']
-            sequence_add.tx_data.dmrate_error = debug_samples[sequence_index]['dmrate_error']
             for ant, ant_samples in debug_samples[sequence_index]['decimated_samples'].items():
                 tx_samples_add = sequence_add.tx_data.decimated_tx_samples.add()
                 tx_samples_add.real[:] = ant_samples['real']
