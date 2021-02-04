@@ -80,7 +80,9 @@ DATA_TEMPLATE = {
     "rx_center_freq" : None, # the center frequency of this data (for rawrf), kHz
     "samples_data_type" : None, # C data type of the samples such as complex float.
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
-    "pulse_phase_offset" : None, # For pulse encoding phase. Contains one phase offset per pulse in pulses.
+    "pulse_phase_offset" : None, # For pulse encoding phase. Contains an encoding per pulse. Each
+                                 # encoding can either be a single value or one value for each
+                                 # sample.
     "lags" : None, # The lags created from two pulses in the pulses array.
     "blanked_samples" : None, # Samples that have been blanked because they occurred during transmission times.
     # Can differ from the pulses array due to multiple slices in a single sequence.
@@ -113,14 +115,11 @@ DATA_TEMPLATE = {
 TX_TEMPLATE = {
     "tx_rate": [],
     "tx_center_freq": [],
-    "pulse_sequence_timing_us": [],
-    "pulse_offset_error_us": [],
+    "pulse_timing_us": [],
+    "pulse_sample_start": [],
     "tx_samples": [],
     "dm_rate": [],
-    "dm_rate_error": [],
     "decimated_tx_samples": [],
-    "tx_antennas": [],
-    "decimated_tx_antennas": [],
 }
 
 
@@ -1020,11 +1019,10 @@ class DataWrite(object):
                 for meta in integration_meta.sequences:
                     tx_data['tx_rate'].append(meta.tx_data.txrate)
                     tx_data['tx_center_freq'].append(meta.tx_data.txctrfreq)
-                    tx_data['pulse_sequence_timing_us'].append(
-                        meta.tx_data.pulse_sequence_timing_us)
-                    tx_data['pulse_offset_error_us'].append(meta.tx_data.pulse_offset_error_us)
+                    tx_data['pulse_timing_us'].append(
+                        meta.tx_data.pulse_timing_us)
+                    tx_data['pulse_sample_start'].append(meta.tx_data.pulse_sample_start)
                     tx_data['dm_rate'].append(meta.tx_data.dmrate)
-                    tx_data['dm_rate_error'].append(meta.tx_data.dmrate_error)
 
                     tx_samples = []
                     decimated_tx_samples = []
@@ -1047,14 +1045,9 @@ class DataWrite(object):
                         cmplx = np.array(real + 1j * imag, dtype=np.complex64)
                         decimated_tx_samples.append(cmplx)
 
-                    tx_data['tx_antennas'].append(tx_antennas)
-                    tx_data['decimated_tx_antennas'].append(decimated_tx_antennas)
                     tx_data['tx_samples'].append(tx_samples)
                     tx_data['decimated_tx_samples'].append(decimated_tx_samples)
 
-                tx_data['tx_antennas'] = np.array(tx_data['tx_antennas'], dtype=np.uint32)
-                tx_data['decimated_tx_antennas'] = np.array(tx_data['decimated_tx_antennas'],
-                                                            dtype=np.uint32)
                 tx_data['tx_samples'] = np.array(tx_data['tx_samples'], dtype=np.complex64)
                 tx_data['decimated_tx_samples'] = np.array(tx_data['decimated_tx_samples'],
                                                            dtype=np.complex64)
@@ -1098,7 +1091,15 @@ class DataWrite(object):
                     'rx_center_freq'] = integration_meta.rx_center_freq 
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
-                parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phase_offsets.pulse_phase, dtype=np.float32)
+
+                encodings = []
+                for encoding in rx_freq.sequence_encodings:
+                    encoding = np.array(encoding.encoding_value, dtype=np.float32)
+                    encoding = encoding.reshape((parameters['pulses'].shape[0],-1))
+                    encodings.append(encoding)
+
+                encodings = np.array(encodings, dtype=np.float32)
+                parameters['pulse_phase_offset'] = encodings
                 parameters['data_normalization_factor'] = integration_meta.data_normalization_factor
 
                 lags = []

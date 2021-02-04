@@ -266,7 +266,7 @@ int main(int argc, char **argv){
 
     dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
 
-    auto offset_to_first_rx_sample = uint32_t(sp_packet.offset_to_first_rx_sample() * rx_rate);
+    auto offset_to_first_rx_sample = sp_packet.offset_to_first_rx_sample();
     //offset_to_first_rx_sample = 0;
     dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
                                 offset_to_first_rx_sample,
