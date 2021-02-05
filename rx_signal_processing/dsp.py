@@ -195,7 +195,9 @@ class DSP(object):
 
         values = []
         for s in slice_index_details:
-
+            if s['lags'].size == 0:
+                values.append(np.array([]))
+                continue
             range_off = np.arange(s['num_range_gates'], dtype=np.int32) + s['first_range_off']
 
             tau_in_samples = s['tau_spacing'] * 1e-6 * output_sample_rate
