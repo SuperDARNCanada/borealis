@@ -198,7 +198,7 @@ class Sequence(ScanClassBase):
 
         # Combine any pulses closer than the minimum separation time into a single pulse data
         # dictionary and append to the list of all combined pulses, combined_pulses_metadata.
-        tr_window_num_samps = round((tr_window_time * 1e-6) * txrate)
+        tr_window_num_samps = round((tr_window_time) * txrate)
         def initialize_combined_pulse_dict(pulse_timing_info):
             return {'start_time_us' : pulse_timing_info['start_time_us'],
                       'total_pulse_len' : pulse_timing_info['pulse_len_us'],
