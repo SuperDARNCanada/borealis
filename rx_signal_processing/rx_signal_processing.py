@@ -80,10 +80,11 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
         output_data_set.num_lags = sd['num_lags']
 
         def add_array(ndarray, proto):
-            for x in np.nditer(ndarray, order='C'):
-                o = proto.add()
-                o.real = x.real
-                o.imag = x.imag
+            if ndarray.size != 0:
+                for x in np.nditer(ndarray, order='C'):
+                    o = proto.add()
+                    o.real = x.real
+                    o.imag = x.imag
 
 
         main_corrs = data_outputs['main_corrs'][sd['slice_num']]

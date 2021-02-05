@@ -393,13 +393,12 @@ class Sequence(ScanClassBase):
 
                 # Reshape as vector if 1D, else stays the same.
                 phase_encoding = phase_encoding.reshape((phase_encoding.shape[0],-1))
-                phase_encoding = np.radians(phase_encoding)
-
                 self.output_encodings[slice_id].append(phase_encoding)
 
                 # we have [pulses, encodings] and [antennas ,samples], but we want
                 # [pulses, antennas, (encodings*samples)]. Adding null axis to encoding
                 # will produce this result.
+                phase_encoding = np.radians(phase_encoding)
                 phase_encoding = np.exp(1j * phase_encoding[:,np.newaxis,:])
                 samples = phase_encoding * basic_samples
 

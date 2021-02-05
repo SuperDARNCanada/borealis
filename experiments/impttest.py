@@ -27,7 +27,7 @@ def phase_encode(beam_iter, sequence_num, num_pulses, num_samples):
 class ImptTest(ExperimentPrototype):
 
     def __init__(self):
-        cpid = -3313
+        cpid = 3313
 
         default_slice = {  # slice_id = 0, the first slice
             "pulse_sequence": scf.SEQUENCE_8P,
