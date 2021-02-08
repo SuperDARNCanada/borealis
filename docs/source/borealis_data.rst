@@ -33,7 +33,7 @@ These are the Borealis filetypes produced by the radar software, from most proce
 * rawrf  
     The unfiltered, full receive bandwidth data from every antenna. Only produced by Borealis in debug modes.
 
-Post-processed dmap files can be created from the hdf5 rawacf or bfiq files using the `pyDARN package <https://github.com/superdarn/pydarn>`_.
+Post-processed dmap files can be created from the hdf5 rawacf or bfiq files using the `pyDARNio package <https://github.com/superdarn/pydarnio>`_.
 
 For more information on the data files and the fields stored within them, check the data file information for the correct Borealis software version.
 
@@ -41,7 +41,7 @@ Borealis current version
 ------------------------
 
 The Borealis software version can affect the data fields in the file format so be sure to check if your data is of the most
-up to date version. The current Borealis software version is v0.5. 
+up to date version. The current Borealis software version is v0.6.
 
 ..  toctree::
     :maxdepth: 2
@@ -55,20 +55,27 @@ Previous versions
 -----------------
 
 * v0.2, v0.3, and v0.4 follow the v0.4 format.
+* v0.5 follows the v0.5 format.
 
-    ..  toctree::
-        :maxdepth: 2
-        rawacf-v04
-        bfiq-v04
-        antennas_iq-v04
-        rawrf-v04
+..  toctree::
+    :maxdepth: 2
+
+    rawacf-v04
+    bfiq-v04
+    antennas_iq-v04
+    rawrf-v04
+    rawacf-v05
+    bfiq-v05
+    antennas_iq-v05
+    rawrf-v05
+
 
 ------------
 Reading Data
 ------------
 
 To read the files in python, we recommend using `PyTables <https://www.pytables.org/>`_ or `deepdish <https://deepdish.readthedocs.io/en/latest/index.html>`_ packages.
-If you are looking to generate SuperDARN standard plots, we recommend using the the `pyDARN package <https://github.com/superdarn/pydarn>`_, which can
+If you are looking to generate SuperDARN standard plots, we recommend using the the `pyDARNio package <https://github.com/superdarn/pydarnio>`_, which can
 read Borealis files specifically. After converting to dmap, standard SuperDARN plots including RTI plots and fan plot can be produced.
 
 *************************
