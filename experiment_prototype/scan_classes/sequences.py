@@ -198,7 +198,7 @@ class Sequence(ScanClassBase):
 
         # Combine any pulses closer than the minimum separation time into a single pulse data
         # dictionary and append to the list of all combined pulses, combined_pulses_metadata.
-        tr_window_num_samps = round((tr_window_time * 1e-6) * txrate)
+        tr_window_num_samps = round((tr_window_time) * txrate)
         def initialize_combined_pulse_dict(pulse_timing_info):
             return {'start_time_us' : pulse_timing_info['start_time_us'],
                       'total_pulse_len' : pulse_timing_info['pulse_len_us'],
@@ -393,13 +393,12 @@ class Sequence(ScanClassBase):
 
                 # Reshape as vector if 1D, else stays the same.
                 phase_encoding = phase_encoding.reshape((phase_encoding.shape[0],-1))
-                phase_encoding = np.radians(phase_encoding)
-
                 self.output_encodings[slice_id].append(phase_encoding)
 
                 # we have [pulses, encodings] and [antennas ,samples], but we want
                 # [pulses, antennas, (encodings*samples)]. Adding null axis to encoding
                 # will produce this result.
+                phase_encoding = np.radians(phase_encoding)
                 phase_encoding = np.exp(1j * phase_encoding[:,np.newaxis,:])
                 samples = phase_encoding * basic_samples
 
