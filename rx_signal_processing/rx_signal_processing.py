@@ -308,6 +308,12 @@ def main():
 
         processed_data.initialization_time = rx_metadata.initialization_time
         processed_data.sequence_start_time = rx_metadata.sequence_start_time
+        processed_data.gps_to_system_time_diff = rx_metadata.gps_to_system_time_diff
+        processed_data.agc_status_bank_h = rx_metadata.agc_status_bank_h
+        processed_data.lp_status_bank_h = rx_metadata.lp_status_bank_h
+        processed_data.agc_status_bank_l = rx_metadata.agc_status_bank_l
+        processed_data.lp_status_bank_l = rx_metadata.lp_status_bank_l
+        processed_data.gps_locked = rx_metadata.gps_locked
 
 
         # This work is done in a thread
