@@ -311,8 +311,8 @@ def search_for_experiment(radar_control_to_exp_handler,
 
 def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, num_sequences, scan_flag, inttime, sequences, beam_iter,
-                            experiment_id, experiment_name, scheduling_mode, output_sample_rate, 
-                            experiment_comment, filter_scaling_factors, rx_center_freq, 
+                            experiment_id, experiment_name, scheduling_mode, output_sample_rate,
+                            experiment_comment, filter_scaling_factors, rx_center_freq,
                             debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
@@ -395,7 +395,9 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
 
             rxchan_add.ptab.pulse_position[:] = sequence.slice_dict[slice_id]['pulse_sequence']
 
-            for encoding in sequence.output_encodings[slice_id]:
+            # We always build one sequence in advance, so we trim the last one from when radar
+            # control stops processing the averaging period.
+            for encoding in sequence.output_encodings[slice_id][:num_sequences]:
                 rx_encode = rxchan_add.sequence_encodings.add()
                 python_type = encoding.flatten().tolist()
                 rx_encode.encoding_value[:] = python_type
@@ -614,9 +616,9 @@ def radar():
 
                 if __debug__:
                     rad_ctrl_print("New AveragingPeriod")
-                
-                # all phases are set up for this averaging period for the beams required. 
-                # Time to start averaging in the below loop.            
+
+                # all phases are set up for this averaging period for the beams required.
+                # Time to start averaging in the below loop.
                 if not scan.scanbound:
                     integration_period_start_time = datetime.utcnow()  # ms
                     rad_ctrl_print("Integration start time: {}".format(integration_period_start_time))
@@ -640,9 +642,9 @@ def radar():
                             time.sleep(time_diff.total_seconds())
                         else:
                             if __debug__:
-                                # TODO: This will be wrong if the start time is in the past. 
+                                # TODO: This will be wrong if the start time is in the past.
                                 # maybe use datetime.utcnow() like below
-                                # TODO: instead of  beam_scanbound, or change wording to 
+                                # TODO: instead of  beam_scanbound, or change wording to
                                 # when the aveperiod should have started?
                                 msg = "starting averaging period {} at time {}"
                                 msg = msg.format(sm.COLOR("yellow", scan_iter),
@@ -660,11 +662,11 @@ def radar():
                         time_elapsed = integration_period_start_time - start_minute
                         if scan_iter < len(scan.scanbound) - 1:
                             scanbound_time = scan.scanbound[scan_iter + 1]
-                            # TODO: scanbound_time could be in the past if system has taken 
-                            # too long, perhaps calculate which 'beam' (scan_iter) instead by 
+                            # TODO: scanbound_time could be in the past if system has taken
+                            # too long, perhaps calculate which 'beam' (scan_iter) instead by
                             # rewriting this code for an experiment-wide scanbound attribute instead
                             # of individual scanbounds inside the scan objects
-                            # TODO: if scan_iter skips ahead, aveperiod.beam_iter may also need to 
+                            # TODO: if scan_iter skips ahead, aveperiod.beam_iter may also need to
                             # if scan.align_to_beamorder is True
                             bound_time_remaining = scanbound_time - time_elapsed.total_seconds()
                         else:
@@ -682,7 +684,7 @@ def radar():
                             # until the next scan boundary.
                             # TODO: Check for bound_time_remaining > 0
                             # to be sure there is actually time to run this intt
-                            # (if bound_time_remaining < 0, we need a solution to 
+                            # (if bound_time_remaining < 0, we need a solution to
                             # reset)
                             integration_period_done_time = integration_period_start_time + \
                                             timedelta(milliseconds=bound_time_remaining * 1e3)
@@ -699,18 +701,18 @@ def radar():
                 msg = "AvePeriod slices and beam numbers: {}".format(
                     {x: y[aveperiod.beam_iter] for x, y in aveperiod.slice_to_beamorder.items()})
                 rad_ctrl_print(msg)
-                
+
                 if TIME_PROFILE:
                     time_to_prep_aveperiod = datetime.utcnow() - time_start_of_aveperiod
                     rad_ctrl_print('Time to prep aveperiod: {}'.format(time_to_prep_aveperiod))
 
                 #  Time to start averaging in the below loop
-                
+
                 num_sequences = 0
                 time_remains = True
                 pulse_transmit_data_tracker = {}
                 debug_samples = []
-                
+
                 while time_remains:
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
 
