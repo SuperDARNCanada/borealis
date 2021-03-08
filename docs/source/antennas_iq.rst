@@ -171,11 +171,12 @@ The file fields in the antennas_iq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **pulse_phase_offset**          | | For pulse encoding phase, in degrees      |
 | | *float32*                       | | offset. Contains one phase offset per     | 
-| | [number of pulses]              | | pulse in pulses.                          |
+| | [num pulses] or                 | | pulse in pulses or one phase offset       |
+| | [num pulses x samples per pulse]| | per sample                                |
 +-----------------------------------+---------------------------------------------+
 | | **pulses**                      | | The pulse sequence in units of the        |
 | | *uint32*                        | | tau_spacing.                              |
-| | [number of pulses]              | |                                           | 
+| | [number of pulses]              | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **rx_sample_rate**              | | Sampling rate of the samples in this      |
 | | *float64*                       | | file's data in Hz.                        |
@@ -347,29 +348,30 @@ The file fields under the record name in antennas_iq site files are:
 | | *int64*                        | | number sequences transmitted) in the      | 
 | |                                | | integration time.                         |
 +----------------------------------+---------------------------------------------+
-| | **num_slices**                 | | Number of slices used simultaneously in   | 
-| | *int64*                        | | this record by the experiment. If more    | 
-| |                                | | than 1, data should exist in another file | 
+| | **num_slices**                 | | Number of slices used simultaneously in   |
+| | *int64*                        | | this record by the experiment. If more    |
+| |                                | | than 1, data should exist in another file |
 | |                                | | for this time period for the other slice. |
 +----------------------------------+---------------------------------------------+
-| | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      | 
-| | *[float32, ]*                  | | offset. Contains one phase offset per     | 
-| |                                | | pulse in pulses.                          |
+| | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      |
+| | *[float32, ]*                  | | offset. Contains one phase offset per     |
+| |                                | | pulse in pulses or one phase offset per   |
+| |                                | | sample in each pulse                      |
 +----------------------------------+---------------------------------------------+
-| | **pulses**                     | | The pulse sequence in units of the        | 
+| | **pulses**                     | | The pulse sequence in units of the        |
 | | *[uint32, ]*                   | | tau_spacing.                              |
 +----------------------------------+---------------------------------------------+
-| | **rx_sample_rate**             | | Sampling rate of the samples in this      | 
+| | **rx_sample_rate**             | | Sampling rate of the samples in this      |
 | | *float64*                      | | file's data in Hz.                        |
 +----------------------------------+---------------------------------------------+
-| | **samples_data_type**          | | C data type of the samples, provided for  | 
+| | **samples_data_type**          | | C data type of the samples, provided for  |
 | | *unicode*                      | | user friendliness. = 'complex float'      |
 +----------------------------------+---------------------------------------------+
-| | **scan_start_marker**          | | Designates if the record is the first in  | 
-| | *bool*                         | | a scan (scan is defined by the            | 
+| | **scan_start_marker**          | | Designates if the record is the first in  |
+| | *bool*                         | | a scan (scan is defined by the            |
 | |                                | | experiment).                              |
 +----------------------------------+---------------------------------------------+
-| | **scheduling_mode**            | | The mode being run during this time       | 
+| | **scheduling_mode**            | | The mode being run during this time       |
 | | *unicode*                      | | period (ex. 'common', 'special',          |
 | |                                | | 'discretionary').                         |
 +----------------------------------+---------------------------------------------+
