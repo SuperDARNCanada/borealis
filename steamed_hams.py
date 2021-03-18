@@ -34,7 +34,10 @@ def usage_msg():
 
     Pass the mode to specify module run options and data outputs. Available modes are 
     release, debug, testdata, engineeringdebug, and pythonprofiling. 
-    Release should be most commonly used.
+    Release should be most commonly used. Note that testdata and engineeringdebug modes
+    produce very large rawrf data files and will severely limit the rate of the system 
+    (evident by low sequences per integration period). It is recommended to only run these 
+    modes for short test periods due to the quantity of data produced.
 
     Pass in the scheduling mode type, in general common, discretionary, or special.
 

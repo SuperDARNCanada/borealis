@@ -63,9 +63,9 @@ class IBCollabMode(ExperimentPrototype):
         
         if kwargs:
             if 'freq' in kwargs.keys():
-                freq = kwargs['freq']
+                freq = int(kwargs['freq'])
                 self.printing('Using frequency scheduled for {date}: {freq} kHz'
-                              .format(date=dt.strftime('%Y%m%d %H:%M'), freq=freq))
+                              .format(date=datetime.datetime.utcnow().strftime('%Y%m%d %H:%M'), freq=freq))
             else:
                 self.printing('Frequency not found: using default frequency {freq} kHz'
                               .format(freq=freq))

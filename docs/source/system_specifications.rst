@@ -4,10 +4,11 @@ SuperDARN Canada System Specifications
 =======================
 Digital Radio Equipment
 =======================
-- NOTE : ALL cables are phase matched unless specified otherwise
+
+- Note that ALL cables are phase matched unless specified otherwise
 - 17x Ettus USRP N200 (16 and 1 spare)
-    - 17x Ettus LFTX daughterboards
-    - 17x Ettus LFRX daughterboards
+ - 17x Ettus LFTX daughterboards
+ - 17x Ettus LFRX daughterboards
 - 1x Ettus Octoclock-g (includes GPSDO)
 - 2x Ettus Octoclock
 - 51x ~8 1/4" SMA bulkhead Female to Male RG-316 for daughterboards
@@ -17,6 +18,7 @@ Digital Radio Equipment
 - GPS Antenna (Male SMA connector)
 - 17x Custom TXIO Revision 5.0 board (for transmitter interfacing)
 - 22x Mini-Circuits ZFL-500LN pre-amps (20 and 2 spare)
+- 16x Mini-Circuites SLP-21.4 low pass filters
 - 8x coax cables and adapters for to/from INTF (interferometer) pre-amps
 - 32x coax cables for to/from main array filters and pre-amps inside transmitter
 - 1x 15V, 0.5A power supply (INTF pre-amps)
@@ -42,11 +44,12 @@ Networking
 ==========
 
 - 3x Netgear XS708E-200NES (North American model #) 10Gb switches (parent model name is XS708Ev2)
+- 1x 5-port network switch that can handle 10Mbps and 100Mbps connection speeds (10BASE-T and 100BASE-T)
 - 27x SSTP CAT 6a 7ft cables or better*
 - 2x SSTP CAT 6a 15ft cables*
 
-**Note** that the network cables needs to be verified for the whole system
-  as not all cables seem to work reliably.
+**Note** that the network cables need to be verified for the whole system
+as not all cables seem to work reliably.
 
 *Models tested and known to work include:*
 
