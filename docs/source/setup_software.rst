@@ -184,7 +184,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - crontab -e
     - Add the line `@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log 2>&1`
 
-# Create necessary directories. Here is an example for a user named `radar` and the standard configuration in the 'config.ini' file:
+#. Create necessary directories. Here is an example for a user named `radar` and the standard configuration in the 'config.ini' file:
 
     - sudo mkdir -p /data/borealis_logs
     - sudo mkdir -p /data/borealis_data

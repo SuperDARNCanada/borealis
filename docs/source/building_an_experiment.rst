@@ -14,7 +14,7 @@ Slices are software objects made for the Borealis system that allow easy integra
 multiple modes into a single experiment. Each slice could be an experiment on its own, and 
 averaged products are produced from each slice individually. Slices can be used to create 
 separate frequency channels, separate pulse sequences, separate beam scanning order, 
-etc. that can run simultaneously. Slices can be interfaced in four different ways. 
+etc. that can run simultaneously. Slices can be interfaced in four different ways (see below).
  
 The following parameters are unique to a slice:  
 
@@ -27,14 +27,14 @@ The following parameters are unique to a slice:
 * beam directions
 * beam order
 
-A slice is defined using a dictionary and the necessary slice keys. For a complete 
+A slice is defined using a python dictionary with the necessary slice keys. For a complete
 list of keys that can be used in a slice, see below 'Slice Keys'. 
 
 The other necessary part of an experiment is specifying how slices will interface with each other. Interfacing in this case refers to how these two components are meant to be run. To understand the interfacing, lets first understand the basic building blocks of a SuperDARN experiment. These are:
 
-**Sequence (integration)**  
+**Sequence (integration)**
 
-Made up of pulses with a specified spacing, at a specified frequency, and with a specified receive time 
+Made up of pulses with a specified fundamental (tau) spacing, at a specified frequency, and with a specified receive time
 following the transmission (to gather information from the number of ranges specified). Researchers might 
 be familiar with a common SuperDARN 7 or 8 pulse sequence design. The sequence definition here is the time to 
 transmit one sequence and the time for receiving echoes from that sequence.
@@ -42,7 +42,7 @@ transmit one sequence and the time for receiving echoes from that sequence.
 **Averaging period (integration time)**  
 
 A time where the sequences are repeated to gather enough information to average and reduce the effect of 
-spurious emissions on the data. These are defined by either number of sequences, or a length of time during 
+spurious emissions on the data. These are defined by either number of sequences, or a length of time during
 which as many sequences as possible are transmitted. For example, researchers may be familiar with the standard 
 3 second averaging period in which ~30 pulse sequences are sent out and received in a single beam direction.
 
@@ -92,6 +92,7 @@ Slice Interfacing Examples
 --------------------------
 
 Let's look at some examples of common experiments that can easily be separated into multiple slices. 
+In these examples, the ⟳ means that the averaging period is repeated multiple times in a scan, and the different slices are colour coded.
 
 In a CUTLASS-style experiment, the pulse in the sequence is actually two pulses of differing transmit frequency. This is a 'quasi'-simultaneous multi-frequency experiment where the frequency changes in the middle of the pulse. To build this experiment, two slices can be PULSE interfaced. The pulses from both slices are combined into a single set of transmitted samples for that sequence and samples received from those sequences are used for both slices (filtering the raw data separates the frequencies). 
 
@@ -190,7 +191,7 @@ Below is an example of properly inheriting the prototype class and defining your
 
 The experiment handler will create an instance of your experiment when your experiment is scheduled to start running. Your class is a child class of ExperimentPrototype and because of this, the parent class needs to be instantiated when the experiment is instantiated. This is important because the experiment_handler will build the scans required by your class in a way that is easily readable and iterable by the radar control program. This is done by methods that are set up in the ExperimentPrototype parent class.
 
-The next step is to add slices to your experiment. An experiment is defined by the slices in the class, and how the slices interface. As mentioned above, slices are just dictionaries, with a preset list of keys available to define your experiment. The keys that can be used in the slice dictionary are described below.
+The next step is to add slices to your experiment. An experiment is defined by the slices in the class, and how the slices interface. As mentioned above, slices are just python dictionaries, with a preset list of keys available to define your experiment. The keys that can be used in the slice dictionary are described below.
 
 
 Slice Keys
@@ -231,10 +232,8 @@ beam_angle *required*
     be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
     needed to write the beam_order list. This is like a mapping of beam number (list
     index) to beam direction off boresight. Typically you can use the radar's common
-    beam angle list. For example, at Saskatoon site the beam angles are a standard
-    16-beam list: [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
-            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
-            26.25]
+    beam angle list. For example, at all of the Canadian SuperDARN sites the beam angles are a standard
+    16-beam list: `[-26.25, -22.75, -19.25, -15.75, -12.25, -8.75, -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75, 26.25]`
 
 beam_order *required*
     beam numbers written in order of preference, one element in this list corresponds to
@@ -264,12 +263,13 @@ rxfreq *required or clrfrqrange or txfreq required*
 **Defaultable Slice Keys**
 
 acf *defaults*
-    flag for rawacf and generation. The default is False. If True, the following fields are
+    flag for rawacf generation. The default is False. If True, the following fields are
     also used:
-    - averaging_method (default 'mean')
-    - xcf (default True if acf is True)
-    - acfint (default True if acf is True)
-    - lagtable (default built based on all possible pulse combos)
+
+    * averaging_method (default 'mean')
+    * xcf (default True if acf is True)
+    * acfint (default True if acf is True)
+    * lagtable (default built based on all possible pulse combos)
 
 acfint *defaults*
     flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
