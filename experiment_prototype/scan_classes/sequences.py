@@ -375,6 +375,8 @@ class Sequence(ScanClassBase):
         txrate = self.transmit_metadata['txrate']
         tr_window_time = self.transmit_metadata['tr_window_time']
 
+
+
         buffer_len = int(txrate * self.sstime * 1e-6)
         # This is gonna act as buffer for mixing pulses. Its the length of the receive samples
         # since we know this will be large enough to hold samples at any pulse position. There will
@@ -383,13 +385,14 @@ class Sequence(ScanClassBase):
 
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
-            basic_samples = self.basic_slice_pulses[slice_id][beam_iter]  # num_antennas x num_samps
+            beam_num = exp_slice['beam_order'][beam_iter]
+            basic_samples = self.basic_slice_pulses[slice_id][beam_num]  # num_antennas x num_samps
 
             num_pulses = len(exp_slice['pulse_sequence'])
             encode_fn = exp_slice['pulse_phase_offset']
             if encode_fn:
                 num_samples = basic_samples.shape[1]
-                phase_encoding = encode_fn(beam_iter, sequence_num, num_pulses, num_samples)
+                phase_encoding = encode_fn(beam_num, sequence_num, num_pulses, num_samples)
 
                 # Reshape as vector if 1D, else stays the same.
                 phase_encoding = phase_encoding.reshape((phase_encoding.shape[0],-1))
