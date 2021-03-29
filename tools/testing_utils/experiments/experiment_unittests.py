@@ -162,7 +162,7 @@ if __name__ == '__main__':
     # null = open(os.devnull, 'w')
     # sys.stderr = null
 
-    # Open the file given on command line with a set of tests, one per line.
+    # Open the file hardcoded above with a set of tests, one per line.
     # File format is: [experiment module]::[string regex message that the experiment will raise]
     # Generate a single test for each of the lines in the file.
     try:

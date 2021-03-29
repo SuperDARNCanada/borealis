@@ -296,7 +296,7 @@ pulse_phase_offset *defaults*
 range_sep *defaults*
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct
     value determined by the pulse_len. This is the range gate separation,
-    in azimuthal direction, in km.
+    in the radial direction (away from the radar), in km.
 
 rx_int_antennas *defaults*
     The antennas to receive on in interferometer array, default is all
@@ -310,7 +310,7 @@ scanbound *defaults*
     A list of seconds past the minute for integration times in a scan to align to. Defaults
     to None, not required. If you set this, you will want to ensure that there is a slightly 
     larger amount of time in the scan boundaries than the integration time set for the slice. 
-    For example, if you want to align integration times at the 3n second marks, you may want to 
+    For example, if you want to align integration times at the 3 second marks, you may want to
     have a set integration time of ~2.9s to ensure that the experiment will start on time. 
     Typically 50ms difference will be enough. This is especially important for the last integration
     time in the scan, as the experiment will always wait for the next scan start boundary
@@ -319,7 +319,7 @@ scanbound *defaults*
 
 seqoffset *defaults*
     offset in us that this slice's sequence will begin at, after the start of the sequence.
-    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence
+    This is intended for PULSE interfacing, when you want multiple slices' pulses in one sequence
     you can offset one slice's sequence from the other by a certain time value so as to not run both
     frequencies in the same pulse, etc. Default is 0 offset.
 
@@ -376,8 +376,9 @@ Experiment Example
 
 An example of adding a slice to your experiment is as follows::
 
-        self.add_slice({  # slice_id will be 0, there is only one slice.
-            "pulse_sequence": [0, 9, 12, 20, 22, 26, 27],
+        tau_spacing = 2100
+        first_slice = {  # slice_id will be 0, there is only one slice.
+            "pulse_sequence": [0, 9, 12, 20, 22, 26, 27],  # the common 7-pulse sequence in SDARN
             "tau_spacing": tau_spacing,  # us
             "pulse_len": 300,  # us
             "num_ranges": 75,  # range gates
@@ -385,24 +386,23 @@ An example of adding a slice to your experiment is as follows::
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
-                           26.25],
+                           26.25],  # 16 beams, separated by ~3.5 degrees
             "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
             "txfreq" : 10500, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
-        })
+        }
 
-        self.add_slice(slice_1)
+        self.add_slice(first_slice)
 
 This slice would be assigned with slice_id = 0 if it's the first slice added to the experiment. The experiment could also add another slice::
+        second_slice = copy.deepcopy(first_slice)
+        second_slice['txfreq'] = 13200 #kHz
+        second_slice['comment'] = 'This is my second slice, it has a different frequency.'
 
-        slice_2 = copy.deepcopy(slice_1)
-        slice_2['txfreq'] = 13200 #kHz
-        slice_2['comment'] = 'This is my second slice.'
-
-        self.add_slice(slice_2, interfacing_dict={0: 'SCAN'})
+        self.add_slice(second_slice, interfacing_dict={0: 'SCAN'})
 
 Notice that you must specify interfacing to an existing slice when you add a second or greater order slice to the experiment. To see the types 
 of interfacing that can be used, see above section 'Interfacing Types Between Slices'. 
@@ -416,8 +416,5 @@ A suite of unit tests have been written to check experiments for errors. This su
 
 #. Make sure your experiment is located in the `experiments` directory
 #. Ensure the file has an appropriate name reflecting the name of the experiment.
-#. Run the following, which will run the extensive set of tests in the `experiment_unittests.py` file and tell you how many passed, how many failed and how many tests had errors:
-
-```
-python3 /path/to/borealis/tools/testing_utils/experiments/experiment_unittests.py /path/to/borealis/tools/testing_utils/experiments/experiment_tests.csv
-```
+#. Run the following, which will run the extensive set of tests in the `experiment_unittests.py` file and tell you how many passed, how many failed and how many tests had errors: ```python3 /path/to/borealis/tools/testing_utils/experiments/experiment_unittests.py```
+#. Ensure that the file `experiment_tests.csv` exists alongside the `experiment_unittests.py` file
