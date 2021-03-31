@@ -25,6 +25,8 @@ channel
 device
 	When using Ettus UHD API this refers to the
 	radio devices, or the N200s in the case of Borealis.
+	When in the context of CUDA, this refers to the GPU.
+
 
 integration time
 	The time allocated for an averaging period. An averaging
