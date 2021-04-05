@@ -1,20 +1,9 @@
-# Restricted frequency table for the standard radar.
-default=13500
-8006 8016
-8071 8081
-8112 8122
-8162 8172
-9207 9217
-9476 9486
-9900 10100
-10191 10201
-12000 12995
-13355 13416
-14380 14410
-14676 14696
-14910 15090
-15729 15739
-15794 15804
-19985 20015
-
-
+# Restricted frequency table for Prince George, BC.
+# License no. 010756308-007 effective March 15 2021
+# The use of frequencies in the following bands is not authorized: 9.995 - 10.005 MHz, 13.360 - 13.410 MHZ,
+# 14.990 - 15.010 MHZ, 19.990 - 20.010 MHZ
+default=13700
+9790 10210
+13155 13615
+14785 15215
+19785 20215
