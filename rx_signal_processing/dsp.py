@@ -39,7 +39,22 @@ def windowed_view(ndarray, window_len, step):
     return xp.lib.stride_tricks.as_strided(ndarray, shape=new_shape, strides=new_strides)
 
 class DSP(object):
-    """This class performs the DSP functions of Borealis"""
+    """
+    This class performs the DSP functions of Borealis
+
+    :param      input_samples: The wideband samples to operate on.
+    :type       input_samples: ndarray
+    :param      rx_rate: The wideband rx rate.
+    :type       rx_rate: float
+    :param      dm_rates: The decimation rates at each stage.
+    :type       dm_rates: list
+    :param      filter_taps: The filter taps to use at each stage.
+    :type       filter_taps: ndarray
+    :param      mixing_freqs: The freqs used to mix to baseband.
+    :type       mixing_freqs: list
+    :param      beam_phases: The phases used to beamform the final decimated samples.
+    :type       beam_phases: list
+    """
     def __init__(self, input_samples, rx_rate, dm_rates, filter_taps, mixing_freqs, beam_phases):
         super(DSP, self).__init__()
 
