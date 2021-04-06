@@ -205,7 +205,7 @@ pulse_phase_offset *defaults*
 range_sep *defaults*
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct
     value determined by the pulse_len. Used for acfs. This is the range gate separation,
-    in azimuthal direction, in km.
+    in the radial direction (away from the radar), in km.
 
 rx_int_antennas *defaults*
     The antennas to receive on in interferometer array, default is all

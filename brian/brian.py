@@ -21,10 +21,8 @@ if __debug__:
 else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
 
-import driverpacket_pb2
 import sigprocpacket_pb2
 import rxsamplesmetadata_pb2
-import processeddata_pb2
 
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/experiment_options')
 import experimentoptions as options

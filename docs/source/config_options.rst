@@ -97,16 +97,16 @@ Config Parameters
 | gpio_bank_low                           | TXA                     | The daughterboard pin bank to use for|
 |                                         |                         | active-low TR and I/O signals.       |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| atr_rx                                  | 0x0006                  | The pin mask for the RX only mode.   |
+| atr_rx                                  | 0x0006                  | The pin mask for the RX only signal. |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| atr_tx                                  | 0x0018                  | The pin mask for the TX only mode.   |
+| atr_tx                                  | 0x0018                  | The pin mask for the TX only signal. |
 +-----------------------------------------+-------------------------+--------------------------------------+
 | atr_xx                                  | 0x0060                  | The pin mask for the full duplex     |
-|                                         |                         | mode (TR).                           |
+|                                         |                         | signal (TR).                         |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| atr_0x                                  | 0x0180                  | The pin mask for the idle mode.      |
+| atr_0x                                  | 0x0180                  | The pin mask for the idle signal.    |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| tst_md                                  | 0x0600                  | The pin mask for test mode.          |
+| tst_md                                  | 0x0600                  | The pin mask for the test mode signal|
 +-----------------------------------------+-------------------------+--------------------------------------+
 | lo_pwr                                  | 0x1800                  | The pin mask for the low power signal|
 +-----------------------------------------+-------------------------+--------------------------------------+
@@ -121,8 +121,9 @@ Config Parameters
 | tr_window_time                          | 6.00E-05                | How much windowing on either side of |
 |                                         |                         | pulse is needed for TR signal (s).   |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| agc_signal_read_delay                   | 0                       | Hardware dependent delay time for    |
-|                                         |                         | reading of AGC and low power signals |
+| agc_signal_read_delay                   | 0                       | Hardware dependent delay after seq   |
+|                                         |                         | is finished for reading              |
+|                                         |                         | of AGC and low power signals (s)     |
 +-----------------------------------------+-------------------------+--------------------------------------+
 | usrp_master_clock_rate                  | 1.00E+08                | Clock rate of the USRP master        |
 |                                         |                         | clock (Sps).                         |
