@@ -112,7 +112,9 @@ pulse_len *required*
     length of pulse in us. Range gate size is also determined by this.
 
 num_ranges *required*
-    Number of range gates.
+    Number of range gates to receive for. 
+    Range gate time is equal to pulse_len and range gate distance is 
+    the range_sep, calculated from pulse_len.
 
 first_range *required*
     first range gate, in km
@@ -186,10 +188,19 @@ lag_table *defaults*
     and last pulses used for lag-0.
 
 pulse_phase_offset *defaults*
-    Allows phase shifting of pulses, enabling encoding of pulses. Default all
-    zeros for all pulses in pulse_sequence. Pulses can be shifted with a single
-    phase shift for each pulse or with a phase shift specified for each sample
-    in the pulses of the slice.
+    a handle to a function that will be used to generate phases that will be applied to each pulse
+    in the sequence. If a function is supplied, the beam iterator, sequence number, number of pulses
+    in the sequence, and number of tx samples in each pulse are passed as arguments that can be used
+    in this function. The default is None if no function handle is supplied.
+
+    encode_fn(beam_iter, sequence_num, num_pulses, num_samples):
+        return np.ones(size=(num_pulses, num_samples))
+
+    The return value must be numpy broadcastable elementwise to an array of num_pulses x num_samples
+    in size.  The result is either a single phase shift for each pulse or a phase shift specified
+    for each sample in the pulses of the slice.
+
+    Result is expected to be real and in degrees and will be converted to complex radians.
 
 range_sep *defaults*
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct
@@ -440,20 +451,28 @@ class ExperimentPrototype(object):
 
         # Load the config, hardware, and restricted frequency data
 
+        dm_rate = 1
+        for stage in decimation_scheme.stages:
+            dm_rate *= stage.dm_rate
+
         # This is experiment-wide transmit metadata necessary to build the pulses. This data
         # cannot change within the experiment and is used in the scan classes to pass information
         # to where the samples are built.
         self.__transmit_metadata = {
             'output_rx_rate': self.output_rx_rate,
             'main_antenna_count': self.options.main_antenna_count,
+            'intf_antenna_count': self.options.interferometer_antenna_count,
             'tr_window_time': self.options.tr_window_time,
             'main_antenna_spacing': self.options.main_antenna_spacing,
+            'intf_antenna_spacing': self.options.interferometer_antenna_spacing,
             'pulse_ramp_time': self.options.pulse_ramp_time,
             'max_usrp_dac_amplitude': self.options.max_usrp_dac_amplitude,
             'rx_sample_rate': self.rxrate,
             'minimum_pulse_separation': self.options.minimum_pulse_separation,
             'txctrfreq': self.txctrfreq,
-            'txrate': self.txrate
+            'txrate': self.txrate,
+            'intf_offset' : self.options.intf_offset,
+            'dm_rate' : dm_rate
         }
 
         # The following are processing defaults. These can be set by the experiment using the setter
@@ -1543,8 +1562,7 @@ class ExperimentPrototype(object):
             slice_with_defaults['rx_int_antennas'] = \
                 [i for i in range(0, self.options.interferometer_antenna_count)]
         if 'pulse_phase_offset' not in exp_slice:
-            slice_with_defaults['pulse_phase_offset'] = [0.0 for i in range(0, len(
-                slice_with_defaults['pulse_sequence']))]
+            slice_with_defaults['pulse_phase_offset'] = None
         if 'scanbound' not in exp_slice:
             slice_with_defaults['scanbound'] = None
 
@@ -1859,11 +1877,40 @@ class ExperimentPrototype(object):
                                                           # (ms) by 1000 to compare in us
                     error_list.append("Slice {} : pulse sequence is too long for integration "
                                       "time given".format(exp_slice['slice_id']))
-
-        if not exp_slice['pulse_sequence']:
+        else:
             if exp_slice['txfreq']:
                 error_list.append("Slice {} has transmission frequency but no"
                                   "pulse sequence defined".format(exp_slice['slice_id']))
+
+        if exp_slice['pulse_phase_offset']:
+            num_samps = round(self.txrate * (exp_slice['pulse_len'] * 1e6))
+            num_pulses = len(exp_slice['pulse_sequence'])
+
+            # Test the encoding fn with beam iterator of 0 and sequence num of 0.
+            # test the user's phase encoding function on first beam (beam_iterator = 0)
+            # and first sequence (sequence_number = 0)
+            phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses, num_samps)
+
+            if not isinstance(phase_encoding, np.ndarray):
+                error_list.append("Slice {} Phase encoding return is not numpy array".format(
+                exp_slice['slice_id']))
+            else:
+                if len(phase_encoding.shape) > 2:
+                    error_list.append("Slice {} Phase encoding return must be 1 or 2 dimensions "\
+                                        " and must be broadcastable to num samples".format(
+                                                                            exp_slice['slice_id']))
+                else:
+                    phase_encoding = phase_encoding.reshape((phase_encoding.shape[0],-1))
+
+                    if phase_encoding.shape[0] != num_pulses:
+                        error_list.append("Slice {} Phase encoding return 1st dimension must be "\
+                                            "equal to number of pulses".format(
+                                                                            exp_slice['slice_id']))
+
+                    if not (phase_encoding.shape[1] == 1 or phase_encoding.shape[1] == num_samps):
+                        error_list.append("Slice {} Phase encoding return 2nd dimension must be "\
+                                            "broadcastable to number of samples".format(
+                                                                            exp_slice['slice_id']))
 
         if list_tests.has_duplicates(exp_slice['beam_angle']):
             error_list.append("Slice {} beam angles has duplicate directions".format(
@@ -1905,15 +1952,17 @@ class ExperimentPrototype(object):
             else:
                 # Check if any scanbound times are shorter than the intt.
                 if len(exp_slice['scanbound']) == 1:
-                    if exp_slice['scanbound'][0] * 1000 < exp_slice['intt']:
+                    tolerance = 1e-9
+                    if exp_slice['intt'] > (exp_slice['scanbound'][0] * 1000 + tolerance):
                         error_list.append("Slice {} intt {}ms longer than "
                                           "scanbound time {}s".format(exp_slice['slice_id'],
                                                                       exp_slice['intt'],
                                                                       exp_slice['scanbound'][0]))
                 else:
                     for i in range(len(exp_slice['scanbound']) - 1):
-                        if ((exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000 <
-                                exp_slice['intt']):
+                        tolerance = 1e-9
+                        beam_time = (exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000
+                        if exp_slice['intt'] > beam_time + tolerance:
                             error_list.append("Slice {} intt {}ms longer than one of the "
                                               "scanbound times".format(exp_slice['slice_id'],
                                                                        exp_slice['intt']))

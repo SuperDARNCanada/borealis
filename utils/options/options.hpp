@@ -8,7 +8,10 @@ namespace pt = boost::property_tree;
 
 class Options {
  protected:
+
+        //! property tree to hold parsed fields.
         pt::ptree config_pt;
+
         void parse_config_file();
 };
 

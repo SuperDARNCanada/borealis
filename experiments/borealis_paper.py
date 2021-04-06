@@ -1,14 +1,8 @@
 #!/usr/bin/python
 
-# Updated 4 July 2019
-# Incoherent Multiple Pulse Sequence Testing
-#
-# Ashton Reimer
+# Keith Kotyk
+# Copyright SuperDARN Canada 2020
 
-# Updated 23 March 2020
-
-
-# write an experiment that creates a new control program.
 import os
 import sys
 import copy
@@ -19,17 +13,18 @@ sys.path.append(BOREALISPATH)
 
 import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
+
 
 def phase_encode(beam_iter, sequence_num, num_pulses, num_samples):
-    return np.random.uniform(-180.0, 180, num_pulses)
+    return np.array([ 125.73471064,   60.71636783,  120.78349373,   84.34937441,
+        135.91385006, -160.56231581,  129.70333278,  -61.5067707 ])
 
-class ImptTest(ExperimentPrototype):
+class BorealisPaper(ExperimentPrototype):
 
     def __init__(self):
-        cpid = 3313
+        cpid = 10101
 
-        default_slice = {  # slice_id = 0, the first slice
+        default_slice = {
             "pulse_sequence": scf.SEQUENCE_8P,
             "tau_spacing": scf.TAU_SPACING_8P,
             "pulse_len": scf.PULSE_LEN_45KM,
@@ -39,14 +34,15 @@ class ImptTest(ExperimentPrototype):
             "beam_angle": [1.75],
             "beam_order": [0],
             "txfreq" : 13100,
+            "acf" : True
         }
 
-        impt_slice = copy.deepcopy(default_slice)
-        impt_slice['pulse_phase_offset'] = phase_encode
+        slice2 = copy.deepcopy(default_slice)
+        slice2['pulse_phase_offset'] = phase_encode
 
-        super(ImptTest, self).__init__(cpid, comment_string="Reimer IMPT Experiment")
+        super(BorealisPaper, self).__init__(cpid, comment_string="Phase encoding test for borealis paper")
 
         self.add_slice(default_slice)
 
-        self.add_slice(impt_slice, interfacing_dict={0: 'SCAN'})
+        self.add_slice(slice2, interfacing_dict={0: 'SCAN'})
 

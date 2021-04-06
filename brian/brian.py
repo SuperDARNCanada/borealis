@@ -79,7 +79,7 @@ def router(opts):
 def sequence_timing(opts):
     """Thread function for sequence timing
 
-    This function simulates the flow of data between brian's sequence timing and other parts of the
+    This function controls the flow of data between brian's sequence timing and other parts of the
     radar system. This function serves to check whether the sequence timing is working as expected
     and to rate control the system to make sure the processing can handle data rates.
     :param context: zmq context, if None, then this method will get one

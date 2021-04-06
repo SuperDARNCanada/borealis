@@ -41,7 +41,7 @@ Borealis current version
 ------------------------
 
 The Borealis software version can affect the data fields in the file format so be sure to check if your data is of the most
-up to date version. The current Borealis software version is v0.5. 
+up to date version. The current Borealis software version is v0.6.
 
 ..  toctree::
     :maxdepth: 2
@@ -55,13 +55,20 @@ Previous versions
 -----------------
 
 * v0.2, v0.3, and v0.4 follow the v0.4 format.
+* v0.5 follows the v0.5 format.
 
-    ..  toctree::
-        :maxdepth: 2
-        rawacf-v04
-        bfiq-v04
-        antennas_iq-v04
-        rawrf-v04
+..  toctree::
+    :maxdepth: 2
+
+    rawacf-v04
+    bfiq-v04
+    antennas_iq-v04
+    rawrf-v04
+    rawacf-v05
+    bfiq-v05
+    antennas_iq-v05
+    rawrf-v05
+
 
 ------------
 Reading Data

@@ -1,10 +1,10 @@
 ==========
-rawrf v0.4
+rawrf v0.5
 ==========
 
-The pyDARNio format class for this format is BorealisRawrfv0_4 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisRawrfv0_5 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
-Borealis software version 0.4 is out of date, see the current format of the rawrf files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_. 
+Borealis software version 0.5 is out of date, see the current format of the rawrf files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_.
 
 This format is intended to hold high bandwidth, non-filtered raw data from every antenna.
 
@@ -24,8 +24,9 @@ The naming convention of the rawrf site-structured files are:
 For example: 20191105.1400.02.sas.rawrf.hdf5.site
 
 This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data the experiment that ran at that time.
-Since rawrf is pre-filtered, this data does not need a slice identifier because it contains all the samples being taken at that time. Some familiarity 
-with the experiment may be necessary to understand the data. This is primarily a debug format for engineering purposes.
+Since rawrf is not filtered, this data does not need a slice identifier because it contains all the samples being taken at that time. Some familiarity 
+with the experiment may be necessary to understand the data, or some access to the other file types produced concurrently. This is primarily a debug 
+format for engineering purposes and should only be produced for special cases.
 
 These files are often bzipped after they are produced.
 
@@ -35,6 +36,13 @@ The file fields under the record name in rawrf site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |  
 +==================================+=============================================+
+| | **blanked_samples**            | | Samples that should be blanked because    |
+| | *uint32*                       | | they occurred during transmission times,  |
+| | [number of blanked             | | given by sample number (index into        |
+| | samples]                       | | decimated data). Can differ from the      |
+| |                                | | pulses array due to multiple slices in a  |
+| |                                | | single sequence.                          |
++----------------------------------+---------------------------------------------+
 | | **borealis_git_hash**          | | Identifies the version of Borealis that   | 
 | | *unicode*                      | | made this data. Contains git commit hash  | 
 | |                                | | characters. Typically begins with the     | 
@@ -99,6 +107,10 @@ The file fields under the record name in rawrf site files are:
 | | *bool*                         | | a scan (scan is defined by the            | 
 | |                                | | experiment).                              |
 +----------------------------------+---------------------------------------------+
+| | **scheduling_mode**            | | The mode being run during this time       | 
+| | *unicode*                      | | period (ex. 'common', 'special',          |
+| |                                | | 'discretionary').                         |
++----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**             | | A list of GPS timestamps corresponding to | 
 | | *[float64, ]*                  | | the beginning of transmission for each    | 
 | |                                | | sampling period in the integration time.  | 
@@ -116,4 +128,3 @@ Site/Array Restructuring
 ------------------------
 
 File restructuring to array files is not done for this format.
-
