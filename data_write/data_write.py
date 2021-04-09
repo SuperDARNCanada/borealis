@@ -16,6 +16,8 @@ import mmap
 import warnings
 import time
 import threading
+import errno
+import multiprocessing as mp
 import subprocess as sp
 import argparse as ap
 import numpy as np
@@ -601,8 +603,13 @@ class DataWrite(object):
         time_stamped_dd[dt_str] = data_dict
 
         # TODO(keith): Investigate warning.
-        warnings.simplefilter("ignore")  # ignore NaturalNameWarning
-        dd.io.save(filename, time_stamped_dd, compression=None)
+
+        try:
+            dd.io.save(filename, time_stamped_dd, compression=None)
+        except Exception as e:
+            if "No space left on device" in str(e):
+                print("No space left on device. Exiting")
+                os._exit(-1)
 
     def write_dmap_file(self, filename, data_dict):
         """
@@ -710,7 +717,12 @@ class DataWrite(object):
             """
             if not os.path.exists(dataset_directory):
                 # Don't try-catch this, because we want it to fail hard if we can't write files
-                os.makedirs(dataset_directory)
+                try:
+                    os.makedirs(dataset_directory)
+                except OSError as e:
+                    if e.args[0] == errno.ENOSPC:
+                        print("No space left on device. Exiting")
+                        os._exit(-1)
 
             if file_ext == 'hdf5':
                 full_two_hr_file = "{0}/{1}.hdf5.site".format(dataset_directory, two_hr_file_with_type)
@@ -719,7 +731,11 @@ class DataWrite(object):
                     fd = os.open(full_two_hr_file, os.O_CREAT | os.O_EXCL)
                     os.close(fd)
                 except FileExistsError:
-                    pass # TODO:
+                    pass
+                except OSError as e:
+                    if e.args[0] == errno.ENOSPC:
+                        print("No space left on device. Exiting")
+                        os._exit(-1)
 
                 self.write_hdf5_file(tmp_file, final_data_dict, epoch_milliseconds)
 
