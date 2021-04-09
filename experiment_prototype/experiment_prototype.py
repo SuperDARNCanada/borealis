@@ -1883,7 +1883,7 @@ class ExperimentPrototype(object):
                                   "pulse sequence defined".format(exp_slice['slice_id']))
 
         if exp_slice['pulse_phase_offset']:
-            num_samps = round(self.txrate * (exp_slice['pulse_len'] * 1e6))
+            num_samps = round(self.txrate * (exp_slice['pulse_len'] * 1e-6))
             num_pulses = len(exp_slice['pulse_sequence'])
 
             # Test the encoding fn with beam iterator of 0 and sequence num of 0.

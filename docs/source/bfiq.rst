@@ -186,7 +186,7 @@ The file fields in the bfiq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **pulse_phase_offset**          | | For pulse encoding phase, in degrees      |
 | | *float32*                       | | offset. Contains one phase offset per     | 
-| | [num pulses x 1] or             | | pulse in pulses or one phase offset       |
+| | [] or [num pulses x 1] or       | | pulse in pulses or one phase offset       |
 | | [num pulses x samples per pulse]| | per sample                                |
 +-----------------------------------+---------------------------------------------+
 | | **pulses**                      | | The pulse sequence in units of the        |
@@ -388,7 +388,7 @@ The file fields under the record name in bfiq site files are:
 | | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      |
 | | *[float32, ]*                  | | offset. Contains one phase offset per     |
 | |                                | | pulse in pulses or one phase offset per   |
-| |                                | | sample in each pulse                      |
+| |                                | | sample in each pulse, or none.            |
 +----------------------------------+---------------------------------------------+
 | | **pulses**                     | | The pulse sequence in units of the        | 
 | | *[uint32, ]*                   | | tau_spacing.                              |

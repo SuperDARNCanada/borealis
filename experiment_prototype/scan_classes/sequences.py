@@ -499,7 +499,7 @@ class Sequence(ScanClassBase):
         :type       beam_iter:  int
 
         :returns:   The receive phases.
-        :rtype:     Array of phases for each possible beam for each antenna
+        :rtype:     Dict for both main and intf that contains an array of phases for each possible beam for each antenna.
         """
 
         temp_dict = copy.deepcopy(self.rx_beam_phases)
