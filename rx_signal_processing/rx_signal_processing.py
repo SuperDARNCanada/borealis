@@ -466,7 +466,7 @@ def main():
                     beamformed_i = processed_intf_samples.beamformed_samples
 
             data_outputs['beamformed_m'] = beamformed_m
-            data_outputs['beamformed_i'] = beamformed_i
+            
             data_outputs['main_corrs'] = main_corrs
 
             if sig_options.intf_antenna_count > 0:
@@ -507,7 +507,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 
