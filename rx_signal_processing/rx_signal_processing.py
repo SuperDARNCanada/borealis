@@ -471,6 +471,7 @@ def main():
 
             if sig_options.intf_antenna_count > 0:
                 data_outputs['cross_corrs'] = cross_corrs
+                data_outputs['beamformed_i'] = beamformed_i
                 data_outputs['intf_corrs'] = intf_corrs
 
             fill_datawrite_proto(processed_data, slice_details, data_outputs)
@@ -507,7 +508,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 
