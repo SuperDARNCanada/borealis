@@ -389,7 +389,7 @@ namespace {
                                           main_acfs, rx_slice_info,
                                           num_samples_after_dropping, dp->get_output_sample_rate());
         if (dp->sig_options.get_interferometer_antenna_count() > 0) {
-          correlations_from_samples(beamformed_samples_intf, beamformed_samples_main,
+          correlations_from_samples(beamformed_samples_main, beamformed_samples_intf,
                                           xcfs, rx_slice_info, num_samples_after_dropping,
                                           dp->get_output_sample_rate());
           correlations_from_samples(beamformed_samples_intf, beamformed_samples_intf,
@@ -528,6 +528,13 @@ namespace {
     pd.set_processing_time(dp->get_decimate_timing());
     pd.set_initialization_time(dp->get_driver_initialization_time());
     pd.set_sequence_start_time(dp->get_sequence_start_time());
+    pd.set_gps_locked(dp->get_gps_locked());
+    pd.set_gps_to_system_time_diff(dp->get_gps_to_system_time_diff());
+    pd.set_agc_status_bank_h(dp->get_agc_status_bank_h());
+    pd.set_lp_status_bank_h(dp->get_lp_status_bank_h());
+    pd.set_agc_status_bank_l(dp->get_agc_status_bank_l());
+    pd.set_lp_status_bank_l(dp->get_lp_status_bank_l());
+
   }
 
   /**
@@ -646,6 +653,12 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * @param[in]  beam_phases                 The beam phases.
  * @param[in]  driver_initialization_time  The driver initialization time.
  * @param[in]  sequence_start_time         The sequence start time.
+ * @param[in]  gps_locked                  The gps lock status, boolean True if locked.
+ * @param[in]  gps_to_system_time_diff     The time diff in seconds btw GPS and system (NTP) time.
+ * @param[in]  agc_status_bank_h           The AGC fault status for all TXs on active-high bank
+ * @param[in]  lp_status_bank_h            The low power status for all TXs on active-high bank
+ * @param[in]  agc_status_bank_l           The AGC fault status for all TXs on active-low bank
+ * @param[in]  lp_status_bank_l            The low power status for all TXs on active-low bank
  * @param[in]  dm_rates                    The decimation rates.
  * @param[in]  slice_info                  The slice info given as a vector of rx_slice structs.
  *
@@ -657,6 +670,9 @@ DSPCore::DSPCore(zmq::context_t &context, SignalProcessingOptions &sig_options,
                   std::vector<std::vector<float>> filter_taps,
                   std::vector<cuComplex> beam_phases,
                   double driver_initialization_time, double sequence_start_time,
+                  bool gps_locked, double gps_to_system_time_diff,
+                  uint32_t agc_status_bank_h, uint32_t lp_status_bank_h,
+                  uint32_t agc_status_bank_l, uint32_t lp_status_bank_l,
                   std::vector<uint32_t> dm_rates,
                   std::vector<rx_slice> slice_info) :
   sig_options(sig_options),
@@ -667,6 +683,12 @@ DSPCore::DSPCore(zmq::context_t &context, SignalProcessingOptions &sig_options,
   beam_phases(beam_phases),
   driver_initialization_time(driver_initialization_time),
   sequence_start_time(sequence_start_time),
+  gps_locked(gps_locked),
+  gps_to_system_time_diff(gps_to_system_time_diff),
+  agc_status_bank_h(agc_status_bank_h),
+  lp_status_bank_h(lp_status_bank_h),
+  agc_status_bank_l(agc_status_bank_l),
+  lp_status_bank_l(lp_status_bank_l),
   dm_rates(dm_rates),
   slice_info(slice_info)
 {
@@ -685,8 +707,6 @@ DSPCore::DSPCore(zmq::context_t &context, SignalProcessingOptions &sig_options,
   gpuErrchk(cudaEventRecord(initial_start, stream));
 
   shm = SharedMemoryHandler(random_string(20));
-
-
 }
 
 /**
@@ -1226,6 +1246,70 @@ double DSPCore::get_sequence_start_time()
  * @return     The vector of rx_slice structs with slice information.
  */
  std::vector<rx_slice> DSPCore::get_slice_info()
- {
+{
   return slice_info;
- }
+}
+
+/**
+ * @brief      Gets the boolean indicating if the GPS is locked or not.
+ *
+ * @return     The boolean value indicating if the GPS is locked. True if locked.
+ */
+ bool DSPCore::get_gps_locked()
+{
+  return gps_locked;
+}
+
+/**
+ * @brief      Gets the time difference between the GPS (box_time) and system (NTP).
+ *
+ * @return     The time difference between GPS and system time in seconds. Negative if GPS ahead
+ */
+double DSPCore::get_gps_to_system_time_diff()
+{
+  return gps_to_system_time_diff;
+}
+
+/**
+ * @brief      Gets the AGC fault status word for the TXs connected to the active-high GPIO bank.
+ *             A '1' in the bit position indicates an AGC fault.
+ *
+ * @return     32 bit integer with 1's indicating AGC faults. Each bit position maps to a TX.
+ */
+uint32_t DSPCore::get_agc_status_bank_h()
+{
+  return agc_status_bank_h;
+}
+
+/**
+ * @brief      Gets the low power status word for the TXs connected to the active-high GPIO bank.
+ *             A '1' in the bit position indicates a low power condition.
+ *
+ * @return     32 bit integer with 1's indicating low power conditions. Each bit position maps to a TX.
+ */
+uint32_t DSPCore::get_lp_status_bank_h()
+{
+  return lp_status_bank_h;
+}
+
+/**
+ * @brief      Gets the AGC fault status word for the TXs connected to the active-low GPIO bank.
+ *             A '1' in the bit position indicates an AGC fault.
+ *
+ * @return     32 bit integer with 1's indicating AGC faults. Each bit position maps to a TX.
+ */
+uint32_t DSPCore::get_agc_status_bank_l()
+{
+  return agc_status_bank_l;
+}
+
+/**
+ * @brief      Gets the low power status word for the TXs connected to the active-low GPIO bank.
+ *             A '1' in the bit position indicates a low power condition.
+ *
+ * @return     32 bit integer with 1's indicating low power conditions. Each bit position maps to a TX.
+ */
+uint32_t DSPCore::get_lp_status_bank_l()
+{
+  return lp_status_bank_l;
+}

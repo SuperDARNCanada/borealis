@@ -18,13 +18,15 @@ class DriverOptions: public Options {
         std::string get_ref() const;
         std::string get_cpu() const;
         std::string get_otw() const;
-        std::string get_gpio_bank() const;
+        std::string get_gpio_bank_high() const;
+        std::string get_gpio_bank_low() const;
         uint32_t get_atr_rx() const;
         uint32_t get_atr_tx() const;
         uint32_t get_atr_xx() const;
         uint32_t get_atr_0x() const;
         uint32_t get_lo_pwr() const;
         uint32_t get_agc_st() const;
+        uint32_t get_test_mode() const;
         double get_tr_window_time() const;
         double get_agc_signal_read_delay() const;
         uint32_t get_main_antenna_count() const;
@@ -53,7 +55,8 @@ class DriverOptions: public Options {
         std::string ref_;
         std::string cpu_;
         std::string otw_;
-        std::string gpio_bank_;
+        std::string gpio_bank_high_;
+        std::string gpio_bank_low_;
         double tr_window_time_;
         double agc_signal_read_delay_;
         uint32_t main_antenna_count_;
@@ -65,6 +68,7 @@ class DriverOptions: public Options {
         uint32_t atr_0x_;
         uint32_t agc_st_;
         uint32_t lo_pwr_;
+        uint32_t test_mode_;
         std::string router_address_;
         std::string driver_to_radctrl_identity_;
         std::string driver_to_dsp_identity_;

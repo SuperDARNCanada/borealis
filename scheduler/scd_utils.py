@@ -17,6 +17,7 @@ class SCDUtils(object):
 
     Attributes:
         line_fmt (str): String format for scd line.
+        scd_default (dict): Default event to run if no other infinite duration line is scheduled.
         scd_dt_fmt (str): String format for parsing/writing datetimes.
         scd_filename (str): The filename of schedule to use.
     """
@@ -25,9 +26,10 @@ class SCDUtils(object):
         super(SCDUtils, self).__init__()
         self.scd_filename = scd_filename
         self.scd_dt_fmt = "%Y%m%d %H:%M"
-        self.line_fmt = "{datetime} {duration} {prio} {experiment}"
+        self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {kwargs_string}"
+        self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
-    def check_line(self, yyyymmdd, hhmm, experiment, prio, duration):
+    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string=''):
         """Checks the line parameters to see if they are valid and then returns a dict with all
         the valid fields.
 
@@ -35,8 +37,10 @@ class SCDUtils(object):
             yyyymmdd (str): year/month/day string.
             hhmm (str): hour/minute string.
             experiment (str): The experiment to run.
+            scheduling_mode (str): The type of scheduling mode.
             prio (str or int): priority value.
             duration (str): an optional duration to run for.
+            kwargs_string (str, optional): kwargs for the experiment instantiation.
 
         Returns:
             TYPE: Dict of line params.
@@ -50,7 +54,6 @@ class SCDUtils(object):
             time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
         except:
             raise ValueError("Can not create datetime from supplied formats")
-
         try:
             int(prio)
         except ValueError as e:
@@ -69,12 +72,18 @@ class SCDUtils(object):
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
 
+        possible_scheduling_modes = ['common', 'special', 'discretionary']
+        if scheduling_mode not in possible_scheduling_modes:
+            raise ValueError("Unknown scheduling mode type {} not in {}"
+                .format(scheduling_mode, possible_scheduling_modes))
+
         return {"timestamp" : epoch_milliseconds,
                 "time" : time,
                 "duration" : str(duration),
                 "prio" : str(prio),
-                "experiment" : experiment}
-
+                "experiment" : experiment,
+                "scheduling_mode" : scheduling_mode,
+                "kwargs_string": kwargs_string}
 
 
     def read_scd(self):
@@ -93,11 +102,21 @@ class SCDUtils(object):
         raw_scd = [line.split() for line in raw_scd]
 
         scd_lines = []
-        for num, line in enumerate(raw_scd):
-            if len(line) != 5:
-                raise ValueError("Line {} has too many arguments".format(num))
 
-            scd_lines.append(self.check_line(line[0], line[1], line[4], line[3], line[2]))
+        for num, line in enumerate(raw_scd):
+            if len(line) not in [6, 7]:
+                raise ValueError("Line {} has incorrect number of arguments; requires 6 or 7."
+                                 " Line: {}".format(num, line))
+            # date time experiment mode priority duration (kwargs if any)
+            if len(line) == 6:
+                scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
+            else:
+                scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], line[6]))
+
+        if len(scd_lines) == 0:
+            print('WARNING: SCD file empty; default normalscan will run')
+            # add the default infinite duration line 
+            scd_lines.append(self.scd_default)
 
         return scd_lines
 
@@ -113,7 +132,9 @@ class SCDUtils(object):
         line_str = self.line_fmt.format(datetime=line_dict["time"].strftime(self.scd_dt_fmt),
                                         prio=line_dict["prio"],
                                         experiment=line_dict["experiment"],
-                                        duration=line_dict["duration"])
+                                        scheduling_mode=line_dict["scheduling_mode"],
+                                        duration=line_dict["duration"],
+                                        kwargs_string=line_dict["kwargs_string"])
         return line_str
 
     def write_scd(self, scd_lines):
@@ -132,21 +153,23 @@ class SCDUtils(object):
                 f.write("{}\n".format(line))
 
 
-    def add_line(self, yyyymmdd, hhmm, experiment, prio=0, duration='-'):
+    def add_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
+                 duration='-', kwargs_string=''):
         """Adds a new line to the SCD.
 
         Args:
             yyyymmdd (str): year/month/day string.
             hhmm (str): hour/minute string.
             experiment (str): The experiment to run.
+            scheduling_mode (str): The mode type running for this time period.
             prio (int or str, optional): priority value.
             duration (str, optional): an optional duration to run for.
+            kwargs_string (str, optional): kwargs for the experiment instantiation.
 
         Raises:
             ValueError: If line parameters are invalid or if line is a duplicate.
         """
-
-        new_line = self.check_line(yyyymmdd, hhmm, experiment, prio, duration)
+        new_line = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string)
 
         scd_lines = self.read_scd()
 
@@ -157,7 +180,6 @@ class SCDUtils(object):
                     new_line['prio'] == line['prio']) for line in scd_lines]):
             raise ValueError("Priority already exists at this time")
 
-
         scd_lines.append(new_line)
 
         # sort priorities in reverse so that they are descending order. Then sort everything by
@@ -167,21 +189,24 @@ class SCDUtils(object):
 
         self.write_scd(new_scd)
 
-    def remove_line(self, yyyymmdd, hhmm, experiment, prio=0, duration='-'):
+    def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
+                    duration='-', kwargs_string=''):
         """Summary
 
         Args:
             yyyymmdd (str): year/month/day string.
             hhmm (str): hour/minute string.
             experiment (str): The experiment to run.
+            scheduling_mode (str): The mode type running for this time period.
             prio (int or str, optional): priority value.
             duration (str, optional): an optional duration to run for.
+            kwargs_string (str, optional): kwargs for the experiment instantiation.
 
         Raises:
             ValueError: If line parameters are invalid or if line does not exist.
         """
 
-        line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, prio, duration)
+        line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string)
 
         scd_lines = self.read_scd()
         try:
@@ -207,6 +232,7 @@ class SCDUtils(object):
 
         Raises:
             ValueError: If datetime could not be created from supplied arguments.
+            IndexError: If schedule file is empty
         """
 
         try:
@@ -216,6 +242,9 @@ class SCDUtils(object):
             raise ValueError("Can not create datetime from supplied formats")
 
         scd_lines = self.read_scd()
+
+        if not scd_lines:
+            raise IndexError("Schedule file is empty. No lines can be returned")
 
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
@@ -252,20 +281,20 @@ if __name__ == "__main__":
 
     scd_util = SCDUtils(filename)
 
-    scd_util.add_line("20190404", "10:43", "twofsound")
-    #scd_util.add_line("04/04/2019", "10:43", "twofsound")
-    scd_util.add_line("20190407", "10:43", "twofsound")
-    scd_util.add_line("20190414", "10:43", "twofsound")
-    scd_util.add_line("20190414", "10:43", "twofsound", prio=2)
-    scd_util.add_line("20190414", "10:43", "twofsound", prio=1, duration=89)
-    #scd_util.add_line("20190414", "10:43", "twofsound", prio=1, duration=24)
-    scd_util.add_line("20190414", "11:43", "twofsound", duration=46)
-    scd_util.add_line("20190414", "00:43", "twofsound")
-    scd_util.add_line("20190408", "15:43", "twofsound", duration=57)
+    # scd_util.add_line("20190404", "10:43", "twofsound", "common")
+    # #scd_util.add_line("04/04/2019", "10:43", "twofsound", "common")
+    # scd_util.add_line("20190407", "10:43", "twofsound", "discretionary")
+    # scd_util.add_line("20190414", "10:43", "twofsound", "special")
+    # scd_util.add_line("20190414", "10:43", "twofsound", "special", prio=2)
+    # scd_util.add_line("20190414", "10:43", "twofsound", "discretionary", prio=1, duration=89)
+    # #scd_util.add_line("20190414", "10:43", "twofsound", "common", prio=1, duration=24)
+    # scd_util.add_line("20190414", "11:43", "twofsound", "common", duration=46)
+    # scd_util.add_line("20190414", "00:43", "twofsound", "common")
+    # scd_util.add_line("20190408", "15:43", "twofsound", , "common", duration=57)
 
 
-    scd_util.remove_line("20190414", "10:43", "twofsound")
+    # scd_util.remove_line("20190414", "10:43", "twofsound", "special")
 
 
-    print(scd_util.get_relevant_lines("20190414", "10:44"))
+    # print(scd_util.get_relevant_lines("20190414", "10:44"))
 

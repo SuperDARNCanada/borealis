@@ -6,15 +6,20 @@ sys.path.append(BOREALISPATH)
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 
+# TODO: We should protect these values from changing, I noticed during testing that I used a
+# TODO: call to reverse() on one and it affected the rest of the testing afterwards
+
 STD_RF_RX_RATE = 5.0e6
 RX_RATE_45KM = 10.0e3/3
 RX_RATE_15KM = 10.0e3
 
 SEQUENCE_7P = [0, 9, 12, 20, 22, 26, 27]
 TAU_SPACING_7P = 2400 #us
+INTT_7P = 3700
 
 SEQUENCE_8P = [0, 14, 22, 24, 27, 31, 42, 43]
 TAU_SPACING_8P = 1500 #us
+INTT_8P = 3700
 
 STD_8P_LAG_TABLE = [[ 0, 0],
                     [42,43],
@@ -64,3 +69,53 @@ if opts.site_id in ["sas", "rkn", "inv"]:
 
 if opts.site_id in ["cly", "pgr"]:
     IS_REVERSE_RADAR = True
+
+# set common mode operating frequencies with a slight offset.
+if opts.site_id == "sas":
+    COMMON_MODE_FREQ_1 = 10500
+    COMMON_MODE_FREQ_2 = 13000
+elif opts.site_id == "pgr":
+    COMMON_MODE_FREQ_1 = 10600
+    COMMON_MODE_FREQ_2 = 13100
+elif opts.site_id == "rkn":
+    COMMON_MODE_FREQ_1 = 10900
+    COMMON_MODE_FREQ_2 = 13150
+elif opts.site_id == "inv":
+    COMMON_MODE_FREQ_1 = 10800
+    COMMON_MODE_FREQ_2 = 13200
+elif opts.site_id == "cly":
+    COMMON_MODE_FREQ_1 = 10700
+    COMMON_MODE_FREQ_2 = 13050
+else:
+    COMMON_MODE_FREQ_1 = 10400
+    COMMON_MODE_FREQ_2 = 13200
+
+def easy_scanbound(intt, beams):
+    """
+    Create integration time boundaries for the scan at the exact 
+    integration time (intt) boundaries. For new experiments, you 
+    may wish to ensure that your intt * len(beams) approaches a 
+    minute mark to reduce delay in waiting for the next scanbound.
+    """
+    return [i * (intt * 1e-3) for i in range(len(beams))]
+
+# set sounding frequencies
+if opts.site_id == "sas":
+    SOUNDING_FREQS = [10300, 11000, 11700, 13100]
+    #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "pgr":
+    SOUNDING_FREQS = [10350, 11050, 11750, 13300]
+    #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "rkn":
+    SOUNDING_FREQS = [10400, 11100, 11800, 13450]
+    #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "inv":
+    SOUNDING_FREQS = [10450, 11150, 11850, 13500]
+    #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+elif opts.site_id == "cly":
+    SOUNDING_FREQS = [10550, 11200, 11900, 13550]
+    #SOUNDING_FREQS = [9500, 10300, 11100, 11700, 13250, 14200, 15200]
+else:
+    SOUNDING_FREQS = [10600, 11250, 11950, 13150]
+    #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
+

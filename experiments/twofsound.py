@@ -14,7 +14,7 @@ import experiments.superdarn_common_fields as scf
 
 class Twofsound(ExperimentPrototype):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         cpid = 3503
 
         if scf.IS_FORWARD_RADAR:
@@ -22,19 +22,20 @@ class Twofsound(ExperimentPrototype):
         else:
             beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
 
-        if scf.opts.site_id in ["sas", "pgr"]:
-            freqs = (10500, 13000)
-        if scf.opts.site_id in ["rkn"]:
-            freqs = (10200, 12200)
-        if scf.opts.site_id in ["inv"]:
-            freqs = (10300, 12200)
-        if scf.opts.site_id in ["cly"]:
-            freqs = (10500, 12500)
-
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
         if scf.opts.site_id in ["sas", "pgr"]:
             num_ranges = scf.STD_NUM_RANGES
+
+        tx_freq_1 = scf.COMMON_MODE_FREQ_1
+        tx_freq_2 = scf.COMMON_MODE_FREQ_2
+
+        if kwargs:
+            if 'freq1' in kwargs.keys():
+                tx_freq_1 = int(kwargs['freq1'])
+
+            if 'freq2' in kwargs.keys():
+                tx_freq_2 = int(kwargs['freq2'])
 
         slice_1 = {  # slice_id = 0, the first slice
             "pulse_sequence": scf.SEQUENCE_7P,
@@ -42,17 +43,18 @@ class Twofsound(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": 3500,  # duration of an integration, in ms
+            "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
-            "txfreq" : freqs[0], #kHz
+            "scanbound" : scf.easy_scanbound(scf.INTT_7P, beams_to_use),
+            "txfreq" : tx_freq_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         }
 
         slice_2 = copy.deepcopy(slice_1)
-        slice_2['txfreq'] = freqs[1]
+        slice_2['txfreq'] = tx_freq_2
 
         list_of_slices = [slice_1, slice_2]
         sum_of_freq = 0

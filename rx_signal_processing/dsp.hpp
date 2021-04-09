@@ -89,6 +89,9 @@ class DSPCore {
                     std::vector<std::vector<float>> filter_taps,
                     std::vector<cuComplex> beam_phases,
                     double driver_initialization_time, double sequence_start_time,
+                    bool gps_locked, double gps_to_system_time_diff,
+                    uint32_t agc_status_bank_h, uint32_t lp_status_bank_h,
+                    uint32_t agc_status_bank_l, uint32_t lp_status_bank_l,
                     std::vector<uint32_t> dm_rates,
                     std::vector<rx_slice> slice_info);
 
@@ -125,6 +128,12 @@ class DSPCore {
   double get_driver_initialization_time();
   double get_sequence_start_time();
   std::vector<rx_slice> get_slice_info();
+  bool get_gps_locked();
+  double get_gps_to_system_time_diff();
+  uint32_t get_agc_status_bank_h();
+  uint32_t get_lp_status_bank_h();
+  uint32_t get_agc_status_bank_l();
+  uint32_t get_lp_status_bank_l();
   cudaStream_t get_cuda_stream();
   std::vector<cuComplex> get_beam_phases();
   std::string get_shared_memory_name();
@@ -231,6 +240,23 @@ class DSPCore {
   //! Slice information given from rx_slice structs
   std::vector<rx_slice> slice_info;
 
+  //! Boolean True if the GPS is locked
+  bool gps_locked;
+
+  //! Time diff btw GPS (box_time) and system (NTP). Negative if GPS time is ahead of system time
+  double gps_to_system_time_diff;
+
+  //! AGC status word for the active-high GPIO bank
+  uint32_t agc_status_bank_h;
+
+  //! Low power status word for the active-high GPIO bank
+  uint32_t lp_status_bank_h;
+
+  //! AGC status word for the active-low GPIO bank
+  uint32_t agc_status_bank_l;
+
+  //! Low power status word for the active-low GPIO bank
+  uint32_t lp_status_bank_l;
 
   void allocate_and_copy_rf_from_device(uint32_t num_rf_samples);
 

@@ -7,3 +7,13 @@ do
 	atrm $i
 done  
 
+NOW=`date +'%Y%m%d %H:%M:%S'`
+
+screen -X -S borealis quit
+
+retVal=$?
+if [[ $retVal -ne 0 ]]; then
+	echo "${NOW} STOP: Could not stop radar." | tee -a /data/borealis_logs/start_stop.log
+else
+	echo "${NOW} STOP: Radar processes stopped." | tee -a /data/borealis_logs/start_stop.log
+fi

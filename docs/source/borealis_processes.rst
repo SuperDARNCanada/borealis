@@ -13,6 +13,7 @@ Runtime Processes
     brian
     rx_signal_processing
     usrp_n200_driver
+    data_write
 
 =====================
 Experiment Components

@@ -2,190 +2,289 @@
 iqdat_mapping
 =============
 
-+-----------------------+----------+--------------------------------+--------------------------------+
-| Variable name         | Type     | Description                    | Borealis conversion            |
-+=======================+==========+================================+================================+
-| radar.revision.major  | char     | Major version number           | Borealis major version number, |
-|                       |          |                                | or 255 if not a commit with a  |
-|                       |          |                                | version tag                    |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| radar.revision.minor  | char     | Minor version number           | Borealis minor version number, |
-|                       |          |                                | or = 255 if not a commit with  |
-|                       |          |                                | a version tag                  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| origin.code           | char     | Code indicating origin of data | = 100, this can be used as a   |
-|                       |          |                                | flag that the origin code was  |
-|                       |          |                                | Borealis                       |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| origin.time           | string   | ASCII representation of when   | Timestamp\_of\_write           |
-|                       |          | the data was generated         | conversion                     |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| origin.command        | string   | The command line or control    | &#39;Borealis vXXX&#39; +      |
-|                       |          | program used to generate the   | borealis\_git\_hash +          |
-|                       |          | data                           | experiment\_name               |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| cp                    | short    | Control program identifier     | Experiment\_id, truncated to   |
-|                       |          |                                | short. Experiment\_id will be  |
-|                       |          |                                | some sort of hash of           |
-|                       |          |                                | experiment\_name               |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| stid                  | short    | Station identifier             | Station conversion             |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| time.yr               | short    | Year                           | Sqn\_timestamps[0] conversion  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| time.mo               | short    | Month                          | Sqn\_timestamps[0] conversion  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| time.dy               | short    | Day                            | Sqn\_timestamps[0] conversion  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| time.hr               | short    | Hour                           | Sqn\_timestamps[0] conversion  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| time.mt               | short    | Minute                         | Sqn\_timestamps[0] conversion  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| time.sc               | short    | Second                         | Sqn\_timestamps[0] conversion  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| time.us               | short    | Microsecond                    | Sqn\_timestamps[0] conversion  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| txpow                 | short    | Transmitted power (kW)         | = -1 (filler)                  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| nave                  | short    | Number of pulse sequences      | num\_sequences                 |
-|                       |          | transmitted                    |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| atten                 | short    | Attenuation level              | = 0 (filler)                   |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| lagfr                 | short    | Lag to first range             | first\_range\_rtt              |
-|                       |          | (microseconds)                 |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| smsep                 | short    | Sample separation              | (rx\_sample\_rate)^ -1         |
-|                       |          | (microseconds)                 |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| ercod                 | short    | Error code                     | = 0 (filler)                   |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| stat.agc              | short    | AGC status word                | = 0 (filler)                   |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| stat.lopwr            | short    | LOPWR status word              | = 0 (filler)                   |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| noise.search          | float    | Calculated noise from clear    | Noise\_at\_freq[0] conversion  |
-|                       |          | frequency search               |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| noise.mean            | float    | Average noise across frequency | = 0 (filler)                   |
-|                       |          | band                           |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| channel               | short    | Channel number for a stereo    | Slice\_id \*\*\* documentation |
-|                       |          | radar (zero for all others)    | to be written on what a        |
-|                       |          |                                | slice\_id                      |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| bmnum                 | short    | Beam number                    | beam\_nums[i]                  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| bmazm                 | float    | Beam azimuth                   | beam\_azms[i]                  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| scan                  | short    | Scan flag                      | Scan\_start\_marker (0 or 1)   |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| offset                | short    | Offset between channels for a  |                                |
-|                       |          | stereo radar (zero for all     |                                |
-|                       |          | others)                        |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| rxrise                | short    | Receiver rise time             | = 0.0                          |
-|                       |          | (microseconds)                 |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| intt.sc               | short    | Whole number of seconds of     | Int\_time conversion           |
-|                       |          | integration time.              |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| intt.us               | short    | Fractional number of           | Int\_time conversion           |
-|                       |          | microseconds of integration    |                                |
-|                       |          | time                           |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| txpl                  | short    | Transmit pulse length          | tx\_pulse\_len                 |
-|                       |          | (microseconds)                 |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| mpinc                 | short    | Multi-pulse increment          | tau\_spacing                   |
-|                       |          | (microseconds)                 |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| mppul                 | short    | Number of pulses in sequence   | len(pulses)                    |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| mplgs                 | short    | Number of lags in sequence     | lags.shape[0]                  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| nrang                 | short    | Number of ranges               | num\_ranges                    |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| frang                 | short    | Distance to first range        | first\_range                   |
-|                       |          | (kilometers)                   |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| rsep                  | short    | Range separation (kilometers)  | range\_sep                     |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| xcf                   | short    | XCF flag                       | If &#39;intf&#39;              |
-|                       |          |                                | in antenna\_arrays\_order,     |
-|                       |          |                                | then xcf = 1 (xcfs are         |
-|                       |          |                                | possible)                      |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| tfreq                 | short    | Transmitted frequency          | freq                           |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| mxpwr                 | int      | Maximum power (kHz)            | = -1 (filler)                  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| lvmax                 | int      | Maximum noise level allowed    | = 20000 (filler)               |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| iqdata.revision.major | int      | Major version number of the    | = 1 (meaning Borealis          |
-|                       |          | iqdata library                 | conversion)                    |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| iqdata.revision.minor | int      | Minor version number of the    | = 0 (Borealis conversion)      |
-|                       |          | iqdata library                 |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| combf                 | string   | Comment buffer                 | Original Borealis filename,    |
-|                       |          |                                | &#39;converted from Borealis   |
-|                       |          |                                | file &#39; , number of beams   |
-|                       |          |                                | in this original record        |
-|                       |          |                                | (len(beam\_nums)),             |
-|                       |          |                                | experiment\_comment and        |
-|                       |          |                                | slice\_comment from the file   |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| seqnum                | int      | Number of pulse sequences      | num\_sequences                 |
-|                       |          | transmitted                    |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| chnnum                | int      | Number of channels sampled     | len(antenna\_arrays\_order)    |
-|                       |          | (both I and Q quadrature       |                                |
-|                       |          | samples)                       |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| smpnum                | int      | Number of samples taken per    | num\_samps                     |
-|                       |          | sequence                       |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| skpnum                | int      | Number of samples to skip      | math.ceil(first\_range/        |
-|                       |          | before the first valid sample  | range\_sep). In theory this    |
-|                       |          |                                | should =0 due to Borealis      |
-|                       |          |                                | functionality (no rise time to |
-|                       |          |                                | account for). However          |
-|                       |          |                                | make\_raw in RST requires      |
-|                       |          |                                | this to be                     |
-|                       |          |                                | indicative of the first range  |
-|                       |          |                                | so we provide this.            |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| ptab[mppul]           | short    | Pulse table                    | pulses                         |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| ltab[2][mplgs]        | short    | Lag table                      | np.transpose(lags)             |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| tsc[seqnum]           | int      | Seconds component of time past | Sqn\_timestamps conversion     |
-|                       |          | epoch of pulse sequence        |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| tus[seqnum]           | int      | Microsecond component of time  | Sqn\_timestamps conversion     |
-|                       |          | past epoch of pulse sequence   |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| tatten[seqnum]        | short    | Attenuator setting for each    | = [0,0…] (fillers)             |
-|                       |          | pulse sequence                 |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| tnoise[seqnum]        | float    | Noise value for each pulse     | Noise\_at\_freq conversion     |
-|                       |          | sequence                       |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| toff[seqnum]          | int      | Offset into the sample buffer  | Offset = 2 \* num\_samps \*    |
-|                       |          | for each pulse sequence        | len(antenna\_arrays\_order)    |
-|                       |          |                                | toff = [i \* offset for i in   |
-|                       |          |                                | range(                         |
-|                       |          |                                | v[&#39;num\_sequences&#39;])]  |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| tsze[seqnum]          | int      | Number of words stored for     |                                |
-|                       |          | this pulse sequence            | = [offset, offset, offset….]   |
-+-----------------------+----------+--------------------------------+--------------------------------+
-| data[totnum]          | int      | Array of raw I and Q samples,  | Data conversion for correct    |
-|                       |          | arranged: [[[smpnum(i),        | dimensions                     |
-|                       |          | smpnum(q)] \* chnnum] \*       |                                |
-|                       |          | seqnum], so totnum = 2\*seqnum |                                |
-|                       |          | \*chnnum\*smpnum               |                                |
-+-----------------------+----------+--------------------------------+--------------------------------+
+IQDAT SDARN FIELDS
 
-If blanked\_samples != ptab, or pulse\_phase\_offset contains non-zeroes, no conversion to iqdat is possible.
+This conversion is done in pyDARNio here in the __convert_bfiq_record method: `Link to Source <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_convert.py>`_
+
++-----------------------------------+---------------------------------------------+
+| | **SDARN DMAP FIELD NAME**       | **Borealis Conversion**                     |
+| | *type*                          |                                             |
+| | SDARN description               |                                             |
++===================================+=============================================+
+| | **radar.revision.major**        | | *borealis_git_hash* major version number  |
+| | *char*                          | | or 255 if not a commit with a version tag |  
+| | Major version number            | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **radar.revision.minor**        | | *borealis_git_hash* minor version number  |
+| | *char*                          | | or 255 if not a commit with a version tag | 
+| | Minor version number            | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **origin.code**                 | | = 100, this can be used as a flag that the|
+| | *char*                          | | origin code was Borealis                  |
+| | Code indicating origin of data  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **origin.time**                 | | *timestamp_of_write* conversion           |
+| | *string*                        | |                                           |
+| | ASCII representation of when    | |                                           |
+| | the data was generated          | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **origin.command**              | | Borealis vXXX + *borealis_git_hash* +     |
+| | *string*                        | | *experiment_name*                         |
+| | The command line or control     | |                                           |
+| | program used to generate the    | |                                           |
+| | data                            | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **cp**                          | | *experiment_id*, truncated to short       |
+| | *short*                         | |                                           | 
+| | Control program identifier      | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **stid**                        | | *station* conversion                      |
+| | *short*                         | |                                           |
+| | Station identifier              | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **time.yr**                     | | *sqn_timestamps* [0] conversion           |
+| | *short*                         | |                                           |      
+| | Year                            | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **time.mo**                     | | *sqn_timestamps* [0] conversion           |
+| | *short*                         | |                                           |
+| | Month                           | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **time.dy**                     | | *sqn_timestamps* [0] conversion           |
+| | *short*                         | |                                           |
+| | Day                             | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **time.hr**                     | | *sqn_timestamps* [0] conversion           |
+| | *short*                         | |                                           |      
+| | Hour                            | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **time.mt**                     | | *sqn_timestamps* [0] conversion           |
+| | *short*                         | |                                           |
+| | Minute                          | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **time.sc**                     | | *sqn_timestamps* [0] conversion           |
+| | *short*                         | |                                           |
+| | Second                          | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **time.us**                     | | *sqn_timestamps* [0] conversion           |
+| | *short*                         | |                                           |
+| | Microsecond                     | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **txpow**                       | | = -1 (filler)                             |
+| | *short*                         | |                                           |
+| | Transmitted power (kW)          | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **nave**                        | | *num_sequences*                           |
+| | *short*                         | |                                           |
+| | Number of pulse sequences       | |                                           |
+| | transmitted                     | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **atten**                       | | = 0 (filler)                              |
+| | *short*                         | |                                           |
+| | Attenuation level               | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **lagfr**                       | | *first_range_rtt*                         |
+| | *short*                         | |                                           |
+| | Lag to first range              | |                                           |
+| | (microseconds)                  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **smsep**                       | | (*rx_sample_rate*)^ -1                    |
+| | *short*                         | |                                           |
+| | Sample separation               | |                                           |
+| | (microseconds)                  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **ercod**                       | | = 0 (filler)                              |
+| | *short*                         | |                                           |
+| | Error code                      | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **stat.agc**                    | | = *agc_status_word*                       |
+| | *short*                         | |                                           |
+| | AGC status word                 | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **stat.lopwr**                  | | = *lp_status_word*                        |
+| | *short*                         | |                                           |
+| | LOPWR status word               | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **noise.search**                | | *noise_at_freq* [0] conversion            |
+| | *float*                         | |                                           |
+| | Calculated noise from clear     | |                                           |
+| | frequency search                | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **noise.mean**                  | | = 0 (filler)                              |
+| | *float*                         | |                                           |
+| | Average noise across frequency  | |                                           |
+| | band                            | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **channel**                     | | *slice_id*                                |
+| | *short*                         | |                                           |
+| | Channel number for a stereo     | |                                           |
+| | radar (zero for all others)     | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **bmnum**                       | | *beam_nums* [i]                           |
+| | *short*                         | |                                           |
+| | Beam number                     | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **bmazm**                       | | *beam_azms* [i]                           |
+| | *float*                         | |                                           |
+| | Beam azimuth                    | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **scan**                        | | *scan_start_marker* (0 or 1)              |
+| | *short*                         | |                                           |
+| | Scan flag                       | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **offset**                      | | = 0 (filler)                              |
+| | *short*                         | |                                           |
+| | Offset between channels for a   | |                                           |
+| | stereo radar (zero for all      | |                                           |
+| | others)                         | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **rxrise**                      | | = 0.0                                     |
+| | *short*                         | |                                           |
+| | Receiver rise time              | |                                           |
+| | (microseconds)                  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **intt.sc**                     | | *int_time* conversion                     |
+| | *short*                         | |                                           |
+| | Whole number of seconds of      | |                                           |
+| | integration time.               | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **intt.us**                     | | *int_time* conversion                     |
+| | *short*                         | |                                           |
+| | Fractional number of            | |                                           |
+| | microseconds of integration     | |                                           |
+| | time                            | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **txpl**                        | | *tx_pulse_len*                            |
+| | *short*                         | |                                           |
+| | Transmit pulse length           | |                                           |
+| | (microseconds)                  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **mpinc**                       | | *tau_spacing*                             |
+| | *short*                         | |                                           |
+| | Multi-pulse increment           | |                                           |
+| | (microseconds)                  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **mppul**                       | | len(*pulses*)                             |
+| | *short*                         | |                                           |
+| | Number of pulses in sequence    | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **mplgs**                       | | *lags*.shape[0]                           |
+| | *short*                         | |                                           |
+| | Number of lags in sequence      | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **nrang**                       | | *num_ranges*                              |
+| | *short*                         | |                                           |
+| | Number of ranges                | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **frang**                       | | *first_range*                             |
+| | *short*                         | |                                           |
+| | Distance to first range         | |                                           |
+| | (kilometers)                    | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **rsep**                        | | *range_sep*                               |
+| | *short*                         | |                                           |
+| | Range separation (kilometers)   | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **xcf**                         | | If *xcfs* exist, then =1                  |
+| | *short*                         | |                                           |
+| | XCF flag                        | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **tfreq**                       | | *freq*                                    |
+| | *short*                         | |                                           |
+| | Transmitted frequency           | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **mxpwr**                       | | = -1 (filler)                             |
+| | *int*                           | |                                           |
+| | Maximum power (kHz)             | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **lvmax**                       | | = 20000 (filler)                          |
+| | *int*                           | |                                           |
+| | Maximum noise level allowed     | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **iqdata.revision.major**       | | = 1 (meaning Borealis conversion)         |
+| | *int*                           | |                                           |
+| | Major version number of the     | |                                           |
+| | iqdata library                  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **iqdata.revision.minor**       | | = 0 (Borealis conversion)                 |
+| | *int*                           | |                                           |
+| | Minor version number of the     | |                                           |
+| | iqdata library                  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **combf**                       | | Original Borealis filename, ‘converted    |
+| | *string*                        | | from Borealis file ’ , number of beams in | 
+| | Comment buffer                  | | this original record (len(beam_nums)),    |
+| |                                 | | experiment_comment and slice_comment      |
+| |                                 | | from the file                             |
++-----------------------------------+---------------------------------------------+
+| | **seqnum**                      | | *num_sequences*                           |
+| | *int*                           | |                                           |
+| | Number of pulse sequences       | |                                           |
+| | transmitted                     | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **chnnum**                      | | len(*antenna_arrays_order*)               |
+| | *int*                           | |                                           |
+| | Number of channels sampled      | |                                           |
+| | (both I and Q quadrature        | |                                           |
+| | samples)                        | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **smpnum**                      | | *num_samps*                               |
+| | *int*                           | |                                           |
+| | Number of samples taken per     | |                                           |
+| | sequence                        | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **skpnum**                      | | math.ceil(first_range/range_sep). In      |
+| | *int*                           | | theory this should =0 due to Borealis     |
+| | Number of samples to skip       | | functionality(no rise time).              | 
+| | before the first valid sample   | | However make_raw in RST requires this to  |
+| |                                 | | be indicative of the first range so we    |
+| |                                 | | provide this.                             |
++-----------------------------------+---------------------------------------------+
+| | **ptab[mppul]**                 | | pulses                                    |
+| | *short*                         | |                                           |
+| | Pulse table                     | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **ltab[2][mplgs]**              | | np.transpose(*lags*)                      |
+| | *short*                         | |                                           |
+| | Lag table                       | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **tsc[seqnum]**                 | | *sqn_timestamps* conversion               |
+| | *int*                           | |                                           |
+| | Seconds component of time past  | |                                           |
+| | epoch of pulse sequence         | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **tus[seqnum]**                 | | *sqn_timestamps* conversion               |
+| | *int*                           | |                                           |
+| | Microsecond component of time   | |                                           |
+| | past epoch of pulse sequence    | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **tatten[seqnum]**              | | = [0,0…] (fillers)                        |
+| | *short*                         | |                                           |
+| | Attenuator setting for each     | |                                           |
+| | pulse sequence                  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **tnoise[seqnum]**              | | *noise_at_freq* conversion                |
+| | *float*                         | |                                           |
+| | Noise value for each pulse      | |                                           |
+| | sequence                        | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **toff[seqnum]**                | | Offset = 2 * num_samps *                  |
+| | *int*                           | | len(antenna_arrays_order), toff = [i *    |
+| | Offset into the sample buffer   | | offset for i in range(v['num_sequences'])]|
+| | for each pulse sequence         | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **tsze[seqnum]**                | | = [offset, offset, offset….]              | 
+| | *int*                           | |                                           |
+| | Number of words stored for this | |                                           |
+| | pulse sequence                  | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **data[totnum]**                | | Data conversion for correct dimensions    |
+| | *int*                           | | and scaled to max int (-32768 to 32767)   |
+| | Array of raw I and Q samples,   | |                                           |
+| | arranged: [[[smpnum(i),         | |                                           |
+| | smpnum(q)] * chnnum] * seqnum], | |                                           |
+| | so totnum =                     | |                                           |
+| | 2*seqnum*chnnum*smpnum          | |                                           |
++-----------------------------------+---------------------------------------------+
+
+If *blanked_samples* != *ptab*, or *pulse_phase_offset* contains non-zeroes, no conversion to iqdat is possible.

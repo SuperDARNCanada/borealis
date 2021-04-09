@@ -8,7 +8,6 @@ See LICENSE for details.
 
 */
 #include <uhd/usrp/multi_usrp.hpp>
-#include <uhd/usrp_clock/multi_usrp_clock.hpp>
 #include <memory>
 #include <string>
 #include <vector>
@@ -30,18 +29,19 @@ See LICENSE for details.
 USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
 {
 
-  gpio_bank_ = driver_options.get_gpio_bank();
+  gpio_bank_high_ = driver_options.get_gpio_bank_high();
+  gpio_bank_low_ = driver_options.get_gpio_bank_low();
   atr_rx_ = driver_options.get_atr_rx();
   atr_tx_ = driver_options.get_atr_tx();
   atr_xx_ = driver_options.get_atr_xx();
   atr_0x_ = driver_options.get_atr_0x();
   agc_st_ = driver_options.get_agc_st();
+  test_mode_ = driver_options.get_test_mode();
   lo_pwr_ = driver_options.get_lo_pwr();
   tx_rate_ = tx_rate;
   rx_rate_ = rx_rate;
 
   usrp_ = uhd::usrp::multi_usrp::make(driver_options.get_device_args());
-
 
   set_usrp_clock_source(driver_options.get_ref());
   set_tx_subdev(driver_options.get_tx_subdev());
@@ -51,6 +51,7 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   set_time_source(driver_options.get_pps(), driver_options.get_clk_addr());
   check_ref_locked();
   set_atr_gpios();
+  set_output_gpios();
   set_input_gpios();
 
   set_tx_rate(driver_options.get_transmit_channels());
@@ -310,6 +311,7 @@ double USRP::get_rx_center_freq(uint32_t channel)
 {
   return usrp_->get_rx_freq(channel);
 }
+
 /**
  * @brief      Sets the USRP time source.
  *
@@ -334,21 +336,20 @@ void USRP::set_time_source(std::string source, std::string clk_addr)
     usleep(10000);
   }
   if (source == "external"){
-    uhd::usrp_clock::multi_usrp_clock::sptr clock;
-    clock = uhd::usrp_clock::multi_usrp_clock::make(uhd::device_addr_t(clk_addr));
+    gps_clock_ = uhd::usrp_clock::multi_usrp_clock::make(uhd::device_addr_t(clk_addr));
 
     //Make sure Clock configuration is correct
-    if(clock->get_sensor("gps_detected").value == "false"){
+    if(gps_clock_->get_sensor("gps_detected").value == "false"){
       throw uhd::runtime_error("No GPSDO detected on Clock.");
     }
-    if(clock->get_sensor("using_ref").value != "internal"){
+    if(gps_clock_->get_sensor("using_ref").value != "internal"){
       std::ostringstream msg;
       msg << "Clock must be using an internal reference. Using "
-          << clock->get_sensor("using_ref").value;
+          << gps_clock_->get_sensor("using_ref").value;
       throw uhd::runtime_error(msg.str());
     }
 
-    while(! (clock->get_sensor("gps_locked").to_bool())) {
+    while(! (gps_clock_->get_sensor("gps_locked").to_bool())) {
       std::this_thread::sleep_for(std::chrono::seconds(2));
       RUNTIME_MSG("Waiting for gps lock...");
     }
@@ -367,11 +368,11 @@ void USRP::set_time_source(std::string source, std::string clk_addr)
 
     wait_for_update();
 
-    usrp_->set_time_next_pps(uhd::time_spec_t(double(clock->get_time() + 1)));
+    usrp_->set_time_next_pps(uhd::time_spec_t(double(gps_clock_->get_time() + 1)));
 
     wait_for_update();
 
-    auto clock_time = uhd::time_spec_t(double(clock->get_time()));
+    auto clock_time = uhd::time_spec_t(double(gps_clock_->get_time()));
 
     for (uint32_t board=0; board<usrp_->get_num_mboards(); board++){
       auto usrp_time = usrp_->get_time_last_pps(board);
@@ -436,18 +437,46 @@ void USRP::clear_command_time()
  */
 void USRP::set_atr_gpios()
 {
+
+  auto output_pins = 0;
+  output_pins |= atr_xx_ | atr_rx_ | atr_tx_ | atr_0x_;
+
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0xFFFF, 0b11111111, i);
-    usrp_->set_gpio_attr(gpio_bank_, "DDR", 0xFFFF, 0b11111111, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "CTRL", 0xFFFF, output_pins, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "DDR", 0xFFFF, output_pins, i);
+
+    usrp_->set_gpio_attr(gpio_bank_low_, "CTRL", 0xFFFF, output_pins, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "DDR", 0xFFFF, output_pins, i);
 
     //XX is the actual TR signal
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_XX", 0xFFFF, atr_xx_, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "ATR_XX", atr_xx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "ATR_RX", atr_rx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "ATR_TX", atr_tx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "ATR_0X", atr_0x_, 0xFFFF, i);
 
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_RX", 0xFFFF, atr_rx_, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "ATR_XX", ~atr_xx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "ATR_RX", ~atr_rx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "ATR_TX", ~atr_tx_, 0xFFFF, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "ATR_0X", ~atr_0x_, 0xFFFF, i);
 
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_TX", 0xFFFF, atr_tx_, i);
+  }
+}
 
-    usrp_->set_gpio_attr(gpio_bank_, "ATR_0X", 0xFFFF, atr_0x_, i);
+/**
+* @brief      Sets the pins mapping the test mode signals as GPIO
+*             outputs.
+*/
+void USRP::set_output_gpios()
+{
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    // CTRL 0 sets the pins in gpio mode, DDR 1 sets them as outputs
+    usrp_->set_gpio_attr(gpio_bank_high_, "CTRL", 0x0000, test_mode_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_high_, "DDR", 0xFFFF, test_mode_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_low_, "CTRL", 0x0000, test_mode_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_low_, "DDR", 0xFFFF, test_mode_, i);
 
   }
 }
@@ -460,21 +489,153 @@ void USRP::set_input_gpios()
 {
   for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
     // CTRL 0 sets the pins in gpio mode, DDR 0 sets them as inputs
-    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0x0000, agc_st_, i);
-    usrp_->set_gpio_attr(gpio_bank_, "CTRL", 0x0000, lo_pwr_, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "CTRL", 0x0000, agc_st_, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "CTRL", 0x0000, lo_pwr_, i);
 
-    usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x0000, agc_st_, i);
-    usrp_->set_gpio_attr(gpio_bank_, "DDR", 0x0000, lo_pwr_, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "DDR", 0x0000, agc_st_, i);
+    usrp_->set_gpio_attr(gpio_bank_high_, "DDR", 0x0000, lo_pwr_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_low_, "CTRL", 0x0000, agc_st_, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "CTRL", 0x0000, lo_pwr_, i);
+
+    usrp_->set_gpio_attr(gpio_bank_low_, "DDR", 0x0000, agc_st_, i);
+    usrp_->set_gpio_attr(gpio_bank_low_, "DDR", 0x0000, lo_pwr_, i);
 
   }
 }
 
 /**
+ * @brief   Inverts the current test mode signal. Useful for testing
+ *
+ * @param[in]   mboard  The USRP to invert test mode on. Default 0.
+ */
+void USRP::invert_test_mode(uint32_t mboard /* =0 */)
+{
+    uint32_t tm_value = usrp_->get_gpio_attr(gpio_bank_high_, "OUT", mboard);
+    usrp_->set_gpio_attr(gpio_bank_high_, "OUT", test_mode_, ~tm_value, mboard);
+    usrp_->set_gpio_attr(gpio_bank_low_, "OUT", test_mode_, tm_value, mboard);
+}
+
+/**
+ * @brief   Sets the current test mode signal HIGH.
+ *
+ * @param[in]   mboard  The USRP to set test mode HIGH on. Default 0.
+ */
+void USRP::set_test_mode(uint32_t mboard /* =0 */)
+{
+    usrp_->set_gpio_attr(gpio_bank_high_, "OUT", test_mode_, 0xFFFF, mboard);
+    usrp_->set_gpio_attr(gpio_bank_low_, "OUT", test_mode_, 0x0000, mboard);
+}
+
+/**
+ * @brief   Clears the current test mode signal LOW.
+ *
+ * @param[in]   mboard  The USRP to clear test mode LOW on. Default 0.
+ */
+void USRP::clear_test_mode(uint32_t mboard /* =0 */)
+{
+    usrp_->set_gpio_attr(gpio_bank_high_, "OUT", test_mode_, 0x0000, mboard);
+    usrp_->set_gpio_attr(gpio_bank_low_, "OUT", test_mode_, 0xFFFF, mboard);
+}
+
+/**
 * @brief      Gets the state of the GPIO bank represented as a decimal number
 */
-uint32_t USRP::get_gpio_state()
+std::vector<uint32_t> USRP::get_gpio_bank_high_state()
 {
-  return usrp_->get_gpio_attr(gpio_bank_, "READBACK");
+  std::vector<uint32_t> readback_values;
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    readback_values.push_back(usrp_->get_gpio_attr(gpio_bank_high_, "READBACK", i));
+  }
+  return readback_values;
+}
+
+/**
+* @brief      Gets the state of the GPIO bank represented as a decimal number
+*/
+std::vector<uint32_t> USRP::get_gpio_bank_low_state()
+{
+  std::vector<uint32_t> readback_values;
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    readback_values.push_back(usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i));
+  }
+  return readback_values;
+}
+
+/**
+ * @brief      Gets the current status of the GPS fix (locked or unlocked).
+ *
+ * @return     True if the GPS has a lock.
+ */
+bool USRP::gps_locked()
+{
+  // This takes on the order of a few microseconds
+  if (gps_clock_ == nullptr){
+    return false;
+  }
+  else {
+    return gps_clock_->get_sensor("gps_locked").to_bool();
+  }
+}
+
+/**
+* @brief      Gets the status of all of the active-high AGC fault signals as a single binary number.
+*             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
+*/
+uint32_t USRP::get_agc_status_bank_h()
+{
+  uint32_t agc_status = 0b0;
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    if (usrp_->get_gpio_attr(gpio_bank_high_, "READBACK", i) & agc_st_) {
+        agc_status = agc_status | 1<<i;
+    }
+  }
+  return agc_status;
+}
+
+/**
+* @brief      Gets the status of all of the active-high Low power signals as a single binary number.
+*             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
+*/
+uint32_t USRP::get_lp_status_bank_h()
+{
+  uint32_t low_power_status = 0b0;
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    if (usrp_->get_gpio_attr(gpio_bank_high_, "READBACK", i) & lo_pwr_) {
+        low_power_status = low_power_status | 1<<i;
+    }
+  }
+  return low_power_status;
+}
+
+/**
+* @brief      Gets the status of all of the active-low AGC fault signals as a single binary number.
+*             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
+*/
+uint32_t USRP::get_agc_status_bank_l()
+{
+  uint32_t agc_status = 0b0;
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    if (usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i) & agc_st_) {
+        agc_status = agc_status | 1<<i;
+    }
+  }
+  return agc_status;
+}
+
+/**
+* @brief      Gets the status of all of the active-low Low power signals as a single binary number.
+*             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
+*/
+uint32_t USRP::get_lp_status_bank_l()
+{
+  uint32_t low_power_status = 0b0;
+  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
+    if (usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i) & lo_pwr_) {
+        low_power_status = low_power_status | 1<<i;
+    }
+  }
+  return low_power_status;
 }
 
 /**

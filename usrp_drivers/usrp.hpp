@@ -11,6 +11,7 @@ See LICENSE for details.
 #define USRP_H
 
 #include <uhd/usrp/multi_usrp.hpp>
+#include <uhd/usrp_clock/multi_usrp_clock.hpp>
 #include "utils/driver_options/driveroptions.hpp"
 #include "utils/shared_macros/shared_macros.hpp"
 
@@ -39,19 +40,34 @@ class USRP{
     void create_usrp_tx_stream(std::string cpu_fmt, std::string otw_fmt, std::vector<size_t> chs);
     void set_command_time(uhd::time_spec_t cmd_time);
     void clear_command_time();
-    uint32_t get_gpio_state();
+    std::vector<uint32_t> get_gpio_bank_high_state();
+    std::vector<uint32_t> get_gpio_bank_low_state();
+    uint32_t get_agc_status_bank_h();
+    uint32_t get_lp_status_bank_h();
+    uint32_t get_agc_status_bank_l();
+    uint32_t get_lp_status_bank_l();
     uhd::time_spec_t get_current_usrp_time();
     uhd::rx_streamer::sptr get_usrp_rx_stream();
     uhd::tx_streamer::sptr get_usrp_tx_stream();
     uhd::usrp::multi_usrp::sptr get_usrp();
     std::string to_string(std::vector<size_t> tx_chs, std::vector<size_t> rx_chs);
+    void invert_test_mode(uint32_t mboard=0);
+    void set_test_mode(uint32_t mboard=0);
+    void clear_test_mode(uint32_t mboard=0);
+    bool gps_locked(void);
 
   private:
     //! A shared pointer to a new multi-USRP device.
     uhd::usrp::multi_usrp::sptr usrp_;
 
-    //! A string representing what GPIO bank to use on the USRPs.
-    std::string gpio_bank_;
+    //! A shared pointer to a new multi-USRP-clock device.
+    uhd::usrp_clock::multi_usrp_clock::sptr gps_clock_;
+
+    //! A string representing what GPIO bank to use on the USRPs for active high sigs.
+    std::string gpio_bank_high_;
+
+    //! A string representing what GPIO bank to use on the USRPs for active low sigs.
+    std::string gpio_bank_low_;
 
     //! The bitmask to use for the scope sync GPIO.
     uint32_t scope_sync_mask_;
@@ -80,6 +96,9 @@ class USRP{
     //! Bitmask used for lo pwr signal
     uint32_t lo_pwr_;
 
+    //! Bitmask used for test mode signal
+    uint32_t test_mode_;
+
     //! The tx rate in Hz.
     float tx_rate_;
 
@@ -91,6 +110,8 @@ class USRP{
     uhd::rx_streamer::sptr rx_stream_;
 
     void set_atr_gpios();
+
+    void set_output_gpios();
 
     void set_input_gpios();
 
