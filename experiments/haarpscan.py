@@ -26,9 +26,9 @@ class HAARPScan(ExperimentPrototype):
         super(HAARPScan, self).__init__(cpid)
 
         if scf.IS_FORWARD_RADAR:
-            beams_to_use = [2, 3, 4, 5, 6]
+            beams_to_use = [2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 2]
         else:
-            beams_to_use = [6, 5, 4, 3, 2]
+            beams_to_use = [6, 5, 4, 3, 2, 6, 5, 4, 3, 2, 6, 5, 4, 3, 2, 6]
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
@@ -59,4 +59,3 @@ class HAARPScan(ExperimentPrototype):
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         })
-
