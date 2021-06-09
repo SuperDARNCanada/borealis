@@ -13,6 +13,7 @@ from datetime import datetime
 import threading
 import argparse
 import zmq
+import utils.shared_macros.shared_macros as sm
 
 sys.path.append(os.environ["BOREALISPATH"])
 
@@ -33,6 +34,8 @@ sys.path.append(os.environ["BOREALISPATH"] + '/utils/zmq_borealis_helpers')
 import socket_operations as so
 
 TIME_PROFILE = True
+
+brian_print = sm.MODULE_PRINT("sequence timing", "red")
 
 def router(opts):
     """The router is responsible for moving traffic between modules by routing traffic using
@@ -106,11 +109,6 @@ def sequence_timing(opts):
     sequence_poller.register(brian_to_dsp_end, zmq.POLLIN)
     sequence_poller.register(brian_to_driver, zmq.POLLIN)
 
-    def printing(msg):
-        time_right_now = datetime.utcnow().strftime("%H%M%S.%f")
-        SEQUENCE_TIMING = "{} - \033[31m".format(time_right_now) + "SEQUENCE TIMING: " + "\033[0m"
-        sys.stdout.write(SEQUENCE_TIMING + msg + "\n")
-
     context = zmq.Context().instance()
 
     start_new_sock = context.socket(zmq.PAIR)
@@ -147,7 +145,7 @@ def sequence_timing(opts):
                 #Acknowledge new sequence can begin to Radar Control by requesting new sequence
                 #metadata
                 if __debug__:
-                    printing("Requesting metadata from Radar control")
+                    brian_print("Requesting metadata from Radar control")
 
                 so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity,
                                 "Requesting metadata")
@@ -157,19 +155,19 @@ def sequence_timing(opts):
             message = start_new.recv_string()
             if message == "want_to_start":
                 if TIME_PROFILE:
-                    print('Driver ready: {}'.format(datetime.utcnow() - time_now))
+                    brian_print('Driver ready: {}'.format(datetime.utcnow() - time_now))
                     time_now = datetime.utcnow()
                 want_to_start = True
 
             if message == "good_to_start":
                 if TIME_PROFILE:
-                    print('Copied to GPU: {}'.format(datetime.utcnow() - time_now))
+                    brian_print('Copied to GPU: {}'.format(datetime.utcnow() - time_now))
                     time_now = datetime.utcnow()
                 good_to_start = True
 
             if message == "extra_good_to_start":
                 if TIME_PROFILE:
-                    print('DSP finished w/ data: {}'.format(datetime.utcnow() - time_now))
+                    brian_print('DSP finished w/ data: {}'.format(datetime.utcnow() - time_now))
                     time_now = datetime.utcnow()
                 dsp_finish_counter = 1;
 
@@ -188,7 +186,7 @@ def sequence_timing(opts):
         if first_time:
             #Request new sequence metadata
             if __debug__:
-                printing("Requesting metadata from Radar control")
+                brian_print("Requesting metadata from Radar control")
             so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity,
                             "Requesting metadata")
             first_time = False
@@ -205,11 +203,11 @@ def sequence_timing(opts):
             if __debug__:
                 reply_output = "Driver sent -> time {} ms, sqnum {}"
                 reply_output = reply_output.format(meta.sequence_time*1e3, meta.sequence_num)
-                printing(reply_output)
+                brian_print(reply_output)
 
             #Requesting acknowledgement of work begins from DSP
             if __debug__:
-                printing("Requesting work begins from DSP")
+                brian_print("Requesting work begins from DSP")
             iden = opts.dspbegin_to_brian_identity + str(meta.sequence_num)
             so.send_request(brian_to_dsp_begin, iden, "Requesting work begins")
 
@@ -226,11 +224,11 @@ def sequence_timing(opts):
             if __debug__:
                 reply_output = "Radar control sent -> sequence {} time {} ms"
                 reply_output = reply_output.format(sigp.sequence_num, sigp.sequence_time)
-                printing(reply_output)
+                brian_print(reply_output)
 
             #Request acknowledgement of sequence from driver
             if __debug__:
-                printing("Requesting ack from driver")
+                brian_print("Requesting ack from driver")
             so.send_request(brian_to_driver, opts.driver_to_brian_identity, "Requesting ack")
 
         if brian_to_dsp_begin in socks and socks[brian_to_dsp_begin] == zmq.POLLIN:
@@ -243,12 +241,12 @@ def sequence_timing(opts):
 
             if __debug__:
                 reply_output = "Dsp began -> sqnum {}".format(sig_p.sequence_num)
-                printing(reply_output)
+                brian_print(reply_output)
 
             #Requesting acknowledgement of work ends from DSP
 
             if __debug__:
-                printing("Requesting work end from DSP")
+                brian_print("Requesting work end from DSP")
             iden = opts.dspend_to_brian_identity + str(sig_p.sequence_num)
             so.send_request(brian_to_dsp_end, iden, "Requesting work ends")
 
@@ -267,7 +265,7 @@ def sequence_timing(opts):
             if __debug__:
                 reply_output = "Dsp sent -> time {}, sqnum {}"
                 reply_output = reply_output.format(sig_p.kerneltime, sig_p.sequence_num)
-                printing(reply_output)
+                brian_print(reply_output)
 
             if sig_p.sequence_num != 0:
                 if sig_p.kerneltime > last_processing_time:
@@ -277,7 +275,7 @@ def sequence_timing(opts):
             last_processing_time = sig_p.kerneltime
 
             if __debug__:
-                printing("Late counter {}".format(late_counter))
+                brian_print("Late counter {}".format(late_counter))
 
             #acknowledge that we are good and able to start something new.
             start_new_sock.send_string("extra_good_to_start")
