@@ -107,7 +107,8 @@ def sequence_timing(opts):
     sequence_poller.register(brian_to_driver, zmq.POLLIN)
 
     def printing(msg):
-        SEQUENCE_TIMING = "\033[31m" + "SEQUENCE TIMING: " + "\033[0m"
+        time_right_now = datetime.utcnow().strftime("%H%M%S.%f")
+        SEQUENCE_TIMING = "{} - \033[31m".format(time_right_now) + "SEQUENCE TIMING: " + "\033[0m"
         sys.stdout.write(SEQUENCE_TIMING + msg + "\n")
 
     context = zmq.Context().instance()
