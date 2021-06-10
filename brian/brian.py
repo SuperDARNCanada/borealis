@@ -263,7 +263,7 @@ def sequence_timing(opts):
             sig_p.ParseFromString(reply)
 
             if __debug__:
-                reply_output = "Dsp sent -> time {}, sqnum {}"
+                reply_output = "Dsp sent -> time {} ms, sqnum {}"
                 reply_output = reply_output.format(sig_p.kerneltime, sig_p.sequence_num)
                 brian_print(reply_output)
 
