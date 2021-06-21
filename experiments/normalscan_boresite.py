@@ -15,7 +15,7 @@ from experiment_prototype.decimation_scheme.decimation_scheme import DecimationS
 class NormalscanBoresite(ExperimentPrototype):
     # with 7 PULSE sequence
     def __init__(self):
-        cpid = 100000000
+        cpid = 100000001
 
         super(NormalscanBoresite, self).__init__(cpid)
 
