@@ -39,9 +39,9 @@ else:
 
 import processeddata_pb2
 import datawritemetadata_pb2
-import utils.shared_macros.shared_macros as sm
 
 sys.path.append(borealis_path + '/utils/')
+import shared_macros.shared_macros as sm
 import data_write_options.data_write_options as dwo
 from zmq_borealis_helpers import socket_operations as so
 
