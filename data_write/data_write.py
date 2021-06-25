@@ -39,20 +39,13 @@ else:
 
 import processeddata_pb2
 import datawritemetadata_pb2
+import utils.shared_macros.shared_macros as sm
 
 sys.path.append(borealis_path + '/utils/')
 import data_write_options.data_write_options as dwo
 from zmq_borealis_helpers import socket_operations as so
 
-
-def printing(msg):
-    """
-    Pretty print function for the Data Write module.
-    :param msg: The string to format nicely for printing
-    """
-    DATA_WRITE = "\033[96m" + "DATA WRITE: " + "\033[0m"
-    sys.stdout.write(DATA_WRITE + msg + "\n")
-
+dw_print = sm.MODULE_PRINT("Data Write", "cyan")
 
 DATA_TEMPLATE = {
     "borealis_git_hash" : None, # Identifies the version of Borealis that made this data.
@@ -1204,7 +1197,7 @@ class DataWrite(object):
             write_tx_data()
 
         end = time.time()
-        printing("Time to write to {}: {} ms".format(dataset_name, (end - start) * 1000))
+        dw_print("Time to write to {}: {} ms".format(dataset_name, (end - start) * 1000))
 
 
 def main():
@@ -1238,7 +1231,7 @@ def main():
     poller.register(radctrl_to_data_write, zmq.POLLIN)
 
     if __debug__:
-        printing("Socket connected")
+        dw_print("Socket connected")
 
     data_parsing = ParseData()
     final_integration = sys.maxsize
@@ -1257,7 +1250,7 @@ def main():
             sys.exit()
 
         if radctrl_to_data_write in socks and socks[radctrl_to_data_write] == zmq.POLLIN:
-            data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, printing)
+            data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, dw_print)
 
             integration_meta = datawritemetadata_pb2.IntegrationTimeMetadata()
             integration_meta.ParseFromString(data)
@@ -1289,7 +1282,7 @@ def main():
             if break_now:
                 if len(sorted_q) > 20:
                     # TODO error out correctly
-                    printing("Lost sequence #{}. Exiting.".format(expected_sqn_num))
+                    dw_print("Lost sequence #{}. Exiting.".format(expected_sqn_num))
                     sys.exit()
                 continue
 
@@ -1323,7 +1316,7 @@ def main():
                 start = time.time()
                 data_parsing.update(pd)
                 end = time.time()
-                printing("Time to parse: {} ms".format((end - start) * 1000))
+                dw_print("Time to parse: {} ms".format((end - start) * 1000))
 
             queued_sqns = []
 
