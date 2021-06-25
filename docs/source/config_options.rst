@@ -97,16 +97,16 @@ Config Parameters
 | gpio_bank_low                           | TXA                     | The daughterboard pin bank to use for|
 |                                         |                         | active-low TR and I/O signals.       |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| atr_rx                                  | 0x0006                  | The pin mask for the RX only mode.   |
+| atr_rx                                  | 0x0006                  | The pin mask for the RX only signal. |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| atr_tx                                  | 0x0018                  | The pin mask for the TX only mode.   |
+| atr_tx                                  | 0x0018                  | The pin mask for the TX only signal. |
 +-----------------------------------------+-------------------------+--------------------------------------+
 | atr_xx                                  | 0x0060                  | The pin mask for the full duplex     |
-|                                         |                         | mode (TR).                           |
+|                                         |                         | signal (TR).                         |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| atr_0x                                  | 0x0180                  | The pin mask for the idle mode.      |
+| atr_0x                                  | 0x0180                  | The pin mask for the idle signal.    |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| tst_md                                  | 0x0600                  | The pin mask for test mode.          |
+| tst_md                                  | 0x0600                  | The pin mask for the test mode signal|
 +-----------------------------------------+-------------------------+--------------------------------------+
 | lo_pwr                                  | 0x1800                  | The pin mask for the low power signal|
 +-----------------------------------------+-------------------------+--------------------------------------+
@@ -121,8 +121,9 @@ Config Parameters
 | tr_window_time                          | 6.00E-05                | How much windowing on either side of |
 |                                         |                         | pulse is needed for TR signal (s).   |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| agc_signal_read_delay                   | 0                       | Hardware dependent delay time for    |
-|                                         |                         | reading of AGC and low power signals |
+| agc_signal_read_delay                   | 0                       | Hardware dependent delay after seq   |
+|                                         |                         | is finished for reading              |
+|                                         |                         | of AGC and low power signals (s)     |
 +-----------------------------------------+-------------------------+--------------------------------------+
 | usrp_master_clock_rate                  | 1.00E+08                | Clock rate of the USRP master        |
 |                                         |                         | clock (Sps).                         |
@@ -196,23 +197,31 @@ There are several instances when you'll need to modify this file for correct ope
 
 #. One of your main array antennas is not working properly (broken coax, blown lightning arrestor, etc)
 
-TODO
+The main antenna channel mapping associated with the bad antenna should be removed from
+main_antenna_usrp_rx_channels. This will disable the N200s from collecting samples from that antenna.
 
 #. One of your interferometer array antennas is not working properly (broken coax, blown lightning arrestor, etc)
 
-TODO
+The interferometer antenna channel mapping associated with the bad antenna should be removed from
+interferometer_antenna_usrp_rx_channels. This will disable the N200s from collecting samples from that antenna.
 
 #. One of your transmitter's transmit paths is not working, but the receive path is still working properly
 
-TODO
+The channel mapping associated with the bad transmitter should be removed from the main_antenna_usrp_tx_channels.
+This will disable transmit on the bad transmit path.
 
 #. One of your transmitter's receive paths is not working, but the transmit path is still working properly
 
-TODO
+The main antenna channel mapping associated with the bad transmitter should be removed from
+main_antenna_usrp_rx_channels. This will disable the N200s from collecting samples from that receive
+path.
 
 #. One of your transmitters is not working at all
 
-TODO
+The main antenna channel mapping associated with the bad transmitter should be removed from
+main_antenna_usrp_rx_channels. This will disable the N200s from collecting samples from that receive
+path. The channel mapping associated with the bad transmitter should be removed from the
+main_antenna_usrp_tx_channels. This will disable transmit on the bad transmit path.
 
 #. One of your N200s is not working properly and you've inserted the spare N200
 
@@ -223,7 +232,11 @@ TODO
 
 #. One of your N200s is not working properly but you're located remotely and cannot insert the spare N200
 
-TODO
+    This particular N200 will have to be removed from the config file. The transmitter and receive
+    paths that this N200 is connected to will be disabled. The address needs to be removed from the
+    list of addresses and the address numbering needs to be adjusted. The main and interferometer
+    channel mappings will be need to be adjusted. The main and interferometer antenna counts need to
+    be adjusted. When this N200 is replaced, these options will have to be restored.
 
 #. You have a non-standard array
 

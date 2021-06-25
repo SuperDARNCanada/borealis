@@ -97,10 +97,10 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - chmod +x install_radar_deps.py
     - sudo ./install_radar_deps.py [radar abbreviation] $BOREALISPATH > install_log.txt 2>&1
 
-#. Install pydarn for realtime data support as well as testing and data conversion support:
+#. Install pyDARNio for realtime data support as well as testing and data conversion support:
 
     - cd $HOME
-    - git clone https://github.com/SuperDARN/pydarn.git
+    - git clone https://github.com/SuperDARN/pydarnio.git
 
 #. Install the necessary software to enable realtime data:
 
@@ -111,7 +111,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - source $BOREALISPATH/borealisrt_env/bin/activate
     - pip install zmq
     - pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter
-    - cd $HOME/pydarn
+    - cd $HOME/pydarnio
     - git checkout develop
     - python setup.py install
     - deactivate
@@ -121,11 +121,11 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - cd $HOME
     - git clone https://github.com/SuperDARNCanada/borealis-data-utils.git
     - git clone https://github.com/SuperDARNCanada/data_flow.git
-    - mkdir $HOME/pydarn-env
-    - virtualenv $HOME/pydarn-env
-    - source $HOME/pydarn-env/bin/activate
-    - cd $HOME/pydarn
-    - git checkout tags/v1.1.0 -b temp_branch
+    - mkdir $HOME/pydarnio-env
+    - virtualenv $HOME/pydarnio-env
+    - source $HOME/pydarnio-env/bin/activate
+    - cd $HOME/pydarnio
+    - git checkout tags/v1.1.0 -b temp_branch  ### TODO: TEST THESE instructions for change from pydarn to pydarnio
     - python3 setup.py install
     - deactivate
 
@@ -184,7 +184,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - crontab -e
     - Add the line `@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log 2>&1`
 
-# Create necessary directories. Here is an example for a user named `radar` and the standard configuration in the 'config.ini' file:
+#. Create necessary directories. Here is an example for a user named `radar` and the standard configuration in the 'config.ini' file:
 
     - sudo mkdir -p /data/borealis_logs
     - sudo mkdir -p /data/borealis_data

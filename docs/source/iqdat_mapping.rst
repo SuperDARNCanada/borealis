@@ -4,7 +4,7 @@ iqdat_mapping
 
 IQDAT SDARN FIELDS
 
-This conversion is done in pydarn IO here in the __convert_bfiq_record method: `Link to Source <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_convert.py>`_
+This conversion is done in pyDARNio here in the __convert_bfiq_record method: `Link to Source <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_convert.py>`_
 
 +-----------------------------------+---------------------------------------------+
 | | **SDARN DMAP FIELD NAME**       | **Borealis Conversion**                     |
@@ -97,11 +97,11 @@ This conversion is done in pydarn IO here in the __convert_bfiq_record method: `
 | | *short*                         | |                                           |
 | | Error code                      | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **stat.agc**                    | | = 0 (filler)                              |
+| | **stat.agc**                    | | = *agc_status_word*                       |
 | | *short*                         | |                                           |
 | | AGC status word                 | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **stat.lopwr**                  | | = 0 (filler)                              |
+| | **stat.lopwr**                  | | = *lp_status_word*                        |
 | | *short*                         | |                                           |
 | | LOPWR status word               | |                                           |
 +-----------------------------------+---------------------------------------------+

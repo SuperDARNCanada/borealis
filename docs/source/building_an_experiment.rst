@@ -14,7 +14,7 @@ Slices are software objects made for the Borealis system that allow easy integra
 multiple modes into a single experiment. Each slice could be an experiment on its own, and 
 averaged products are produced from each slice individually. Slices can be used to create 
 separate frequency channels, separate pulse sequences, separate beam scanning order, 
-etc. that can run simultaneously. Slices can be interfaced in four different ways. 
+etc. that can run simultaneously. Slices can be interfaced in four different ways (see below).
  
 The following parameters are unique to a slice:  
 
@@ -27,14 +27,14 @@ The following parameters are unique to a slice:
 * beam directions
 * beam order
 
-A slice is defined using a dictionary and the necessary slice keys. For a complete 
+A slice is defined using a python dictionary with the necessary slice keys. For a complete
 list of keys that can be used in a slice, see below 'Slice Keys'. 
 
 The other necessary part of an experiment is specifying how slices will interface with each other. Interfacing in this case refers to how these two components are meant to be run. To understand the interfacing, lets first understand the basic building blocks of a SuperDARN experiment. These are:
 
-**Sequence (integration)**  
+**Sequence (integration)**
 
-Made up of pulses with a specified spacing, at a specified frequency, and with a specified receive time 
+Made up of pulses with a specified fundamental (tau) spacing, at a specified frequency, and with a specified receive time
 following the transmission (to gather information from the number of ranges specified). Researchers might 
 be familiar with a common SuperDARN 7 or 8 pulse sequence design. The sequence definition here is the time to 
 transmit one sequence and the time for receiving echoes from that sequence.
@@ -42,7 +42,7 @@ transmit one sequence and the time for receiving echoes from that sequence.
 **Averaging period (integration time)**  
 
 A time where the sequences are repeated to gather enough information to average and reduce the effect of 
-spurious emissions on the data. These are defined by either number of sequences, or a length of time during 
+spurious emissions on the data. These are defined by either number of sequences, or a length of time during
 which as many sequences as possible are transmitted. For example, researchers may be familiar with the standard 
 3 second averaging period in which ~30 pulse sequences are sent out and received in a single beam direction.
 
@@ -92,6 +92,7 @@ Slice Interfacing Examples
 --------------------------
 
 Let's look at some examples of common experiments that can easily be separated into multiple slices. 
+In these examples, the ⟳ means that the averaging period is repeated multiple times in a scan, and the different slices are colour coded.
 
 In a CUTLASS-style experiment, the pulse in the sequence is actually two pulses of differing transmit frequency. This is a 'quasi'-simultaneous multi-frequency experiment where the frequency changes in the middle of the pulse. To build this experiment, two slices can be PULSE interfaced. The pulses from both slices are combined into a single set of transmitted samples for that sequence and samples received from those sequences are used for both slices (filtering the raw data separates the frequencies). 
 
@@ -190,7 +191,7 @@ Below is an example of properly inheriting the prototype class and defining your
 
 The experiment handler will create an instance of your experiment when your experiment is scheduled to start running. Your class is a child class of ExperimentPrototype and because of this, the parent class needs to be instantiated when the experiment is instantiated. This is important because the experiment_handler will build the scans required by your class in a way that is easily readable and iterable by the radar control program. This is done by methods that are set up in the ExperimentPrototype parent class.
 
-The next step is to add slices to your experiment. An experiment is defined by the slices in the class, and how the slices interface. As mentioned above, slices are just dictionaries, with a preset list of keys available to define your experiment. The keys that can be used in the slice dictionary are described below.
+The next step is to add slices to your experiment. An experiment is defined by the slices in the class, and how the slices interface. As mentioned above, slices are just python dictionaries, with a preset list of keys available to define your experiment. The keys that can be used in the slice dictionary are described below.
 
 
 Slice Keys
@@ -231,10 +232,8 @@ beam_angle *required*
     be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
     needed to write the beam_order list. This is like a mapping of beam number (list
     index) to beam direction off boresight. Typically you can use the radar's common
-    beam angle list. For example, at Saskatoon site the beam angles are a standard
-    16-beam list: [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
-            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
-            26.25]
+    beam angle list. For example, at all of the Canadian SuperDARN sites the beam angles are a standard
+    16-beam list: `[-26.25, -22.75, -19.25, -15.75, -12.25, -8.75, -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75, 26.25]`
 
 beam_order *required*
     beam numbers written in order of preference, one element in this list corresponds to
@@ -264,12 +263,13 @@ rxfreq *required or clrfrqrange or txfreq required*
 **Defaultable Slice Keys**
 
 acf *defaults*
-    flag for rawacf and generation. The default is False. If True, the following fields are
+    flag for rawacf generation. The default is False. If True, the following fields are
     also used:
-    - averaging_method (default 'mean')
-    - xcf (default True if acf is True)
-    - acfint (default True if acf is True)
-    - lagtable (default built based on all possible pulse combos)
+
+    * averaging_method (default 'mean')
+    * xcf (default True if acf is True)
+    * acfint (default True if acf is True)
+    * lagtable (default built based on all possible pulse combos)
 
 acfint *defaults*
     flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
@@ -296,7 +296,7 @@ pulse_phase_offset *defaults*
 range_sep *defaults*
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct
     value determined by the pulse_len. This is the range gate separation,
-    in azimuthal direction, in km.
+    in the radial direction (away from the radar), in km.
 
 rx_int_antennas *defaults*
     The antennas to receive on in interferometer array, default is all
@@ -310,7 +310,7 @@ scanbound *defaults*
     A list of seconds past the minute for integration times in a scan to align to. Defaults
     to None, not required. If you set this, you will want to ensure that there is a slightly 
     larger amount of time in the scan boundaries than the integration time set for the slice. 
-    For example, if you want to align integration times at the 3n second marks, you may want to 
+    For example, if you want to align integration times at the 3 second marks, you may want to
     have a set integration time of ~2.9s to ensure that the experiment will start on time. 
     Typically 50ms difference will be enough. This is especially important for the last integration
     time in the scan, as the experiment will always wait for the next scan start boundary
@@ -319,7 +319,7 @@ scanbound *defaults*
 
 seqoffset *defaults*
     offset in us that this slice's sequence will begin at, after the start of the sequence.
-    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence
+    This is intended for PULSE interfacing, when you want multiple slices' pulses in one sequence
     you can offset one slice's sequence from the other by a certain time value so as to not run both
     frequencies in the same pulse, etc. Default is 0 offset.
 
@@ -376,8 +376,9 @@ Experiment Example
 
 An example of adding a slice to your experiment is as follows::
 
-        self.add_slice({  # slice_id will be 0, there is only one slice.
-            "pulse_sequence": [0, 9, 12, 20, 22, 26, 27],
+        tau_spacing = 2100
+        first_slice = {  # slice_id will be 0, there is only one slice.
+            "pulse_sequence": [0, 9, 12, 20, 22, 26, 27],  # the common 7-pulse sequence in SDARN
             "tau_spacing": tau_spacing,  # us
             "pulse_len": 300,  # us
             "num_ranges": 75,  # range gates
@@ -385,24 +386,23 @@ An example of adding a slice to your experiment is as follows::
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
-                           26.25],
+                           26.25],  # 16 beams, separated by ~3.5 degrees
             "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
             "txfreq" : 10500, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
-        })
+        }
 
-        self.add_slice(slice_1)
+        self.add_slice(first_slice)
 
 This slice would be assigned with slice_id = 0 if it's the first slice added to the experiment. The experiment could also add another slice::
+        second_slice = copy.deepcopy(first_slice)
+        second_slice['txfreq'] = 13200 #kHz
+        second_slice['comment'] = 'This is my second slice, it has a different frequency.'
 
-        slice_2 = copy.deepcopy(slice_1)
-        slice_2['txfreq'] = 13200 #kHz
-        slice_2['comment'] = 'This is my second slice.'
-
-        self.add_slice(slice_2, interfacing_dict={0: 'SCAN'})
+        self.add_slice(second_slice, interfacing_dict={0: 'SCAN'})
 
 Notice that you must specify interfacing to an existing slice when you add a second or greater order slice to the experiment. To see the types 
 of interfacing that can be used, see above section 'Interfacing Types Between Slices'. 
@@ -416,8 +416,5 @@ A suite of unit tests have been written to check experiments for errors. This su
 
 #. Make sure your experiment is located in the `experiments` directory
 #. Ensure the file has an appropriate name reflecting the name of the experiment.
-#. Run the following, which will run the extensive set of tests in the `experiment_unittests.py` file and tell you how many passed, how many failed and how many tests had errors:
-
-```
-python3 /path/to/borealis/tools/testing_utils/experiments/experiment_unittests.py /path/to/borealis/tools/testing_utils/experiments/experiment_tests.csv
-```
+#. Run the following, which will run the extensive set of tests in the `experiment_unittests.py` file and tell you how many passed, how many failed and how many tests had errors: ```python3 /path/to/borealis/tools/testing_utils/experiments/experiment_unittests.py```
+#. Ensure that the file `experiment_tests.csv` exists alongside the `experiment_unittests.py` file
