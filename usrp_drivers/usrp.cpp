@@ -8,6 +8,7 @@ See LICENSE for details.
 
 */
 #include <uhd/usrp/multi_usrp.hpp>
+#include <uhd/usrp_clock/multi_usrp_clock.hpp>
 #include <memory>
 #include <string>
 #include <vector>
@@ -42,6 +43,7 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   rx_rate_ = rx_rate;
 
   usrp_ = uhd::usrp::multi_usrp::make(driver_options.get_device_args());
+
 
   set_usrp_clock_source(driver_options.get_ref());
   set_tx_subdev(driver_options.get_tx_subdev());
@@ -311,7 +313,6 @@ double USRP::get_rx_center_freq(uint32_t channel)
 {
   return usrp_->get_rx_freq(channel);
 }
-
 /**
  * @brief      Sets the USRP time source.
  *
@@ -336,20 +337,21 @@ void USRP::set_time_source(std::string source, std::string clk_addr)
     usleep(10000);
   }
   if (source == "external"){
-    gps_clock_ = uhd::usrp_clock::multi_usrp_clock::make(uhd::device_addr_t(clk_addr));
+    uhd::usrp_clock::multi_usrp_clock::sptr clock;
+    clock = uhd::usrp_clock::multi_usrp_clock::make(uhd::device_addr_t(clk_addr));
 
     //Make sure Clock configuration is correct
-    if(gps_clock_->get_sensor("gps_detected").value == "false"){
+    if(clock->get_sensor("gps_detected").value == "false"){
       throw uhd::runtime_error("No GPSDO detected on Clock.");
     }
-    if(gps_clock_->get_sensor("using_ref").value != "internal"){
+    if(clock->get_sensor("using_ref").value != "internal"){
       std::ostringstream msg;
       msg << "Clock must be using an internal reference. Using "
-          << gps_clock_->get_sensor("using_ref").value;
+          << clock->get_sensor("using_ref").value;
       throw uhd::runtime_error(msg.str());
     }
 
-    while(! (gps_clock_->get_sensor("gps_locked").to_bool())) {
+    while(! (clock->get_sensor("gps_locked").to_bool())) {
       std::this_thread::sleep_for(std::chrono::seconds(2));
       RUNTIME_MSG("Waiting for gps lock...");
     }
@@ -368,11 +370,11 @@ void USRP::set_time_source(std::string source, std::string clk_addr)
 
     wait_for_update();
 
-    usrp_->set_time_next_pps(uhd::time_spec_t(double(gps_clock_->get_time() + 1)));
+    usrp_->set_time_next_pps(uhd::time_spec_t(double(clock->get_time() + 1)));
 
     wait_for_update();
 
-    auto clock_time = uhd::time_spec_t(double(gps_clock_->get_time()));
+    auto clock_time = uhd::time_spec_t(double(clock->get_time()));
 
     for (uint32_t board=0; board<usrp_->get_num_mboards(); board++){
       auto usrp_time = usrp_->get_time_last_pps(board);
@@ -560,82 +562,6 @@ std::vector<uint32_t> USRP::get_gpio_bank_low_state()
     readback_values.push_back(usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i));
   }
   return readback_values;
-}
-
-/**
- * @brief      Gets the current status of the GPS fix (locked or unlocked).
- *
- * @return     True if the GPS has a lock.
- */
-bool USRP::gps_locked()
-{
-  // This takes on the order of a few microseconds
-  if (gps_clock_ == nullptr){
-    return false;
-  }
-  else {
-    return gps_clock_->get_sensor("gps_locked").to_bool();
-  }
-}
-
-/**
-* @brief      Gets the status of all of the active-high AGC fault signals as a single binary number.
-*             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
-*/
-uint32_t USRP::get_agc_status_bank_h()
-{
-  uint32_t agc_status = 0b0;
-  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-    if (usrp_->get_gpio_attr(gpio_bank_high_, "READBACK", i) & agc_st_) {
-        agc_status = agc_status | 1<<i;
-    }
-  }
-  return agc_status;
-}
-
-/**
-* @brief      Gets the status of all of the active-high Low power signals as a single binary number.
-*             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
-*/
-uint32_t USRP::get_lp_status_bank_h()
-{
-  uint32_t low_power_status = 0b0;
-  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-    if (usrp_->get_gpio_attr(gpio_bank_high_, "READBACK", i) & lo_pwr_) {
-        low_power_status = low_power_status | 1<<i;
-    }
-  }
-  return low_power_status;
-}
-
-/**
-* @brief      Gets the status of all of the active-low AGC fault signals as a single binary number.
-*             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
-*/
-uint32_t USRP::get_agc_status_bank_l()
-{
-  uint32_t agc_status = 0b0;
-  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-    if (usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i) & agc_st_) {
-        agc_status = agc_status | 1<<i;
-    }
-  }
-  return agc_status;
-}
-
-/**
-* @brief      Gets the status of all of the active-low Low power signals as a single binary number.
-*             The bits represent each motherboard/USRP device, with bit index mapped to mboard num.
-*/
-uint32_t USRP::get_lp_status_bank_l()
-{
-  uint32_t low_power_status = 0b0;
-  for (uint32_t i=0; i<usrp_->get_num_mboards(); i++){
-    if (usrp_->get_gpio_attr(gpio_bank_low_, "READBACK", i) & lo_pwr_) {
-        low_power_status = low_power_status | 1<<i;
-    }
-  }
-  return low_power_status;
 }
 
 /**

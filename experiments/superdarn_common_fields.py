@@ -15,11 +15,9 @@ RX_RATE_15KM = 10.0e3
 
 SEQUENCE_7P = [0, 9, 12, 20, 22, 26, 27]
 TAU_SPACING_7P = 2400 #us
-INTT_7P = 3700
 
 SEQUENCE_8P = [0, 14, 22, 24, 27, 31, 42, 43]
 TAU_SPACING_8P = 1500 #us
-INTT_8P = 3700
 
 STD_8P_LAG_TABLE = [[ 0, 0],
                     [42,43],
@@ -89,15 +87,6 @@ elif opts.site_id == "cly":
 else:
     COMMON_MODE_FREQ_1 = 10400
     COMMON_MODE_FREQ_2 = 13200
-
-def easy_scanbound(intt, beams):
-    """
-    Create integration time boundaries for the scan at the exact 
-    integration time (intt) boundaries. For new experiments, you 
-    may wish to ensure that your intt * len(beams) approaches a 
-    minute mark to reduce delay in waiting for the next scanbound.
-    """
-    return [i * (intt * 1e-3) for i in range(len(beams))]
 
 # set sounding frequencies
 if opts.site_id == "sas":

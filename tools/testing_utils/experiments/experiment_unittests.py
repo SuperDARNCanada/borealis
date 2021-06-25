@@ -39,8 +39,8 @@ input_test_file = BOREALISPATH + "/tools/testing_utils/experiments/experiment_te
 # Call experiment handler main function like so: eh.main(['normalscan', 'discretionary'])
 import experiment_handler.experiment_handler as eh
 from experiment_prototype.experiment_exception import ExperimentException
-import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
+import experiments.superdarn_common_fields as scf
 
 
 def ehmain(experiment='normalscan', scheduling_mode='discretionary'):
@@ -104,14 +104,12 @@ class TestExperimentEnvSetup(unittest.TestCase):
         # Rename the hdw.dat file temporarily
         os.rename(BOREALISPATH + '/hdw.dat.{}'.format(site_name),
                   BOREALISPATH + '/_hdw.dat.{}'.format(site_name))
-
         with self.assertRaisesRegex(ExperimentException, "Cannot open hdw.dat.[a-z]{3} file at"):
              ehmain()
-        # experiment_prototype.experiment_exception.ExperimentException: Cannot open hdw.dat.
-        # file at /home/kevin/PycharmProjects/borealis//hdw.dat.
+        # experiment_prototype.experiment_exception.ExperimentException: Cannot open hdw.dat.sas
+        # file at /home/kevin/PycharmProjects/borealis//hdw.dat.sas
 
         # Now rename the hdw.dat file and move on
-
         os.rename(BOREALISPATH + '/_hdw.dat.{}'.format(site_name),
                   BOREALISPATH + '/hdw.dat.{}'.format(site_name))
 
@@ -164,7 +162,7 @@ if __name__ == '__main__':
     # null = open(os.devnull, 'w')
     # sys.stderr = null
 
-    # Open the file hardcoded above with a set of tests, one per line.
+    # Open the file given on command line with a set of tests, one per line.
     # File format is: [experiment module]::[string regex message that the experiment will raise]
     # Generate a single test for each of the lines in the file.
     try:

@@ -149,10 +149,7 @@ def install_packages():
                 "dpdk-devel",
 
                 "kernel-devel",
-                "linux-headers-generic",
-
-                "unison",
-                ]
+                "linux-headers-generic"]
 
     pip = ["deepdish",
             "posix_ipc",
@@ -357,19 +354,6 @@ def install_realtime():
 
     execute_cmd(rt_cmd)
 
-def install_dspenv():
-    """
-    Create virtual environment and install utilities needed for python DSP.
-    """
-
-    rt_cmd = "bash -c \"mkdir -p $BOREALISPATH/dspenv;" \
-    "virtualenv $BOREALISPATH/dspenv;" \
-    "source $BOREALISPATH/dspenv/bin/activate;" \
-    "pip install zmq numpy scipy matplotlib cupy protobuf posix_ipc;" \
-    "deactivate;\""
-
-    execute_cmd(rt_cmd)
-
 def install_directories():
 
     mkdirs_cmd = "mkdir -p /data/borealis_logs;" \
@@ -431,7 +415,6 @@ install_ntp()
 install_uhd()
 install_cuda()
 install_realtime()
-install_dspenv()
 install_directories()
 install_hdw_dat()
 install_config()

@@ -1,12 +1,12 @@
 ===========
-rawacf v0.6
+rawacf v0.5
 ===========
 
-This is the most up to date version of this file format produced by Borealis version 0.6, the current version.
+This is the most up to date version of this file format produced by Borealis version 0.5, the current version. 
 
 For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
 
-The pyDARNio format class for this format is BorealisRawacf found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+The pydarn format class for this format is BorealisRawacf found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
 
 The rawacf format is intended to hold beamformed, averaged, correlated data. 
 
@@ -36,12 +36,7 @@ The file fields in the rawacf array files are:
 | | **FIELD NAME**                  | **description**                             | 
 | | *type*                          |                                             | 
 | | [dimensions]                    |                                             | 
-+===================================+=============================================+
-| | **agc_status_word**             | | AGC status word. Bit position             |
-| | *uint32*                        | | corresponds to the USRP motherboard/      |
-| | [num_records]                   | | transmitter. A '1' indicates an agc fault |
-| |                                 | | occurred at least once during integration |
-+-----------------------------------+---------------------------------------------+
++===================================+=============================================+ 
 | | **averaging_method**            | | A string describing the averaging method. | 
 | | *unicode*                       | | Default is 'mean' but an experiment can   | 
 | |                                 | | set this to 'median' to get the median of | 
@@ -107,15 +102,6 @@ The file fields in the rawacf array files are:
 | | *uint32*                        | | in kHz. This is the frequency the data    |
 | |                                 | | has been filtered to.                     |
 +-----------------------------------+---------------------------------------------+
-| | **gps_locked**                  | | Designates if the local GPS had a lock    |
-| | *bool*                          | | during the entire integration period.     |
-| | [num_records]                   | | False if it unlocked at least once.       |
-+-----------------------------------+---------------------------------------------+
-| | **gps_to_system_time_diff**     | | The max time difference between box_time  |
-| | *float32*                       | | GPS time) and system time (NTP) during the|
-| | [num_records]                   | | integration. Negative when GPS time is    |
-| |                                 | | ahead of system time.                     |
-+-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           | 
 | | [num_records]                   | |                                           | 
@@ -134,11 +120,6 @@ The file fields in the rawacf array files are:
 | | *uint32*                        | | pulses array. Values have to be from      |
 | | [number of lags, 2]             | | pulses array. The lag number is lag[1] -  |
 | |                                 | | lag[0] for each lag pair.                 |
-+-----------------------------------+---------------------------------------------+
-| | **lp_status_word**              | | Low power status word. Bit position       |
-| | *uint32*                        | | corresponds to the USRP motherboard/      |
-| | [num_records]                   | | transmitter. A '1' indicates low power    |
-| |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
 | | **main_acfs**                   | | Main array correlations. Note             | 
 | | *complex64*                     | | that records that do not have num_beams = |
@@ -272,11 +253,6 @@ The file fields under the record name in rawacf site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |  
 +==================================+=============================================+
-| | **agc_status_word**            | | AGC status word. Bit position             |
-| | *uint32*                       | | corresponds to the USRP motherboard/      |
-| |                                | | transmitter. A '1' indicates an agc fault |
-| |                                | | occurred at least once during integration |
-+----------------------------------+---------------------------------------------+
 | | **averaging_method**           | | A string describing the averaging method. | 
 | | *unicode*                      | | Default is 'mean' but an experiment can   | 
 | |                                | | set this to 'median' to get the median of | 
@@ -335,14 +311,6 @@ The file fields under the record name in rawacf site files are:
 | | *uint32*                       | | in kHz. This is the frequency the data    | 
 | |                                | | has been filtered to.                     |
 +----------------------------------+---------------------------------------------+
-| | **gps_locked**                 | | Designates if the local GPS had a lock    |
-| | *bool*                         | | during the entire integration period.     |
-+----------------------------------+---------------------------------------------+
-| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
-| | *float32*                      | | GPS time) and system time (NTP) during the|
-| |                                | | integration. Negative when GPS time is    |
-| |                                | | ahead of system time.                     |
-+----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
@@ -357,11 +325,6 @@ The file fields under the record name in rawacf site files are:
 | |                                | | lags x 2. Values have to be from pulses   | 
 | |                                | | array. The lag number is lag[1] - lag[0]  | 
 | |                                | | for each lag pair.                        |
-+----------------------------------+---------------------------------------------+
-| | **lp_status_word**             | | Low power status word. Bit position       |
-| | *uint32*                       | | corresponds to the USRP motherboard/      |
-| |                                | | transmitter. A '1' indicates low power    |
-| |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
 | | **main_acfs**                  | | Main array correlations.                  |
 | | *[complex64, ]*                | |                                           |
@@ -441,9 +404,9 @@ The file fields under the record name in rawacf site files are:
 Site/Array Restructuring
 ------------------------
 
-File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
+File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARN <https://github.com/SuperDARN/pydarn>`_. It is expected that this code will be separated to its own IO code package in the near future.
 
-The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_. 
 
 ----------------------------------------
 rawacf to rawacf SDARN (DMap) Conversion

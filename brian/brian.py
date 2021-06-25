@@ -22,8 +22,10 @@ if __debug__:
 else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
 
+import driverpacket_pb2
 import sigprocpacket_pb2
 import rxsamplesmetadata_pb2
+import processeddata_pb2
 
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/experiment_options')
 import experimentoptions as options
@@ -82,7 +84,7 @@ def router(opts):
 def sequence_timing(opts):
     """Thread function for sequence timing
 
-    This function controls the flow of data between brian's sequence timing and other parts of the
+    This function simulates the flow of data between brian's sequence timing and other parts of the
     radar system. This function serves to check whether the sequence timing is working as expected
     and to rate control the system to make sure the processing can handle data rates.
     :param context: zmq context, if None, then this method will get one
