@@ -234,11 +234,7 @@ int main(int argc, char **argv){
                              rx_rate, output_sample_rate,
                              filter_taps, beam_phases,
                              rx_metadata.initialization_time(),
-                             rx_metadata.sequence_start_time(),
-                             rx_metadata.gps_locked(), rx_metadata.gps_to_system_time_diff(),
-                             rx_metadata.agc_status_bank_h(), rx_metadata.lp_status_bank_h(),
-                             rx_metadata.agc_status_bank_l(), rx_metadata.lp_status_bank_l(),
-                             dm_rates, slice_info);
+                             rx_metadata.sequence_start_time(), dm_rates, slice_info);
 
     if (rx_metadata.numberofreceivesamples() == 0){
       //TODO(keith): handle error for missing number of samples.
@@ -268,7 +264,7 @@ int main(int argc, char **argv){
 
     dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
 
-    auto offset_to_first_rx_sample = sp_packet.offset_to_first_rx_sample();
+    auto offset_to_first_rx_sample = uint32_t(sp_packet.offset_to_first_rx_sample() * rx_rate);
     //offset_to_first_rx_sample = 0;
     dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, extra_samples,
                                 offset_to_first_rx_sample,

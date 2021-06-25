@@ -166,14 +166,13 @@ else:
 #Configure python first
 modules= {"brian" : "", "experiment_handler" : "",
                 "radar_control" : "", "data_write" : "",
-                "realtime" : "", "rx_signal_processing" : ""}
+                "realtime" : ""}
 
 for mod in modules:
     opts = python_opts.format(module=mod)
     modules[mod] = "python3 {opts} {module}/{module}.py".format(opts=opts, module=mod)
 
 modules['realtime'] = "source borealisrt_env/bin/activate;" + modules['realtime']
-modules['rx_signal_processing'] = "source dspenv/bin/activate;" + modules['rx_signal_processing']
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
 if args.kwargs_string:
@@ -182,7 +181,7 @@ else:
     modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type
     
 #Configure C progs
-c_progs = ['usrp_driver']
+c_progs = ['usrp_driver', 'signal_processing']
 for cprg in c_progs:
     modules[cprg] = "source mode {}; {} {}".format(mode, c_debug_opts, cprg)
 
@@ -209,7 +208,7 @@ screenrc = BOREALISSCREENRC.format(
     START_RT=modules['realtime'],
     START_BRIAN=modules['brian'],
     START_USRP_DRIVER=modules['usrp_driver'],
-    START_DSP=modules['rx_signal_processing'],
+    START_DSP=modules['signal_processing'],
     START_DATAWRITE=modules['data_write'],
     START_EXPHAN=modules['experiment_handler'],
     START_RADCTRL=modules['radar_control'],

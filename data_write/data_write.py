@@ -16,8 +16,6 @@ import mmap
 import warnings
 import time
 import threading
-import errno
-import multiprocessing as mp
 import subprocess as sp
 import argparse as ap
 import numpy as np
@@ -77,9 +75,7 @@ DATA_TEMPLATE = {
     "rx_center_freq" : None, # the center frequency of this data (for rawrf), kHz
     "samples_data_type" : None, # C data type of the samples such as complex float.
     "pulses" : None, # The pulse sequence in units of the tau_spacing.
-    "pulse_phase_offset" : None, # For pulse encoding phase. Contains an encoding per pulse. Each
-                                 # encoding can either be a single value or one value for each
-                                 # sample.
+    "pulse_phase_offset" : None, # For pulse encoding phase. Contains one phase offset per pulse in pulses.
     "lags" : None, # The lags created from two pulses in the pulses array.
     "blanked_samples" : None, # Samples that have been blanked because they occurred during transmission times.
     # Can differ from the pulses array due to multiple slices in a single sequence.
@@ -104,21 +100,20 @@ DATA_TEMPLATE = {
     "scheduling_mode" : None, # A string describing the type of scheduling time at the time of this dataset.
     "main_acfs" : [], # Main array autocorrelations
     "intf_acfs" : [], # Interferometer array autocorrelations
-    "xcfs" : [], # Crosscorrelations between main and interferometer arrays
-    "gps_locked" : None, # Boolean True if the GPS was locked during the entire integration period
-    "gps_to_system_time_diff" : None, # Max time diff in seconds between GPS and system/NTP time during the integration period.
-    "agc_status_word" : None, # 32 bits, a '1' in bit position corresponds to an AGC fault on that transmitter
-    "lp_status_word" : None # 32 bits, a '1' in bit position corresponds to a low power condition on that transmitter
+    "xcfs" : [] # Crosscorrelations between main and interferometer arrays
 }
 
 TX_TEMPLATE = {
     "tx_rate": [],
     "tx_center_freq": [],
-    "pulse_timing_us": [],
-    "pulse_sample_start": [],
+    "pulse_sequence_timing_us": [],
+    "pulse_offset_error_us": [],
     "tx_samples": [],
     "dm_rate": [],
+    "dm_rate_error": [],
     "decimated_tx_samples": [],
+    "tx_antennas": [],
+    "decimated_tx_antennas": [],
 }
 
 
@@ -161,12 +156,6 @@ class ParseData(object):
 
         self._slice_ids = set()
         self._timestamps = []
-
-        self._gps_locked = True  # init True so that logical AND works properly in update() method 
-        self._gps_to_system_time_diff = 0.0
-
-        self._agc_status_word = 0b0
-        self._lp_status_word = 0b0
 
         self._rawrf_locations = []
 
@@ -308,19 +297,6 @@ class ParseData(object):
             self._slice_ids.add(data_set.slice_id)
 
         self._rawrf_locations.append(self.processed_data.rf_samples_location)
-
-        # Logical AND to catch any time the GPS may have been unlocked during the integration period
-        self._gps_locked = self._gps_locked and self.processed_data.gps_locked
-
-        # Find the max time diff between GPS and system time to report for this integration period
-        if abs(self._gps_to_system_time_diff) < abs(self.processed_data.gps_to_system_time_diff):
-            self._gps_to_system_time_diff = self.processed_data.gps_to_system_time_diff
-
-        # Bitwise OR to catch any AGC faults during the integration period
-        self._agc_status_word = self._agc_status_word | self.processed_data.agc_status_bank_h
-
-        # Bitwise OR to catch any low power conditions during the integration period
-        self._lp_status_word = self._lp_status_word | self.processed_data.lp_status_bank_h
 
         # TODO(keith): Parallelize?
         procs = []
@@ -485,45 +461,6 @@ class ParseData(object):
         """
         return self._rawrf_locations
 
-    @property
-    def gps_locked(self):
-        """ Return the boolean value indicating if the GPS was locked during the entire int period
-
-        Returns:
-            TYPE: Boolean.
-        """
-        return self._gps_locked
-
-    @property
-    def gps_to_system_time_diff(self):
-        """ Gets the maximum time diff in seconds between the GPS (box_time) and system (NTP) during
-        the integration period. Negative if GPS time is ahead of system/NTP time.
-
-        Returns:
-            TYPE: Double.
-        """
-        return self._gps_to_system_time_diff
-
-    @property
-    def agc_status_word(self):
-        """
-        AGC Status, a '1' in bit position corresponds to an AGC fault on that transmitter
-
-        Returns:
-             TYPE: Int
-        """
-        return self._agc_status_word
-
-    @property
-    def lp_status_word(self):
-        """
-        Low Power, a '1' in bit position corresponds to a low power condition on that transmitter
-
-        Returns:
-             TYPE: Int
-        """
-        return self._lp_status_word
-
 
 class DataWrite(object):
     """This class contains the functions used to write out processed data to files.
@@ -598,13 +535,8 @@ class DataWrite(object):
         time_stamped_dd[dt_str] = data_dict
 
         # TODO(keith): Investigate warning.
-
-        try:
-            dd.io.save(filename, time_stamped_dd, compression=None)
-        except Exception as e:
-            if "No space left on device" in str(e):
-                print("No space left on device. Exiting")
-                os._exit(-1)
+        warnings.simplefilter("ignore")  # ignore NaturalNameWarning
+        dd.io.save(filename, time_stamped_dd, compression=None)
 
     def write_dmap_file(self, filename, data_dict):
         """
@@ -629,7 +561,7 @@ class DataWrite(object):
         :param file_ext:            Type of file extention to use. String
         :param integration_meta:    Metadata from radar control about integration period. Protobuf
         :param data_parsing:        All parsed and concatenated data from integration period stored
-                                    in ParseData object.
+                                    in DataParsing object.
         :param rt_dw:               Pair of socket and iden for RT purposes.
         :param write_rawacf:        Should rawacfs be written to file? Bool, default True.
         """
@@ -712,12 +644,7 @@ class DataWrite(object):
             """
             if not os.path.exists(dataset_directory):
                 # Don't try-catch this, because we want it to fail hard if we can't write files
-                try:
-                    os.makedirs(dataset_directory)
-                except OSError as e:
-                    if e.args[0] == errno.ENOSPC:
-                        print("No space left on device. Exiting")
-                        os._exit(-1)
+                os.makedirs(dataset_directory)
 
             if file_ext == 'hdf5':
                 full_two_hr_file = "{0}/{1}.hdf5.site".format(dataset_directory, two_hr_file_with_type)
@@ -726,11 +653,7 @@ class DataWrite(object):
                     fd = os.open(full_two_hr_file, os.O_CREAT | os.O_EXCL)
                     os.close(fd)
                 except FileExistsError:
-                    pass
-                except OSError as e:
-                    if e.args[0] == errno.ENOSPC:
-                        print("No space left on device. Exiting")
-                        os._exit(-1)
+                    pass # TODO:
 
                 self.write_hdf5_file(tmp_file, final_data_dict, epoch_milliseconds)
 
@@ -766,8 +689,7 @@ class DataWrite(object):
             "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
             "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs",
             "xcfs", "noise_at_freq", "data_normalization_factor", "slice_id", "slice_interfacing",
-            "averaging_method", "scheduling_mode", "gps_locked", "gps_to_system_time_diff",
-            "agc_status_word", "lp_status_word"]
+            "averaging_method", "scheduling_mode"]
             # note num_ranges not in needed_fields but are used to make
             # correlation_dimensions
 
@@ -842,8 +764,7 @@ class DataWrite(object):
             "data_dimensions", "data_descriptors", "antenna_arrays_order", "data",
             "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range",
             "lags", "num_ranges", "data_normalization_factor", "slice_id", "slice_interfacing",
-            "scheduling_mode", "gps_locked", "gps_to_system_time_diff",
-            "agc_status_word", "lp_status_word"]
+            "scheduling_mode"]
 
             bfiq = data_parsing.bfiq_accumulator
 
@@ -907,8 +828,7 @@ class DataWrite(object):
             "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors",
             "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
             "data_normalization_factor", "blanked_samples", "slice_id", "slice_interfacing",
-            "scheduling_mode", "gps_locked", "gps_to_system_time_diff",
-            "agc_status_word", "lp_status_word"]
+            "scheduling_mode"]
 
             antenna_iq = data_parsing.antenna_iq_accumulator
 
@@ -994,8 +914,7 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
             "main_antenna_count", "intf_antenna_count", "samples_data_type",
             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
-            "rx_center_freq", "blanked_samples", "scheduling_mode", "gps_locked", 
-            "gps_to_system_time_diff", "agc_status_word", "lp_status_word"]
+            "rx_center_freq", "blanked_samples", "scheduling_mode"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected
             # that the user will have knowledge of what they are looking for when working with
@@ -1064,10 +983,11 @@ class DataWrite(object):
                 for meta in integration_meta.sequences:
                     tx_data['tx_rate'].append(meta.tx_data.txrate)
                     tx_data['tx_center_freq'].append(meta.tx_data.txctrfreq)
-                    tx_data['pulse_timing_us'].append(
-                        meta.tx_data.pulse_timing_us)
-                    tx_data['pulse_sample_start'].append(meta.tx_data.pulse_sample_start)
+                    tx_data['pulse_sequence_timing_us'].append(
+                        meta.tx_data.pulse_sequence_timing_us)
+                    tx_data['pulse_offset_error_us'].append(meta.tx_data.pulse_offset_error_us)
                     tx_data['dm_rate'].append(meta.tx_data.dmrate)
+                    tx_data['dm_rate_error'].append(meta.tx_data.dmrate_error)
 
                     tx_samples = []
                     decimated_tx_samples = []
@@ -1090,9 +1010,14 @@ class DataWrite(object):
                         cmplx = np.array(real + 1j * imag, dtype=np.complex64)
                         decimated_tx_samples.append(cmplx)
 
+                    tx_data['tx_antennas'].append(tx_antennas)
+                    tx_data['decimated_tx_antennas'].append(decimated_tx_antennas)
                     tx_data['tx_samples'].append(tx_samples)
                     tx_data['decimated_tx_samples'].append(decimated_tx_samples)
 
+                tx_data['tx_antennas'] = np.array(tx_data['tx_antennas'], dtype=np.uint32)
+                tx_data['decimated_tx_antennas'] = np.array(tx_data['decimated_tx_antennas'],
+                                                            dtype=np.uint32)
                 tx_data['tx_samples'] = np.array(tx_data['tx_samples'], dtype=np.complex64)
                 tx_data['decimated_tx_samples'] = np.array(tx_data['decimated_tx_samples'],
                                                            dtype=np.complex64)
@@ -1136,15 +1061,7 @@ class DataWrite(object):
                     'rx_center_freq'] = integration_meta.rx_center_freq 
                 parameters['samples_data_type'] = "complex float"
                 parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
-
-                encodings = []
-                for encoding in rx_freq.sequence_encodings:
-                    encoding = np.array(encoding.encoding_value, dtype=np.float32)
-                    encoding = encoding.reshape((parameters['pulses'].shape[0],-1))
-                    encodings.append(encoding)
-
-                encodings = np.array(encodings, dtype=np.float32)
-                parameters['pulse_phase_offset'] = encodings
+                parameters['pulse_phase_offset'] = np.array(rx_freq.pulse_phase_offsets.pulse_phase, dtype=np.float32)
                 parameters['data_normalization_factor'] = integration_meta.data_normalization_factor
 
                 lags = []
@@ -1163,12 +1080,6 @@ class DataWrite(object):
                     parameters['beam_azms'].append(beam.beamazimuth)
 
                 parameters['noise_at_freq'] = [0.0] * integration_meta.num_sequences  # TODO update. should come from data_parsing
-
-                parameters['gps_locked'] = data_parsing.gps_locked
-                parameters['gps_to_system_time_diff'] = data_parsing.gps_to_system_time_diff
-
-                parameters['agc_status_word'] = np.uint32(data_parsing.agc_status_word)
-                parameters['lp_status_word'] = np.uint32(data_parsing.lp_status_word)
 
                 # num_samps, antenna_arrays_order, data_descriptors, data_dimensions, data
                 # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs

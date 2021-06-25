@@ -17,7 +17,6 @@
 #include <uhd/utils/safe_main.hpp>
 #include <uhd/utils/thread_priority.hpp>
 #include <uhd/usrp_clock/multi_usrp_clock.hpp>
-#include "utils/shared_macros/shared_macros.hpp"
 
 // Test program for Ettus Octoclocks
 // .130 and .132 are regular octoclocks, externally referenced off of .131, which is an octoclock-g (GPS unit built-in)
@@ -66,12 +65,6 @@ int main(int argc, char *argv[]) {
     std::cout << config << std::endl;
     return 0;
   }
-  std::string gps_lock_str;
-  std::string gps_time_str;
-  std::string gps_gpgga_str;
-  std::string gps_gprmc_str;
-  std::string gps_servo_str;
-
 
   // Create multi usrp clock device (get shared pointer) 
   uhd::usrp_clock::multi_usrp_clock::sptr clock;
@@ -102,43 +95,17 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  auto box_time = clock->get_time(1);
-  auto system_time = std::chrono::system_clock::now();
-  auto system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch());
-  auto gps_host_time_diff = system_since_epoch.count() - box_time;
-  std::cout << "Box time: " << box_time << " System time: " << system_since_epoch.count() << std::endl;
-
   while (not stop_signal_called) {
     // If user asked for updates, then print out every x seconds, otherwise just sleep
     if (vm.count("print_time")) {
     	for ( size_t boardnumber = 0; boardnumber < clock->get_num_boards(); boardnumber++) {
         if(clock->get_sensor("gps_detected", boardnumber).value == "true") {
 	std::cout << std::endl << "GPS sentences" << std::endl;
-  	auto system_time = std::chrono::system_clock::now();
-  	TIMEIT_IF_TRUE_OR_DEBUG(true, "time to get system time: ", system_since_epoch = std::chrono::duration<double>(system_time.time_since_epoch()));
-	TIMEIT_IF_TRUE_OR_DEBUG(true, "time to get box time: ", box_time = clock->get_time(boardnumber));
-	gps_host_time_diff = system_since_epoch.count() - box_time;
-	std::cout << std::endl << "System time: " << int(system_since_epoch.count()) << " Box time: " << box_time << " Diff: " << gps_host_time_diff << std::endl;
-	TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_gpgga: ", gps_gpgga_str = clock->get_sensor("gps_gpgga", boardnumber).value);
-        std::cout << "GPS GPGGA: " << gps_gpgga_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_gprmc: ", gps_gprmc_str = clock->get_sensor("gps_gprmc", boardnumber).value);
-        std::cout << "GPS GPRMC: " << gps_gprmc_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_servo: ", gps_servo_str = clock->get_sensor("gps_servo", boardnumber).value);
-        std::cout << "GPS Servo: " << gps_servo_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_time: ", gps_time_str = clock->get_sensor("gps_time", boardnumber).value);
-        std::cout << "GPS Time: " << gps_time_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_locked: ", gps_lock_str = clock->get_sensor("gps_locked", boardnumber).value);
-        std::cout << "GPS locked: " << gps_lock_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_gpgga: ", gps_gpgga_str = clock->get_sensor("gps_gpgga", boardnumber).value);
-        std::cout << "GPS GPGGA: " << gps_gpgga_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_gprmc: ", gps_gprmc_str = clock->get_sensor("gps_gprmc", boardnumber).value);
-        std::cout << "GPS GPRMC: " << gps_gprmc_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_servo: ", gps_servo_str = clock->get_sensor("gps_servo", boardnumber).value);
-        std::cout << "GPS Servo: " << gps_servo_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_time: ", gps_time_str = clock->get_sensor("gps_time", boardnumber).value);
-        std::cout << "GPS Time: " << gps_time_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_locked: ", gps_lock_str = clock->get_sensor("gps_locked", boardnumber).value);
-        std::cout << "GPS locked: " << gps_lock_str << std::endl;
+        std::cout << clock->get_sensor("gps_gpgga", boardnumber).value << std::endl;
+        std::cout << clock->get_sensor("gps_gprmc", boardnumber).value << std::endl;
+        std::cout << "GPS Time: " << clock->get_sensor("gps_time", boardnumber).value << std::endl;
+        std::cout << "GPS locked: " << clock->get_sensor("gps_locked", boardnumber).value << std::endl;
+        std::cout << "GPS servo status: " << clock->get_sensor("gps_servo", boardnumber).value << std::endl;
 	std::cout << std::endl;
         }
       sleep(update_period_in_s);
