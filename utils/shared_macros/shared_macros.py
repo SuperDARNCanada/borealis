@@ -1,5 +1,7 @@
 #Copyright 2019 SuperDARN
 
+from datetime import datetime
+
 def COLOR(color, msg):
     """
     @brief      Wraps a string to print with ANSI terminal colors
@@ -41,7 +43,7 @@ def MODULE_PRINT(module_name, color):
     colored_name = COLOR(color, module_name_upper + ": ")
 
     def pprint(msg):
-        print(colored_name+msg)
+        print('{} - '.format(datetime.utcnow())+colored_name+msg)
 
     return pprint
 
