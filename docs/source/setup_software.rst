@@ -19,7 +19,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
 
     - cpupower frequency-info
 
-#. Use ethtool to set the interface ring buffer size for both rx and tx. This should be added to a script that occurs on reboot for the interface used to connect to the USRPs. This is done to help prevent packet loss when the network traffic exceeds the capacity of the network adapter.
+#. Use ethtool to set the interface ring buffer size for both rx and tx. Make sure to use an ethernet port which is connected to the 10 Gb card of the computer (not necessarily eth0). This should be added to a script that occurs on reboot for the interface used to connect to the USRPs. This is done to help prevent packet loss when the network traffic exceeds the capacity of the network adapter.
 
     - sudo ethtool -G eth0 tx 4096 rx 4096.
 
