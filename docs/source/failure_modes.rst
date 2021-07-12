@@ -215,3 +215,29 @@ is displayed::
 
 The reason for the error is due to improper configuration of the `realtime_address` in config.ini.
 Instructions for proper configuration can be found in the Software Setup section.
+
+No module named 'deepdish'
+__________________________
+This behaviour has been seen when setting up Borealis on new computers. DeepDish is a library for
+reading/writing hdf5 files, which is used by the realtime module. Due to updates in the pyDARN
+library, deepdish is no longer a dependency of pyDARN. The following error message in the realtime
+screen is indicative of this error::
+
+    Traceback (most recent call last):
+      File "realtime/realtime.py", line 16, in <module>
+        import pydarn
+      File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarn-2.1-py3.6.egg/pydarn/__init__.py", line 17, in <module>
+        from .io.superdarn_io import SuperDARNRead
+      File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarn-2.1-py3.6.egg/pydarn/io/superdarn_io.py", line 5, in <module>
+        import pydarnio
+      File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarnio-1.1.0-py3.6.egg/pydarnio/__init__.py", line 43, in <module>
+        from .borealis.borealis import BorealisRead
+      File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarnio-1.1.0-py3.6.egg/pydarnio/borealis/borealis.py", line 46, in <module>
+        from .borealis_site import BorealisSiteRead, BorealisSiteWrite
+      File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarnio-1.1.0-py3.6.egg/pydarnio/borealis/borealis_site.py", line 38, in <module>
+        import deepdish as dd
+    ModuleNotFoundError: No module named 'deepdish'
+
+The Software Setup page has been updated with instructions on how to set up the borealisrt_env 
+virtual environment without encountering this error. 
+
