@@ -182,3 +182,17 @@ The root cause is unknown, but symptoms are:
 To fix this issue and restart the radar:
     - Power cycle the machine
 
+Number of sequences per integration time decreasing over time
+-------------------------------------------------------------
+This behaviour has been seen when setting up Borealis on new computers. Typically the radar starts
+and records 30-32 sequences per integration, but over the span of a half hour or more may decrease
+down to 10-20 sequences per integration. 
+
+This is caused by a communication error between the brian and realtime modules, likely due to the
+value of `realtime_address` in config.ini. Make sure that the realtime_address uses a configure 
+interface that is "UP". See Software Setup for instructions.
+
+Borealis only takes runs one integration time then stops
+--------------------------------------------------------
+This is an unresolved issue, which seems to be caused by the Signal Processing module. Restarting
+borealis sometimes fixes it, but you may need to restart multiple times.
