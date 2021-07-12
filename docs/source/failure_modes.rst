@@ -196,3 +196,22 @@ Borealis only takes runs one integration time then stops
 --------------------------------------------------------
 This is an unresolved issue, which seems to be caused by the Signal Processing module. Restarting
 borealis sometimes fixes it, but you may need to restart multiple times.
+
+ZMQError in realtime module
+---------------------------
+This behaviour has been seen when setting up Borealis on new computers. The following error message
+is displayed::
+
+    Traceback (most recent call last):
+      File "realtime/realtime.py", line 113, in <module>
+        _main()
+      File "realtime/realtime.py", line 39, in _main
+        realtime_socket.bind(opts.rt_address)
+      File "/home/radar/borealis/borealisrt_env/lib64/python3.6/site-packages/zmq/sugar/socket.py", line 172, in bind
+        super().bind(addr)
+      File "zmq/backend/cython/socket.pyx", line 540, in zmq.backend.cython.socket.Socket.bind
+      File "zmq/backend/cython/checkrc.pxd", line 28, in zmq.backend.cython.checkrc._check_rc
+    zmq.error.ZMQError: No such device
+
+The reason for the error is due to improper configuration of the `realtime_address` in config.ini.
+Instructions for proper configuration can be found in the Software Setup section.
