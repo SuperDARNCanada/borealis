@@ -21,19 +21,19 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
 
 #. Use ethtool to set the interface ring buffer size for both rx and tx. Make sure to use an ethernet port which is connected to the 10 Gb card of the computer (not necessarily eth0). This should be added to a script that occurs on reboot for the interface used to connect to the USRPs. This is done to help prevent packet loss when the network traffic exceeds the capacity of the network adapter.
 
-    - sudo ethtool -G eth0 tx 4096 rx 4096.
+    - sudo ethtool -G <10G_network_port> tx 4096 rx 4096.
 
 #. To see that this works as intended, and that it persists across reboots, you can execute the following, which will output the maximums and the current settings.
 
-    - sudo ethtool -g eth0
+    - sudo ethtool -g <10G_network_port>
 
 #. Use the network manager or a line in the reboot script to change the MTU of the interface for the interface used to connect to the USRPs. A larger MTU will reduce the amount of network overhead. An MTU larger than 1500 bytes allows what is known as Jumbo frames, which can use up to 9000 bytes of payload.
 
-    - sudo ip link set eth0 mtu 9000
+    - sudo ip link set <10G_network_port> mtu 9000
 
 #. To verify that the MTU was set correctly:
 
-    - ip link show eth0
+    - ip link show <10G_network_port>
 
 #. Use sysctl to adjust the kernel network buffer sizes. This should be added to a script that occurs on reboot for the interface used to connect to the USRPs. That's 50 million for `rmem_max` and 2.5 million for `wmwem_max`.
 
@@ -49,10 +49,10 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
 
     - @reboot /sbin/sysctl -w net.ipv6.conf.all.disable_ipv6=1
     - @reboot /sbin/sysctl -w net.ipv6.conf.default.disable_ipv6=1
-    - @reboot /usr/sbin/ethtool -G eth1 tx 4096 rx 4096
-    - @reboot /usr/sbin/ethtool -G eth2 tx 4096 rx 4096
-    - @reboot /sbin/ip link set dev eth1 mtu 9000
-    - @reboot /sbin/ip link set dev eth2 mtu 9000
+    - @reboot /usr/sbin/ethtool -G <10G_network_port_1> tx 4096 rx 4096
+    - @reboot /usr/sbin/ethtool -G <10G_network_port_2> tx 4096 rx 4096
+    - @reboot /sbin/ip link set dev <10G_network_port_1> mtu 9000
+    - @reboot /sbin/ip link set dev <10G_network_port_2> mtu 9000
     - @reboot /usr/bin/cpupower frequency-set -g performance
     - @reboot /sbin/sysctl -w net.core.rmem_max=50000000
     - @reboot /sbin/sysctl -w net.core.wmem_max=2500000
@@ -88,6 +88,8 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - cd $BOREALISPATH
     - git submodule init && git submodule update
     - ln -svi $BOREALISPATH/borealis_config_files/[radarcode]_config.ini config.ini
+
+#. In `config.ini`, there is an entry called "realtime_address". This defines the protocol, interface, and port that the realtime module uses for socket communication. This should be set to `"realtime_address" : "tcp://<interface>:9696"`, where <interface> is a configured interface on your computer such as "eth0" or "wlan0". Running `ip addr`, you should choose a device which is UP.
 
 #. If you're building Borealis for a non University of Saskatcheawn radar, use a Usask `config.ini` file (located `here <https://github.com/SuperDARNCanada/borealis_config_files>`_) as a template or the config file `documentation <https://borealis.readthedocs.io/en/latest/config_options.html>`_ to create your own file in the borealis directory.
 
@@ -207,6 +209,10 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
         ok, found 1 source(s), now start fetching data...
         source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755247.199734241, sequence: 249187
         source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755248.199734605, sequence: 249188
+
+#. Verify that the realtime module is able to communicate with other modules. This can be done by running the following command in a new terminal while borealis is running. If all is well, the command should output that there is a device listening on the channel specified.
+
+   - ss --all | grep 9696
 
 #. For further reading on networking and tuning with the USRP devices, see https://files.ettus.com/manual/page_transport.html and https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks. Also see http://doc.ntp.org/current-stable/drivers/driver22.html for information about the PPS ntp clock discipline, and the man pages for:
 
