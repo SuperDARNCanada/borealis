@@ -19,21 +19,21 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
 
     - cpupower frequency-info
 
-#. Use ethtool to set the interface ring buffer size for both rx and tx. Make sure to use an ethernet port which is connected to the 10 Gb card of the computer (not necessarily eth0). This should be added to a script that occurs on reboot for the interface used to connect to the USRPs. This is done to help prevent packet loss when the network traffic exceeds the capacity of the network adapter.
+#. Use ethtool to set the interface ring buffer size for both rx and tx. Make sure to use an ethernet device which is connected to the 10 Gb card of the computer (not necessarily eth0). This should be added to a script that occurs on reboot for the interface used to connect to the USRPs. This is done to help prevent packet loss when the network traffic exceeds the capacity of the network adapter.
 
-    - sudo ethtool -G <10G_network_port> tx 4096 rx 4096.
+    - sudo ethtool -G <10G_network_device> tx 4096 rx 4096.
 
 #. To see that this works as intended, and that it persists across reboots, you can execute the following, which will output the maximums and the current settings.
 
-    - sudo ethtool -g <10G_network_port>
+    - sudo ethtool -g <10G_network_device>
 
 #. Use the network manager or a line in the reboot script to change the MTU of the interface for the interface used to connect to the USRPs. A larger MTU will reduce the amount of network overhead. An MTU larger than 1500 bytes allows what is known as Jumbo frames, which can use up to 9000 bytes of payload.
 
-    - sudo ip link set <10G_network_port> mtu 9000
+    - sudo ip link set <10G_network_device> mtu 9000
 
 #. To verify that the MTU was set correctly:
 
-    - ip link show <10G_network_port>
+    - ip link show <10G_network_device>
 
 #. Use sysctl to adjust the kernel network buffer sizes. This should be added to a script that occurs on reboot for the interface used to connect to the USRPs. That's 50 million for `rmem_max` and 2.5 million for `wmwem_max`.
 
@@ -49,10 +49,10 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
 
     - @reboot /sbin/sysctl -w net.ipv6.conf.all.disable_ipv6=1
     - @reboot /sbin/sysctl -w net.ipv6.conf.default.disable_ipv6=1
-    - @reboot /usr/sbin/ethtool -G <10G_network_port_1> tx 4096 rx 4096
-    - @reboot /usr/sbin/ethtool -G <10G_network_port_2> tx 4096 rx 4096
-    - @reboot /sbin/ip link set dev <10G_network_port_1> mtu 9000
-    - @reboot /sbin/ip link set dev <10G_network_port_2> mtu 9000
+    - @reboot /usr/sbin/ethtool -G <10G_network_device_1> tx 4096 rx 4096
+    - @reboot /usr/sbin/ethtool -G <10G_network_device_2> tx 4096 rx 4096
+    - @reboot /sbin/ip link set dev <10G_network_device_1> mtu 9000
+    - @reboot /sbin/ip link set dev <10G_network_device_2> mtu 9000
     - @reboot /usr/bin/cpupower frequency-set -g performance
     - @reboot /sbin/sysctl -w net.core.rmem_max=50000000
     - @reboot /sbin/sysctl -w net.core.wmem_max=2500000
