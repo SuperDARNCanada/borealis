@@ -241,3 +241,13 @@ screen is indicative of this error::
 The Software Setup page has been updated with instructions on how to set up the borealisrt_env 
 virtual environment without encountering this error. 
 
+Error while loading shared library libncurses.so.5
+--------------------------------------------------
+This behaviour is seen when running borealis in `debug` or `engineeringdebug` modes.
+Libncurses5 is a dependency of cuda-gdb. By default, the newest version of 
+libncurses is installed with cuda-gdb; however, libncurses6 doesn't seem to work
+with the version of cuda-gdb used.
+
+To fix this problem, install libncurses5 on your borealis computer. On OpenSuSe, this
+can be done using `sudo zypper in libncurses5`.
+
