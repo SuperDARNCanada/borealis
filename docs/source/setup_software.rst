@@ -103,7 +103,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - git clone https://github.com/SuperDARN/pydarn.git
 
 #. Install the necessary software to enable realtime data:
-
+  
     - cd /usr/local
     - sudo git clone https://github.com/vtsuperdarn/hdw.dat.git
     - mkdir $BOREALISPATH/borealisrt_env
@@ -111,23 +111,14 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - source $BOREALISPATH/borealisrt_env/bin/activate
     - pip install zmq
     - pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter
-    - cd $HOME/pydarn
-    - git checkout develop
-    - python setup.py install
+    - pip3 install pydarnio
     - deactivate
 
-#. Install the necessary software to convert and test data:
+#. Install the necessary software to convert and move/copy data:
 
     - cd $HOME
     - git clone https://github.com/SuperDARNCanada/borealis-data-utils.git
     - git clone https://github.com/SuperDARNCanada/data_flow.git
-    - mkdir $HOME/pydarn-env
-    - virtualenv $HOME/pydarn-env
-    - source $HOME/pydarn-env/bin/activate
-    - cd $HOME/pydarn
-    - git checkout tags/v1.1.0 -b temp_branch
-    - python3 setup.py install
-    - deactivate
 
 #. Set up NTP. The `install_radar_deps_opensuse.sh` script already downloads and configures a version of `ntpd` that works with incoming PPS signals on the serial port DCD line. An example configuration of ntp is shown below for `/etc/ntp.conf`. These settings use `tick.usask.ca` as a time server, and PPS (via the `127.127.22.0` lines). It also sets up logging daily for all stats types.
 
