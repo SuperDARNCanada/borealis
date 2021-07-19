@@ -186,10 +186,12 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - mkdir $HOME/logs
 
 #. Finally, add the GPS disciplined NTP lines to the root start up script.
+Note that you need to find the correct tty that your PPS signal line is connected to,
+it may not be ttyS0, especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher.
 
-    - /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/ttyS0 && /usr/local/bin/ntpd
+    - /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/[PPS tty] && /usr/local/bin/ntpd
 
-#. Verify that the PPS signal incoming on the DCD line of ttyS0 is properly routed and being received. You'll get two lines every second corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since the epoch.
+#. Verify that the PPS signal incoming on the DCD line of ttyS0 (or ttySx where x can be any digit 0,1,2,3...) is properly routed and being received. You'll get two lines every second corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since the epoch.
 
     .. code-block::
 

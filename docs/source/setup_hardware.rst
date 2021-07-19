@@ -378,6 +378,17 @@ the onboard COM port is to the left of the 'AA' shown on the 7-segment display.
    :alt: Modified coaxial cable connected to the COM port DCD and GND pins on the motherboard
    :align: center
 
+
+In case your motherboard does not have a COM port routed out to a pin header, you can purchase and use
+a PCIe serial port card. One such part that is known to work is the Rosewill RC-301EU. The photo below
+shows how one of these cards was modified by removing the physical D-Sub connector and using a bulkhead
+SMA connector in place.
+
+.. image:: img/pcie_serialport_pps.jpg
+   :scale: 80%
+   :alt: Modify one SMA coaxial cable to connect to the DCD and GND pins of the pcie header
+   :align: center
+
 -------------------------
 Octoclocks and Networking
 -------------------------
