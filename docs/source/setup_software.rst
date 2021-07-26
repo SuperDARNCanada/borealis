@@ -185,11 +185,26 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - sudo chown radar:users /data/borealis_data
     - mkdir $HOME/logs
 
-#. Finally, add the GPS disciplined NTP lines to the root start up script.
+#. Find out which tty device is physically connected to your PPS signal. 
+it may not be ttyS0, especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher.
+To do this, search the system log for 'tty' (either dmesg or the syslog). An example output with a PCIe expansion card is below.
+The output shows the first two ttyS0 and 1 are builtin to the motherboard chipset and are not accessible on this x299 PRO from MSI.
+The next two ttyS4 and S5 are located on the XR17V35X chip which is located on the rosewill card:
 
-    - /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/ttyS0 && /usr/local/bin/ntpd
+        .. code-block::
 
-#. Verify that the PPS signal incoming on the DCD line of ttyS0 is properly routed and being received. You'll get two lines every second corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since the epoch.
+        [ 1.624103] serial8250: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A 
+        [ 1.644875] serial8250: ttyS1 at I/O 0x2f8 (irq = 3, base_baud = 115200) is a 16550A 
+        [ 1.645850] 0000:b4:00.0: ttyS4 at MMIO 0xfbd00000 (irq = 37, base_baud = 7812500) is a XR17V35X 
+        [ 1.645964] 0000:b4:00.0: ttyS5 at MMIO 0xfbd00400 (irq = 37, base_baud = 7812500) is a XR17V35X
+
+#. Try attaching the ttySx line to a PPS line discipline using ldattach:
+
+   - /usr/sbin/ldattach PPS /dev/ttyS[0,1,2,3,etc]
+
+#. Verify that the PPS signal incoming on the DCD line of ttyS0 (or ttySx where x can be any digit 0,1,2,3...) is properly routed and being received. 
+You'll get two lines every second corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since the epoch. If it's the incorrect one,
+you'll only see a timeout.
 
     .. code-block::
 
@@ -200,6 +215,25 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
         ok, found 1 source(s), now start fetching data...
         source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755247.199734241, sequence: 249187
         source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755248.199734605, sequence: 249188
+
+#. If you're having trouble finding out which /dev/ppsx device to use, try grepping the output of dmesg to find out. 
+Here's an example that shows how pps0 and 1 are connected to ptp1 and 2, pps2 is connected to /dev/ttyS0 and pps3 is connected to /dev/ttyS5.:
+
+   .. code-block::
+
+        [ 0.573439] pps_core: LinuxPPS API ver. 1 registered 
+        [ 0.573439] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it> 
+        [ 8.792473] pps pps0: new PPS source ptp1 
+        [ 9.040732] pps pps1: new PPS source ptp2 
+        [ 10.044514] pps_ldisc: PPS line discipline registered 
+        [ 10.045957] pps pps2: new PPS source serial0 
+        [ 10.045960] pps pps2: source "/dev/ttyS0" added 
+        [ 227.629896] pps pps3: new PPS source serial5 
+        [ 227.629899] pps pps3: source "/dev/ttyS5" added
+
+#. Now add the GPS disciplined NTP lines to the root startup script using the tty you have your PPS connected to.
+
+    - /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/[PPS tty] && /usr/local/bin/ntpd
 
 #. Verify that the realtime module is able to communicate with other modules. This can be done by running the following command in a new terminal while borealis is running. If all is well, the command should output that there is a device listening on the channel specified.
 
