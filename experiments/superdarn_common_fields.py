@@ -77,13 +77,13 @@ elif opts.site_id == "pgr":
     COMMON_MODE_FREQ_2 = 13100
 elif opts.site_id == "rkn":
     COMMON_MODE_FREQ_1 = 10900
-    COMMON_MODE_FREQ_2 = 13150
+    COMMON_MODE_FREQ_2 = 12300
 elif opts.site_id == "inv":
     COMMON_MODE_FREQ_1 = 10800
-    COMMON_MODE_FREQ_2 = 13200
+    COMMON_MODE_FREQ_2 = 12200
 elif opts.site_id == "cly":
     COMMON_MODE_FREQ_1 = 10700
-    COMMON_MODE_FREQ_2 = 13050
+    COMMON_MODE_FREQ_2 = 12500
 else:
     COMMON_MODE_FREQ_1 = 10400
     COMMON_MODE_FREQ_2 = 13200
