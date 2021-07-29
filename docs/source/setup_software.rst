@@ -177,7 +177,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - crontab -e
     - Add the line `@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log 2>&1`
 
-# Create necessary directories. Here is an example for a user named `radar` and the standard configuration in the 'config.ini' file:
+#. Create necessary directories. Here is an example for a user named `radar` and the standard configuration in the 'config.ini' file:
 
     - sudo mkdir -p /data/borealis_logs
     - sudo mkdir -p /data/borealis_data
@@ -185,13 +185,9 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - sudo chown radar:users /data/borealis_data
     - mkdir $HOME/logs
 
-#. Find out which tty device is physically connected to your PPS signal. 
-it may not be ttyS0, especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher.
-To do this, search the system log for 'tty' (either dmesg or the syslog). An example output with a PCIe expansion card is below.
-The output shows the first two ttyS0 and 1 are builtin to the motherboard chipset and are not accessible on this x299 PRO from MSI.
-The next two ttyS4 and S5 are located on the XR17V35X chip which is located on the rosewill card:
+#. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0, especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do this, search the system log for 'tty' (either dmesg or the syslog). An example output with a PCIe expansion card is below. The output shows the first two ttyS0 and 1 are builtin to the motherboard chipset and are not accessible on this x299 PRO from MSI. The next two ttyS4 and S5 are located on the XR17V35X chip which is located on the rosewill card:
 
-        .. code-block::
+    .. code-block::
 
         [ 1.624103] serial8250: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A 
         [ 1.644875] serial8250: ttyS1 at I/O 0x2f8 (irq = 3, base_baud = 115200) is a 16550A 
@@ -202,9 +198,7 @@ The next two ttyS4 and S5 are located on the XR17V35X chip which is located on t
 
    - /usr/sbin/ldattach PPS /dev/ttyS[0,1,2,3,etc]
 
-#. Verify that the PPS signal incoming on the DCD line of ttyS0 (or ttySx where x can be any digit 0,1,2,3...) is properly routed and being received. 
-You'll get two lines every second corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since the epoch. If it's the incorrect one,
-you'll only see a timeout.
+#. Verify that the PPS signal incoming on the DCD line of ttyS0 (or ttySx where x can be any digit 0,1,2,3...) is properly routed and being received. You'll get two lines every second corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since the epoch. If it's the incorrect one, you'll only see a timeout.
 
     .. code-block::
 
@@ -216,8 +210,7 @@ you'll only see a timeout.
         source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755247.199734241, sequence: 249187
         source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755248.199734605, sequence: 249188
 
-#. If you're having trouble finding out which /dev/ppsx device to use, try grepping the output of dmesg to find out. 
-Here's an example that shows how pps0 and 1 are connected to ptp1 and 2, pps2 is connected to /dev/ttyS0 and pps3 is connected to /dev/ttyS5.:
+#. If you're having trouble finding out which /dev/ppsx device to use, try grepping the output of dmesg to find out. Here's an example that shows how pps0 and 1 are connected to ptp1 and 2, pps2 is connected to /dev/ttyS0 and pps3 is connected to /dev/ttyS5.:
 
    .. code-block::
 
