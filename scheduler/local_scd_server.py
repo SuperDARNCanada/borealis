@@ -29,11 +29,11 @@ EXPERIMENTS = {
               "interleaved_time" : "interleavedscan"
     },
     "pgr" : {
-              "common_time" : "normalscan",
-              "discretionary_time" : "normalscan",
-              "htr_common_time" : "normalscan",
+              "common_time" : "twofsound",
+              "discretionary_time" : "twofsound",
+              "htr_common_time" : "twofsound",
               "themis_time" : "themisscan",
-              "special_time_normal" : "normalscan",
+              "special_time_normal" : "twofsound",
               "rbsp_time" : "rbspscan",
               "no_switching_time" : "normalscan",
               "interleaved_time" : "interleavedscan"
@@ -49,21 +49,21 @@ EXPERIMENTS = {
               "interleaved_time" : "interleavedscan"
     },
     "inv" : {
-              "common_time" : "normalscan",
-              "discretionary_time" : "normalscan",
-              "htr_common_time" : "normalscan",
+              "common_time" : "twofsound",
+              "discretionary_time" : "twofsound",
+              "htr_common_time" : "twofsound",
               "themis_time" : "themisscan",
-              "special_time_normal" : "normalscan",
+              "special_time_normal" : "twofsound",
               "rbsp_time" : "rbspscan",
               "no_switching_time" : "normalscan",
               "interleaved_time" : "interleavedscan"
     },
     "cly" : {
-              "common_time" : "normalscan",
-              "discretionary_time" : "normalscan",
-              "htr_common_time" : "normalscan",
+              "common_time" : "twofsound",
+              "discretionary_time" : "twofsound",
+              "htr_common_time" : "twofsound",
               "themis_time" : "themisscan",
-              "special_time_normal" : "normalscan",
+              "special_time_normal" : "twofsound",
               "rbsp_time" : "rbspscan",
               "no_switching_time" : "normalscan",
               "interleaved_time" : "interleavedscan"
