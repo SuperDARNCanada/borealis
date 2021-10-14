@@ -18,7 +18,7 @@ class PowerMeterMode(ExperimentPrototype):
         freq: int
 
         """
-        cpid = 1010101
+        cpid = 3580
         super(PowerMeterMode, self).__init__(cpid)
 
         if scf.IS_FORWARD_RADAR:

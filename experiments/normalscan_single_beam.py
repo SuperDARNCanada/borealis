@@ -15,7 +15,7 @@ from experiment_prototype.decimation_scheme.decimation_scheme import DecimationS
 class NormalscanSingleBeam(ExperimentPrototype):
     # with 7 PULSE sequence
     def __init__(self):
-        cpid = 100000000
+        cpid = 3581
 
         super(NormalscanSingleBeam, self).__init__(cpid)
 
