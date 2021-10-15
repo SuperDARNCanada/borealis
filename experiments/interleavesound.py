@@ -86,7 +86,7 @@ class InterleaveSound(ExperimentPrototype):
         rxctrfreq = txctrfreq = int(sum_of_freq / len(slices))
 
         super(InterleaveSound, self).__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq,
-                                              txcomment_string=InterleaveSound.__doc__)
+                                              comment_string=InterleaveSound.__doc__)
 
         self.add_slice(slices[0])
         self.add_slice(slices[1], {0: 'SCAN'})
