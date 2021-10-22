@@ -31,27 +31,26 @@ class ImptTest(ExperimentPrototype):
             "num_ranges": scf.STD_NUM_RANGES,
             "first_range": scf.STD_FIRST_RANGE,
             "intn": 30,
-            "beam_angle": [1.75],
-            "beam_order": [0],
+            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "beam_order": [8],
             "txfreq" : 13100,
         }
 
         katscan_slice = copy.deepcopy(default_slice)
-
+        katscan_slice['acf'] = True
+        katscan_slice['xcf'] = True
+        katscan_slice['acfint'] = True
+        
         # set phases for each pulse on each sequence
         # 30 sequences of impt, each its own slice
         list_of_slices = list()
-        interfacing_dict1 = dict()
-        interfacing_dict2 = dict()
-        for i in range(30):
+        list_of_slices.append(katscan_slice)
+        interfacing_dict = dict()
+        for i in range(1,30):
             impt_slice = copy.deepcopy(default_slice)
             impt_slice['pulse_phase_offset'] = phases[i*8:8*(i+1)]
-            if i == 0:
-                list_of_slices.append(impt_slice)
-            else:
-                list_of_slices.append(impt_slice)
+            list_of_slices.append(impt_slice)
 
-        list_of_slices.append(katscan_slice)
         rxctrfreq = katscan_slice["txfreq"]
         txctrfreq = rxctrfreq
         super(ImptTest, self).__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq,
@@ -59,12 +58,10 @@ class ImptTest(ExperimentPrototype):
 
         # add slices to experiment
         for i,exp_slice in enumerate(list_of_slices):
-            if i == 0:
+            if i == 0: # katscan slice
                 self.add_slice(exp_slice)
-            elif i == 30:   # katscan slice
-                self.add_slice(exp_slice,interfacing_dict=interfacing_dict2) # {0: 'SCAN'})
+                interfacing_dict[i] = 'SCAN'
             else:
-                self.add_slice(exp_slice,interfacing_dict=interfacing_dict1) # {0: 'INTEGRATION'})
-            interfacing_dict1[i] = 'INTEGRATION'
-            interfacing_dict2[i] = 'SCAN'
+                self.add_slice(exp_slice,interfacing_dict=interfacing_dict)
+                interfacing_dict[i] = 'INTEGRATION'
 
