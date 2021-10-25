@@ -29,8 +29,7 @@ class NormalscanImp(ExperimentPrototype):
         freq: int
 
         """
-        cpid = 151
-        super(NormalscanImp, self).__init__(cpid)
+        cpid = 3314
 
         if scf.IS_FORWARD_RADAR:
             beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
