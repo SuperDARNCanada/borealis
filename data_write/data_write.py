@@ -23,6 +23,7 @@ import argparse as ap
 import numpy as np
 import deepdish as dd
 import posix_ipc as ipc
+import tables
 import zmq
 import faulthandler
 from scipy.constants import speed_of_light
@@ -595,8 +596,8 @@ class DataWrite(object):
         time_stamped_dd = {}
         time_stamped_dd[dt_str] = data_dict
 
-        # TODO(keith): Investigate warning.
-
+        warnings.simplefilter('ignore', tables.NaturalNameWarning)
+        
         try:
             dd.io.save(filename, time_stamped_dd, compression=None)
         except Exception as e:
