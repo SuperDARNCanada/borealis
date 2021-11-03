@@ -791,7 +791,8 @@ class DataWrite(object):
                 if averaging_method == 'mean':
                     array_expectation_value = np.mean(array_2d, axis=0)
                 elif averaging_method == 'median':
-                    array_expectation_value = np.median(array_2d, axis=0)
+                    array_expectation_value = np.median(np.real(array_2d), axis=0) +\
+                                              1j * np.median(np.imag(array_2d), axis=0)
                 else:
                     raise ValueError('Averaging Method could not be executed: {}'.format(averaging_method))
                 parameters[field_name] = array_expectation_value
