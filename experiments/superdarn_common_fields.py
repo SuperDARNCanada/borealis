@@ -79,13 +79,13 @@ elif opts.site_id == "pgr":
     COMMON_MODE_FREQ_2 = 13100
 elif opts.site_id == "rkn":
     COMMON_MODE_FREQ_1 = 10900
-    COMMON_MODE_FREQ_2 = 13150
+    COMMON_MODE_FREQ_2 = 12300
 elif opts.site_id == "inv":
     COMMON_MODE_FREQ_1 = 10800
-    COMMON_MODE_FREQ_2 = 13200
+    COMMON_MODE_FREQ_2 = 12200
 elif opts.site_id == "cly":
     COMMON_MODE_FREQ_1 = 10700
-    COMMON_MODE_FREQ_2 = 13050
+    COMMON_MODE_FREQ_2 = 12500
 else:
     COMMON_MODE_FREQ_1 = 10400
     COMMON_MODE_FREQ_2 = 13200
@@ -101,16 +101,16 @@ def easy_scanbound(intt, beams):
 
 # set sounding frequencies
 if opts.site_id == "sas":
-    SOUNDING_FREQS = [10300, 11000, 11700, 13100]
+    SOUNDING_FREQS = [10525, 11000, 11700, 13100]
     #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
 elif opts.site_id == "pgr":
-    SOUNDING_FREQS = [10350, 11050, 11750, 13300]
+    SOUNDING_FREQS = [10350, 11050, 11750, 13150]
     #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
 elif opts.site_id == "rkn":
     SOUNDING_FREQS = [10400, 11100, 11800, 13450]
     #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
 elif opts.site_id == "inv":
-    SOUNDING_FREQS = [10450, 11150, 11850, 13500]
+    SOUNDING_FREQS = [10450, 11150, 11850, 13125]
     #SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
 elif opts.site_id == "cly":
     SOUNDING_FREQS = [10550, 11200, 11900, 13550]
