@@ -37,7 +37,7 @@ class InterleaveSound(ExperimentPrototype):
 
         slices = []
         
-        common_scanbound_spacing = 3.0 # seconds
+        common_scanbound_spacing = 3.0  # seconds
         common_intt_ms = common_scanbound_spacing * 1.0e3 - 100  # reduce by 100 ms for processing
 
         slices.append({  # slice_id = 0, the first slice
@@ -50,15 +50,15 @@ class InterleaveSound(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,
             # this scanbound will be aligned because len(beam_order) = len(scanbound)
-            "scanbound" : [i * common_scanbound_spacing for i in range(len(beams_to_use))],
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "scanbound": [i * common_scanbound_spacing for i in range(len(beams_to_use))],
+            "txfreq": scf.COMMON_MODE_FREQ_1, # kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
-            "lag_table": scf.STD_8P_LAG_TABLE, # lag table needed for 8P since not all lags used.
+            "lag_table": scf.STD_8P_LAG_TABLE,  # lag table needed for 8P since not all lags used.
         })
 
-        sounding_scanbound_spacing = 1.5 # seconds
+        sounding_scanbound_spacing = 1.5  # seconds
         sounding_intt_ms = sounding_scanbound_spacing * 1.0e3 - 250
 
         sounding_scanbound = [48 + i * sounding_scanbound_spacing for i in range(8)]
@@ -72,18 +72,24 @@ class InterleaveSound(ExperimentPrototype):
                 "intt": sounding_intt_ms,  # duration of an integration, in ms
                 "beam_angle": scf.STD_16_BEAM_ANGLE,
                 "beam_order": sounding_beams,
-                "scanbound" : sounding_scanbound,
-                "txfreq" : freq,
+                "scanbound": sounding_scanbound,
+                "txfreq": freq,
                 "acf": True,
                 "xcf": True,  # cross-correlation processing
                 "acfint": True,  # interferometer acfs
-                "lag_table": scf.STD_8P_LAG_TABLE, # lag table needed for 8P since not all lags used.
+                "lag_table": scf.STD_8P_LAG_TABLE,  # lag table needed for 8P since not all lags used
                 })
 
-        super(InterleaveSound, self).__init__(cpid, comment_string=InterleaveSound.__doc__)
+        sum_of_freq = 0
+        for slice in slices:
+            sum_of_freq += slice['txfreq']  # kHz, oscillator mixer frequency on the USRP for TX
+        rxctrfreq = txctrfreq = int(sum_of_freq / len(slices))
+
+        super(InterleaveSound, self).__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq,
+                                              comment_string=InterleaveSound.__doc__)
 
         self.add_slice(slices[0])
-        self.add_slice(slices[1], {0:'SCAN'})
-        for slice_num in range(2,len(slices)):
-            self.add_slice(slices[slice_num], {1:'INTTIME'})
+        self.add_slice(slices[1], {0: 'SCAN'})
+        for slice_num in range(2, len(slices)):
+            self.add_slice(slices[slice_num], {1: 'INTTIME'})
 
