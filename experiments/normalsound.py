@@ -19,7 +19,7 @@ class NormalSound(ExperimentPrototype):
     def __init__(self):
         cpid = 157
 
-        sounding_beams = [0,2,4,6,8,10,12,14]
+        sounding_beams = [0,2,4,6,8,10,12,14,1,3,5,7,9,11,13,15]
 
         if scf.IS_FORWARD_RADAR:
             beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
