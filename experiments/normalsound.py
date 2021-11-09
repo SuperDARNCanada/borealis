@@ -51,6 +51,9 @@ class NormalSound(ExperimentPrototype):
 
         sounding_scanbound_spacing = 1.5 # seconds
         sounding_intt_ms = sounding_scanbound_spacing * 1.0e3 - 250
+        
+        freqrange = (max(scf.SOUNDING_FREQS) - min(scf.SOUNDING_FREQS)) / 2
+        centerfreq = min(scf.SOUNDING_FREQS) + freqrange
 
         sounding_scanbound = [48 + i * sounding_scanbound_spacing for i in range(8)]
         for num, freq in enumerate(scf.SOUNDING_FREQS):
@@ -71,11 +74,7 @@ class NormalSound(ExperimentPrototype):
                 "lag_table": scf.STD_8P_LAG_TABLE, # lag table needed for 8P since not all lags used.
                 })
 
-        sum_of_freq = 0
-        for slice in slices:
-            sum_of_freq += slice['txfreq'] 
-        rxctrfreq = txctrfreq = int(sum_of_freq/len(slices))
-        super(NormalSound, self).__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq, comment_string=NormalSound.__doc__)
+        super(NormalSound, self).__init__(cpid, txctrfreq=centerfreq, rxctrfreq=centerfreq, comment_string=NormalSound.__doc__)
 
         self.add_slice(slices[0])
         self.add_slice(slices[1], {0:'SCAN'})
