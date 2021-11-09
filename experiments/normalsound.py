@@ -19,7 +19,7 @@ class NormalSound(ExperimentPrototype):
     def __init__(self):
         cpid = 157
 
-        sounding_beams = [0,2,4,6,8,10,12,14]
+        sounding_beams = [0,2,4,6,8,10,12,14,1,3,5,7,9,11,13,15]
 
         if scf.IS_FORWARD_RADAR:
             beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
@@ -71,7 +71,11 @@ class NormalSound(ExperimentPrototype):
                 "lag_table": scf.STD_8P_LAG_TABLE, # lag table needed for 8P since not all lags used.
                 })
 
-        super(NormalSound, self).__init__(cpid, comment_string=NormalSound.__doc__)
+        sum_of_freq = 0
+        for slice in slices:
+            sum_of_freq += slice['txfreq'] 
+        rxctrfreq = txctrfreq = int(sum_of_freq/len(slices))
+        super(NormalSound, self).__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq, comment_string=NormalSound.__doc__)
 
         self.add_slice(slices[0])
         self.add_slice(slices[1], {0:'SCAN'})
