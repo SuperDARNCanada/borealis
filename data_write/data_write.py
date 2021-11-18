@@ -792,11 +792,11 @@ class DataWrite(object):
 
                 # First range offset in samples
                 sample_off = parameters['first_range_rtt'] * 1e-6 * parameters['rx_sample_rate']
-                sample_off = np.int32(sample_off)
+                sample_off = np.uint32(sample_off)
 
                 # Find sample number which corresponds with second pulse in sequence
                 tau_in_samples = parameters['tau_spacing'] * 1e-6 * parameters['rx_sample_rate']
-                second_pulse_sample_num = np.int32(tau_in_samples) * parameters['pulses'][1] - sample_off - 1
+                second_pulse_sample_num = np.uint32(tau_in_samples) * parameters['pulses'][1] - sample_off - 1
 
                 # Average the data
                 if averaging_method == 'mean':
