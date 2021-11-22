@@ -113,7 +113,10 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - source $BOREALISPATH/borealisrt_env/bin/activate
     - pip install zmq
     - pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter
-    - pip3 install pydarnio
+    - cd $HOME
+    - git clone https://github.com/SuperDARN/pyDARNio.git
+    - cd pyDARNio
+    - pip install .
     - deactivate
 
 #. Install the necessary software to convert and move/copy data:
