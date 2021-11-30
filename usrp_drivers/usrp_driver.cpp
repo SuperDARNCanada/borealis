@@ -37,9 +37,6 @@
 #define SET_TIME_COMMAND_DELAY 5e-3 // seconds
 #define TUNING_DELAY 300e-3 // seconds
 
-// GPS clock variable. Gets updated every time an RX packet is recvd.
-uhd::time_spec_t box_time;
-
 
 /**
  * @brief      Makes a set of vectors of the samples for each TX channel from the driver packet.
@@ -256,9 +253,9 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
       pulse_ptrs[i] = ptrs;
     }
 
-    // Getting usrp box time to find out when to send samples. box_time continously being updated.
+    // Getting usrp box time to find out when to send samples.
     auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
-    auto time_now = box_time;
+    auto time_now = usrp_d.get_current_usrp_time();
     auto sequence_start_time = time_now + delay;
 
     auto seqn_sampling_time = num_recv_samples/rx_rate;
@@ -368,7 +365,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
 
 
-    auto end_time = box_time;
+    auto end_time = usrp_d.get_current_usrp_time();
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
 
@@ -387,7 +384,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     samples_metadata.set_ringbuffer_size(ringbuffer_size);
     samples_metadata.set_numberofreceivesamples(num_recv_samples);
     samples_metadata.set_sequence_num(sqn_num);
-    auto actual_finish = box_time;
+    auto actual_finish = usrp_d.get_current_usrp_time();
     samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs());
 
     for (auto &mobo_pins : pin_status_h) {
@@ -494,7 +491,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
       start_trigger.send(start_time);
       first_time = false;
     }
-    box_time = meta.time_spec;
     auto error_code = meta.error_code;
 
     switch(error_code) {
