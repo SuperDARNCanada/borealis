@@ -849,9 +849,16 @@ class DataWrite(object):
             # Pop these off so we dont include them in later iteration.
             data_descriptors = bfiq.pop('data_descriptors', None)
 
+            pulse_phase_offsets = {}
+
+            for meta in integration_meta.sequences:
+                for rx_freq in meta.rxchannel:
+                    pulse_phase_offsets[rx_freq.slice_id] = list(rx_freq.sequence_encodings)
+
             for slice_id in bfiq:
                 parameters = parameters_holder[slice_id]
 
+                parameters['pulse_phase_offset'] = pulse_phase_offsets[slice_id]
                 parameters['data_descriptors'] = data_descriptors
                 parameters['antenna_arrays_order'] = []
 
@@ -917,10 +924,13 @@ class DataWrite(object):
             # Parse the antennas from protobuf
             rx_main_antennas = {}
             rx_intf_antennas = {}
+            pulse_phase_offsets = {}
+
             for meta in integration_meta.sequences:
                 for rx_freq in meta.rxchannel:
                     rx_main_antennas[rx_freq.slice_id] = list(rx_freq.rx_main_antennas)
                     rx_intf_antennas[rx_freq.slice_id] = list(rx_freq.rx_intf_antennas)
+                    pulse_phase_offsets[rx_freq.slice_id] = list(rx_freq.sequence_encodings)
 
             # Build strings from antennas used in the protobuf. This will be used to know
             # what antennas were recorded on since we sample all available USRP channels
@@ -944,6 +954,8 @@ class DataWrite(object):
 
                     parameters['antenna_arrays_order'] = rx_main_antennas[slice_id] + \
                                                          rx_intf_antennas[slice_id]
+
+                    parameters['pulse_phase_offset'] = pulse_phase_offsets[slice_id]
 
                     num_ants = len(parameters['antenna_arrays_order'])
 
