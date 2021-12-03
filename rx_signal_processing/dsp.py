@@ -236,6 +236,21 @@ class DSP(object):
             # [num_range_gates, num_lags, num_beams]
             values_for_slice = np.einsum('ijk->kij', values_for_slice)
 
+            if len(s['pulse_phase_offset']) == len(s['pulses']):
+                lag1_indices = [list(s['pulses']).index(val) for val in s['lags'][:, 0]]
+                lag2_indices = [list(s['pulses']).index(val) for val in s['lags'][:, 1]]
+
+                # phase offset of first pulse - phase offset of second pulse, for all lag pairs
+                # [num_lags]
+                angle_offsets = [(s['pulse_phase_offset'][lag1_indices[i]] - s['pulse_phase_offset'][lag2_indices[i]])
+                                 for i in range(len(lag1_indices))]
+
+                # [num_lags]
+                phase_offsets = xp.exp(1j * np.array(angle_offsets, np.float64))
+
+                # [num_beams, num_range_gates, num_lags]
+                values_for_slice = xp.einsum('ijk,k->ijk', values_for_slice, phase_offsets)
+                
             # [num_beams, num_range_gates, num_lags]
             values.append(values_for_slice)
 
