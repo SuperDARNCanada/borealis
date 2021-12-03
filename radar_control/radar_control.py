@@ -144,7 +144,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
 def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                       brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
                       slice_dict, beam_dict, sequence_time, first_rx_sample_start,
-                      main_antenna_count, rxctrfreq, decimation_scheme=None):
+                      main_antenna_count, rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
         Happens every sequence.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
@@ -167,6 +167,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
              tx data.
         :param main_antenna_count: number of main array antennas, from the config file.
         :param rxctrfreq: the center frequency of receiving, to send the translation frequency from center to dsp.
+        :param pulse_phase_offsets: Phase offsets (degrees) applied to each pulse in the sequence
         :param decimation_scheme: object of type DecimationScheme that has all decimation and
              filtering data.
 
@@ -203,6 +204,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
         chan_add.first_range = slice_dict[slice_id]['first_range']
         chan_add.range_sep = slice_dict[slice_id]['range_sep']
+        chan_add.phase_offsets = pulse_phase_offsets
 
         main_bms = beam_dict[slice_id]['main']
         intf_bms = beam_dict[slice_id]['intf']
@@ -773,6 +775,7 @@ def radar():
                                               rx_beam_phases, sequence.seqtime,
                                               sequence.first_rx_sample_start,
                                               options.main_antenna_count, experiment.rxctrfreq,
+                                              sequence.output_encodings,
                                               decimation_scheme)
 
                             if TIME_PROFILE:
