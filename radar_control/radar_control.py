@@ -204,7 +204,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
         chan_add.first_range = slice_dict[slice_id]['first_range']
         chan_add.range_sep = slice_dict[slice_id]['range_sep']
-        chan_add.phase_offsets = pulse_phase_offsets
+        chan_add.phase_offsets.extend(pulse_phase_offsets)
 
         main_bms = beam_dict[slice_id]['main']
         intf_bms = beam_dict[slice_id]['intf']

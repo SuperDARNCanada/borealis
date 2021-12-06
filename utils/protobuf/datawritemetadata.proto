@@ -49,7 +49,7 @@ message IntegrationTimeMetadata {
       }
 
       message SequenceEncoding {
-        repeated float encoding_value = 1; // num_pulses x encoding length (1 OR num_samps)
+        repeated float encoding_value = 1; // repeated val for each pulse
       }
 
       message Beam {
