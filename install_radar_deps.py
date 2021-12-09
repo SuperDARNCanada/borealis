@@ -349,7 +349,10 @@ def install_realtime():
     "source $BOREALISPATH/borealisrt_env/bin/activate;" \
     "pip install zmq;" \
     "pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
-    "pip install pydarn;" \
+    "cd $HOME;" \
+    "git clone https://github.com/SuperDARN/pyDARNio.git;" \
+    "cd pyDARNio;" \
+    "pip install .;" \
     "deactivate;\""
 
     execute_cmd(rt_cmd)
