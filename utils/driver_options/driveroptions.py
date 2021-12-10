@@ -1,9 +1,11 @@
 # Copyright 2021 SuperDARN Canada
 import json
 import os
+import numpy as np
 
 borealis_path = os.environ['BOREALISPATH']
 config_file = borealis_path + '/config.ini'
+
 
 class DriverOptions(object):
     """
@@ -23,8 +25,8 @@ class DriverOptions(object):
 
             # self._site_id = config['site_id']
 
-            self._gps_octoclock_addr = config['gsp_octoclock_addr']
-            self._devices = config['devices']
+            self._gps_octoclock_addr = str(config['gsp_octoclock_addr'])
+            self._devices = str(config['devices'])
 
             self._main_antenna_count = int(config['main_antenna_count'])
             self._intf_antenna_count = int(config['interferometer_antenna_count'])
@@ -45,30 +47,30 @@ class DriverOptions(object):
             # # 125 us is approx two TX/RX times
             # self._minimum_pulse_separation = float(config['minimum_pulse_separation'])  # us
 
-            self._tx_subdev = config['tx_subdev']
+            self._tx_subdev = str(config['tx_subdev'])
 
             # self._max_tx_sample_rate = float(config['max_tx_sample_rate'])
 
-            self._main_rx_subdev = config['main_rx_subdev']
-            self._intf_rx_subdev = config['interferometer_rx_subdev']
+            self._main_rx_subdev = str(config['main_rx_subdev'])
+            self._intf_rx_subdev = str(config['interferometer_rx_subdev'])
 
             # self._max_rx_sample_rate = float(config['max_rx_sample_rate'])
 
-            self._pps = config['pps']
-            self._ref = config['ref']
-            self._over_the_wire = config['overthewire']
-            self._cpu = config['cpu']
-            self._gpio_bank_high = config['gpio_bank_high']
-            self._gpio_bank_low = config['gpio_bank_low']
+            self._pps = str(config['pps'])
+            self._ref = str(config['ref'])
+            self._over_the_wire = str(config['overthewire'])
+            self._cpu = str(config['cpu'])
+            self._gpio_bank_high = str(config['gpio_bank_high'])
+            self._gpio_bank_low = str(config['gpio_bank_low'])
 
             # Addresses of registers for reading/writing
-            self._atr_rx = config['atr_rx']
-            self._atr_tx = config['atr_tx']
-            self._atr_xx = config['atr_xx']
-            self._atr_0x = config['atr_0x']
-            self._tst_md = config['txt_md']
-            self._lo_pwr = config['lo_pwr']
-            self._agc_st = config['agc_st']
+            self._atr_rx = np.uint32(config['atr_rx'])
+            self._atr_tx = np.uint32(config['atr_tx'])
+            self._atr_xx = np.uint32(config['atr_xx'])
+            self._atr_0x = np.uint32(config['atr_0x'])
+            self._tst_md = np.uint32(config['txt_md'])
+            self._lo_pwr = np.uint32(config['lo_pwr'])
+            self._agc_st = np.uint32(config['agc_st'])
 
             # self._max_usrp_dac_amplitude = float(config['max_usrp_dac_amplitude'])
             # self._pulse_ramp_time = float(config['pulse_ramp_time'])  # in seconds
@@ -84,7 +86,7 @@ class DriverOptions(object):
             # self._max_number_of_filtering_stages = int(config['max_number_of_filtering_stages'])
             # self._max_number_of_filter_taps_per_stage = int(config['max_number_of_filter_taps_per_stage'])
 
-            self._router_address = config['router_address']
+            self._router_address = str(config['router_address'])
 
             # self._realtime_address = config['realtime_address']
             # self._radctrl_to_exphan_identity = str(config["radctrl_to_exphan_identity"])
