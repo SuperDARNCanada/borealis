@@ -4,7 +4,7 @@ Original Auth: Keith Kotyk
 Modified: Dec. 9, 2021 by Remington Rohel
 
 This file was adapted into Python in December 2021 by Remington Rohel, based
-off of the file usrp_driver.cpp written by Keith Kotyk.
+off of the files usrp.cpp and usrp.hpp written by Keith Kotyk.
 """
 import time
 import numpy as np
