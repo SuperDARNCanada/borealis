@@ -711,13 +711,31 @@ class DataWrite(object):
                 # so we get median of all sequences.
                 averaging_method = parameters['averaging_method']
                 array_2d = np.array(x, dtype=np.complex64)
+                num_beams, num_ranges, num_lags = parameters['correlation_dimensions']
+
+                # First range offset in samples
+                sample_off = parameters['first_range_rtt'] * 1e-6 * parameters['rx_sample_rate']
+                sample_off = np.uint32(sample_off)
+
+                # Find sample number which corresponds with second pulse in sequence
+                tau_in_samples = parameters['tau_spacing'] * 1e-6 * parameters['rx_sample_rate']
+                second_pulse_sample_num = np.uint32(tau_in_samples) * parameters['pulses'][1] - sample_off - 1
+
+                # Average the data
                 if averaging_method == 'mean':
                     array_expectation_value = np.mean(array_2d, axis=0)
                 elif averaging_method == 'median':
                     array_expectation_value = np.median(array_2d, axis=0)
                 else:
                     raise ValueError('Averaging Method could not be executed: {}'.format(averaging_method))
-                parameters[field_name] = array_expectation_value
+
+                # Reshape array to be 3d so we can replace lag0 far ranges that are cluttered with those
+                # from alternate lag0 which have no clutter.
+                array_3d = array_expectation_value.reshape((num_beams, num_ranges, num_lags))
+                array_3d[:, second_pulse_sample_num:, 0] = array_3d[:, second_pulse_sample_num:, -1]
+
+                # Flatten back to a list
+                parameters[field_name] = array_3d.flatten()
 
             for slice_id in main_acfs:
                 parameters = parameters_holder[slice_id]
