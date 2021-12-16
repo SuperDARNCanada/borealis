@@ -10,7 +10,7 @@ import numpy as np
 import uhd
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 import zmq
 
@@ -45,8 +45,11 @@ tuning_delay = 300e-3           # seconds
 
 # Module clocks: one for box_time (from the N200s, supplied by Octoclock-G)
 # as well as one for the operating system time (by NTP). Updated upon recv of RX packet.
-box_time = uhd.types.TimeSpec()
-# system_time = ???
+borealis_clocks = {
+    'box_time': uhd.types.TimeSpec(),
+    'system_time': datetime.fromtimestamp(0, tz=timezone.utc)
+}
+
 
 def make_tx_samples(driver_packet: DriverPacket, driver_options: DriverOptions):
     """Makes a set of vectors of the samples for each TX channel from the driver packet.
@@ -79,7 +82,8 @@ def make_tx_samples(driver_packet: DriverPacket, driver_options: DriverOptions):
 
         return samples
 
-def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
+
+def transmit(driver_c: zmq.Context, usrp_d: usrp.USRP, driver_options: DriverOptions):
     tx_print("Enter transmit thread")
 
     identities = [driver_options.driver_to_radctrl_identity,
@@ -97,12 +101,12 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
 
     rx_rate = usrp_d.get_rx_rate(receive_channels[0])
 
-    # driverpacket::DriverPacket
-    # driver_packet;
-    #
-    # zmq::socket_t
-    # start_trigger(driver_c, ZMQ_PAIR);
-    # ERR_CHK_ZMQ(start_trigger.connect("inproc://thread"))
+    start_trigger = driver_c.socket(zmq.PAIR)
+    try:
+        start_trigger.connect("inproc://thread")
+    except zmq.ZMQError as e:
+        # TODO: Handle error
+        pass
 
     tx_channels = driver_options.transmit_channels
     tx_stream = usrp_d.get_usrp_tx_stream
@@ -111,49 +115,41 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
     # std::vector < std::vector < std::complex < float >> > last_pulse_sent;
 
     tx_center_freq = usrp_d.get_tx_center_freq(tx_channels[0])
-    tx_center_freq = usrp_d.get_rx_center_freq(receive_channels[0])
+    rx_center_freq = usrp_d.get_rx_center_freq(receive_channels[0])
 
     sqn_num = 0
     expected_sqn_num = 0
-    #
-    # uint32_t num_recv_samples;
-    #
-    # size_t ringbuffer_size;
-    #
-    # uhd::time_spec_t sequence_start_time;
-    # uhd::time_spec_t initialization_time;
 
     agc_signal_read_delay = driver_options.agc_signal_read_delay * 1e-6
 
-    # auto clocks = borealis_clocks
-    # auto system_since_epoch = std::chrono::duration<double>(clocks.system_time.time_since_epoch());
-    # auto gps_to_system_time_diff = system_since_epoch.count() - clocks.box_time.get_real_secs();
-    #
-    # zmq::message_t request;
-    #
-    # start_trigger.recv(&request);
-    #   memcpy(&ringbuffer_size, static_cast<size_t*>(request.data()), request.size());
-    #
-    #   start_trigger.recv(&request);
-    #   memcpy(&initialization_time, static_cast<uhd::time_spec_t*>(request.data()), request.size());
+    clocks = borealis_clocks
+    system_since_epoch = datetime.now(tz=timezone.utc)
+    gps_to_system_time_diff = system_since_epoch - datetime.fromtimestamp(clocks['box_time'].get_real_secs(),
+                                                                          tz=timezone.utc)
+
+    request = start_trigger.recv()
+    ringbuffer_size = np.uint32(request)
+
+    request = start_trigger.recv()
+    initialization_time = uhd.types.TimeSpec(np.float64(request))
 
     # This loop accepts pulse by pulse from the radar_control. It parses the samples, configures the
     # USRP, sets up the timing, and then sends samples/timing to the USRPs.
 
     while True:
         more_pulses = True
-#     std::vector<double> time_to_send_samples;
+        time_to_send_samples = []
         agc_status_bank_h = 0b0
         lp_status_bank_h = 0b0
         agc_status_bank_l = 0b0
         lp_status_bank_l = 0b0
         while more_pulses:
-            pulse_data = so.recv_data(driver_to_radctrl, driver_options.radctrl_to_driver_identity)
+            pulse_data = so.recv_data(driver_to_radctrl, driver_options.radctrl_to_driver_identity, tx_print)
 #
             # Here we accept our driver_packet from the radar_control. We use that info in order to
             # configure the USRP devices based on experiment requirements.
             if __debug__:
-                tx_setup_start_time = time.monotonic_ns()
+                tx_setup_start_time = datetime.now(tz=timezone.utc)
             driver_packet = driverpacket_pb2.DriverPacket()
             if not driver_packet.ParseFromString(pulse_data):
                 # TODO: Handle error
@@ -169,7 +165,7 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
             if __debug__:
                 tx_print("Burst flags: SOB {} EOB {}".format(driver_packet.sob, driver_packet.eob))
 
-            set_ctr_freq_start = time.monotonic_ns()
+            set_ctr_freq_start = datetime.now(tz=timezone.utc)
 
             # If there is new center frequency data, set TX center frequency for each USRP TX channel.
             if tx_center_freq != driver_packet.txcenterfreq:
@@ -179,7 +175,6 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
                     tx_center_freq = usrp_d.set_tx_center_freq(driver_packet.txcenterfreq, tx_channels,
                                                                uhd.types.TimeSpec(tuning_delay))
 
-
             # rxcenterfreq() will return 0 if it hasn't changed, so check for changes here
             if rx_center_freq != driver_packet.rxcenterfreq:
                 if driver_packet.rxcenterfreq > 0.0 and driver_packet.sob:
@@ -188,31 +183,31 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
                     rx_center_freq = usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq, receive_channels,
                                                                uhd.types.TimeSpec(tuning_delay))
 
-            set_ctr_freq_end = time.monotonic_ns()
+            set_ctr_freq_end = datetime.now(tz=timezone.utc)
             set_ctr_freq_duration = set_ctr_freq_end - set_ctr_freq_start
-            tx_print("Center Frequency set time: {} us".format(set_ctr_freq_duration/1e3))
+            tx_print("Center Frequency set time: {} us".format(set_ctr_freq_duration.microseconds))
 
-            sample_unpack_start = time.monotonic_ns()
+            sample_unpack_start = datetime.now(tz=timezone.utc)
 
             if driver_packet.sob:
-                pulses.clear()
+                pulses = []
             # Parse new samples from driver packet if they exist.
             if driver_packet.channel_samples.size > 0:
                 # ~700 us to unpack 4x1600 samples (with C++ driver)
                 last_pulse_sent = make_tx_samples(driver_packet, driver_options)
                 samples_set = True
-            pulses.push_back(last_pulse_sent)
+            pulses.append(last_pulse_sent)
 
-            sample_unpack_end = time.monotonic_ns()
+            sample_unpack_end = datetime.now(tz=timezone.utc)
             sample_unpack_duration = sample_unpack_end - sample_unpack_start
-            tx_print("Sample unpack time: {} us".format(sample_unpack_duration/1e3))
+            tx_print("Sample unpack time: {} us".format(sample_unpack_duration.microseconds))
 
-            tx_setup_end_time = time.monotonic_ns()
+            tx_setup_end_time = datetime.now(tz=timezone.utc)
             tx_setup_duration = tx_setup_end_time - tx_setup_start_time
 
-            tx_print("Total setup time: {} us".format(tx_setup_duration/1e3))
+            tx_print("Total setup time: {} us".format(tx_setup_duration.microseconds))
 
-            time_to_send_samples.push_back(driver_packet.timetosendsamples)
+            time_to_send_samples.append(driver_packet.timetosendsamples)
 
             if driver_packet.sob:
                 num_recv_samples = driver_packet.numberofreceivesamples
@@ -223,6 +218,8 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
         if not samples_set:
             # TODO: Throw error
             continue
+
+        pulses = np.array(pulses)
 
         # If grabbing start of vector using samples[i] it doesn't work (samples are firked)
         # You need to grab the ptr to the vector using samples[a][b].data(). See tx_waveforms
@@ -238,12 +235,12 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
 
         # Getting usrp box time to find out when to send samples. box_time continuously being updated.
         delay = uhd.types.TimeSpec(set_time_command_delay)
-        time_now = box_time
+        time_now = clocks['box_time']
         sequence_start_time = time_now + delay
 
         seqn_sampling_time = num_recv_samples / rx_rate
 
-        full_usrp_start = time.monotonic_ns()
+        full_usrp_start = datetime.now(tz=timezone.utc)
 
         # Here we are time-aligning our time_zero to the start of a sample. Do this by recalculating
         # time_zero using the calculated value of start_sample.
@@ -254,7 +251,7 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
 
         sequence_start_time = initialization_time + time_from_initialization
 
-        sending_samples_start = time.monotonic_ns()
+        sending_samples_start = datetime.now(tz=timezone.utc)
 
         for i in range(pulses.size):
             md = uhd.types.TXMetadata()
@@ -270,7 +267,7 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
             # 0.1 seconds.
             samples_per_pulse = pulses[i][0].size
 
-            time_to_send_pulse_start = time.monotonic_ns()
+            time_to_send_pulse_start = datetime.now(tz=timezone.utc)
             total_samps_sent = 0
             while total_samps_sent < samples_per_pulse:
                 num_samps_to_send = samples_per_pulse - total_samps_sent
@@ -287,9 +284,9 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
             md.set_end_of_burst(True)
             tx_stream.send("", 0, md.get_md())
 
-        time_to_send_pulse_end = time.monotonic_ns()
+        time_to_send_pulse_end = datetime.now(tz=timezone.utc)
         time_to_send_pulse_duration = time_to_send_pulse_end - time_to_send_pulse_start
-        tx_print("Time to send pulse {} to USRP: {} us".format(i, time_to_send_pulse_duration / 1e3))
+        tx_print("Time to send pulse {} to USRP: {} us".format(i, time_to_send_pulse_duration.microseconds))
 
         # Read AGC and Low Power signals, bitwise OR to catch any time the signals are active during this
         # sequence for each USRP individually.
@@ -329,20 +326,20 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
                 tx_print("Sequence {} got {} lates out of {} channels for pulse {}"
                          "".format(sqn_num, channel_lates, tx_channels.size, i))
 
-        sending_samples_end = time.monotonic_ns()
+        sending_samples_end = datetime.now(tz=timezone.utc)
         sending_samples_duration = sending_samples_end - sending_samples_start
-        # tx_print("")
+        tx_print("Time to send all samples to USRP: {} us".format(sending_samples_duration.microseconds))
 
-        full_usrp_end = time.monotonic_ns()
+        full_usrp_end = datetime.now(tz=timezone.utc)
         full_usrp_duration = full_usrp_end - full_usrp_start
-        tx_print("Full USRP time stuff: {} us".format(full_usrp_duration / 1e3))
+        tx_print("Full USRP time stuff: {} us".format(full_usrp_duration.microseconds))
 
         samples_metadata = uhd.types.RXMetadata()
 
         clocks = borealis_clocks
-        # system_since_epoch = std::chrono::duration<double>(clocks.system_time.time_since_epoch());
-        # get_real_secs() may lose precision of the fractional seconds, but it's close enough
-        # gps_to_system_time_diff = system_since_epoch.count() - clocks.box_time.get_real_secs();
+        system_since_epoch = datetime.now(tz=timezone.utc)
+        gps_to_system_time_diff = system_since_epoch - datetime.fromtimestamp(clocks['box_time'].get_real_secs(),
+                                                                              tz=timezone.utc)
 
         samples_metadata.set_gps_locked(usrp_d.gps_locked())
         samples_metadata.set_gps_to_system_time_diff(gps_to_system_time_diff)
@@ -350,7 +347,7 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
         if not usrp_d.gps_locked():
             tx_print("GPS Unlocked! Time diff: {} ms".format(gps_to_system_time_diff * 1000.0))
 
-        end_time = borealis_clocks.box_time
+        end_time = borealis_clocks['box_time']
 
         # sleep_time is how much longer we need to wait in tx thread before the end of the sampling time
         sleep_time = uhd.types.TimeSpec(seqn_sampling_time) - (end_time - sequence_start_time) + delay
@@ -369,7 +366,7 @@ def transmit(usrp_d: usrp.USRP, driver_options: DriverOptions):
         samples_metadata.set_ringbuffer_size(ringbuffer_size)
         samples_metadata.set_numberofreceivesamples(num_recv_samples)
         samples_metadata.set_sequence_num(sqn_num)
-        actual_finish = borealis_clocks.box_time
+        actual_finish = borealis_clocks['box_time']
         samples_metadata.set_sequence_time((actual_finish - time_now).get_real_secs())
 
         samples_metadata.set_agc_status_bank_h(agc_status_bank_h)
@@ -403,7 +400,7 @@ def receive(driver_c: zmq.Context, usrp_d: usrp.USRP, driver_options: DriverOpti
     if __debug__:
         rx_print("Entering receive thread.")
 
-    start_trigger = zmq.Socket(driver_c, zmq.PAIR)
+    start_trigger = driver_c.socket(zmq.PAIR)
     try:
         start_trigger.bind("inproc://thread")
     except zmq.ZMQError as e:
@@ -451,27 +448,23 @@ def receive(driver_c: zmq.Context, usrp_d: usrp.USRP, driver_options: DriverOpti
     align_count = 0
     badp_count = 0
 
-    rx_rate = usrp_d.get_rx_rate()
+    rx_rate = usrp_d.get_rx_rate(0)
 
-    ring_size = len(ringbuffer_size)
-    #   zmq::message_t ring_size(sizeof(ringbuffer_size));
-    #   memcpy(ring_size.data(), &ringbuffer_size, sizeof(ringbuffer_size));
-    start_trigger.send(ring_size)
+    start_trigger.send(ringbuffer_size)
 
     # This loop receives 1 pulse sequence worth of samples.
     first_time = True
     while True:
         # 3.0 is the timeout in seconds for the recv call, arbitrary number
-        num_rx_samples = rx_stream.recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, True)
+        # num_rx_samples = rx_stream.recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, True)
+        num_rx_samples = rx_stream.recv(buffer_ptrs, meta, timeout=3.0)
 
         if first_time:
-            start_time = len(meta.time_spec)
-            # memcpy(start_time.data(), &meta.time_spec, sizeof(meta.time_spec));
-            start_trigger.send(start_time)
+            start_trigger.send(meta.time_spec)
             first_time = False
 
         # borealis_clocks.system_time = std::chrono::system_clock::now();
-        borealis_clocks.box_time = meta.time_spec
+        borealis_clocks['box_time'] = meta.time_spec
         error_code = meta.error_code
 
         if error_code == uhd.types.RXMetadataErrorCode.none:
@@ -525,18 +518,18 @@ def uhd_safe_main():
         driver_print("REF: {}".format(driver_options.ref))
         driver_print("TX Subdev: {}".format(driver_options.tx_subdev))
 
-    driver_context = zmq.Context(1)
     identities = [driver_options.driver_to_radctrl_identity]
 
-    sockets_vector = create_sockets[driver_context, identities, driver_options.router_address]
+    sockets_vector = so.create_sockets(identities, driver_options.router_address)
 
     driver_to_radctrl = sockets_vector[0]
+    driver_context = zmq.Context().instance()
 
     # Begin setup process.
     # This exchange signals to radar control that the devices are ready to go so that it can begin processing
     # experiments without low averages in the first integration period.
 
-    setup_data = so.recv_data(driver_to_radctrl, driver_options.radctrl_to_driver_identity)
+    setup_data = so.recv_data(driver_to_radctrl, driver_options.radctrl_to_driver_identity, rx_print)
 
     driver_packet = DriverPacket()
     if not driver_packet.ParseFromString(setup_data):
@@ -555,7 +548,7 @@ def uhd_safe_main():
     driver_to_radctrl.close()
 
     transmit_thread = threading.Thread(target=transmit, args=(driver_context, usrp_d, driver_options))
-    receive_thread = threading.Thread(target=receive, args=(usrp_d, driver_options))
+    receive_thread = threading.Thread(target=receive, args=(driver_contect, usrp_d, driver_options))
 
     transmit_thread.daemon = True
     receive_thread.daemon = True
@@ -563,4 +556,4 @@ def uhd_safe_main():
     transmit_thread.start()
     receive_thread.start()
 
-    return EXIT_SUCCESS
+    return True
