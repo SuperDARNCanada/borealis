@@ -5,6 +5,8 @@ This file was adapted into Python in December 2021 by Remington Rohel, based
 off of the files usrp.cpp and usrp.hpp written previously.
 """
 import time
+from datetime import datetime, timezone
+
 import numpy as np
 import uhd
 
@@ -337,17 +339,13 @@ class USRP(object):
         :param  clk_addr:   IP address of the octoclock for gps timing.
         :type   clk_addr:   str
         """
-        # TODO: Figure out how to do this well in Python
-        # tt = time.perf_counter_ns()
-        # tt_sc = duration_cast(tt.time_since_epoch())
-        # while tt_sc.count() - floor(tt_sc.count()) < 0.2 or tt_sc.count() - math.floor(tt_sc.count()) > 0.3:
-        #     tt = high_resolution_clock.now()
-        #     tt_sc = duration_cast(tt.time_since_epoch())
-        #     usleep(10000)
+        tt = datetime.now(timezone.utc)
+        while tt.microsecond < 20000 or tt.microsecond > 30000:
+            tt = datetime.now(timezone.utc)
+            time.sleep(0.1)
 
         if source == 'external':
-            # TODO: Find out where the MultiUSRPClock class is
-            # self._gps_clock = uhd.usrp_clock.MultiUSRPClock(clk_addr)
+            self._gps_clock = uhd.usrp_clock.MultiUSRPClock(clk_addr)
 
             # Make sure clock configuration is correct
             if self._gps_clock.get_sensor("gps_detected").value == "false":
@@ -391,7 +389,7 @@ class USRP(object):
 
         else:
             # TODO: throw error
-            # self._usrp.set_time_now(math.ceil(tt_sc.count()))
+            self._usrp.set_time_now(uhd.types.TimeSpec((tt - datetime.fromtimestamp(0, timezone.utc)).total_seconds()))
             pass
 
     def check_ref_locked(self):
