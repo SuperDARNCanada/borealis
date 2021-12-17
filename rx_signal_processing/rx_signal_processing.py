@@ -267,9 +267,12 @@ def main():
 
         # First time configuration
         if first_time:
-            shm = ipc.SharedMemory(sig_options.ringbuffer_name)
-            mapped_mem = mmap.mmap(shm.fd, shm.size)
-            ringbuffer = np.frombuffer(mapped_mem, dtype=np.complex64).reshape(total_antennas, -1)
+            # shm = ipc.SharedMemory(sig_options.ringbuffer_name)
+            # mapped_mem = mmap.mmap(shm.fd, shm.size)
+            # ringbuffer = np.frombuffer(mapped_mem, dtype=np.complex64).reshape(total_antennas, -1)
+            ringbuffer_size = np.uint32(sig_options.ringbuffer_size / 8)
+            ringbuffer = np.memmap(sig_options.ringbuffer_name, dtype=np.complex64, mode='w+',
+                                   shape=(total_antennas, ringbuffer_size))
 
             if cupy_available:
                 cp.cuda.runtime.hostRegister(ringbuffer.ctypes.data, ringbuffer.size, 0)

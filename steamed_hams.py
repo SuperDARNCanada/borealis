@@ -165,8 +165,9 @@ else:
 
 #Configure python first
 modules= {"brian" : "", "experiment_handler" : "",
-                "radar_control" : "", "data_write" : "",
-                "realtime" : "", "rx_signal_processing" : ""}
+          "radar_control" : "", "data_write" : "",
+          "realtime" : "", "rx_signal_processing" : "",
+          "usrp_drivers" : ""}
 
 for mod in modules:
     opts = python_opts.format(module=mod)
@@ -182,9 +183,9 @@ else:
     modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type
     
 #Configure C progs
-c_progs = ['usrp_driver']
-for cprg in c_progs:
-    modules[cprg] = "source mode {}; {} {}".format(mode, c_debug_opts, cprg)
+# c_progs = ['usrp_driver']
+# for cprg in c_progs:
+#     modules[cprg] = "source mode {}; {} {}".format(mode, c_debug_opts, cprg)
 
 #Configure terminal output to also go to file.
 now = datetime.datetime.utcnow()
@@ -208,7 +209,7 @@ for mod in modules:
 screenrc = BOREALISSCREENRC.format(
     START_RT=modules['realtime'],
     START_BRIAN=modules['brian'],
-    START_USRP_DRIVER=modules['usrp_driver'],
+    START_USRP_DRIVER=modules['usrp_drivers'],
     START_DSP=modules['rx_signal_processing'],
     START_DATAWRITE=modules['data_write'],
     START_EXPHAN=modules['experiment_handler'],

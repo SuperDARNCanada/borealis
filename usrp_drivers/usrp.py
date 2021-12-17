@@ -5,13 +5,20 @@ This file was adapted into Python in December 2021 by Remington Rohel, based
 off of the files usrp.cpp and usrp.hpp written previously.
 """
 import time
+import sys
+import os
 from datetime import datetime, timezone
 
 import numpy as np
 import uhd
 
-import utils.shared_macros.shared_macros as sm
-from utils.driver_options.driveroptions import DriverOptions
+borealis_path = os.environ['BOREALISPATH']
+if not borealis_path:
+    raise ValueError("BOREALISPATH env variable not set")
+
+sys.path.append(borealis_path + '/utils/')
+import shared_macros.shared_macros as sm
+from driver_options.driveroptions import DriverOptions
 
 pprint = sm.MODULE_PRINT("n200 driver", "yellow")
 
@@ -68,7 +75,10 @@ class USRP(object):
         self._rx_rate = rx_rate
 
         # Reference to a new multi-USRP device.
+        usrp_initialization_start = datetime.now(tz=timezone.utc)
         self._usrp = uhd.usrp.MultiUSRP(driver_options.devices)
+        usrp_initialization_duration = datetime.now(tz=timezone.utc) - usrp_initialization_start
+        print("USRP Initialization: {} s".format(usrp_initialization_duration.total_seconds()))
 
         # Reference to a new multi-USRP-clock device.
         self._gps_clock = None
@@ -79,13 +89,20 @@ class USRP(object):
         # Reference to the multi-USRP receive stream.
         self._rx_stream = None
 
+        # Number of USRP devices in the multi-USRP object
+        self._num_mboards = self._usrp.get_num_mboards()
+
         # Set up the multiUSRP object with the driver options
+        usrp_setup_start = datetime.now(tz=timezone.utc)
         self.set_usrp_clock_source(driver_options.ref)
+        self.set_time_source(driver_options.pps, driver_options.clk_addr)
+        self.check_ref_locked()
+        print("Clock setup time: {} s".format((datetime.now(tz=timezone.utc) - usrp_setup_start).total_seconds()))
+
         self.set_tx_subdev(driver_options.tx_subdev)
         self.set_main_rx_subdev(driver_options.main_rx_subdev)
         self.set_intf_rx_subdev(driver_options.intf_rx_subdev, driver_options.intf_antenna_count)
-        self.set_time_source(driver_options.pps, driver_options.clk_addr)
-        self.check_ref_locked()
+
         self._set_atr_gpios()
         self._set_output_gpios()
         self._set_input_gpios()
@@ -96,8 +113,8 @@ class USRP(object):
         self.create_usrp_tx_stream(driver_options.cpu, driver_options.otw, driver_options.transmit_channels)
         self.create_usrp_rx_stream(driver_options.cpu, driver_options.otw, driver_options.receive_channels)
 
-        # Number of USRP devices in the multi-USRP object
-        self._num_mboards = self._usrp.get_num_mboards()
+        usrp_setup_duration = datetime.now(tz=timezone.utc) - usrp_setup_start
+        print("USRP Total setup time: {} s".format(usrp_setup_duration.total_seconds()))
 
     def set_usrp_clock_source(self, source: str):
         """Sets the USRP clock source.
@@ -113,7 +130,7 @@ class USRP(object):
         :param  tx_subdev:  A string for a valid transmit subdev.
         :type   tx_subdev:  str
         """
-        self._usrp.set_tx_subdev_spec(tx_subdev)
+        self._usrp.set_tx_subdev_spec(uhd.usrp.SubdevSpec(tx_subdev))
 
     def set_tx_rate(self, channels: list) -> float:
         """Sets the transmit sample rate.
@@ -213,7 +230,7 @@ class USRP(object):
         :param  main_subdev:    A valid receive subdev.
         :type   main_subdev:    str
         """
-        self._usrp.set_rx_subdev_spec(main_subdev)
+        self._usrp.set_rx_subdev_spec(uhd.usrp.SubdevSpec(main_subdev))
 
 # REVIEW #43 It would be best if we could have in the config file a map of direct antenna to USRP box/subdev/channel so you can change the interferometer to a different set of boxes for example. Also if a rx daughterboard stopped working and you needed to move both main and int to a totally different box for receive, then you could do that. This would be useful for both rx and tx channels.
 # REPLY OKAY, but maybe we should leave it for now. That's easier said than done.
@@ -229,7 +246,7 @@ class USRP(object):
         :type   intf_antenna_count: int
         """
         for i in range(intf_antenna_count):
-            self._usrp.set_rx_subdev_spec(intf_subdev, i)
+            self._usrp.set_rx_subdev_spec(uhd.usrp.SubdevSpec(intf_subdev), i)
 
     def set_rx_rate(self, rx_channels: list) -> float:
         """Sets the receive sample rate.
@@ -342,7 +359,7 @@ class USRP(object):
         tt = datetime.now(timezone.utc)
         while tt.microsecond < 20000 or tt.microsecond > 30000:
             tt = datetime.now(timezone.utc)
-            time.sleep(0.1)
+            time.sleep(0.05)
 
         if source == 'external':
             self._gps_clock = uhd.usrp_clock.MultiUSRPClock(clk_addr)
@@ -671,7 +688,7 @@ class TXMetadata(object):
         self._md.start_of_burst = False
         self._md.end_of_burst = False
         self._md.has_time_spec = False
-        self._md.time_spec = 0.0
+        self._md.time_spec = uhd.types.TimeSpec(0.0)
 
     def get_md(self) -> uhd.types.TXMetadata:
         """Gets the TX metadata object that can be sent to the USRPs.

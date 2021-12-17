@@ -41,6 +41,7 @@ class SignalProcessingOptions(object):
         self._exphan_dsp_identity = raw_config["exphan_to_dsp_identity"]
         self._dw_dsp_identity = raw_config["dw_to_dsp_identity"]
         self._ringbuffer_name = raw_config["ringbuffer_name"]
+        self._ringbuffer_size = float(raw_config["ringbuffer_size_bytes"])
 
         self._main_antenna_count = int(raw_config["main_antenna_count"])
         self._intf_antenna_count = int(raw_config["interferometer_antenna_count"])
@@ -187,6 +188,16 @@ class SignalProcessingOptions(object):
         :rtype:     str
         """
         return self._ringbuffer_name
+
+    @property
+    def ringbuffer_size(self):
+        """
+        Gets the shared memory ringbuffer size, in bytes.
+
+        :returns:   The ringbuffer size.
+        :rtype:     str
+        """
+        return self._ringbuffer_size
 
     @property
     def main_antenna_count(self):

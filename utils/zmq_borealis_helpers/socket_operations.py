@@ -8,6 +8,8 @@
 
 import sys
 import os
+
+import numpy as np
 import zmq
 import time
 from datetime import datetime, timedelta
@@ -110,6 +112,18 @@ def recv_bytes_from_any_iden(socket):
     return bytes_object
 
 
+def recv_array(socket, flags=0, copy=True, track=False):
+    """Receive a numpy array. 
+    
+    Copied from https://pyzmq.readthedocs.io/en/latest/serialization.html#using-your-own-serialization
+    """
+    md = socket.recv_json(flags=flags)
+    msg = socket.recv(flags=flags, copy=copy, track=track)
+    buf = memoryview(msg)
+    arr = np.frombuffer(buf, dtype=md['dtype'])
+    return arr.reshape(md['shape'])
+
+
 def send_bytes(socket, recv_iden, bytes_object):
     """Sends experiment to another identity.
 
@@ -122,6 +136,20 @@ def send_bytes(socket, recv_iden, bytes_object):
     """
     frames = [recv_iden.encode('utf-8'), b"", bytes_object]
     socket.send_multipart(frames)
+
+
+def send_array(socket, arr, flags=0, copy=True, track=False):
+    """Send a numpy array with metadata.
+
+    Copied from https://pyzmq.readthedocs.io/en/latest/serialization.html#using-your-own-serialization
+    """
+    md = {
+        'dtype': str(arr.dtype),
+        'shape': arr.shape,
+    }
+    socket.send_json(md, flags | zmq.SNDMORE)
+    return socket.send(arr, flags, copy=copy, track=track)
+
 
 send_pulse = send_obj = send_exp = send_bytes
 
