@@ -25,13 +25,13 @@ class DriverOptions(object):
 
             # self._site_id = config['site_id']
 
-            self._gps_octoclock_addr = str(config['gsp_octoclock_addr'])
+            self._gps_octoclock_addr = str(config['gps_octoclock_addr'])
             self._devices = str(config['devices'])
 
             self._main_antenna_count = int(config['main_antenna_count'])
             self._intf_antenna_count = int(config['interferometer_antenna_count'])
             self._main_antenna_usrp_rx_channels = [int(x) for x in config['main_antenna_usrp_rx_channels'].split(',')]
-            self._intf_antenna_usrp_rx_channels = [int(x) for x in config['intf_antenna_usrp_rx_channels'].split(',')]
+            self._intf_antenna_usrp_rx_channels = [int(x) for x in config['interferometer_antenna_usrp_rx_channels'].split(',')]
             self._total_rx_channels = self._main_antenna_usrp_rx_channels + self._intf_antenna_usrp_rx_channels
             self._main_antenna_usrp_tx_channels = [int(x) for x in config['main_antenna_usrp_tx_channels'].split(',')]
 
@@ -64,13 +64,13 @@ class DriverOptions(object):
             self._gpio_bank_low = str(config['gpio_bank_low'])
 
             # Addresses of registers for reading/writing
-            self._atr_rx = np.uint32(config['atr_rx'])
-            self._atr_tx = np.uint32(config['atr_tx'])
-            self._atr_xx = np.uint32(config['atr_xx'])
-            self._atr_0x = np.uint32(config['atr_0x'])
-            self._tst_md = np.uint32(config['txt_md'])
-            self._lo_pwr = np.uint32(config['lo_pwr'])
-            self._agc_st = np.uint32(config['agc_st'])
+            self._atr_rx = np.uint32(int(config['atr_rx'], 0))
+            self._atr_tx = np.uint32(int(config['atr_tx'], 0))
+            self._atr_xx = np.uint32(int(config['atr_xx'], 0))
+            self._atr_0x = np.uint32(int(config['atr_0x'], 0))
+            self._tst_md = np.uint32(int(config['tst_md'], 0))
+            self._lo_pwr = np.uint32(int(config['lo_pwr'], 0))
+            self._agc_st = np.uint32(int(config['agc_st'], 0))
 
             # self._max_usrp_dac_amplitude = float(config['max_usrp_dac_amplitude'])
             # self._pulse_ramp_time = float(config['pulse_ramp_time'])  # in seconds
