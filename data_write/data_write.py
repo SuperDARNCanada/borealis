@@ -788,7 +788,9 @@ class DataWrite(object):
                 # so we get median of all sequences.
                 averaging_method = parameters['averaging_method']
                 array_2d = np.array(x, dtype=np.complex64)
-                num_beams, num_ranges, num_lags = parameters['correlation_dimensions']
+                num_beams, num_ranges, num_lags = np.array([len(parameters["beam_nums"]),
+                                                            parameters["num_ranges"], parameters["lags"].shape[0]],
+                                                           dtype=np.uint32)
 
                 # First range offset in samples
                 sample_off = parameters['first_range_rtt'] * 1e-6 * parameters['rx_sample_rate']
