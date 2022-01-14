@@ -43,3 +43,4 @@
 bin/
 build/
 *.dat
+*.DS_Store

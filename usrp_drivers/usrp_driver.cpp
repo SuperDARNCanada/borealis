@@ -34,7 +34,7 @@
 
 
 //Delay needed for before any set_time_commands will work.
-#define SET_TIME_COMMAND_DELAY 5e-3 // seconds
+#define SET_TIME_COMMAND_DELAY 15e-3 // seconds
 #define TUNING_DELAY 300e-3 // seconds
 
 // GPS clock variable. Gets updated every time an RX packet is recvd.

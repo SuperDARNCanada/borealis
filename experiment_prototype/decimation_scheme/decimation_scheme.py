@@ -131,19 +131,19 @@ def create_default_scheme():
     :return DecimationScheme: a decimation scheme for use in experiment.
     """
 
-    rates = [5.0e6, 500.0e3, 100.0e3, 50.0e3/3]
-    dm_rates = [10, 5, 6, 5]
-    transition_widths = [150.0e3, 40.0e3, 15.0e3, 1.0e3]
-    cutoffs = [20.0e3, 10.0e3, 10.0e3, 5.0e3] # bandwidth is double this
-    ripple_dbs = [150.0, 80.0, 35.0, 9.0]
-    scaling_factors = [10.0, 100.0, 100.0, 100.0]
+    rates = [500.0e3, 100.0e3, 50.0e3/3]
+    dm_rates = [5, 6, 5]
+    transition_widths = [40.0e3, 15.0e3, 1.0e3]
+    cutoffs = [10.0e3, 10.0e3, 5.0e3] # bandwidth is double this
+    ripple_dbs = [80.0, 35.0, 9.0]
+    scaling_factors = [100.0, 100.0, 100.0]
     all_stages = []
 
-    for stage in range(0,4):
+    for stage in range(0,3):
         filter_taps = list(scaling_factors[stage] * create_firwin_filter_by_attenuation(rates[stage], transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
         all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], filter_taps))
 
-    return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
+    return (DecimationScheme(0.5e6, 10.0e3/3, stages=all_stages))
 
 
 def calculate_num_filter_taps(sampling_freq, trans_width, k):
