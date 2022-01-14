@@ -232,9 +232,8 @@ beam_angle *required*
     needed to write the beam_order list. This is like a mapping of beam number (list
     index) to beam direction off boresight. Typically you can use the radar's common
     beam angle list. For example, at Saskatoon site the beam angles are a standard
-    16-beam list: [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
-            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
-            26.25]
+    16-beam list: [-24.3, -21.06, -17.82, -14.58, -11.34, -8.1, -4.86,
+                     -1.62, 1.62, 4.86, 8.1, 11.34, 14.58, 21.06, 24.3]
 
 beam_order *required*
     beam numbers written in order of preference, one element in this list corresponds to
@@ -383,9 +382,8 @@ An example of adding a slice to your experiment is as follows::
             "num_ranges": 75,  # range gates
             "first_range": 180,  # first range gate, in km
             "intt": 3500,  # duration of an integration, in ms
-            "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
-                           -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
-                           26.25],
+            "beam_angle": [-24.3, -21.06, -17.82, -14.58, -11.34, -8.1, -4.86,
+                     -1.62, 1.62, 4.86, 8.1, 11.34, 14.58, 21.06, 24.3],
             "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
             "txfreq" : 10500, #kHz

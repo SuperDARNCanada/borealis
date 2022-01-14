@@ -5,6 +5,7 @@ BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
+opts = ExperimentOptions()
 
 # TODO: We should protect these values from changing, I noticed during testing that I used a
 # TODO: call to reverse() on one and it affected the rest of the testing afterwards
@@ -47,10 +48,7 @@ STD_8P_LAG_TABLE = [[ 0, 0],
 PULSE_LEN_45KM = 300 #us
 PULSE_LEN_15KM = 100 #us
 
-STD_16_BEAM_ANGLE = [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
-            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
-            26.25]
-
+STD_16_BEAM_ANGLE = [(float(opts.beam_sep) * (beam_dir - 15/2)) for beam_dir in range(0, 16)]
 
 STD_NUM_RANGES = 75
 POLARDARN_NUM_RANGES = 75
@@ -60,7 +58,7 @@ STD_16_FORWARD_BEAM_ORDER = [0, 1, 2 , 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 
 STD_16_REVERSE_BEAM_ORDER = [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
 
 # Scanning directions here for now.
-opts = ExperimentOptions()
+
 IS_FORWARD_RADAR = IS_REVERSE_RADAR = False
 if opts.site_id in ["sas", "rkn", "inv"]:
     IS_FORWARD_RADAR = True
