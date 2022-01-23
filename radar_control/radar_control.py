@@ -195,11 +195,11 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         chan_add.tau_spacing = slice_dict[slice_id]['tau_spacing']  # us
         # send the translational frequencies to dsp in order to bandpass filter correctly.
         if slice_dict[slice_id]['rxonly']:
-            chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['rxfreq'] * 1.0e3
+            chan_add.rxfreq = slice_dict[slice_id]['rxfreq'] * 1.0e3 - (rxctrfreq * 1.0e3)
         elif slice_dict[slice_id]['clrfrqflag']:
             pass  # TODO - get freq from clear frequency search.
         else:
-            chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['txfreq'] * 1.0e3
+            chan_add.rxfreq = slice_dict[slice_id]['txfreq'] * 1.0e3 - (rxctrfreq * 1.0e3)
         chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
         chan_add.first_range = slice_dict[slice_id]['first_range']
         chan_add.range_sep = slice_dict[slice_id]['range_sep']
