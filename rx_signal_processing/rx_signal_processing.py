@@ -168,6 +168,7 @@ def main():
         rx_rate = np.float64(sp_packet.rxrate)
         output_sample_rate = np.float64(sp_packet.output_sample_rate)
         first_rx_sample_off = sp_packet.offset_to_first_rx_sample
+        rx_center_freq = sp_packet.rxctrfreq
 
         processed_data = processeddata_pb2.ProcessedData()
 
@@ -186,7 +187,7 @@ def main():
         for i,chan in enumerate(sp_packet.rxchannel):
             detail = {}
 
-            mixing_freqs.append(chan.rxfreq)
+            mixing_freqs.append(chan.rxfreq - rx_center_freq)
 
             detail['slice_id'] = chan.slice_id
             detail['slice_num'] = i

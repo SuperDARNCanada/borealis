@@ -11,10 +11,11 @@ message SigProcPacket {
     uint32 offset_to_first_rx_sample = 6;
     double rxrate = 7;
     double output_sample_rate = 8;
+    double rxctrfreq = 9;   // Hz
 
     message RXChan {
         uint32 slice_id = 1;
-        double rxfreq = 2; // this is offset frequency from centre freq, kHz
+        double rxfreq = 2; // Hz
         repeated BeamDirections beam_directions = 3;
         uint32 num_ranges = 4;
         float first_range = 5; // km
