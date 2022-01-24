@@ -14,13 +14,14 @@ from functools import reduce
 
 class DecimationStage(object):
 
-    def __init__(self, stage_num, input_rate, dm_rate, filter_taps):
+    def __init__(self, stage_num, input_rate, dm_rate, block_size, filter_taps):
         """
-        Create a decimation stage with given decimation rate, input sample rate, and filter taps.
+        Create a decimation stage with given decimation rate, input sample rate, FFT block size, and filter taps.
         :param stage_num: the index of this filter/decimate stage to all stages (beginning with
         stage 0)
         :param input_rate: the input sampling rate, in Hz.
         :param dm_rate: the decimation rate. Must be an integer.
+        :param block_size: the size of FFT for convolution with samples. Must be an integer
         :param filter_taps: a list of filter taps (numeric) to be convolved with the data before the
         decimation is done.
         :raises ExperimentException: if types are not correct for signal processing module to use
@@ -31,6 +32,11 @@ class DecimationStage(object):
             raise ExperimentException('Decimation rate is not an integer')
         self.output_rate = input_rate/dm_rate
         self.dm_rate = dm_rate
+        if not isinstance(block_size, int):
+            raise ExperimentException('Block size is not an integer')
+        if not block_size > 0:
+            raise ExperimentException('Block size is not positive')
+        self.block_size = block_size
         if not isinstance(filter_taps, list):
             errmsg = 'Filter taps {} of type {} must be a list in decimation stage {}'.format(filter_taps, type(filter_taps), stage_num)
             raise ExperimentException(errmsg)
@@ -77,6 +83,7 @@ class DecimationScheme(object):
             self.dm_rates = []
             self.output_rates = []
             self.input_rates = []
+            self.block_sizes = []
             self.filter_scaling_factors = []
 
             self.stages = stages
@@ -84,6 +91,7 @@ class DecimationScheme(object):
                 self.dm_rates.append(dec_stage.dm_rate)
                 self.output_rates.append(dec_stage.output_rate)
                 self.input_rates.append(dec_stage.input_rate)
+                self.block_sizes.append(dec_stage.block_size)
                 filter_scaling_factor = sum(dec_stage.filter_taps)
                 self.filter_scaling_factors.append(filter_scaling_factor)
 
@@ -109,12 +117,13 @@ class DecimationScheme(object):
                 raise ExperimentException(errmsg)
 
     def __repr__(self):
-        repr_str = 'Decimation Scheme with {} stages:\n'.format(len(stages))
+        repr_str = 'Decimation Scheme with {} stages:\n'.format(len(self.stages))
         for stage in self.stages:
             repr_str += '\nStage {}:'.format(stage.stage_num)
             repr_str += '\nInput Rate: {} Hz'.format(stage.input_rate)
             repr_str += '\nDecimation by: {}'.format(stage.dm_rate)
             repr_str += '\nOutput Rate: {} Hz'.format(stage.output_rate)
+            repr_str += '\nBlock Size: {}'.format(stage.block_size)
             repr_str += '\nNum taps: {}'.format(len(stage.filter_taps))
             #repr_str += '\nFilter Taps: {}\n'.format(stage.filter_taps)
         return repr_str
@@ -141,9 +150,33 @@ def create_default_scheme():
 
     for stage in range(0,4):
         filter_taps = list(scaling_factors[stage] * create_firwin_filter_by_attenuation(rates[stage], transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
-        all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], filter_taps))
+        block_size = optimum_block_size(len(filter_taps))
+        all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], block_size, filter_taps))
 
     return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
+
+
+def optimum_block_size(filter_length):
+    """
+    Determines the optimum FFT block size for doing efficient circular convolution.
+    See https://en.wikipedia.org/wiki/Overlap%E2%80%93save_method#Efficiency_considerations
+    :param filter_length: Length of the filter impulse response. Integer.
+    :return: block_size, optimum FFT size.
+    """
+    if filter_length < 30:
+        return 128
+    elif filter_length < 50:
+        return 256
+    elif filter_length < 90:
+        return 512
+    elif filter_length < 160:
+        return 1024
+    elif filter_length < 295:
+        return 2048
+    elif filter_length < 550:
+        return 4096
+    else:
+        return 8192
 
 
 def calculate_num_filter_taps(sampling_freq, trans_width, k):

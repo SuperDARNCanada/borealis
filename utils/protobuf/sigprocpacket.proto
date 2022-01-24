@@ -43,7 +43,8 @@ message SigProcPacket {
         uint32 stage_num = 1;
         double input_rate = 2;
         uint32 dm_rate = 3;
-        repeated float filter_taps = 4;
+        uint32 block_size = 4;
+        repeated float filter_taps = 5;
     }
 
 }

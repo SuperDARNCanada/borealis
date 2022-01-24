@@ -151,6 +151,7 @@ def main():
     total_antennas = sig_options.main_antenna_count + sig_options.intf_antenna_count
 
     dm_rates = []
+    block_sizes = []
     dm_scheme_taps = []
 
     extra_samples = 0
@@ -278,12 +279,14 @@ def main():
             taps_msg = "Number of filter taps per stage: "
             for stage in sp_packet.decimation_stages:
                 dm_rates.append(stage.dm_rate)
+                block_sizes.append(stage.block_size)
                 dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
 
                 dm_msg += str(stage.dm_rate) + " "
                 taps_msg += str(len(stage.filter_taps)) + " "
 
             dm_rates = np.array(dm_rates, dtype=np.uint32)
+            block_sizes = np.array(block_sizes, dtype=np.uint32)
             pprint(dm_msg)
             pprint(taps_msg)
 
@@ -381,7 +384,7 @@ def main():
             # Process main samples
             main_sequence_samples = sequence_samples[:sig_options.main_antenna_count,:]
             pprint("Main buffer shape: {}".format(main_sequence_samples.shape))
-            processed_main_samples = dsp.DSP(main_sequence_samples, rx_rate, dm_rates,
+            processed_main_samples = dsp.DSP(main_sequence_samples, rx_rate, dm_rates, block_sizes,
                                                 dm_scheme_taps, mixing_freqs, main_beam_angles)
             main_corrs = dsp.DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
                                     processed_main_samples.beamformed_samples, output_sample_rate,
@@ -391,7 +394,7 @@ def main():
             if sig_options.intf_antenna_count > 0:
                 intf_sequence_samples = sequence_samples[sig_options.main_antenna_count:,:]
                 pprint("Intf buffer shape: {}".format(intf_sequence_samples.shape))
-                processed_intf_samples = dsp.DSP(intf_sequence_samples, rx_rate, dm_rates,
+                processed_intf_samples = dsp.DSP(intf_sequence_samples, rx_rate, dm_rates, block_sizes,
                                                     dm_scheme_taps, mixing_freqs, intf_beam_angles)
 
                 intf_corrs = dsp.DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,

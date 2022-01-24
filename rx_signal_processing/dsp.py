@@ -48,6 +48,8 @@ class DSP(object):
     :type       rx_rate: float
     :param      dm_rates: The decimation rates at each stage.
     :type       dm_rates: list
+    :param      block_sizes: The block sizes for computing FFTs at each stage.
+    :type       block_sizes: list
     :param      filter_taps: The filter taps to use at each stage.
     :type       filter_taps: ndarray
     :param      mixing_freqs: The freqs used to mix to baseband.
@@ -55,7 +57,7 @@ class DSP(object):
     :param      beam_phases: The phases used to beamform the final decimated samples.
     :type       beam_phases: list
     """
-    def __init__(self, input_samples, rx_rate, dm_rates, filter_taps, mixing_freqs, beam_phases):
+    def __init__(self, input_samples, rx_rate, dm_rates, block_sizes, filter_taps, mixing_freqs, beam_phases):
         super(DSP, self).__init__()
 
         self.filters = None
@@ -64,10 +66,10 @@ class DSP(object):
 
         self.create_filters(filter_taps, mixing_freqs, rx_rate)
 
-        self.apply_bandpass_decimate(input_samples, self.filters[0], mixing_freqs, dm_rates[0], rx_rate)
+        self.apply_bandpass_decimate(input_samples, self.filters[0], mixing_freqs, dm_rates[0], rx_rate, block_sizes[0])
 
         for i in range(1, len(self.filters)):
-            self.apply_lowpass_decimate(self.filter_outputs[i-1], self.filters[i], dm_rates[i])
+            self.apply_lowpass_decimate(self.filter_outputs[i-1], self.filters[i], dm_rates[i], block_sizes[i])
 
         self.beamform_samples(self.filter_outputs[-1], beam_phases)
 
@@ -100,7 +102,101 @@ class DSP(object):
 
         self.filters = filters
 
-    def apply_bandpass_decimate(self, input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate):
+    @staticmethod
+    def convolution(input_samples, filters, block_size):
+        """
+        Computes the linear convolution of input_samples with filters.
+        This method uses circular convolution to do more efficient computations on smaller
+        block sizes, then combines the results.
+        See https://en.wikipedia.org/wiki/Overlap%E2%80%93save_method for more details.
+
+        :param      input_samples:  The input raw rf samples for each antenna.
+        :type       input_samples:  ndarray [num_antennas, num_samples]
+        :param      filters:        The filter(s).
+        :type       filters:        ndarray [num_slices, num_taps]
+        :param      block_size:     The number of samples to use for FFT.
+        :type       block_size:     int
+        """
+        num_slices, num_taps = filters.shape
+
+        # See https://en.wikipedia.org/wiki/Overlap%E2%80%93save_method#Efficiency_considerations
+        overlap = num_taps - 1
+        step_size = block_size - overlap
+
+        filters_fft = xp.fft.fft(filters, n=block_size, axis=-1)
+
+        dims = input_samples.shape
+        num_antennas = dims[-2]
+        num_samps = dims[-1]
+
+        # Determine whether input_samples already has dimension of size num_slices or not (already bandpass filtered).
+        if len(dims) > 2:
+            # Called by lowpass_decimate, so the number of slices is determined by input_samples, as all slices
+            # get filtered by the same lowpass filter
+            num_slices = dims[0]
+            fft_dims = [num_slices, num_antennas, block_size]
+            filters_fft = filters_fft[0, ...]
+            # arg1:   [num_slices, num_antennas, block_size]
+            # arg2:   [block_size]
+            # output: [num_slices, num_antennas, block_size]
+            einsum_str = 'ijk,k->ijk'
+        else:
+            # Called by bandpass_decimate
+            fft_dims = [num_antennas, block_size]
+            # arg1:   [num_antennas, block_size]
+            # arg2:   [num_slices, block_size]
+            # output: [num_slices, num_antennas, block_size]
+            einsum_str = 'ij,kj->kij'
+
+        filtered_samples = np.zeros((num_slices, num_antennas, num_samps), dtype=xp.complex64)
+
+        # array to store input_samples in for each FFT
+        x_k = np.zeros(fft_dims, dtype=np.complex64)
+
+        position = 0
+        while position + block_size <= num_samps:
+            # Grab portion of input samples
+            if position == 0:
+                # Must zero-pad for first block in order to capture ramp-up effects
+                x_k[..., overlap:] = input_samples[..., 0:block_size - overlap]
+            else:
+                x_k = input_samples[..., position:position + block_size]
+
+            # Take FFT of the portion
+            samples_fft = xp.fft.fft(x_k, axis=-1)
+
+            # Multiply by filter FFT
+            # filtered_fft: [num_slices, num_antennas, block_size]
+            filtered_fft = xp.einsum(einsum_str, samples_fft, filters_fft)
+
+            # Take IFFT and truncate (this removes edge effects)
+            if position == 0:
+                filtered_samples[..., position:position+step_size] = \
+                    xp.fft.ifft(filtered_fft, axis=-1)[..., overlap:]
+                # Since we pad with overlap number of zeros at the start of the first block
+                position += step_size - overlap
+            else:
+                filtered_samples[..., position+overlap:position+overlap+step_size] = \
+                    xp.fft.ifft(filtered_fft, axis=-1)[..., overlap:]
+                position += step_size
+
+        # Last block will be smaller, so we zero-pad at the end but do the exact same process
+        num_remaining = num_samps - position
+        fft_dims[-1] = num_remaining + overlap - 1
+        x_k = np.zeros(fft_dims, dtype=input_samples.dtype)
+        x_k[..., 0:num_remaining] = input_samples[..., -num_remaining:]
+        samples_fft = xp.fft.fft(x_k)
+        filters_fft = xp.fft.fft(filters, n=num_remaining+overlap-1)
+        if len(dims) > 2:
+            filters_fft = filters_fft[0, ...]
+        filtered_fft = xp.einsum(einsum_str, samples_fft, filters_fft)
+        time_stuff = xp.fft.ifft(filtered_fft, axis=-1)
+
+        filtered_samples[..., position+overlap:] = time_stuff[..., overlap:-overlap+1]
+
+        return filtered_samples
+
+    def apply_bandpass_decimate(self, input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate, block_size):
         """
         Apply a Frerking bandpass filter to the input samples. Several different frequencies can
         be centered on at simultateously. Downsampling is done in parallel via a strided window
@@ -116,14 +212,19 @@ class DSP(object):
         :type       dm_rate:        int
         :param      rx_rate:        The rf rx rate.
         :type       rx_rate:        float
+        :param      block_size:     The block size for FFTs
+        :type       block_size:     int
 
         """
         bp_filters = xp.array(bp_filters)
-        input_samples = windowed_view(input_samples, bp_filters.shape[-1], dm_rate)
+        num_slices, num_taps = bp_filters.shape
 
-        # [num_slices, num_taps]
-        # [num_antennas, num_output_samples, num_taps]
-        filtered = xp.einsum('ij,klj->ikl', bp_filters, input_samples)
+        # See https://en.wikipedia.org/wiki/Overlap%E2%80%93save_method#Efficiency_considerations for choice of 8192
+        filtered = self.convolution(input_samples, bp_filters, block_size)
+
+        # To match with old function windowed_view(), take only samples where the convolution multiplication
+        # wouldn't have required zero-padding of the input_samples.
+        filtered = filtered[..., num_taps-1::dm_rate]
 
         ph = xp.arange(filtered.shape[-1],dtype=np.float64)[xp.newaxis,:]
         freqs = xp.array(mixing_freqs)[:,xp.newaxis]
@@ -139,25 +240,27 @@ class DSP(object):
 
         self.filter_outputs.append(corrected)
 
-    def apply_lowpass_decimate(self, input_samples, lp_filter, dm_rate):
+    def apply_lowpass_decimate(self, input_samples, lp_filter, dm_rate, block_size):
         """
-        Apply a lowpass filter to the baseband input samples. Downsampling is done in parallel via a
-        strided window view of the input samples.
+        Apply a lowpass filter to the baseband input samples. This uses the overlap-save method of circular
+        convolution to compute the linear convolution quickly.
 
         :param      input_samples:  Baseband input samples
         :type       input_samples:  ndarray [num_slices, num_antennas, num_samples]
-        :param      lp:             Lowpass filter taps
-        :type       lp:             ndarray [1, num_taps]
+        :param      lp_filter:      Lowpass filter taps
+        :type       lp_filter:      ndarray [1, num_taps]
         :param      dm_rate:        The decimation rate of this stage.
         :type       dm_rate:        int
+        :param      block_size:     The block size for taking FFTs.
+        :type       block_size:     int
 
         """
         lp_filter = xp.array(lp_filter)
-        input_samples = windowed_view(input_samples, lp_filter.shape[-1], dm_rate)
+        filtered = self.convolution(input_samples, lp_filter, block_size)
 
-        # [1, num_taps]
-        # [num_slices, num_antennas, num_output_samples, num_taps]
-        filtered = xp.einsum('ij,klmj->klm', lp_filter, input_samples)
+        # To match with old function windowed_view(), take only samples where the convolution multiplication
+        # wouldn't have required zero-padding of the input_samples.
+        filtered = filtered[..., lp_filter.shape[-1]-1:input_samples.shape[-1]:dm_rate]
 
         self.filter_outputs.append(filtered)
 
