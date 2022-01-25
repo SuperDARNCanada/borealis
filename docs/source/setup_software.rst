@@ -3,7 +3,7 @@ Software
 ========
 
 SuperDARN Canada uses OpenSUSE for an operating system, but any Linux system that can support the NVIDIA drivers for the graphics card will work.
-The current latest version of OpenSuSe (15.1) is known to work. **Commands that require root privileges will have a `sudo` or `su` command ahead of them, or explicitly say 'as root', all others should be executed as the normal user (recommended name: radar) that will run Borealis**
+The current latest version of OpenSuSe (15.3) is known to work. **Commands that require root privileges will have a `sudo` or `su` command ahead of them, or explicitly say 'as root', all others should be executed as the normal user (recommended name: radar) that will run Borealis**
 
 #. Install the latest version of the NVIDIA drivers (see https://en.opensuse.org/SDB:NVIDIA_drivers). The driver must be able to support running the GPU selected and must also be compatible with the version of CUDA that supports the compute capability version of the GPU. Getting the OS to run stable with NVIDIA is the most important step, **so make sure you read this page carefully**.
 
