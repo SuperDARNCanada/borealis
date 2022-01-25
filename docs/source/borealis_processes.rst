@@ -2,6 +2,8 @@
 Borealis Processes
 ******************
 
+All of the runtime processes listed below are necessary for operation of the system.
+
 =================
 Runtime Processes
 =================
@@ -14,6 +16,7 @@ Runtime Processes
     rx_signal_processing
     usrp_n200_driver
     data_write
+    realtime
 
 =====================
 Experiment Components
