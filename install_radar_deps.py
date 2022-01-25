@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env/python3
 
 """
 Copyright SuperDARN Canada 2020
@@ -100,6 +100,7 @@ def install_packages():
 
                 "libarmadillo9",
                 "libarmadillo-dev",
+                "armadillo-devel",
 
                 "pps-tools",
 
@@ -137,6 +138,7 @@ def install_packages():
 
                 "python3-devel",
                 "python3-dev",
+                "python-base",
 
                 "boost-devel",
                 "liboost-all-dev",
@@ -149,7 +151,9 @@ def install_packages():
                 "dpdk-devel",
 
                 "kernel-devel",
-                "linux-headers-generic"]
+                "linux-headers-generic",
+
+                "libncurses5"]
 
     pip = ["deepdish",
             "posix_ipc",
@@ -319,7 +323,7 @@ def install_cuda():
     Install CUDA.
     """
     if "openSUSE" in DISTRO:
-        cuda_file = 'cuda_10.2.89_440.33.01_linux.run'
+        cuda_file = 'cuda_11.4.3_470.82.01_linux.run'
     elif 'Ubuntu' in DISTRO:
         pre_cuda_setup_cmd = "apt-get install -y gcc-7 g++-7;" \
         "update-alternatives --remove-all gcc;" \
@@ -329,10 +333,10 @@ def install_cuda():
         "update-alternatives --config gcc;" \
         "update-alternatives --config g++;"
         execute_cmd(pre_cuda_setup_cmd)
-        cuda_file = 'cuda_10.2.89_440.33.01_linux.run'
+        cuda_file = 'cuda_11.4.3_470.82.01_linux.run'
 
     cuda_cmd = "cd ${{IDIR}};" \
-    "wget -N http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};" \
+    "wget -N https://developer.download.nvidia.com/compute/cuda/11.4.3/local_installers/{cuda_file};" \
     "sh {cuda_file} --silent --toolkit --samples;".format(cuda_file=cuda_file)
 
     execute_cmd(cuda_cmd)
@@ -369,8 +373,11 @@ def install_directories():
 
 def install_hdw_dat():
 
-    install_hdw_cmd = "cp -v /usr/local/hdw.dat/hdw.dat.{radar_abbreviation} $BOREALISPATH"
+    install_hdw_cmd = "ln -svi /usr/local/hdw.dat/hdw.dat.{radar_abbreviation} " \
+                      "$BOREALISPATH/hdw.dat.{radar_abbreviation};"
     install_hdw_cmd = install_hdw_cmd.format(radar_abbreviation=args.radar)
+    execute_cmd(install_hdw_cmd)
+
 
 def install_config():
 
@@ -378,6 +385,13 @@ def install_config():
     "chown -R {normal_user}:{normal_group} borealis_config_files;"
     install_config_cmd = install_config_cmd.format(normal_user=args.user, normal_group=args.group)
     execute_cmd(install_config_cmd)
+
+
+def install_data_utils():
+
+    install_data_utils_cmd = "git clone https://github.com/SuperDARNCanada/borealis-data-utils.git $HOME;" \
+                             "git clone https://github.com/SuperDARNCanada/data_flow.git;"
+    execute_cmd(install_data_utils_cmd)
 
 
 parser = ap.ArgumentParser(usage=usage_msg(), description="Installation script for Borealis utils")
@@ -421,3 +435,4 @@ install_realtime()
 install_directories()
 install_hdw_dat()
 install_config()
+install_data_utils()
