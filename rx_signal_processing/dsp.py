@@ -148,10 +148,10 @@ class DSP(object):
             # output: [num_slices, num_antennas, block_size]
             einsum_str = 'ij,kj->kij'
 
-        filtered_samples = np.zeros((num_slices, num_antennas, num_samps), dtype=xp.complex64)
+        filtered_samples = xp.zeros((num_slices, num_antennas, num_samps), dtype=xp.complex64)
 
         # array to store input_samples in for each FFT
-        x_k = np.zeros(fft_dims, dtype=np.complex64)
+        x_k = xp.zeros(fft_dims, dtype=np.complex64)
 
         position = 0
         while position + block_size <= num_samps:
@@ -183,7 +183,7 @@ class DSP(object):
         # Last block will be smaller, so we zero-pad at the end but do the exact same process
         num_remaining = num_samps - position
         fft_dims[-1] = num_remaining + overlap - 1
-        x_k = np.zeros(fft_dims, dtype=input_samples.dtype)
+        x_k = xp.zeros(fft_dims, dtype=input_samples.dtype)
         x_k[..., 0:num_remaining] = input_samples[..., -num_remaining:]
         samples_fft = xp.fft.fft(x_k)
         filters_fft = xp.fft.fft(filters, n=num_remaining+overlap-1)

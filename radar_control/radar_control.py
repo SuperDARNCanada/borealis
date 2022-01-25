@@ -187,6 +187,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             dm_stage_add.stage_num = stage.stage_num
             dm_stage_add.input_rate = stage.input_rate
             dm_stage_add.dm_rate = stage.dm_rate
+            dm_stage_add.block_size = stage.block_size
             dm_stage_add.filter_taps.extend(stage.filter_taps)
 
     for num, slice_id in enumerate(slice_ids):
