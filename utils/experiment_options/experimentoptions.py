@@ -138,8 +138,7 @@ class ExperimentOptions:
         self._geo_long = params[4]  # decimal degrees, W = negative
         self._altitude = params[5]  # metres
         self._boresight = params[6]  # degrees from geographic north, CCW = negative.
-        self._beam_sep = params[7]  # degrees TODO is this necessary, or is this a min. - for
-        # post-processing software in RST? check with others.
+        self._beam_sep = params[7]  # degrees
         self._velocity_sign = params[8]  # +1.0 or -1.0
         self._analog_rx_attenuator = params[9]  # dB
         self._tdiff = params[10] # ns
@@ -429,8 +428,7 @@ class ExperimentOptions:
 
     @property
     def beam_sep(self):
-        return self._beam_sep  # degrees TODO is this necessary, or is this a min. - for
-                        # post-processing software in RST? check with others.
+        return self._beam_sep  # degrees
 
     @property
     def velocity_sign(self):
