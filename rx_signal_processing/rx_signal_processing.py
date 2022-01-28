@@ -397,8 +397,8 @@ def main():
                 intf_corrs = dsp.DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
                                 processed_intf_samples.beamformed_samples, output_sample_rate,
                                 slice_details)
-                cross_corrs = dsp.DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
-                                processed_intf_samples.beamformed_samples, output_sample_rate,
+                cross_corrs = dsp.DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
+                                processed_main_samples.beamformed_samples, output_sample_rate,
                                 slice_details)
             end = time.time()
 

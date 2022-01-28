@@ -202,8 +202,8 @@ class DSP(object):
 
         # [num_slices, num_beams, num_samples]
         # [num_slices, num_beams, num_samples]
-        correlated = xp.einsum('ijk,ijl->ijkl', beamformed_samples_1.conj(),
-                                        beamformed_samples_2)
+        correlated = xp.einsum('ijk,ijl->ijkl', beamformed_samples_1,
+                                        beamformed_samples_2.conj())
 
         if cupy_available:
             correlated = xp.asnumpy(correlated)
