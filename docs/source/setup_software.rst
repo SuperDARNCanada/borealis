@@ -94,7 +94,7 @@ The current latest version of OpenSuSe (15.3) is known to work. **Commands that 
 
 #. In `config.ini`, there is an entry called "realtime_address". This defines the protocol, interface, and port that the realtime module uses for socket communication. This should be set to `"realtime_address" : "tcp://<interface>:9696"`, where <interface> is a configured interface on your computer such as "eth0" or "wlan0". Running `ip addr`, you should choose a device which is UP.
 
-#. The Borealis software has a script called `install_radar_deps.py` to help install dependencies. This script has to be run with root privileges. This script can be modified to add the package manager of a different distribution if it doesn't exist yet. Make sure that the version of CUDA is up to date and supports your card. This script makes an attempt to correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD does not configure correctly, an improper Boost installation or library naming convention is the likely reason. Note that you need python3 installed before you can run this script. If this script does not work for you, you can try the `install_radar_deps_opensuse.sh` shell script, which is known to work on OpenSuSe 15.1. The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
+#. The Borealis software has a script called `install_radar_deps.py` to help install dependencies. This script has to be run with root privileges. This script can be modified to add the package manager of a different distribution if it doesn't exist yet. Make sure that the version of CUDA is up to date and supports your card. This script makes an attempt to correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD does not configure correctly, an improper Boost installation or library naming convention is the likely reason. Note that you need python3 installed before you can run this script. The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
 
     - cd $BOREALISPATH
     - chmod +x install_radar_deps.py
@@ -108,7 +108,7 @@ The current latest version of OpenSuSe (15.3) is known to work. **Commands that 
     - git clone https://github.com/SuperDARNCanada/borealis-data-utils.git
     - git clone https://github.com/SuperDARNCanada/data_flow.git
 
-#. Set up NTP. The `install_radar_deps_opensuse.sh` script already downloads and configures a version of `ntpd` that works with incoming PPS signals on the serial port DCD line. An example configuration of ntp is shown below for `/etc/ntp.conf`. These settings use `tick.usask.ca` as a time server, and PPS (via the `127.127.22.0` lines). It also sets up logging daily for all stats types.
+#. Set up NTP. The `install_radar_deps.py` script already downloads and configures a version of `ntpd` that works with incoming PPS signals on the serial port DCD line. An example configuration of ntp is shown below for `/etc/ntp.conf`. These settings use `tick.usask.ca` as a time server, and PPS (via the `127.127.22.0` lines). It also sets up logging daily for all stats types.
 
     .. code-block::
 
