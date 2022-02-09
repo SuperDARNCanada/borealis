@@ -390,7 +390,7 @@ def install_config():
 def install_data_utils():
 
     install_data_utils_cmd = "git clone https://github.com/SuperDARNCanada/borealis-data-utils.git $HOME;" \
-                             "git clone https://github.com/SuperDARNCanada/data_flow.git;"
+                             "git clone https://github.com/SuperDARNCanada/data_flow.git $HOME;"
     execute_cmd(install_data_utils_cmd)
 
 
