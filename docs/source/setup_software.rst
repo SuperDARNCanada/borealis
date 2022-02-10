@@ -3,7 +3,7 @@ Software
 ========
 
 SuperDARN Canada uses OpenSUSE for an operating system, but any Linux system that can support the NVIDIA drivers for the graphics card will work.
-The current latest version of OpenSuSe (15.1) is known to work. **Commands that require root privileges will have a `sudo` or `su` command ahead of them, or explicitly say 'as root', all others should be executed as the normal user (recommended name: radar) that will run Borealis**
+The current latest version of OpenSuSe (15.3) is known to work. **Commands that require root privileges will have a `sudo` or `su` command ahead of them, or explicitly say 'as root', all others should be executed as the normal user (recommended name: radar) that will run Borealis**
 
 #. Install the latest version of the NVIDIA drivers (see https://en.opensuse.org/SDB:NVIDIA_drivers). The driver must be able to support running the GPU selected and must also be compatible with the version of CUDA that supports the compute capability version of the GPU. Getting the OS to run stable with NVIDIA is the most important step, **so make sure you read this page carefully**.
 
@@ -64,6 +64,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - systemctl enable tuned
     - systemctl start tuned
     - tuned-adm profile network-latency
+    - exit
 
 #. To verify the system's new profile:
 
@@ -89,35 +90,17 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - git submodule init && git submodule update
     - ln -svi $BOREALISPATH/borealis_config_files/[radarcode]_config.ini config.ini
 
+#. If you're building Borealis for a non University of Saskatchewan radar, use a Usask `config.ini` file (located `here <https://github.com/SuperDARNCanada/borealis_config_files>`_) as a template or the config file `documentation <https://borealis.readthedocs.io/en/latest/config_options.html>`_ to create your own file in the borealis directory.
+
 #. In `config.ini`, there is an entry called "realtime_address". This defines the protocol, interface, and port that the realtime module uses for socket communication. This should be set to `"realtime_address" : "tcp://<interface>:9696"`, where <interface> is a configured interface on your computer such as "eth0" or "wlan0". Running `ip addr`, you should choose a device which is UP.
 
-#. If you're building Borealis for a non University of Saskatcheawn radar, use a Usask `config.ini` file (located `here <https://github.com/SuperDARNCanada/borealis_config_files>`_) as a template or the config file `documentation <https://borealis.readthedocs.io/en/latest/config_options.html>`_ to create your own file in the borealis directory.
-
-#. The Borealis software has a script called `install_radar_deps.py` to help install dependencies. This script has to be run with root privileges. This script can be modified to add the package manager of a different distribution if it doesn't exist yet. Make sure that the version of CUDA is up to date and supports your card. This script makes an attempt to correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD does not configure correctly, an improper Boost installation or library naming convention is the likely reason. Note that you need python3 installed before you can run this script. If this script does not work for you, you can try the `install_radar_deps_opensuse.sh` shell script, which is known to work on OpenSuSe 15.1. The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
+#. The Borealis software has a script called `install_radar_deps.py` to help install dependencies. This script has to be run with root privileges. This script can be modified to add the package manager of a different distribution if it doesn't exist yet. Make sure that the version of CUDA is up to date and supports your card. This script makes an attempt to correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD does not configure correctly, an improper Boost installation or library naming convention is the likely reason. Note that you need python3 installed before you can run this script. The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
 
     - cd $BOREALISPATH
     - chmod +x install_radar_deps.py
-    - sudo ./install_radar_deps.py [radar abbreviation] $BOREALISPATH > install_log.txt 2>&1
-
-#. Install pydarn for realtime data support as well as testing and data conversion support:
-
-    - cd $HOME
-    - git clone https://github.com/SuperDARN/pydarn.git
-
-#. Install the necessary software to enable realtime data:
-  
-    - cd /usr/local
-    - sudo git clone https://github.com/vtsuperdarn/hdw.dat.git
-    - mkdir $BOREALISPATH/borealisrt_env
-    - virtualenv $BOREALISPATH/borealisrt_env
-    - source $BOREALISPATH/borealisrt_env/bin/activate
-    - pip install zmq
-    - pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter
-    - cd $HOME
-    - git clone https://github.com/SuperDARN/pyDARNio.git
-    - cd pyDARNio
-    - pip install .
-    - deactivate
+    - su
+    - python3 install_radar_deps.py [radar abbreviation] $BOREALISPATH > install_log.txt 2>&1
+    - exit
 
 #. Install the necessary software to convert and move/copy data:
 
@@ -125,7 +108,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - git clone https://github.com/SuperDARNCanada/borealis-data-utils.git
     - git clone https://github.com/SuperDARNCanada/data_flow.git
 
-#. Set up NTP. The `install_radar_deps_opensuse.sh` script already downloads and configures a version of `ntpd` that works with incoming PPS signals on the serial port DCD line. An example configuration of ntp is shown below for `/etc/ntp.conf`. These settings use `tick.usask.ca` as a time server, and PPS (via the `127.127.22.0` lines). It also sets up logging daily for all stats types.
+#. Set up NTP. The `install_radar_deps.py` script already downloads and configures a version of `ntpd` that works with incoming PPS signals on the serial port DCD line. An example configuration of ntp is shown below for `/etc/ntp.conf`. These settings use `tick.usask.ca` as a time server, and PPS (via the `127.127.22.0` lines). It also sets up logging daily for all stats types.
 
     .. code-block::
 
@@ -159,10 +142,6 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
         trustedkey 1
         requestkey 1
         controlkey 1
-
-#. As part of the realtime capabilities, the hdw.dat repo will be cloned to the computer(default will be /usr/local/hdw.dat). The hdw.dat files are also used for radar operation. Create a symbolic link for this radar in the $BOREALISPATH directory.
-
-    - ln -svi /usr/local/hdw.dat/hdw.dat.[radarcode] $BOREALISPATH/hdw.dat.[radarcode]
 
 #. Edit /etc/security/limits.conf (as root) to add the following line that allows UHD to set thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail if the user executing UHD doesn't have permission.
 
