@@ -20,12 +20,10 @@ from scipy.constants import speed_of_light
 # Very important that this global variable is kept up-to-date and
 # consistent throughout. It is a unique id for each wire structure
 wire_number = 0
-wire_conductivity = []
 min_frequency = 8e6  # Use to calculate min # of segments per wire
 aluminum_conductivity = 3.5e7  # Siemen's per meter at 20 degrees C
 copper_conductivity = 5.96e7  # Siemen's per meter at 20 degrees C
 annealed_copper_conductivity = 5.8e7  # Siemen's per meter at 20 degrees C
-galvanized_steel_conductivity = 1.0e7  # Siemen's per meter at 20 degrees C
 max_num_beams = 16  # Max number of beams? Some radars use 24
 BORESITE_BEAM = (max_num_beams - 1.0) / 2.0  # What would the boresite beam number be?
 
@@ -80,72 +78,6 @@ def usage_msg():
     """
 
     return usage_message
-
-
-class Tower(object):
-    """
-    Tower class used to describe antenna support towers as wires in the array system as NEC strings
-    """
-
-    def __init__(self, start_height_m=15.0, balun_offset=0.075, side_length=0.30, awg=13,
-                 global_x=0.0, global_y=0.0, global_z=0.0):
-        """
-        :param start_height_m: The starting height of the first reflector wire. Default 15, meters
-        :param balun_offset: The offset distance the balun and load boxes sit off the towers
-        :param side_length: The length of the side of the equilateral triangular tower base
-        :param awg: The wire gauge in American Wire Gauge of the tower and guylines. Defaults to 13
-        :raises ValueError when the spacing_m, angle and num_wires are incompatible
-        """
-        # Build tower upright, top, and guylines. Cross sections not included as wire must connect at nodes.
-        # Also wires cannot lay along the ground plane, this produces segment errors.
-        # Todo: Enable turning off guylines for simulation of rope
-        #               global_x, global_x - x_offset, global_x + x_offset,
-        #               global_x - x_offset, global_x + x_offset, global_x,
-        #               global_y - balun_offset, y_offset, y_offset,
-        #               y_offset, y_offset, global_y - balun_offset,
-        #               global_z + 0.01, global_z + 0.01, global_z + 0.01,
-        #               global_z + 0.01, global_z + 0.01, global_z + 0.01,
-        # Todo: Build antenna tower cross sections
-
-        x_offset = side_length / 2.0
-        y_offset = global_y - side_length * math.sin(math.pi / 3) - balun_offset
-        guyline_span = start_height_m
-
-        x1 = [global_x, global_x - x_offset, global_x + x_offset,
-              global_x, global_x - x_offset, global_x, global_x + x_offset,
-              global_x, global_x - x_offset, global_x + x_offset, global_x]
-        x2 = [global_x, global_x - x_offset, global_x + x_offset,
-              global_x - x_offset, global_x, global_x + x_offset, global_x,
-              global_x, global_x - x_offset - guyline_span, global_x + x_offset + guyline_span, global_x]
-        y1 = [global_y - balun_offset, y_offset, y_offset,
-              global_y - balun_offset, y_offset, y_offset, y_offset,
-              global_y - balun_offset, y_offset, y_offset, y_offset]
-        y2 = [global_y - balun_offset, y_offset, y_offset,
-              y_offset, y_offset, y_offset, global_y - balun_offset,
-              global_y + guyline_span - balun_offset, y_offset - 0.01, y_offset + 0.01, y_offset - guyline_span]
-        z1 = [global_z, global_z, global_z,
-              global_z + start_height_m, global_z + start_height_m, global_z + start_height_m, global_z + start_height_m,
-              global_z + start_height_m, global_z + start_height_m, global_z + start_height_m, global_z + start_height_m]
-        z2 = [global_z + start_height_m, global_z + start_height_m, global_z + start_height_m,
-              global_z + start_height_m, global_z + start_height_m, global_z + start_height_m, global_z + start_height_m,
-              global_z, global_z, global_z, global_z]
-
-        self.tower_wires = []
-        radius = get_mm_radius_from_awg(awg) / 1000.0
-        for i in range(len(x1)-4):
-            self.tower_wires.append(Wire(x1[i], y1[i], z1[i], x2[i], y2[i], z2[i],
-                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
-
-    def repr_geometry(self):
-        """
-        Represent the Tower object as a string
-
-        :return: String representing the tower object in a format NEC understands
-        """
-        return_string = ""
-        for tower_wire in self.tower_wires:
-            return_string += str(tower_wire) + "\n"
-        return return_string.replace('\n', '\r\n')
 
 
 class Reflector(object):
@@ -325,8 +257,7 @@ class Wire(object):
     rotate them
     """
 
-    def __init__(self, x1=0.0, y1=0.0, z1=0.0, x2=0.0, y2=0.0, z2=0.0, radius=0.000127,
-                 segments=0, conductivity=copper_conductivity):
+    def __init__(self, x1=0.0, y1=0.0, z1=0.0, x2=0.0, y2=0.0, z2=0.0, radius=0.000127, segments=0):
         """
         Since each wire consists of two points and a line between them in 3d space, we can describe
         a wire by giving two 3d points x1, y1, z1 and x2, y2, z2. It also has a finite radius (in m)
@@ -345,9 +276,7 @@ class Wire(object):
         simulation but can also be given as an argument to this function.
         """
         global wire_number
-        global wire_conductivity
         wire_number += 1
-        wire_conductivity.append(conductivity)
         wire_length = math.sqrt(
             (z2 - z1) * (z2 - z1) + (y2 - y1) * (y2 - y1) + (x2 - x1) * (x2 - x1))
         # See nec2.org/part_3/secii.html for info on how long segments should be relative to wl
@@ -893,9 +822,8 @@ def create_wire_conductivity(tag_number, start_segment_number=0, end_segment_num
                                          end_segment_number, conductivity)
 
 
-def create_main_array(num_antennas, antenna_spacing_m,
-                      antenna_magnitudes, antenna_phases,
-                      log_periodics=False, towers=False):
+def create_main_array(num_antennas, antenna_spacing_m, antenna_magnitudes, antenna_phases,
+                      log_periodics=False):
     """
     Create the main array of a SuperDARN array, returning the antenna objects
 
@@ -904,8 +832,7 @@ def create_main_array(num_antennas, antenna_spacing_m,
     :param antenna_magnitudes: Magnitude for the sources for each antenna in a python list
     :param antenna_phases: Phase for the sources for each antenna in a python list
     :param log_periodics: Use log periodic antennas instead of TTFD antennas. Default False
-    :param towers: Include antenna support towers. Default False
-    :return: antenna objects and tower objects describing the main array
+    :return: antenna objects describing the main array
     """
     if len(antenna_magnitudes) != num_antennas:
         raise ValueError("Magnitudes array len {} != num_antennas".format(antenna_magnitudes))
@@ -913,7 +840,6 @@ def create_main_array(num_antennas, antenna_spacing_m,
         raise ValueError("Phases array len {} != num_antennas".format(len(antenna_phases)))
 
     antenna_objects = []
-    tower_objects = []
     array_length_m = (num_antennas - 1) * antenna_spacing_m
     for antenna in range(0, num_antennas):
         phase = antenna_phases[antenna]
@@ -928,15 +854,11 @@ def create_main_array(num_antennas, antenna_spacing_m,
         else:
             antenna_objects.append(TTFD(global_x=x_position,
                                         current_real=real_cur, current_imag=imag_cur))
-            if towers:
-                tower_objects.append(Tower(global_x=x_position))
-
-    return antenna_objects, tower_objects
+    return antenna_objects
 
 
-def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spacing_m, int_z_spacing_m,
-                     antenna_magnitudes, antenna_phases,
-                     log_periodics=False, towers=False):
+def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spacing_m,
+                     int_z_spacing_m, antenna_magnitudes, antenna_phases, log_periodics=False):
     """
     Create the interferometer array of a SuperDARN array, returning the antenna objects
 
@@ -948,8 +870,7 @@ def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spa
     :param antenna_magnitudes: Magnitude for the sources for each antenna in a python list
     :param antenna_phases: Phase for the sources for each antenna in a python list
     :param log_periodics: Use log periodic antennas instead of TTFD antennas. Default False
-    :param towers: Include antenna support towers. Default False
-    :return: antenna objects and tower objects describing the interferometer array
+    :return: antenna objects describing the interferometer array
     """
     if len(antenna_magnitudes) != num_antennas:
         raise ValueError("Magnitudes array len {} != num_antennas".format(antenna_magnitudes))
@@ -957,7 +878,6 @@ def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spa
         raise ValueError("Phases array len {} != num_antennas".format(len(antenna_phases)))
 
     antenna_objects = []
-    tower_objects = []
     array_length_m = (num_antennas - 1) * antenna_spacing_m
     for antenna in range(0, num_antennas):
         phase = antenna_phases[antenna]
@@ -975,11 +895,7 @@ def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spa
             antenna_objects.append(TTFD(global_x=global_x_position, global_y=int_y_spacing_m,
                                         global_z=int_z_spacing_m, current_imag=imag_cur,
                                         current_real=real_cur))
-            if towers:
-                tower_objects.append(Tower(global_x=global_x_position, global_y=int_y_spacing_m,
-                                       global_z=int_z_spacing_m))
-
-    return antenna_objects, tower_objects
+    return antenna_objects
 
 
 def end_geometry(ground_plane_value=1):
@@ -1153,8 +1069,6 @@ def max_coupling_card():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(usage=usage_msg())
-    parser.add_argument("-t", "--towers", help="Should antenna support towers be included?",
-                        action='store_true')
     parser.add_argument("-m", "--antennas", help="How many antennas in the main array?",
                         default=16, type=int)
     parser.add_argument("-i", "--int_antennas",
@@ -1245,25 +1159,19 @@ if __name__ == '__main__':
     # Now that we have phases calculated, create the arrays and write out the NEC cards that
     # represent them
     with open(args.output_file, 'w') as f:
-        main_antenna_objects, main_tower_objects = create_main_array(args.antennas, args.antenna_spacing,
+        main_antenna_objects = create_main_array(args.antennas, args.antenna_spacing,
                                                  antenna_magnitudes, antenna_phases,
-                                                 log_periodics=args.log_periodic, towers=args.towers)
+                                                 log_periodics=args.log_periodic)
         for m_ant in main_antenna_objects:
             f.write(m_ant.repr_geometry())
-        for m_tow in main_tower_objects:
-            f.write(m_tow.repr_geometry())
-
         if args.int_antennas > 0:
-            int_antenna_objects, int_tower_objects = create_int_array(args.int_antennas, args.antenna_spacing,
+            int_antenna_objects = create_int_array(args.int_antennas, args.antenna_spacing,
                                                    args.int_x_spacing, args.int_y_spacing,
                                                    args.int_z_spacing, int_antenna_magnitudes,
                                                    int_antenna_phases,
-                                                   log_periodics=args.log_periodic, towers=args.towers)
+                                                   log_periodics=args.log_periodic)
             for i_ant in int_antenna_objects:
                 f.write(i_ant.repr_geometry())
-            for i_tow in int_tower_objects:
-                f.write(i_tow.repr_geometry())
-
         if not args.without_fence:
             if args.antennas > 0:
                 reflector_length = (args.antennas + 1) * args.antenna_spacing
@@ -1284,7 +1192,7 @@ if __name__ == '__main__':
             if args.log_periodic:
                 f.write(create_wire_conductivity(wire, conductivity=aluminum_conductivity))
             else:
-                f.write(create_wire_conductivity(wire, conductivity=wire_conductivity[wire]))
+                f.write(create_wire_conductivity(wire))
         for m_ant in main_antenna_objects:
             f.write(m_ant.repr_loads())
         if args.int_antennas > 0:
