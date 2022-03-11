@@ -15,6 +15,8 @@ import sys
 import math
 
 # Used to calculate the minimum number of segments per wire structure
+from bisect import bisect
+
 from scipy.constants import speed_of_light
 
 # Very important that this global variable is kept up-to-date and
@@ -1074,21 +1076,32 @@ if __name__ == '__main__':
     parser.add_argument("-i", "--int_antennas",
                         help="How many antennas in the interferometer array?",
                         default=4, type=int)
+    problem_group = parser.add_argument_group("Array Problems")
+    problem_group.add_argument("-a", "--antennas_down", help="Indices of antennas which are receiving but not "
+                                                             "transmitting, e.g. '5-7,11'. This is to model if "
+                                                             "an N200 is still up, but the connection to the "
+                                                             "antenna is down.",
+                       default="", type=str)
+    problem_group.add_argument("-r", "--receivers_down", help="Indices of antennas which are neither receiving "
+                                                              "nor transmitting, e.g. if an N200 is down. Format "
+                                                              "as '5-7,11'",
+                       default="", type=str)
     parser.add_argument("-b", "--beam", help="Beam to transmit on?", default=BORESITE_BEAM,
                         type=float)
     parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", default=10.5)
     parser.add_argument("-F", "--without_fence", help="Generate the array without fence",
                         action="store_true")
-    parser.add_argument("-s", "--antenna_spacing",
+    geometry_group = parser.add_argument_group("Array Geometry")
+    geometry_group.add_argument("-s", "--antenna_spacing",
                         help="What is the spacing between antennas? (m)",
                         default=15.24, type=float)
-    parser.add_argument("-x", "--int_x_spacing",
+    geometry_group.add_argument("-x", "--int_x_spacing",
                         help="The x spacing between main and int arrays? (m)",
                         default=0.0, type=float)
-    parser.add_argument("-y", "--int_y_spacing",
+    geometry_group.add_argument("-y", "--int_y_spacing",
                         help="The y spacing between main and int arrays? (m)",
                         default=-100.0, type=float)
-    parser.add_argument("-z", "--int_z_spacing",
+    geometry_group.add_argument("-z", "--int_z_spacing",
                         help="The z spacing between main and int arrays? (m)",
                         default=0.0, type=float)
     parser.add_argument("-o", "--output_file", help="Name of NEC input file this program creates",
@@ -1119,6 +1132,29 @@ if __name__ == '__main__':
     else:
         print("Using boresite")
         rel_phase = 0
+
+    antennas_down = []
+    if args.antennas_down is not None and args.antennas_down != "":
+        antennas = args.antennas_down.split(',')
+        for antenna in antennas:
+            # If they specified a range, then include all numbers in that range (including endpoints)
+            if '-' in antenna:
+                small_antenna, big_antenna = antenna.split('-')
+                antennas_down.extend(range(int(small_antenna), int(big_antenna) + 1))
+            else:
+                antennas_down.append(int(antenna))
+
+    receivers_down = []
+    if args.receivers_down is not None and args.receivers_down != "":
+        receivers = args.receivers_down.split(',')
+        for receiver in receivers:
+            # If they specified a range, then include all numbers in that range (including endpoints)
+            if '-' in receiver:
+                small_receiver, big_receiver = receiver.split('-')
+                receivers_down.extend(range(int(small_receiver), int(big_receiver) + 1))
+            else:
+                receivers_down.append(int(receiver))
+
     antenna_magnitudes = []
     antenna_phases = []
     int_antenna_magnitudes = []
@@ -1140,15 +1176,24 @@ if __name__ == '__main__':
         int_antenna_phases = calculate_broadened_phase(args.frequency * 1e6, args.antenna_spacing,
                                                        args.int_antennas, num_sub_arrays=2)
         for m_ant in range(0, args.antennas):
-            antenna_magnitudes.append(1)
+            if m_ant in antennas_down or m_ant in receivers_down:
+                antenna_magnitudes.append(0)
+            else:
+                antenna_magnitudes.append(1)
 
         for i_ant in range(0, args.int_antennas):
             int_antenna_magnitudes.append(0)
 
     else:
         for m_ant in range(0, args.antennas):
-            phase = rel_phase * m_ant
-            antenna_magnitudes.append(1)
+            receivers_down_to_left = bisect(receivers_down, m_ant)
+            if m_ant in receivers_down:
+                receivers_down_to_left -= 1     # bisect([0, 1], 0) returns 1, i.e. will add to back of equal elements
+            phase = rel_phase * (m_ant - receivers_down_to_left)
+            if m_ant in antennas_down or m_ant in receivers_down:
+                antenna_magnitudes.append(0)
+            else:
+                antenna_magnitudes.append(1)
             antenna_phases.append(phase)
 
         for i_ant in range(0, args.int_antennas):
