@@ -255,7 +255,7 @@ def shift_samples(basic_samples, phshift, amplitude):
 
 
 def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_dict,
-                       txrate, txctrfreq, main_antenna_count, main_antenna_spacing,
+                       txrate, txctrfreq, main_antennas, main_antenna_count, main_antenna_spacing,
                        pulse_ramp_time, max_usrp_dac_amplitude, tr_window_time):
     """
     Make all necessary samples for all antennas for this pulse.
@@ -275,7 +275,8 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
      slice_ids.
     :param txrate: transmit sampling rate, in Hz.
     :param txctrfreq: transmit mixing frequency, in kHz.
-    :param main_antenna_count: number of main antennas in the array to transmit.
+    :param main_antennas: indices of antennas in main array used for transmitting.
+    :param main_antenna_count: total number of main antennas in the array.
     :param main_antenna_spacing: spacing between main array antennas, assumed uniform.
     :param pulse_ramp_time: time to ramp up the pulse at the start and end of the pulse. This
     time counts as part of the total pulse length time (in seconds).
@@ -284,7 +285,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
     to count for the transmit/receive switching time. Windows the pulse on both sides.
     :returns combined_samples: a list of arrays - each array corresponds to an antenna
      (the samples are phased). All arrays are the same length for a single pulse on
-     that antenna. The length of the list is equal to main_antenna_count (all samples
+     that antenna. The length of the list is equal to len(main_antennas) (all samples
      are calculated). If we are not using an antenna, that index is a numpy array of
      zeroes.
     :returns pulse_channels: The antennas to actually send the corresponding array. If
@@ -302,7 +303,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
 
     # make the uncombined pulses
     create_uncombined_pulses(pulse_list, power_divider, exp_slices, slice_to_beamdir_dict,
-                             txrate, txctrfreq, main_antenna_count, main_antenna_spacing,
+                             txrate, txctrfreq, main_antennas, main_antenna_count, main_antenna_spacing,
                              pulse_ramp_time, max_usrp_dac_amplitude)
     # all pulse dictionaries in the pulse_list now have a 'samples' key which is a list of numpy
     # complex arrays (one for each possible tx antenna).
@@ -318,7 +319,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
     #   before combining them sample by sample.
     for pulse in pulse_list:
         # print start_samples
-        for antenna in range(0, main_antenna_count):
+        for antenna in range(0, len(main_antennas)):
             pulse_array = pulse['samples'][antenna]
             # print(combined_pulse_length, len(pulse_array), pulse['sample_number_start'])
             zeros_prepend = np.zeros(pulse['sample_number_start'], dtype=np.complex64)
@@ -334,7 +335,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
     # This is a list of arrays (one for each antenna) with the combined
     #   samples in it (which will be transmitted). Need to add together multiple pulses if there
     #   are multiple frequencies, for example.
-    for antenna in range(0, main_antenna_count):
+    for antenna in range(0, len(main_antennas)):
         for pulse in pulse_list:
             try:
                 combined_samples[antenna] += pulse['samples'][antenna]
@@ -363,7 +364,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
 
 
 def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
-                             txrate, txctrfreq, main_antenna_count, main_antenna_spacing,
+                             txrate, txctrfreq, main_antennas, main_antenna_count, main_antenna_spacing,
                              pulse_ramp_time, max_usrp_dac_amplitude):
     """
     Create the samples for a given pulse_list and append those samples to the pulse_list.
@@ -388,7 +389,8 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
      for each antenna in a certain slice's pulses.
     :param txrate: transmit sampling rate, in Hz.
     :param txctrfreq: transmit mixing frequency, in kHz.
-    :param main_antenna_count: number of main antennas in the array to transmit.
+    :param main_antennas: Indices of antennas in the main array that will be transmitted on.
+    :param main_antenna_count: number of antennas in the main array.
     :param main_antenna_spacing: spacing between main array antennas, assumed uniform.
     :param pulse_ramp_time: time to ramp up the pulse at the start and end of the pulse. This
     time counts as part of the total pulse length time (in seconds).
@@ -412,12 +414,12 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
                                                main_antenna_count, main_antenna_spacing)
             else:  # not imaging, all antennas transmitting same direction.
                 beamdirs_for_antennas = [beamdir[pulse['slice_id']][0] for ant in
-                                         range(0, main_antenna_count)]
-                amps_for_antennas = [1.0 for ant in range(0, main_antenna_count)]
+                                         main_antennas]
+                amps_for_antennas = [1.0 for ant in main_antennas]
 
             amplitude_list = [amplitude / float(power_divider) for amplitude in amps_for_antennas]
             # also adjust amplitudes for number of pulses transmitted at once. # TODO : review this as
-            for antenna in range(0, main_antenna_count):
+            for antenna in main_antennas:
                 # Get phase shifts for all channels off centre of array being phase = 0.
                 phase_for_antenna = \
                     get_phshift(beamdirs_for_antennas[antenna], exp_slices[pulse['slice_id']]['txfreq'],
@@ -427,9 +429,9 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
                 phase_array.append(phase_for_antenna)
         else: # rxonly operation.
             pulse['samples'] = []
-            amplitude_list = [0.0 for ant in range(0, main_antenna_count)]
+            amplitude_list = [0.0 for ant in main_antennas]
             wave_freq = float(exp_slices[pulse['slice_id']]['rxfreq']) - txctrfreq
-            phase_array = [0.0 for ant in range(0, main_antenna_count)]
+            phase_array = [0.0 for ant in main_antennas]
 
         wave_freq_hz = wave_freq * 1000
 
@@ -447,8 +449,8 @@ def create_uncombined_pulses(pulse_list, power_divider, exp_slices, beamdir,
                                                                                         wave_freq_hz)
             raise ExperimentException(errmsg)  # TODO change to warning? only happens on non-SINE
 
-        for antenna in range(0, main_antenna_count):
-            if antenna in exp_slices[pulse['slice_id']]['tx_antennas']:
+        for antenna in range(0, len(main_antennas)):
+            if main_antennas[antenna] in exp_slices[pulse['slice_id']]['tx_antennas']:
                 pulse_samples = shift_samples(basic_samples, phase_array[antenna],
                                               amplitude_list[antenna])
                 pulse['samples'].append(pulse_samples)
@@ -487,8 +489,8 @@ def calculated_combined_pulse_samples_length(pulse_list, txrate):
     return combined_pulse_length
 
 
-def rx_azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_antenna_count,
-                              main_antenna_spacing, interferometer_antenna_spacing, 
+def rx_azimuth_to_antenna_offset(beamdir, main_antennas, main_antenna_count, interferometer_antennas,
+                              interferometer_antenna_count, main_antenna_spacing, interferometer_antenna_spacing,
                               intf_offset, freq):
     """
     Get all the necessary phase shifts for all antennas for all the beams for a pulse sequence.
@@ -501,9 +503,11 @@ def rx_azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_ant
     that receive channel will be multiplied by zero and therefore not included (in beamforming).
 
     :param beamdir: list of length 1 or more.
-    :param main_antenna_count: the number of main antennas to calculate the phase offset for.
-    :param interferometer_antenna_count: the number of interferometer antennas to calculate the
+    :param main_antennas: the indices of physical main antennas to calculate the phase offset for.
+    :param main_antenna_count: the number of physical main antennas in the array.
+    :param interferometer_antennas: the indices of physical interferometer antennas to calculate the
      phase offset for.
+    :param interferometer_antenna_count: the number of physical interferometer antennas in the array.
     :param main_antenna_spacing: the spacing between the main array antennas (m).
     :param interferometer_antenna_spacing: the spacing between the interferometer antennas (m).
     :param intf_offset: The interferometer offset from the main array (from centre to centre), 
@@ -518,12 +522,12 @@ def rx_azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_ant
     beams_antenna_phases = []
     for beam in beamdir:
         phase_array = []
-        for channel in range(0, main_antenna_count):
+        for channel in main_antennas:
             # Get phase shifts for all channels
             # zero pulse shift b/w pulses when beamforming.
             phase_array.append(get_phshift(beam, freq, channel, 0, main_antenna_count,
                 main_antenna_spacing))
-        for channel in range(0, interferometer_antenna_count): 
+        for channel in interferometer_antennas:
             # Get phase shifts for all channels, adding in the x - offset of the interferometer
             # from the main array.
             phase_array.append(get_phshift(beam, freq, channel, 0, interferometer_antenna_count,
@@ -533,8 +537,8 @@ def rx_azimuth_to_antenna_offset(beamdir, main_antenna_count, interferometer_ant
     return beams_antenna_phases
 
 
-def create_debug_sequence_samples(txrate, txctrfreq, list_of_pulse_dicts,
-                          main_antenna_count, final_rx_sample_rate, ssdelay):
+def create_debug_sequence_samples(txrate, txctrfreq, list_of_pulse_dicts, main_antennas,
+                                  final_rx_sample_rate, ssdelay):
     """
     Build the samples for the whole sequence, to be recorded in datawrite.
 
@@ -545,7 +549,7 @@ def create_debug_sequence_samples(txrate, txctrfreq, list_of_pulse_dicts,
     in this sequence. Pulse dictionaries have all metadata and the samples for the
     pulse.
     :param file_path: location to place the json file.
-    :param main_antenna_count: The number of antennas available for transmitting on.
+    :param main_antennas: The indices of antennas used in the main array.
     :param final_rx_sample_rate: The final sample rate after decimating on the receive
     side (Hz).
     :param ssdelay: Receiver time of flight for last echo. This is the time to continue
@@ -555,7 +559,7 @@ def create_debug_sequence_samples(txrate, txctrfreq, list_of_pulse_dicts,
 
     # Get full pulse sequence
     pulse_sequence_us = []
-    sequence_of_samples = [[] for x in range(main_antenna_count)]
+    sequence_of_samples = [[] for _ in main_antennas]
     for pulse_index, pulse_dict in enumerate(list_of_pulse_dicts):
         pulse_sequence_us.append(pulse_dict['timing'])
         # Determine the time difference and number of samples between each start of pulse.
@@ -608,13 +612,13 @@ def create_debug_sequence_samples(txrate, txctrfreq, list_of_pulse_dicts,
         'dmrate': dm_rate
     }
 
-    for ant, samples in enumerate(sequence_of_samples):
+    for ant, samples in zip(main_antennas, sequence_of_samples):
         write_dict['sequence_samples'][ant] = {
             'real': samples.real.tolist(),
             'imag': samples.imag.tolist()
         }
 
-    for ant, samples in enumerate(sequence_of_samples):
+    for ant, samples in zip(main_antennas, sequence_of_samples):
         decimated_samples = samples[::dm_rate]
         write_dict['decimated_sequence'][ant] = {
             'real': decimated_samples.real.tolist(),

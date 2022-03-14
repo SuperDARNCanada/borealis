@@ -26,9 +26,17 @@ Config Parameters
 |                                         | addr14=192.168.10.114,  |                                      |
 |                                         | addr15=192.168.10.115   |                                      |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| main_antenna_count                      | 16                      | Number of main array antennas (TX/RX)|
+| main_antennas                           | 0,1,2,3,4,5,6,7,8,9,10, | Mapping of main rx/tx channels to    |
+|                                         | 11,12,13,14,15          | antennas in the main array           |
 +-----------------------------------------+-------------------------+--------------------------------------+
-| interferometer_antenna_count            | 4                       | Number of interferometer antennas    |
+| main_antenna_count                      | 16                      | Number of physical main array        |
+|                                         |                         | antennas                             |
++-----------------------------------------+-------------------------+--------------------------------------+
+| interferometer_antennas                 | 0,1,2,3                 | Mapping of intf rx channels to       |
+|                                         |                         | antennas in the interferometer array |
++-----------------------------------------+-------------------------+--------------------------------------+
+| interferometer_antenna_count            | 4                       | Number of physical interferometer    |
+|                                         |                         | antennas                             |
 +-----------------------------------------+-------------------------+--------------------------------------+
 | main_antenna_usrp_rx_channels           | 0,2,4,6,8,10,12,14,16,  | UHD channel designation for RX main  |
 |                                         | 18,20,22,24,26,28,30    | antennas                             |
@@ -196,11 +204,26 @@ There are several instances when you'll need to modify this file for correct ope
 
 #. One of your main array antennas is not working properly (broken coax, blown lightning arrestor, etc)
 
-TODO
+    In this situation, you have two options:
+
+    #. Leave the N200 running and collecting data. This antenna will not transmit or receive properly,
+        so the data collected will bring down the signal strength in the bfiq data as one antenna will
+        essentially be measuring noise.
+
+    #. Remove the N200 from operation. Follow the steps for a broken N200 with no replacement below.
 
 #. One of your interferometer array antennas is not working properly (broken coax, blown lightning arrestor, etc)
 
-TODO
+    In this situation, you have two options:
+
+    #. Receive data on the affected channel. This will skew the bfiq data (and rawacf) for the array, as this channel
+        will essentially be noise, averaged with the signals from the other antennas when processed into bfiq.
+
+    #. Do not receive data on the channel. This can be done by changing the following:
+
+       * `interferometer_antennas` - remove the index of the affected antenna from the list.
+
+       * `interferometer_antenna_usrp_rx_channels` - remove the channel of the affected antenna from the list.
 
 #. One of your transmitter's transmit paths is not working, but the receive path is still working properly
 
@@ -223,12 +246,40 @@ TODO
 
 #. One of your N200s is not working properly but you're located remotely and cannot insert the spare N200
 
-TODO
+    #. Remove the corresponding address from the `devices` field, and shift the remaining IP addresses (cannot have a
+        gap like `addr0=xxx,addr2=xxx).
+
+    #. Remove the corresponding main antenna index from the `main_antennas` field.
+
+    #. If the N200 is also receiving an interferometer channel, remove the interferometer index from the
+        `interferometer_antennas` field.
+
+    #. Remove the last rx channel from `main_antenna_usrp_rx_channels`. These indices map to the `devices` list, with
+        each N200 having two rx channels. This means rx channels 0 and 1 map to `addr0` in `devices`, channels 2 and 3
+        to `addr1`, and so on. The same applies to tx channels, however each N200 only has 1.
+
+    #. If applicable, remove the channel from `interferometer_antenna_usrp_rx_channels` that corresponds to the rx
+        channel on the removed device.
+
+    #. Remove the last tx channel from `main_antenna_usrp_tx_channels`. This is done for the same reasons as removing
+        the last rx channel in `main_antenna_usrp_rx_channels` above.
+
+    To illustrate, let's consider the case where N200 `192.168.10.103` goes down, assuming your config.ini nominally has
+    the same fields as the table at the top of the page. The fields should now read:
+
+    * `"devices" : "...,addr2=192.168.10.102,addr3=192.168.10.104,addr4=192.168.10.105,..."`
+    * `"main_antennas" : "0,1,2,4,5,..."`
+    * `"interferometer_antennas" : "0,1,2"`
+    * `"main_antenna_usrp_rx_channels" : "0,2,4,6,8,10,12,14,16,18,20,22,24,26,28"`
+    * `"interferometer_antenna_usrp_rx_channels" : "1,3,5"`
+    * `"main_antenna_usrp_tx_channels" : "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14"`
 
 #. You have a non-standard array
 
     One example of a non-standard array would be a different number of interferometer antennas than four.
     If your interferometer array has only two antennas you'll need to modify the following:
+
+    #. interferometer_antennas = 0,1
 
     #. interferometer_antenna_count = 2
 
@@ -250,7 +301,7 @@ TODO
 
     This can be done by changing the following parameters:
 
-#. `devices` - Should only have one address (addr0=192.168.10.xxx)
+    #. `devices` - Should only have one address (addr0=192.168.10.xxx)
 
     #. `main_antenna_count` - If you only have one N200, this should be set to 1, as there is only one transmit channel per N200.
 

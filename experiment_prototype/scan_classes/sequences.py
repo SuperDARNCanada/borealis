@@ -377,6 +377,7 @@ class Sequence(ScanClassBase):
         sequence_list = []
         txrate = self.transmit_metadata['txrate']
         txctrfreq = self.transmit_metadata['txctrfreq']
+        main_antennas = self.transmit_metadata['main_antennas']
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         main_antenna_spacing = self.transmit_metadata['main_antenna_spacing']
         pulse_ramp_time = self.transmit_metadata['pulse_ramp_time']
@@ -412,7 +413,7 @@ class Sequence(ScanClassBase):
                 # simple power_divider integer
                 pulse_samples, pulse_antennas = (
                     make_pulse_samples(one_pulse_list, self.power_divider, self.slice_dict,
-                                       slice_to_beamdir_dict, txrate, txctrfreq,
+                                       slice_to_beamdir_dict, txrate, txctrfreq, main_antennas,
                                        main_antenna_count, main_antenna_spacing, pulse_ramp_time,
                                        max_usrp_dac_amplitude, tr_window_time))
                 if pulse_index == 0:

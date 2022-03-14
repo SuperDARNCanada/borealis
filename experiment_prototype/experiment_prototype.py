@@ -198,11 +198,11 @@ range_sep *defaults*
 
 rx_int_antennas *defaults*
     The antennas to receive on in interferometer array, default is all
-    antennas given max number from config.
+    antennas given in config.
 
 rx_main_antennas *defaults*
     The antennas to receive on in main array, default is all antennas
-    given max number from config.
+    given in config.
 
 scanbound *defaults*
     A list of seconds past the minute for integration times in a scan to align to. Defaults
@@ -216,8 +216,7 @@ seqoffset *defaults*
     frequencies in the same pulse, etc. Default is 0 offset.
 
 tx_antennas *defaults*
-    The antennas to transmit on, default is all main antennas given max
-    number from config.
+    The antennas to transmit on, default is all main antennas given in config.
 
 xcf *defaults*
     flag for cross-correlation data. The default is True if acf is True, otherwise False.
@@ -445,6 +444,7 @@ class ExperimentPrototype(object):
         # to where the samples are built.
         self.__transmit_metadata = {
             'output_rx_rate': self.output_rx_rate,
+            'main_antennas': self.options.main_antennas,
             'main_antenna_count': self.options.main_antenna_count,
             'tr_window_time': self.options.tr_window_time,
             'main_antenna_spacing': self.options.main_antenna_spacing,
@@ -1533,15 +1533,13 @@ class ExperimentPrototype(object):
 
         # TODO future proof this by specifying tx_main and tx_int ?? or give spatial information in config
         if 'tx_antennas' not in exp_slice:
-            slice_with_defaults['tx_antennas'] = [i for i in range(0,
-                                                                  self.options.main_antenna_count)]
+            slice_with_defaults['tx_antennas'] = [i for i in self.options.main_antennas]
             # all possible antennas.
         if 'rx_main_antennas' not in exp_slice:
-            slice_with_defaults['rx_main_antennas'] = [i for i in
-                                                       range(0, self.options.main_antenna_count)]
+            slice_with_defaults['rx_main_antennas'] = [i for i in self.options.main_antennas]
         if 'rx_int_antennas' not in exp_slice:
             slice_with_defaults['rx_int_antennas'] = \
-                [i for i in range(0, self.options.interferometer_antenna_count)]
+                [i for i in self.options.interferometer_antennas]
         if 'pulse_phase_offset' not in exp_slice:
             slice_with_defaults['pulse_phase_offset'] = [0.0 for i in range(0, len(
                 slice_with_defaults['pulse_sequence']))]

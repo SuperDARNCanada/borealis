@@ -611,7 +611,9 @@ def radar():
 
                         beamdir = slice_to_beamdir_dict[slice_id]
                         beam_phase_dict[slice_id] = \
-                            rx_azimuth_to_antenna_offset(beamdir, options.main_antenna_count,
+                            rx_azimuth_to_antenna_offset(beamdir, options.main_antennas,
+                                                         options.main_antenna_count,
+                                                         options.interferometer_antennas,
                                                          options.interferometer_antenna_count,
                                                          options.main_antenna_spacing,
                                                          options.interferometer_antenna_spacing,
@@ -626,7 +628,7 @@ def radar():
                         sequence_samples_dict = create_debug_sequence_samples(experiment.txrate,
                                                               experiment.txctrfreq,
                                                               sequence_dict_list[sequence_index],
-                                                              options.main_antenna_count,
+                                                              options.main_antennas,
                                                               experiment.output_rx_rate,
                                                               sequence.ssdelay)
                         debug_samples.append(sequence_samples_dict)
@@ -750,7 +752,7 @@ def radar():
                                           sequence.slice_ids, experiment.slice_dict,
                                           beam_phase_dict, sequence.seqtime,
                                           sequence.first_rx_sample_time,
-                                          options.main_antenna_count, experiment.rxctrfreq, decimation_scheme)
+                                          len(options.main_antennas), experiment.rxctrfreq, decimation_scheme)
                         if first_integration:
                             decimation_scheme = None
                             first_integration = False

@@ -31,7 +31,9 @@ class ExperimentOptions:
             errmsg = 'Cannot open config file at {}'.format(config_file)
             raise ExperimentException(errmsg)
         try:
+            self._main_antennas = [int(i) for i in config['main_antennas'].split(',')]
             self._main_antenna_count = int(config['main_antenna_count'])
+            self._interferometer_antennas = [int(i) for i in config['interferometer_antennas'].split(',')]
             self._interferometer_antenna_count = int(config['interferometer_antenna_count'])
             self._main_antenna_spacing = float(config['main_antenna_spacing'])
             self._interferometer_antenna_spacing = float(config['interferometer_antenna_spacing'])
@@ -79,6 +81,15 @@ class ExperimentOptions:
             self._brian_to_driver_identity = str(config["brian_to_driver_identity"])
             self._brian_to_dspbegin_identity = str(config["brian_to_dspbegin_identity"])
             self._brian_to_dspend_identity = str(config["brian_to_dspend_identity"])
+
+            if min(self.main_antennas) < 0 or max(self.main_antennas) >= self.main_antenna_count:
+                errmsg = 'main_antennas and main_antenna_count have incompatible values in {}'.format(config_file)
+                raise ExperimentException(errmsg)
+            if min(self.interferometer_antennas) < 0 or \
+                    max(self.interferometer_antennas) >= self.interferometer_antenna_count:
+                errmsg = 'interferometer_antennas and interferometer_antenna_count have incompatible values in {}' \
+                         ''.format(config_file)
+                raise ExperimentException(errmsg)
 
             # TODO add appropriate signal process maximum time here after timing is changed - can
             # use to check for pulse spacing minimums, pace the driver
@@ -187,7 +198,9 @@ class ExperimentOptions:
             self.__restricted_ranges.append(restricted_range)
 
     def __repr__(self):
-        return_str = """\n    main_antenna_count = {} \
+        return_str = """\n    main_antennas = {} \
+                    \n    main_antenna_count = {} \
+                    \n    interferometer_antennas = {} \
                     \n    interferometer_antenna_count = {} \
                     \n    main_antenna_spacing = {} metres \
                     \n    interferometer_antenna_spacing = {} metres \
@@ -222,9 +235,9 @@ class ExperimentOptions:
                     \n    tr_window_time = {} \
                     \n    default_freq = {} \
                     \n    restricted_ranges = {} \
-                     """.format(self.main_antenna_count, self.interferometer_antenna_count,
-                                self.main_antenna_spacing, self.interferometer_antenna_spacing,
-                                self.max_tx_sample_rate, self.max_rx_sample_rate,
+                     """.format(self.main_antennas, self.main_antenna_count, self.interferometer_antennas,
+                                self.interferometer_antenna_count, self.main_antenna_spacing,
+                                self.interferometer_antenna_spacing, self.max_tx_sample_rate, self.max_rx_sample_rate,
                                 self.max_usrp_dac_amplitude, self.pulse_ramp_time,
                                 self.tr_window_time, self.max_output_sample_rate,
                                 self.max_number_of_filtering_stages, self.max_number_of_filter_taps_per_stage,
@@ -239,8 +252,16 @@ class ExperimentOptions:
         return return_str
 
     @property
+    def main_antennas(self):
+        return self._main_antennas
+
+    @property
     def main_antenna_count(self):
         return self._main_antenna_count
+
+    @property
+    def interferometer_antennas(self):
+        return self._interferometer_antennas
 
     @property
     def interferometer_antenna_count(self):

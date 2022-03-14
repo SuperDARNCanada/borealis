@@ -75,8 +75,8 @@ int main(int argc, char **argv){
     }
 
     if (first_time) {
-      total_antennas = sig_options.get_main_antenna_count() +
-                  sig_options.get_interferometer_antenna_count();
+      total_antennas = sig_options.get_main_antennas().size() +
+                  sig_options.get_interferometer_antennas().size();
 
       // First time - set up rx rate and filters.
       rx_rate = sp_packet.rxrate(); //Hz
