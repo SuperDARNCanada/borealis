@@ -49,7 +49,7 @@ USRP::USRP(const DriverOptions& driver_options, float tx_rate, float rx_rate)
   set_tx_subdev(driver_options.get_tx_subdev());
   set_main_rx_subdev(driver_options.get_main_rx_subdev());
   set_interferometer_rx_subdev(driver_options.get_interferometer_rx_subdev(),
-                                driver_options.get_interferometer_antenna_count());
+                                driver_options.get_interferometer_antennas().size());
   set_time_source(driver_options.get_pps(), driver_options.get_clk_addr());
   check_ref_locked();
   set_atr_gpios();

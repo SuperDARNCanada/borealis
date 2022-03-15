@@ -358,8 +358,8 @@ namespace {
       auto beam_phases = dp->get_beam_phases();
       beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf,
                         beam_phases,
-                        dp->sig_options.get_main_antenna_count(),
-                        dp->sig_options.get_interferometer_antenna_count(),
+                        dp->sig_options.get_main_antennas().size(),
+                        dp->sig_options.get_interferometer_antennas().size(),
                         rx_slice_info,
                         num_samples_after_dropping);
       }
@@ -388,7 +388,7 @@ namespace {
         correlations_from_samples(beamformed_samples_main, beamformed_samples_main,
                                           main_acfs, rx_slice_info,
                                           num_samples_after_dropping, dp->get_output_sample_rate());
-        if (dp->sig_options.get_interferometer_antenna_count() > 0) {
+        if (dp->sig_options.get_interferometer_antennas().size() > 0) {
           correlations_from_samples(beamformed_samples_main, beamformed_samples_intf,
                                           xcfs, rx_slice_info, num_samples_after_dropping,
                                           dp->get_output_sample_rate());
@@ -464,7 +464,7 @@ namespace {
           main_sample->set_real(beamformed_samples_main[slice_num][beam_start + sample].x);
           main_sample->set_imag(beamformed_samples_main[slice_num][beam_start + sample].y);
 
-          if (dp->sig_options.get_interferometer_antenna_count() > 0) {
+          if (dp->sig_options.get_interferometer_antennas().size() > 0) {
             auto intf_sample = beam->add_intfsamples();
             intf_sample->set_real(beamformed_samples_intf[slice_num][beam_start + sample].x);
             intf_sample->set_imag(beamformed_samples_intf[slice_num][beam_start + sample].y);
@@ -487,7 +487,7 @@ namespace {
             mainacf->set_real(val.x);
             mainacf->set_imag(val.y);
 
-            if (dp->sig_options.get_interferometer_antenna_count() > 0) {
+            if (dp->sig_options.get_interferometer_antennas().size() > 0) {
               auto xcf = dataset->add_xcf();
               auto intfacf = dataset->add_intacf();
 

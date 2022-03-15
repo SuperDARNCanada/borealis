@@ -9,10 +9,11 @@
 
 std::vector<uint32_t> split(const std::string str, const std::string regex_str)
 {
-  std::vector<std::string> str_list{
-    std::sregex_token_iterator(str.begin(), str.end(), std::regex(regex_str), -1),
-    std::sregex_toke_iterator()
-  };
+    std::regex re(regex_str);
+    std::vector<std::string> str_list(
+    std::sregex_token_iterator(str.begin(), str.end(), re, -1),
+    std::sregex_token_iterator()
+  );
 
   std::vector<uint32_t> int_list;
   for (auto& item: str_list) {

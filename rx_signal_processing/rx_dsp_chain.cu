@@ -199,7 +199,7 @@ int main(int argc, char **argv){
           new_angle.x = phase.real_phase();
           new_angle.y = phase.imag_phase();
 
-          if (phase_num < sig_options.get_main_antenna_count()) {
+          if (phase_num < sig_options.get_main_antennas().size()) {
             main_phases.push_back(new_angle);
           }
           else {
