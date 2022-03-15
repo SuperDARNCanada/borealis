@@ -331,7 +331,7 @@ def make_pulse_samples(pulse_list, power_divider, exp_slices, slice_to_beamdir_d
             # Sub in new array of right length for old array.
 
     # initialize to correct length
-    combined_samples = [np.zeros(combined_pulse_length, dtype=np.complex64) for ant in range(0, main_antenna_count)]
+    combined_samples = [np.zeros(combined_pulse_length, dtype=np.complex64) for ant in main_antennas]
     # This is a list of arrays (one for each antenna) with the combined
     #   samples in it (which will be transmitted). Need to add together multiple pulses if there
     #   are multiple frequencies, for example.
