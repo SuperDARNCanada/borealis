@@ -263,8 +263,8 @@ class ParseData(object):
 
                     antenna_iq_stage = self._antenna_iq_accumulator[slice_id][stage_name]
                     # Loops over antenna data within stage
-                    for ant_num, ant_data in enumerate(debug_samples.antennadata):
-                        ant_str = "antenna_{0}".format(ant_num)
+                    for ant_data in debug_samples.antennadata:
+                        ant_str = ant_data.antenna_name
 
                         cmplx = np.empty(len(ant_data.antennasamples), dtype=np.complex64)
                         antenna_iq_stage["num_samps"] = len(ant_data.antennasamples)

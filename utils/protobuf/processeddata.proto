@@ -36,6 +36,7 @@ message ProcessedData {
             repeated AntennaData antennadata = 2;
             message AntennaData {
                 repeated ComplexData antennasamples = 1;
+                string antenna_name = 2;
             }
         }
 

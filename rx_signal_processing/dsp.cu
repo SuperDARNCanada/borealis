@@ -438,6 +438,7 @@ namespace {
       auto add_debug_data = [dataset,slice_num](std::string stage_name,
                                                 std::vector<cuComplex*> &data_ptrs,
                                                 uint32_t num_antennas,
+						std::vector<std::string> antenna_names,
                                                 uint32_t num_samps_per_antenna)
       {
         auto debug_samples = dataset->add_debugsamples();
@@ -445,6 +446,7 @@ namespace {
         debug_samples->set_stagename(stage_name);
         for (uint32_t j=0; j<num_antennas; j++){
           auto antenna_data = debug_samples->add_antennadata();
+	  antenna_data->set_antenna_name(antenna_names[j]);
           for(uint32_t k=0; k<num_samps_per_antenna; k++) {
             auto antenna_samp = antenna_data->add_antennasamples();
             antenna_samp->set_real(data_ptrs[j][k].x);
@@ -507,12 +509,12 @@ namespace {
         for (uint32_t j=0; j<all_stage_ptrs.size(); j++){
           auto stage_str = "stage_" + std::to_string(j);
           add_debug_data(stage_str, all_stage_ptrs[j][slice_num], dp->get_num_antennas(),
-            samples_per_antenna[j]);
+            dp->get_antenna_names(), samples_per_antenna[j]);
         }
       #endif
 
       add_debug_data("antennas", output_ptrs[slice_num], dp->get_num_antennas(),
-        num_samples_after_dropping);
+        dp->get_antenna_names(), num_samples_after_dropping);
 
       dataset->set_slice_id(rx_slice_info[slice_num].slice_id);
       dataset->set_num_ranges(rx_slice_info[slice_num].num_ranges);
@@ -962,6 +964,7 @@ void DSPCore::send_timing()
  * of samples per antenna(each stage).
  */
 void DSPCore::cuda_postprocessing_callback(uint32_t total_antennas,
+                                            std::vector<std::string> antenna_strings,
                                             uint32_t num_samples_rf,
                                             std::vector<uint32_t> samples_per_antenna,
                                             std::vector<uint32_t> total_output_samples)
@@ -975,6 +978,7 @@ void DSPCore::cuda_postprocessing_callback(uint32_t total_antennas,
   allocate_and_copy_host(total_output_samples.back(), filter_outputs_d.back());
 
   num_rf_samples = num_samples_rf;
+  antenna_names = antenna_strings;
   num_antennas = total_antennas;
   this->samples_per_antenna = samples_per_antenna;
 
@@ -1138,6 +1142,16 @@ float DSPCore::get_decimate_timing()
 uint32_t DSPCore::get_num_antennas()
 {
   return num_antennas;
+}
+
+/**
+ * @brief      Gets the names of the antennas.
+ *
+ * @return     The names of all antennas.
+ */
+std::vector<std::string> DSPCore::get_antenna_names()
+{
+  return antenna_names;
 }
 
 /**
