@@ -965,7 +965,7 @@ class DataWrite(object):
 
             param['rx_sample_rate'] = np.float32(data_parsing.rx_rate)
 
-            total_ants = self.options.main_antenna_count + self.options.intf_antenna_count
+            total_ants = len(self.options.main_antennas) + len(self.options.intf_antennas)
             param['num_samps'] = np.uint32(len(samples_list[0]) / total_ants)
 
             param['data_descriptors'] = ["num_sequences", "num_antennas", "num_samps"]

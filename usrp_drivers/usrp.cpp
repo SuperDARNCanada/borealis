@@ -198,7 +198,7 @@ void USRP::set_main_rx_subdev(std::string main_subdev)
   usrp_->set_rx_subdev_spec(main_subdev);
 }
 
-// REVIEW #43 It would be best if we could have in the config file a map of direct antenna to USRP box/subdev/channel so you can change the interferometer to a different set of boxes for example. Also if a rx daughterboard stopped working and you needed to move both main and int to a totally different box for receive, then you could do that. This would be useful for both rx and tx channels.
+// TODO: REVIEW #43 It would be best if we could have in the config file a map of direct antenna to USRP box/subdev/channel so you can change the interferometer to a different set of boxes for example. Also if a rx daughterboard stopped working and you needed to move both main and int to a totally different box for receive, then you could do that. This would be useful for both rx and tx channels.
 // REPLY OKAY, but maybe we should leave it for now. That's easier said than done.
 /**
  * @brief      Sets the interferometer receive subdev.
