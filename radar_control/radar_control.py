@@ -141,7 +141,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
 def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                       brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
                       slice_dict, beam_dict, sequence_time, first_rx_sample_time,
-                      main_antenna_count, rxctrfreq, decimation_scheme=None):
+                      main_antenna_count, rxctrfreq, all_antenna_indices, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
         Happens every sequence.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
@@ -165,6 +165,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         first pulse. In seconds.
         :param main_antenna_count: number of main array antennas, from the config file.
         :param rxctrfreq: the center frequency of receiving, to send the translation frequency from center to dsp.
+        :param all_antenna_indices: Indices of all physical antennas which are connected to N200s.
         :param decimation_scheme: object of type DecimationScheme that has all decimation and
             filtering data.
 
@@ -206,7 +207,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             # Don't need to send channel numbers, will always send beamdir with length = total antennas.
             # Beam directions are formated e^i*phi so that a 0 will indicate not
             # to receive on that channel.
-            for antenna_num, phi in enumerate(beamdir):
+            for antenna_num, phi in zip(all_antenna_indices, beamdir):
                 phase_add = beam_add.phase.add()
                 if antenna_num in slice_dict[slice_id]['rx_main_antennas'] or antenna_num - main_antenna_count in slice_dict[slice_id]['rx_int_antennas']:
                     phase = cmath.exp(phi * 1j)
@@ -499,6 +500,10 @@ def radar():
                  experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
                  experiment.rxrate)
 
+    # Indices of all N200s connected to N200s while the radar is running. Indices start from 0 with the
+    # main array and start from main_antenna_count in the interferometer antenna array.
+    all_antenna_indices = options.main_antennas + \
+                          [i + options.main_antenna_count for i in options.interferometer_antennas]
     first_integration = True
     next_scan_start = None
     decimation_scheme = experiment.decimation_scheme
@@ -752,6 +757,7 @@ def radar():
                                           sequence.slice_ids, experiment.slice_dict,
                                           beam_phase_dict, sequence.seqtime,
                                           sequence.first_rx_sample_time,
+                                          all_antenna_indices,
                                           len(options.main_antennas), experiment.rxctrfreq, decimation_scheme)
                         if first_integration:
                             decimation_scheme = None
