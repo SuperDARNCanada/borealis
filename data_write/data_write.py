@@ -1074,8 +1074,8 @@ class DataWrite(object):
                 parameters['int_time'] = np.float32(integration_meta.integration_time)
                 parameters['tx_pulse_len'] = np.uint32(rx_freq.pulse_len)
                 parameters['tau_spacing'] = np.uint32(rx_freq.tau_spacing)
-                parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
-                parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
+                parameters['main_antenna_count'] = np.uint32(self.options.main_antenna_count)
+                parameters['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
                 parameters[
                     'rx_center_freq'] = integration_meta.rx_center_freq 
