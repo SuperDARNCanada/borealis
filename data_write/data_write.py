@@ -996,7 +996,7 @@ class DataWrite(object):
             tx_data = None
             for meta in integration_meta.sequences:
                 if meta.HasField('tx_data'):
-                    tx_data = TX_TEMPLATE.copy()
+                    tx_data = copy.deepcopy(TX_TEMPLATE)
                     break
 
             if tx_data is not None:
