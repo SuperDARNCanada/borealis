@@ -303,7 +303,7 @@ def install_uhd():
     uhd_cmd = "cd ${IDIR};" \
     "git clone --recursive git://github.com/EttusResearch/uhd.git;" \
     "cd uhd || exit;" \
-    "git checkout UHD-3.14;" \
+    "git checkout UHD-4.0;" \
     "git submodule init;" \
     "git submodule update;" \
     "cd host || exit;" \
