@@ -234,6 +234,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
                 phase_add.real_phase = phase.real
                 phase_add.imag_phase = phase.imag
 
+        chan_add.pulses[:] = slice_dict[slice_id]['pulse_sequence']
 
         for lag in slice_dict[slice_id]['lag_table']:
             lag_add = chan_add.lags.add()

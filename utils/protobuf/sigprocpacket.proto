@@ -22,6 +22,7 @@ message SigProcPacket {
         uint32 tau_spacing = 7; // in us
         repeated LagPair lags = 8; // will be empty if no acfs.
         repeated float phase_offsets = 9; // one phase offset for each pulse in the sequence
+	repeated uint32 pulses = 10;	// pulse locations in units of tau spacing
 
         message BeamDirections {
             repeated Phase phase = 1; /* must be length = number main + intf antennas */

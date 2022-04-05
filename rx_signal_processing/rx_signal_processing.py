@@ -197,6 +197,12 @@ def main():
             detail['first_range_off'] = np.uint32(chan.first_range / chan.range_sep)
             detail['pulse_phase_offset'] = np.float32(chan.phase_offsets)
 
+            pulses = []
+            for pulse in chan.pulses:
+                pulses.append(np.uint32(pulse))
+            pulses = np.array(pulses)
+            detail['pulses'] = pulses
+
             lags = []
             for lag in chan.lags:
                 lags.append([lag.pulse_1,lag.pulse_2])
