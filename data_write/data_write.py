@@ -1257,13 +1257,13 @@ def main():
 
     data_parsing = ParseData()
     final_integration = sys.maxsize
-    integration_meta = None
 
     current_experiment = None
     data_write = None
     first_time = True
     expected_sqn_num = 0
     queued_sqns = []
+    integration_metadata_dict = dict()
     while True:
 
         try:
@@ -1277,7 +1277,7 @@ def main():
             integration_meta = datawritemetadata_pb2.IntegrationTimeMetadata()
             integration_meta.ParseFromString(data)
 
-            final_integration = integration_meta.last_seqn_num
+            integration_metadata_dict[integration_meta.last_seqn_num] = integration_meta
 
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes_from_any_iden(dsp_to_data_write)
@@ -1312,18 +1312,20 @@ def main():
 
             for pd in sorted_q:
                 if not first_time:
-                    if data_parsing.sequence_num == final_integration:
+                    if data_parsing.sequence_num in integration_metadata_dict:
 
-                        if integration_meta.experiment_name != current_experiment:
+                        integration_metadata = integration_metadata_dict.pop(data_parsing.sequence_num)
+
+                        if integration_metadata.experiment_name != current_experiment:
                             data_write = DataWrite(options)
-                            current_experiment = integration_meta.experiment_name
+                            current_experiment = integration_metadata.experiment_name
 
                         kwargs = dict(write_bfiq=args.enable_bfiq,
                                       write_antenna_iq=args.enable_antenna_iq,
                                       write_raw_rf=args.enable_raw_rf,
                                       write_tx=args.enable_tx,
                                       file_ext=args.file_type,
-                                      integration_meta=integration_meta,
+                                      integration_meta=integration_metadata,
                                       data_parsing=data_parsing,
                                       rt_dw={"socket": realtime_to_data_write,
                                              "iden": options.rt_to_dw_identity},
