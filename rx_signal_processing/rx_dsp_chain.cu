@@ -169,15 +169,18 @@ int main(int argc, char **argv){
       auto range_sep = rx_channel.range_sep();
       auto beam_count = rx_channel.beam_directions_size();
       auto tau_spacing = rx_channel.tau_spacing();
+      auto pulse_phase_offsets = rx_channel.phase_offsets();
       auto new_rx_slice = rx_slice(rx_freq, slice_id, num_ranges, beam_count, first_range, range_sep,
-                                    tau_spacing);
+                                    tau_spacing, pulse_phase_offsets);
 
       auto num_lags = sp_packet.rxchannel(channel).lags_size();
       for (uint32_t lag_counter=0; lag_counter<num_lags; lag_counter++) {
         auto lag_num = sp_packet.rxchannel(channel).lags(lag_counter).lag_num();
+	auto pulse_1_idx = sp_packet.rxchannel(channel).lags(lag_counter).pulse_1_idx();
+	auto pulse_2_idx = sp_packet.rxchannel(channel).lags(lag_counter).pulse_2_idx();
         auto pulse_1 = sp_packet.rxchannel(channel).lags(lag_counter).pulse_1();
         auto pulse_2 = sp_packet.rxchannel(channel).lags(lag_counter).pulse_2();
-        new_rx_slice.lags.push_back({pulse_1, pulse_2, lag_num});
+        new_rx_slice.lags.push_back({pulse_1, pulse_2, lag_num, pulse_1_idx, pulse_2_idx});
       }
       slice_info.push_back(new_rx_slice);
 
