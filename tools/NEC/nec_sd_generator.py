@@ -88,7 +88,7 @@ class Tower(object):
     """
 
     def __init__(self, start_height_m=15.0, balun_offset=0.075, side_length=0.30, awg=13,
-                 global_x=0.0, global_y=0.0, global_z=0.0):
+                 global_x=0.0, global_y=0.0, global_z=0.0, guyline=True):
         """
         :param start_height_m: The starting height of the first reflector wire. Default 15, meters
         :param balun_offset: The offset distance the balun and load boxes sit off the towers
@@ -98,13 +98,6 @@ class Tower(object):
         """
         # Build tower upright, top, and guylines. Cross sections not included as wire must connect at nodes.
         # Also wires cannot lay along the ground plane, this produces segment errors.
-        # Todo: Enable turning off guylines for simulation of rope
-        #               global_x, global_x - x_offset, global_x + x_offset,
-        #               global_x - x_offset, global_x + x_offset, global_x,
-        #               global_y - balun_offset, y_offset, y_offset,
-        #               y_offset, y_offset, global_y - balun_offset,
-        #               global_z + 0.01, global_z + 0.01, global_z + 0.01,
-        #               global_z + 0.01, global_z + 0.01, global_z + 0.01,
         # Todo: Build antenna tower cross sections
 
         x_offset = side_length / 2.0
@@ -135,6 +128,10 @@ class Tower(object):
         for i in range(len(x1)-4):
             self.tower_wires.append(Wire(x1[i], y1[i], z1[i], x2[i], y2[i], z2[i],
                                          radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+        if guyline:
+            for i in range(len(x1)-4, len(x1), 1):
+                self.tower_wires.append(Wire(x1[i], y1[i], z1[i], x2[i], y2[i], z2[i],
+                                             radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
 
     def repr_geometry(self):
         """
