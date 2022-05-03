@@ -240,14 +240,14 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             lag_add.lag_num = int(lag[1] - lag[0])
             
             # Get the phase offset for this pulse combination
-            pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
-            lag0_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[0])
-            lag1_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[1])
-            # Catch case where no pulse phase offsets are specified
-            try:
+            if len(pulse_phase_offsets[slice_id]) != 0:
+                pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
+                lag0_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[0])
+                lag1_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[1])
                 phase_in_rad = np.radians(pulse_phase_offset[lag0_idx] - pulse_phase_offset[lag1_idx])
                 phase_offset = np.exp(1j * np.array(phase_in_rad, np.float64))
-            except KeyError:
+            # Catch case where no pulse phase offsets are specified
+            else:
                 phase_offset = 1.0 + 0.0j
 
             lag_add.phase_offset_real = np.real(phase_offset)
