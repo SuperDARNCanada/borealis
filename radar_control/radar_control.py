@@ -204,7 +204,10 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
         chan_add.first_range = slice_dict[slice_id]['first_range']
         chan_add.range_sep = slice_dict[slice_id]['range_sep']
-        chan_add.phase_offsets.extend(pulse_phase_offsets)
+        # chan_add.num_pulses = len(slice_dict[slice_id]['pulse_sequence'])
+        # chan_add.pulse_phase_offsets[:] = pulse_phase_offsets[slice_id][-1].tolist()
+
+        print("Pulse Phase Offsets: {}".format(pulse_phase_offsets[slice_id][-1]))
 
         main_bms = beam_dict[slice_id]['main']
         intf_bms = beam_dict[slice_id]['intf']
@@ -234,13 +237,24 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
                 phase_add.real_phase = phase.real
                 phase_add.imag_phase = phase.imag
 
-        chan_add.pulses[:] = slice_dict[slice_id]['pulse_sequence']
-
         for lag in slice_dict[slice_id]['lag_table']:
             lag_add = chan_add.lags.add()
             lag_add.pulse_1 = lag[0]
             lag_add.pulse_2 = lag[1]
             lag_add.lag_num = int(lag[1] - lag[0])
+            
+            # Get the phase offset for this pulse combination
+            pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
+            lag0_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[0])
+            lag1_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[1])
+            # Catch case where no pulse phase offsets are specified
+            try:
+                phase_in_rad = np.radians(pulse_phase_offset[lag0_idx] - pulse_phase_offset[lag1_idx])
+                phase_offset = np.exp(1j * np.array(phase_in_rad, np.float64))
+            except KeyError:
+                phase_offset = 1.0 + 0.0j
+            lag_add.phase_offset_real = np.real(phase_offset)
+            lag_add.phase_offset_imag = np.imag(phase_offset)
 
     # Brian requests sequence metadata for timeouts
     if TIME_PROFILE:

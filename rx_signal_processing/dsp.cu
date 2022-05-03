@@ -253,21 +253,6 @@ namespace {
         continue;
       }
 
-      std::vector<std::complex<float>> pulse_phase_corrections;		// pulse_phase_offset correction for each lag
-
-      // Extract the pulse phase offset correction for each lag
-      const double pi = std::acos(-1);
-      for (uint32_t lag=0; lag<num_lags; lag++) {
-
-        auto pulse_1_idx = rx_slice_info[slice_num].lags[lag].pulse_1_idx;    // for indexing pulse_phase_offsets
-        auto pulse_2_idx = rx_slice_info[slice_num].lags[lag].pulse_2_idx;    // for indexing pulse_phase_offsets
-        auto pulse_1_angle = rx_slice_info[slice_num].pulse_phase_offsets[pulse_1_idx];
-        auto pulse_2_angle = rx_slice_info[slice_num].pulse_phase_offsets[pulse_2_idx];
-
-        auto theta = (pulse_1_angle - pulse_2_angle) * pi / 180.;
-        pulse_phase_corrections[lag] = std::complex<float>(cosf(theta), sinf(theta));
-      } // close lags scope
-
       for (uint32_t beam_count=0; beam_count<num_beams; beam_count++) {
         auto samples_ptr_1 = beamformed_samples_1[slice_num].data();
         auto samples_ptr_2 = beamformed_samples_2[slice_num].data();
@@ -305,7 +290,7 @@ namespace {
             auto val = correlation_matrix(range + first_range_offset + p1_offset,
                                           range + first_range_offset + p2_offset);
 
-	    val *= pulse_phase_corrections[lag];
+	    val *= rx_slice_info[slice_num].lags[lag].phase_offset;
 	    
             auto range_lag_offset = (range * num_lags) + lag;
             auto total_offset = beam_offset + range_lag_offset;
@@ -400,7 +385,7 @@ namespace {
       std::vector<cuComplex> v3(total_elements);
       intf_acfs.push_back(v3);
     }
-
+    std::cout << "About to correlate\n" << std::flush;
     TIMEIT_IF_TRUE_OR_DEBUG(true, "ACF/XCF time: ",
       {
         correlations_from_samples(beamformed_samples_main, beamformed_samples_main,
