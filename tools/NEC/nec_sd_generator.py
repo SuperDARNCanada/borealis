@@ -1264,8 +1264,9 @@ if __name__ == '__main__':
     # represent them
     with open(args.output_file, 'w') as f:
         main_antenna_objects, main_tower_objects = create_main_array(args.antennas, args.antenna_spacing,
-                                                 antenna_magnitudes, antenna_phases,
-                                                 log_periodics=args.log_periodic, towers=args.towers)
+                                                                     antenna_magnitudes, antenna_phases,
+                                                                     log_periodics=args.log_periodic,
+                                                                     towers=args.towers, guylines=args.guylines)
         for m_ant in main_antenna_objects:
             f.write(m_ant.repr_geometry())
         for m_tow in main_tower_objects:
@@ -1273,10 +1274,11 @@ if __name__ == '__main__':
 
         if args.int_antennas > 0:
             int_antenna_objects, int_tower_objects = create_int_array(args.int_antennas, args.antenna_spacing,
-                                                   args.int_x_spacing, args.int_y_spacing,
-                                                   args.int_z_spacing, int_antenna_magnitudes,
-                                                   int_antenna_phases,
-                                                   log_periodics=args.log_periodic, towers=args.towers)
+                                                                      args.int_x_spacing, args.int_y_spacing,
+                                                                      args.int_z_spacing, int_antenna_magnitudes,
+                                                                      int_antenna_phases,
+                                                                      log_periodics=args.log_periodic,
+                                                                      towers=args.towers, guylines=args.guylines)
             for i_ant in int_antenna_objects:
                 f.write(i_ant.repr_geometry())
             for i_tow in int_tower_objects:
