@@ -204,10 +204,6 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
         chan_add.first_range = slice_dict[slice_id]['first_range']
         chan_add.range_sep = slice_dict[slice_id]['range_sep']
-        # chan_add.num_pulses = len(slice_dict[slice_id]['pulse_sequence'])
-        # chan_add.pulse_phase_offsets[:] = pulse_phase_offsets[slice_id][-1].tolist()
-
-        print("Pulse Phase Offsets: {}".format(pulse_phase_offsets[slice_id][-1]))
 
         main_bms = beam_dict[slice_id]['main']
         intf_bms = beam_dict[slice_id]['intf']
@@ -253,6 +249,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
                 phase_offset = np.exp(1j * np.array(phase_in_rad, np.float64))
             except KeyError:
                 phase_offset = 1.0 + 0.0j
+
             lag_add.phase_offset_real = np.real(phase_offset)
             lag_add.phase_offset_imag = np.imag(phase_offset)
 
