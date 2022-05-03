@@ -136,19 +136,19 @@ class Tower(object):
                 self.tower_wires.append(Wire(x1[i], y1[i], z1[i], x2[i], y2[i], z2[i],
                                                  radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
 
-        # Front guyline
-        self.tower_wires.append(Wire(x1[-4], y1[-4], z1[-4], x2[-4], y2[-4], z2[-4],
-                                             radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
-
-        # Side guylines
-        self.tower_wires.append(Wire(x1[-3], y1[-3], z1[-3], x2[-3], y2[-3], z2[-3],
-                                     radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
-        self.tower_wires.append(Wire(x1[-2], y1[-2], z1[-2], x2[-2], y2[-2], z2[-2],
-                                     radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
-
-        # Back guyline
-        self.tower_wires.append(Wire(x1[-1], y1[-1], z1[-1], x2[-1], y2[-1], z2[-1],
-                                     radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+        # # Front guyline
+        # self.tower_wires.append(Wire(x1[-4], y1[-4], z1[-4], x2[-4], y2[-4], z2[-4],
+        #                                      radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+        #
+        # # Side guylines
+        # self.tower_wires.append(Wire(x1[-3], y1[-3], z1[-3], x2[-3], y2[-3], z2[-3],
+        #                              radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+        # self.tower_wires.append(Wire(x1[-2], y1[-2], z1[-2], x2[-2], y2[-2], z2[-2],
+        #                              radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+        #
+        # # Back guyline
+        # self.tower_wires.append(Wire(x1[-1], y1[-1], z1[-1], x2[-1], y2[-1], z2[-1],
+        #                              radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
 
     def repr_geometry(self):
         """
