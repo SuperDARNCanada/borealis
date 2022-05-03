@@ -1171,6 +1171,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(usage=usage_msg())
     parser.add_argument("-t", "--towers", help="Should antenna support towers be included?",
                         action='store_true')
+    parser.add_argument("-g", "--guylines", help="Should antenna support tower guylines be included?",
+                        action='store_true')
     parser.add_argument("-m", "--antennas", help="How many antennas in the main array?",
                         default=16, type=int)
     parser.add_argument("-i", "--int_antennas",
