@@ -88,12 +88,13 @@ class Tower(object):
     """
 
     def __init__(self, start_height_m=15.0, balun_offset=0.075, side_length=0.30, awg=13,
-                 global_x=0.0, global_y=0.0, global_z=0.0, guyline=True):
+                 global_x=0.0, global_y=0.0, global_z=0.0, guylines=False):
         """
         :param start_height_m: The starting height of the first reflector wire. Default 15, meters
         :param balun_offset: The offset distance the balun and load boxes sit off the towers
         :param side_length: The length of the side of the equilateral triangular tower base
         :param awg: The wire gauge in American Wire Gauge of the tower and guylines. Defaults to 13
+        :param guylines: Flag to add in steel guylines. Default False
         :raises ValueError when the spacing_m, angle and num_wires are incompatible
         """
         # Build tower upright, top, and guylines. Cross sections not included as wire must connect at nodes.
@@ -128,10 +129,26 @@ class Tower(object):
         for i in range(len(x1)-4):
             self.tower_wires.append(Wire(x1[i], y1[i], z1[i], x2[i], y2[i], z2[i],
                                          radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
-        if guyline:
-            for i in range(len(x1)-4, len(x1), 1):
+
+        # Add the guylines
+        if guylines:
+            for i in range(len(x1)-3, len(x1)):
                 self.tower_wires.append(Wire(x1[i], y1[i], z1[i], x2[i], y2[i], z2[i],
+                                                 radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+
+        # Front guyline
+        self.tower_wires.append(Wire(x1[-4], y1[-4], z1[-4], x2[-4], y2[-4], z2[-4],
                                              radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+
+        # Side guylines
+        self.tower_wires.append(Wire(x1[-3], y1[-3], z1[-3], x2[-3], y2[-3], z2[-3],
+                                     radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+        self.tower_wires.append(Wire(x1[-2], y1[-2], z1[-2], x2[-2], y2[-2], z2[-2],
+                                     radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+
+        # Back guyline
+        self.tower_wires.append(Wire(x1[-1], y1[-1], z1[-1], x2[-1], y2[-1], z2[-1],
+                                     radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
 
     def repr_geometry(self):
         """
@@ -892,7 +909,7 @@ def create_wire_conductivity(tag_number, start_segment_number=0, end_segment_num
 
 def create_main_array(num_antennas, antenna_spacing_m,
                       antenna_magnitudes, antenna_phases,
-                      log_periodics=False, towers=False):
+                      log_periodics=False, towers=False, guylines=False):
     """
     Create the main array of a SuperDARN array, returning the antenna objects
 
@@ -902,6 +919,7 @@ def create_main_array(num_antennas, antenna_spacing_m,
     :param antenna_phases: Phase for the sources for each antenna in a python list
     :param log_periodics: Use log periodic antennas instead of TTFD antennas. Default False
     :param towers: Include antenna support towers. Default False
+    :param guylines: Include steel antenna guylines. Default False
     :return: antenna objects and tower objects describing the main array
     """
     if len(antenna_magnitudes) != num_antennas:
@@ -926,14 +944,14 @@ def create_main_array(num_antennas, antenna_spacing_m,
             antenna_objects.append(TTFD(global_x=x_position,
                                         current_real=real_cur, current_imag=imag_cur))
             if towers:
-                tower_objects.append(Tower(global_x=x_position))
+                tower_objects.append(Tower(global_x=x_position, guylines=guylines))
 
     return antenna_objects, tower_objects
 
 
 def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spacing_m, int_z_spacing_m,
                      antenna_magnitudes, antenna_phases,
-                     log_periodics=False, towers=False):
+                     log_periodics=False, towers=False, guylines=False):
     """
     Create the interferometer array of a SuperDARN array, returning the antenna objects
 
@@ -946,6 +964,7 @@ def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spa
     :param antenna_phases: Phase for the sources for each antenna in a python list
     :param log_periodics: Use log periodic antennas instead of TTFD antennas. Default False
     :param towers: Include antenna support towers. Default False
+    :param guylines: Include antenna tower guylines. Default False
     :return: antenna objects and tower objects describing the interferometer array
     """
     if len(antenna_magnitudes) != num_antennas:
@@ -974,7 +993,7 @@ def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spa
                                         current_real=real_cur))
             if towers:
                 tower_objects.append(Tower(global_x=global_x_position, global_y=int_y_spacing_m,
-                                       global_z=int_z_spacing_m))
+                                       global_z=int_z_spacing_m, guylines=guylines))
 
     return antenna_objects, tower_objects
 
@@ -1159,7 +1178,7 @@ if __name__ == '__main__':
                         default=4, type=int)
     parser.add_argument("-b", "--beam", help="Beam to transmit on?", default=BORESITE_BEAM,
                         type=float)
-    parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", default=10.5)
+    parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", type=float, default=10.5)
     parser.add_argument("-F", "--without_fence", help="Generate the array without fence",
                         action="store_true")
     parser.add_argument("-s", "--antenna_spacing",
