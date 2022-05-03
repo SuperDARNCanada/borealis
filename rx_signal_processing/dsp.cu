@@ -385,7 +385,7 @@ namespace {
       std::vector<cuComplex> v3(total_elements);
       intf_acfs.push_back(v3);
     }
-    std::cout << "About to correlate\n" << std::flush;
+
     TIMEIT_IF_TRUE_OR_DEBUG(true, "ACF/XCF time: ",
       {
         correlations_from_samples(beamformed_samples_main, beamformed_samples_main,
