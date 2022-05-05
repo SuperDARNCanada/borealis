@@ -417,10 +417,11 @@ class Sequence(ScanClassBase):
                     if component_info['slice_id'] == slice_id:
                         pulse_sample_start = component_info['pulse_sample_start']
                         pulse_samples_len = component_info['pulse_num_samps']
+                        tx_antennas = self.slice_dict[slice_id]['tx_antennas']
 
                         start = pulse['tr_window_num_samps'] + pulse_sample_start
                         end = start + pulse_samples_len
-                        pulse_piece = sequence[...,start:end]
+                        pulse_piece = sequence[tx_antennas, start:end]
 
                         np.add(pulse_piece, samples[i], out=pulse_piece)
 
