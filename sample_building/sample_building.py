@@ -637,4 +637,4 @@ def calculate_first_rx_sample_time(first_pulse_num_samples_with_tr, txrate):
 
     first_rx_sample_index = int(first_pulse_num_samples_with_tr/2)
     first_rx_sample_time = float(first_rx_sample_index)/txrate
-    return first_rx_sample_time
+    return int(first_rx_sample_time)
