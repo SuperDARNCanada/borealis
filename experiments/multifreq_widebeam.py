@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+# Copyright SuperDARN Canada 2022
 # A simultaneous multifrequency widebeam mode.
 # This experiment uses two pairs of adjacent antennas for transmitting,
 # with each pair operating on its own frequency.
