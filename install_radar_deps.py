@@ -347,7 +347,7 @@ def install_realtime():
     """
 
     rt_cmd = "bash -c \"cd /usr/local;" \
-    "git clone https://github.com/SuperDARN/hdw/tree/NEW/format;" \
+    "git clone https://github.com/SuperDARN/hdw.git;" \
     "mkdir -p $BOREALISPATH/borealisrt_env;" \
     "virtualenv $BOREALISPATH/borealisrt_env;" \
     "source $BOREALISPATH/borealisrt_env/bin/activate;" \
