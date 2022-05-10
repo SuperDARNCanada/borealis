@@ -230,7 +230,7 @@ class Sequence(ScanClassBase):
         # slice a higher power weighting if you wanted)
 
         # This conditional block checks whether the slices interfaced in this sequence use any of
-        # the same antennas. If they do, the power should not be divided, because no single
+        # the same antennas. If they don't, the power should not be divided, because no single
         # N200 is being asked to deliver power from multiple slices. If some antennas are being
         # shared, then the power divider defaults to the normal division (divide by the maximum
         # number of overlapping pulses).
