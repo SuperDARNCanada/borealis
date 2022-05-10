@@ -267,8 +267,11 @@ TODO
     To illustrate, let's consider the case where N200 `192.168.10.103` goes down, assuming your config.ini nominally has
     the same fields as the table at the top of the page. The fields should now read:
 
-    * `"devices" : "...,addr2=192.168.10.102,addr3=192.168.10.104,addr4=192.168.10.105,..."`
-    * `"main_antennas" : "0,1,2,4,5,..."`
+    * `"devices" : "addr0=192.168.10.100,addr1=192.168.10.101,addr2=192.168.10.102,addr3=192.168.10.104,
+                    addr4=192.168.10.105,addr5=192.168.10.106,addr6=192.168.10.107,addr7=192.168.10.108,
+                    addr8=192.168.10.109,addr9=192.168.10.110,addr10=192.168.10.111,addr11=192.168.10.112,
+                    addr12=192.168.10.113,addr13=192.168.10.114,addr14=192.168.10.115"`
+    * `"main_antennas" : "0,1,2,4,5,6,7,8,9,10,11,12,13,14,15"`
     * `"interferometer_antennas" : "0,1,2"`
     * `"main_antenna_usrp_rx_channels" : "0,2,4,6,8,10,12,14,16,18,20,22,24,26,28"`
     * `"interferometer_antenna_usrp_rx_channels" : "1,3,5"`

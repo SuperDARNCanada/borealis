@@ -199,9 +199,9 @@ class DataWriteOptions(object):
     @property
     def main_antennas(self):
         """
-        Gets the index of antennas in the main array corresponding to the receiver channels.
+        Gets the index of antennas in the main array corresponding to the transceiver channels.
 
-        :return:    indices of receiver channels mapped to antennas in main array.
+        :return:    indices of transceiver channels mapped to antennas in main array.
         :rtype:     list[int]
         """
 
