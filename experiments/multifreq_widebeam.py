@@ -26,7 +26,8 @@ class MultifreqWidebeam(ExperimentPrototype):
         """
         kwargs:
 
-        freq: int
+        freq1: int, first transmit frequency - kHz
+        freq2: int, second transmit frequency - kHz
 
         """
         cpid = 3712
