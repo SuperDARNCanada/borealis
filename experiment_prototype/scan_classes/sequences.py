@@ -397,6 +397,8 @@ class Sequence(ScanClassBase):
                 phase_encoding = encode_fn(beam_num, sequence_num, num_pulses, num_samples)
 
                 # dimensions: [pulses]
+                # Append list of phase encodings for this sequence, one per pulse. 
+                # output_encodings contains a list of lists for each slice id
                 self.output_encodings[slice_id].append(phase_encoding)
 
                 # phase_encoding: [pulses]
