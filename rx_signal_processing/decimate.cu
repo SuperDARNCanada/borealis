@@ -218,7 +218,7 @@ __device__ __forceinline__ cuComplex _exp (cuComplex z)
  *
  * This function performs a parallel version of filtering+downsampling on the GPU to be able
  * process data in realtime. This algorithm will use 1 GPU thread per filter tap if there are less
- * than 1024 taps for all filters combined. Only works with power of two length filters, or a
+ * than or equal to 1024 taps for all filters combined. Only works with power of two length filters, or a
  * filter that is zero padded to a power of two in length. This algorithm takes
  * a single set of wide band samples from the USRP driver, and produces an output data set for each
  * RX frequency. The phase of each output sample is corrected to after decimating via modified
@@ -315,8 +315,8 @@ __global__ void bandpass_decimate1024(cuComplex* original_samples,
  *
  * This function performs a parallel version of filtering+downsampling on the GPU to be able process
  * data in realtime. This algorithm will use 1 GPU thread to process two filter taps if there are
- * less than 2048 taps for all filters combined. Intended to be used if there are more than 1024
- * total threads, as that is the max block size possible for CUDA. Only works with power of two
+ * less than or equal to 2048 taps for all filters combined. Intended to be used if there are more 
+ * than 1024 total threads, as that is the max block size possible for CUDA. Only works with power of two
  * length filters, or a filter that is zero padded to a power of two in length. This algorithm takes
  * a single set of wide band samples from the USRP driver, and produces a output data set for each
  * RX frequency.
@@ -327,7 +327,7 @@ __global__ void bandpass_decimate1024(cuComplex* original_samples,
  *   blockIdx.x - Decimated output sample index.
  *   blockIdx.y - Antenna index.
  *
- *   blockDim.x - Number of filter taps in each filter / 2.
+ *   blockDim.x - Number of filter taps in each filter. Must be less than or equal to 1024.
  *   blockDim.y - Total number of filters. Corresponds to total receive frequencies.
  *
  *   threadIdx.x - Every second filter tap index.
@@ -362,14 +362,14 @@ __global__ void bandpass_decimate2048(cuComplex* original_samples,
   // the complete process as to not introduce edge effects.
   if ((dec_sample_offset + 2 * threadIdx.x) >= samples_per_antenna) {
     // the case both samples are out of bounds
-    sample_1 = make_cuComplex(0.0,0.0);
-    sample_2 = make_cuComplex(0.0,0.0);
+    sample_1 = make_cuComplex(0.0f,0.0f);
+    sample_2 = make_cuComplex(0.0f,0.0f);
   }
   else if ((dec_sample_offset + 2 * threadIdx.x) >= samples_per_antenna - 1) {
     // the case only one sample would be out of bounds
     auto final_offset = antenna_offset + dec_sample_offset + 2*threadIdx.x;
     sample_1 = original_samples[final_offset];
-    sample_2 = make_cuComplex(0.0,0.0);
+    sample_2 = make_cuComplex(0.0f,0.0f);
   }
   else {
     auto final_offset = antenna_offset + dec_sample_offset + 2*threadIdx.x;
@@ -481,7 +481,7 @@ void bandpass_decimate2048_wrapper(cuComplex* original_samples,
   DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_taps);
 
   auto dimGrid = create_bandpass_grid(samples_per_antenna, dm_rate, num_antennas);
-  auto dimBlock = create_bandpass_block(num_taps_per_filter/2, num_freqs);
+  auto dimBlock = create_bandpass_block(num_taps_per_filter, num_freqs);
   bandpass_decimate2048<<<dimGrid,dimBlock,shr_mem_taps,stream>>>(original_samples, decimated_samples,
     filter_taps, dm_rate, samples_per_antenna, F_s, freqs);
 }

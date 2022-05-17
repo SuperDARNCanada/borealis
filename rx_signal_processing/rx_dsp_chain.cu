@@ -228,6 +228,14 @@ int main(int argc, char **argv){
       }()
     );
 
+    // Print filters to file
+    /*
+    auto unmixed_taps = filters.get_unmixed_filter_taps();
+    for (int32_t i=0; i<unmixed_taps.size(); i++) {
+      filters.save_filter_to_file(unmixed_taps[i], "/home/radar/normalscan_taps_" + std::to_string(i) + ".txt");
+    }
+    */
+
     auto complex_taps = filters.get_mixed_filter_taps();
 
     DSPCore *dp = new DSPCore(std::ref(context), sig_options, sp_packet.sequence_num(),
@@ -285,7 +293,7 @@ int main(int argc, char **argv){
     auto last_filter_output = dp->get_last_filter_output_d();
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
       last_filter_output, dp->get_bp_filters_p(), dm_rates[0],
-      samples_needed, complex_taps[0].size(),
+      samples_needed, complex_taps[0].size()/rx_freqs.size(),
       rx_freqs.size(), total_antennas, rx_rate, dp->get_frequencies_p(),
       "Bandpass stage of decimation", dp->get_cuda_stream());
 
