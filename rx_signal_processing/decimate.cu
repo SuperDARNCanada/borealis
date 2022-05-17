@@ -202,6 +202,115 @@ __device__ __forceinline__ cuComplex _exp (cuComplex z)
 }
 
 /**
+ * @brief      Performs decimation using bandpass filters on a set of input RF samples.
+ *
+ * @param[in]  original_samples     A pointer to original input samples from each antenna to
+ *                                  decimate.
+ * @param[in]  decimated_samples    A pointer to a buffer to place output samples for each
+ *                                  frequency after decimation.
+ * @param[in]  filter_taps          A pointer to one or more filters needed for each frequency.
+ * @param[in]  dm_rate              Decimation rate.
+ * @param[in]  samples_per_antenna  The number of samples per antenna in the original set of
+ *                                  samples.
+ * @param[in]  F_s                  The sampling frequency in hertz.
+ * @param[in]  freqs                A pointer to the frequencies used in mixing.
+ *
+ * @param[in]  stride               Number of filter products to calculate per thread.
+ *
+ * This function performs a parallel version of filtering+downsampling on the GPU to be able
+ * process data in realtime. This algorithm will use 1 GPU thread per filter tap if there are less
+ * than or equal to 1024 taps for all filters combined. Only works with power of two length filters, or a
+ * filter that is zero padded to a power of two in length. This algorithm takes
+ * a single set of wide band samples from the USRP driver, and produces an output data set for each
+ * RX frequency. The phase of each output sample is corrected after decimating via modified
+ * Frerking method.
+ *
+ *   gridDim.x - Total number of output samples there will be after decimation.
+ *   gridDim.y - Total number of antennas.
+ *
+ *   blockIdx.x - Decimated output sample index.
+ *   blockIdx.y - Antenna index.
+ *
+ *   blockDim.x - Number of filter taps divided by stride length.
+ *   blockDim.y - Total number of filters. Corresponds to total receive frequencies.
+ *
+ *   threadIdx.x - Filter tap index.
+ *   threadIdx.y - Filter index.
+ */
+__global__ void bandpass_decimate_general(cuComplex* original_samples,
+  cuComplex* decimated_samples,
+  cuComplex* filter_taps, uint32_t dm_rate,
+  uint32_t samples_per_antenna, double F_s, double *freqs, uint32_t stride) {
+
+  // Since number of filter taps is calculated at runtime and we do not want to hardcode
+  // values, the shared memory can be dynamically initialized at invocation of the kernel.
+  // http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared
+
+  extern __shared__ cuComplex filter_products[];
+
+  auto antenna_num = blockIdx.y;
+  auto antenna_offset = antenna_num * samples_per_antenna;
+
+  auto dec_sample_num = blockIdx.x;
+  auto dec_sample_offset = dec_sample_num * dm_rate;
+
+  auto product_offset = threadIdx.y * blockDim.x + threadIdx.x;     // for indexing filter_products
+  auto tap_offset = product_offset * stride;                        // first index into filter_taps for this thread
+
+  // If an offset should extend past the length of samples per antenna
+  // then zeroes are used as to not segfault or run into the next buffer.
+  // output samples convolved with these zeroes will be discarded after
+  // the complete process as to not introduce edge effects.
+  cuComplex sample;                             // the current iq sample from an antenna
+  cuComplex intermediate_product(0.0f, 0.0f);   // the product of sample with its respective filter tap
+  cuComplex intermediate_sum(0.0f, 0.0f);       // the sum of all intermediate products for this thread
+
+  // Calculate the sum of 'stride' samples in this thread.
+  // This is done so that if the number of filter taps * num frequencies is greater than
+  // the max number of threads per block (1024), each thread can dynamically calculate
+  // multiple taps * samples and sum them together.
+  for (int i=0; i<stride; i++) {
+    if ((dec_sample_offset + threadIdx.x + i) >= samples_per_antenna) {
+      sample = make_cuComplex(0.0f,0.0f);
+    }
+    else {
+      auto final_offset = antenna_offset + dec_sample_offset + threadIdx.x + i;
+      sample = original_samples[final_offset];
+    }
+    intermediate_product = cuCmulf(sample, filter_taps[tap_offset + i]);
+    filter_sum = cuCaddf(filter_sum, intermediate_product);
+  }
+
+  filter_products[product_offset] = filter_sum;
+  // Synchronizes all threads in a block, meaning 1 output sample per rx freq
+  // is ready to be calculated with the parallel reduce
+  __syncthreads();
+
+  auto calculated_output_sample = parallel_reduce(filter_products, tap_offset);
+
+  // When decimating, we go from one set of samples for each antenna
+  // to multiple sets of reduced samples for each frequency. Output samples are
+  // grouped by frequency with all samples for each antenna following each other
+  // before samples of another frequency start.
+  if (threadIdx.x == 0) {
+
+    //Correct phase after filtering using modified Frerking technique.
+    auto freq_idx = threadIdx.y;
+    auto unwrapped_phase = 2.0 * M_PI * (freqs[freq_idx]/F_s) * dec_sample_num * dm_rate;
+    auto phase = fmod(unwrapped_phase, 2.0 * M_PI);
+    auto filter_phase = _exp(make_cuComplex(0.0f, 1 * phase));
+    calculated_output_sample = cuCmulf(calculated_output_sample,filter_phase);
+
+    antenna_offset = antenna_num * gridDim.x;
+    auto total_antennas = gridDim.y;
+    auto freq_offset = threadIdx.y * gridDim.x * total_antennas;
+    auto total_offset = freq_offset + antenna_offset + dec_sample_num;
+    decimated_samples[total_offset] = calculated_output_sample;
+
+  }
+}
+
+/**
  * @brief      Performs decimation using bandpass filters on a set of input RF samples if the total
  *             number of filter taps for all filters is less than 1024.
  *
