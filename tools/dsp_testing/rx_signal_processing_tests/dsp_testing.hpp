@@ -127,8 +127,6 @@ class DSPCoreTesting {
   std::string get_shared_memory_name();
   void start_decimate_timing();
   void stop_timing();
-  void send_ack();
-  void send_timing();
   void send_processed_data(processeddata::ProcessedData &pd);
 
   SignalProcessingOptions sig_options;

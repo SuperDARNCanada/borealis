@@ -908,31 +908,6 @@ void DSPCoreTesting::stop_timing()
               << COLOR_RED("#" << sequence_num) << ": " << COLOR_GREEN(decimate_kernel_timing_ms) << "ms");
 }
 
-// TODO(Remington): Delete?
-/**
- * @brief      Sends the GPU kernel timing to the radar control.
- *
- * The timing here is used as a rate limiter, so that the GPU doesn't become backlogged with data.
- * If the GPU is overburdened, this will result in less averages, but the system wont crash.
- */
-void DSPCoreTesting::send_timing()
-{
-  sigprocpacket::SigProcPacket sp;
-  sp.set_kerneltime(decimate_kernel_timing_ms);
-  sp.set_sequence_num(sequence_num);
-
-  std::string s_msg_str;
-  sp.SerializeToString(&s_msg_str);
-
-  auto &timing_socket = zmq_sockets[1];
-  auto request = RECV_REQUEST(timing_socket, sig_options.get_brian_dspend_identity());
-  SEND_REPLY(timing_socket, sig_options.get_brian_dspend_identity(), s_msg_str);
-
-  DEBUG_MSG(COLOR_RED("Sent timing after processing with sequence #" << sequence_num));
-
-}
-
-
 /**
  * @brief      Add the postprocessing callback to the stream.
  *
@@ -960,31 +935,6 @@ void DSPCoreTesting::cuda_postprocessing_callback(uint32_t total_antennas, uint3
   gpuErrchk(cudaStreamAddCallback(stream, postprocess, this, 0));
 
   DEBUG_MSG(COLOR_RED("Added stream callback for sequence #" << sequence_num));
-}
-
-// TODO(Remington): Delete?
-/**
- * @brief      Sends the acknowledgment to the radar control that the RF samples have been
- *             transfered.
- *
- * RF samples of one pulse sequence can be transfered asynchronously while samples of another are
- * being processed. This means that it is possible to start running a new pulse sequence in the
- * driver as soon as the samples are copied. The asynchronous nature means only timing constraint
- * is the time needed to run the GPU kernels for decimation.
- */
-void DSPCoreTesting::send_ack()
-{
-  sigprocpacket::SigProcPacket sp;
-  sp.set_sequence_num(sequence_num);
-
-  std::string s_msg_str;
-  sp.SerializeToString(&s_msg_str);
-
-  auto &ack_socket = zmq_sockets[0];
-  auto request = RECV_REQUEST(ack_socket, sig_options.get_brian_dspbegin_identity());
-  SEND_REPLY(ack_socket, sig_options.get_brian_dspbegin_identity(), s_msg_str);
-
-  DEBUG_MSG(COLOR_RED("Sent ack after copy for sequence_num #" << sequence_num));
 }
 
 // TODO(Remington): Delete?
