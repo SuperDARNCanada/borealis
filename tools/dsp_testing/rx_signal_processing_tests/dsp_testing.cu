@@ -30,22 +30,19 @@ See LICENSE for details
 //This keep postprocess local to this file.
 namespace {
   /**
-   * @brief      Sends an acknowledgment to the radar control and starts the timing after the
-   *             RF samples have been copied.
+   * @brief      Starts the timing after the RF samples have been copied.
    *
    * @param[in]  stream           CUDA stream this callback is associated with.
    * @param[in]  status           Error status of CUDA work in the stream.
-   * @param[in]  processing_data  A pointer to the DSPCore associated with this CUDA stream.
+   * @param[in]  processing_data  A pointer to the DSPCoreTesting associated with this CUDA stream.
    */
-  void CUDART_CB initial_memcpy_callback_handler(cudaStream_t stream, cudaError_t status,
-                          void *processing_data)
+  void CUDART_CB initial_memcpy_callback_handler(cudaStream_t stream, cudaError_t status, void *processing_data)
   {
     gpuErrchk(status);
 
     auto imc = [processing_data]()
     {
-      auto dp = static_cast<DSPCore*>(processing_data);
-      dp->send_ack();
+      auto dp = static_cast<DSPCoreTesting*>(processing_data);
       dp->start_decimate_timing();
       RUNTIME_MSG(COLOR_RED("Finished initial memcpy handler for sequence #"
                  << dp->get_sequence_num() << ". Thread should exit here"));
@@ -300,11 +297,11 @@ namespace {
    * @brief      Creates a data packet of processed data.
    *
    * @param      pd    A processeddata protobuf object.
-   * @param      dp    A pointer to the DSPCore object with data to be extracted.
+   * @param      dp    A pointer to the DSPCoreTesting object with data to be extracted.
    *
    * This function extracts the processed data into a protobuf that data write can use.
    */
-  void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCore* dp)
+  void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCoreTesting* dp)
   {
 
     std::vector<cuComplex> output_samples;
@@ -529,7 +526,7 @@ namespace {
    *
    * @param[in]  stream           CUDA stream this callback is associated with.
    * @param[in]  status           Error status of CUDA work in the stream.
-   * @param[in]  processing_data  A pointer to the DSPCore associated with this CUDA stream.
+   * @param[in]  processing_data  A pointer to the DSPCoreTesting associated with this CUDA stream.
    *
    * The callback itself cannot call anything CUDA related as it may deadlock. It can, however
    * spawn a new thread and then exit gracefully, allowing the thread to do the work.
@@ -551,7 +548,7 @@ namespace {
 
       TIMEIT_IF_TRUE_OR_DEBUG(true, "Fill + send processed data time ",
         [&]() {
-          create_processed_data_packet(pd,dp);
+          create_processed_data_packet(pd, dp);
           dp->send_processed_data(pd);
         }()
       );
@@ -645,13 +642,11 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * The constructor creates a new CUDA stream and initializes the timing events. It then opens the
  * shared memory with the received RF samples for a pulse sequence.
  */
-DSPCoreTesting::DSPCoreTesting(SignalProcessingOptions &sig_options,
-                  uint32_t sequence_num, double rx_rate, double output_sample_rate,
-                  std::vector<std::vector<float>> filter_taps,
-                  std::vector<cuComplex> beam_phases,
-                  double driver_initialization_time, double sequence_start_time,
-                  std::vector<uint32_t> dm_rates,
-                  std::vector<rx_slice> slice_info) :
+DSPCoreTesting::DSPCoreTesting(SignalProcessingOptions &sig_options, uint32_t sequence_num, double rx_rate,
+                               double output_sample_rate, std::vector<std::vector<float>> filter_taps,
+                               std::vector<cuComplex> beam_phases, double driver_initialization_time,
+                               double sequence_start_time, std::vector<uint32_t> dm_rates,
+                               std::vector<rx_slice> slice_info) :
   sig_options(sig_options),
   sequence_num(sequence_num),
   rx_rate(rx_rate),
@@ -721,10 +716,9 @@ DSPCoreTesting::~DSPCoreTesting()
  * work with the raw RF samples.
  */
 void DSPCoreTesting::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
-                                int64_t extra_samples, uint32_t offset_to_first_pulse,
-                                double time_zero, double start_time,
-                                uint64_t ringbuffer_size,
-                                std::vector<cuComplex*> &ringbuffer_ptrs_start)
+                                                  int64_t extra_samples, uint32_t offset_to_first_pulse,
+                                                  double time_zero, double start_time, uint64_t ringbuffer_size,
+                                                  std::vector<cuComplex*> &ringbuffer_ptrs_start)
 {
 
 
@@ -750,6 +744,7 @@ void DSPCoreTesting::allocate_and_copy_rf_samples(uint32_t total_antennas, uint3
       auto first_dest = rf_samples_d + (i*num_samples_needed);
       auto second_dest = rf_samples_d + (i*num_samples_needed) + (first_piece);
 
+      // TODO(Remington): Figure out how to make this work with an array
       auto first_src = ringbuffer_ptrs_start[i] + start_sample;
       auto second_src = ringbuffer_ptrs_start[i];
 
@@ -770,6 +765,8 @@ void DSPCoreTesting::allocate_and_copy_rf_samples(uint32_t total_antennas, uint3
   else {
     for (uint32_t i=0; i<total_antennas; i++) {
       auto dest = rf_samples_d + (i*num_samples_needed);
+
+      // TODO(Remington): Figure out how to make this work with an array
       auto src = ringbuffer_ptrs_start[i] + start_sample;
 
       gpuErrchk(cudaMemcpyAsync(dest, src, num_samples_needed * sizeof(cuComplex),
@@ -890,8 +887,7 @@ void DSPCoreTesting::allocate_and_copy_host(uint32_t num_output_samples, cuCompl
 
   size_t output_size = num_output_samples * sizeof(cuComplex);
   gpuErrchk(cudaMallocHost(&filter_outputs_h.back(), output_size));
-  gpuErrchk(cudaMemcpyAsync(filter_outputs_h.back(), output_d,
-        output_size, cudaMemcpyDeviceToHost,stream));
+  gpuErrchk(cudaMemcpyAsync(filter_outputs_h.back(), output_d, output_size, cudaMemcpyDeviceToHost,stream));
 
 }
 
@@ -907,11 +903,9 @@ void DSPCoreTesting::stop_timing()
   gpuErrchk(cudaEventElapsedTime(&decimate_kernel_timing_ms, kernel_start, stop));
   gpuErrchk(cudaEventElapsedTime(&mem_time_ms, initial_start, mem_transfer_end));
   RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Cuda memcpy time for "
-    << COLOR_RED("#" << sequence_num) << ": " << COLOR_GREEN(mem_time_ms) << "ms");
+              << COLOR_RED("#" << sequence_num) << ": " << COLOR_GREEN(mem_time_ms) << "ms");
   RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimate time for "
-    << COLOR_RED("#" << sequence_num) << ": "
-    << COLOR_GREEN(decimate_kernel_timing_ms) << "ms");
-
+              << COLOR_RED("#" << sequence_num) << ": " << COLOR_GREEN(decimate_kernel_timing_ms) << "ms");
 }
 
 // TODO(Remington): Delete?
@@ -947,10 +941,9 @@ void DSPCoreTesting::send_timing()
  * assigned such as the rx freqs, the number of rf samples, the total antennas and the vector
  * of samples per antenna(each stage).
  */
-void DSPCoreTesting::cuda_postprocessing_callback(uint32_t total_antennas,
-                                            uint32_t num_samples_rf,
-                                            std::vector<uint32_t> samples_per_antenna,
-                                            std::vector<uint32_t> total_output_samples)
+void DSPCoreTesting::cuda_postprocessing_callback(uint32_t total_antennas, uint32_t num_samples_rf,
+                                                  std::vector<uint32_t> samples_per_antenna,
+                                                  std::vector<uint32_t> total_output_samples)
 {
   // #ifdef ENGINEERING_DEBUG - Removed for testing purposes
     for (uint32_t i=0; i<filter_outputs_d.size()-1; i++) {

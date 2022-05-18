@@ -77,27 +77,25 @@ typedef struct rx_slice
  */
 class DSPCoreTesting {
  public:
-  void cuda_postprocessing_callback(uint32_t total_antennas,
-                                            uint32_t num_samples_rf,
-                                            std::vector<uint32_t> samples_per_antenna,
-                                            std::vector<uint32_t> total_output_samples);
+  void cuda_postprocessing_callback(uint32_t total_antennas, uint32_t num_samples_rf,
+                                    std::vector<uint32_t> samples_per_antenna,
+                                    std::vector<uint32_t> total_output_samples);
   void initial_memcpy_callback();
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCoreTesting(SignalProcessingOptions &options, uint32_t sq_num,
-                    double rx_rate, double output_sample_rate,
-                    std::vector<std::vector<float>> filter_taps,
-                    std::vector<cuComplex> beam_phases,
-                    double driver_initialization_time, double sequence_start_time,
-                    std::vector<uint32_t> dm_rates,
-                    std::vector<rx_slice> slice_info);
+                          double rx_rate, double output_sample_rate,
+                          std::vector<std::vector<float>> filter_taps,
+                          std::vector<cuComplex> beam_phases,
+                          double driver_initialization_time, double sequence_start_time,
+                          std::vector<uint32_t> dm_rates, std::vector<rx_slice> slice_info);
 
   ~DSPCoreTesting(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
   void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
-                                int64_t extra_samples, uint32_t offset_to_first_pulse,
-                                double time_zero, double start_time,
-                                uint64_t ringbuffer_size,
-                                std::vector<cuComplex*> &ringbuffer_ptrs_start);
+                                    int64_t extra_samples, uint32_t offset_to_first_pulse,
+                                    double time_zero, double start_time,
+                                    uint64_t ringbuffer_size,
+                                    std::vector<cuComplex*> &ringbuffer_ptrs_start);
   void allocate_and_copy_bandpass_filters(void *taps, uint32_t total_taps);
   std::vector<cuComplex*> get_filter_outputs_h();
   cuComplex* get_last_filter_output_d();
@@ -151,9 +149,6 @@ class DSPCoreTesting {
 
   //! Output sampling rate of the filtered, decimated, processed data.
   double output_sample_rate;
-
-  //! The unique sockets for communicating between processes.
-  std::vector<zmq::socket_t> zmq_sockets;
 
   //! Stores the total GPU process timing once all the work is done.
   float total_process_timing_ms;
@@ -229,7 +224,6 @@ class DSPCoreTesting {
 
   //! Slice information given from rx_slice structs
   std::vector<rx_slice> slice_info;
-
 
   void allocate_and_copy_rf_from_device(uint32_t num_rf_samples);
 
