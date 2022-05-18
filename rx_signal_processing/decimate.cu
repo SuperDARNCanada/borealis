@@ -173,7 +173,7 @@ __device__ cuComplex parallel_reduce(cuComplex* data, uint32_t tap_offset) {
     if (num_filter_taps >=  64) total_sum = cuCaddf(total_sum, data[tap_offset + 32]);
     // Reduce final warp using shuffle
     // http://docs.nvidia.com/cuda/cuda-c-programming-guide/#built-in-variables
-    // __shfl_down is used an optimization in the final warp to simulatenously move
+    // __shfl_down is used an optimization in the final warp to simultaneously move
     // values from upper threads to lower threads without needing __syncthreads().
     for (int offset = warpSize/2; offset > 0; offset /= 2)
     {
@@ -257,10 +257,6 @@ __global__ void bandpass_decimate_general(cuComplex* original_samples,
   auto product_offset = threadIdx.y * blockDim.x + threadIdx.x;     // for indexing filter_products
   auto tap_offset = product_offset * stride;                        // first index into filter_taps for this thread
 
-  // If an offset should extend past the length of samples per antenna
-  // then zeroes are used as to not segfault or run into the next buffer.
-  // output samples convolved with these zeroes will be discarded after
-  // the complete process as to not introduce edge effects.
   cuComplex sample;                             // the current iq sample from an antenna
   cuComplex intermediate_product(0.0f, 0.0f);   // the product of sample with its respective filter tap
   cuComplex intermediate_sum(0.0f, 0.0f);       // the sum of all intermediate products for this thread
@@ -270,6 +266,10 @@ __global__ void bandpass_decimate_general(cuComplex* original_samples,
   // the max number of threads per block (1024), each thread can dynamically calculate
   // multiple taps * samples and sum them together.
   for (int i=0; i<stride; i++) {
+    // If an offset should extend past the length of samples per antenna
+    // then zeroes are used as to not segfault or run into the next buffer.
+    // output samples convolved with these zeroes will be discarded after
+    // the complete process as to not introduce edge effects.
     if ((dec_sample_offset + threadIdx.x + i) >= samples_per_antenna) {
       sample = make_cuComplex(0.0f,0.0f);
     }
@@ -278,15 +278,15 @@ __global__ void bandpass_decimate_general(cuComplex* original_samples,
       sample = original_samples[final_offset];
     }
     intermediate_product = cuCmulf(sample, filter_taps[tap_offset + i]);
-    filter_sum = cuCaddf(filter_sum, intermediate_product);
+    intermediate_sum = cuCaddf(intermediate_sum, intermediate_product);
   }
 
-  filter_products[product_offset] = filter_sum;
+  filter_products[product_offset] = intermediate_sum;
   // Synchronizes all threads in a block, meaning 1 output sample per rx freq
   // is ready to be calculated with the parallel reduce
   __syncthreads();
 
-  auto calculated_output_sample = parallel_reduce(filter_products, tap_offset);
+  auto calculated_output_sample = parallel_reduce(filter_products, product_offset);
 
   // When decimating, we go from one set of samples for each antenna
   // to multiple sets of reduced samples for each frequency. Output samples are
@@ -516,6 +516,57 @@ __global__ void bandpass_decimate2048(cuComplex* original_samples,
     auto total_offset = freq_offset + antenna_offset + dec_sample_num;
     decimated_samples[total_offset] = calculated_output_sample;
   }
+}
+
+
+/**
+ * @brief      This function wraps the bandpass_decimate_general kernel so that it can be called from
+ *             another file.
+ *
+ * @param[in]  original_samples     A pointer to original input samples from each antenna to
+ *                                  decimate.
+ * @param[in]  decimated_samples    A pointer to a buffer to place output samples for each frequency
+ *                                  after decimation.
+ * @param[in]  filter_taps          A pointer to one or more filters needed for each frequency.
+ * @param[in]  dm_rate              Decimation rate.
+ * @param[in]  samples_per_antenna  The number of samples per antenna in the original set of
+ *                                  samples.
+ * @param[in]  num_taps_per_filter  Number of taps per filter.
+ * @param[in]  num_freqs            Number of receive frequencies.
+ * @param[in]  num_antennas         Number of antennas for which there are samples.
+ * @param[in]  F_s                  The original sampling frequency.
+ * @param      freqs                A pointer to the frequencies being filtered.
+ * @param[in]  stream               CUDA stream with which to associate the invocation of the
+ *                                  kernel.
+ */
+void bandpass_decimate_general_wrapper(cuComplex* original_samples,
+  cuComplex* decimated_samples,
+  cuComplex* filter_taps, uint32_t dm_rate,
+  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
+  uint32_t num_antennas, double F_s, double *freqs, cudaStream_t stream) {
+
+  // num_threads is capped at 1024 per block, so we must figure out how many threads per filter
+  // can be allocated, and how many samples each thread must calculate.
+  uint32_t max_threads_per_freq = 1024 / num_freqs;
+  uint32_t stride = 1;
+  uint32_t threads_per_freq = num_taps_per_filter;
+
+  // Here we are assuming that num_taps_per_filter is a power of 2, which is a necessary assumption
+  // for bandpass_decimate_general to correctly do its calculations.
+  while (threads_per_freq > max_threads_per_freq) {
+    stride = stride << 1;
+    threads_per_freq = threads_per_freq >> 1;
+  }
+
+  //Allocate shared memory on device for all intermediate sums of filter products.
+  auto shr_mem_size = num_freqs * threads_per_freq * sizeof(cuComplex);
+  DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_size);
+
+  auto dimGrid = create_bandpass_grid(samples_per_antenna, dm_rate, num_antennas);
+  auto dimBlock = create_bandpass_block(threads_per_freq, num_freqs);
+  bandpass_decimate_general<<<dimGrid,dimBlock,shr_mem_size,stream>>>(original_samples, decimated_samples,
+        filter_taps, dm_rate, samples_per_antenna, F_s, freqs, stride);
+
 }
 
 
