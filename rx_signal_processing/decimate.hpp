@@ -31,6 +31,12 @@ void bandpass_decimate2048_wrapper(cuComplex* input_samples,
   uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
   uint32_t num_antennas, double F_s, double *freqs, cudaStream_t stream);
 
+void lowpass_decimate_general_wrapper(cuComplex* input_samples,
+  cuComplex* decimated_samples,
+  cuComplex* filter_taps, uint32_t dm_rate,
+  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
+  uint32_t num_antennas, cudaStream_t stream);
+
 void lowpass_decimate1024_wrapper(cuComplex* input_samples,
   cuComplex* decimated_samples,
   cuComplex* filter_taps, uint32_t dm_rate,
@@ -107,6 +113,9 @@ void call_decimate(cuComplex* input_samples,
   }
   else if (type == DecimationType::lowpass){
     DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running lowpass");
+    lowpass_decimate_general_wrapper(input_samples, decimated_samples, filter_taps, dm_rate,
+        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
+    /*
     if (num_taps_per_filter > 2 * gpu_properties[0].maxThreadsPerBlock) {
       //TODO(Keith) : handle error
     }
@@ -118,6 +127,7 @@ void call_decimate(cuComplex* input_samples,
       lowpass_decimate1024_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
         samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
     }
+    */
   }
 
 

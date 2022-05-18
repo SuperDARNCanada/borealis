@@ -608,8 +608,6 @@ void bandpass_decimate1024_wrapper(cuComplex* original_samples,
 }
 
 
-
-
 /**
  * @brief      This function wraps the bandpass_decimate2048 kernel so that it can be called from
  *             another file.
@@ -644,6 +642,110 @@ void bandpass_decimate2048_wrapper(cuComplex* original_samples,
   auto dimBlock = create_bandpass_block(num_taps_per_filter, num_freqs);
   bandpass_decimate2048<<<dimGrid,dimBlock,shr_mem_taps,stream>>>(original_samples, decimated_samples,
     filter_taps, dm_rate, samples_per_antenna, F_s, freqs);
+}
+
+/**
+ * @brief      Performs decimation using a lowpass filter on one or more sets of baseband samples
+ * corresponding to each RX frequency.
+ *
+ * @param[in]  original_samples     A pointer to input samples for one or more baseband datasets.
+ * @param[in]  decimated_samples    A pointer to a buffer to place output samples for each frequency
+ *                                  dataset after decimation.
+ * @param[in]  filter_taps          A pointer to a lowpass filter used for further decimation.
+ * @param[in]  dm_rate              Decimation rate.
+ * @param[in]  samples_per_antenna  The number of samples per antenna in the original set of
+ *                                  samples.
+ * @param[in]  stride               The number of samples to calculate per thread.
+ *
+ * This function performs a parallel version of filtering+downsampling on the GPU to be able
+ * process data in realtime. This algorithm will use 1 GPU thread per filter tap if there are less
+ * than 1024 taps for all filters combined. Only works with power of two length filters, or a
+ * filter that is zero padded to a power of two in length. This algorithm takes one or more
+ * baseband datasets corresponding to each RX frequency and filters each one using a single lowpass
+ * filter before downsampling.
+ *
+ *   gridDim.x - The number of decimated output samples for one antenna in one frequency data set.
+ *   gridDim.y - Total number of antennas.
+ *   gridDim.z - Total number of frequency data sets.
+ *
+ *   blockIdx.x - Decimated output sample index.
+ *   blockIdx.y - Antenna index.
+ *   blockIdx.z - Frequency dataset index.
+ *
+ *   blockDim.x - Number of filter taps in the lowpass filter.
+
+ *   threadIdx.x - Filter tap indices.
+ */
+__global__ void lowpass_decimate_general(cuComplex* original_samples,
+  cuComplex* decimated_samples,
+  cuComplex* filter_taps, uint32_t dm_rate,
+  uint32_t samples_per_antenna, uint32_t stride) {
+
+  // Since number of filter taps is calculated at runtime and we do not want to hardcode
+  // values, the shared memory can be dynamically initialized at invocation of the kernel.
+  // http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#shared
+
+  extern __shared__ cuComplex filter_products[];
+
+  auto total_antennas = gridDim.y;
+
+  auto data_set_idx = blockIdx.z;
+
+  auto frequency_dataset_offset = data_set_idx * samples_per_antenna * total_antennas;
+
+  auto antenna_num = blockIdx.y;
+  auto antenna_offset = antenna_num * samples_per_antenna;
+
+  auto dec_sample_num = blockIdx.x;
+  auto dec_sample_offset = dec_sample_num * dm_rate;
+
+  auto product_offset = threadIdx.x;
+  auto tap_offset = product_offset * stride;
+
+
+  cuComplex sample;
+  cuComplex intermediate_product(0.0f, 0.0f);
+  cuComplex intermediate_sum(0.0f, 0.0f);
+
+  // Calculate the sum of 'stride' samples in this thread.
+  // This is done so that if the number of filter taps is greater than
+  // the max number of threads per block (1024), each thread can dynamically calculate
+  // multiple taps * samples and sum them together.
+  for (int i=0; i<stride; i++) {
+    // If an offset should extend past the length of samples per antenna
+    // then zeroes are used as to not segfault or run into the next buffer.
+    // Output samples convolved with these zeroes will be discarded after
+    // the complete process as to not introduce edge effects.
+    if ((dec_sample_offset + tap_offset + i) >= samples_per_antenna) {
+      sample = make_cuComplex(0.0f,0.0f);
+    }
+    else {
+      auto final_offset = frequency_dataset_offset + antenna_offset + dec_sample_offset + tap_offset + i;
+      sample = original_samples[final_offset];
+    }
+    intermediate_product = cuCmulf(sample, filter_taps[tap_offset]);
+    intermediate_sum = cuCaddf(intermediate_sum, intermediate_product);
+  }
+
+  filter_products[product_offset] = intermediate_sum;
+
+  // Synchronizes all threads in a block, meaning 1 output sample per rx freq
+  // is ready to be calculated with the parallel reduce
+  __syncthreads();
+
+  auto calculated_output_sample = parallel_reduce(filter_products, product_offset);
+
+  // When decimating, we go from one set of samples for each antenna
+  // to multiple sets of reduced samples for each frequency. Output samples are
+  // grouped by frequency with all samples for each antenna following each other
+  // before samples of another frequency start.
+  if (threadIdx.x == 0) {
+    auto num_output_samples_per_antenna = gridDim.x;
+    frequency_dataset_offset = data_set_idx * num_output_samples_per_antenna * total_antennas;
+    antenna_offset = antenna_num * num_output_samples_per_antenna;
+    auto total_offset = frequency_dataset_offset + antenna_offset + dec_sample_num;
+    decimated_samples[total_offset] = calculated_output_sample;
+  }
 }
 
 /**
@@ -841,6 +943,52 @@ __global__ void lowpass_decimate2048(cuComplex* original_samples,
     decimated_samples[total_offset] = calculated_output_sample;
   }
 }
+
+
+/**
+ * @brief      This function wraps the lowpass_decimate_general kernel so that it can be called from
+ *             another file.
+ *
+ * @param[in]  original_samples     A pointer to one or more baseband frequency datasets.
+ * @param[in]  decimated_samples    A pointer to a buffer to place output samples for each frequency
+ *                                  after decimation.
+ * @param[in]  filter_taps          A pointer to one lowpass filter.
+ * @param[in]  dm_rate              Decimation rate.
+ * @param[in]  samples_per_antenna  The number of samples per antenna in each data set.
+ * @param[in]  num_taps_per_filter  Number of taps per filter.
+ * @param[in]  num_freqs            Number of receive frequency datasets.
+ * @param[in]  num_antennas         Number of antennas for which there are samples.
+ * @param[in]  stream               CUDA stream with which to associate the invocation of the
+ *                                  kernel.
+ */
+void lowpass_decimate_general_wrapper(cuComplex* original_samples,
+  cuComplex* decimated_samples,
+  cuComplex* filter_taps, uint32_t dm_rate,
+  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
+  uint32_t num_antennas, cudaStream_t stream) {
+
+  // num_threads is capped at 1024 per block, so we must figure out how many threads per filter
+  // can be allocated, and how many samples each thread must calculate.
+  uint32_t num_threads = num_taps_per_filter;
+  uint32_t stride = 1;
+
+  // Here we are assuming that num_taps_per_filter is a power of 2, which is a necessary assumption
+  // for lowpass_decimate_general to correctly do its calculations.
+  while (num_threads > 1024) {
+    stride = stride << 1;
+    num_threads = num_threads >> 1;
+  }
+
+  //Allocate shared memory on device for all intermediate sums of filter products.
+  auto shr_mem_size = num_freqs * num_threads * sizeof(cuComplex);
+  DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Number of shared memory bytes: "<< shr_mem_size);
+
+  auto dimGrid = create_lowpass_grid(samples_per_antenna, dm_rate, num_antennas, num_freqs);
+  auto dimBlock = create_lowpass_block(num_threads);
+  lowpass_decimate_general<<<dimGrid,dimBlock,shr_mem_size,stream>>>(original_samples,
+    decimated_samples, filter_taps, dm_rate, samples_per_antenna, stride);
+}
+
 
 /**
  * @brief      This function wraps the lowpass_decimate1024 kernel so that it can be called from
