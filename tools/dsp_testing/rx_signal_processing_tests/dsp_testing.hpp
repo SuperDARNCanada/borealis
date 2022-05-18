@@ -124,7 +124,6 @@ class DSPCoreTesting {
   std::vector<rx_slice> get_slice_info();
   cudaStream_t get_cuda_stream();
   std::vector<cuComplex> get_beam_phases();
-  std::string get_shared_memory_name();
   void start_decimate_timing();
   void stop_timing();
   void send_processed_data(processeddata::ProcessedData &pd);
@@ -210,9 +209,6 @@ class DSPCoreTesting {
 
   //! A set of beam angle phases for each beam direction.
   std::vector<cuComplex> beam_phases;
-
-  //! A handler for a shared memory section.
-  SharedMemoryHandler shm;
 
   //! Timestamp of when the driver began sampling. Seconds since epoch.
   double driver_initialization_time;

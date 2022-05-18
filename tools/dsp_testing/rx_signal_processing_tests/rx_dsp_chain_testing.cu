@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
 
   dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
 
-  dp->allocate_and_copy_rf_samples();
+  dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, ringbuffer_ptrs_start);
 
   dp->allocate_and_copy_bandpass_filters(complex_taps[0].data(), complex_taps[0].size());
 

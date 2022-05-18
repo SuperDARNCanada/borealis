@@ -665,8 +665,6 @@ DSPCoreTesting::DSPCoreTesting(SignalProcessingOptions &sig_options, uint32_t se
   gpuErrchk(cudaEventCreate(&stop));
   gpuErrchk(cudaEventCreate(&mem_transfer_end));
   gpuErrchk(cudaEventRecord(initial_start, stream));
-
-  shm = SharedMemoryHandler(random_string(20));
 }
 
 /**
@@ -716,69 +714,19 @@ DSPCoreTesting::~DSPCoreTesting()
  * work with the raw RF samples.
  */
 void DSPCoreTesting::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
-                                                  int64_t extra_samples, uint32_t offset_to_first_pulse,
-                                                  double time_zero, double start_time, uint64_t ringbuffer_size,
                                                   std::vector<cuComplex*> &ringbuffer_ptrs_start)
 {
-
-
   size_t rf_samples_size = total_antennas * num_samples_needed * sizeof(cuComplex);
-  shm.create_shr_mem(rf_samples_size);
   gpuErrchk(cudaMalloc(&rf_samples_d, rf_samples_size));
 
-  auto sample_time_diff = start_time - time_zero;
-  auto sample_in_time = (sample_time_diff * rx_rate) +
-                      offset_to_first_pulse -
-                      extra_samples;
-  auto start_sample = int64_t(std::fmod(sample_in_time, ringbuffer_size));
+  for (uint32_t i=0; i<total_antennas; i++) {
+    auto dest = rf_samples_d + (i*num_samples_needed);
 
-  if ((start_sample) < 0) {
-   start_sample += ringbuffer_size;
+    // TODO(Remington): Flat array or 2D array of [antennas, samps]?
+    auto src = ringbuffer_ptrs_start[i];
+
+    gpuErrchk(cudaMemcpyAsync(dest, src, num_samples_needed * sizeof(cuComplex), cudaMemcpyHostToDevice, stream));
   }
-
-  if ((start_sample + num_samples_needed) > ringbuffer_size) {
-    for (uint32_t i=0; i<total_antennas; i++) {
-      auto first_piece = ringbuffer_size - start_sample;
-      auto second_piece = num_samples_needed - first_piece;
-
-      auto first_dest = rf_samples_d + (i*num_samples_needed);
-      auto second_dest = rf_samples_d + (i*num_samples_needed) + (first_piece);
-
-      // TODO(Remington): Figure out how to make this work with an array
-      auto first_src = ringbuffer_ptrs_start[i] + start_sample;
-      auto second_src = ringbuffer_ptrs_start[i];
-
-      gpuErrchk(cudaMemcpyAsync(first_dest, first_src, first_piece * sizeof(cuComplex),
-                                 cudaMemcpyHostToDevice, stream));
-      gpuErrchk(cudaMemcpyAsync(second_dest, second_src, second_piece * sizeof(cuComplex),
-                                 cudaMemcpyHostToDevice, stream));
-
-      auto mem_cast = static_cast<cuComplex*>(shm.get_shrmem_addr());
-      auto first_dest_h = mem_cast + (i*num_samples_needed);
-      auto second_dest_h = mem_cast + (i*num_samples_needed) + (first_piece);
-
-      memcpy(first_dest_h, first_src, first_piece * sizeof(cuComplex));
-      memcpy(second_dest_h, second_src, second_piece * sizeof(cuComplex));
-    }
-
-  }
-  else {
-    for (uint32_t i=0; i<total_antennas; i++) {
-      auto dest = rf_samples_d + (i*num_samples_needed);
-
-      // TODO(Remington): Figure out how to make this work with an array
-      auto src = ringbuffer_ptrs_start[i] + start_sample;
-
-      gpuErrchk(cudaMemcpyAsync(dest, src, num_samples_needed * sizeof(cuComplex),
-        cudaMemcpyHostToDevice, stream));
-
-      auto mem_cast = static_cast<cuComplex*>(shm.get_shrmem_addr());
-      auto dest_h = mem_cast + (i*num_samples_needed);
-      memcpy(dest_h, src, num_samples_needed * sizeof(cuComplex));
-    }
-  }
-
-
 }
 
 /**
@@ -1119,16 +1067,6 @@ double DSPCoreTesting::get_output_sample_rate()
 std::vector<cuComplex> DSPCoreTesting::get_beam_phases()
 {
   return beam_phases;
-}
-
-/**
- * @brief     Gets the name of the shared memory section.
- *
- * @return    The shared memory name string.
- */
-std::string DSPCoreTesting::get_shared_memory_name()
-{
-  return shm.get_region_name();
 }
 
 /**
