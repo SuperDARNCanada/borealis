@@ -75,7 +75,7 @@ typedef struct rx_slice
 /**
  * @brief      Contains the core DSP work done on the GPU.
  */
-class DSPCore {
+class DSPCoreTesting {
  public:
   void cuda_postprocessing_callback(uint32_t total_antennas,
                                             uint32_t num_samples_rf,
@@ -83,7 +83,7 @@ class DSPCore {
                                             std::vector<uint32_t> total_output_samples);
   void initial_memcpy_callback();
   //http://en.cppreference.com/w/cpp/language/explicit
-  explicit DSPCore(zmq::context_t &context, SignalProcessingOptions &options, uint32_t sq_num,
+  explicit DSPCoreTesting(SignalProcessingOptions &options, uint32_t sq_num,
                     double rx_rate, double output_sample_rate,
                     std::vector<std::vector<float>> filter_taps,
                     std::vector<cuComplex> beam_phases,
@@ -91,7 +91,7 @@ class DSPCore {
                     std::vector<uint32_t> dm_rates,
                     std::vector<rx_slice> slice_info);
 
-  ~DSPCore(); //destructor
+  ~DSPCoreTesting(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
   void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
                                 int64_t extra_samples, uint32_t offset_to_first_pulse,
@@ -235,5 +235,5 @@ class DSPCore {
 
 };
 
-void postprocess(DSPCore *dp);
+void postprocess(DSPCoreTesting *dp);
 #endif

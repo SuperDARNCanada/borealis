@@ -631,7 +631,6 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
 /**
  * @brief      Initializes the parameters needed in order to do asynchronous DSP processing.
  *
- * @param      context                     ZMQ's application context from which to create sockets.
  * @param      sig_options                 The signal processing options.
  * @param[in]  sequence_num                The pulse sequence number for which will be acknowledged.
  * @param[in]  rx_rate                     The USRP sampling rate.
