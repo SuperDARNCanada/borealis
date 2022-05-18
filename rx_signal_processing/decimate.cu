@@ -258,8 +258,8 @@ __global__ void bandpass_decimate_general(cuComplex* original_samples,
   auto tap_offset = product_offset * stride;                        // first index into filter_taps for this thread
 
   cuComplex sample;                             // the current iq sample from an antenna
-  cuComplex intermediate_product(0.0f, 0.0f);   // the product of sample with its respective filter tap
-  cuComplex intermediate_sum(0.0f, 0.0f);       // the sum of all intermediate products for this thread
+  cuComplex intermediate_product = make_cuComplex(0.0f, 0.0f);   // the product of sample with its respective filter tap
+  cuComplex intermediate_sum = make_cuComplex(0.0f, 0.0f);       // the sum of all intermediate products for this thread
 
   // Calculate the sum of 'stride' samples in this thread.
   // This is done so that if the number of filter taps * num frequencies is greater than
@@ -704,8 +704,8 @@ __global__ void lowpass_decimate_general(cuComplex* original_samples,
 
 
   cuComplex sample;
-  cuComplex intermediate_product(0.0f, 0.0f);
-  cuComplex intermediate_sum(0.0f, 0.0f);
+  cuComplex intermediate_product = make_cuComplex(0.0f, 0.0f);
+  cuComplex intermediate_sum = make_cuComplex(0.0f, 0.0f);
 
   // Calculate the sum of 'stride' samples in this thread.
   // This is done so that if the number of filter taps is greater than
