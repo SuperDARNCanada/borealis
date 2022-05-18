@@ -13,6 +13,12 @@ See LICENSE for details
 
 enum class DecimationType {lowpass, bandpass};
 
+void bandpass_decimate_general_wrapper(cuComplex* input_samples,
+  cuComplex* decimated_samples,
+  cuComplex* filter_taps, uint32_t dm_rate,
+  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
+  uint32_t num_antennas, double F_s, double *freqs, cudaStream_t stream);
+
 void bandpass_decimate1024_wrapper(cuComplex* input_samples,
   cuComplex* decimated_samples,
   cuComplex* filter_taps, uint32_t dm_rate,
