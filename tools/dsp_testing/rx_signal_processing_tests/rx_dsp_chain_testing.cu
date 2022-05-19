@@ -26,7 +26,17 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
 #define PULSE_LENGTH_US 300
 #define PULSE_LIST {0, 9, 12, 20, 22, 26, 27}
 
-std::vector<std::vector<std::complex<float>>> make_samples() {
+/**
+ * @brief      Creates an array of ideal samples for a 7-pulse SuperDARN sequence.
+ *
+ * @param[in]  dm_rates           List of downsampling rates for each stage of filtering.
+ * @param[in]  rx_rate            RX rate of the system.
+ * @param[in]  num_channels       Number of channels to generate samples for.
+ * @param[in]  rx_freqs           List of carrier frequencies to receive on.
+ */
+std::vector<std::vector<std::complex<float>>> make_samples(std::vector<uint32_t> dm_rates, double rx_rate,
+                                                           uint32_t num_channels, std::vector<double> rx_freqs)
+{
   // We need to sample early to account for propagating samples through filters. The number of
   // required early samples is equal to adding half the filter length of each stage, starting with
   // the last stage so that the center point of the filter (point of highest gain) aligns with the
@@ -73,7 +83,7 @@ std::vector<std::vector<std::complex<float>>> make_samples() {
 
   // Now we make an array of (identical) samples for each channel/antenna
   std::vector<std::vector<std::complex<float>>> all_samps;
-  for (int i=0; i<NUM_CHANNELS; i++) {
+  for (int i=0; i<num_channels; i++) {
     all_samps.push_back(single_antenna_samples);
   }
 
@@ -90,8 +100,10 @@ int main(int argc, char** argv) {
   std::vector<std::vector<float>> filter_taps;
   ifstream tapfile;
 
+  int num_stages = 4;
+
   // Get the filter taps for each stage from file.
-  for (int i=0; i<4; i++) {
+  for (int i=0; i<num_stages; i++) {
     std::vector<std::complex<float>> taps;
     float real, imag;
     char newline_eater;
@@ -112,7 +124,7 @@ int main(int argc, char** argv) {
   filters = Filtering(filter_taps);
 
   // Create the data for this test
-  auto in_samps = make_samples();
+  auto in_samps = make_samples(dm_rates, rx_rate, total_antennas, rx_freqs);
   auto total_antennas = NUM_CHANNELS;
   auto samples_needed = NUM_SAMPS;
   auto ringbuffer_ptrs_start = in_samps;
