@@ -35,9 +35,11 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
  * @param[in]  num_channels       Number of channels to generate samples for.
  * @param[in]  rx_freqs           List of carrier frequencies to receive on.
  * @param[in]  filter_taps        List of filter taps for each stage.
+ * @param[in]  num_samples        Number of samples per channel.
  */
 std::vector<std::complex<float>> make_samples(std::vector<uint32_t> dm_rates, double rx_rate, uint32_t num_channels,
-                                              std::vector<double> rx_freqs, std::vector<std::vector<float>> filter_taps)
+                                              std::vector<double> rx_freqs, std::vector<std::vector<float>> filter_taps,
+                                              uint32_t num_samples)
 {
   // We need to sample early to account for propagating samples through filters. The number of
   // required early samples is equal to adding half the filter length of each stage, starting with
@@ -76,7 +78,7 @@ std::vector<std::complex<float>> make_samples(std::vector<uint32_t> dm_rates, do
   }
 
   // Now we make a vector of samples for a single antenna
-  std::vector<std::complex<float>> single_antenna_samples;
+  std::vector<std::complex<float>> single_antenna_samples(num_samples, std::complex<float>(0.0, 0.0));
   for (int i=0; i<pulse_list.size(); i++) {
     for (uint32_t j=pulse_starts_in_samps[i]; j<pulse_ends_in_samps[i]; j++) {
       single_antenna_samples[j] = single_pulse_samps[j - pulse_starts_in_samps[i]];
@@ -131,8 +133,8 @@ int main(int argc, char** argv) {
   filters = Filtering(filter_taps);
 
   // Create the data for this test
-  auto in_samps = make_samples(dm_rates, rx_rate, total_antennas, rx_freqs, filter_taps);
   auto samples_needed = NUM_SAMPS;
+  auto in_samps = make_samples(dm_rates, rx_rate, total_antennas, rx_freqs, filter_taps, num_samples);
 
   // We are not testing beamforming and correlating here, so we omit the sections from rx_dsp_chain.cu pertaining
   // to them. These can be tested by running the radar and comparing with borealis_postprocessors.
