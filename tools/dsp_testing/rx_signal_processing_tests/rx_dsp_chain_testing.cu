@@ -36,9 +36,8 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
  * @param[in]  rx_freqs           List of carrier frequencies to receive on.
  * @param[in]  filter_taps        List of filter taps for each stage.
  */
-std::vector<std::vector<std::complex<float>>> make_samples(std::vector<uint32_t> dm_rates, double rx_rate,
-                                                           uint32_t num_channels, std::vector<double> rx_freqs,
-                                                           std::vector<std::vector<float>> filter_taps)
+std::vector<std::complex<float>> make_samples(std::vector<uint32_t> dm_rates, double rx_rate, uint32_t num_channels,
+                                              std::vector<double> rx_freqs, std::vector<std::vector<float>> filter_taps)
 {
   // We need to sample early to account for propagating samples through filters. The number of
   // required early samples is equal to adding half the filter length of each stage, starting with
@@ -84,10 +83,13 @@ std::vector<std::vector<std::complex<float>>> make_samples(std::vector<uint32_t>
     }
   }
 
-  // Now we make an array of (identical) samples for each channel/antenna
-  std::vector<std::vector<std::complex<float>>> all_samps;
+  // Now we make a flat array of (identical) samples for each channel/antenna, with all data for the first
+  // channel coming before all data for the second channel, and so on.
+  std::vector<std::complex<float>> all_samps;
   for (int i=0; i<num_channels; i++) {
-    all_samps.push_back(single_antenna_samples);
+    for (int j=0; j<single_antenna_samples.size(); j++)
+      all_samps.push_back(single_antenna_samples[j]);
+    }
   }
 
   return all_samps;
@@ -107,10 +109,12 @@ int main(int argc, char** argv) {
 
   // Get the filter taps for each stage from file.
   for (int i=0; i<num_stages; i++) {
-    std::vector<std::complex<float>> taps;
+    char filter_stage[sizeof(char)];
+    std::sprintf(filter_stage, "%d", i);
+    std::vector<float> taps;
     float real, imag;
     char newline_eater;
-    tapfile.open("/home/remington/pulse_interfacing/normalscan_taps_" << std::to_string(i) << ".txt"); // TODO(Remington): Put these files somewhere useful
+    tapfile.open("/home/remington/pulse_interfacing/normalscan_taps_" << filter_stage << ".txt"); // TODO(Remington): Put these files somewhere useful
     while (tapfile >> real >> imag >> newline_eater) {
       if ((real != 0.0) || (imag != 0.0))
       taps.push_back(real);
@@ -129,7 +133,6 @@ int main(int argc, char** argv) {
   // Create the data for this test
   auto in_samps = make_samples(dm_rates, rx_rate, total_antennas, rx_freqs, filter_taps);
   auto samples_needed = NUM_SAMPS;
-  auto ringbuffer_ptrs_start = in_samps;
 
   // We are not testing beamforming and correlating here, so we omit the sections from rx_dsp_chain.cu pertaining
   // to them. These can be tested by running the radar and comparing with borealis_postprocessors.
@@ -153,7 +156,7 @@ int main(int argc, char** argv) {
 
   dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
 
-  dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, ringbuffer_ptrs_start);
+  dp->allocate_and_copy_rf_samples(total_antennas, samples_needed, in_samps.data());
 
   dp->allocate_and_copy_bandpass_filters(complex_taps[0].data(), complex_taps[0].size());
 

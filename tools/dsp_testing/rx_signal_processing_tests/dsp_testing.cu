@@ -439,32 +439,19 @@ DSPCoreTesting::~DSPCoreTesting()
  *
  * @param[in]  total_antennas         The total number of antennas.
  * @param[in]  num_samples_needed     The number of samples needed from each antenna ringbuffer.
- * @param[in]  extra_samples          The number of extra samples needed for filter propagation.
- * @param[in]  offset_to_first_pulse  Offset from sequence start to center of first pulse.
- * @param[in]  time_zero              The time the driver began collecting samples. seconds since
- *                                    epoch.
- * @param[in]  start_time             The start time of the pulse sequence. seconds since epoch.
- * @param[in]  ringbuffer_size        The ringbuffer size in number of samples.
- * @param      ringbuffer_ptrs_start  A vector of pointers to the start of each antenna ringbuffer.
  *
- * Samples are being stored in a shared memory ringbuffer. This function calculates where to index
- * into the ringbuffer for samples and copies them to the gpu. This function will also copy the
- * samples to a shared memory section that data write, or another process can access in order to
- * work with the raw RF samples.
+ * @param      input_samples          A pointer to the input samples.
+ *
+ * Samples are stored in a flat array, with all samples for the first channel coming before all
+ * samples for the second channel, and so on.
  */
 void DSPCoreTesting::allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
-                                                  std::vector<cuComplex*> &ringbuffer_ptrs_start)
+                                                  void *input_samples)
 {
   size_t rf_samples_size = total_antennas * num_samples_needed * sizeof(cuComplex);
   gpuErrchk(cudaMalloc(&rf_samples_d, rf_samples_size));
+  gpuErrchk(cudaMemcpyAsync(rf_samples_d, input_samples, rf_samples_size, cudaMemcpyHostToDevice, stream));
 
-  for (uint32_t i=0; i<total_antennas; i++) {
-    auto dest = rf_samples_d + (i*num_samples_needed);
-
-    auto src = ringbuffer_ptrs_start[i];
-
-    gpuErrchk(cudaMemcpyAsync(dest, src, num_samples_needed * sizeof(cuComplex), cudaMemcpyHostToDevice, stream));
-  }
 }
 
 /**
