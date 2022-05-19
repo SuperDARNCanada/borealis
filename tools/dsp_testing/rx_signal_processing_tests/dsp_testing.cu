@@ -587,10 +587,8 @@ void DSPCoreTesting::stop_timing()
   gpuErrchk(cudaEventElapsedTime(&total_process_timing_ms, initial_start, stop));
   gpuErrchk(cudaEventElapsedTime(&decimate_kernel_timing_ms, kernel_start, stop));
   gpuErrchk(cudaEventElapsedTime(&mem_time_ms, initial_start, mem_transfer_end));
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Cuda memcpy time for "
-              << COLOR_RED("#" << sequence_num) << ": " << COLOR_GREEN(mem_time_ms) << "ms");
-  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimate time for "
-              << COLOR_RED("#" << sequence_num) << ": " << COLOR_GREEN(decimate_kernel_timing_ms) << "ms");
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Cuda memcpy time: " << COLOR_GREEN(mem_time_ms) << "ms");
+  RUNTIME_MSG(COLOR_MAGENTA("SIGNAL PROCESSING: ") << "Decimate time: " << COLOR_GREEN(decimate_kernel_timing_ms) << "ms");
 }
 
 /**
