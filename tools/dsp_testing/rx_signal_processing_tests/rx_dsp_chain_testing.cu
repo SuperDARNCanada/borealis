@@ -113,7 +113,6 @@ int main(int argc, char** argv) {
   std::vector<std::vector<float>> filter_taps;
   std::ifstream tapfile;
 
-  int num_stages = 4;
   std::vector<float> taps0 = STAGE0_TAPS;
   std::vector<float> taps1 = STAGE1_TAPS;
   std::vector<float> taps2 = STAGE2_TAPS;
