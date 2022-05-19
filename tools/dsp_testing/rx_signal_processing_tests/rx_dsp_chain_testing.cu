@@ -138,7 +138,10 @@ int main(int argc, char** argv) {
 
   auto complex_taps = filters.get_mixed_filter_taps();
 
-  auto total_dm_rate = std::accumulate(dm_rates.begin(), dm_rates.end(), 1, std::multiplies<int64_t>());
+  uint32_t total_dm_rate = 1;
+  for (int i=0; i<dm_rates.size(); i++) {
+    total_dm_rate *= dm_rates[i];
+  }
   double output_sample_rate = rx_rate / total_dm_rate;
 
   std::vector<rx_slice> slice_info;
@@ -146,7 +149,6 @@ int main(int argc, char** argv) {
     slice_info.push_back(rx_slice(rx_freqs[i], i));
   }
 
-  // TODO(Remington): Make this class and figure out which parameters are actually needed.
   DSPCoreTesting *dp = new DSPCoreTesting(rx_rate, output_sample_rate, filter_taps, dm_rates, slice_info);
 
   dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());

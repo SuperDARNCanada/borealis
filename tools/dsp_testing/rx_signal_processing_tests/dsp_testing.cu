@@ -384,13 +384,13 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * @param[in]  driver_initialization_time  The driver initialization time.
  * @param[in]  sequence_start_time         The sequence start time.
  * @param[in]  dm_rates                    The decimation rates.
- * @param[in]  slice_info                  The slice info given as a vector of rx_slice structs.
+ * @param[in]  slice_info                  The slice info given as a vector of rx_slice_test structs.
  *
  * The constructor creates a new CUDA stream and initializes the timing events. It then opens the
  * shared memory with the received RF samples for a pulse sequence.
  */
 DSPCoreTesting::DSPCoreTesting(double rx_rate, double output_sample_rate, std::vector<std::vector<float>> filter_taps,
-                               std::vector<uint32_t> dm_rates, std::vector<rx_slice> slice_info) :
+                               std::vector<uint32_t> dm_rates, std::vector<rx_slice_test> slice_info) :
   rx_rate(rx_rate),
   output_sample_rate(output_sample_rate),
   filter_taps(filter_taps),
@@ -768,11 +768,11 @@ double DSPCoreTesting::get_output_sample_rate()
 }
 
 /**
- * @brief      Gets the vector of slice information, rx_slice structs.
+ * @brief      Gets the vector of slice information, rx_slice_test structs.
  *
- * @return     The vector of rx_slice structs with slice information.
+ * @return     The vector of rx_slice_test structs with slice information.
  */
- std::vector<rx_slice> DSPCoreTesting::get_slice_info()
+ std::vector<rx_slice_test> DSPCoreTesting::get_slice_info()
  {
   return slice_info;
  }

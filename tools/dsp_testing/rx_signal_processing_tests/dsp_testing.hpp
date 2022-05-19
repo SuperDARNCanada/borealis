@@ -38,15 +38,15 @@ std::vector<cudaDeviceProp> get_gpu_properties();
 void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties);
 
 
-typedef struct rx_slice
+typedef struct rx_slice_test
 {
   double rx_freq; // kHz
   uint32_t slice_id;
 
-  rx_slice(double rx_freq, uint32_t slice_id) :
+  rx_slice_test(double rx_freq, uint32_t slice_id) :
     rx_freq(rx_freq),
     slice_id(slice_id){}
-}rx_slice;
+}rx_slice_test;
 
 /**
  * @brief      Contains the core DSP work done on the GPU.
@@ -60,7 +60,7 @@ class DSPCoreTesting {
   //http://en.cppreference.com/w/cpp/language/explicit
   explicit DSPCoreTesting(double rx_rate, double output_sample_rate,
                           std::vector<std::vector<float>> filter_taps,
-                          std::vector<uint32_t> dm_rates, std::vector<rx_slice> slice_info);
+                          std::vector<uint32_t> dm_rates, std::vector<rx_slice_test> slice_info);
 
   ~DSPCoreTesting(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
@@ -88,7 +88,7 @@ class DSPCoreTesting {
   uint32_t get_num_rf_samples();
   double get_rx_rate();
   double get_output_sample_rate();
-  std::vector<rx_slice> get_slice_info();
+  std::vector<rx_slice_test> get_slice_info();
   cudaStream_t get_cuda_stream();
   void start_decimate_timing();
   void stop_timing();
@@ -169,8 +169,8 @@ class DSPCoreTesting {
   //! The number of rf samples per antenna.
   uint32_t num_rf_samples;
 
-  //! Slice information given from rx_slice structs
-  std::vector<rx_slice> slice_info;
+  //! Slice information given from rx_slice_test structs
+  std::vector<rx_slice_test> slice_info;
 
   void allocate_and_copy_rf_from_device(uint32_t num_rf_samples);
 
