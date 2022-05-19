@@ -8,6 +8,7 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
 
 #include <cuComplex.h>  // cuComplex type and all cuCmulf/cuCaddf functions.
 #include <iostream>
+#include <fstream>
 #include <stdint.h>
 #include <complex>
 #include <cmath>
@@ -21,6 +22,63 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
 #define DM_RATES {10, 5, 6, 5}
 #define NUM_SAMPS 451500
 #define NUM_CHANNELS 20
+#define TAU_SPACING_US 2400
+#define PULSE_LENGTH_US 300
+#define PULSE_LIST {0, 9, 12, 20, 22, 26, 27}
+
+std::vector<std::vector<std::complex<float>>> make_samples() {
+  // We need to sample early to account for propagating samples through filters. The number of
+  // required early samples is equal to adding half the filter length of each stage, starting with
+  // the last stage so that the center point of the filter (point of highest gain) aligns with the
+  // center of the pulse. This is the exact number of extra samples needed so that the output
+  // data after decimation correctly aligns to the center of the first pulse.
+  int64_t extra_samples = 0;
+
+  for (int32_t i=dm_rates.size()-1; i>=0; i--) {
+    extra_samples = (extra_samples * dm_rates[i]) + (filter_taps[i].size()/2);
+  }
+
+  std::vector<uint32_t> pulse_starts_in_samps;
+  std::vector<uint32_t> pulse_ends_in_samps;
+  std::vector<uint32_t> pulse_list = PULSE_LIST;
+  uint32_t pulse_length_us = PULSE_LENGTH_US;
+  uint32_t pulse_length_samps = int(std::floor(float(pulse_length_us) / rx_rate));
+  uint32_t tau_spacing_us = TAU_SPACING_US;
+
+  // Get the start and end sample of each pulse
+  for (int i=0; i<pulse_list.size(); i++) {
+    auto pulse_start_us = pulse_list[i] * tau_spacing_us;
+    auto pulse_start_samps = int(std::floor(float(pulse_start_us) / rx_rate));
+    pulse_starts_in_samps.push_back(pulse_start_samps + extra_samples);
+    pulse_ends_in_samps.push_back(pulse_start_samps + pulse_length_samps + extra_samples);
+  }
+
+  // Create samples for a single pulse
+  std::vector<std::complex<float>> single_pulse_samps(pulse_length_samps, std::complex<float>(0.0, 0.0));
+  for (int f=0; f<rx_freqs.size(); f++) {
+    auto sampling_freq = 2 * M_PI * rx_freqs[f] / rx_rate;
+    for (int i=0; i<pulse_length_samps; i++) {
+      auto radians = fmod(sampling_freq * i, 2 * M_PI);
+      single_pulse_samps[i] += std::complex<float>(cos(radians), sin(radians));
+    }
+  }
+
+  // Now we make a vector of samples for a single antenna
+  std::vector<cuComplex> single_antenna_samples;
+  for (int i=0; i<pulse_list.size(); i++) {
+    for (uint32_t j=pulse_starts_in_samps[i]; j<pulse_ends_in_samps[i]; j++) {
+      single_antenna_samples[j] = single_pulse_samps[j - pulse_starts_in_samps[i]];
+    }
+  }
+
+  // Now we make an array of (identical) samples for each channel/antenna
+  std::vector<std::vector<std::complex<float>>> all_samps;
+  for (int i=0; i<NUM_CHANNELS; i++) {
+    all_samps.push_back(single_antenna_samples);
+  }
+
+  return all_samps;
+}
 
 /* This is set up to be as close as possible to rx_signal_processing/rx_dsp_chain.cu, with differences only to
  * remove dependencies on the other Borealis modules. The purpose of this method is to test the CUDA kernel
@@ -28,7 +86,22 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
  */
 int main(int argc, char** argv) {
 
+  // TODO(Remington): Figure out how to load these from a file (use argv?)
   std::vector<std::vector<float>> filter_taps;
+  ifstream tapfile;
+
+  // Get the filter taps for each stage from file.
+  for (int i=0; i<4; i++) {
+    std::vector<std::complex<float>> taps;
+    float real, imag;
+    char newline_eater;
+    tapfile.open("/home/remington/pulse_interfacing/normalscan_taps_" << i << ".txt"); // TODO(Remington): Put these files somewhere useful
+    while (tapfile >> real >> imag >> newline_eater) {
+      if ((real != 0.0) || (imag != 0.0))
+      taps.push_back(std::complex<float>(real, imag));
+    }
+    filter_taps.push_back(taps);
+  }
   Filtering filters;
 
   std::vector<uint32_t> dm_rates = DM_RATES;
@@ -36,14 +109,16 @@ int main(int argc, char** argv) {
   uint32_t total_antennas = NUM_CHANNELS;
   double output_sample_rate;
 
-  std::vector<std::complex<float>> in_samps(NUM_CHANNELS*NUM_SAMPS, std::complex<float>(1.0, 1.0));
-
   filters = Filtering(filter_taps);
 
   // Create the data for this test
-  // TODO(Remington): Figure out how to do this
+  auto in_samps = make_samples();
+  auto total_antennas = NUM_CHANNELS;
+  auto samples_needed = NUM_SAMPS;
+  auto ringbuffer_ptrs_start = in_samps;
 
-  // We are not testing beamforming and correlating here, so this is a large deviation from rx_dsp_chain.cu
+  // We are not testing beamforming and correlating here, so we omit the sections from rx_dsp_chain.cu pertaining
+  // to them. These can be tested by running the radar and comparing with borealis_postprocessors.
 
   std::vector<double> rx_freqs = FREQS;
   filters.mix_first_stage_to_bandpass(rx_freqs, rx_rate)
@@ -51,9 +126,7 @@ int main(int argc, char** argv) {
   auto complex_taps = filters.get_mixed_filter_taps();
 
   // TODO(Remington): Make this class and figure out which parameters are actually needed.
-  DSPCoreTesting *dp = new DSPCoreTesting(std::ref(context), sig_options, sp_packet.sequence_num(),
-                                      rx_rate, output_sample_rate, filter_taps, initialization_time,
-                                      sequence_start_time, dm_rates, slice_info);
+  DSPCoreTesting *dp = new DSPCoreTesting(rx_rate, output_sample_rate, filter_taps, dm_rates, slice_info);
 
   auto total_dm_rate = std::accumulate(dm_rates.begin(), dm_rates.end(), 1, std::multiplies<int64_t>());
 
