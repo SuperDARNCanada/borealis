@@ -18,8 +18,7 @@ See LICENSE for details
 #include <cstdlib>
 #include <thrust/device_vector.h>
 #include "utils/shared_memory/shared_memory.hpp"
-#include "utils/signal_processing_options/signalprocessingoptions.hpp"
-#include "filtering.hpp"
+#include "rx_signal_processing/filtering.hpp"
 
 //This is inlined and used to detect and throw on CUDA errors.
 #define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
