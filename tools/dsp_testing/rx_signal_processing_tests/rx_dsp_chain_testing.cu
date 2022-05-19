@@ -77,7 +77,7 @@ std::vector<std::vector<std::complex<float>>> make_samples(std::vector<uint32_t>
   }
 
   // Now we make a vector of samples for a single antenna
-  std::vector<cuComplex> single_antenna_samples;
+  std::vector<std::complex<float>> single_antenna_samples;
   for (int i=0; i<pulse_list.size(); i++) {
     for (uint32_t j=pulse_starts_in_samps[i]; j<pulse_ends_in_samps[i]; j++) {
       single_antenna_samples[j] = single_pulse_samps[j - pulse_starts_in_samps[i]];
@@ -122,6 +122,7 @@ int main(int argc, char** argv) {
   std::vector<uint32_t> dm_rates = DM_RATES;
   double rx_rate = RX_RATE;
   uint32_t total_antennas = NUM_CHANNELS;
+  std::vector<double> rx_freqs = FREQS;
 
   filters = Filtering(filter_taps);
 
@@ -133,13 +134,17 @@ int main(int argc, char** argv) {
   // We are not testing beamforming and correlating here, so we omit the sections from rx_dsp_chain.cu pertaining
   // to them. These can be tested by running the radar and comparing with borealis_postprocessors.
 
-  std::vector<double> rx_freqs = FREQS;
   filters.mix_first_stage_to_bandpass(rx_freqs, rx_rate);
 
   auto complex_taps = filters.get_mixed_filter_taps();
 
   auto total_dm_rate = std::accumulate(dm_rates.begin(), dm_rates.end(), 1, std::multiplies<int64_t>());
   double output_sample_rate = rx_rate / total_dm_rate;
+
+  std::vector<rx_slice> slice_info;
+  for (uint32_t i=0; i<rx_freqs.size(); i++) {
+    slice_info.push_back(rx_slice(rx_freq[i], i))
+  }
 
   // TODO(Remington): Make this class and figure out which parameters are actually needed.
   DSPCoreTesting *dp = new DSPCoreTesting(rx_rate, output_sample_rate, filter_taps, dm_rates, slice_info);
