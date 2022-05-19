@@ -64,8 +64,7 @@ class DSPCoreTesting {
 
   ~DSPCoreTesting(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
-  void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
-                                    std::vector<cuComplex*> &ringbuffer_ptrs_start);
+  void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed, void *input_samples);
   void allocate_and_copy_bandpass_filters(void *taps, uint32_t total_taps);
   std::vector<cuComplex*> get_filter_outputs_h();
   cuComplex* get_last_filter_output_d();
