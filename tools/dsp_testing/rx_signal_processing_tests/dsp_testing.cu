@@ -32,11 +32,10 @@ namespace {
   /**
    * @brief      Starts the timing after the RF samples have been copied.
    *
-   * @param[in]  stream           CUDA stream this callback is associated with.
    * @param[in]  status           Error status of CUDA work in the stream.
    * @param[in]  processing_data  A pointer to the DSPCoreTesting associated with this CUDA stream.
    */
-  void CUDART_CB initial_memcpy_callback_handler(cudaStream_t stream, cudaError_t status, void *processing_data)
+  void CUDART_CB initial_memcpy_callback_handler(cudaError_t status, void *processing_data)
   {
     gpuErrchk(status);
 
@@ -44,8 +43,7 @@ namespace {
     {
       auto dp = static_cast<DSPCoreTesting*>(processing_data);
       dp->start_decimate_timing();
-      RUNTIME_MSG(COLOR_RED("Finished initial memcpy handler for sequence #"
-                 << dp->get_sequence_num() << ". Thread should exit here"));
+      RUNTIME_MSG(COLOR_RED("Finished initial memcpy handler for sequence. Thread should exit here"));
     };
 
     std::thread start_imc(imc);
@@ -104,204 +102,16 @@ namespace {
     }
   }
 
-  /**
-   * @brief      Beamforms the final samples
-   *
-   * @param      filtered_samples         A flat vector containing all the filtered samples for all
-   *                                      RX frequencies.
-   * @param      beamformed_samples_main  A vector where the beamformed and combined main array
-   *                                      samples are placed.
-   * @param      beamformed_samples_intf  A vector where the beamformed and combined intf array
-   *                                      samples are placed.
-   * @param      phases                   A flat vector of the phase delay offsets used to generate
-   *                                      azimuthal directions. Phase offsets are complex
-   *                                      exponential.
-   * @param      num_main_ants            The number of main antennas.
-   * @param      num_intf_ants            The number of intf antennas.
-   * @param[in]  rx_slice_info            A vector of needed slice metadata.
-   * @param      num_samples              The number of samples per antenna.
-   *
-   *             This method extracts the offsets to the phases and samples needed for the beam
-   *             directions of each RX frequency. The Armadillo library is then used to multiply the
-   *             matrices to yield the final beamformed samples. The main array and interferometer
-   *             array are beamformed separately.
-   */
-  void beamform_samples(std::vector<cuComplex> &filtered_samples,
-                        std::vector<std::vector<cuComplex>> &beamformed_samples_main,
-                        std::vector<std::vector<cuComplex>> &beamformed_samples_intf,
-                        std::vector<cuComplex> &phases, uint32_t num_main_ants,
-                        uint32_t num_intf_ants, std::vector<rx_slice> rx_slice_info,
-                        uint32_t num_samples)
-  {
-
-    // Gonna make a lambda here to avoid repeated code. This is the main procedure that will
-    // beamform the samples from offsets into the vectors.
-    auto beamform_from_offsets = [&](cuComplex* samples_ptr,
-                                      cuComplex* phases_ptr,
-                                      cuComplex* result_ptr,
-                                      uint32_t num_antennas, uint32_t num_beams)
-    {
-
-      // We work with cuComplex type for most DSP, but Armadillo only knows the equivalent std lib
-      // type so we cast to it for this context.
-      auto samples_cast = reinterpret_cast<std::complex<float>*>(samples_ptr);
-      auto phases_cast = reinterpret_cast<std::complex<float>*>(phases_ptr);
-
-      // All we do here is map an existing set of memory to a structure that Armadillo uses.
-      arma::cx_fmat samps(samples_cast, num_samples, num_antennas, false, true);
-      arma::cx_fmat phases(phases_cast, num_antennas, num_beams, false, true);
-
-      // Result matrix has dimensions num_samples x num_beams. This means one set of samples for
-      // each beam dir. Armadillo overloads the * operator so we dont need to implement any matrix
-      // work ourselves.
-      arma::cx_fmat result = samps * phases;
-
-      // This piece of code just transforms the Armadillo result back into our flat vector.
-      // Armadillo uses column-major ordering, while we use row-major everywhere else. This means
-      // that our data will actually be num_beams x num_samps.
-      auto beamformed_cast = reinterpret_cast<std::complex<float>*>(result_ptr);
-      memcpy(beamformed_cast, result.memptr(), sizeof(std::complex<float>) *
-                                        result.n_rows * result.n_cols);
-    };
-
-    auto main_phase_offset = 0;
-
-    // Now we calculate the offsets into the samples, phases, and results vector for each
-    // RX frequency. Each RX frequency could have a different number of beams, so we increment
-    // the phase and results offsets based off the accumulated number of beams. Once we have the
-    // offsets, we can call the beamforming lambda.
-    for (uint32_t rx_freq_num=0; rx_freq_num<rx_slice_info.size(); rx_freq_num++) {
-
-      auto num_beams = rx_slice_info[rx_freq_num].beam_count;
-
-      // Increment to start of new frequency dataset.
-      auto main_sample_offset = num_samples * (num_main_ants + num_intf_ants) * rx_freq_num;
-      auto main_sample_ptr = filtered_samples.data() + main_sample_offset;
-
-      auto main_phase_ptr = phases.data() + main_phase_offset;
-
-      auto main_results_ptr = beamformed_samples_main[rx_freq_num].data();
-
-      beamform_from_offsets(main_sample_ptr, main_phase_ptr, main_results_ptr,
-                            num_main_ants, num_beams);
-
-      // Only need to worry about beamforming the interferometer if its being used.
-      if (num_intf_ants > 0) {
-
-        // Skip the main array samples.
-        auto intf_sample_offset = main_sample_offset + (num_samples * num_main_ants);
-        auto intf_sample_ptr = filtered_samples.data() + intf_sample_offset;
-
-        auto intf_phase_offset = main_phase_offset + (num_beams * num_main_ants);
-        auto intf_phase_ptr = phases.data() + intf_phase_offset;
-
-        // Result offsets will be the same. Each main and intf will have one set of samples for
-        // each beam.
-        auto intf_results_ptr = beamformed_samples_intf[rx_freq_num].data();
-
-        beamform_from_offsets(intf_sample_ptr, intf_phase_ptr, intf_results_ptr,
-                              num_intf_ants, num_beams);
-      }
-
-      //Possibly non uniform striding means we incremement the offset as we go.
-      main_phase_offset += num_beams * (num_main_ants + num_intf_ants);
-
-    }
-
-  }
 
   /**
-   * @brief      Finds correlations from two sets of samples. Calculates autocorrelation by passing
-   *             in the same sample set as both beamformed_samples_1 and beamformed_samples_2.
+   * @brief      This method name is kept for ease of comparison with borealis/rx_signal_processing/dsp.cu.
+   *             However, no processed_data_packet is used here.
    *
-   * @param      beamformed_samples_1  The first set of beamformed samples for each beam. Both sets
-   *                                   of beamformed samples are for a single sequence. The main and
-   *                                   intf arrays will have same number of: beams, samples per
-   *                                   sequence.
-   * @param      beamformed_samples_2  The second set of beamformed samples for each beam.
-   * @param      corr_results          A set of vectors where correlation results are stored.
-   * @param[in]  rx_slice_info         A vector of the info needed from each slice.
-   * @param[in]  num_samples           The number samples for each beam contained in the
-   *                                   beamformed_samples set. Assumed to be equal for both sample
-   *                                   sets.
-   * @param[in]  output_sample_rate    The output sample rate.
-   *
-   *             For each slice a correlation matrix is build for all the beams in that slice.
-   *             Values corresponding to particular lags and range gates are selected from the final
-   *             data. This function does not compute the expectation value for the correlations.
-   *             That part is done in data write.
-   */
-  void correlations_from_samples(std::vector<std::vector<cuComplex>> &beamformed_samples_1,
-                                  std::vector<std::vector<cuComplex>> &beamformed_samples_2,
-                                  std::vector<std::vector<cuComplex>> &corr_results,
-                                  std::vector<rx_slice> rx_slice_info, uint32_t num_samples,
-                                  double output_sample_rate)
-  {
-    for (uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
-      auto num_beams = rx_slice_info[slice_num].beam_count;
-      auto num_ranges = rx_slice_info[slice_num].num_ranges;
-      auto num_lags = rx_slice_info[slice_num].lags.size();
-
-      // No need to compute this if there are no lags.
-      if (num_lags == 0) {
-        continue;
-      }
-
-      for (uint32_t beam_count=0; beam_count<num_beams; beam_count++) {
-        auto samples_ptr_1 = beamformed_samples_1[slice_num].data();
-        auto samples_ptr_2 = beamformed_samples_2[slice_num].data();
-        samples_ptr_1 += (beam_count * num_samples);
-        samples_ptr_2 += (beam_count * num_samples);
-
-        auto samples_cast_1 = reinterpret_cast<std::complex<float>*>(samples_ptr_1);
-        auto samples_cast_2 = reinterpret_cast<std::complex<float>*>(samples_ptr_2);
-
-        // Convert existing memory to Armadillo vectors.
-        arma::cx_frowvec samps_1_matrix(samples_cast_1, num_samples, false, true);
-        arma::cx_frowvec samps_2_matrix(samples_cast_2, num_samples, false, true);
-
-        // correlation = E(XY^H) where X and Y are random vectors and H is the conjugate.
-        // https://en.wikipedia.org/wiki/Autocorrelation_matrix
-        // Matrix is not symmetric
-        arma::cx_fmat correlation_matrix = samps_1_matrix.t() * samps_2_matrix;
-
-        auto beam_offset = beam_count * num_ranges * num_lags;
-        auto first_range_offset = uint32_t(rx_slice_info[slice_num].first_range /
-                              rx_slice_info[slice_num].range_sep); // range sep in km, first_range in km
-        // Select out the lags for each range gate.
-        for(uint32_t range=0; range<num_ranges; range++) {
-          for(uint32_t lag=0; lag<num_lags; lag++) {
-
-            // tau spacing is in us, sample rate in hz
-            auto tau_in_samples = uint32_t(std::ceil(rx_slice_info[slice_num].tau_spacing * 1e-6 *
-                                            output_sample_rate));
-
-            auto p1_offset = rx_slice_info[slice_num].lags[lag].pulse_1 * tau_in_samples;
-            auto p2_offset = rx_slice_info[slice_num].lags[lag].pulse_2 * tau_in_samples;
-
-            // use column major indexing.
-            auto val = correlation_matrix(range + first_range_offset + p1_offset,
-                                          range + first_range_offset + p2_offset);
-
-            auto range_lag_offset = (range * num_lags) + lag;
-            auto total_offset = beam_offset + range_lag_offset;
-            corr_results[slice_num][total_offset].x = val.real();
-            corr_results[slice_num][total_offset].y = val.imag();
-          } // close lags scope
-        } // close ranges scope
-      } // close beams scope
-    } // close slices scope
-  }
-
-  /**
-   * @brief      Creates a data packet of processed data.
-   *
-   * @param      pd    A processeddata protobuf object.
    * @param      dp    A pointer to the DSPCoreTesting object with data to be extracted.
    *
-   * This function extracts the processed data into a protobuf that data write can use.
+   * This function drops bad samples and writes the data to file.
    */
-  void create_processed_data_packet(processeddata::ProcessedData &pd, DSPCoreTesting* dp)
+  void create_processed_data_packet(DSPCoreTesting* dp)
   {
 
     std::vector<cuComplex> output_samples;
@@ -485,25 +295,18 @@ namespace {
       auto dp = static_cast<DSPCoreTesting*>(processing_data);
 
       dp->stop_timing();
-      dp->send_timing();
-
-      // TODO(Remington): Figure out what to replace this with
-      processeddata::ProcessedData pd;
 
       TIMEIT_IF_TRUE_OR_DEBUG(true, "Fill + send processed data time ",
         [&]() {
-          create_processed_data_packet(pd, dp);
-          dp->send_processed_data(pd);
+          create_processed_data_packet(dp);
         }()
       );
 
       RUNTIME_MSG("Cuda kernel timing: " << COLOR_GREEN(dp->get_decimate_timing()) << "ms");
       RUNTIME_MSG("Complete process timing: " << COLOR_GREEN(dp->get_total_timing()) << "ms");
-      auto sq_num = dp->get_sequence_num();
       delete dp;
 
-      RUNTIME_MSG(COLOR_RED("Deleted DP in postprocess for sequence #" << sq_num
-                  << ". Thread should terminate here."));
+      RUNTIME_MSG(COLOR_RED("Deleted DP in postprocess for sequence. Thread should terminate here."));
     };
 
     std::thread start_pp(pp);
