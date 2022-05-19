@@ -31,10 +31,11 @@ namespace {
   /**
    * @brief      Starts the timing after the RF samples have been copied.
    *
+   * @param[in]  stream           CUDA stream this callback is associated with.
    * @param[in]  status           Error status of CUDA work in the stream.
    * @param[in]  processing_data  A pointer to the DSPCoreTesting associated with this CUDA stream.
    */
-  void CUDART_CB initial_memcpy_callback_handler(cudaError_t status, void *processing_data)
+  void CUDART_CB initial_memcpy_callback_handler(cudaStream_t stream, cudaError_t status, void *processing_data)
   {
     gpuErrchk(status);
 
