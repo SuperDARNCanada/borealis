@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
     tapfile.open("/home/remington/pulse_interfacing/normalscan_taps_" << i << ".txt"); // TODO(Remington): Put these files somewhere useful
     while (tapfile >> real >> imag >> newline_eater) {
       if ((real != 0.0) || (imag != 0.0))
-      taps.push_back(std::complex<float>(real, imag));
+      taps.push_back(real);
     }
     filter_taps.push_back(taps);
   }
@@ -127,7 +127,7 @@ int main(int argc, char** argv) {
   filters = Filtering(filter_taps);
 
   // Create the data for this test
-  auto in_samps = make_samples(dm_rates, rx_rate, total_antennas, rx_freqs);
+  auto in_samps = make_samples(dm_rates, rx_rate, total_antennas, rx_freqs, filter_taps);
   auto samples_needed = NUM_SAMPS;
   auto ringbuffer_ptrs_start = in_samps;
 
@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
 
   std::vector<rx_slice> slice_info;
   for (uint32_t i=0; i<rx_freqs.size(); i++) {
-    slice_info.push_back(rx_slice(rx_freq[i], i))
+    slice_info.push_back(rx_slice(rx_freqs[i], i));
   }
 
   // TODO(Remington): Make this class and figure out which parameters are actually needed.
