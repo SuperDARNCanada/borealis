@@ -20,20 +20,6 @@ See LICENSE for details
 #include "utils/shared_memory/shared_memory.hpp"
 #include "rx_signal_processing/filtering.hpp"
 
-//This is inlined and used to detect and throw on CUDA errors.
-#define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
-inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
-{
-  if(code != cudaSuccess)
-  {
-  std::stringstream ss;
-  ss << file << "(" << line << ")";
-  std::string file_and_line;
-  ss >> file_and_line;
-  throw thrust::system_error(code, thrust::cuda_category(), file_and_line);
-  }
-}
-
 std::vector<cudaDeviceProp> get_gpu_properties();
 void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties);
 

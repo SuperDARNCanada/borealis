@@ -110,7 +110,7 @@ int main(int argc, char** argv) {
     std::vector<std::complex<float>> taps;
     float real, imag;
     char newline_eater;
-    tapfile.open("/home/remington/pulse_interfacing/normalscan_taps_" << i << ".txt"); // TODO(Remington): Put these files somewhere useful
+    tapfile.open("/home/remington/pulse_interfacing/normalscan_taps_" << std::to_string(i) << ".txt"); // TODO(Remington): Put these files somewhere useful
     while (tapfile >> real >> imag >> newline_eater) {
       if ((real != 0.0) || (imag != 0.0))
       taps.push_back(real);
@@ -144,9 +144,9 @@ int main(int argc, char** argv) {
   }
   double output_sample_rate = rx_rate / total_dm_rate;
 
-  std::vector<rx_slice> slice_info;
+  std::vector<rx_slice_test> slice_info;
   for (uint32_t i=0; i<rx_freqs.size(); i++) {
-    slice_info.push_back(rx_slice(rx_freqs[i], i));
+    slice_info.push_back(rx_slice_test(rx_freqs[i], i));
   }
 
   DSPCoreTesting *dp = new DSPCoreTesting(rx_rate, output_sample_rate, filter_taps, dm_rates, slice_info);
