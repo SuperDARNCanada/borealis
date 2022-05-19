@@ -89,7 +89,7 @@ std::vector<std::complex<float>> make_samples(std::vector<uint32_t> dm_rates, do
   // channel coming before all data for the second channel, and so on.
   std::vector<std::complex<float>> all_samps;
   for (int i=0; i<num_channels; i++) {
-    for (int j=0; j<single_antenna_samples.size(); j++)
+    for (int j=0; j<single_antenna_samples.size(); j++) {
       all_samps.push_back(single_antenna_samples[j]);
     }
   }
