@@ -13,7 +13,7 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
 #include <complex>
 #include <cmath>
 #include <vector>
-#include "decimate_testing.hpp"
+#include "dsp_testing.hpp"
 #include "rx_signal_processing/filtering.hpp"
 
 
