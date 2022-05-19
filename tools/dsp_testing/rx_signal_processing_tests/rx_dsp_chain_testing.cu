@@ -15,6 +15,7 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
 #include <vector>
 #include "dsp_testing.hpp"
 #include "rx_signal_processing/filtering.hpp"
+#include "rx_signal_processing/decimate.hpp"
 
 
 #define FREQS {-1.25e6, 1.25e6}
@@ -33,9 +34,11 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
  * @param[in]  rx_rate            RX rate of the system.
  * @param[in]  num_channels       Number of channels to generate samples for.
  * @param[in]  rx_freqs           List of carrier frequencies to receive on.
+ * @param[in]  filter_taps        List of filter taps for each stage.
  */
 std::vector<std::vector<std::complex<float>>> make_samples(std::vector<uint32_t> dm_rates, double rx_rate,
-                                                           uint32_t num_channels, std::vector<double> rx_freqs)
+                                                           uint32_t num_channels, std::vector<double> rx_freqs,
+                                                           std::vector<std::vector<float>> filter_taps)
 {
   // We need to sample early to account for propagating samples through filters. The number of
   // required early samples is equal to adding half the filter length of each stage, starting with
@@ -98,7 +101,7 @@ int main(int argc, char** argv) {
 
   // TODO(Remington): Figure out how to load these from a file (use argv?)
   std::vector<std::vector<float>> filter_taps;
-  ifstream tapfile;
+  std::ifstream tapfile;
 
   int num_stages = 4;
 
@@ -119,13 +122,11 @@ int main(int argc, char** argv) {
   std::vector<uint32_t> dm_rates = DM_RATES;
   double rx_rate = RX_RATE;
   uint32_t total_antennas = NUM_CHANNELS;
-  double output_sample_rate;
 
   filters = Filtering(filter_taps);
 
   // Create the data for this test
   auto in_samps = make_samples(dm_rates, rx_rate, total_antennas, rx_freqs);
-  auto total_antennas = NUM_CHANNELS;
   auto samples_needed = NUM_SAMPS;
   auto ringbuffer_ptrs_start = in_samps;
 
@@ -133,14 +134,15 @@ int main(int argc, char** argv) {
   // to them. These can be tested by running the radar and comparing with borealis_postprocessors.
 
   std::vector<double> rx_freqs = FREQS;
-  filters.mix_first_stage_to_bandpass(rx_freqs, rx_rate)
+  filters.mix_first_stage_to_bandpass(rx_freqs, rx_rate);
 
   auto complex_taps = filters.get_mixed_filter_taps();
 
+  auto total_dm_rate = std::accumulate(dm_rates.begin(), dm_rates.end(), 1, std::multiplies<int64_t>());
+  double output_sample_rate = rx_rate / total_dm_rate;
+
   // TODO(Remington): Make this class and figure out which parameters are actually needed.
   DSPCoreTesting *dp = new DSPCoreTesting(rx_rate, output_sample_rate, filter_taps, dm_rates, slice_info);
-
-  auto total_dm_rate = std::accumulate(dm_rates.begin(), dm_rates.end(), 1, std::multiplies<int64_t>());
 
   dp->allocate_and_copy_frequencies(rx_freqs.data(), rx_freqs.size());
 
@@ -164,7 +166,7 @@ int main(int argc, char** argv) {
       "Bandpass stage of decimation", dp->get_cuda_stream());
 
   std::vector<uint32_t> samples_per_antenna(complex_taps.size());
-  std::vector<uint32_t> total_output_samples(compex_taps.size());
+  std::vector<uint32_t> total_output_samples(complex_taps.size());
 
   samples_per_antenna[0] = num_output_samples_per_antenna;
   total_output_samples[0] = total_output_samples_1;
