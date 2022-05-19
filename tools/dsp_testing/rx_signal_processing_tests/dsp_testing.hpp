@@ -43,33 +43,10 @@ typedef struct rx_slice
 {
   double rx_freq; // kHz
   uint32_t slice_id;
-  uint32_t num_ranges;
-  uint32_t beam_count;
-  float first_range; // km
-  float range_sep; // km
-  uint32_t tau_spacing; // us
 
-  struct lag
-  {
-    uint32_t pulse_1;
-    uint32_t pulse_2;
-    uint32_t lag_num;
-    lag(uint32_t pulse_1, uint32_t pulse_2, uint32_t lag_num):
-      pulse_1(pulse_1),
-      pulse_2(pulse_2),
-      lag_num(lag_num){}
-  };
-  std::vector<lag> lags;
-
-  rx_slice(double rx_freq, uint32_t slice_id, uint32_t num_ranges, uint32_t beam_count,
-            float first_range, float range_sep, uint32_t tau_spacing) :
+  rx_slice(double rx_freq, uint32_t slice_id) :
     rx_freq(rx_freq),
-    slice_id(slice_id),
-    num_ranges(num_ranges),
-    beam_count(beam_count),
-    first_range(first_range),
-    range_sep(range_sep),
-    tau_spacing(tau_spacing){}
+    slice_id(slice_id){}
 }rx_slice;
 
 /**
@@ -82,19 +59,13 @@ class DSPCoreTesting {
                                     std::vector<uint32_t> total_output_samples);
   void initial_memcpy_callback();
   //http://en.cppreference.com/w/cpp/language/explicit
-  explicit DSPCoreTesting(SignalProcessingOptions &options, uint32_t sq_num,
-                          double rx_rate, double output_sample_rate,
+  explicit DSPCoreTesting(double rx_rate, double output_sample_rate,
                           std::vector<std::vector<float>> filter_taps,
-                          std::vector<cuComplex> beam_phases,
-                          double driver_initialization_time, double sequence_start_time,
                           std::vector<uint32_t> dm_rates, std::vector<rx_slice> slice_info);
 
   ~DSPCoreTesting(); //destructor
   void allocate_and_copy_frequencies(void *freqs, uint32_t num_freqs);
   void allocate_and_copy_rf_samples(uint32_t total_antennas, uint32_t num_samples_needed,
-                                    int64_t extra_samples, uint32_t offset_to_first_pulse,
-                                    double time_zero, double start_time,
-                                    uint64_t ringbuffer_size,
                                     std::vector<cuComplex*> &ringbuffer_ptrs_start);
   void allocate_and_copy_bandpass_filters(void *taps, uint32_t total_taps);
   std::vector<cuComplex*> get_filter_outputs_h();
@@ -116,17 +87,12 @@ class DSPCoreTesting {
   std::vector<cuComplex> get_rf_samples_h();
   double* get_frequencies_p();
   uint32_t get_num_rf_samples();
-  uint32_t get_sequence_num();
   double get_rx_rate();
   double get_output_sample_rate();
-  double get_driver_initialization_time();
-  double get_sequence_start_time();
   std::vector<rx_slice> get_slice_info();
   cudaStream_t get_cuda_stream();
-  std::vector<cuComplex> get_beam_phases();
   void start_decimate_timing();
   void stop_timing();
-  void send_processed_data(processeddata::ProcessedData &pd);
 
   SignalProcessingOptions sig_options;
   Filtering *dsp_filters;
@@ -137,9 +103,6 @@ class DSPCoreTesting {
 
   //! CUDA stream the work will be associated with.
   cudaStream_t stream;
-
-  //! Sequence number used to identify and acknowledge a pulse sequence.
-  uint32_t sequence_num;
 
   //! Rx sampling rate for the data being processed.
   double rx_rate;
@@ -206,15 +169,6 @@ class DSPCoreTesting {
 
   //! The number of rf samples per antenna.
   uint32_t num_rf_samples;
-
-  //! A set of beam angle phases for each beam direction.
-  std::vector<cuComplex> beam_phases;
-
-  //! Timestamp of when the driver began sampling. Seconds since epoch.
-  double driver_initialization_time;
-
-  //! Timestamp of when the sequence began. Seconds since epoch.
-  double sequence_start_time;
 
   //! Slice information given from rx_slice structs
   std::vector<rx_slice> slice_info;

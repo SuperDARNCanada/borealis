@@ -332,62 +332,6 @@ namespace {
     auto num_samples_after_dropping = output_samples.size()/
                                       (dp->get_num_antennas()*rx_slice_info.size());
 
-    std::vector<std::vector<cuComplex>> beamformed_samples_main;
-    std::vector<std::vector<cuComplex>> beamformed_samples_intf;
-    for(auto &rx_slice_info : rx_slice_info) {
-      std::vector<cuComplex> main_beam(rx_slice_info.beam_count * num_samples_after_dropping);
-      std::vector<cuComplex> intf_beam(rx_slice_info.beam_count * num_samples_after_dropping);
-      beamformed_samples_main.push_back(main_beam);
-      beamformed_samples_intf.push_back(intf_beam);
-    }
-
-    TIMEIT_IF_TRUE_OR_DEBUG(true, "Beamforming time: ",
-      {
-      auto beam_phases = dp->get_beam_phases();
-      beamform_samples(output_samples, beamformed_samples_main, beamformed_samples_intf,
-                        beam_phases,
-                        dp->sig_options.get_main_antenna_count(),
-                        dp->sig_options.get_interferometer_antenna_count(),
-                        rx_slice_info,
-                        num_samples_after_dropping);
-      }
-    );
-
-    // set up the vectors ahead of time. Seems to be faster this way.
-    std::vector<std::vector<cuComplex>> main_acfs;
-    std::vector<std::vector<cuComplex>> xcfs;
-    std::vector<std::vector<cuComplex>> intf_acfs;
-    for (uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
-      auto total_elements = rx_slice_info[slice_num].beam_count *
-                            rx_slice_info[slice_num].num_ranges *
-                            rx_slice_info[slice_num].lags.size();
-      std::vector<cuComplex> v1(total_elements);
-      main_acfs.push_back(v1);
-
-      std::vector<cuComplex> v2(total_elements);
-      xcfs.push_back(v2);
-
-      std::vector<cuComplex> v3(total_elements);
-      intf_acfs.push_back(v3);
-    }
-
-    TIMEIT_IF_TRUE_OR_DEBUG(true, "ACF/XCF time: ",
-      {
-        correlations_from_samples(beamformed_samples_main, beamformed_samples_main,
-                                          main_acfs, rx_slice_info,
-                                          num_samples_after_dropping, dp->get_output_sample_rate());
-        if (dp->sig_options.get_interferometer_antenna_count() > 0) {
-          correlations_from_samples(beamformed_samples_main, beamformed_samples_intf,
-                                          xcfs, rx_slice_info, num_samples_after_dropping,
-                                          dp->get_output_sample_rate());
-          correlations_from_samples(beamformed_samples_intf, beamformed_samples_intf,
-                                          intf_acfs, rx_slice_info,
-                                          num_samples_after_dropping, dp->get_output_sample_rate());
-        }
-      }
-
-    ); // closing timeit scope
-
     // We have a lambda to extract the starting pointers of each set of output samples so that
     // we can use a consistent function to write either rf samples or stage data.
     auto make_ptrs_vec = [](cuComplex* output_p, uint32_t num_freqs, uint32_t num_antennas,
@@ -642,19 +586,11 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
  * The constructor creates a new CUDA stream and initializes the timing events. It then opens the
  * shared memory with the received RF samples for a pulse sequence.
  */
-DSPCoreTesting::DSPCoreTesting(SignalProcessingOptions &sig_options, uint32_t sequence_num, double rx_rate,
-                               double output_sample_rate, std::vector<std::vector<float>> filter_taps,
-                               std::vector<cuComplex> beam_phases, double driver_initialization_time,
-                               double sequence_start_time, std::vector<uint32_t> dm_rates,
-                               std::vector<rx_slice> slice_info) :
-  sig_options(sig_options),
-  sequence_num(sequence_num),
+DSPCoreTesting::DSPCoreTesting(double rx_rate, double output_sample_rate, std::vector<std::vector<float>> filter_taps,
+                               std::vector<uint32_t> dm_rates, std::vector<rx_slice> slice_info) :
   rx_rate(rx_rate),
   output_sample_rate(output_sample_rate),
   filter_taps(filter_taps),
-  beam_phases(beam_phases),
-  driver_initialization_time(driver_initialization_time),
-  sequence_start_time(sequence_start_time),
   dm_rates(dm_rates),
   slice_info(slice_info)
 {
@@ -722,7 +658,6 @@ void DSPCoreTesting::allocate_and_copy_rf_samples(uint32_t total_antennas, uint3
   for (uint32_t i=0; i<total_antennas; i++) {
     auto dest = rf_samples_d + (i*num_samples_needed);
 
-    // TODO(Remington): Flat array or 2D array of [antennas, samps]?
     auto src = ringbuffer_ptrs_start[i];
 
     gpuErrchk(cudaMemcpyAsync(dest, src, num_samples_needed * sizeof(cuComplex), cudaMemcpyHostToDevice, stream));
@@ -885,24 +820,6 @@ void DSPCoreTesting::cuda_postprocessing_callback(uint32_t total_antennas, uint3
   DEBUG_MSG(COLOR_RED("Added stream callback for sequence #" << sequence_num));
 }
 
-// TODO(Remington): Delete?
-/**
- * @brief      Sends a processed data packet to data write.
- *
- * @param      pd    A processeddata protobuf object.
- */
-void DSPCoreTesting::send_processed_data(processeddata::ProcessedData &pd)
-{
-  std::string p_msg_str;
-  pd.SerializeToString(&p_msg_str);
-
-  auto &data_socket = zmq_sockets[2];
-  SEND_REPLY(data_socket, sig_options.get_dw_dsp_identity(), p_msg_str);
-
-  DEBUG_MSG(COLOR_RED("Send processed data to data_write for sequence #" << sequence_num));
-}
-
-
 /**
  * @brief      Starts the timing before the GPU kernels execute.
  *
@@ -1030,16 +947,6 @@ uint32_t DSPCoreTesting::get_num_rf_samples()
 }
 
 /**
- * @brief      Gets the sequence number.
- *
- * @return     The sequence number.
- */
-uint32_t DSPCoreTesting::get_sequence_num()
-{
-  return sequence_num;
-}
-
-/**
  * @brief      Gets the rx sample rate.
  *
  * @return     The rx sampling rate (samples per second).
@@ -1057,36 +964,6 @@ double DSPCoreTesting::get_rx_rate()
 double DSPCoreTesting::get_output_sample_rate()
 {
   return output_sample_rate;
-}
-
-/**
- * @brief     Gets the vector of beam phases.
- *
- * @return    The beam phases.
- */
-std::vector<cuComplex> DSPCoreTesting::get_beam_phases()
-{
-  return beam_phases;
-}
-
-/**
- * @brief      Gets the driver initialization timestamp.
- *
- * @return     The driver initialization timestamp.
- */
-double DSPCoreTesting::get_driver_initialization_time()
-{
-  return driver_initialization_time;
-}
-
-/**
- * @brief      Gets the sequence start timestamp.
- *
- * @return     The sequence start timestamp.
- */
-double DSPCoreTesting::get_sequence_start_time()
-{
-  return sequence_start_time;
 }
 
 /**
