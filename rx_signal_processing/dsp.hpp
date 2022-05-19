@@ -22,6 +22,7 @@ See LICENSE for details
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 #include "filtering.hpp"
 
+#ifndef DIGITAL_PROCESSING_TESTING_H
 //This is inlined and used to detect and throw on CUDA errors.
 #define gpuErrchk(ans) { throw_on_cuda_error((ans), __FILE__, __LINE__); }
 inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
@@ -35,6 +36,7 @@ inline void throw_on_cuda_error(cudaError_t code, const char *file, int line)
   throw thrust::system_error(code, thrust::cuda_category(), file_and_line);
   }
 }
+#endif
 
 std::vector<cudaDeviceProp> get_gpu_properties();
 void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties);
