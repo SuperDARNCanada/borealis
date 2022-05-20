@@ -22,7 +22,7 @@ See LICENSE for details
 #include <complex>
 #include <armadillo>
 #include "utils/shared_macros/shared_macros.hpp"
-#include "rx_signal_processing/filtering.hpp"
+//#include "rx_signal_processing/filtering.hpp"
 //TODO(keith): decide on handing gpu errors
 //TODO(keith): potentially add multigpu support
 

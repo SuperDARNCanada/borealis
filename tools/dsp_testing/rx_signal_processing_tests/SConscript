@@ -29,5 +29,5 @@ import os
 
 Import('*')
 
-Prog('rx_dsp_chain_testing', Glob("./*.c*"), with_libs='utils::utils',
+Prog('rx_dsp_chain_testing', [Glob("./*.c*"), "#/rx_signal_processing/filtering.cpp", "#/rx_signal_processing/decimate.cu"], with_libs='utils::utils',
      LIBS=['m','rt','armadillo'])
