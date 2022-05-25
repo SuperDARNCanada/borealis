@@ -341,4 +341,4 @@ if __name__ == '__main__':
 # | Accelerators cupy (GPU): |  105.813 ms |   27.515 ms  |    1.26    |
 # | Fixed dtype cupy (GPU):  |   16.451 ms |  116.877 ms  |    8.10    |
 # | Fix + Accel cupy (GPU):  |   15.203 ms |  118.125 ms  |    8.77    |
-# | Fix2 + Accel cupy (GPU): |   14.279 ms |  119.049 ms  |    9.34    |
+# | Fix2 + Accel cupy (GPU): |   13.621 ms |  119.707 ms  |    9.79    |
