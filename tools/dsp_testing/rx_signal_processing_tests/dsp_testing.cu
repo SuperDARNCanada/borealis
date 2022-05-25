@@ -164,76 +164,68 @@ namespace {
     };
 
     std::vector<std::vector<std::vector<cuComplex*>>> all_stage_ptrs;
-    //#ifdef ENGINEERING_DEBUG - Removed this for testing purposes
-      for (uint32_t i=0; i<filter_outputs_h.size(); i++) {
-        auto ptrs = make_ptrs_vec(filter_outputs_h[i], rx_slice_info.size(),
-                            dp->get_num_antennas(), samples_per_antenna[i]);
-        all_stage_ptrs.push_back(ptrs);
-      }
-    //#endif
+    for (uint32_t i=0; i<filter_outputs_h.size(); i++) {
+      auto ptrs = make_ptrs_vec(filter_outputs_h[i], rx_slice_info.size(),
+                          dp->get_num_antennas(), samples_per_antenna[i]);
+      all_stage_ptrs.push_back(ptrs);
+    }
 
     auto output_ptrs = make_ptrs_vec(output_samples.data(), rx_slice_info.size(),
                           dp->get_num_antennas(), num_samples_after_dropping);
 
-    // TODO(Remington): Figure out how to get this data to a useful form/file
+    H5Easy::File file("filtered_data.hdf5", H5Easy::File::Overwrite);
+    /*
+    std::vector<float> to_file_real;
+    std::vector<float> to_file_imag;
     H5Easy::File file("filtered_data.hdf5", H5Easy::File::Overwrite);
     for (uint32_t i=0; i<filter_outputs_h.size(); i++) {
+      to_file_imag.clear();
+      to_file_imag.clear();
       char filter_stage[sizeof(char)];
       std::sprintf(filter_stage, "%d", i);
-      H5Easy::dump(file, "/filtered_data_" << filter_stage << "/real", output_ptrs[i].x);
-      H5Easy::dump(file, "/filtered_data_" << filter_stage << "/imag", output_ptrs[i].y);
+      for (uint32_t j=0; j<filter_outputs_h[i].size(); j++) {
+	to_file_real.push_back(output_ptrs[i][j].x);
+	to_file_imag.push_back(output_ptrs[i][j].y);
+      }
+      H5Easy::dump(file, "/filtered_data_" << filter_stage << "/real", to_file_real);
+      H5Easy::dump(file, "/filtered_data_" << filter_stage << "/imag", to_file_imag);
     }
 
-    H5Easy::dump(file, "/input_samples/real", dp->rf_samples_h.x);
-    H5Easy::dump(file, "/input_samples/imag", dp->rf_samples_h.y);
-    /*
-    for(uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
-      auto dataset = pd.add_outputdataset();
-      // This lambda adds the stage data to the processed data for debug purposes.
-      auto add_debug_data = [dataset,slice_num](std::string stage_name,
-                                                std::vector<cuComplex*> &data_ptrs,
-                                                uint32_t num_antennas,
-                                                uint32_t num_samps_per_antenna)
-      {
-        auto debug_samples = dataset->add_debugsamples();
+    to_file_real.clear();
+    to_file_imag.clear();
+    rf_samples = dp->rf_samples_h;
+    for (uint32_t i=0; i<rf_samples.size(); i++) {
+      to_file_real.push_back(rf_samples[i].x);
+      to_file_imag.push_back(rf_samples[i].y);
+    }
+    H5Easy::dump(file, "/input_samples/real", to_file_real);
+    H5Easy::dump(file, "/input_samples/imag", to_file_imag);
+    */
 
-        debug_samples->set_stagename(stage_name);
-        for (uint32_t j=0; j<num_antennas; j++){
-          auto antenna_data = debug_samples->add_antennadata();
+    for(uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
+      // This lambda writes staged filter data to file.
+      auto add_debug_data = [file,slice_num](std::string stage_name,
+                                             std::vector<cuComplex*> &data_ptrs,
+                                             uint32_t num_antennas,
+                                             uint32_t num_samps_per_antenna)
+      {
+	std::vector<std::complex<float>> antenna_data;
+        for (uint32_t j=0; j<num_antennas; j++) {
           for(uint32_t k=0; k<num_samps_per_antenna; k++) {
-            auto antenna_samp = antenna_data->add_antennasamples();
-            antenna_samp->set_real(data_ptrs[j][k].x);
-            antenna_samp->set_imag(data_ptrs[j][k].y);
+            antenna_data.push_back(std::complex<float>(data_ptrs[j][k].x, data_ptrs[j][k].y));
           } // close loop over samples
         } // close loop over antennas
+        H5Easy::dump(file, stage_name, antenna_data); 
       };
 
-      // #ifdef ENGINEERING_DEBUG - Removed for testing purposes
-        for (uint32_t j=0; j<all_stage_ptrs.size(); j++){
-          auto stage_str = "stage_" + std::to_string(j);
-          add_debug_data(stage_str, all_stage_ptrs[j][slice_num], dp->get_num_antennas(),
-            samples_per_antenna[j]);
-        }
-      // #endif
+      for (uint32_t j=0; j<all_stage_ptrs.size(); j++){
+        auto stage_str = "stage_" + std::to_string(j);
+        add_debug_data(stage_str, all_stage_ptrs[j][slice_num], dp->get_num_antennas(), samples_per_antenna[j]);
+      }
 
-      add_debug_data("antennas", output_ptrs[slice_num], dp->get_num_antennas(),
-        num_samples_after_dropping);
-
-      dataset->set_slice_id(rx_slice_info[slice_num].slice_id);
-      dataset->set_num_ranges(rx_slice_info[slice_num].num_ranges);
-      dataset->set_num_lags(rx_slice_info[slice_num].lags.size());
-
-      DEBUG_MSG("Created dataset for sequence #" << COLOR_RED(dp->get_sequence_num()));
+      add_debug_data("antennas", output_ptrs[slice_num], dp->get_num_antennas(), num_samples_after_dropping);
+      DEBUG_MSG("Created dataset for sequence.");
     } // close loop over frequencies (number of slices).
-
-    pd.set_rf_samples_location(dp->get_shared_memory_name());
-    pd.set_sequence_num(dp->get_sequence_num());
-    pd.set_rx_sample_rate(dp->get_rx_rate());
-    pd.set_output_sample_rate(dp->get_output_sample_rate());
-    pd.set_processing_time(dp->get_decimate_timing());
-    pd.set_initialization_time(dp->get_driver_initialization_time());
-    pd.set_sequence_start_time(dp->get_sequence_start_time());
-    */
   }
 
   /**
