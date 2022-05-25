@@ -1,6 +1,5 @@
 import numpy as np
 from scipy.fftpack import fft
-import matplotlib.pyplot as plt
 import math
 import time
 
@@ -243,6 +242,7 @@ class DSP(object):
 
 
 def fft_and_plot(samples, rate):
+    import matplotlib.pyplot as plt
     fft_samps = fft(samples)
     T = 1.0 / float(rate)
     num_samps = len(samples)
@@ -335,7 +335,7 @@ if __name__ == '__main__':
 
 # Testing (500 avg)
 # System: GPU RTX 2080, CPU i9-9940x 14 Core 3.30 GHz , RAM 32 GB
-# |           Name           |    Trail    |  Time Saved  |  Speed Up  |
+# |           Name           |    Trial    |  Time Saved  |  Speed Up  |
 # | basic with cupy (GPU):   |  133.328 ms |    0.0 ms    |    1.00    |
 # | basic with numpy (CPU):  |  776.517 ms | -643.189 ms  |    5.82    |
 # | Accelerators cupy (GPU): |  105.813 ms |   27.515 ms  |    1.26    |
