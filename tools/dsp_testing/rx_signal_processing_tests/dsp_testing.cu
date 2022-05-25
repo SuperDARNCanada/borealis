@@ -21,6 +21,7 @@ See LICENSE for details
 #include <numeric>
 #include <complex>
 #include <armadillo>
+#include <highfive/H5Easy.hpp>
 #include "utils/shared_macros/shared_macros.hpp"
 //#include "rx_signal_processing/filtering.hpp"
 //TODO(keith): decide on handing gpu errors
@@ -175,6 +176,16 @@ namespace {
                           dp->get_num_antennas(), num_samples_after_dropping);
 
     // TODO(Remington): Figure out how to get this data to a useful form/file
+    H5Easy::File file("filtered_data.hdf5", H5Easy::File::Overwrite);
+    for (uint32_t i=0; i<filter_outputs_h.size(); i++) {
+      char filter_stage[sizeof(char)];
+      std::sprintf(filter_stage, "%d", i);
+      H5Easy::dump(file, "/filtered_data_" << filter_stage << "/real", output_ptrs[i].x);
+      H5Easy::dump(file, "/filtered_data_" << filter_stage << "/imag", output_ptrs[i].y);
+    }
+
+    H5Easy::dump(file, "/input_samples/real", dp->rf_samples_h.x);
+    H5Easy::dump(file, "/input_samples/imag", dp->rf_samples_h.y);
     /*
     for(uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
       auto dataset = pd.add_outputdataset();
@@ -196,56 +207,6 @@ namespace {
           } // close loop over samples
         } // close loop over antennas
       };
-
-      // Add our beamformed IQ data to the processed data packet that gets sent to data_write.
-      for (uint32_t beam_count=0; beam_count<rx_slice_info[slice_num].beam_count; beam_count++) {
-        auto beam = dataset->add_beamformedsamples();
-        beam->set_beamnum(beam_count);
-
-        for (uint32_t sample=0; sample<num_samples_after_dropping; sample++){
-          auto main_sample = beam->add_mainsamples();
-          auto beam_start = beam_count * num_samples_after_dropping;
-          main_sample->set_real(beamformed_samples_main[slice_num][beam_start + sample].x);
-          main_sample->set_imag(beamformed_samples_main[slice_num][beam_start + sample].y);
-
-          if (dp->sig_options.get_interferometer_antenna_count() > 0) {
-            auto intf_sample = beam->add_intfsamples();
-            intf_sample->set_real(beamformed_samples_intf[slice_num][beam_start + sample].x);
-            intf_sample->set_imag(beamformed_samples_intf[slice_num][beam_start + sample].y);
-          }
-        } // close loop over samples.
-      } // close loop over beams.
-
-
-      auto num_lags = rx_slice_info[slice_num].lags.size();
-      auto num_ranges = rx_slice_info[slice_num].num_ranges;
-      for (uint32_t beam_count=0; beam_count<rx_slice_info[slice_num].beam_count; beam_count++) {
-        auto beam_offset = beam_count * (num_ranges * num_lags);
-
-        for (uint32_t range=0; range<num_ranges; range++) {
-          auto range_offset = range * num_lags;
-
-          for (uint32_t lag=0; lag<num_lags; lag++) {
-            auto mainacf = dataset->add_mainacf();
-            auto val = main_acfs[slice_num][beam_offset + range_offset + lag];
-            mainacf->set_real(val.x);
-            mainacf->set_imag(val.y);
-
-            if (dp->sig_options.get_interferometer_antenna_count() > 0) {
-              auto xcf = dataset->add_xcf();
-              auto intfacf = dataset->add_intacf();
-
-              val = xcfs[slice_num][beam_offset + range_offset + lag];
-              xcf->set_real(val.x);
-              xcf->set_imag(val.y);
-
-              val = intf_acfs[slice_num][beam_offset + range_offset + lag];
-              intfacf->set_real(val.x);
-              intfacf->set_imag(val.y);
-            } // close intf scope
-          } // close lag scope
-        } // close range scope
-      } // close beam scope
 
       // #ifdef ENGINEERING_DEBUG - Removed for testing purposes
         for (uint32_t j=0; j<all_stage_ptrs.size(); j++){

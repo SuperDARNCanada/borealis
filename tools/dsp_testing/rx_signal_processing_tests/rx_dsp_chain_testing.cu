@@ -141,6 +141,14 @@ int main(int argc, char** argv) {
 
   auto complex_taps = filters.get_mixed_filter_taps();
 
+  H5Easy::File file("filtered_data.hdf5", H5Easy::File::Overwrite);
+  for (uint32_t i=0; i<complex_taps.size(); i++) {
+    char filter_stage[sizeof(char)];
+    std::sprintf(filter_stage, "%d", i);
+    H5Easy::dump(file, "/filter_taps_" << filter_stage << "/real", output_ptrs[i].x);
+    H5Easy::dump(file, "/filter_taps_" << filter_stage << "/imag", output_ptrs[i].y);
+  }
+
   uint32_t total_dm_rate = 1;
   for (int i=0; i<dm_rates.size(); i++) {
     total_dm_rate *= dm_rates[i];
