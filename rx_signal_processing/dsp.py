@@ -36,7 +36,6 @@ def windowed_view(ndarray, window_len, step):
     new_shape = ndarray.shape[:-1] + (nrows, window_len)
     new_strides = list(ndarray.strides + (last_dim_stride,))
     new_strides[-2] *= step
-
     return xp.lib.stride_tricks.as_strided(ndarray, shape=new_shape, strides=new_strides)
 
 
@@ -60,7 +59,6 @@ class DSP(object):
 
     def __init__(self, input_samples, rx_rate, dm_rates, filter_taps, mixing_freqs, beam_phases):
         super(DSP, self).__init__()
-
         self.filters = None
         self.filter_outputs = []
         self.beamformed_samples = None
@@ -119,7 +117,10 @@ class DSP(object):
         :type       rx_rate:        float
 
         """
-        bp_filters = xp.array(bp_filters)
+        # We need to force the input into the GPU to be float16, float32, or complex64 so that the einsum result is
+        # complex64 and NOT complex128. The GPU is significantly slower (10x++) working with complex128 numbers.
+        # We do not require the additional precision.
+        bp_filters = xp.array(bp_filters, dtype=xp.complex64)
         input_samples = windowed_view(input_samples, bp_filters.shape[-1], dm_rate)
 
         # [num_slices, num_taps]
@@ -153,7 +154,10 @@ class DSP(object):
         :type       dm_rate:        int
 
         """
-        lp_filter = xp.array(lp_filter)
+        # We need to force the input into the GPU to be float16, float32, or complex64 so that the einsum result is
+        # complex64 and NOT complex128. The GPU is significantly slower (10x++) working with complex128 numbers.
+        # We do not require the additional precision.
+        lp_filter = xp.array(lp_filter, dtype=xp.float32)
         input_samples = windowed_view(input_samples, lp_filter.shape[-1], dm_rate)
 
         # [1, num_taps]
@@ -173,7 +177,6 @@ class DSP(object):
         :type       beam_phases:       list
 
         """
-
         beam_phases = xp.array(beam_phases)
 
         # [num_slices, num_antennas, num_samples]
@@ -322,8 +325,11 @@ def quick_test(n):
 
 
 if __name__ == '__main__':
-    if cupy_available:
-        xp.show_config()
+    #import os
+    #print('PID: ', os.getpid())
+    #time.sleep(60)
+    #if cupy_available:
+    #    xp.show_config()
     # Actually run the test.
     quick_test(500)
 
@@ -335,3 +341,4 @@ if __name__ == '__main__':
 # | Accelerators cupy (GPU): |  105.813 ms |   27.515 ms  |    1.26    |
 # | Fixed dtype cupy (GPU):  |   16.451 ms |  116.877 ms  |    8.10    |
 # | Fix + Accel cupy (GPU):  |   15.203 ms |  118.125 ms  |    8.77    |
+# | Fix2 + Accel cupy (GPU): |   14.279 ms |  119.049 ms  |    9.34    |
