@@ -141,12 +141,9 @@ int main(int argc, char** argv) {
 
   auto complex_taps = filters.get_mixed_filter_taps();
 
-  H5Easy::File file("filtered_data.hdf5", H5Easy::File::Overwrite);
   for (uint32_t i=0; i<complex_taps.size(); i++) {
-    char filter_stage[sizeof(char)];
-    std::sprintf(filter_stage, "%d", i);
-    H5Easy::dump(file, "/filter_taps_" << filter_stage << "/real", output_ptrs[i].x);
-    H5Easy::dump(file, "/filter_taps_" << filter_stage << "/imag", output_ptrs[i].y);
+    std::string filename = "/home/radar/filter_stage_" + std::to_string(i) + ".csv";
+    filters.save_filter_to_file(complex_taps[i], filename);
   }
 
   uint32_t total_dm_rate = 1;
@@ -159,6 +156,8 @@ int main(int argc, char** argv) {
   for (uint32_t i=0; i<rx_freqs.size(); i++) {
     slice_info.push_back(rx_slice_test(rx_freqs[i], i));
   }
+
+  std::cout << "Initialinz DSPCoreTesting object" << std::endl;
 
   DSPCoreTesting *dp = new DSPCoreTesting(rx_rate, output_sample_rate, filter_taps, dm_rates, slice_info);
 
@@ -175,7 +174,11 @@ int main(int argc, char** argv) {
 
   dp->initial_memcpy_callback();
 
+  std::cout << "Initialized" << std::endl;
+
   auto last_filter_output = dp->get_last_filter_output_d();
+
+  std::cout << "Filtering first stage..." << std::endl;
 
   call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
       last_filter_output, dp->get_bp_filters_p(), dm_rates[0],
@@ -199,11 +202,15 @@ int main(int argc, char** argv) {
     samples_per_antenna[i] = samples_per_antenna[i-1]/dm_rates[i];
     total_output_samples[i] = rx_freqs.size() * samples_per_antenna[i] * total_antennas;
 
+    std::cout << "Getting ready for filter stage " << std::to_string(i) << std::endl;
+
     dp->allocate_and_copy_lowpass_filter(complex_taps[i].data(), complex_taps[i].size());
     dp->allocate_output(total_output_samples[i]);
 
     auto allocated_lp_filter = dp->get_last_lowpass_filter_d();
     last_filter_output = dp->get_last_filter_output_d();
+
+    std::cout << "Filtering stage " << std::to_string(i) << "..." << std::endl;
 
     call_decimate<DecimationType::lowpass>(prev_output, last_filter_output, allocated_lp_filter,
       dm_rates[i], samples_per_antenna[i-1], complex_taps[i].size(), rx_freqs.size(),
@@ -212,6 +219,8 @@ int main(int argc, char** argv) {
 
     prev_output = last_filter_output;
   }
+
+  std::cout << "Postprocessing callback..." << std::endl;
 
   dp->cuda_postprocessing_callback(total_antennas, samples_needed, samples_per_antenna,
                                    total_output_samples);

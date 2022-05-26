@@ -21,9 +21,7 @@ See LICENSE for details
 #include <numeric>
 #include <complex>
 #include <armadillo>
-#include <highfive/H5Easy.hpp>
 #include "utils/shared_macros/shared_macros.hpp"
-//#include "rx_signal_processing/filtering.hpp"
 //TODO(keith): decide on handing gpu errors
 //TODO(keith): potentially add multigpu support
 
@@ -114,6 +112,7 @@ namespace {
    */
   void create_processed_data_packet(DSPCoreTesting* dp)
   {
+    RUNTIME_MSG("Entered create_processed_data_packet()");
 
     std::vector<cuComplex> output_samples;
     auto rx_slice_info = dp->get_slice_info();
@@ -173,49 +172,28 @@ namespace {
     auto output_ptrs = make_ptrs_vec(output_samples.data(), rx_slice_info.size(),
                           dp->get_num_antennas(), num_samples_after_dropping);
 
-    H5Easy::File file("filtered_data.hdf5", H5Easy::File::Overwrite);
-    /*
-    std::vector<float> to_file_real;
-    std::vector<float> to_file_imag;
-    H5Easy::File file("filtered_data.hdf5", H5Easy::File::Overwrite);
-    for (uint32_t i=0; i<filter_outputs_h.size(); i++) {
-      to_file_imag.clear();
-      to_file_imag.clear();
-      char filter_stage[sizeof(char)];
-      std::sprintf(filter_stage, "%d", i);
-      for (uint32_t j=0; j<filter_outputs_h[i].size(); j++) {
-	to_file_real.push_back(output_ptrs[i][j].x);
-	to_file_imag.push_back(output_ptrs[i][j].y);
-      }
-      H5Easy::dump(file, "/filtered_data_" << filter_stage << "/real", to_file_real);
-      H5Easy::dump(file, "/filtered_data_" << filter_stage << "/imag", to_file_imag);
-    }
-
-    to_file_real.clear();
-    to_file_imag.clear();
-    rf_samples = dp->rf_samples_h;
-    for (uint32_t i=0; i<rf_samples.size(); i++) {
-      to_file_real.push_back(rf_samples[i].x);
-      to_file_imag.push_back(rf_samples[i].y);
-    }
-    H5Easy::dump(file, "/input_samples/real", to_file_real);
-    H5Easy::dump(file, "/input_samples/imag", to_file_imag);
-    */
-
     for(uint32_t slice_num=0; slice_num<rx_slice_info.size(); slice_num++) {
       // This lambda writes staged filter data to file.
-      auto add_debug_data = [file,slice_num](std::string stage_name,
-                                             std::vector<cuComplex*> &data_ptrs,
-                                             uint32_t num_antennas,
-                                             uint32_t num_samps_per_antenna)
+      auto add_debug_data = [slice_num](std::string stage_name,
+                                        std::vector<cuComplex*> &data_ptrs,
+                                        uint32_t num_antennas,
+                                        uint32_t num_samps_per_antenna)
       {
-	std::vector<std::complex<float>> antenna_data;
+	RUNTIME_MSG("Printing out data for " + stage_name);
+	std::ofstream stage;
+	std::string filename = "/home/radar/" + stage_name + "_slice_" + std::to_string(slice_num) + ".csv";
+	stage.open(filename);
+
+	std::vector<float> antenna_data_real;
+	std::vector<float> antenna_data_imag;
         for (uint32_t j=0; j<num_antennas; j++) {
           for(uint32_t k=0; k<num_samps_per_antenna; k++) {
-            antenna_data.push_back(std::complex<float>(data_ptrs[j][k].x, data_ptrs[j][k].y));
+            auto antenna_samp = std::complex<float>(data_ptrs[j][k].x, data_ptrs[j][k].y);
+	    stage << antenna_samp << ",";
           } // close loop over samples
+	  stage << std::endl;
         } // close loop over antennas
-        H5Easy::dump(file, stage_name, antenna_data); 
+	stage.close();
       };
 
       for (uint32_t j=0; j<all_stage_ptrs.size(); j++){
@@ -224,7 +202,7 @@ namespace {
       }
 
       add_debug_data("antennas", output_ptrs[slice_num], dp->get_num_antennas(), num_samples_after_dropping);
-      DEBUG_MSG("Created dataset for sequence.");
+      RUNTIME_MSG("Created dataset for sequence.");
     } // close loop over frequencies (number of slices).
   }
 
@@ -240,7 +218,7 @@ namespace {
    */
   void CUDART_CB postprocess(cudaStream_t stream, cudaError_t status, void *processing_data)
   {
-
+    RUNTIME_MSG("Entered postprocess()");
     gpuErrchk(status);
 
     auto pp = [processing_data]()
@@ -328,14 +306,9 @@ void print_gpu_properties(std::vector<cudaDeviceProp> gpu_properties) {
 /**
  * @brief      Initializes the parameters needed in order to do asynchronous DSP processing.
  *
- * @param      sig_options                 The signal processing options.
- * @param[in]  sequence_num                The pulse sequence number for which will be acknowledged.
  * @param[in]  rx_rate                     The USRP sampling rate.
  * @param[in]  output_sample_rate          The final decimated output sample rate.
  * @param[in]  filter_taps                 The filter taps for each stage.
- * @param[in]  beam_phases                 The beam phases.
- * @param[in]  driver_initialization_time  The driver initialization time.
- * @param[in]  sequence_start_time         The sequence start time.
  * @param[in]  dm_rates                    The decimation rates.
  * @param[in]  slice_info                  The slice info given as a vector of rx_slice_test structs.
  *
@@ -544,12 +517,11 @@ void DSPCoreTesting::cuda_postprocessing_callback(uint32_t total_antennas, uint3
                                                   std::vector<uint32_t> samples_per_antenna,
                                                   std::vector<uint32_t> total_output_samples)
 {
-  // #ifdef ENGINEERING_DEBUG - Removed for testing purposes
-    for (uint32_t i=0; i<filter_outputs_d.size()-1; i++) {
-      allocate_and_copy_host(total_output_samples[i], filter_outputs_d[i]);
-    }
-  // #endif
-
+  RUNTIME_MSG("Entered postprocessing_callback");
+  for (uint32_t i=0; i<filter_outputs_d.size()-1; i++) {
+    allocate_and_copy_host(total_output_samples[i], filter_outputs_d[i]);
+  }
+  
   allocate_and_copy_host(total_output_samples.back(), filter_outputs_d.back());
 
   num_rf_samples = num_samples_rf;
@@ -558,7 +530,7 @@ void DSPCoreTesting::cuda_postprocessing_callback(uint32_t total_antennas, uint3
 
   gpuErrchk(cudaStreamAddCallback(stream, postprocess, this, 0));
 
-  DEBUG_MSG(COLOR_RED("Added stream callback for sequence #" << sequence_num));
+  RUNTIME_MSG(COLOR_RED("Added stream callback for sequence."));
 }
 
 /**
