@@ -11,6 +11,8 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
 #include <fstream>
 #include <stdint.h>
 #include <complex>
+#include <thread>
+#include <chrono>
 #include <cmath>
 #include <vector>
 #include "dsp_testing.hpp"
@@ -57,13 +59,15 @@ std::vector<std::complex<float>> make_samples(std::vector<uint32_t> dm_rates, do
   for (int32_t i=dm_rates.size()-1; i>=0; i--) {
     extra_samples = (extra_samples * dm_rates[i]) + (filter_taps[i].size()/2);
   }
-
+  std::cout << "Extra samples: " << std::to_string(extra_samples) << std::endl;
   std::vector<uint32_t> pulse_starts_in_samps;
   std::vector<uint32_t> pulse_ends_in_samps;
   std::vector<uint32_t> pulse_list = PULSE_LIST;
   uint32_t pulse_length_us = PULSE_LENGTH_US;
-  uint32_t pulse_length_samps = int(std::floor(float(pulse_length_us) / rx_rate));
+  uint32_t pulse_length_samps = int(std::floor(float(pulse_length_us) * 1e-6 * rx_rate));
   uint32_t tau_spacing_us = TAU_SPACING_US;
+
+  std::cout << "Pulse length in samples: " << std::to_string(pulse_length_samps) << std::endl;
 
   // Get the start and end sample of each pulse
   for (int i=0; i<pulse_list.size(); i++) {
@@ -77,6 +81,7 @@ std::vector<std::complex<float>> make_samples(std::vector<uint32_t> dm_rates, do
   std::vector<std::complex<float>> single_pulse_samps(pulse_length_samps, std::complex<float>(0.0, 0.0));
   for (int f=0; f<rx_freqs.size(); f++) {
     auto sampling_freq = 2 * M_PI * rx_freqs[f] / rx_rate;
+    std::cout << "Sampling frequency: " << std::to_string(sampling_freq) << std::endl;
     for (int i=0; i<pulse_length_samps; i++) {
       auto radians = fmod(sampling_freq * i, 2 * M_PI);
       single_pulse_samps[i] += std::complex<float>(cos(radians), sin(radians));
@@ -100,6 +105,7 @@ std::vector<std::complex<float>> make_samples(std::vector<uint32_t> dm_rates, do
     }
   }
 
+  std::cout << "Made samples. Length: " << std::to_string(all_samps.size()) << std::endl;
   return all_samps;
 }
 
@@ -133,6 +139,17 @@ int main(int argc, char** argv) {
   // Create the data for this test
   auto samples_needed = NUM_SAMPS;
   auto in_samps = make_samples(dm_rates, rx_rate, total_antennas, rx_freqs, filter_taps, samples_needed);
+
+  std::ofstream samples_file;
+  samples_file.open("/home/radar/input_samples.csv");
+  auto samps_per_antenna = in_samps.size() / total_antennas;
+  for (uint32_t i=0; i<total_antennas; i++) {
+    for (uint32_t j=0; j<samps_per_antenna; j++) {
+      samples_file << in_samps[i*samps_per_antenna + j] << ",";
+    }
+    samples_file << std::endl;
+  }
+  samples_file.close();
 
   // We are not testing beamforming and correlating here, so we omit the sections from rx_dsp_chain.cu pertaining
   // to them. These can be tested by running the radar and comparing with borealis_postprocessors.
@@ -224,4 +241,6 @@ int main(int argc, char** argv) {
 
   dp->cuda_postprocessing_callback(total_antennas, samples_needed, samples_per_antenna,
                                    total_output_samples);
+
+  std::this_thread::sleep_for(std::chrono::seconds(5));
 }
