@@ -8,7 +8,6 @@ import os
 import time
 import threading
 import numpy as np
-import posix_ipc as ipc
 import math
 import copy
 from scipy.constants import speed_of_light
@@ -29,8 +28,9 @@ sys.path.append(borealis_path + '/utils/')
 import signal_processing_options.signal_processing_options as spo
 import shared_macros.shared_macros as sm
 
+sys.path.append(borealis_path)
 from rx_signal_processing import dsp
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme
+from experiment_prototype.decimation_scheme.decimation_scheme import create_default_scheme
 
 pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
 
@@ -77,7 +77,7 @@ def make_samples(mixing_freqs, rx_rate, extra_samples, num_channels):
     pulse_length_us = 300
     pulse_list = [0, 9, 12, 20, 22, 26, 27]
 
-    pulse_length_samps = int(np.floor(pulse_length_us * 1e6 * rx_rate))
+    pulse_length_samps = int(np.floor(pulse_length_us / 1e6 * rx_rate))
 
     single_pulse_samps = np.zeros(pulse_length_samps, np.complex64)
 
@@ -88,8 +88,10 @@ def make_samples(mixing_freqs, rx_rate, extra_samples, num_channels):
         single_pulse_samps += np.exp(1j * radians)
 
     # Create an entire sequence of samples for a single channel
-    pulse_start_samps = pulse_list * tau_spacing_us * 1e6 * rx_rate + extra_samples
+    pulse_start_samps = [int(pulse * tau_spacing_us / 1e6 * rx_rate + extra_samples) for pulse in pulse_list]
+    print(pulse_start_samps)
     single_channel_samps = np.zeros(num_samples, dtype=np.complex64)
+    print(single_channel_samps.shape)
     for start in pulse_start_samps:
         single_channel_samps[start:start+pulse_length_samps] = single_pulse_samps
 
@@ -120,7 +122,8 @@ def main():
     output_sample_rate = np.float64(rx_rate / total_dm_rate)
     first_rx_sample_off = 0
 
-    decimation_stages = DecimationScheme(rx_rate, output_sample_rate).stages()
+    decimation_scheme = create_default_scheme()
+    decimation_stages = decimation_scheme.stages
 
     mixing_freqs = [-1.25e6, 1.25e6]
     main_beam_angles = []
