@@ -50,8 +50,6 @@ def save_to_file(slice_details, data_outputs):
         for sd in slice_details:
             slice_group = f.create_group('slice_{}'.format(sd['slice_id']))
 
-            slice_group.attrs['num_beams'] = sd['num_beams']
-
             beam_samps = data_outputs['beamformed_m'][sd['slice_num']][:sd['num_beams']]
             try:
                 intf_samps = data_outputs['beamformed_i'][sd['slice_num']][:sd['num_beams']]
@@ -73,6 +71,36 @@ def save_to_file(slice_details, data_outputs):
             add_debug_data(stage, "antennas")
 
 
+def make_samples(mixing_freqs, rx_rate, extra_samples, num_channels):
+    num_samples = 451500
+    tau_spacing_us = 2400
+    pulse_length_us = 300
+    pulse_list = [0, 9, 12, 20, 22, 26, 27]
+
+    pulse_length_samps = int(np.floor(pulse_length_us * 1e6 * rx_rate))
+
+    single_pulse_samps = np.zeros(pulse_length_samps, np.complex64)
+
+    # Make samples for a single pulse
+    for i, freq in enumerate(mixing_freqs):
+        sampling_freq = 2 * np.pi * freq / rx_rate
+        radians = np.fmod(sampling_freq * np.arange(pulse_length_samps), 2 * np.pi)
+        single_pulse_samps += np.exp(1j * radians)
+
+    # Create an entire sequence of samples for a single channel
+    pulse_start_samps = pulse_list * tau_spacing_us * 1e6 * rx_rate + extra_samples
+    single_channel_samps = np.zeros(num_samples, dtype=np.complex64)
+    for start in pulse_start_samps:
+        single_channel_samps[start:start+pulse_length_samps] = single_pulse_samps
+
+    # Copy for all channels
+    all_samps = np.zeros((num_channels, single_channel_samps.shape[-1]), dtype=np.complex64)
+    for channel in range(num_channels):
+        all_samps[channel, :] = single_channel_samps
+
+    return all_samps
+
+
 def main():
     sig_options = spo.SignalProcessingOptions()
 
@@ -80,8 +108,7 @@ def main():
 
     total_antennas = sig_options.main_antenna_count + sig_options.intf_antenna_count
 
-    # TODO(Remington): Use default DecimationScheme here
-    dm_rates = [10 ,5, 6, 5]
+    dm_rates = [10, 5, 6, 5]
     dm_scheme_taps = []
 
     extra_samples = 0
@@ -155,9 +182,6 @@ def main():
     intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
     mixing_freqs = np.array(mixing_freqs, dtype=np.float64)
 
-    # TODO(Remington): Initialize some data!
-    ringbuffer = np.frombuffer(mapped_mem, dtype=np.complex64).reshape(total_antennas, -1)
-
     if cupy_available:
         cp.cuda.runtime.hostRegister(ringbuffer.ctypes.data, ringbuffer.size, 0)
 
@@ -176,6 +200,8 @@ def main():
 
     for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
         extra_samples = (extra_samples * dm) + len(taps) / 2
+
+    ringbuffer = make_samples(mixing_freqs, rx_rate, extra_samples, total_antennas)
 
     # This work is done in a thread
     def sequence_worker(**kwargs):
