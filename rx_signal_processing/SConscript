@@ -29,5 +29,12 @@ import os
 
 Import('*')
 
-Prog('signal_processing', Glob("./*.c*"), with_libs='utils::utils',
+source_files = Glob("./*.c*", strings=True)
+filter_idx = source_files.index('./filtering.cpp')
+decimate_idx = source_files.index('./decimate.cu')
+
+Lib('filtering', source_files.pop(filter_idx), with_libs='utils::utils')
+Lib('decimating', source_files.pop(decimate_idx))
+
+Prog('signal_processing', source_files, with_libs=['utils::utils', 'filtering', 'decimating'],
      LIBS=['protobuf','m','zmq','rt','armadillo'])
