@@ -149,7 +149,7 @@ def main():
             main_beam = []
             intf_beam = []
 
-            for j, phase in enumerate(np.ones(20)):
+            for j, phase in enumerate(np.ones(total_antennas)):
                 p = phase       # boresight, for simplicity
 
                 if j < sig_options.main_antenna_count:
