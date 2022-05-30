@@ -72,7 +72,7 @@ std::vector<std::complex<float>> make_samples(std::vector<uint32_t> dm_rates, do
   // Get the start and end sample of each pulse
   for (int i=0; i<pulse_list.size(); i++) {
     auto pulse_start_us = pulse_list[i] * tau_spacing_us;
-    auto pulse_start_samps = int(std::floor(float(pulse_start_us) / rx_rate));
+    auto pulse_start_samps = int(std::floor(float(pulse_start_us) * rx_rate / 1e6));
     pulse_starts_in_samps.push_back(pulse_start_samps + extra_samples);
     pulse_ends_in_samps.push_back(pulse_start_samps + pulse_length_samps + extra_samples);
   }
@@ -174,7 +174,7 @@ int main(int argc, char** argv) {
     slice_info.push_back(rx_slice_test(rx_freqs[i], i));
   }
 
-  std::cout << "Initialinz DSPCoreTesting object" << std::endl;
+  std::cout << "Initialing DSPCoreTesting object" << std::endl;
 
   DSPCoreTesting *dp = new DSPCoreTesting(rx_rate, output_sample_rate, filter_taps, dm_rates, slice_info);
 
