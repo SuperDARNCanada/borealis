@@ -226,7 +226,7 @@ class DSP(object):
         # wouldn't have required zero-padding of the input_samples.
         filtered = filtered[..., num_taps-1::dm_rate]
 
-        ph = xp.arange(filtered.shape[-1],dtype=np.float64)[xp.newaxis,:]
+        ph = xp.arange(filtered.shape[-1], dtype=xp.float32)[xp.newaxis,:]
         freqs = xp.array(mixing_freqs)[:,xp.newaxis]
 
         # [1, num_output_samples]
@@ -255,7 +255,7 @@ class DSP(object):
         :type       block_size:     int
 
         """
-        lp_filter = xp.array(lp_filter)
+        lp_filter = xp.array(lp_filter, dtype=xp.float32)
         filtered = self.convolution(input_samples, lp_filter, block_size)
 
         # To match with old function windowed_view(), take only samples where the convolution multiplication
