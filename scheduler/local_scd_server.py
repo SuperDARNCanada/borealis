@@ -276,6 +276,9 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
+                        print("add_line date: {}, with experiment: {}, mode: {}".format(ex['yyyymmdd'],
+                                                                                        ex['experiment'],
+                                                                                        ex['scheduling_mode']))
                         site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
                     except ValueError as e:
                         error_msg = ("{logtime} {sitescd}: Unable to add line with parameters:\n"
