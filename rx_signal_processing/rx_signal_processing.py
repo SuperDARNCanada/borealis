@@ -292,7 +292,7 @@ def main():
             pprint(taps_msg)
 
             for dm,taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
-                extra_samples = (extra_samples * dm) + len(taps)/2
+                extra_samples = (extra_samples * dm) + len(taps)//2
 
             total_dm_rate = np.prod(dm_rates)
 
