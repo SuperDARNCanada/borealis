@@ -35,6 +35,8 @@ from experiment_prototype.decimation_scheme.decimation_scheme import create_defa
 pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
 
 
+output_filename = "/home/radar/develop_dsp_testing.hdf5"
+
 def save_to_file(slice_details, data_outputs):
     """
     Write the data outputs to file.
@@ -45,7 +47,6 @@ def save_to_file(slice_details, data_outputs):
     :type       data_outputs:    dict
     """
 
-    output_filename = "/home/radar/develop_dsp_testing.hdf5"
     with h5py.File(output_filename, 'w') as f:
         for sd in slice_details:
             slice_group = f.create_group('slice_{}'.format(sd['slice_id']))
@@ -58,7 +59,6 @@ def save_to_file(slice_details, data_outputs):
                 # No interferometer data
                 pass
             slice_group.create_dataset('beamformed_samples', data=beam_samps)
-            slice_group.create_dataset('beamformed_dims', data=['beams', 'antennas', 'samples'])
 
             def add_debug_data(stage, name):
                 all_ant_samps = stage[sd['slice_num']]
@@ -205,6 +205,9 @@ def main():
         extra_samples = (extra_samples * dm) + len(taps) / 2
 
     ringbuffer = make_samples(mixing_freqs, rx_rate, extra_samples, total_antennas)
+    
+    with h5py.File(output_filename, 'w') as f:
+        f.create_dataset('Input_samples', data=ringbuffer)
 
     # This work is done in a thread
     def sequence_worker(**kwargs):
