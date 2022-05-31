@@ -27,10 +27,10 @@ This file contains C++ code to test the CUDA kernels defined in rx_signal_proces
 #define DM_RATES {10, 5, 6, 5}
 
 // Other default Borealis parameters
-#define FREQS {-1.25e6, 1.25e6}
+#define FREQS {-1.25e6}
 #define RX_RATE (5.0e6)
 #define NUM_SAMPS 451500
-#define NUM_CHANNELS 20
+#define NUM_CHANNELS 8
 #define TAU_SPACING_US 2400
 #define PULSE_LENGTH_US 300
 #define PULSE_LIST {0, 9, 12, 20, 22, 26, 27}
@@ -139,16 +139,25 @@ int main(int argc, char** argv) {
   // Create the data for this test
   auto samples_needed = NUM_SAMPS;
   auto in_samps = make_samples(dm_rates, rx_rate, total_antennas, rx_freqs, filter_taps, samples_needed);
+  std::cout << "Samples size: (" << std::to_string(in_samps.size()) << ")" << std::endl;
 
   std::ofstream samples_file;
   samples_file.open("/home/radar/input_samples.csv");
   auto samps_per_antenna = in_samps.size() / total_antennas;
+  std::cout << "samps_per_antenna: " << std::to_string(samps_per_antenna) << std::endl;
+
+  for (uint32_t i=0; i<in_samps.size(); i++) {
+    samples_file << in_samps[i] << ";";
+  }
+  samples_file << std::endl;
+  /*
   for (uint32_t i=0; i<total_antennas; i++) {
     for (uint32_t j=0; j<samps_per_antenna; j++) {
       samples_file << in_samps[i*samps_per_antenna + j] << ",";
     }
     samples_file << std::endl;
   }
+  */
   samples_file.close();
 
   // We are not testing beamforming and correlating here, so we omit the sections from rx_dsp_chain.cu pertaining
