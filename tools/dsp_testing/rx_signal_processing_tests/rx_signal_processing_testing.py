@@ -83,7 +83,7 @@ def make_samples(mixing_freqs, rx_rate, extra_samples, num_channels):
     single_pulse_samps = np.zeros(pulse_length_samps, np.complex64)
 
     # Make samples for a single pulse
-    for i, freq in enumerate(mixing_freqs):
+    for freq in mixing_freqs:
         sampling_freq = 2 * np.pi * freq / rx_rate
         radians = np.fmod(sampling_freq * np.arange(pulse_length_samps), 2 * np.pi)
         single_pulse_samps += np.exp(1j * radians)
@@ -119,8 +119,8 @@ def main():
 
     threads = []
 
-    rx_rate = np.float64(5e6)
-    output_sample_rate = np.float64(rx_rate / total_dm_rate)
+    rx_rate = np.float32(5e6)
+    output_sample_rate = np.float32(rx_rate / total_dm_rate)
     first_rx_sample_off = 0
 
     decimation_scheme = create_default_scheme()
@@ -184,7 +184,7 @@ def main():
 
     main_beam_angles = np.array(main_beam_angles, dtype=np.complex64)
     intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
-    mixing_freqs = np.array(mixing_freqs, dtype=np.float64)
+    mixing_freqs = np.array(mixing_freqs, dtype=np.float32)
 
     if cupy_available:
         cp.cuda.runtime.hostRegister(ringbuffer.ctypes.data, ringbuffer.size, 0)
