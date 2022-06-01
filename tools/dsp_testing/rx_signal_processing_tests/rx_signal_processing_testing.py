@@ -209,6 +209,8 @@ def main():
     
     with h5py.File(output_filename, 'w') as f:
         f.create_dataset('raw_samples', data=ringbuffer)
+        for i, stage in enumerate(dm_scheme_taps):
+            f.create_dataset('stage_{}_taps:'.format(i), data=stage)
 
     # This work is done in a thread
     def sequence_worker(**kwargs):
