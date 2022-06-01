@@ -165,7 +165,7 @@ int main(int argc, char** argv) {
 
   // Mixing freqs are negative of rx_freqs, since filter coefficients are not flipped when convolving.
   std::vector<double> mixing_freqs(rx_freqs.size());
-  for (int i=0; i<rx_freqs.size; i++) {
+  for (int i=0; i<rx_freqs.size(); i++) {
     mixing_freqs[i] = -1 * rx_freqs[i];
   }
   filters.mix_first_stage_to_bandpass(mixing_freqs, rx_rate);
