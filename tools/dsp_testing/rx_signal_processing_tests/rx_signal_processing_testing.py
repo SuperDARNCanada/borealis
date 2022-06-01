@@ -126,7 +126,8 @@ def main():
     decimation_scheme = create_default_scheme()
     decimation_stages = decimation_scheme.stages
 
-    mixing_freqs = [-1.25e6]
+    offset_freqs = [-1.25e6]
+    mixing_freqs = [-1*f for f in offset_freqs]     # Because filter coefficients aren't flipped
     main_beam_angles = []
     intf_beam_angles = []
 
@@ -205,7 +206,7 @@ def main():
     for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
         extra_samples = (extra_samples * dm) + len(taps) // 2
     print("Extra samples: {}".format(extra_samples))
-    ringbuffer = make_samples(mixing_freqs, rx_rate, extra_samples, total_antennas)
+    ringbuffer = make_samples(offset_freqs, rx_rate, extra_samples, total_antennas)
     
     with h5py.File(output_filename, 'w') as f:
         f.create_dataset('raw_samples', data=ringbuffer)
