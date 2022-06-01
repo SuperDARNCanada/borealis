@@ -128,73 +128,61 @@ class DSP(object):
         dims = input_samples.shape
         num_antennas = dims[-2]
         num_samps = dims[-1]
-
-        # Determine whether input_samples already has dimension of size num_slices or not (already bandpass filtered).
+        num_blocks = int(np.ceil((num_samps - block_size + overlap) / step_size))
         if len(dims) > 2:
-            # Called by lowpass_decimate, so the number of slices is determined by input_samples, as all slices
-            # get filtered by the same lowpass filter
             num_slices = dims[0]
-            fft_dims = [num_slices, num_antennas, block_size]
+            fft_dims = [num_slices, num_antennas, num_blocks, block_size]
             filters_fft = filters_fft[0, ...]
-            # arg1:   [num_slices, num_antennas, block_size]
-            # arg2:   [block_size]
-            # output: [num_slices, num_antennas, block_size]
-            einsum_str = 'ijk,k->ijk'
+            # arg1:   [num_slices, num_antennas, num_blocks, block_size]
+            # arg2:   [1, num_taps+num_samples-1]
+            # output: [num_slices, num_antennas, num_blocks, block_size]
+            einsum_str = 'ijkl,l->ijkl'
+            last_block_einsum = 'ijl,l->ijl'  # no num_blocks parameter for last block
         else:
-            # Called by bandpass_decimate
-            fft_dims = [num_antennas, block_size]
-            # arg1:   [num_antennas, block_size]
+            fft_dims = [num_antennas, num_blocks, block_size]
+            # arg1:   [num_antennas, num_blocks, block_size]
             # arg2:   [num_slices, block_size]
-            # output: [num_slices, num_antennas, block_size]
-            einsum_str = 'ij,kj->kij'
+            # output: [num_slices, num_antennas, num_blocks, block_size]
+            einsum_str = 'ijk,lk->lijk'
+            last_block_einsum = 'ik,lk->lik'
 
-        filtered_samples = xp.zeros((num_slices, num_antennas, num_samps), dtype=xp.complex64)
+        output_samples = xp.zeros((num_slices, num_antennas, num_samps), dtype=xp.complex64)
 
         # array to store input_samples in for each FFT
-        x_k = xp.zeros(fft_dims, dtype=np.complex64)
+        x_k = np.zeros(fft_dims, dtype=xp.complex64)
 
-        position = 0
-        while position + block_size <= num_samps:
-            # Grab portion of input samples
-            if position == 0:
-                # Must zero-pad for first block in order to capture ramp-up effects
-                x_k[..., overlap:] = input_samples[..., 0:block_size - overlap]
+        # CUDA optimizes multiple FFTs, so we get the samples ready for each FFT in one array.
+        for i in range(num_blocks):
+            if i == 0:
+                x_k[..., i, overlap:] = input_samples[..., 0:block_size - overlap]
             else:
-                x_k = input_samples[..., position:position + block_size]
+                x_k[..., i, :] = input_samples[..., i * step_size - overlap:i * step_size - overlap + block_size]
 
-            # Take FFT of the portion
-            samples_fft = xp.fft.fft(x_k, axis=-1)
+        # Now, take FFT of the samples, multiply by FFT of filter, and take IFFT to get back in time domain
+        samples_freq_domain = xp.fft.fft(x_k, axis=-1)
+        filtered_samps_freq_domain = xp.einsum(einsum_str, samples_freq_domain, filters_fft)
+        filtered_samps_time_domain = xp.fft.ifft(filtered_samps_freq_domain, axis=-1)
 
-            # Multiply by filter FFT
-            # filtered_fft: [num_slices, num_antennas, block_size]
-            filtered_fft = xp.einsum(einsum_str, samples_fft, filters_fft)
+        # Grab the correct samples based on the overlap-save algorithm
+        for i in range(num_blocks):
+            output_samples[..., i * step_size:(i + 1) * step_size] = filtered_samps_time_domain[..., i, overlap:]
 
-            # Take IFFT and truncate (this removes edge effects)
-            if position == 0:
-                filtered_samples[..., position:position+step_size] = \
-                    xp.fft.ifft(filtered_fft, axis=-1)[..., overlap:]
-                # Since we pad with overlap number of zeros at the start of the first block
-                position += step_size - overlap
-            else:
-                filtered_samples[..., position+overlap:position+overlap+step_size] = \
-                    xp.fft.ifft(filtered_fft, axis=-1)[..., overlap:]
-                position += step_size
-
-        # Last block will be smaller, so we zero-pad at the end but do the exact same process
-        num_remaining = num_samps - position
+        # Now we have to calculate for the last few samples.
+        # Last block will be smaller, so we zero-pad at the end.
+        num_remaining = num_samps - (num_blocks * step_size - overlap)
         fft_dims[-1] = num_remaining + overlap - 1
-        x_k = xp.zeros(fft_dims, dtype=input_samples.dtype)
+        fft_dims.pop(-2)  # Get rid of num_blocks dimension - will be 1 for this last block
+        x_k = np.zeros(fft_dims, dtype=input_samples.dtype)
         x_k[..., 0:num_remaining] = input_samples[..., -num_remaining:]
-        samples_fft = xp.fft.fft(x_k)
-        filters_fft = xp.fft.fft(filters, n=num_remaining+overlap-1)
+        samples_freq_domain = xp.fft.fft(x_k)
+        filters_freq_domain = xp.fft.fft(filters, n=num_remaining + overlap - 1)
         if len(dims) > 2:
-            filters_fft = filters_fft[0, ...]
-        filtered_fft = xp.einsum(einsum_str, samples_fft, filters_fft)
-        time_stuff = xp.fft.ifft(filtered_fft, axis=-1)
+            filters_freq_domain = filters_freq_domain[0, ...]
+        filtered_freq_domain = xp.einsum(last_block_einsum, samples_freq_domain, filters_freq_domain)
+        filtered_time_domain = xp.fft.ifft(filtered_freq_domain, axis=-1)
+        output_samples[..., -num_remaining + overlap:] = filtered_time_domain[..., overlap:num_remaining]
 
-        filtered_samples[..., position+overlap:] = time_stuff[..., overlap:-overlap+1]
-
-        return filtered_samples
+        return output_samples
 
     def apply_bandpass_decimate(self, input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate, block_size):
         """
