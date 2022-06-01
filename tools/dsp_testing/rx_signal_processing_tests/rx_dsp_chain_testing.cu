@@ -163,7 +163,12 @@ int main(int argc, char** argv) {
   // We are not testing beamforming and correlating here, so we omit the sections from rx_dsp_chain.cu pertaining
   // to them. These can be tested by running the radar and comparing with borealis_postprocessors.
 
-  filters.mix_first_stage_to_bandpass(rx_freqs, rx_rate);
+  // Mixing freqs are negative of rx_freqs, since filter coefficients are not flipped when convolving.
+  std::vector<double> mixing_freqs(rx_freqs.size());
+  for (int i=0; i<rx_freqs.size; i++) {
+    mixing_freqs[i] = -1 * rx_freqs[i];
+  }
+  filters.mix_first_stage_to_bandpass(mixing_freqs, rx_rate);
 
   auto complex_taps = filters.get_mixed_filter_taps();
 
