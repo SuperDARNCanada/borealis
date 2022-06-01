@@ -187,7 +187,11 @@ def main():
         for i,chan in enumerate(sp_packet.rxchannel):
             detail = {}
 
-            mixing_freqs.append(chan.rxfreq - rx_center_freq)
+            # This is the negative of what you would normally expect (i.e. -1 * offset of rxfreq from center freq)
+            # because the filter taps do not get flipped when convolving. I.e. we do the cross-correlation instead of
+            # convolution, to save some computational complexity from flipping the filter sequence.
+            # It works out to the same result.
+            mixing_freqs.append(rx_center_freq - chan.rxfreq)
 
             detail['slice_id'] = chan.slice_id
             detail['slice_num'] = i

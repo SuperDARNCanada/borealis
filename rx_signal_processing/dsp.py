@@ -76,10 +76,16 @@ class DSP(object):
         """
         Creates and shapes the filters arrays using the original sets of filter taps. The first
         stage filters are mixed to bandpass and the low pass filters are reshaped.
+        The filters coefficients are typically symmetric, with the exception of the first-stage bandpass
+        filters. As a result, the mixing frequency should be the negative of the frequency that is actually
+        being extracted. For example, with 12 MHz center frequency and a 10.5 MHz transmit frequency,
+        the mixing frequency should be 1.5 MHz.
 
         :param      filter_taps:   The filters taps from the experiment decimation scheme.
         :type       filter_taps:   list
-        :param      mixing_freqs:  The frequencies used to mix the first stage filter for bandpass.
+        :param      mixing_freqs:  The frequencies used to mix the first stage filter for bandpass. Calculated
+                                   as (center freq - rx freq), as filter coefficients are cross-correlated with
+                                   samples instead of convolved.
         :type       mixing_freqs:  list
         :param      rx_rate:       The rf rx rate.
         :type       rx_rate:       float
@@ -103,7 +109,7 @@ class DSP(object):
     def apply_bandpass_decimate(self, input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate):
         """
         Apply a Frerking bandpass filter to the input samples. Several different frequencies can
-        be centered on at simultateously. Downsampling is done in parallel via a strided window
+        be centered on at simultaneously. Downsampling is done in parallel via a strided window
         view of the input samples.
 
         :param      input_samples:  The input raw rf samples for each antenna.
@@ -118,7 +124,7 @@ class DSP(object):
         :type       rx_rate:        float
 
         """
-        bp_filters = xp.flip(xp.array(bp_filters), axis=-1)
+        bp_filters = xp.array(bp_filters)
         input_samples = windowed_view(input_samples, bp_filters.shape[-1], dm_rate)
 
         # [num_slices, num_taps]
@@ -152,7 +158,7 @@ class DSP(object):
         :type       dm_rate:        int
 
         """
-        lp_filter = xp.flip(xp.array(lp_filter), axis=-1)
+        lp_filter = xp.array(lp_filter)
         input_samples = windowed_view(input_samples, lp_filter.shape[-1], dm_rate)
 
         # [1, num_taps]
