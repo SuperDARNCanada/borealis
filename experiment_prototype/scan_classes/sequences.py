@@ -216,6 +216,8 @@ class Sequence(ScanClassBase):
                 slice_2_antennas = set(self.slice_dict[slice_2_id]['tx_antennas'])
                 slice_shared_antennas[(slice_1_id, slice_2_id)] = slice_1_antennas.intersection(slice_2_antennas)
 
+        print("Slice_shared_antennas: {}".format(slice_shared_antennas))
+
         # Dictionary to keep track of which slices share antennas and transmit at the same time
         slice_overlaps = {slice_id: set() for slice_id in self.slice_ids}
 
@@ -261,6 +263,7 @@ class Sequence(ScanClassBase):
                 combined_pulses_metadata.append(pulse_data)
                 pulse_data = initialize_combined_pulse_dict(pulse_time)
 
+        print("Slice Overlaps (Power divider for each slice): {}".format(slice_overlaps))
         combined_pulses_metadata.append(pulse_data)
 
         # Normalize all pulses to the max USRP DAC amplitude
@@ -292,8 +295,7 @@ class Sequence(ScanClassBase):
 
         # print out pulse information for logging.
         for i, cpm in enumerate(combined_pulses_metadata):
-            message = "Pulse {}: start time(us) {}  start sample {}".format(i,
-                                                                            cpm['start_time_us'],
+            message = "Pulse {}: start time(us) {}  start sample {}".format(i, cpm['start_time_us'],
                                                                             cpm['pulse_sample_start'])
             sequence_print(message)
 
@@ -397,7 +399,7 @@ class Sequence(ScanClassBase):
         tr_window_time = self.transmit_metadata['tr_window_time']
 
         buffer_len = int(txrate * self.sstime * 1e-6)
-        # This is gonna act as buffer for mixing pulses. Its the length of the receive samples
+        # This is going to act as buffer for mixing pulses. It is the length of the receive samples
         # since we know this will be large enough to hold samples at any pulse position. There will
         # be a buffer for each antenna.
         sequence = np.zeros([main_antenna_count, buffer_len], dtype=np.complex64)
@@ -440,9 +442,7 @@ class Sequence(ScanClassBase):
 
                         start = pulse['tr_window_num_samps'] + pulse_sample_start
                         end = start + pulse_samples_len
-                        pulse_piece = sequence[tx_antennas, start:end]
-
-                        np.add(pulse_piece, samples[i], out=pulse_piece)
+                        sequence[tx_antennas, start:end] += samples[i]
 
         # copy the encoded and combined samples into the metadata for the sequence.
         pulse_data = []
