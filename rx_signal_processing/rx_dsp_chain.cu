@@ -169,19 +169,21 @@ int main(int argc, char **argv){
       auto range_sep = rx_channel.range_sep();
       auto beam_count = rx_channel.beam_directions_size();
       auto tau_spacing = rx_channel.tau_spacing();
-      auto new_rx_slice = rx_slice(rx_freq, slice_id, num_ranges, beam_count, first_range, range_sep,
-                                    tau_spacing);
+
+      auto new_rx_slice = rx_slice(rx_freq, slice_id, num_ranges, beam_count, first_range, range_sep, tau_spacing);
 
       auto num_lags = sp_packet.rxchannel(channel).lags_size();
       for (uint32_t lag_counter=0; lag_counter<num_lags; lag_counter++) {
-        auto lag_num = sp_packet.rxchannel(channel).lags(lag_counter).lag_num();
-        auto pulse_1 = sp_packet.rxchannel(channel).lags(lag_counter).pulse_1();
-        auto pulse_2 = sp_packet.rxchannel(channel).lags(lag_counter).pulse_2();
-        new_rx_slice.lags.push_back({pulse_1, pulse_2, lag_num});
+        auto lag_num = rx_channel.lags(lag_counter).lag_num();
+        auto pulse_1 = rx_channel.lags(lag_counter).pulse_1();
+        auto pulse_2 = rx_channel.lags(lag_counter).pulse_2();
+	auto real = rx_channel.lags(lag_counter).phase_offset_real();
+	auto imag = rx_channel.lags(lag_counter).phase_offset_imag();
+
+	std::complex<double> phase_offset(real, imag);
+        new_rx_slice.lags.push_back({pulse_1, pulse_2, lag_num, phase_offset});
       }
       slice_info.push_back(new_rx_slice);
-
-
 
       // We are going to use two intermediate vectors here to rearrange the phase data so that
       // all M data comes first, followed by all I data. This way can we directly treat each

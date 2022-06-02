@@ -144,7 +144,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
 def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                       brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
                       slice_dict, beam_dict, sequence_time, first_rx_sample_start,
-                      main_antenna_count, rxctrfreq, decimation_scheme=None):
+                      main_antenna_count, rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
         Happens every sequence.
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
@@ -167,6 +167,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
              tx data.
         :param main_antenna_count: number of main array antennas, from the config file.
         :param rxctrfreq: the center frequency of receiving.
+        :param pulse_phase_offsets: Phase offsets (degrees) applied to each pulse in the sequence
         :param decimation_scheme: object of type DecimationScheme that has all decimation and
              filtering data.
 
@@ -233,12 +234,25 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
                 phase_add.real_phase = phase.real
                 phase_add.imag_phase = phase.imag
 
-
         for lag in slice_dict[slice_id]['lag_table']:
             lag_add = chan_add.lags.add()
             lag_add.pulse_1 = lag[0]
             lag_add.pulse_2 = lag[1]
             lag_add.lag_num = int(lag[1] - lag[0])
+            
+            # Get the phase offset for this pulse combination
+            if len(pulse_phase_offsets[slice_id]) != 0:
+                pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
+                lag0_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[0])
+                lag1_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[1])
+                phase_in_rad = np.radians(pulse_phase_offset[lag0_idx] - pulse_phase_offset[lag1_idx])
+                phase_offset = np.exp(1j * np.array(phase_in_rad, np.float64))
+            # Catch case where no pulse phase offsets are specified
+            else:
+                phase_offset = 1.0 + 0.0j
+
+            lag_add.phase_offset_real = np.real(phase_offset)
+            lag_add.phase_offset_imag = np.imag(phase_offset)
 
     # Brian requests sequence metadata for timeouts
     if TIME_PROFILE:
@@ -774,6 +788,7 @@ def radar():
                                               rx_beam_phases, sequence.seqtime,
                                               sequence.first_rx_sample_start,
                                               options.main_antenna_count, experiment.rxctrfreq,
+                                              sequence.output_encodings,
                                               decimation_scheme)
 
                             if TIME_PROFILE:

@@ -788,7 +788,9 @@ class DataWrite(object):
                 # so we get median of all sequences.
                 averaging_method = parameters['averaging_method']
                 array_2d = np.array(x, dtype=np.complex64)
-                num_beams, num_ranges, num_lags = parameters['correlation_dimensions']
+                num_beams, num_ranges, num_lags = np.array([len(parameters["beam_nums"]),
+                                                            parameters["num_ranges"], parameters["lags"].shape[0]],
+                                                           dtype=np.uint32)
 
                 # First range offset in samples
                 sample_off = parameters['first_range_rtt'] * 1e-6 * parameters['rx_sample_rate']
@@ -870,7 +872,6 @@ class DataWrite(object):
 
             for slice_id in bfiq:
                 parameters = parameters_holder[slice_id]
-
                 parameters['data_descriptors'] = data_descriptors
                 parameters['antenna_arrays_order'] = []
 
@@ -936,6 +937,7 @@ class DataWrite(object):
             # Parse the antennas from protobuf
             rx_main_antennas = {}
             rx_intf_antennas = {}
+
             for meta in integration_meta.sequences:
                 for rx_freq in meta.rxchannel:
                     rx_main_antennas[rx_freq.slice_id] = list(rx_freq.rx_main_antennas)
@@ -1158,7 +1160,6 @@ class DataWrite(object):
                 encodings = []
                 for encoding in rx_freq.sequence_encodings:
                     encoding = np.array(encoding.encoding_value, dtype=np.float32)
-                    encoding = encoding.reshape((parameters['pulses'].shape[0],-1))
                     encodings.append(encoding)
 
                 encodings = np.array(encodings, dtype=np.float32)
@@ -1255,13 +1256,13 @@ def main():
 
     data_parsing = ParseData()
     final_integration = sys.maxsize
-    integration_meta = None
 
     current_experiment = None
     data_write = None
     first_time = True
     expected_sqn_num = 0
     queued_sqns = []
+    integration_metadata_dict = dict()
     while True:
 
         try:
@@ -1275,7 +1276,7 @@ def main():
             integration_meta = datawritemetadata_pb2.IntegrationTimeMetadata()
             integration_meta.ParseFromString(data)
 
-            final_integration = integration_meta.last_seqn_num
+            integration_metadata_dict[integration_meta.last_seqn_num] = integration_meta
 
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes_from_any_iden(dsp_to_data_write)
@@ -1310,18 +1311,20 @@ def main():
 
             for pd in sorted_q:
                 if not first_time:
-                    if data_parsing.sequence_num == final_integration:
+                    if data_parsing.sequence_num in integration_metadata_dict:
 
-                        if integration_meta.experiment_name != current_experiment:
+                        integration_metadata = integration_metadata_dict.pop(data_parsing.sequence_num)
+
+                        if integration_metadata.experiment_name != current_experiment:
                             data_write = DataWrite(options)
-                            current_experiment = integration_meta.experiment_name
+                            current_experiment = integration_metadata.experiment_name
 
                         kwargs = dict(write_bfiq=args.enable_bfiq,
                                       write_antenna_iq=args.enable_antenna_iq,
                                       write_raw_rf=args.enable_raw_rf,
                                       write_tx=args.enable_tx,
                                       file_ext=args.file_type,
-                                      integration_meta=integration_meta,
+                                      integration_meta=integration_metadata,
                                       data_parsing=data_parsing,
                                       rt_dw={"socket": realtime_to_data_write,
                                              "iden": options.rt_to_dw_identity},

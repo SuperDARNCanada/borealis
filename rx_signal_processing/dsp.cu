@@ -274,7 +274,8 @@ namespace {
         auto beam_offset = beam_count * num_ranges * num_lags;
         auto first_range_offset = uint32_t(rx_slice_info[slice_num].first_range /
                               rx_slice_info[slice_num].range_sep); // range sep in km, first_range in km
-        // Select out the lags for each range gate.
+        
+	// Select out the lags for each range gate.
         for(uint32_t range=0; range<num_ranges; range++) {
           for(uint32_t lag=0; lag<num_lags; lag++) {
 
@@ -289,6 +290,8 @@ namespace {
             auto val = correlation_matrix(range + first_range_offset + p1_offset,
                                           range + first_range_offset + p2_offset);
 
+	    val *= rx_slice_info[slice_num].lags[lag].phase_offset;
+	    
             auto range_lag_offset = (range * num_lags) + lag;
             auto total_offset = beam_offset + range_lag_offset;
             corr_results[slice_num][total_offset].x = val.real();

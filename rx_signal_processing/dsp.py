@@ -208,8 +208,8 @@ class DSP(object):
 
         # [num_slices, num_beams, num_samples]
         # [num_slices, num_beams, num_samples]
-        correlated = xp.einsum('ijk,ijl->ijkl', beamformed_samples_1.conj(),
-                                        beamformed_samples_2)
+        correlated = xp.einsum('ijk,ijl->ijkl', beamformed_samples_1,
+                                        beamformed_samples_2.conj())
 
         if cupy_available:
             correlated = xp.asnumpy(correlated)
@@ -240,9 +240,8 @@ class DSP(object):
             values_for_slice = correlated[s['slice_num'],:,row,column]
 
             # [num_range_gates, num_lags, num_beams]
-            values_for_slice = np.einsum('ijk->kij', values_for_slice)
+            values_for_slice = np.einsum('ijk,j->kij', values_for_slice, s['lag_phase_offsets'])
 
-            # [num_beams, num_range_gates, num_lags]
             values.append(values_for_slice)
 
         return values

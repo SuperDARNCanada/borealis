@@ -55,10 +55,13 @@ typedef struct rx_slice
     uint32_t pulse_1;
     uint32_t pulse_2;
     uint32_t lag_num;
-    lag(uint32_t pulse_1, uint32_t pulse_2, uint32_t lag_num):
+    std::complex<double> phase_offset;
+
+    lag(uint32_t pulse_1, uint32_t pulse_2, uint32_t lag_num, std::complex<double> phase_offset):
       pulse_1(pulse_1),
       pulse_2(pulse_2),
-      lag_num(lag_num){}
+      lag_num(lag_num),
+      phase_offset(phase_offset){}
   };
   std::vector<lag> lags;
 
