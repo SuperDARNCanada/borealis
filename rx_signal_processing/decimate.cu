@@ -268,7 +268,7 @@ __global__ void bandpass_decimate(cuComplex* original_samples,
   for (int i=0; i<stride; i++) {
     // If an offset should extend past the length of samples per antenna
     // then zeroes are used as to not segfault or run into the next buffer.
-    // output samples convolved with these zeroes will be discarded after
+    // Output samples convolved with these zeroes will be discarded after
     // the complete process as to not introduce edge effects.
     if ((dec_sample_offset + threadIdx.x*stride + i) >= samples_per_antenna) {
       sample = make_cuComplex(0.0f,0.0f);
@@ -283,15 +283,21 @@ __global__ void bandpass_decimate(cuComplex* original_samples,
 
   filter_products[product_offset] = intermediate_sum;
   // Synchronizes all threads in a block, meaning 1 output sample per rx freq
-  // is ready to be calculated with the parallel reduce
+  // is ready to be calculated with parallel_reduce
   __syncthreads();
 
+  // sums across filter_products, storing the full sum for each frequency
+  // in calculated_output_sample of the thread which has threadIdx.x == 0.
   auto calculated_output_sample = parallel_reduce(filter_products, product_offset);
 
-  // When decimating, we go from one set of samples for each antenna
-  // to multiple sets of reduced samples for each frequency. Output samples are
-  // grouped by frequency with all samples for each antenna following each other
-  // before samples of another frequency start.
+  // When filtering and decimating, we go from one set of samples for each antenna
+  // to one set of reduced samples per antenna for each frequency. Output samples are
+  // grouped by frequency, with all samples of a single frequency for each antenna
+  // following each other before samples of another frequency start.
+
+  // The thread with threadIdx.x == 0 now contains the full sum of all filter_taps*samples for
+  // one frequency. This corresponds to one decimated output sample, so it is put in the
+  // decimated_samples array with the correct phase.
   if (threadIdx.x == 0) {
 
     //Correct phase after filtering using modified Frerking technique.
@@ -306,13 +312,12 @@ __global__ void bandpass_decimate(cuComplex* original_samples,
     auto freq_offset = threadIdx.y * gridDim.x * total_antennas;
     auto total_offset = freq_offset + antenna_offset + dec_sample_num;
     decimated_samples[total_offset] = calculated_output_sample;
-
   }
 }
 
 
 /**
- * @brief      This function wraps the bandpass_decimate_general kernel so that it can be called from
+ * @brief      This function wraps the bandpass_decimate kernel so that it can be called from
  *             another file.
  *
  * @param[in]  original_samples     A pointer to original input samples from each antenna to
@@ -344,7 +349,7 @@ void bandpass_decimate_wrapper(cuComplex* original_samples,
   uint32_t threads_per_freq = num_taps_per_filter;
 
   // Here we are assuming that num_taps_per_filter is a power of 2, which is a necessary assumption
-  // for bandpass_decimate_general to correctly do its calculations.
+  // for bandpass_decimate to correctly do its calculations.
   while (threads_per_freq > max_threads_per_freq) {
     stride = stride << 1;
     threads_per_freq = threads_per_freq >> 1;
@@ -358,7 +363,6 @@ void bandpass_decimate_wrapper(cuComplex* original_samples,
   auto dimBlock = create_bandpass_block(threads_per_freq, num_freqs);
   bandpass_decimate<<<dimGrid,dimBlock,shr_mem_size,stream>>>(original_samples, decimated_samples,
         filter_taps, dm_rate, samples_per_antenna, F_s, freqs, stride);
-
 }
 
 
@@ -391,7 +395,7 @@ void bandpass_decimate_wrapper(cuComplex* original_samples,
  *   blockIdx.z - Frequency dataset index.
  *
  *   blockDim.x - Number of filter taps in the lowpass filter.
-
+ *
  *   threadIdx.x - Filter tap indices.
  */
 __global__ void lowpass_decimate(cuComplex* original_samples,
@@ -419,7 +423,6 @@ __global__ void lowpass_decimate(cuComplex* original_samples,
 
   auto product_offset = threadIdx.x;
   auto tap_offset = product_offset * stride;
-
 
   cuComplex sample;
   cuComplex intermediate_product = make_cuComplex(0.0f, 0.0f);
@@ -451,12 +454,12 @@ __global__ void lowpass_decimate(cuComplex* original_samples,
   // is ready to be calculated with the parallel reduce
   __syncthreads();
 
+  // sums across filter_products, storing the full sum for each frequency
+  // in calculated_output_sample of the thread which has threadIdx.x == 0.
   auto calculated_output_sample = parallel_reduce(filter_products, product_offset);
 
-  // When decimating, we go from one set of samples for each antenna
-  // to multiple sets of reduced samples for each frequency. Output samples are
-  // grouped by frequency with all samples for each antenna following each other
-  // before samples of another frequency start.
+  // The thread with threadIdx.x == 0 now contains the full sum of all filter_taps*samples.
+  // This corresponds to one decimated output sample, so it is put in the decimated_samples array.
   if (threadIdx.x == 0) {
     auto num_output_samples_per_antenna = gridDim.x;
     frequency_dataset_offset = data_set_idx * num_output_samples_per_antenna * total_antennas;
@@ -468,7 +471,7 @@ __global__ void lowpass_decimate(cuComplex* original_samples,
 
 
 /**
- * @brief      This function wraps the lowpass_decimate_general kernel so that it can be called from
+ * @brief      This function wraps the lowpass_decimate kernel so that it can be called from
  *             another file.
  *
  * @param[in]  original_samples     A pointer to one or more baseband frequency datasets.
@@ -495,7 +498,7 @@ void lowpass_decimate_wrapper(cuComplex* original_samples,
   uint32_t stride = 1;
 
   // Here we are assuming that num_taps_per_filter is a power of 2, which is a necessary assumption
-  // for lowpass_decimate_general to correctly do its calculations.
+  // for lowpass_decimate to correctly do its calculations.
   while (num_threads > 1024) {
     stride = stride << 1;
     num_threads = num_threads >> 1;
