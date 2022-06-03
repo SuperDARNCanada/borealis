@@ -13,37 +13,13 @@ See LICENSE for details
 
 enum class DecimationType {lowpass, bandpass};
 
-void bandpass_decimate_general_wrapper(cuComplex* input_samples,
+void bandpass_decimate_wrapper(cuComplex* input_samples,
   cuComplex* decimated_samples,
   cuComplex* filter_taps, uint32_t dm_rate,
   uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
   uint32_t num_antennas, double F_s, double *freqs, cudaStream_t stream);
 
-void bandpass_decimate1024_wrapper(cuComplex* input_samples,
-  cuComplex* decimated_samples,
-  cuComplex* filter_taps, uint32_t dm_rate,
-  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
-  uint32_t num_antennas, double F_s, double *freqs, cudaStream_t stream);
-
-void bandpass_decimate2048_wrapper(cuComplex* input_samples,
-  cuComplex* decimated_samples,
-  cuComplex* filter_taps, uint32_t dm_rate,
-  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
-  uint32_t num_antennas, double F_s, double *freqs, cudaStream_t stream);
-
-void lowpass_decimate_general_wrapper(cuComplex* input_samples,
-  cuComplex* decimated_samples,
-  cuComplex* filter_taps, uint32_t dm_rate,
-  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
-  uint32_t num_antennas, cudaStream_t stream);
-
-void lowpass_decimate1024_wrapper(cuComplex* input_samples,
-  cuComplex* decimated_samples,
-  cuComplex* filter_taps, uint32_t dm_rate,
-  uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
-  uint32_t num_antennas, cudaStream_t stream);
-
-void lowpass_decimate2048_wrapper(cuComplex* input_samples,
+void lowpass_decimate_wrapper(cuComplex* input_samples,
   cuComplex* decimated_samples,
   cuComplex* filter_taps, uint32_t dm_rate,
   uint32_t samples_per_antenna, uint32_t num_taps_per_filter, uint32_t num_freqs,
@@ -87,51 +63,18 @@ void call_decimate(cuComplex* input_samples,
 
   auto gpu_properties = get_gpu_properties();
 
-
   if (type == DecimationType::bandpass) {
     DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running bandpass");
     
-    bandpass_decimate_general_wrapper(input_samples, decimated_samples, filter_taps, dm_rate,
+    bandpass_decimate_wrapper(input_samples, decimated_samples, filter_taps, dm_rate,
         samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, F_s, freqs, stream);
-    /*
-    //For now we have a kernel that will process 2 samples per thread if need be
-    if (num_taps_per_filter * num_freqs > 2 * gpu_properties[0].maxThreadsPerBlock) {
-      DEBUG_MSG(COLOR_BLUE("Decimate: ") << "num_taps_per_filter: " << num_taps_per_filter);
-      DEBUG_MSG(COLOR_BLUE("Decimate: ") << "num_freqs: " << num_freqs);
-      DEBUG_MSG(COLOR_BLUE("Decimate: ") << "maxThreadsPerBlock: " << gpu_properties[0].maxThreadsPerBlock);
-      DEBUG_MSG(COLOR_RED("Decimate: ") << "    Error in bandpass size");
-      //TODO(Keith) : handle error
-    }
-    else if (num_taps_per_filter * num_freqs > gpu_properties[0].maxThreadsPerBlock) {
-      bandpass_decimate2048_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
-        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, F_s, freqs, stream);
-    }
-    else {
-      bandpass_decimate1024_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
-        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, F_s, freqs, stream);
-    }
-    */
   }
   else if (type == DecimationType::lowpass){
     DEBUG_MSG(COLOR_BLUE("Decimate: ") << "    Running lowpass");
     
-    lowpass_decimate_general_wrapper(input_samples, decimated_samples, filter_taps, dm_rate,
+    lowpass_decimate_wrapper(input_samples, decimated_samples, filter_taps, dm_rate,
         samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
-    /*
-    if (num_taps_per_filter > 2 * gpu_properties[0].maxThreadsPerBlock) {
-      //TODO(Keith) : handle error
-    }
-    else if (num_taps_per_filter > gpu_properties[0].maxThreadsPerBlock) {
-      lowpass_decimate2048_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
-        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
-    }
-    else {
-      lowpass_decimate1024_wrapper(input_samples, decimated_samples, filter_taps,  dm_rate,
-        samples_per_antenna, num_taps_per_filter, num_freqs, num_antennas, stream);
-    }
-    */
   }
-
 
   // This is to detect invalid launch parameters.
   gpuErrchk(cudaPeekAtLastError());
