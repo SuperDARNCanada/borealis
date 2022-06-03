@@ -216,8 +216,6 @@ class Sequence(ScanClassBase):
                 slice_2_antennas = set(self.slice_dict[slice_2_id]['tx_antennas'])
                 slice_shared_antennas[(slice_1_id, slice_2_id)] = slice_1_antennas.intersection(slice_2_antennas)
 
-        print("Slice_shared_antennas: {}".format(slice_shared_antennas))
-
         # Dictionary to keep track of which slices share antennas and transmit at the same time
         slice_overlaps = {slice_id: set() for slice_id in self.slice_ids}
 
@@ -236,25 +234,12 @@ class Sequence(ScanClassBase):
             # If there are overlaps (two pulses within minimum separation time) then make them into one single pulse
             min_sep = self.transmit_metadata['minimum_pulse_separation']
             if pulse_timing_us < last_timing_us + last_pulse_len_us + min_sep:
-                new_pulse_len = pulse_timing_us - last_timing_us + pulse_len_us
-                new_pulse_samps = pulse_sample_start - last_sample_start + pulse_num_samps
-
-                for p in pulse_data['component_info']:
-                    min_slice_id = min(p['slice_id'], pulse_time['slice_id'])
-                    max_slice_id = max(p['slice_id'], pulse_time['slice_id'])
-                    if min_slice_id == max_slice_id:
-                        # This is possible if pulses overlap like 1 -> 2 -> 1, so that 1 doesn't
-                        # overlap with itself but is still combined with itself in the same pulse.
-                        continue
-                    if len(slice_shared_antennas[(min_slice_id, max_slice_id)]) != 0:
-                        # These two slices share antennas, and also are combined in a pulse.
-                        # Now we must check if they actually overlap, or are just combined because
-                        # they are back-to-back.
-                        if pulse_timing_us < last_timing_us + last_pulse_len_us:
-                            # The pulses definitely overlap, so we keep track in the set of overlapping slices for
-                            # both slices.
-                            slice_overlaps[p['slice_id']].add(pulse_time['slice_id'])
-                            slice_overlaps[pulse_time['slice_id']].add(p['slice_id'])
+                # If the current pulse is completely enveloped by the previous pulse, 
+                # these values won't change or else we are truncating the previous pulse.
+                new_pulse_len = max(pulse_timing_us - last_timing_us + pulse_len_us, 
+                                    last_pulse_len_us)
+                new_pulse_samps = max(pulse_sample_start - last_sample_start + pulse_num_samps, 
+                                      last_pulse_num_samps)
 
                 pulse_data['total_pulse_len'] = new_pulse_len
                 pulse_data['total_num_samps'] = new_pulse_samps
@@ -263,8 +248,33 @@ class Sequence(ScanClassBase):
                 combined_pulses_metadata.append(pulse_data)
                 pulse_data = initialize_combined_pulse_dict(pulse_time)
 
-        print("Slice Overlaps (Power divider for each slice): {}".format(slice_overlaps))
         combined_pulses_metadata.append(pulse_data)
+
+        # Now we can figure out the power divider for each slice
+        for combined_pulse in combined_pulses_metadata:
+            num_pulses = len(combined_pulse['component_info'])
+            if num_pulses == 1:
+                # Only one pulse here, no need to check for overlap
+                continue
+
+            # Look at each possible pair of pulses in this combined pulse
+            for i in range(num_pulses):
+                pulse_1 = combined_pulse['component_info'][i]
+                for j in range(i, num_pulses):
+                    pulse_2 = combined_pulse['component_info'][j]
+                    if pulse_1['slice_id'] == pulse_2['slice_id']:
+                        # This is possible if pulses overlap like 1 -> 2 -> 1, so that 1 doesn't
+                        # overlap with itself but is still combined with itself.
+                        continue
+                    min_slice_id = min(pulse_1['slice_id'], pulse_2['slice_id'])
+                    max_slice_id = max(pulse_1['slice_id'], pulse_2['slice_id'])
+                    if len(slice_shared_antennas[(min_slice_id, max_slice_id)]) != 0:
+                        # These two pulses share antennas, and are also combined in a pulse.
+                        # Now we check if they actually transmit at the same time, or are just
+                        # combined because they almost overlap.
+                        if pulse_2['start_time_us'] < pulse_1['start_time_us'] + pulse_1['pulse_len_us']:
+                            slice_overlaps[pulse_1['slice_id']].add(pulse_2['slice_id'])
+                            slice_overlaps[pulse_2['slice_id']].add(pulse_1['slice_id'])
 
         # Normalize all pulses to the max USRP DAC amplitude
         power_divider = {slice_id: len(ids) + 1 for (slice_id, ids) in slice_overlaps.items()}
