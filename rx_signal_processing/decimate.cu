@@ -270,11 +270,11 @@ __global__ void bandpass_decimate_general(cuComplex* original_samples,
     // then zeroes are used as to not segfault or run into the next buffer.
     // output samples convolved with these zeroes will be discarded after
     // the complete process as to not introduce edge effects.
-    if ((dec_sample_offset + threadIdx.x + i) >= samples_per_antenna) {
+    if ((dec_sample_offset + threadIdx.x*stride + i) >= samples_per_antenna) {
       sample = make_cuComplex(0.0f,0.0f);
     }
     else {
-      auto final_offset = antenna_offset + dec_sample_offset + threadIdx.x + i;
+      auto final_offset = antenna_offset + dec_sample_offset + threadIdx.x*stride + i;
       sample = original_samples[final_offset];
     }
     intermediate_product = cuCmulf(sample, filter_taps[tap_offset + i]);
