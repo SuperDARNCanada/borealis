@@ -356,7 +356,7 @@ void bandpass_decimate_wrapper(cuComplex* original_samples,
 
   auto dimGrid = create_bandpass_grid(samples_per_antenna, dm_rate, num_antennas);
   auto dimBlock = create_bandpass_block(threads_per_freq, num_freqs);
-  bandpass_decimate_general<<<dimGrid,dimBlock,shr_mem_size,stream>>>(original_samples, decimated_samples,
+  bandpass_decimate<<<dimGrid,dimBlock,shr_mem_size,stream>>>(original_samples, decimated_samples,
         filter_taps, dm_rate, samples_per_antenna, F_s, freqs, stride);
 
 }
@@ -507,6 +507,6 @@ void lowpass_decimate_wrapper(cuComplex* original_samples,
 
   auto dimGrid = create_lowpass_grid(samples_per_antenna, dm_rate, num_antennas, num_freqs);
   auto dimBlock = create_lowpass_block(num_threads);
-  lowpass_decimate_general<<<dimGrid,dimBlock,shr_mem_size,stream>>>(original_samples,
+  lowpass_decimate<<<dimGrid,dimBlock,shr_mem_size,stream>>>(original_samples,
     decimated_samples, filter_taps, dm_rate, samples_per_antenna, stride);
 }
