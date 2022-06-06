@@ -204,22 +204,7 @@ class Sequence(ScanClassBase):
         pulse_data = initialize_combined_pulse_dict(single_pulse_timing[0])
         combined_pulses_metadata = []
 
-        # Store the overlapping antennas between all pairs of slices in this sequence.
-        # This will be used to determine the power divider for each slice in the sequence,
-        # if any two slices have overlapping pulses and use the same antennas.
-        slice_shared_antennas = dict()
-        for i in range(len(self.slice_ids)):
-            slice_1_id = self.slice_ids[i]
-            slice_1_antennas = set(self.slice_dict[slice_1_id]['tx_antennas'])
-            for j in range(i + 1, len(self.slice_ids)):
-                slice_2_id = self.slice_ids[j]
-                slice_2_antennas = set(self.slice_dict[slice_2_id]['tx_antennas'])
-                slice_shared_antennas[(slice_1_id, slice_2_id)] = slice_1_antennas.intersection(slice_2_antennas)
-
-        # Dictionary to keep track of which slices share antennas and transmit at the same time
-        slice_overlaps = {slice_id: set() for slice_id in self.slice_ids}
-
-        # determine where pulses occur in the sequence. This will be important if there are overlaps
+        # Determine where pulses occur in the sequence. This will be important if there are overlaps
         for pulse_time in single_pulse_timing[1:]:
             pulse_timing_us = pulse_time['start_time_us']
             pulse_len_us = pulse_time['pulse_len_us']
@@ -250,6 +235,21 @@ class Sequence(ScanClassBase):
 
         combined_pulses_metadata.append(pulse_data)
 
+        # Store the overlapping antennas between all pairs of slices in this sequence.
+        # This will be used to determine the power divider for each slice in the sequence,
+        # if any two slices have overlapping pulses and use the same antennas.
+        slice_shared_antennas = dict()
+        for i in range(len(self.slice_ids)):
+            slice_1_id = self.slice_ids[i]
+            slice_1_antennas = set(self.slice_dict[slice_1_id]['tx_antennas'])
+            for j in range(i + 1, len(self.slice_ids)):
+                slice_2_id = self.slice_ids[j]
+                slice_2_antennas = set(self.slice_dict[slice_2_id]['tx_antennas'])
+                slice_shared_antennas[(slice_1_id, slice_2_id)] = slice_1_antennas.intersection(slice_2_antennas)
+
+        # Dictionary to keep track of which slices share antennas and transmit at the same time
+        slice_overlaps = {slice_id: set() for slice_id in self.slice_ids}
+
         # Now we can figure out the power divider for each slice
         for combined_pulse in combined_pulses_metadata:
             num_pulses = len(combined_pulse['component_info'])
@@ -276,8 +276,22 @@ class Sequence(ScanClassBase):
                             slice_overlaps[pulse_1['slice_id']].add(pulse_2['slice_id'])
                             slice_overlaps[pulse_2['slice_id']].add(pulse_1['slice_id'])
 
-        # Normalize all pulses to the max USRP DAC amplitude
-        power_divider = {slice_id: len(ids) + 1 for (slice_id, ids) in slice_overlaps.items()}
+        # Get the naive power divider - total number slices which overlap with slice under consideration.
+        power_divider = {slice_id: len(ids) + 1 for slice_id, ids in slice_overlaps.items()}
+
+        # Now we iterate through each slice, and check if the slices it overlaps with overlap with each
+        # other. If they don't, we can subtract 1 from the power divider for the slice. 
+        for ref_slice, overlaps in slice_overlaps.items():
+            overlap_list = list(overlaps)
+            for i in range(len(overlap_list)):
+                for j in range(i + 1, len(overlap_list)):
+                    slice_1 = overlap_list[i]
+                    slice_2 = overlap_list[j]
+                    if slice_2 not in slice_overlaps[slice_1]:
+                        # No overlap, so we decrement.
+                        power_divider[ref_slice] -= 1
+
+        # Normalize all combined pulses to the max USRP DAC amplitude
         all_antennas = []
         for slice_id in self.slice_ids:
             self.basic_slice_pulses[slice_id] *= max_usrp_dac_amplitude / power_divider[slice_id]
