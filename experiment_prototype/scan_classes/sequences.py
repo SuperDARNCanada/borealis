@@ -437,18 +437,21 @@ class Sequence(ScanClassBase):
             encode_fn = exp_slice['pulse_phase_offset']
             if encode_fn:
                 num_samples = basic_samples.shape[1]
+
+                # Must return 1D array of length [pulses].
                 phase_encoding = encode_fn(beam_num, sequence_num, num_pulses, num_samples)
 
-                # Reshape as vector if 1D, else stays the same.
-                phase_encoding = phase_encoding.reshape((phase_encoding.shape[0], -1))
+                # dimensions: [pulses]
+                # Append list of phase encodings for this sequence, one per pulse. 
+                # output_encodings contains a list of lists for each slice id
                 self.output_encodings[slice_id].append(phase_encoding)
 
-                # we have [pulses, encodings] and [antennas ,samples], but we want
-                # [pulses, antennas, (encodings*samples)]. Adding null axis to encoding
-                # will produce this result.
+                # phase_encoding: [pulses]
+                # basic_samples: [antennas, samples]
+                # samples: [pulses, antennas, samples]
                 phase_encoding = np.radians(phase_encoding)
-                phase_encoding = np.exp(1j * phase_encoding[:, np.newaxis, :])
-                samples = phase_encoding * basic_samples
+                phase_encoding = np.exp(1j * phase_encoding)
+                samples = np.einsum('i,jk->ijk', phase_encoding, basic_samples)
 
             else:  # no encodings, all pulses in the slice are all the same
                 samples = np.repeat(basic_samples[np.newaxis, :, :], num_pulses, axis=0)

@@ -195,10 +195,14 @@ def main():
             detail['tau_spacing'] = np.uint32(chan.tau_spacing)
             detail['num_range_gates'] = np.uint32(chan.num_ranges)
             detail['first_range_off'] = np.uint32(chan.first_range / chan.range_sep)
+            lag_phase_offsets = []
 
             lags = []
             for lag in chan.lags:
                 lags.append([lag.pulse_1,lag.pulse_2])
+                lag_phase_offsets.append(lag.phase_offset_real + 1j * lag.phase_offset_imag)
+
+            detail['lag_phase_offsets'] = np.array(lag_phase_offsets, dtype=np.complex128)
 
             detail['lags'] = np.array(lags, dtype=np.uint32)
             detail['num_lags'] = len(lags)
@@ -288,7 +292,7 @@ def main():
             pprint(taps_msg)
 
             for dm,taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
-                extra_samples = (extra_samples * dm) + len(taps)/2
+                extra_samples = (extra_samples * dm) + len(taps)//2
 
             total_dm_rate = np.prod(dm_rates)
 

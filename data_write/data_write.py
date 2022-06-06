@@ -872,7 +872,6 @@ class DataWrite(object):
 
             for slice_id in bfiq:
                 parameters = parameters_holder[slice_id]
-
                 parameters['data_descriptors'] = data_descriptors
                 parameters['antenna_arrays_order'] = []
 
@@ -938,6 +937,7 @@ class DataWrite(object):
             # Parse the antennas from protobuf
             rx_main_antennas = {}
             rx_intf_antennas = {}
+
             for meta in integration_meta.sequences:
                 for rx_freq in meta.rxchannel:
                     rx_main_antennas[rx_freq.slice_id] = list(rx_freq.rx_main_antennas)
@@ -1160,7 +1160,6 @@ class DataWrite(object):
                 encodings = []
                 for encoding in rx_freq.sequence_encodings:
                     encoding = np.array(encoding.encoding_value, dtype=np.float32)
-                    encoding = encoding.reshape((parameters['pulses'].shape[0],-1))
                     encodings.append(encoding)
 
                 encodings = np.array(encodings, dtype=np.float32)
