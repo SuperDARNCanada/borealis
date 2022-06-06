@@ -1187,26 +1187,12 @@ class ExperimentPrototype(object):
                 errmsg = 'If one slice has a scanbound, they all must to avoid up to minute-long downtimes.'
                 raise ExperimentException(errmsg) from e
 
-        # check that the number of slices can be accommodated by the decimation scheme.
         max_num_concurrent_slices = 0
         for scan in self.__scan_objects:
             for aveperiod in scan.aveperiods:
                 for seq in aveperiod.sequences:
                     if len(seq.slice_ids) > max_num_concurrent_slices:
                         max_num_concurrent_slices = len(seq.slice_ids)
-
-        for stage in self.decimation_scheme.stages:
-            power_2 = 0
-            while 2 ** power_2 < len(stage.filter_taps):
-                power_2 += 1
-            effective_length = 2 ** power_2
-            if effective_length * max_num_concurrent_slices > \
-                    self.options.max_number_of_filter_taps_per_stage:
-                errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with" \
-                         " this many slices ({}) is too large for GPU max {}"
-                errmsg = errmsg.format(len(stage.filter_taps), stage.stage_num, self.num_slices,
-                                       self.options.max_number_of_filter_taps_per_stage)
-                raise ExperimentException(errmsg)
 
         if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
