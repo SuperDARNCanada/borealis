@@ -373,7 +373,7 @@ def install_directories():
 
 def install_hdw_dat():
 
-    install_hdw_cmd = "ln -svi /usr/local/hdw.dat/hdw.dat.{radar_abbreviation} " \
+    install_hdw_cmd = "ln -svi /usr/local/hdw/hdw.dat.{radar_abbreviation} " \
                       "$BOREALISPATH/hdw.dat.{radar_abbreviation};"
     install_hdw_cmd = install_hdw_cmd.format(radar_abbreviation=args.radar)
     execute_cmd(install_hdw_cmd)
