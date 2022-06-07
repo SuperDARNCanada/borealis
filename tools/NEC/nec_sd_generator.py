@@ -1189,7 +1189,7 @@ if __name__ == '__main__':
                                                                  "as '5-7,11'",
                                default="", type=str)
     parser.add_argument("-b", "--beam", help="Beam to transmit on?", default=BORESIGHT_BEAM, type=float)
-    parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", default=10.5)
+    parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", default=10.5, type=float)
     parser.add_argument("-F", "--without_fence", help="Generate the array without fence", action="store_true")
     geometry_group = parser.add_argument_group("Array Geometry")
     geometry_group.add_argument("-s", "--antenna_spacing", help="What is the spacing between antennas? (m)",
@@ -1241,7 +1241,7 @@ if __name__ == '__main__':
                 antennas_down.append(int(antenna))
 
     receivers_down = []
-    if args.receivers_down is not None and args.receivers_down != "":
+    if args.transceivers_down is not None and args.transceivers_down != "":
         receivers = args.receivers_down.strip().split(',')
         for receiver in receivers:
             # If they specified a range, then include all numbers in that range (including endpoints)
