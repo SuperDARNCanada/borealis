@@ -228,14 +228,6 @@ int main(int argc, char **argv){
       }()
     );
 
-    // Print filters to file
-    /*
-    auto unmixed_taps = filters.get_unmixed_filter_taps();
-    for (int32_t i=0; i<unmixed_taps.size(); i++) {
-      filters.save_filter_to_file(unmixed_taps[i], "/home/radar/normalscan_taps_" + std::to_string(i) + ".txt");
-    }
-    */
-
     auto complex_taps = filters.get_mixed_filter_taps();
 
     DSPCore *dp = new DSPCore(std::ref(context), sig_options, sp_packet.sequence_num(),
