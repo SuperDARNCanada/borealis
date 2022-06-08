@@ -214,6 +214,57 @@ class Reflector(object):
         return return_string.replace('\n', '\r\n')
 
 
+class DisplacedVerticalReflector(object):
+    """
+    Reflector wire class used to describe boresight-displaced vertical reflector fence wires in the antenna array system
+    as NEC strings
+    """
+
+    def __init__(self, length_m, spacing_m, displacement=-5.0, start_height_m=12.0, num_wires=0, awg=13,
+                 global_x=0.0, global_y=0.0, global_z=0.0):
+        """
+        :param length_m: The length of the reflector wires in meters
+        :param spacing_m: The straight line distance between successive reflector wires in meters
+        :param displacement: The distance along boresight that the reflector fence is displaced from the
+                             array, in meters. Default 5.0 meters.
+        :param start_height_m: The starting height of the first reflector wire. Default 15, meters
+        :param num_wires: The number of reflector fence wires. If not given, the max is calculated
+        :param awg: The wire gauge in American Wire Gauge of the reflector wires. Defaults to 13
+        :raises ValueError when the spacing_m, angle and num_wires are incompatible
+        """
+        # TODO: if spacing_m, angle and num_wires are incompatible (i.e. wires in the ground)
+        # raise ValueError
+
+        self.reflector_wires = []
+        radius = get_mm_radius_from_awg(awg) / 1000.0
+        if num_wires == 0:
+            # Use spacing to determine the amount of wires given that the reflector
+            # fence starts above the antennas and goes down at a given angle until the ground
+            raise NotImplementedError("Please specify # of wires, calculation not implemented.")
+        else:
+            # We are given the number of wires, so place them with the spacing given
+            for reflector_wire in range(0, num_wires):
+                x1 = -length_m / 2.0
+                x2 = length_m / 2.0
+                y = displacement
+                z = reflector_wire * spacing_m
+                self.reflector_wires.append(Wire(x1 + global_x, y + global_y,
+                                                 start_height_m - z + global_z, x2 + global_x,
+                                                 y + global_y, start_height_m - z + global_z,
+                                                 radius))
+
+    def __repr__(self):
+        """
+        Represent the Reflector object as a string
+
+        :return: String representing the reflector object in a format NEC understands
+        """
+        return_string = ""
+        for reflector_wire in self.reflector_wires:
+            return_string += str(reflector_wire) + "\n"
+        return return_string.replace('\n', '\r\n')
+
+
 class TransmissionLine(object):
     """
     TransmissionLine class used to describe ideal transmission lines in the antenna array system.
@@ -1327,12 +1378,22 @@ if __name__ == '__main__':
                 reflector_length = (args.antennas + 1) * args.antenna_spacing
                 reflector_spacing = 0.707
                 f.write(str(Reflector(reflector_length, reflector_spacing, num_wires=21)))
+
+                # reflector_displacement = -5.0
+                # f.write(str(DisplacedVerticalReflector(reflector_length, reflector_spacing,
+                #                                        displacement=reflector_displacement, num_wires=16)))
             if args.int_antennas > 0:
                 int_reflector_length = (args.int_antennas + 1) * args.antenna_spacing
                 int_reflector_spacing = 0.707
                 f.write(str(Reflector(int_reflector_length, int_reflector_spacing,
                                       global_x=args.int_x_spacing, global_y=args.int_y_spacing,
                                       global_z=args.int_z_spacing, num_wires=21)))
+
+                # int_reflector_displacement = -5.0
+                # f.write(str(DisplacedVerticalReflector(int_reflector_length, int_reflector_spacing,
+                #                                        displacement=int_reflector_displacement,
+                #                                        global_x=args.int_x_spacing, global_y=args.int_y_spacing,
+                #                                        global_z=args.int_z_spacing, num_wires=16)))
         f.write(end_geometry())
 
         # We're finished with the geometry, so now write out the cards that tell NEC various other
