@@ -250,6 +250,8 @@ def fft_and_plot_antennas_iq(record_dict, record_info_string, sequence=0, real_o
      be antennas_iq type, but there might be multiple slices.
     :param plot_width: frequency bandwidth to plot fft (for higher resolution) 
     """
+    plot_individual = True
+    plt.rcParams.update({'figure.max_open_warning': 0})
 
     record_dict = reshape_antennas_iq(record_dict)
     # new data dimensions are num_antennas, num_sequences, num_samps
@@ -266,8 +268,9 @@ def fft_and_plot_antennas_iq(record_dict, record_info_string, sequence=0, real_o
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)    
     for index in indices:
         antenna = antennas_present[index]
-        ax1.set_title('FFT Main Antennas {}'.format(record_info_string))
-        ax2.set_title('FFT Intf Antennas {}'.format(record_info_string))
+        plt.figure(0)
+        ax1.set_title('FFT Main Antennas {}'.format(record_info_string) + ': All antennas')
+        ax2.set_title('FFT Intf Antennas {}'.format(record_info_string)+ ': All antennas')
         if not plot_width:
             fft_samps, xf = fft_to_plot(record_dict['data'][index,sequence,:], record_dict['rx_sample_rate'])
         else:
@@ -277,6 +280,12 @@ def fft_and_plot_antennas_iq(record_dict, record_info_string, sequence=0, real_o
             ax1.plot(xf, 1.0/len_samples * np.abs(fft_samps), label='{}'.format(antenna))
         else:
             ax2.plot(xf, 1.0/len_samples * np.abs(fft_samps), label='{}'.format(antenna))
+
+        # Plot individual antenna on separate plot
+        if plot_individual:
+            plt.figure(index+2,figsize=((6,2)))
+            plt.plot(xf, 1.0/len_samples * np.abs(fft_samps), label='{}'.format(antenna))
+            plt.title('Antenna ' + str(index))
     ax2.set_xlabel('Hz')  
     return fft_samps, xf, fig
 
