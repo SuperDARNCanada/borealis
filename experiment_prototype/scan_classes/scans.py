@@ -42,7 +42,7 @@ class Scan(ScanClassBase):
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id]['scanbound'] != self.scanbound:
                 errmsg = "Scan boundary not the same between slices {} and {}" \
-                         " for SEQUENCE or CONCURRENT interfaced slices".format(self.slice_ids[0], slice_id)
+                         " for AVEPERIOD or CONCURRENT interfaced slices".format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
 
         # NOTE: for now we assume that when AVEPERIOD combined, the AveragingPeriods of the various slices in the scan
