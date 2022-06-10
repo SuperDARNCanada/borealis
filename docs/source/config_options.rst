@@ -30,13 +30,13 @@ Config Parameters
 |                                         | 11,12,13,14,15          | antennas in the main array           |
 +-----------------------------------------+-------------------------+--------------------------------------+
 | main_antenna_count                      | 16                      | Number of physical main array        |
-|                                         |                         | antennas                             |
+|                                         |                         | antennas, regardless of N200 status  |
 +-----------------------------------------+-------------------------+--------------------------------------+
 | interferometer_antennas                 | 0,1,2,3                 | Mapping of intf rx channels to       |
 |                                         |                         | antennas in the interferometer array |
 +-----------------------------------------+-------------------------+--------------------------------------+
 | interferometer_antenna_count            | 4                       | Number of physical interferometer    |
-|                                         |                         | antennas                             |
+|                                         |                         | antennas, regardless of N200 status  |
 +-----------------------------------------+-------------------------+--------------------------------------+
 | main_antenna_usrp_rx_channels           | 0,2,4,6,8,10,12,14,16,  | UHD channel designation for RX main  |
 |                                         | 18,20,22,24,26,28,30    | antennas                             |
