@@ -1176,19 +1176,6 @@ class ExperimentPrototype(object):
                     if len(seq.slice_ids) > max_num_concurrent_slices:
                         max_num_concurrent_slices = len(seq.slice_ids)
 
-        for stage in self.decimation_scheme.stages:
-            power_2 = 0
-            while 2 ** power_2 < len(stage.filter_taps):
-                power_2 += 1
-            effective_length = 2 ** power_2
-            if effective_length * max_num_concurrent_slices > \
-                    self.options.max_number_of_filter_taps_per_stage:
-                errmsg = "Length of filter taps once zero-padded ({}) in decimation stage {} with" \
-                         " this many slices ({}) is too large for GPU max {}"
-                errmsg = errmsg.format(len(stage.filter_taps), stage.stage_num, self.num_slices,
-                                       self.options.max_number_of_filter_taps_per_stage)
-                raise ExperimentException(errmsg)
-
         if __debug__:
             print("Number of Scan types: {}".format(len(self.__scan_objects)))
             print("Number of AveragingPeriods in Scan #1: {}".format(len(self.__scan_objects[
