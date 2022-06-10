@@ -46,4 +46,4 @@ class TestExperiment(ExperimentPrototype):
         slice_2 = copy.deepcopy(slice_1)
         slice_2['beam_order'] = [0,1,2,3,4,5,6,7] # Only half of the beams, should fail
         self.add_slice(slice_1)
-        self.add_slice(slice_2, interfacing_dict={0:'PULSE'})
+        self.add_slice(slice_2, interfacing_dict={0:'CONCURRENT'})

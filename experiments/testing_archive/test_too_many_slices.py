@@ -76,8 +76,8 @@ class TestExperiment(ExperimentPrototype):
 
         self.add_slice(slice_1)
         self.add_slice(copy.deepcopy(slice_1)) 
-        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'INTTIME'}) 
-        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'INTTIME'}) 
+        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'AVEPERIOD'})
+        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'AVEPERIOD'})
         self.add_slice(copy.deepcopy(slice_1),interfacing_dict={0: 'SCAN'}) 
         slices = []
         max_num_slices = int(eo().max_number_of_filter_taps_per_stage/longest_filter_num_taps)
@@ -85,11 +85,11 @@ class TestExperiment(ExperimentPrototype):
         #    max_num_slices))
         for i in range(max_num_slices):
             slices.append(copy.deepcopy(slice_1))
-            self.add_slice(slices[i], interfacing_dict={0: 'PULSE'})
+            self.add_slice(slices[i], interfacing_dict={0: 'CONCURRENT'})
 
         # Just for fun, add a few INTTIME as well
-        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'INTTIME'}) 
-        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={0: 'INTTIME'}) 
+        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'AVEPERIOD'})
+        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={0: 'AVEPERIOD'})
         
         # Add a bunch of slices that are scan interfaced, shouldn't have an effect
         self.add_slice(copy.deepcopy(slice_1),interfacing_dict={0: 'SCAN'}) 

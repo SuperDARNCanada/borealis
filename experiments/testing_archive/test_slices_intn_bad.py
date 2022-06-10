@@ -49,4 +49,4 @@ class TestExperiment(ExperimentPrototype):
         slice_2['intn'] = 10
         slice_1['intn'] = 9  # Different intn targets, should fail
         self.add_slice(slice_1)
-        self.add_slice(slice_2, interfacing_dict={0:'PULSE'})
+        self.add_slice(slice_2, interfacing_dict={0:'CONCURRENT'})

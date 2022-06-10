@@ -46,10 +46,10 @@ class TestExperiment(ExperimentPrototype):
         }
         self.add_slice(slice_1)
         # Interfacing between slices is not internally consistent. Here we add slice_2 and slice_3,
-        # with PULSE interfacing to slice_1, but then try to interface 2 and 3 together as SCAN.
+        # with CONCURRENT interfacing to slice_1, but then try to interface 2 and 3 together as SCAN.
         slice_2 = copy.deepcopy(slice_1)
         slice_3 = copy.deepcopy(slice_1)
         slice_3['txfreq'] = scf.COMMON_MODE_FREQ_2 + 1
-        self.add_slice(slice_2, interfacing_dict={0:'PULSE'})
-        self.add_slice(slice_3, interfacing_dict={0:'PULSE', 1:'SCAN'})
+        self.add_slice(slice_2, interfacing_dict={0:'CONCURRENT'})
+        self.add_slice(slice_3, interfacing_dict={0:'CONCURRENT', 1:'SCAN'})
 
