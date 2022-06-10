@@ -93,19 +93,19 @@ class AveragingPeriod(ScanClassBase):
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intt'] != self.intt:
-                    errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced and do not have the" \
+                    errmsg = "Slices {} and {} are SEQUENCE or CONCURRENT interfaced and do not have the" \
                              " same Averaging Period duration intt".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
         elif self.intn is not None:
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intn'] != self.intn:
-                    errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced and do not have the" \
+                    errmsg = "Slices {} and {} are SEQUENCE or CONCURRENT interfaced and do not have the" \
                              " same NAVE goal intn".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
 
         for slice_id in self.slice_ids: 
             if len(self.slice_dict[slice_id]['beam_order']) != len(self.slice_dict[self.slice_ids[0]]['beam_order']):
-                errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced but do not have the" \
+                errmsg = "Slices {} and {} are SEQUENCE or CONCURRENT interfaced but do not have the" \
                          " same number of integrations in their beam order" \
                          .format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
@@ -113,7 +113,7 @@ class AveragingPeriod(ScanClassBase):
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 
-        # Determine how this averaging period is made by separating out the INTEGRATION interfaced.
+        # Determine how this averaging period is made by separating out the SEQUENCE interfaced.
         self.nested_slice_list = self.get_sequence_slice_ids()
         self.sequences = []
 
@@ -142,9 +142,9 @@ class AveragingPeriod(ScanClassBase):
 
         integ_combos = []
 
-        # Remove INTEGRATION combos as we are trying to separate those.
+        # Remove SEQUENCE combos as we are trying to separate those.
         for k, interface_type in self.interface.items():  # TODO make example
-            if interface_type == "PULSE":
+            if interface_type == "CONCURRENT":
                 integ_combos.append(list(k))
 
         combos = self.slice_combos_sorter(integ_combos, self.slice_ids)

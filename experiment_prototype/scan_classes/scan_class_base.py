@@ -118,8 +118,8 @@ class ScanClassBase(object):
         """
         Sort keys of a list of combinations so that keys only appear once in the list.
 
-        This function modifes the input list_of_combos so that all slices that are
-        associated are associated in the same list. For example, if input is
+        This function modifies the input list_of_combos so that all slices that are
+        associated, are associated in the same list. For example, if input is
         list_of_combos = [[0,1], [0,2], [0,4], [1,4], [2,4]] and all_keys = [0,1,2,4,5]
         then the output should be [[0,1,2,4], [5]]. This is used to get the slice
         dictionary for nested class instances. In the above example, we would then have
@@ -147,26 +147,28 @@ class ScanClassBase(object):
                 scan_j = scan_i + 1  # j: iterates through the other elements of list_of_combos, to combine them into
                 # the first, i, if they are in fact part of the same scan.
                 while scan_j < len(list_of_combos):
-                    if list_of_combos[scan_i][slice_id_k] == list_of_combos[scan_j][0]:  # if an element (slice_id) inside
-                        # the i scan is the same as a slice_id in the j scan (somewhere further in the list_of_combos),
-                        # then we need to combine that j scan into the i scan. We only need to check the first element
-                        # of the j scan because list_of_combos has been sorted and we know the first slice_id in the scan
-                        # is less than the second slice id.
+                    if list_of_combos[scan_i][slice_id_k] == list_of_combos[scan_j][0]:
+                        # if an element (slice_id) inside the i scan is the same as a slice_id in the j scan (somewhere
+                        # further in the list_of_combos), then we need to combine that j scan into the i scan. We only
+                        # need to check the first element of the j scan because list_of_combos has been sorted and we
+                        # know the first slice_id in the scan is less than the second slice id.
                         add_n_slice_id = list_of_combos[scan_j][1]  # the slice_id to add to the i scan from the j scan.
                         list_of_combos[scan_i].append(add_n_slice_id)
                         # Combine the indices if there are 3+ slices combining in same scan
-                        for m in range(0, len(list_of_combos[scan_i]) - 1):  # if we have added z to scan_i, such that
-                            # scan_i is now [x,y,z], we now have to remove from the list_of_combos list [x,z], and [y,z].
+                        for m in range(0, len(list_of_combos[scan_i]) - 1):
+                            # if we have added z to scan_i, such that scan_i is now [x,y,z], we now have to remove from
+                            # the list_of_combos list [x,z], and [y,z].
                             # If x,z existed as SCAN but y,z did not, we have an error.
+
                             # Try all values in list_of_combos[i] except the last value, which is = to add_n.
                             try:
                                 list_of_combos.remove([list_of_combos[scan_i][m], add_n_slice_id])
                                 # list_of_combos[j][1] is the known last value in list_of_combos[i]
                             except ValueError:
-                                # This error would occur if e.g. you had set [x,y] and [x,z] to PULSE but [y,z] to
+                                # This error would occur if e.g. you had set [x,y] and [x,z] to CONCURRENT but [y,z] to
                                 # SCAN. This means that we couldn't remove the scan_combo y,z from the list because it
-                                # was not added to list_of_combos because it wasn't a scan type, so the interfacing would
-                                # not make sense (conflict).
+                                # was not added to list_of_combos because it wasn't a scan type, so the interfacing
+                                # would not make sense (conflict).
                                 errmsg = 'Interfacing not Valid: exp_slice {} and exp_slice {} are combined in-scan and do not \
                                     interface the same with exp_slice {}'.format(
                                     list_of_combos[scan_i][m],
@@ -175,14 +177,14 @@ class ScanClassBase(object):
                                 raise ExperimentException(errmsg)
                         scan_j = scan_j - 1
                         # This means that the former list_of_combos[j] has been deleted and there are new values at
-                        #   index j, so decrement before incrementing in while.
+                        #   index j, so decrement before incrementing in the while loop.
                         # The above for loop will delete more than one element of list_of_combos (min 2) but the
                         # while scan_j < len(list_of_combos) will reevaluate the length of list_of_combos.
                     scan_j = scan_j + 1
                 slice_id_k = slice_id_k + 1  # if interfacing has been properly set up, the loop will only ever find
-                # elements to add to scan_i when slice_id_k = 0. If there were errors though (ex. x,y and y,z = PULSE
-                # but x,z did not) then iterating through the slice_id elements will allow us to find the
-                # error.
+                # elements to add to scan_i when slice_id_k = 0. If there were errors though
+                # (ex. x,y and y,z = CONCURRENT but x,z did not) then iterating through the slice_id elements will allow
+                # us to find the error.
             scan_i = scan_i + 1  # At this point, all elements in the just-finished scan_i will not be found anywhere
             #  else in list_of_combos.
 
