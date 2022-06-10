@@ -105,5 +105,5 @@ class FullScanStepMode(ExperimentPrototype):
         self.add_slice(slices[0])
         interfacing_dict = {}
         for i in range(1, len(slices)):
-            interfacing_dict[i-1] = 'INTTIME'
+            interfacing_dict[i-1] = 'AVEPERIOD'
             self.add_slice(slices[i], interfacing_dict=interfacing_dict)
