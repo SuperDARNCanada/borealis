@@ -63,25 +63,25 @@ from highest level to lowest level:
 
    There are no requirements for slices interfaced in this manner.
 
-2. **INTTIME**
+2. **AVEPERIOD**
 
-   This type of interfacing allows for one slice to run its integration period (also known as integration time or averaging period), before switching to another slice's integration period. This type of interface effectively creates an interleaving scan where the scans for multiple slices are run 'at the same time', by interleaving the integration times.
+   This type of interfacing allows for one slice to run its averaging period (also known as integration time or integration period), before switching to another slice's integration period. This type of interface effectively creates an interleaving scan where the scans for multiple slices are run 'at the same time', by interleaving the averaging periods.
    
    Slices which are interfaced in this manner must share:  
     - the same SCANBOUND value.
 
-3. **INTEGRATION**
+3. **SEQUENCE**
    
-   Integration interfacing allows for pulse sequences defined in the slices to alternate between each other within a single integration period. It's important to note that data from a single slice is averaged only with other data from that slice. So in this case, the integration period is running two slices and can produce two averaged datasets, but the sequences (integrations) within the integration period are interleaved.
+   SEQUENCE interfacing allows for pulse sequences defined in the slices to alternate between each other within a single averaging period. It's important to note that data from a single slice is averaged only with other data from that slice. So in this case, the averaging period is running two slices and can produce two averaged datasets, but the sequences within the averaging period are interleaved.
    
    Slices which are interfaced in this manner must share:  
     - the same SCANBOUND value.
     - the same INTT or INTN value.
     - the same BEAM_ORDER length (scan length)
 
-4. **PULSE**
+4. **CONCURRENT**
    
-   Pulse interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences layered together so that the data transmits at the same time. For example, slices of different frequencies can be mixed simultaneously, and slices of different pulse sequences can also run together at the cost of having more blanked samples. When slices are interfaced in this way the radar is truly transmitting and receiving the slices simultaneously.
+   CONCURRENT interfacing allows for pulse sequences to be run together concurrently. Slices will have their pulse sequences layered together so that the data transmits at the same time. For example, slices of different frequencies can be mixed simultaneously, and slices of different pulse sequences can also run together at the cost of having more blanked samples. When slices are interfaced in this way the radar is truly transmitting and receiving the slices simultaneously.
    
    Slices which are interfaced in this manner must share:  
     - the same SCANBOUND value.
@@ -94,15 +94,15 @@ Slice Interfacing Examples
 Let's look at some examples of common experiments that can easily be separated into multiple slices. 
 In these examples, the ⟳ means that the averaging period is repeated multiple times in a scan, and the different slices are colour coded.
 
-In a CUTLASS-style experiment, the pulse in the sequence is actually two pulses of differing transmit frequency. This is a 'quasi'-simultaneous multi-frequency experiment where the frequency changes in the middle of the pulse. To build this experiment, two slices can be PULSE interfaced. The pulses from both slices are combined into a single set of transmitted samples for that sequence and samples received from those sequences are used for both slices (filtering the raw data separates the frequencies). 
+In a CUTLASS-style experiment, the pulse in the sequence is actually two pulses of differing transmit frequency. This is a 'quasi'-simultaneous multi-frequency experiment where the frequency changes in the middle of the pulse. To build this experiment, two slices can be CONCURRENT interfaced. The pulses from both slices are combined into a single set of transmitted samples for that sequence and samples received from those sequences are used for both slices (filtering the raw data separates the frequencies).
 
 .. image:: img/cutlass.png
    :width: 800px
    :alt: CUTLASS-style experiment slice interfacing 
    :align: center
 
-In a themisscan experiment, a single beam is interleaved with a full scan. The beam_order can be unique to different slices, and these slices could be INTTIME interfaced to separate the camping beam data from the full scan,
-if desired. With INTTIME interfacing, one averaging period of one slice will be followed by an averaging period of another, and so on. The averaging periods are interleaved. The resulting experiment runs beams 0, 7, 1, 7, etc. 
+In a themisscan experiment, a single beam is interleaved with a full scan. The beam_order can be unique to different slices, and these slices could be AVEPERIOD interfaced to separate the camping beam data from the full scan,
+if desired. With AVEPERIOD interfacing, one averaging period of one slice will be followed by an averaging period of another, and so on. The averaging periods are interleaved. The resulting experiment runs beams 0, 7, 1, 7, etc.
 
 .. image:: img/themisscan.png
    :width: 800px
@@ -118,7 +118,7 @@ followed by a full scan of slice 1, and then the process repeats.
    :align: center
 
 
-Here's a theoretical example showing all types of interfacing. In this example, slices 0 and 1 are PULSE interfaced. Slices 0 and 2 are INTEGRATION interfaced. Slices 0 and 3 are INTTIME interfaced. Slices 0 and 4 are SCAN interfaced.
+Here's a theoretical example showing all types of interfacing. In this example, slices 0 and 1 are CONCURRENT interfaced. Slices 0 and 2 are SEQUENCE interfaced. Slices 0 and 3 are AVEPERIOD interfaced. Slices 0 and 4 are SCAN interfaced.
 
 .. image:: img/one-experiment-all-interfacing-types.png
    :width: 800px
@@ -308,19 +308,19 @@ rx_main_antennas *defaults*
     given max number from config.
 
 scanbound *defaults*
-    A list of seconds past the minute for integration times in a scan to align to. Defaults
+    A list of seconds past the minute for averaging periods in a scan to align to. Defaults
     to None, not required. If you set this, you will want to ensure that there is a slightly 
     larger amount of time in the scan boundaries than the integration time set for the slice. 
     For example, if you want to align integration times at the 3 second marks, you may want to
     have a set integration time of ~2.9s to ensure that the experiment will start on time. 
-    Typically 50ms difference will be enough. This is especially important for the last integration
-    time in the scan, as the experiment will always wait for the next scan start boundary
+    Typically 50ms difference will be enough. This is especially important for the last averaging
+    period in the scan, as the experiment will always wait for the next scan start boundary
     (potentially causing a minute of downtime). You could also just leave a small amount
     of downtime at the end of the scan.
 
 seqoffset *defaults*
     offset in us that this slice's sequence will begin at, after the start of the sequence.
-    This is intended for PULSE interfacing, when you want multiple slices' pulses in one sequence
+    This is intended for CONCURRENT interfacing, when you want multiple slices' pulses in one sequence
     you can offset one slice's sequence from the other by a certain time value so as to not run both
     frequencies in the same pulse, etc. Default is 0 offset.
 
