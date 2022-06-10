@@ -81,6 +81,11 @@ DriverOptions::DriverOptions() {
         return channels;
     };
 
+    auto ma_channel_str = config_pt.get<std::string>("main_antennas");
+    auto ia_channel_str = config_pt.get<std::string>("interferometer_antennas");
+    main_antennas_ = make_channels(ma_channel_str);
+    interferometer_antennas_ = make_channels(ia_channel_str);
+
     auto ma_recv_str = config_pt.get<std::string>("main_antenna_usrp_rx_channels");
     auto ia_recv_str = config_pt.get<std::string>("interferometer_antenna_usrp_rx_channels");
     auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
@@ -203,9 +208,19 @@ double DriverOptions::get_agc_signal_read_delay() const
     return agc_signal_read_delay_;
 }
 
+std::vector<size_t> DriverOptions::get_main_antennas() const
+{
+    return main_antennas_;
+}
+
 uint32_t DriverOptions::get_main_antenna_count() const
 {
     return main_antenna_count_;
+}
+
+std::vector<size_t> DriverOptions::get_interferometer_antennas() const
+{
+    return interferometer_antennas_;
 }
 
 uint32_t DriverOptions::get_interferometer_antenna_count() const

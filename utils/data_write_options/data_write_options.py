@@ -42,6 +42,8 @@ class DataWriteOptions(object):
         self._router_address = raw_config["router_address"]
         self._main_antenna_count = int(raw_config["main_antenna_count"])
         self._intf_antenna_count = int(raw_config["interferometer_antenna_count"])
+        self._main_antennas = [int(i) for i in raw_config["main_antennas"].split(',')]
+        self._intf_antennas = [int(i) for i in raw_config["interferometer_antennas"].split(',')]
 
     @property
     def rt_to_dw_identity(self):
@@ -193,6 +195,28 @@ class DataWriteOptions(object):
         """
 
         return self._intf_antenna_count
+
+    @property
+    def main_antennas(self):
+        """
+        Gets the index of antennas in the main array corresponding to the transceiver channels.
+
+        :return:    indices of transceiver channels mapped to antennas in main array.
+        :rtype:     list[int]
+        """
+
+        return self._main_antennas
+
+    @property
+    def intf_antennas(self):
+        """
+        Gets the index of antennas in the interferometer array corresponding to the receiver channels.
+
+        :return:    indices of receiver channels mapped to antennas in interferometer array.
+        :rtype:     list[int]
+        """
+
+        return self._intf_antennas
 
 if __name__ == '__main__':
     DataWriteOptions()

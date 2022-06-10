@@ -3,15 +3,35 @@
 #include <boost/range/algorithm_ext/erase.hpp>
 #include <boost/lexical_cast.hpp>
 #include <string>
+#include <regex>
 #include "utils/options/options.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 
+std::vector<uint32_t> split(const std::string str, const std::string regex_str)
+{
+    std::regex re(regex_str);
+    std::vector<std::string> str_list(
+    std::sregex_token_iterator(str.begin(), str.end(), re, -1),
+    std::sregex_token_iterator()
+  );
+
+  std::vector<uint32_t> int_list;
+  for (auto& item: str_list) {
+    int_list.push_back(boost::lexical_cast<uint32_t>(item));
+  }
+
+  return int_list;
+}
 
 SignalProcessingOptions::SignalProcessingOptions() {
   Options::parse_config_file();
 
+  std::string main_antenna_list = config_pt.get<std::string>("main_antennas");
+  main_antennas = split(main_antenna_list, ",");
   main_antenna_count = boost::lexical_cast<uint32_t>(
                 config_pt.get<std::string>("main_antenna_count"));
+  std::string interferometer_antenna_list = config_pt.get<std::string>("interferometer_antennas");
+  interferometer_antennas = split(interferometer_antenna_list, ",");
   interferometer_antenna_count = boost::lexical_cast<uint32_t>(
                 config_pt.get<std::string>("interferometer_antenna_count"));
   router_address = config_pt.get<std::string>("router_address");
@@ -29,11 +49,19 @@ SignalProcessingOptions::SignalProcessingOptions() {
   dw_dsp_identity = config_pt.get<std::string>("dw_to_dsp_identity");
   ringbuffer_name = config_pt.get<std::string>("ringbuffer_name");
 }
-
+std::vector<uint32_t> SignalProcessingOptions::get_main_antennas() const
+{
+  return main_antennas;
+}
 
 uint32_t SignalProcessingOptions::get_main_antenna_count() const
 {
   return main_antenna_count;
+}
+
+std::vector<uint32_t> SignalProcessingOptions::get_interferometer_antennas() const
+{
+  return interferometer_antennas;
 }
 
 uint32_t SignalProcessingOptions::get_interferometer_antenna_count() const

@@ -49,6 +49,7 @@ typedef struct rx_slice
   float first_range; // km
   float range_sep; // km
   uint32_t tau_spacing; // us
+  std::vector<std::string> antenna_names;
 
   struct lag
   {
@@ -79,7 +80,8 @@ typedef struct rx_slice
 class DSPCore {
  public:
   void cuda_postprocessing_callback(uint32_t total_antennas,
-                                            uint32_t num_samples_rf,
+                                            std::vector<std::string> antenna_strings,
+		  			    uint32_t num_samples_rf,
                                             std::vector<uint32_t> samples_per_antenna,
                                             std::vector<uint32_t> total_output_samples);
   void initial_memcpy_callback();
@@ -111,6 +113,7 @@ class DSPCore {
   void allocate_output(uint32_t num_output_samples);
   std::vector<std::vector<float>> get_filter_taps();
   uint32_t get_num_antennas();
+  std::vector<std::string> get_antenna_names();
   float get_total_timing();
   float get_decimate_timing();
   void allocate_and_copy_host(uint32_t num_output_samples, cuComplex *output_d);
@@ -212,6 +215,9 @@ class DSPCore {
 
   //! The number of total antennas.
   uint32_t num_antennas;
+
+  //! The name of each antenna.
+  std::vector<std::string> antenna_names;
 
   //! The number of rf samples per antenna.
   uint32_t num_rf_samples;
