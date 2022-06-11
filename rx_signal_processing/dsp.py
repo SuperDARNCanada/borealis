@@ -234,7 +234,7 @@ class DSP(object):
             values_for_slice = correlated[s['slice_num'], :, row, column]
 
             # [num_range_gates, num_lags, num_beams]
-            values_for_slice = np.einsum('ijk,j->kij', values_for_slice, s['lag_phase_offsets'])
+            values_for_slice = np.einsum('ijk->kij', values_for_slice)
 
             values.append(values_for_slice)
 
