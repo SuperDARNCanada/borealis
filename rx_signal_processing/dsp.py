@@ -149,7 +149,7 @@ class DSP(object):
         output_samples = xp.zeros((num_slices, num_antennas, num_samps), dtype=xp.complex64)
 
         # array to store input_samples in for each FFT
-        x_k = np.zeros(fft_dims, dtype=xp.complex64)
+        x_k = xp.zeros(fft_dims, dtype=xp.complex64)
 
         # CUDA optimizes multiple FFTs, so we get the samples ready for each FFT in one array.
         for i in range(num_blocks):
@@ -172,7 +172,7 @@ class DSP(object):
         num_remaining = num_samps - (num_blocks * step_size - overlap)
         fft_dims[-1] = num_remaining + overlap - 1
         fft_dims.pop(-2)  # Get rid of num_blocks dimension - will be 1 for this last block
-        x_k = np.zeros(fft_dims, dtype=input_samples.dtype)
+        x_k = xp.zeros(fft_dims, dtype=input_samples.dtype)
         x_k[..., 0:num_remaining] = input_samples[..., -num_remaining:]
         samples_freq_domain = xp.fft.fft(x_k)
         filters_freq_domain = xp.fft.fft(filters, n=num_remaining + overlap - 1)
