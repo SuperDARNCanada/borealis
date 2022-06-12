@@ -1087,7 +1087,7 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
         kn[i] = (fov_left_bound + (fov_right_bound - fov_left_bound) * mag) * k0
         element_phases[i+1] = element_phases[i] + kn[i] * antenna_spacing_m
 
-    return element_phases, amplitude_taper
+    return element_phases * 180 / np.pi, amplitude_taper
 
 
 def calculate_circular_phase(frequency_hz, antenna_spacing_m, num_antennas):
