@@ -13,6 +13,8 @@ Copyright 2020 SuperDARN Canada
 import argparse
 import sys
 import math
+import numpy as np
+import scipy.signal.windows as windows
 
 # Used to calculate the minimum number of segments per wire structure
 from bisect import bisect
@@ -1049,56 +1051,43 @@ def calculate_parabolic_phase(frequency_hz, antenna_spacing_m, num_antennas):
     raise NotImplementedError("Parabolic phase not implemented yet")
 
 
-# TODO: Doesn't seem to be working properly... need to debug
-def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas, num_sub_arrays=4):
+def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
     """
-    Calculate a broadened beam array of phases for the antennas. The resulting beam will be
-    broadened by a factor of (num_sub_arrays)^2. See "Beam Broadening for Phased Antenna Arrays
-    using Multi-beam Subarrays" by Sridhar Rajagopal - Dallas Technology Lab. via IEEE explore.
+    Calculate a broadened beam array of phases for the antennas. See "Revisiting a Method of Beam Shaping
+    Using Phase Weights" by Mark Leifer, 2016 - Ball Aerospace & Technologies Corp. via IEEE Xplore
 
     :param frequency_hz: Frequency in Hz
     :param antenna_spacing_m: Antenna spacing in meters
     :param num_antennas: How many antennas in the array
-    :param num_sub_arrays: How many sub-arrays to use
     :return: Array containing appropriate phases for a broadened beam.
-    :raises ValueError: When the number of sub-arrays is not a multiple of 2
     """
-    # Sub arrays needs to be a multiple of 2
-    if num_sub_arrays % 2 != 0:
-        raise ValueError("Number of sub-arrays needs to be a multiple of 2")
+    # Apply an amplitude taper across the elements of the array.
+    amplitude_taper = windows.hamming(num_antennas)
 
-    sub_array_azimuths = []
-    # Calculate optimal sub-array beam directions
-    # for m in range(-num_sub_arrays/2, num_sub_arrays/2):
-    wavelength_m = speed_of_light / float(frequency_hz)
-    for m in range(0, int(num_sub_arrays / 2)):
-        # sub_array_azimuths.append(math.acos(m*wavelength_m/(8.0 * antenna_spacing_m)))
-        acos_arg = (2 * m + 1) * wavelength_m * num_sub_arrays / \
-                   (2 * num_antennas * antenna_spacing_m)
-        print(m, acos_arg)
-        sub_array_azimuths.append(math.acos(acos_arg) - math.pi / 2.0)
-        # sub_array_azimuths.append(-math.acos(m * wavelength_m / (8.0 * antenna_spacing_m)))
-    # k = 2pi/lambda
-    # d = antenna array spacing
-    # M is number of subarrays
-    # N is total elements
-    # Ns is # elements per subarray = N/M
-    #  acos[+/-(2m + 1) * pi / kdNs] => acos[+/- (2m+1) * lambda * M/ 2*d*N]
-    # print("Sub array azimuth values\n{}".format(sub_array_azimuths))
-    # print("Sub array azimuth values degrees\n{}".format([(x * 180.0 / math.pi)
-    # for x in sub_array_azimuths]))
+    # Normalize by the square of the element amplitudes
+    normalization = np.dot(amplitude_taper, amplitude_taper)
+    normalized_taper = amplitude_taper / np.sqrt(normalization)
 
-    # Calculate the phases of each sub-array
-    element_phases = []
-    elements_per_sub_array = num_antennas / num_sub_arrays
-    for m in range(0, int(num_sub_arrays / 2)):
-        prev_phase = 0
-        temp_phase = 360.0 * antenna_spacing_m * math.sin(sub_array_azimuths[m]) / wavelength_m
-        for n in range(0, elements_per_sub_array):
-            element_phases.append(temp_phase + prev_phase)
-            prev_phase = element_phases[-1]
-    element_phases += list(reversed(element_phases))
-    return element_phases
+    # Get the cumulative sum across the array, starting from the left-most element
+    normalized_taper_cumsum = np.cumsum(normalized_taper * normalized_taper)
+
+    wavelength = speed_of_light / frequency_hz
+
+    fov_left_bound = -24.3 * np.pi / 180    # Left bound of FOV in radians CW of boresight
+    fov_right_bound = 24.3 * np.pi / 180    # Right bound of FOV in radians CW of boresight
+
+    k0 = 2 * np.pi / wavelength   # Wave number
+
+    # Initialize some arrays
+    kn = np.zeros(num_antennas - 1)
+    element_phases = np.zeros(num_antennas)
+
+    # Calculate the phase difference between adjacent elements, assuming the leftmost element has phase 0
+    for i, mag in enumerate(normalized_taper_cumsum[:-1]):
+        kn[i] = (fov_left_bound + (fov_right_bound - fov_left_bound) * mag) * k0
+        element_phases[i+1] = element_phases[i] + kn[i] * antenna_spacing_m
+
+    return element_phases, amplitude_taper
 
 
 def calculate_circular_phase(frequency_hz, antenna_spacing_m, num_antennas):
@@ -1214,8 +1203,8 @@ if __name__ == '__main__':
                                                         "* Not implemented *", action="store_true")
     parser.add_argument("-c", "--circular_phase", help="Use a circular phase distribution  "
                                                        "* Not implemented *", action="store_true")
-    parser.add_argument("-B", "--broadened_beam", help="Use a broadened beam phase distribution  "
-                                                       "* Not implemented *", action="store_true")
+    parser.add_argument("-B", "--broadened_beam", help="Use a broadened beam phase distribution",
+                        action="store_true")
     args = parser.parse_args()
 
     if args.output_file is not None:
@@ -1267,16 +1256,16 @@ if __name__ == '__main__':
         int_antenna_phases = calculate_parabolic_phase(args.frequency * 1e6, args.antenna_spacing,
                                                        args.int_antennas)
     elif args.broadened_beam:
-        antenna_phases = calculate_broadened_phase(args.frequency * 1e6, args.antenna_spacing,
-                                                   args.antennas, num_sub_arrays=4)
-        int_antenna_phases = calculate_broadened_phase(args.frequency * 1e6, args.antenna_spacing,
-                                                       args.int_antennas, num_sub_arrays=2)
-        for m_ant in range(0, args.antennas):
-            antenna_magnitudes.append(1)
-            # if m_ant in antennas_down or m_ant in receivers_down:
-            #     antenna_magnitudes.append(0)
-            # else:
-            #     antenna_magnitudes.append(1)
+        antenna_phases, antenna_magnitudes = calculate_broadened_phase(args.frequency * 1e6, args.antenna_spacing,
+                                                                       args.antennas)
+        int_antenna_phases, _ = calculate_broadened_phase(args.frequency * 1e6, args.antenna_spacing,
+                                                          args.int_antennas)
+        # for m_ant in range(0, args.antennas):
+        #     antenna_magnitudes.append(1)
+        #     if m_ant in antennas_down or m_ant in receivers_down:
+        #         antenna_magnitudes.append(0)
+        #     else:
+        #         antenna_magnitudes.append(1)
 
         for i_ant in range(0, args.int_antennas):
             int_antenna_magnitudes.append(0)
