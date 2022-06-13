@@ -260,7 +260,7 @@ class Sequence(ScanClassBase):
             # Look at each possible pair of pulses in this combined pulse
             for i in range(num_pulses):
                 pulse_1 = combined_pulse['component_info'][i]
-                for j in range(i+1, num_pulses):
+                for j in range(i + 1, num_pulses):
                     pulse_2 = combined_pulse['component_info'][j]
                     if pulse_1['slice_id'] == pulse_2['slice_id']:
                         # This is possible if pulses overlap like 1 -> 2 -> 1, so that 1 doesn't
