@@ -41,6 +41,7 @@ A lowpass filtering CUDA kernel is similar in operation, however since there is 
    :glob:
 
    frerking.rst
+   dsp_chain_in_detail.rst
    file/dsp_8cu.rst
    file/dsp_8hpp.rst
    file/decimate_8cu.rst

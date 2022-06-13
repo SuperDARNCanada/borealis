@@ -166,7 +166,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         :param first_rx_sample_start: The sample where the first rx sample will start relative to the
              tx data.
         :param main_antenna_count: number of main array antennas, from the config file.
-        :param rxctrfreq: the center frequency of receiving, to send the translation frequency from center to dsp.
+        :param rxctrfreq: the center frequency of receiving.
         :param pulse_phase_offsets: Phase offsets (degrees) applied to each pulse in the sequence
         :param decimation_scheme: object of type DecimationScheme that has all decimation and
              filtering data.
@@ -181,6 +181,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
     packet.offset_to_first_rx_sample = first_rx_sample_start
     packet.rxrate = rxrate
     packet.output_sample_rate = output_sample_rate
+    packet.rxctrfreq = rxctrfreq * 1.0e3
 
     if decimation_scheme is not None:
         for stage in decimation_scheme.stages:
@@ -196,11 +197,11 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         chan_add.tau_spacing = slice_dict[slice_id]['tau_spacing']  # us
         # send the translational frequencies to dsp in order to bandpass filter correctly.
         if slice_dict[slice_id]['rxonly']:
-            chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['rxfreq'] * 1.0e3
+            chan_add.rxfreq = slice_dict[slice_id]['rxfreq'] * 1.0e3
         elif slice_dict[slice_id]['clrfrqflag']:
             pass  # TODO - get freq from clear frequency search.
         else:
-            chan_add.rxfreq = (rxctrfreq * 1.0e3) - slice_dict[slice_id]['txfreq'] * 1.0e3
+            chan_add.rxfreq = slice_dict[slice_id]['txfreq'] * 1.0e3
         chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
         chan_add.first_range = slice_dict[slice_id]['first_range']
         chan_add.range_sep = slice_dict[slice_id]['range_sep']

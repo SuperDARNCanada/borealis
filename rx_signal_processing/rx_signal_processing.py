@@ -168,6 +168,7 @@ def main():
         rx_rate = np.float64(sp_packet.rxrate)
         output_sample_rate = np.float64(sp_packet.output_sample_rate)
         first_rx_sample_off = sp_packet.offset_to_first_rx_sample
+        rx_center_freq = sp_packet.rxctrfreq
 
         processed_data = processeddata_pb2.ProcessedData()
 
@@ -186,7 +187,11 @@ def main():
         for i,chan in enumerate(sp_packet.rxchannel):
             detail = {}
 
-            mixing_freqs.append(chan.rxfreq)
+            # This is the negative of what you would normally expect (i.e. -1 * offset of rxfreq from center freq)
+            # because the filter taps do not get flipped when convolving. I.e. we do the cross-correlation instead of
+            # convolution, to save some computational complexity from flipping the filter sequence.
+            # It works out to the same result.
+            mixing_freqs.append(rx_center_freq - chan.rxfreq)
 
             detail['slice_id'] = chan.slice_id
             detail['slice_num'] = i

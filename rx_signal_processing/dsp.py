@@ -75,10 +75,16 @@ class DSP(object):
         """
         Creates and shapes the filters arrays using the original sets of filter taps. The first
         stage filters are mixed to bandpass and the low pass filters are reshaped.
+        The filters coefficients are typically symmetric, with the exception of the first-stage bandpass
+        filters. As a result, the mixing frequency should be the negative of the frequency that is actually
+        being extracted. For example, with 12 MHz center frequency and a 10.5 MHz transmit frequency,
+        the mixing frequency should be 1.5 MHz.
 
         :param      filter_taps:   The filters taps from the experiment decimation scheme.
         :type       filter_taps:   list
-        :param      mixing_freqs:  The frequencies used to mix the first stage filter for bandpass.
+        :param      mixing_freqs:  The frequencies used to mix the first stage filter for bandpass. Calculated
+                                   as (center freq - rx freq), as filter coefficients are cross-correlated with
+                                   samples instead of convolved.
         :type       mixing_freqs:  list
         :param      rx_rate:       The rf rx rate.
         :type       rx_rate:       float
@@ -101,7 +107,7 @@ class DSP(object):
     def apply_bandpass_decimate(self, input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate):
         """
         Apply a Frerking bandpass filter to the input samples. Several different frequencies can
-        be centered on at simultateously. Downsampling is done in parallel via a strided window
+        be centered on simultaneously. Downsampling is done in parallel via a strided window
         view of the input samples.
 
         :param      input_samples:  The input raw rf samples for each antenna.
@@ -276,7 +282,6 @@ def quick_test(n):
         signal += np.exp(2j * np.pi * f / F_s * s).astype(np.complex64)
 
     signals = xp.array(np.repeat(signal[np.newaxis, :], 20, axis=0))
-
     details = [{"num_range_gates": 75,
                 "first_range_off": 4,
                 "slice_num": 0,
@@ -314,6 +319,7 @@ def quick_test(n):
             x = xp.asnumpy(processed_samples)
         else:
             x = processed_samples
+
         b = time.time()
         average_time[i] = (b - a) * 1000
         print(f'time: {average_time[i]} ms')
@@ -322,7 +328,8 @@ def quick_test(n):
     print(f'average time: {tsum} ms')
 
     # fft_and_plot(x[0][0], F_s)
-
+    # print((b-a) * 1000)
+    # fft_and_plot(x[2][0], F_s)
 
 if __name__ == '__main__':
     #import os
