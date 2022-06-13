@@ -118,8 +118,8 @@ class ScanClassBase(object):
         """
         Sort keys of a list of combinations so that keys only appear once in the list.
 
-        This function modifies the input list_of_combos so that all slices that are
-        associated, are associated in the same list. For example, if input is
+        This function modifies the input list_of_combos so that all associated
+        slices are in the same list. For example, if input is
         list_of_combos = [[0,1], [0,2], [0,4], [1,4], [2,4]] and all_keys = [0,1,2,4,5]
         then the output should be [[0,1,2,4], [5]]. This is used to get the slice
         dictionary for nested class instances. In the above example, we would then have
