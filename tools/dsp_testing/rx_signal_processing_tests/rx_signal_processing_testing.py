@@ -73,6 +73,20 @@ def save_to_file(slice_details, data_outputs):
 
 
 def make_samples(mixing_freqs, rx_rate, extra_samples, num_channels):
+    """
+    Creates a simulated sequence worth of data samples for processing.
+
+    Parameters
+    ----------
+    mixing_freqs: list
+        List of mixing frequencies in Hz
+    rx_rate: float
+        Sampling rate in Hz
+    extra_samples: int
+        Number of extra samples before first pulse.
+    num_channels: int
+        Number of receive channels.
+    """
     num_samples = 451500
     tau_spacing_us = 2400
     pulse_length_us = 300
@@ -331,17 +345,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
