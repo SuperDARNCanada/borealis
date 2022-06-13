@@ -76,16 +76,11 @@ def make_samples(mixing_freqs, rx_rate, extra_samples, num_channels):
     """
     Creates a simulated sequence worth of data samples for processing.
 
-    Parameters
-    ----------
-    mixing_freqs: list
-        List of mixing frequencies in Hz
-    rx_rate: float
-        Sampling rate in Hz
-    extra_samples: int
-        Number of extra samples before first pulse.
-    num_channels: int
-        Number of receive channels.
+    :param mixing_freqs: List of mixing frequencies in Hz
+    :param rx_rate: Sampling rate in Hz. Float
+    :param extra_samples: Number of extra samples before first pulse. Int
+    :param num_channels: Number of receive channels. Int
+    :return: np.ndarray of size (num_channels, num_samples)
     """
     num_samples = 451500
     tau_spacing_us = 2400
