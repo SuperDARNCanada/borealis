@@ -42,13 +42,13 @@ class Scan(ScanClassBase):
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id]['scanbound'] != self.scanbound:
                 errmsg = "Scan boundary not the same between slices {} and {}" \
-                         " for INTTIME or PULSE interfaced slices".format(self.slice_ids[0], slice_id)
+                         " for AVEPERIOD or CONCURRENT interfaced slices".format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
 
-        # NOTE: for now we assume that when INTTIME combined, the AveragingPeriods of the various slices in the scan are
-        #   just interleaved 1 then the other.
+        # NOTE: for now we assume that when AVEPERIOD combined, the AveragingPeriods of the various slices in the scan
+        # are just interleaved 1 then the other.
 
-        # Create a dictionary of beam directions for slice_id #
+        # Create a dictionary of beam directions for slice_id
         self.beamdir = {}
         self.scan_beams = {}
         for slice_id in self.slice_ids:
@@ -100,20 +100,20 @@ class Scan(ScanClassBase):
         intt_combos = []
 
         for k, interface_value in self.interface.items():
-            if (interface_value == "PULSE" or interface_value == "INTEGRATION"):
+            if interface_value == "CONCURRENT" or interface_value == "SEQUENCE":
                 intt_combos.append(list(k))
         # Inside the scan, we have a subset of the interface dictionary including all combinations
-        # of slice_id that are included in this Scan instance. They could be interfaced INTTIME,
-        # INTEGRATION, or PULSE. We want to remove all of the INTTIME combinations as we want to
-        # eventually have a list of lists (combos) that is of length = # of INTTIMEs in the scan,
-        # with all slices included in the inttimes inside the inner lists.
+        # of slice_id that are included in this Scan instance. They could be interfaced AVEPERIOD,
+        # SEQUENCE, or CONCURRENT. We want to remove all of the AVEPERIOD combinations as we want to
+        # eventually have a list of lists (combos) that is of length = # of AVEPERIODs in the scan,
+        # with all slices included in the averaging periods inside the inner lists.
 
-        # TODO make example and diagram
+        # TODO(Remington): make example and diagram
 
         combos = self.slice_combos_sorter(intt_combos, self.slice_ids)
 
         if __debug__:
-            print("Inttime slice id list: {}".format(combos))
+            print("AvePeriod slice id list: {}".format(combos))
 
         return combos
 
@@ -136,7 +136,7 @@ class Scan(ScanClassBase):
         # Add the beam order and beam direction information that is necessary for
         # AveragingPeriods specifically.
         for params, inttime_list in zip(params_list, self.nested_slice_list):
-            # Make sure the number of inttimes (as determined by length of slice['scan']
+            # Make sure the number of averaging periods (as determined by length of slice['scan'])
             # is the same for slices combined in the averaging period.
             self.nested_beamorder = {}
             self.nested_beamdir = {}

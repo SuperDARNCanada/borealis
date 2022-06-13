@@ -185,10 +185,10 @@ testing_archive.test_taps_not_list::Filter taps .* of type .* must be a list in 
 testing_archive.test_taps_not_nums::Filter tap .* is not numeric in decimation stage .*
 
 # **** The following 2 tests are from AveragingPeriod class, __init__() method ****
-testing_archive.test_slices_intt_bad::Slices .* and .* are INTEGRATION or PULSE interfaced and do not have the same Averaging Period duration intt
-testing_archive.test_slices_intn_bad::Slices .* and .* are INTEGRATION or PULSE interfaced and do not have the same NAVE goal intn
-testing_archive.test_slices_beam_order_bad::Slices .* and .* are INTEGRATION or PULSE interfaced but do not have the same number of integrations in their beam order
+testing_archive.test_slices_intt_bad::Slices .* and .* are SEQUENCE or CONCURRENT interfaced and do not have the same Averaging Period duration intt
+testing_archive.test_slices_intn_bad::Slices .* and .* are SEQUENCE or CONCURRENT interfaced and do not have the same NAVE goal intn
+testing_archive.test_slices_beam_order_bad::Slices .* and .* are SEQUENCE or CONCURRENT interfaced but do not have the same number of integrations in their beam order
 
 # **** The following test is from Scan class, __init__() method ****
-testing_archive.test_slices_scanbound_bad::Scan boundary not the same between slices .* and .* for INTTIME or PULSE interfaced slices
+testing_archive.test_slices_scanbound_bad::Scan boundary not the same between slices .* and .* for AVEPERIOD or CONCURRENT interfaced slices
 

@@ -107,7 +107,7 @@ class Epopsound(ExperimentPrototype):
         self.add_slice(slices[0])
         if len(slices) > 1:
             for a_slice in slices[1:]:
-                self.add_slice(a_slice, interfacing_dict={0: 'INTTIME'})
+                self.add_slice(a_slice, interfacing_dict={0: 'AVEPERIOD'})
 
         if marker_period > 0:
             # get the marker slice
