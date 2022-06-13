@@ -65,7 +65,7 @@ from highest level to lowest level:
 
 2. **AVEPERIOD**
 
-   This type of interfacing allows for one slice to run its averaging period (also known as integration time or integration period), before switching to another slice's integration period. This type of interface effectively creates an interleaving scan where the scans for multiple slices are run 'at the same time', by interleaving the averaging periods.
+   AVEPERIOD interfacing allows for one slice to run its averaging period (also known as integration time or integration period), before switching to another slice's averaging period. This type of interface effectively creates an interleaving scan where the scans for multiple slices are run 'at the same time', by interleaving the averaging periods.
    
    Slices which are interfaced in this manner must share:  
     - the same SCANBOUND value.
