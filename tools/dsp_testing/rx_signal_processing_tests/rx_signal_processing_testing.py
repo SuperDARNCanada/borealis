@@ -1,7 +1,7 @@
 """
 Copyright SuperDARN Canada 2022
 Authors: Keith Kotyk (rx_signal_processing.py)
-         Remington Rohel (frankensteined rx_signal_processing.py into this file)
+         Remington Rohel (Ferkensteined rx_signal_processing.py into this file)
 """
 import sys
 import os
