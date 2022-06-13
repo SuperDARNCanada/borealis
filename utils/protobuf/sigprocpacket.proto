@@ -15,7 +15,7 @@ message SigProcPacket {
 
     message RXChan {
         uint32 slice_id = 1;
-        double rxfreq = 2; // Hz
+        double rxfreq = 2; // kHz
         repeated BeamDirections beam_directions = 3;
         uint32 num_ranges = 4;
         float first_range = 5; // km
