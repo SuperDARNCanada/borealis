@@ -7,6 +7,7 @@ try:
     import cupy as xp
 except ImportError:
     import numpy as xp
+
     cupy_available = False
 else:
     cupy_available = True
@@ -69,7 +70,12 @@ class DSP(object):
         for i in range(1, len(self.filters)):
             self.apply_lowpass_decimate(self.filter_outputs[i - 1], self.filters[i], dm_rates[i])
 
-        self.beamform_samples(self.filter_outputs[-1], beam_phases)
+        self.antennas_iq_samples = self.filter_outputs[-1]
+        # Move the antennas_iq samples to the CPU for beamforming
+        if cupy_available:
+            self.antennas_iq_samples = xp.asnumpy(self.antennas_iq_samples)
+
+        self.beamform_samples(self.antennas_iq_samples, beam_phases)
 
     def create_filters(self, filter_taps, mixing_freqs, rx_rate):
         """
@@ -182,11 +188,11 @@ class DSP(object):
         :type       beam_phases:       list
 
         """
-        beam_phases = xp.array(beam_phases)
+        beam_phases = np.array(beam_phases)
 
         # [num_slices, num_antennas, num_samples]
         # [num_slices, num_beams, num_antennas]
-        beamformed_samples = xp.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
+        beamformed_samples = np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
 
         self.beamformed_samples = beamformed_samples
 
@@ -209,11 +215,8 @@ class DSP(object):
 
         # [num_slices, num_beams, num_samples]
         # [num_slices, num_beams, num_samples]
-        correlated = xp.einsum('ijk,ijl->ijkl', beamformed_samples_1,
+        correlated = np.einsum('ijk,ijl->ijkl', beamformed_samples_1,
                                beamformed_samples_2.conj())
-
-        if cupy_available:
-            correlated = xp.asnumpy(correlated)
 
         values = []
         for s in slice_index_details:
@@ -331,11 +334,12 @@ def quick_test(n):
     # print((b-a) * 1000)
     # fft_and_plot(x[2][0], F_s)
 
+
 if __name__ == '__main__':
-    #import os
-    #print('PID: ', os.getpid())
-    #time.sleep(60)
-    #if cupy_available:
+    # import os
+    # print('PID: ', os.getpid())
+    # time.sleep(60)
+    # if cupy_available:
     #    xp.show_config()
     # Actually run the test.
     quick_test(500)

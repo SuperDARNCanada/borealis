@@ -14,6 +14,7 @@ import zmq
 import dsp
 import math
 import copy
+
 try:
     import cupy as cp
 except:
@@ -41,6 +42,7 @@ import shared_macros.shared_macros as sm
 
 pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
 
+
 def ndarray_in_shr_mem(ndarray):
     """
     This function opens a new shared memory section and copys a ndarray into it.
@@ -51,14 +53,15 @@ def ndarray_in_shr_mem(ndarray):
     :returns:   Dict holding the name and new shr mem array.
     :rtype:     dict
     """
-    new_shm = ipc.SharedMemory(name=None, flags=(ipc.O_CREAT|ipc.O_EXCL), size=ndarray.nbytes)
+    new_shm = ipc.SharedMemory(name=None, flags=(ipc.O_CREAT | ipc.O_EXCL), size=ndarray.nbytes)
     mapfile = mmap.mmap(new_shm.fd, new_shm.size)
 
     shr_arr = np.frombuffer(mapfile, dtype=ndarray.dtype).reshape(ndarray.shape)
     shr_arr[:] = ndarray
 
     new_shm.close_fd()
-    return {'name' : new_shm.name, 'data' : shr_arr}
+    return {'name': new_shm.name, 'data': shr_arr}
+
 
 def fill_datawrite_proto(processed_data, slice_details, data_outputs):
     """
@@ -86,7 +89,6 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
                     o.real = x.real
                     o.imag = x.imag
 
-
         main_corrs = data_outputs['main_corrs'][sd['slice_num']]
         add_array(main_corrs, output_data_set.mainacf)
 
@@ -99,7 +101,6 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
         except:
             # No interferometer data
             pass
-
 
         # iterate over num beams since number of beams may have been padded to be longer
         # during processing.
@@ -132,14 +133,14 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
         stage = data_outputs['debug_outputs'][-1]
         add_debug_data(stage, "antennas")
 
-def main():
 
+def main():
     sig_options = spo.SignalProcessingOptions()
 
     sockets = so.create_sockets([sig_options.dsp_radctrl_identity,
-                                    sig_options.dsp_driver_identity,
-                                    sig_options.dsp_exphan_identity,
-                                    sig_options.dsp_dw_identity], sig_options.router_address)
+                                 sig_options.dsp_driver_identity,
+                                 sig_options.dsp_exphan_identity,
+                                 sig_options.dsp_dw_identity], sig_options.router_address)
 
     dsp_to_radar_control = sockets[0]
     dsp_to_driver = sockets[1]
@@ -180,11 +181,10 @@ def main():
         main_beam_angles = []
         intf_beam_angles = []
 
-
         # Parse out details and force the data type so that Cupy can optimize with standardized
         # data types.
         slice_details = []
-        for i,chan in enumerate(sp_packet.rxchannel):
+        for i, chan in enumerate(sp_packet.rxchannel):
             detail = {}
 
             # This is the negative of what you would normally expect (i.e. -1 * offset of rxfreq from center freq)
@@ -204,7 +204,7 @@ def main():
 
             lags = []
             for lag in chan.lags:
-                lags.append([lag.pulse_1,lag.pulse_2])
+                lags.append([lag.pulse_1, lag.pulse_2])
                 lag_phase_offsets.append(lag.phase_offset_real + 1j * lag.phase_offset_imag)
 
             detail['lag_phase_offsets'] = np.array(lag_phase_offsets, dtype=np.complex128)
@@ -218,7 +218,7 @@ def main():
                 main_beam = []
                 intf_beam = []
 
-                for j,phase in enumerate(bd.phase):
+                for j, phase in enumerate(bd.phase):
                     p = phase.real_phase + 1j * phase.imag_phase
 
                     if j < sig_options.main_antenna_count:
@@ -235,11 +235,11 @@ def main():
             main_beam_angles.append(main_beams)
             intf_beam_angles.append(intf_beams)
 
-
         # Different slices can have a different amount of beams used. Slices that use fewer beams
         # than the max number of beams are padded with zeros so that matrix calculations can be
         # used. The extra beams that are processed will be not be parsed for data writing.
         max_num_beams = max([len(x) for x in main_beam_angles])
+
         def pad_beams(angles, ant_count):
             for x in angles:
                 if len(x) < max_num_beams:
@@ -254,9 +254,6 @@ def main():
         intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
         mixing_freqs = np.array(mixing_freqs, dtype=np.float64)
 
-
-
-
         # Get meta from driver
         message = "Need data to process"
         so.send_data(dsp_to_driver, sig_options.driver_dsp_identity, message)
@@ -266,13 +263,11 @@ def main():
         rx_metadata.ParseFromString(reply)
 
         if sp_packet.sequence_num != rx_metadata.sequence_num:
-            pprint(sm.COLOR('red',"ERROR: Packets from driver and radctrl don't match"))
+            pprint(sm.COLOR('red', "ERROR: Packets from driver and radctrl don't match"))
             err = "sp_packet seq num {}, rx_metadata seq num {}".format(sp_packet.sequence_num,
-                                                                    rx_metadata.sequence_num)
+                                                                        rx_metadata.sequence_num)
             pprint(sm.COLOR('red', err))
             sys.exit(-1)
-
-
 
         # First time configuration
         if first_time:
@@ -296,18 +291,16 @@ def main():
             pprint(dm_msg)
             pprint(taps_msg)
 
-            for dm,taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
-                extra_samples = (extra_samples * dm) + len(taps)//2
+            for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
+                extra_samples = (extra_samples * dm) + len(taps) // 2
 
             total_dm_rate = np.prod(dm_rates)
 
             first_time = False
 
-
-
         # Calculate where in the ringbuffer the samples are located.
         samples_needed = rx_metadata.numberofreceivesamples + 2 * extra_samples
-        samples_needed = int(math.ceil(float(samples_needed)/float(total_dm_rate)) * total_dm_rate)
+        samples_needed = int(math.ceil(float(samples_needed) / float(total_dm_rate)) * total_dm_rate)
 
         sample_time_diff = rx_metadata.sequence_start_time - rx_metadata.initialization_time
         sample_in_time = (sample_time_diff * rx_rate) + first_rx_sample_off - extra_samples
@@ -324,7 +317,6 @@ def main():
         processed_data.lp_status_bank_l = rx_metadata.lp_status_bank_l
         processed_data.gps_locked = rx_metadata.gps_locked
 
-
         # This work is done in a thread
         def sequence_worker(**kwargs):
             sequence_num = kwargs['sequence_num']
@@ -336,9 +328,8 @@ def main():
             end_sample = kwargs['end_sample']
             processed_data = kwargs['processed_data']
 
-
-            pprint(sm.COLOR('green',"Processing #{}".format(sequence_num)))
-            pprint("Mixing freqs for #{}: {}".format(sequence_num,mixing_freqs))
+            pprint(sm.COLOR('green', "Processing #{}".format(sequence_num)))
+            pprint("Mixing freqs for #{}: {}".format(sequence_num, mixing_freqs))
             pprint("Main beams shape for #{}: {}".format(sequence_num, main_beam_angles.shape))
             pprint("Intf beams shape for #{}: {}".format(sequence_num, intf_beam_angles.shape))
             if cupy_available:
@@ -348,7 +339,7 @@ def main():
             seq_end_iden = sig_options.dspend_brian_identity + str(sequence_num)
             dw_iden = sig_options.dsp_dw_identity + str(sequence_num)
             gpu_socks = so.create_sockets([seq_begin_iden, seq_end_iden, dw_iden],
-                                            sig_options.router_address)
+                                          sig_options.router_address)
 
             dspbegin_to_brian = gpu_socks[0]
             dspend_to_brian = gpu_socks[1]
@@ -363,15 +354,15 @@ def main():
             # of existing data without making a copy.
             if cupy_available:
                 if end_sample > ringbuffer.shape[1]:
-                    piece1 = ringbuffer[:,start_sample:]
-                    piece2 = ringbuffer[:,:end_sample-ringbuffer.shape[1]]
+                    piece1 = ringbuffer[:, start_sample:]
+                    piece2 = ringbuffer[:, :end_sample - ringbuffer.shape[1]]
 
                     tmp1 = cp.array(piece1)
                     tmp2 = cp.array(piece2)
 
-                    sequence_samples = cp.concatenate((tmp1,tmp2), axis=1)
+                    sequence_samples = cp.concatenate((tmp1, tmp2), axis=1)
                 else:
-                    sequence_samples = cp.array(ringbuffer[:,start_sample:end_sample])
+                    sequence_samples = cp.array(ringbuffer[:, start_sample:end_sample])
 
             else:
                 sequence_samples = ringbuffer.take(indices, axis=1, mode='wrap')
@@ -386,29 +377,31 @@ def main():
             request = so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, pprint)
             so.send_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, msg)
 
-
             # Process main samples
-            main_sequence_samples = sequence_samples[:sig_options.main_antenna_count,:]
+            main_sequence_samples = sequence_samples[:sig_options.main_antenna_count, :]
             pprint("Main buffer shape: {}".format(main_sequence_samples.shape))
             processed_main_samples = dsp.DSP(main_sequence_samples, rx_rate, dm_rates,
-                                                dm_scheme_taps, mixing_freqs, main_beam_angles)
+                                             dm_scheme_taps, mixing_freqs, main_beam_angles)
             main_corrs = dsp.DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
-                                    processed_main_samples.beamformed_samples, output_sample_rate,
-                                    slice_details)
+                                                           processed_main_samples.beamformed_samples,
+                                                           output_sample_rate,
+                                                           slice_details)
 
             # If interferometer is used, process those samples too.
             if sig_options.intf_antenna_count > 0:
-                intf_sequence_samples = sequence_samples[sig_options.main_antenna_count:,:]
+                intf_sequence_samples = sequence_samples[sig_options.main_antenna_count:, :]
                 pprint("Intf buffer shape: {}".format(intf_sequence_samples.shape))
                 processed_intf_samples = dsp.DSP(intf_sequence_samples, rx_rate, dm_rates,
-                                                    dm_scheme_taps, mixing_freqs, intf_beam_angles)
+                                                 dm_scheme_taps, mixing_freqs, intf_beam_angles)
 
                 intf_corrs = dsp.DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
-                                processed_intf_samples.beamformed_samples, output_sample_rate,
-                                slice_details)
+                                                               processed_intf_samples.beamformed_samples,
+                                                               output_sample_rate,
+                                                               slice_details)
                 cross_corrs = dsp.DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
-                                processed_main_samples.beamformed_samples, output_sample_rate,
-                                slice_details)
+                                                                processed_main_samples.beamformed_samples,
+                                                                output_sample_rate,
+                                                                slice_details)
             end = time.time()
 
             time_diff = (end - copy_end) * 1000
@@ -416,7 +409,7 @@ def main():
             msg = reply_packet.SerializeToString()
 
             pprint("Time to decimate, beamform and correlate for #{}: {}ms".format(sequence_num,
-                                                                                    time_diff))
+                                                                                   time_diff))
 
             time_diff = (end - start) * 1000
             pprint("Total time for #{}: {}ms".format(sequence_num, time_diff))
@@ -424,38 +417,29 @@ def main():
             request = so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, pprint)
             so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
 
-
-
             # Extract outputs from processing into groups that will be put into proto fields.
             start = time.time()
             data_outputs = {}
             if __debug__:
                 if cupy_available:
-                    filter_outputs_m = [cp.asnumpy(x) for x in processed_main_samples.filter_outputs]
-
+                    filter_outputs_m = [cp.asnumpy(x) for x in processed_main_samples.filter_outputs[:-1]]
+                    filter_outputs_m.append(processed_main_samples.antennas_iq_samples)
                     if sig_options.intf_antenna_count > 0:
-                        filter_outputs_i = [cp.asnumpy(x) for x in processed_intf_samples.filter_outputs]
+                        filter_outputs_i = [cp.asnumpy(x) for x in processed_intf_samples.filter_outputs[:-1]]
+                        filter_outputs_i.append(processed_intf_samples.antennas_iq_samples)
+
                 else:
                     filter_outputs_m = processed_main_samples.filter_outputs
-
                     if sig_options.intf_antenna_count > 0:
                         filter_outputs_i = processed_intf_samples.filter_outputs
 
             else:
-                if cupy_available:
-                    filter_outputs_m = [cp.asnumpy(processed_main_samples.filter_outputs[-1])]
-
-                    if sig_options.intf_antenna_count > 0:
-                        filter_outputs_i = [cp.asnumpy(processed_intf_samples.filter_outputs[-1])]
-                else:
-                    filter_outputs_m = [processed_main_samples.filter_outputs[-1]]
-
-                    if sig_options.intf_antenna_count > 0:
-                        filter_outputs_i = [processed_intf_samples.filter_outputs[-1]]
-
+                filter_outputs_m = processed_main_samples.antennas_iq_samples
+                if sig_options.intf_antenna_count > 0:
+                    filter_outputs_i = processed_intf_samples.antennas_iq_samples
 
             if sig_options.intf_antenna_count > 0:
-                filter_outputs = [np.hstack((x,y)) for x,y in zip(filter_outputs_m,
+                filter_outputs = [np.hstack((x, y)) for x, y in zip(filter_outputs_m,
                                                                     filter_outputs_i)]
             else:
                 filter_outputs = filter_outputs_m
@@ -463,19 +447,12 @@ def main():
             data_outputs['debug_outputs'] = filter_outputs
             debug_rf = ndarray_in_shr_mem(ringbuffer.take(indices, axis=1, mode='wrap'))
             processed_data.rf_samples_location = debug_rf['name']
-            if cupy_available:
-                beamformed_m = cp.asnumpy(processed_main_samples.beamformed_samples)
 
-                if sig_options.intf_antenna_count > 0:
-                    beamformed_i = cp.asnumpy(processed_intf_samples.beamformed_samples)
-            else:
-                beamformed_m = processed_main_samples.beamformed_samples
-
-                if sig_options.intf_antenna_count > 0:
-                    beamformed_i = processed_intf_samples.beamformed_samples
+            beamformed_m = processed_main_samples.beamformed_samples
+            if sig_options.intf_antenna_count > 0:
+                beamformed_i = processed_intf_samples.beamformed_samples
 
             data_outputs['beamformed_m'] = beamformed_m
-            
             data_outputs['main_corrs'] = main_corrs
 
             if sig_options.intf_antenna_count > 0:
@@ -488,22 +465,19 @@ def main():
             message = processed_data.SerializeToString()
 
             end = time.time()
-            time_diff = (end-start) * 1000
+            time_diff = (end - start) * 1000
             pprint("Time to serialize and send processed data for #{}: {}ms".format(sequence_num,
                                                                                     time_diff))
             so.send_bytes(dsp_to_dw, sig_options.dw_dsp_identity, message)
 
-
-
-
-        args = {"sequence_num" : copy.deepcopy(sp_packet.sequence_num),
-                "main_beam_angles" : copy.deepcopy(main_beam_angles),
-                "intf_beam_angles" : copy.deepcopy(intf_beam_angles),
-                "mixing_freqs" : copy.deepcopy(mixing_freqs),
-                "slice_details" : copy.deepcopy(slice_details),
-                "start_sample" : copy.deepcopy(start_sample),
-                "end_sample" : copy.deepcopy(end_sample),
-                "processed_data" : copy.deepcopy(processed_data)}
+        args = {"sequence_num": copy.deepcopy(sp_packet.sequence_num),
+                "main_beam_angles": copy.deepcopy(main_beam_angles),
+                "intf_beam_angles": copy.deepcopy(intf_beam_angles),
+                "mixing_freqs": copy.deepcopy(mixing_freqs),
+                "slice_details": copy.deepcopy(slice_details),
+                "start_sample": copy.deepcopy(start_sample),
+                "end_sample": copy.deepcopy(end_sample),
+                "processed_data": copy.deepcopy(processed_data)}
 
         seq_thread = threading.Thread(target=sequence_worker, kwargs=args)
         seq_thread.daemon = True
@@ -515,19 +489,6 @@ def main():
             thread = threads.pop(0)
             thread.join()
 
+
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
