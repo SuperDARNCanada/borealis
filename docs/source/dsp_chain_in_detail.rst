@@ -50,7 +50,7 @@ data samples for each antenna. After the first stage, this has been reduced to 4
 multiple frequencies are being selected, there will be one copy of (:math:`num_antennas`, 45084) for each frequency. After
 the second stage, the number of samples is reduced from 45084 to 8992. The next stage reduces it again to 1495 samples.
 Lastly, the final stage reduces the data length to 299 samples. The number of samples in and out of each stage does not
-exactly correspond to the downsampling rate; this is will be explained shortly, as a result of the filtering technique.
+exactly correspond to the downsampling rate; this will be explained shortly, as a result of the filtering technique.
 
 All Borealis signal processing is done in the time domain. The following figures illustrate the process for a
 hypothetical 10-sample dataset and 3-tap filter.
