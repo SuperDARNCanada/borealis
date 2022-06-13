@@ -109,7 +109,7 @@ class DSP(object):
     def apply_bandpass_decimate(self, input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate):
         """
         Apply a Frerking bandpass filter to the input samples. Several different frequencies can
-        be centered on at simultaneously. Downsampling is done in parallel via a strided window
+        be centered on simultaneously. Downsampling is done in parallel via a strided window
         view of the input samples.
 
         :param      input_samples:  The input raw rf samples for each antenna.
