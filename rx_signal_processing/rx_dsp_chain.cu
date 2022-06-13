@@ -309,7 +309,7 @@ int main(int argc, char **argv){
     auto last_filter_output = dp->get_last_filter_output_d();
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
       last_filter_output, dp->get_bp_filters_p(), dm_rates[0],
-      samples_needed, complex_taps[0].size(),
+      samples_needed, complex_taps[0].size()/rx_freqs.size(),
       rx_freqs.size(), total_antennas, rx_rate, dp->get_frequencies_p(),
       "Bandpass stage of decimation", dp->get_cuda_stream());
 

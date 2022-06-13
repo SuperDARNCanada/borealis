@@ -159,6 +159,12 @@ elif args.run_mode == "engineeringdebug":
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
     data_write_args = "--file-type=hdf5 --enable-bfiq --enable-antenna-iq --enable-raw-rf --enable-tx;"
+elif args.run_mode == "filterdata":
+    # run all modules in debug with rawrf, antennas_iq, and filter stage data. 
+    python_opts = "-u"
+    c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
+    mode = "engineeringdebug"
+    data_write_args = "--file-type=hdf5 --enable-raw-rf --enable-antenna-iq"
 else:
     print("Mode {} is unknown. Exiting without running Borealis".format(args.run_mode))
     sys.exit(-1)
