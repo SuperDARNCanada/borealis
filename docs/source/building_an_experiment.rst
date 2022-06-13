@@ -312,7 +312,7 @@ scanbound *defaults*
     to None, not required. If you set this, you will want to ensure that there is a slightly 
     larger amount of time in the scan boundaries than the averaging period set for the slice. 
     For example, if you want to align averaging periods at the 3 second marks, you may want to
-    have a set integration time of ~2.9s to ensure that the experiment will start on time. 
+    have a set averaging period of ~2.9s to ensure that the experiment will start on time. 
     Typically 50ms difference will be enough. This is especially important for the last averaging
     period in the scan, as the experiment will always wait for the next scan start boundary
     (potentially causing a minute of downtime). You could also just leave a small amount
