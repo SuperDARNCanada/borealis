@@ -1180,6 +1180,8 @@ if __name__ == '__main__':
     parser.add_argument("-b", "--beam", help="Beam to transmit on?", default=BORESIGHT_BEAM, type=float)
     parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", default=10.5)
     parser.add_argument("-F", "--without_fence", help="Generate the array without fence", action="store_true")
+    parser.add_argument("-B", "--broadened_beam", help="Use a broadened beam phase distribution",
+                        action="store_true")
     geometry_group = parser.add_argument_group("Array Geometry")
     geometry_group.add_argument("-s", "--antenna_spacing", help="What is the spacing between antennas? (m)",
                                 default=15.24, type=float)
@@ -1203,8 +1205,6 @@ if __name__ == '__main__':
                                                         "* Not implemented *", action="store_true")
     parser.add_argument("-c", "--circular_phase", help="Use a circular phase distribution  "
                                                        "* Not implemented *", action="store_true")
-    parser.add_argument("-B", "--broadened_beam", help="Use a broadened beam phase distribution",
-                        action="store_true")
     args = parser.parse_args()
 
     if args.output_file is not None:
