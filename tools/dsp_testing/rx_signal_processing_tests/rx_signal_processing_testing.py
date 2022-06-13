@@ -57,7 +57,7 @@ def save_to_file(slice_details, data_outputs):
                 intf_samps = data_outputs['beamformed_i'][sd['slice_num']][:sd['num_beams']]
                 beam_samps = np.concatenate((beam_samps, intf_samps), axis=1)   # along antennas axis
             except:
-                # No interferometer data
+                print('No interferometer data; passing')
                 pass
             slice_group.create_dataset('beamformed_samples', data=beam_samps)
 
