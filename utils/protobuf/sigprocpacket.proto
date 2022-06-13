@@ -11,7 +11,7 @@ message SigProcPacket {
     uint32 offset_to_first_rx_sample = 6;
     double rxrate = 7;
     double output_sample_rate = 8;
-    double rxctrfreq = 9;   // Hz
+    double rxctrfreq = 9;   // kHz
 
     message RXChan {
         uint32 slice_id = 1;
