@@ -168,7 +168,7 @@ class DSP(object):
         # We need to force the input into the GPU to be float16, float32, or complex64 so that the einsum result is
         # complex64 and NOT complex128. The GPU is significantly slower (10x++) working with complex128 numbers.
         # We do not require the additional precision.
-        lp_filter = xp.array(lp_filter, dtype=xp.float32)
+        lp_filter = xp.array(lp_filter, dtype=xp.complex64)
         input_samples = windowed_view(input_samples, lp_filter.shape[-1], dm_rate)
 
         # [1, num_taps]
