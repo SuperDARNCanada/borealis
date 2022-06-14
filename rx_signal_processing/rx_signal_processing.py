@@ -9,6 +9,7 @@ import time
 import threading
 import numpy as np
 import posix_ipc as ipc
+from multiprocessing import shared_memory
 import mmap
 import zmq
 import dsp
@@ -82,22 +83,31 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
         output_data_set.num_beams = sd['num_beams']
         output_data_set.num_lags = sd['num_lags']
 
-        def add_array(ndarray, proto):
+        def add_array(ndarray):
+            """
+            Creates shared memory and stores ndarray in it.
+
+            :param ndarray: numpy.ndarray
+            :return name: String of the shared memory name.
+            """
             if ndarray.size != 0:
-                for x in np.nditer(ndarray, order='C'):
-                    o = proto.add()
-                    o.real = x.real
-                    o.imag = x.imag
+                shm = shared_memory.SharedMemory(create=True, size=ndarray.nbytes)
+                shared_array = np.ndarray(ndarray.shape, dtype=ndarray.dtype, buffer=shm.buf)
+                shared_array[...] = ndarray[...]
+                name = shm.name
+                # This closes the current SharedMemory instance, but the memory isn't free until data_write unlinks it.
+                shm.close()
+                return name
 
         main_corrs = data_outputs['main_corrs'][sd['slice_num']]
-        add_array(main_corrs, output_data_set.mainacf)
+        output_data_set.mainacf = add_array(main_corrs)
 
         try:
             intf_corrs = data_outputs['intf_corrs'][sd['slice_num']]
-            add_array(intf_corrs, output_data_set.intacf)
+            output_data_set.intacf = add_array(intf_corrs)
 
             cross_corrs = data_outputs['cross_corrs'][sd['slice_num']]
-            add_array(cross_corrs, output_data_set.xcf)
+            output_data_set.xcf = add_array(cross_corrs)
         except:
             # No interferometer data
             pass
@@ -109,11 +119,11 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
             beam.beamnum = i
 
             main_samps = data_outputs['beamformed_m'][sd['slice_num']][i]
-            add_array(main_samps, beam.mainsamples)
+            beam.mainsamples = add_array(main_samps)
 
             try:
                 intf_samps = data_outputs['beamformed_i'][sd['slice_num']][i]
-                add_array(intf_samps, beam.intfsamples)
+                beam.intfsamples = add_array(intf_samps)
             except:
                 # No interferometer data
                 pass
@@ -123,9 +133,9 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
             debug_data.stagename = name
 
             all_ant_samps = stage[sd['slice_num']]
-            for j in range(all_ant_samps.shape[0]):
-                ant = debug_data.antennadata.add()
-                add_array(all_ant_samps[j], ant.antennasamples)
+            debug_data.antennasamples = add_array(all_ant_samps)
+            debug_data.num_antennas = all_ant_samps.shape[0]
+            debug_data.num_samps = all_ant_samps.shape[1]
 
         for i, stage in enumerate(data_outputs['debug_outputs'][:-1]):
             add_debug_data(stage, "stage_" + str(i))

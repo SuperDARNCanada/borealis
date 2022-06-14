@@ -19,9 +19,9 @@ message ProcessedData {
     uint32 lp_status_bank_l = 14;
 
     message OutputDataSet {
-        repeated ComplexData mainacf = 1;
-        repeated ComplexData intacf = 2;
-        repeated ComplexData xcf = 3;
+        string mainacf = 1;
+        string intacf = 2;
+        string xcf = 3;
         uint32 num_beams = 4;
         uint32 num_ranges = 5;
         uint32 num_lags = 6;
@@ -30,24 +30,18 @@ message ProcessedData {
         uint32 slice_id = 9;
         repeated float noise_at_freq = 10; //TODO fill and parse
 
-
         message BeamData {
             uint32 beamnum = 1;
-            repeated ComplexData mainsamples = 2;
-            repeated ComplexData intfsamples = 3;
+            string mainsamples = 2;
+            string intfsamples = 3;
+            uint32 num_samps = 4;
         }
 
         message DebugData {
             string stagename = 1;
-            repeated AntennaData antennadata = 2;
-            message AntennaData {
-                repeated ComplexData antennasamples = 1;
-            }
-        }
-
-        message ComplexData {
-            float real = 1;
-            float imag = 2;
+            string antennadata = 2;
+            uint32 num_antennas = 3;
+            uint32 num_samps = 4;
         }
     }
 }
