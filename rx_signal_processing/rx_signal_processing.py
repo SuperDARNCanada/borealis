@@ -429,14 +429,14 @@ def main():
                         filter_outputs_i.append(processed_intf_samples.antennas_iq_samples)
 
                 else:
-                    filter_outputs_m = processed_main_samples.filter_outputs
+                    filter_outputs_m = [x for x in processed_main_samples.filter_outputs]
                     if sig_options.intf_antenna_count > 0:
-                        filter_outputs_i = processed_intf_samples.filter_outputs
+                        filter_outputs_i = [x for x in processed_intf_samples.filter_outputs]
 
             else:
-                filter_outputs_m = processed_main_samples.antennas_iq_samples
+                filter_outputs_m = [processed_main_samples.antennas_iq_samples]
                 if sig_options.intf_antenna_count > 0:
-                    filter_outputs_i = processed_intf_samples.antennas_iq_samples
+                    filter_outputs_i = [processed_intf_samples.antennas_iq_samples]
 
             if sig_options.intf_antenna_count > 0:
                 filter_outputs = [np.hstack((x, y)) for x, y in zip(filter_outputs_m,
