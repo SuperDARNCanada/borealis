@@ -170,7 +170,7 @@ modules= {"brian" : "", "experiment_handler" : "",
 
 for mod in modules:
     opts = python_opts.format(module=mod)
-    modules[mod] = "python3 {opts} {module}/{module}.py".format(opts=opts, module=mod)
+    modules[mod] = "python3.9 {opts} {module}/{module}.py".format(opts=opts, module=mod)
 
 modules['realtime'] = "source borealisrt_env/bin/activate;" + modules['realtime']
 # modules['rx_signal_processing'] = "source dspenv/bin/activate;" + modules['rx_signal_processing']

@@ -138,6 +138,9 @@ def install_packages():
                 "python3-devel",
                 "python3-dev",
 
+                "python39",
+                "python39-devel",
+
                 "boost-devel",
                 "liboost-all-dev",
                 "libboost-dev",
@@ -178,11 +181,10 @@ def install_packages():
         except sp.CalledProcessError as e:
             print(e)
 
-
-    update_pip = "pip3 install --upgrade pip"
+    update_pip = "pip3.9 install --upgrade pip"
     execute_cmd(update_pip)
 
-    pip_cmd = "pip3 install " + " ".join(pip)
+    pip_cmd = "pip3.9 install " + " ".join(pip)
     execute_cmd(pip_cmd)
 
 
@@ -348,7 +350,7 @@ def install_realtime():
     rt_cmd = "bash -c \"cd /usr/local;" \
     "git clone https://github.com/vtsuperdarn/hdw.dat.git;" \
     "mkdir -p $BOREALISPATH/borealisrt_env;" \
-    "virtualenv $BOREALISPATH/borealisrt_env;" \
+    "virtualenv -p python3.9 $BOREALISPATH/borealisrt_env;" \
     "source $BOREALISPATH/borealisrt_env/bin/activate;" \
     "pip install zmq;" \
     "pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
@@ -363,7 +365,7 @@ def install_dspenv():
     """
 
     rt_cmd = "bash -c \"mkdir -p $BOREALISPATH/dspenv;" \
-    "virtualenv $BOREALISPATH/dspenv;" \
+    "virtualenv -p python3.9 $BOREALISPATH/dspenv;" \
     "source $BOREALISPATH/dspenv/bin/activate;" \
     "pip install zmq numpy scipy matplotlib cupy protobuf posix_ipc;" \
     "deactivate;\""
