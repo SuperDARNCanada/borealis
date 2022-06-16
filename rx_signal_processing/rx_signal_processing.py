@@ -118,13 +118,9 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
         for i in range(sd['num_beams']):
             beam = output_data_set.beamformedsamples.add()
             beam.beamnum = i
-
             main_samps = data_outputs['beamformed_m'][sd['slice_num']][i]
-            beam.mainsamples = add_array(main_samps)
-
             try:
                 intf_samps = data_outputs['beamformed_i'][sd['slice_num']][i]
-                beam.intfsamples = add_array(intf_samps)
             except:
                 # No interferometer data
                 pass
@@ -134,7 +130,6 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
             debug_data.stagename = name
 
             all_ant_samps = stage[sd['slice_num']]
-            debug_data.antennadata = add_array(all_ant_samps)
             debug_data.num_antennas = all_ant_samps.shape[0]
             debug_data.num_samps = all_ant_samps.shape[1]
 
@@ -470,6 +465,9 @@ def main():
                 data_outputs['cross_corrs'] = cross_corrs
                 data_outputs['beamformed_i'] = beamformed_i
                 data_outputs['intf_corrs'] = intf_corrs
+
+            shm_names = processed_data.shm_names.add()
+            shm_names = processed_main_samples.shared_mem + processed_intf_samples.shared_mem
 
             fill_datawrite_proto(processed_data, slice_details, data_outputs)
 

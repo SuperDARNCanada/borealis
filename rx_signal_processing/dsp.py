@@ -62,6 +62,7 @@ class DSP(object):
         self.filters = None
         self.filter_outputs = []
         self.beamformed_samples = None
+        self.shared_mem = {}
 
         self.create_filters(filter_taps, mixing_freqs, rx_rate)
 
@@ -70,13 +71,21 @@ class DSP(object):
         for i in range(1, len(self.filters)):
             self.apply_lowpass_decimate(self.filter_outputs[i - 1], self.filters[i], dm_rates[i])
 
-        self.antennas_iq_samples = self.filter_outputs[-1]
+        # Create shared memory for antennas_iq data
+        antennas_iq_samples = self.filter_outputs[-1]
+        ant_shm = shared_memory.SharedMemory(create=True, size=antennas_iq_samples.nbytes)
+        self.antennas_iq_samples = np.ndarray(antennas_iq_samples.shape, dtype=np.complex64, buffer=ant_shm.buf)
+
         # Move the antennas_iq samples to the CPU for beamforming
         if cupy_available:
             self.antennas_iq_samples = xp.asnumpy(self.antennas_iq_samples)
+        else:
+            self.antennas_iq_samples = antennas_iq_samples
+        self.shared_mem['antennas_iq'] = ant_shm.name
 
         self.beamform_samples(self.antennas_iq_samples, beam_phases)
-
+        ant_shm.close()
+        
     def create_filters(self, filter_taps, mixing_freqs, rx_rate):
         """
         Creates and shapes the filters arrays using the original sets of filter taps. The first
@@ -192,9 +201,14 @@ class DSP(object):
 
         # [num_slices, num_antennas, num_samples]
         # [num_slices, num_beams, num_antennas]
-        beamformed_samples = np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
+        final_shape = (filtered_samples.shape[0], beam_phases.shape[2], filtered_samples.shape[2])
+        final_size = np.complex64.itemsize * filtered_samples.shape[0] * filtered_samples.shape[2] * beam_phases.shape[2]
+        bf_shm = shared_memory.SharedMemory(create=True, size=final_size)
+        self.beamformed_samples = np.ndarray(final_shape, dtype=np.complex64, buffer=bf_shm.buf)
+        self.beamformed_samples = np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
 
-        self.beamformed_samples = beamformed_samples
+        self.shared_mem['bfiq'] = bf_shm.name
+        bf_shm.close()
 
     @staticmethod
     def correlations_from_samples(beamformed_samples_1, beamformed_samples_2, output_sample_rate, slice_index_details):

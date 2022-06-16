@@ -17,6 +17,7 @@ message ProcessedData {
     uint32 lp_status_bank_h = 12;
     uint32 agc_status_bank_l = 13;
     uint32 lp_status_bank_l = 14;
+    repeated string shm_names = 15;
 
     message OutputDataSet {
         string mainacf = 1;
