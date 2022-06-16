@@ -81,6 +81,7 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
 
         output_data_set.slice_id = sd['slice_id']
         output_data_set.num_beams = sd['num_beams']
+        output_data_set.num_ranges = sd['num_range_gates']
         output_data_set.num_lags = sd['num_lags']
 
         def add_array(ndarray):
@@ -133,7 +134,7 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
             debug_data.stagename = name
 
             all_ant_samps = stage[sd['slice_num']]
-            debug_data.antennasamples = add_array(all_ant_samps)
+            debug_data.antennadata = add_array(all_ant_samps)
             debug_data.num_antennas = all_ant_samps.shape[0]
             debug_data.num_samps = all_ant_samps.shape[1]
 

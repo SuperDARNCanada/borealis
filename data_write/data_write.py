@@ -189,7 +189,7 @@ class ParseData(object):
                 :param proto_data: protobuf field for parsing
                 """
                 # Open the shared memory
-                shm = shared_memory.SharedMemory(name=proto_data.name)
+                shm = shared_memory.SharedMemory(name=proto_data)
                 acf_data = np.ndarray(data_shape, dtype=np.complex64, buffer=shm.buf)
 
                 # Put the data in the accumulator
@@ -1153,8 +1153,9 @@ class DataWrite(object):
 
             if data_parsing.bfiq_available:
                 for slice_obj in data_parsing.bfiq_accumulator.values():
-                    for arr in slice_obj.values():  # bfiq, intf
-                        for shm_obj in arr['shm']:
+                    for arr in ['main', 'intf']:
+                        arr_dict = slice_obj[arr]
+                        for shm_obj in arr_dict['shm']:
                             shm_obj.close()
                             shm_obj.unlink()
 
