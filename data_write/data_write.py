@@ -145,9 +145,13 @@ class ParseData(object):
 
         self._bfiq_available = False
         self._bfiq_accumulator = self.nested_dict()
+        self._bfiq_accumulator['main_shm'] = []
+        self._bfiq_accumulator['intf_shm'] = []
 
         self._antenna_iq_accumulator = self.nested_dict()
         self._antenna_iq_available = False
+        self._antenna_iq_accumulator['main_shm'] = []
+        self._antenna_iq_accumulator['intf_shm'] = []
 
         self._mainacfs_available = False
         self._mainacfs_accumulator = self.nested_dict()
@@ -223,43 +227,45 @@ class ParseData(object):
 
         self._bfiq_accumulator['data_descriptors'] = ['num_antenna_arrays', 'num_sequences',
                                                       'num_beams', 'num_samps']
+        self._bfiq_accumulator['main_shm'].append(self.processed_data.bfiq_main_shm)
+        self._bfiq_accumulator['intf_shm'].append(self.processed_data.bfiq_intf_shm)
+                
+        num_slices = len(self.processed_data.outputdataset)
+        max_num_beams = self.processed_data.max_num_beams
+        num_samps = self.processed_data.num_samps
+        
+        main_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_main_shm)
+        main_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=main_shm.buf)
 
-        for data_set in self.processed_data.outputdataset:
+        intf_available = False
+        if self.processed_data.bfiq_intf_shm is not None:
+            intf_available = True
+            intf_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_intf_shm)
+            intf_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=intf_shm.buf)
+
+        self._bfiq_available = True
+
+        for data_set, i in enumerate(self.processed_data.outputdataset):
             slice_id = data_set.slice_id
+       
+            self._bfiq_accumulator[slice_id]['num_samps'] = num_samps
 
-            # Find out what is available in the data to determine what to write out
-            if data_set.beamformedsamples:
-                self._bfiq_available = True
+            def accumulate_data(holder, data):
+                """
+                Puts data in holder for future writing.
 
-                for beam in data_set.beamformedsamples:
-                    # Open the shared memory
-                    main_shm = shared_memory.SharedMemory(name=beam.mainsamples)
-                    main_beam_data = np.ndarray(beam.num_samps, dtype=np.complex64, buffer=main_shm.buf)
-                    self._bfiq_accumulator[slice_id]['num_samps'] = beam.num_samps
+                :param holder: dict
+                :param data: numpy.ndarray
+                """
+                if 'data' not in holder:
+                    holder['data'] = data
+                else:
+                    holder['data'] = np.concatenate((holder['data'], data))
 
-                    def accumulate_data(holder, data, shm):
-                        """
-                        Puts data in holder for future writing.
-
-                        :param holder: dict
-                        :param data: numpy.ndarray
-                        :param shm: SharedMemory instance
-                        """
-                        if 'data' not in holder:
-                            holder['data'] = data
-                        else:
-                            holder['data'] = np.concatenate((holder['data'], data))
-
-                        if 'shm' not in holder:
-                            holder['shm'] = []
-                        holder['shm'].append(shm)
-
-                    accumulate_data(self._bfiq_accumulator[slice_id]['main'], main_beam_data, main_shm)
-
-                    if beam.intfsamples:
-                        intf_shm = shared_memory.SharedMemory(name=beam.intfsamples)
-                        intf_beam_data = np.ndarray(beam.num_samps, dtype=np.complex64, buffer=intf_shm.buf)
-                        accumulate_data(self._bfiq_accumulator[slice_id]['intf'], intf_beam_data, intf_shm)
+            for beam in beams_used:
+                accumulate_data(self._bfiq_accumulator[slice_id]['main'], main_data[i, beam, :])
+                if intf_available:
+                    accumulate_data(self._bfiq_accumulator[slice_id]['intf'], intf_data[i, beam, :])
 
     def parse_antenna_iq(self):
         """
@@ -269,47 +275,62 @@ class ParseData(object):
 
         self._antenna_iq_accumulator['data_descriptors'] = ['num_antennas', 'num_sequences',
                                                             'num_samps']
+
+        # Get data dimensions for reading in the shared memory
+        num_slices = len(self.processed_data.outputdataset)
+        num_main_antennas = dwo.main_antenna_count
+        num_intf_antennas = dwo.intf_antenna_count
+
+        stages = []
+        # Loop through all the filter stage data 
+        for debug_stage in self.processed_data.debug_data:
+            stage_dict = {'stage_name': debug_stage.stagename,
+                          'stage_samps': debug_data.num_samps,
+                          'main_shm': debug_data.main_shm_name,
+                          'intf_shm': debug_data.intf_shm_name}
+
+            stage_samps = debug_data.num_samps
+            stage_main_shm = debug_stage.main_shm_name
+            stage_data = np.ndarray((num_slices, num_main_antennas, stage_samps), dtype=np.complex64, buffer=stage_main_shm.buf)
+            self._antenna_iq_accumulator['main_shm'].append(stage_main_shm)
+            if debug_stage.intf_shm_name:
+                stage_intf_shm = debug_stage.intf_shm_name
+                stage_intf_data = np.ndarray((num_slices, num_intf_antennas, stage_samps), dtype=np.complex64, buffer=stage_intf_shm.buf)
+                stage_data = np.concatenate((stage_data, stage_intf_data))
+                self._antenna_iq_accumulator['intf_shm'].append(stage_intf_shm)
+     
+            stage_dict['data'] = stage_data
+
+        self._antenna_iq_available = True
+
         # Iterate over every data set, one data set per slice
-        for data_set in self.processed_data.outputdataset:
+        for data_set, i in enumerate(self.processed_data.outputdataset):
             slice_id = data_set.slice_id
 
             # non beamformed IQ samples are available
-            if data_set.debugsamples:
-                self._antenna_iq_available = True
+            for debug_stage in stages:
+                stage_name = debug_stage['stage_name']
 
-                # Loops over all filter stage data, one set per stage
-                for debug_samples in data_set.debugsamples:
-                    stage_name = debug_samples.stagename
+                if stage_name not in self._antenna_iq_accumulator[slice_id]:
+                    self._antenna_iq_accumulator[slice_id][stage_name] = collections.OrderedDict()
+                
+                antenna_iq_stage = self._antenna_iq_accumulator[slice_id][stage_name]
 
-                    if stage_name not in self._antenna_iq_accumulator[slice_id]:
-                        self._antenna_iq_accumulator[slice_id][stage_name] = collections.OrderedDict()
+                antennas_data = debug_stage['data'][i]
+                antenna_iq_stage["num_samps"] = antennas_data.shape[-1]
 
-                    antenna_iq_stage = self._antenna_iq_accumulator[slice_id][stage_name]
+                # Loops over antenna data within stage
+                for ant_num in range(antennas_data.shape[0]):
+                    ant_str = "antenna_{}".format(ant_num)
 
-                    # Open the shared memory
-                    shm = shared_memory.SharedMemory(name=debug_samples.antennadata)
-                    data_shape = (debug_samples.num_antennas, debug_samples.num_samps)
-                    antennas_data = np.ndarray(data_shape, dtype=np.complex64, buffer=shm.buf)
+                    if ant_str not in antenna_iq_stage:
+                        antenna_iq_stage[ant_str] = {}
 
-                    antenna_iq_stage["num_samps"] = antennas_data.shape[-1]
-
-                    # Loops over antenna data within stage
-                    for ant_num in range(antennas_data.shape[0]):
-                        ant_str = "antenna_{}".format(ant_num)
-
-                        if ant_str not in antenna_iq_stage:
-                            antenna_iq_stage[ant_str] = {}
-
-                        if 'data' not in antenna_iq_stage[ant_str]:
-                            antenna_iq_stage[ant_str]['data'] = antennas_data[ant_num, :]
-                        else:
-                            arr = antenna_iq_stage[ant_str]
-                            arr['data'] = np.concatenate((arr['data'], antennas_data[ant_num, :]))
-
-                    if 'shm' not in self._antenna_iq_accumulator[slice_id][stage_name]:
-                        self._antenna_iq_accumulator[slice_id][stage_name]['shm'] = []
-                    # Keep track of this so it can be closed and unlinked later
-                    self._antenna_iq_accumulator[slice_id][stage_name]['shm'].append(shm)
+                    if 'data' not in antenna_iq_stage[ant_str]:
+                        antenna_iq_stage[ant_str]['data'] = antennas_data[ant_num, :]
+                    else:
+                        arr = antenna_iq_stage[ant_str]
+                        arr['data'] = np.concatenate((arr['data'], antennas_data[ant_num, :]))
 
     def update(self, data):
         """ Parses the protobuf and updates the accumulator fields with the new data.
@@ -1145,19 +1166,20 @@ class DataWrite(object):
         def unlink_shm(data_parsing):
             """Closes and unlinks all SharedMemory instances."""
             if data_parsing.antenna_iq_available:
-                for slice_obj in data_parsing.antenna_iq_accumulator.values():
-                    for stage in slice_obj.values():
-                        for shm_obj in stage['shm']:
-                            shm_obj.close()
-                            shm_obj.unlink()
+                for main_shm in data_parsing.antenna_iq_accumulator['main_shm']:
+                    main_shm.close()
+                    main_shm.unlink()
+                for intf_shm in data_parsing.antenna_iq_accumulator['intf_shm']:
+                    intf_shm.close()
+                    intf_shm.unlink()
 
             if data_parsing.bfiq_available:
-                for slice_obj in data_parsing.bfiq_accumulator.values():
-                    for arr in ['main', 'intf']:
-                        arr_dict = slice_obj[arr]
-                        for shm_obj in arr_dict['shm']:
-                            shm_obj.close()
-                            shm_obj.unlink()
+                for main_shm in data_parsing.bfiq_accumulator['main_shm']:
+                    main_shm.close()
+                    main_shm.unlink()
+                for intf_shm in data_parsing.bfiq_accumulator['intf_shm']:
+                    intf_shm.close()
+                    intf_shm.unlink()
 
             if data_parsing.mainacfs_available:
                 for slice_obj in data_parsing.mainacfs_accumulator.values():

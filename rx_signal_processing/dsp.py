@@ -2,6 +2,7 @@ import numpy as np
 from scipy.fftpack import fft
 import math
 import time
+from multiprocessing import shared_memory
 
 try:
     import cupy as xp
@@ -197,12 +198,12 @@ class DSP(object):
         :type       beam_phases:       list
 
         """
+        # [num_slices, num_beams, num_antennas]
         beam_phases = np.array(beam_phases)
 
-        # [num_slices, num_antennas, num_samples]
-        # [num_slices, num_beams, num_antennas]
+        # [num_slices, num_beams, num_samples]
         final_shape = (filtered_samples.shape[0], beam_phases.shape[2], filtered_samples.shape[2])
-        final_size = np.complex64.itemsize * filtered_samples.shape[0] * filtered_samples.shape[2] * beam_phases.shape[2]
+        final_size = np.dtype(np.complex64).itemsize * filtered_samples.shape[0] * filtered_samples.shape[2] * beam_phases.shape[2]
         bf_shm = shared_memory.SharedMemory(create=True, size=final_size)
         self.beamformed_samples = np.ndarray(final_shape, dtype=np.complex64, buffer=bf_shm.buf)
         self.beamformed_samples = np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)

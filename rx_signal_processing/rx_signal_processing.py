@@ -83,6 +83,7 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
         output_data_set.num_beams = sd['num_beams']
         output_data_set.num_ranges = sd['num_range_gates']
         output_data_set.num_lags = sd['num_lags']
+        output_data_set.num_samps = sd['num_samps']
 
         def add_array(ndarray):
             """
@@ -113,17 +114,8 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
             # No interferometer data
             pass
 
-        # iterate over num beams since number of beams may have been padded to be longer
-        # during processing.
-        for i in range(sd['num_beams']):
-            beam = output_data_set.beamformedsamples.add()
-            beam.beamnum = i
-            main_samps = data_outputs['beamformed_m'][sd['slice_num']][i]
-            try:
-                intf_samps = data_outputs['beamformed_i'][sd['slice_num']][i]
-            except:
-                # No interferometer data
-                pass
+        output_data_set.beam_nums = [i for i in range(sd['num_beams'])]
+        output_data_set.num_antennas = data_outputs['debug_outputs'][0].shape[0]
 
         def add_debug_data(stage, name):
             debug_data = output_data_set.debugsamples.add()
@@ -136,7 +128,10 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
         for i, stage in enumerate(data_outputs['debug_outputs'][:-1]):
             add_debug_data(stage, "stage_" + str(i))
 
+        
         stage = data_outputs['debug_outputs'][-1]
+        
+        
         add_debug_data(stage, "antennas")
 
 
@@ -467,7 +462,9 @@ def main():
                 data_outputs['intf_corrs'] = intf_corrs
 
             shm_names = processed_data.shm_names.add()
-            shm_names = processed_main_samples.shared_mem + processed_intf_samples.shared_mem
+            antiq_shm = processed_main_samples.shared_mem['antennas_iq'] + processed_intf_samples.shared_mem['antennas_iq']
+            bfiq_shm = processed_main_samples.shared_mem['bfiq'] + processed_intf_samples.shared_mem['bfiq']
+            shm_names = antiq_shm + bfiq_shm
 
             fill_datawrite_proto(processed_data, slice_details, data_outputs)
 
