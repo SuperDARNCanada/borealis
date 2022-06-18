@@ -20,14 +20,13 @@ message ProcessedData {
     string bfiq_main_shm = 15;
     string bfiq_intf_shm = 16;
     uint32 num_samps = 17;
-    uint32 num_antennas = 18;	// Could get this from options?
-    uint32 max_num_beams = 19;
-    repeated DebugData debug_data = 20;  // 1 for each filter output stage (including antennas_iq)
+    uint32 max_num_beams = 18;
+    repeated DebugData debug_data = 19;  // 1 for each filter output stage (including antennas_iq)
 
     message DebugData {
         string stagename = 1;
-        string main_shm_name = 2;
-        string intf_shm_name = 3;
+        string main_shm = 2;
+        string intf_shm = 3;
         uint32 num_samps = 4;
     }
 
@@ -40,6 +39,5 @@ message ProcessedData {
         uint32 num_lags = 6;
         uint32 slice_id = 7;
         repeated float noise_at_freq = 8; //TODO fill and parse
-        uint32 num_antennas = 9;
     }
 }

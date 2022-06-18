@@ -82,10 +82,9 @@ class DSP(object):
             self.antennas_iq_samples = xp.asnumpy(self.antennas_iq_samples)
         else:
             self.antennas_iq_samples = antennas_iq_samples
-        self.shared_mem['antennas_iq'] = ant_shm.name
+        self.shared_mem['antennas_iq'] = ant_shm
 
         self.beamform_samples(self.antennas_iq_samples, beam_phases)
-        ant_shm.close()
         
     def create_filters(self, filter_taps, mixing_freqs, rx_rate):
         """
@@ -208,8 +207,7 @@ class DSP(object):
         self.beamformed_samples = np.ndarray(final_shape, dtype=np.complex64, buffer=bf_shm.buf)
         self.beamformed_samples = np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
 
-        self.shared_mem['bfiq'] = bf_shm.name
-        bf_shm.close()
+        self.shared_mem['bfiq'] = bf_shm
 
     @staticmethod
     def correlations_from_samples(beamformed_samples_1, beamformed_samples_2, output_sample_rate, slice_index_details):

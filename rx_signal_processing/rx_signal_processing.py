@@ -83,7 +83,6 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
         output_data_set.num_beams = sd['num_beams']
         output_data_set.num_ranges = sd['num_range_gates']
         output_data_set.num_lags = sd['num_lags']
-        output_data_set.num_samps = sd['num_samps']
 
         def add_array(ndarray):
             """
@@ -113,26 +112,6 @@ def fill_datawrite_proto(processed_data, slice_details, data_outputs):
         except:
             # No interferometer data
             pass
-
-        output_data_set.beam_nums = [i for i in range(sd['num_beams'])]
-        output_data_set.num_antennas = data_outputs['debug_outputs'][0].shape[0]
-
-        def add_debug_data(stage, name):
-            debug_data = output_data_set.debugsamples.add()
-            debug_data.stagename = name
-
-            all_ant_samps = stage[sd['slice_num']]
-            debug_data.num_antennas = all_ant_samps.shape[0]
-            debug_data.num_samps = all_ant_samps.shape[1]
-
-        for i, stage in enumerate(data_outputs['debug_outputs'][:-1]):
-            add_debug_data(stage, "stage_" + str(i))
-
-        
-        stage = data_outputs['debug_outputs'][-1]
-        
-        
-        add_debug_data(stage, "antennas")
 
 
 def main():
@@ -421,51 +400,81 @@ def main():
             # Extract outputs from processing into groups that will be put into proto fields.
             start = time.time()
             data_outputs = {}
-            if __debug__:
+            stages = []
+
+            def debug_data_in_shm(holder, data_array, array_name):
+                """
+                Adds an array of antennas data (filter outputs or antennas_iq) into a dictionary
+                for later entry in a processed data packet.
+
+                :param holder: Dictionary to store the shared memory parameters.
+                :param data_array: cp.ndarray or np.ndarray of the data.
+                :param array_name: 'main' or 'intf'. String
+                """
+                shm = shared_memory.SharedMemory(create=True, size=x.nbytes)
+                data = np.ndarray(x.shape, dtype=np.complex64, buffer=shm.buf)
                 if cupy_available:
-                    filter_outputs_m = [cp.asnumpy(x) for x in processed_main_samples.filter_outputs[:-1]]
-                    filter_outputs_m.append(processed_main_samples.antennas_iq_samples)
-                    if sig_options.intf_antenna_count > 0:
-                        filter_outputs_i = [cp.asnumpy(x) for x in processed_intf_samples.filter_outputs[:-1]]
-                        filter_outputs_i.append(processed_intf_samples.antennas_iq_samples)
-
+                    data[...] = cp.asnumpy(data_array)
                 else:
-                    filter_outputs_m = [x for x in processed_main_samples.filter_outputs]
+                    data[...] = data_array
+                holder['{}_shm'.format(array_name)] = shm.name
+                holder['num_samps'] = x.shape[-1]
+                shm.close()
+            
+            # Add the filter stage data if in debug mode
+            if __debug__:
+                for i, main_data in enumerate(processed_main_samples[:-1]):
+                    stage = {}
+                    stage['stage_name'] = 'stage_{}'.format(i)
+                    debug_data_in_shm(stage, main_data, 'main')
+
                     if sig_options.intf_antenna_count > 0:
-                        filter_outputs_i = [x for x in processed_intf_samples.filter_outputs]
+                        intf_data = processed_intf_samples[i]
+                        debug_data_in_shm(stage, intf_data, 'intf')
+                    stages.append(stage)
 
-            else:
-                filter_outputs_m = [processed_main_samples.antennas_iq_samples]
-                if sig_options.intf_antenna_count > 0:
-                    filter_outputs_i = [processed_intf_samples.antennas_iq_samples]
-
+            # Add antennas_iq data
+            stage = {}
+            stage['stage_name'] = 'antennas'
+            main_shm = processed_main_samples.shared_mem['antennas_iq']
+            stage['main_shm'] = main_shm.name
+            stage['num_samps'] = processed_main_samples.antennas_iq_samples.shape[-1]
+            main_shm.close()
             if sig_options.intf_antenna_count > 0:
-                filter_outputs = [np.hstack((x, y)) for x, y in zip(filter_outputs_m,
-                                                                    filter_outputs_i)]
-            else:
-                filter_outputs = filter_outputs_m
+                intf_shm = processed_intf_samples.shared_mem['antennas_iq']
+                stage['intf_shm'] = intf_shm.name
+                intf_shm.close()
+            stages.append(stage)
 
-            data_outputs['debug_outputs'] = filter_outputs
+            # Put all filter stage and antennas data in the protobuf
+            for stage in stages:
+                debug_data = processed_data.debug_data.add()
+                debug_data.stagename = stage['stage_name']
+                debug_data.main_shm = stage['main_shm']
+                if 'intf_shm' in stage.keys():
+                    debug_data.intf_shm = stage['intf_shm']
+                debug_data.num_samps = stage['num_samps']
+
+            # Add rawrf data
             debug_rf = ndarray_in_shr_mem(ringbuffer.take(indices, axis=1, mode='wrap'))
             processed_data.rf_samples_location = debug_rf['name']
 
+            # Add bfiq and correlations data
             beamformed_m = processed_main_samples.beamformed_samples
-            if sig_options.intf_antenna_count > 0:
-                beamformed_i = processed_intf_samples.beamformed_samples
+            processed_data.bfiq_main_shm = processed_main_samples.shared_mem['bfiq'].name
+            processed_data.max_num_beams = beamformed_m.shape[1]    # [num_slices, num_beams, num_samps]
+            processed_data.num_samps = beamformed_m.shape[-1]
+            processed_main_samples.shared_mem['bfiq'].close()
 
-            data_outputs['beamformed_m'] = beamformed_m
             data_outputs['main_corrs'] = main_corrs
 
             if sig_options.intf_antenna_count > 0:
                 data_outputs['cross_corrs'] = cross_corrs
-                data_outputs['beamformed_i'] = beamformed_i
                 data_outputs['intf_corrs'] = intf_corrs
+                processed_data.bfiq_intf_shm = processed_intf_samples.shared_mem['bfiq'].name
+                processed_intf_samples.shared_mem['bfiq'].close()
 
-            shm_names = processed_data.shm_names.add()
-            antiq_shm = processed_main_samples.shared_mem['antennas_iq'] + processed_intf_samples.shared_mem['antennas_iq']
-            bfiq_shm = processed_main_samples.shared_mem['bfiq'] + processed_intf_samples.shared_mem['bfiq']
-            shm_names = antiq_shm + bfiq_shm
-
+            # Fill protobuf with the slice-specific fields
             fill_datawrite_proto(processed_data, slice_details, data_outputs)
 
             message = processed_data.SerializeToString()
