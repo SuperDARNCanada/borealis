@@ -22,6 +22,7 @@ message ProcessedData {
     uint32 num_samps = 17;
     uint32 max_num_beams = 18;
     repeated DebugData debug_data = 19;  // 1 for each filter output stage (including antennas_iq)
+    uint32 rawrf_num_samps = 20;
 
     message DebugData {
         string stagename = 1;

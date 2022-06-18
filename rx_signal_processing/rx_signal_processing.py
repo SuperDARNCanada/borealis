@@ -455,9 +455,24 @@ def main():
                     debug_data.intf_shm = stage['intf_shm']
                 debug_data.num_samps = stage['num_samps']
 
+            done_filling_debug = time.time()
+            time_filling_debug = (done_filling_debug - start) * 1000
+            pprint("Time to put antennas data in protobuf for #{}: {}ms".format(sequence_num, time_filling_debug))
+
             # Add rawrf data
-            debug_rf = ndarray_in_shr_mem(ringbuffer.take(indices, axis=1, mode='wrap'))
-            processed_data.rf_samples_location = debug_rf['name']
+            if __debug__:
+                # np.complex64 in bytes * num_antennas * num_samps
+                rawrf_size = np.dtype(np.complex64).itemsize * ringbuffer.shape[0] * indices.shape[-1]
+                rawrf_shm = shared_memory.SharedMemory(create=True, size=rawrf_size)
+                rawrf_array = np.ndarray((ringbuffer.shape[0], indices.shape[-1]), dtype=np.complex64, buffer=rawrf_shm.buf)
+                rawrf_array[...] = ringbuffer.take(indices, axis=1, mode='wrap')
+                processed_data.rf_samples_location = rawrf_shm.name
+                processed_data.rawrf_num_samps = indices.shape[-1]
+                rawrf_shm.close()
+
+            done_filling_rawrf = time.time()
+            time_filling_rawrf = (done_filling_rawrf - done_filling_debug) * 1000
+            #pprint("Time to put rawrf in shared memory for #{}: {}ms".format(sequence_num, time_filling_rawrf))
 
             # Add bfiq and correlations data
             beamformed_m = processed_main_samples.beamformed_samples
@@ -480,6 +495,9 @@ def main():
             message = processed_data.SerializeToString()
 
             end = time.time()
+            time_for_bfiq_acf = (end - done_filling_rawrf) * 1000
+            pprint("Time to add bfiq and acfs to protofobuf for #{}: {}ms".format(sequence_num, time_for_bfiq_acf))
+
             time_diff = (end - start) * 1000
             pprint("Time to serialize and send processed data for #{}: {}ms".format(sequence_num,
                                                                                     time_diff))

@@ -172,6 +172,7 @@ class ParseData(object):
         self._lp_status_word = 0b0
 
         self._rawrf_locations = []
+        self._raw_rf_available = False
 
     def parse_correlations(self):
         """
@@ -349,7 +350,9 @@ class ParseData(object):
         for data_set in self.processed_data.outputdataset:
             self._slice_ids.add(data_set.slice_id)
 
-        self._rawrf_locations.append(self.processed_data.rf_samples_location)
+        if self.processed_data.rf_samples_location:
+            self._raw_rf_available = True
+            self._rawrf_locations.append(self.processed_data.rf_samples_location)
 
         # Logical AND to catch any time the GPS may have been unlocked during the integration period
         self._gps_locked = self._gps_locked and self.processed_data.gps_locked
@@ -517,6 +520,15 @@ class ParseData(object):
             set: slice id numbers
         """
         return self._slice_ids
+
+    @property
+    def raw_rf_available(self):
+        """ Gets the raw_rf available flag.
+
+        Returns:
+            TYPE: Bool
+        """
+        return self._raw_rf_available
 
     @property
     def rawrf_locations(self):
@@ -1070,6 +1082,7 @@ class DataWrite(object):
             # at the experiment they ran)
 
             raw_rf = data_parsing.rawrf_locations
+            num_rawrf_samps = data_parsing.rawrf_num_samps
 
             # Don't need slice id here
             name = dataset_name.replace('{sliceid}.', '').format(dformat='rawrf')
@@ -1077,22 +1090,20 @@ class DataWrite(object):
 
             samples_list = []
             shms = []
-            mapfiles = []
+            total_ants = self.options.main_antenna_count + self.options.intf_antenna_count
 
             for raw in raw_rf:
-                shm = ipc.SharedMemory(raw)
-                mapfile = mmap.mmap(shm.fd, shm.size)
+                shm = shared_memory.SharedMemory(name=raw)
+                rawrf_array = np.ndarray((total_ants, num_rawrf_samps), dtype=np.complex64, buffer=shm.buf)
 
-                samples_list.append(np.frombuffer(mapfile, dtype=np.complex64))
+                samples_list.append(rawrf_array)
 
                 shms.append(shm)
-                mapfiles.append(mapfile)
 
             param['data'] = np.concatenate(samples_list)
 
             param['rx_sample_rate'] = np.float32(data_parsing.rx_rate)
 
-            total_ants = self.options.main_antenna_count + self.options.intf_antenna_count
             param['num_samps'] = np.uint32(len(samples_list[0]) / total_ants)
 
             param['data_descriptors'] = ["num_sequences", "num_antennas", "num_samps"]
@@ -1109,10 +1120,9 @@ class DataWrite(object):
             write_file(output_file, param, self.raw_rf_two_hr_name)
 
             # Can only close mapped memory after its been written to disk.
-            for shm, mapfile in zip(shms, mapfiles):
-                shm.close_fd()
+            for shm in shms:
+                shm.close()
                 shm.unlink()
-                mapfile.close()
 
         def write_tx_data():
             """
@@ -1286,15 +1296,16 @@ class DataWrite(object):
         if write_antenna_iq and data_parsing.antenna_iq_available:
             write_antenna_iq_params(copy.deepcopy(parameters_holder))
 
-        if write_raw_rf:
-            # Just need first available slice paramaters.
-            one_slice_params = copy.deepcopy(next(iter(parameters_holder.values())))
-            write_raw_rf_params(one_slice_params)
-        else:
-            for rf_samples_location in data_parsing.rawrf_locations:
-                shm = ipc.SharedMemory(rf_samples_location)
-                shm.close_fd()
-                shm.unlink()
+        if data_parsing.raw_rf_available:
+            if write_raw_rf:
+                # Just need first available slice paramaters.
+                one_slice_params = copy.deepcopy(next(iter(parameters_holder.values())))
+                write_raw_rf_params(one_slice_params)
+            else:
+                for rf_samples_location in data_parsing.rawrf_locations:
+                    shm = shared_memory.SharedMemory(name=rf_samples_location)
+                    shm.close()
+                    shm.unlink()
 
         if write_tx:
             write_tx_data()
