@@ -172,6 +172,7 @@ class ParseData(object):
         self._lp_status_word = 0b0
 
         self._rawrf_locations = []
+        self._rawrf_num_samps = 0
         self._raw_rf_available = False
 
     def parse_correlations(self):
@@ -352,6 +353,7 @@ class ParseData(object):
 
         if self.processed_data.rf_samples_location:
             self._raw_rf_available = True
+            self._rawrf_num_samps = self.processed_data.rawrf_num_samps
             self._rawrf_locations.append(self.processed_data.rf_samples_location)
 
         # Logical AND to catch any time the GPS may have been unlocked during the integration period
@@ -538,6 +540,15 @@ class ParseData(object):
             TYPE: List of strings.
         """
         return self._rawrf_locations
+
+    @property
+    def rawrf_num_samps(self):
+        """ Gets the number of rawrf samples per antenna.
+
+        Returns:
+            TYPE: int
+        """
+        return self._rawrf_num_samps
 
     @property
     def gps_locked(self):

@@ -411,25 +411,25 @@ def main():
                 :param data_array: cp.ndarray or np.ndarray of the data.
                 :param array_name: 'main' or 'intf'. String
                 """
-                shm = shared_memory.SharedMemory(create=True, size=x.nbytes)
-                data = np.ndarray(x.shape, dtype=np.complex64, buffer=shm.buf)
+                shm = shared_memory.SharedMemory(create=True, size=data_array.nbytes)
+                data = np.ndarray(data_array.shape, dtype=np.complex64, buffer=shm.buf)
                 if cupy_available:
                     data[...] = cp.asnumpy(data_array)
                 else:
                     data[...] = data_array
                 holder['{}_shm'.format(array_name)] = shm.name
-                holder['num_samps'] = x.shape[-1]
+                holder['num_samps'] = data_array.shape[-1]
                 shm.close()
             
             # Add the filter stage data if in debug mode
             if __debug__:
-                for i, main_data in enumerate(processed_main_samples[:-1]):
+                for i, main_data in enumerate(processed_main_samples.filter_outputs[:-1]):
                     stage = {}
                     stage['stage_name'] = 'stage_{}'.format(i)
                     debug_data_in_shm(stage, main_data, 'main')
 
                     if sig_options.intf_antenna_count > 0:
-                        intf_data = processed_intf_samples[i]
+                        intf_data = processed_intf_samples.filter_outputs[i]
                         debug_data_in_shm(stage, intf_data, 'intf')
                     stages.append(stage)
 
@@ -472,7 +472,7 @@ def main():
 
             done_filling_rawrf = time.time()
             time_filling_rawrf = (done_filling_rawrf - done_filling_debug) * 1000
-            #pprint("Time to put rawrf in shared memory for #{}: {}ms".format(sequence_num, time_filling_rawrf))
+            pprint("Time to put rawrf in shared memory for #{}: {}ms".format(sequence_num, time_filling_rawrf))
 
             # Add bfiq and correlations data
             beamformed_m = processed_main_samples.beamformed_samples
