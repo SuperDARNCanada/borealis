@@ -28,6 +28,7 @@ import zmq
 import faulthandler
 from scipy.constants import speed_of_light
 import copy
+import pickle
 
 borealis_path = os.environ['BOREALISPATH']
 if not borealis_path:
@@ -38,7 +39,6 @@ if __debug__:
 else:
     sys.path.append(borealis_path + '/build/release/utils/protobuf')
 
-import processeddata_pb2
 import datawritemetadata_pb2
 
 sys.path.append(borealis_path + '/utils/')
@@ -122,12 +122,11 @@ TX_TEMPLATE = {
 
 
 class ParseData(object):
-    """Parse protobuf data from sockets into file writable types, such as hdf5, json, dmap, etc.
+    """Parse message data from sockets into file writable types, such as hdf5, json, dmap, etc.
 
     Attributes:
         nested_dict (Python default nested dictionary): alias to a nested defaultdict
-        processed_data (Protobuf packet): Contains a processeddata protobuf from dsp socket in
-                                          protobuf_pb2 format.
+        processed_data (dict): Contains a processeddata message from dsp socket.
     """
 
     def __init__(self):
@@ -182,10 +181,10 @@ class ParseData(object):
         of a sampling period by a different function.
         """
 
-        for data_set in self.processed_data.outputdataset:
-            slice_id = data_set.slice_id
+        for data_set in self.processed_data['outputdataset']:
+            slice_id = data_set['slice_id']
 
-            data_shape = (data_set.num_beams, data_set.num_ranges, data_set.num_lags)
+            data_shape = (data_set['num_beams'], data_set['num_ranges'], data_set['num_lags'])
 
             def accumulate_data(holder, proto_data):
                 """
@@ -208,17 +207,17 @@ class ParseData(object):
                     holder[slice_id]['shm'] = []
                 holder[slice_id]['shm'].append(shm)
 
-            if data_set.mainacf:
+            if 'main_acf' in data_set.keys():
                 self._mainacfs_available = True
-                accumulate_data(self._mainacfs_accumulator, data_set.mainacf)
+                accumulate_data(self._mainacfs_accumulator, data_set['mainacf'])
 
-            if data_set.xcf:
+            if 'xcf' in data_set.keys():
                 self._xcfs_available = True
-                accumulate_data(self._xcfs_accumulator, data_set.xcf)
+                accumulate_data(self._xcfs_accumulator, data_set['xcf'])
 
-            if data_set.intacf:
+            if 'intacf' in data_set.keys():
                 self._intfacfs_available = True
-                accumulate_data(self._intfacfs_accumulator, data_set.intacf)
+                accumulate_data(self._intfacfs_accumulator, data_set['intacf'])
 
     def parse_bfiq(self):
         """
@@ -230,25 +229,25 @@ class ParseData(object):
         self._bfiq_accumulator['data_descriptors'] = ['num_antenna_arrays', 'num_sequences',
                                                       'num_beams', 'num_samps']
     
-        num_slices = len(self.processed_data.outputdataset)
-        max_num_beams = self.processed_data.max_num_beams
-        num_samps = self.processed_data.num_samps
+        num_slices = len(self.processed_data['outputdataset'])
+        max_num_beams = self.processed_data['max_num_beams']
+        num_samps = self.processed_data['num_samps']
         
-        main_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_main_shm)
+        main_shm = shared_memory.SharedMemory(name=self.processed_data['bfiq_main_shm'])
         main_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=main_shm.buf)
         self._bfiq_accumulator['main_shm'].append(main_shm)
 
         intf_available = False
-        if self.processed_data.bfiq_intf_shm:
+        if 'bfiq_intf_shm' in self.processed_data.keys():
             intf_available = True
-            intf_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_intf_shm)
+            intf_shm = shared_memory.SharedMemory(name=self.processed_data['bfiq_intf_shm'])
             intf_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=intf_shm.buf)
             self._bfiq_accumulator['intf_shm'].append(intf_shm)
 
         self._bfiq_available = True
 
-        for i, data_set in enumerate(self.processed_data.outputdataset):
-            slice_id = data_set.slice_id
+        for i, data_set in enumerate(self.processed_data['outputdataset']):
+            slice_id = data_set['slice_id']
 
             self._bfiq_accumulator[slice_id]['num_samps'] = num_samps
 
@@ -264,7 +263,7 @@ class ParseData(object):
                 else:
                     holder['data'] = np.concatenate((holder['data'], data))
 
-            for beam in range(data_set.num_beams):
+            for beam in range(data_set['num_beams']):
                 accumulate_data(self._bfiq_accumulator[slice_id]['main'], main_data[i, beam, :])
                 if intf_available:
                     accumulate_data(self._bfiq_accumulator[slice_id]['intf'], intf_data[i, beam, :])
@@ -279,25 +278,25 @@ class ParseData(object):
                                                             'num_samps']
 
         # Get data dimensions for reading in the shared memory
-        num_slices = len(self.processed_data.outputdataset)
+        num_slices = len(self.processed_data['outputdataset'])
         options = dwo.DataWriteOptions()
         num_main_antennas = options.main_antenna_count
         num_intf_antennas = options.intf_antenna_count
 
         stages = []
         # Loop through all the filter stage data 
-        for debug_stage in self.processed_data.debug_data:
-            stage_dict = {'stage_name': debug_stage.stagename,
-                          'stage_samps': debug_stage.num_samps,
-                          'main_shm': debug_stage.main_shm,
-                          'intf_shm': debug_stage.intf_shm}
+        for debug_stage in self.processed_data['debug_data']:
+            stage_dict = {'stage_name': debug_stage['stagename'],
+                          'stage_samps': debug_stage['num_samps'],
+                          'main_shm': debug_stage['main_shm'],
+                          'intf_shm': debug_stage['intf_shm']}
 
-            stage_samps = debug_stage.num_samps
-            stage_main_shm = shared_memory.SharedMemory(name=debug_stage.main_shm)
+            stage_samps = debug_stage['num_samps']
+            stage_main_shm = shared_memory.SharedMemory(name=debug_stage['main_shm'])
             stage_data = np.ndarray((num_slices, num_main_antennas, stage_samps), dtype=np.complex64, buffer=stage_main_shm.buf)
             self._antenna_iq_accumulator['main_shm'].append(stage_main_shm)
-            if debug_stage.intf_shm:
-                stage_intf_shm = shared_memory.SharedMemory(name=debug_stage.intf_shm)
+            if 'intf_shm' in debug_stage.keys():
+                stage_intf_shm = shared_memory.SharedMemory(name=debug_stage['intf_shm'])
                 stage_intf_data = np.ndarray((num_slices, num_intf_antennas, stage_samps), dtype=np.complex64, buffer=stage_intf_shm.buf)
                 stage_data = np.hstack((stage_data, stage_intf_data))
                 self._antenna_iq_accumulator['intf_shm'].append(stage_intf_shm)
@@ -308,8 +307,8 @@ class ParseData(object):
         self._antenna_iq_available = True
 
         # Iterate over every data set, one data set per slice
-        for i, data_set in enumerate(self.processed_data.outputdataset):
-            slice_id = data_set.slice_id
+        for i, data_set in enumerate(self.processed_data['outputdataset']):
+            slice_id = data_set['slice_id']
 
             # non beamformed IQ samples are available
             for debug_stage in stages:
@@ -343,31 +342,31 @@ class ParseData(object):
             data (Protobuf): deserialized ProcessedData protobuf.
         """
         self.processed_data = data
-        self._timestamps.append(self.processed_data.sequence_start_time)
+        self._timestamps.append(self.processed_data['sequence_start_time'])
 
-        self._rx_rate = self.processed_data.rx_sample_rate
-        self._output_sample_rate = self.processed_data.output_sample_rate
+        self._rx_rate = self.processed_data['rx_sample_rate']
+        self._output_sample_rate = self.processed_data['output_sample_rate']
 
-        for data_set in self.processed_data.outputdataset:
-            self._slice_ids.add(data_set.slice_id)
+        for data_set in self.processed_data['outputdataset']:
+            self._slice_ids.add(data_set['slice_id'])
 
-        if self.processed_data.rf_samples_location:
+        if 'rf_samples_location' in self.processed_data.keys():
             self._raw_rf_available = True
-            self._rawrf_num_samps = self.processed_data.rawrf_num_samps
-            self._rawrf_locations.append(self.processed_data.rf_samples_location)
+            self._rawrf_num_samps = self.processed_data['rawrf_num_samps']
+            self._rawrf_locations.append(self.processed_data['rf_samples_location'])
 
         # Logical AND to catch any time the GPS may have been unlocked during the integration period
-        self._gps_locked = self._gps_locked and self.processed_data.gps_locked
+        self._gps_locked = self._gps_locked and self.processed_data['gps_locked']
 
         # Find the max time diff between GPS and system time to report for this integration period
-        if abs(self._gps_to_system_time_diff) < abs(self.processed_data.gps_to_system_time_diff):
-            self._gps_to_system_time_diff = self.processed_data.gps_to_system_time_diff
+        if abs(self._gps_to_system_time_diff) < abs(self.processed_data['gps_to_system_time_diff']):
+            self._gps_to_system_time_diff = self.processed_data['gps_to_system_time_diff']
 
         # Bitwise OR to catch any AGC faults during the integration period
-        self._agc_status_word = self._agc_status_word | self.processed_data.agc_status_bank_h
+        self._agc_status_word = self._agc_status_word | self.processed_data['agc_status_bank_h']
 
         # Bitwise OR to catch any low power conditions during the integration period
-        self._lp_status_word = self._lp_status_word | self.processed_data.lp_status_bank_h
+        self._lp_status_word = self._lp_status_word | self.processed_data['lp_status_bank_h']
 
         # TODO(keith): Parallelize?
         procs = []
@@ -389,7 +388,7 @@ class ParseData(object):
         Returns:
             TYPE: Int
         """
-        return self.processed_data.sequence_num
+        return self.processed_data['sequence_num']
 
     @property
     def bfiq_available(self):
@@ -1387,22 +1386,21 @@ def main():
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes_from_any_iden(dsp_to_data_write)
 
-            processed_data = processeddata_pb2.ProcessedData()
-            processed_data.ParseFromString(data)
+            processed_data = pickle.loads(data)
 
             queued_sqns.append(processed_data)
             # Check if any data processing finished out of order.
 
-            if processed_data.sequence_num != expected_sqn_num:
+            if processed_data['sequence_num'] != expected_sqn_num:
                 continue
 
-            sorted_q = sorted(queued_sqns, key=lambda x: x.sequence_num)
+            sorted_q = sorted(queued_sqns, key=lambda x: x['sequence_num'])
 
             # This is needed to check that if we have a backlog, there are no more
             # skipped sequence numbers we are still waiting for.
             break_now = False
             for i, pd in enumerate(sorted_q):
-                if pd.sequence_num != expected_sqn_num + i:
+                if pd['sequence_num'] != expected_sqn_num + i:
                     expected_sqn_num += i
                     break_now = True
                     break
@@ -1413,7 +1411,7 @@ def main():
                     sys.exit()
                 continue
 
-            expected_sqn_num = sorted_q[-1].sequence_num + 1
+            expected_sqn_num = sorted_q[-1]['sequence_num'] + 1
 
             for pd in sorted_q:
                 if not first_time:
