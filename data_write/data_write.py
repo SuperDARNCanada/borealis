@@ -34,13 +34,6 @@ borealis_path = os.environ['BOREALISPATH']
 if not borealis_path:
     raise ValueError("BOREALISPATH env variable not set")
 
-if __debug__:
-    sys.path.append(borealis_path + '/build/debug/utils/protobuf')
-else:
-    sys.path.append(borealis_path + '/build/release/utils/protobuf')
-
-import datawritemetadata_pb2
-
 sys.path.append(borealis_path + '/utils/')
 import shared_macros.shared_macros as sm
 import data_write_options.data_write_options as dwo
@@ -176,7 +169,7 @@ class ParseData(object):
 
     def parse_correlations(self):
         """
-        Parses out the possible correlation data from the protobuf. Runs on every new processeddata
+        Parses out the possible correlation data from the message. Runs on every new processeddata
         packet(contains all sampling period data). The expectation value is calculated at the end
         of a sampling period by a different function.
         """
@@ -186,15 +179,15 @@ class ParseData(object):
 
             data_shape = (data_set['num_beams'], data_set['num_ranges'], data_set['num_lags'])
 
-            def accumulate_data(holder, proto_data):
+            def accumulate_data(holder, message_data):
                 """
                 Opens a numpy array from shared memory into the 'holder' accumulator.
 
                 :param holder: dictionary
-                :param proto_data: protobuf field for parsing
+                :param message_data: message field for parsing
                 """
                 # Open the shared memory
-                shm = shared_memory.SharedMemory(name=proto_data)
+                shm = shared_memory.SharedMemory(name=message_data)
                 acf_data = np.ndarray(data_shape, dtype=np.complex64, buffer=shm.buf)
 
                 # Put the data in the accumulator
@@ -221,7 +214,7 @@ class ParseData(object):
 
     def parse_bfiq(self):
         """
-        Parses out any possible beamformed IQ data from the protobuf. Runs on every processeddata
+        Parses out any possible beamformed IQ data from the message. Runs on every processeddata
         packet(contains all sampling period data). All variables are captured from outer scope.
 
         """
@@ -336,10 +329,10 @@ class ParseData(object):
                         arr['data'] = np.concatenate((arr['data'], antennas_data[ant_num, :]))
 
     def update(self, data):
-        """ Parses the protobuf and updates the accumulator fields with the new data.
+        """ Parses the message and updates the accumulator fields with the new data.
 
         Args:
-            data (Protobuf): deserialized ProcessedData protobuf.
+            data (dict): deserialized nested dictionary.
         """
         self.processed_data = data
         self._timestamps.append(self.processed_data['sequence_start_time'])
@@ -691,7 +684,7 @@ class DataWrite(object):
         :param write_raw_rf:        Should raw rf samples be written to file? Bool.
         :param write_tx:            Should the generated tx samples and metadata be written to file? Bool.
         :param file_ext:            Type of file extention to use. String
-        :param integration_meta:    Metadata from radar control about integration period. Protobuf
+        :param integration_meta:    Metadata from radar control about integration period. Dict
         :param data_parsing:        All parsed and concatenated data from integration period stored
                                     in ParseData object.
         :param rt_dw:               Pair of socket and iden for RT purposes.
@@ -770,7 +763,7 @@ class DataWrite(object):
             Writes the final data out to the location based on the type of file extension required
 
             :param tmp_file:                File path and name to write single record. String
-            :param final_data_dict:         Data dict parsed out from protobuf. Dict
+            :param final_data_dict:         Data dict parsed out from message. Dict
             :param two_hr_file_with_type:   Name of the two hour file with data type added. String
 
             """
@@ -814,7 +807,7 @@ class DataWrite(object):
 
         def write_correlations(parameters_holder):
             """
-            Parses out any possible correlation data from protobuf and writes to file. Some variables
+            Parses out any possible correlation data from message and writes to file. Some variables
             are captured from outer scope.
 
             main_acfs, intf_acfs, and xcfs are all passed to data_write for all sequences
@@ -956,7 +949,7 @@ class DataWrite(object):
 
                 parameters['num_samps'] = np.uint32(bfiq[slice_id]['num_samps'])
                 parameters['data_dimensions'] = np.array([num_antenna_arrays,
-                                                          integration_meta.num_sequences,
+                                                          integration_meta['num_sequences'],
                                                           len(parameters['beam_nums']),
                                                           parameters['num_samps']], dtype=np.uint32)
 
@@ -1002,16 +995,16 @@ class DataWrite(object):
             # Pop these so we don't include them in later iteration.
             data_descriptors = antenna_iq.pop('data_descriptors', None)
 
-            # Parse the antennas from protobuf
+            # Parse the antennas from message
             rx_main_antennas = {}
             rx_intf_antennas = {}
 
-            for meta in integration_meta.sequences:
-                for rx_freq in meta.rxchannel:
-                    rx_main_antennas[rx_freq.slice_id] = list(rx_freq.rx_main_antennas)
-                    rx_intf_antennas[rx_freq.slice_id] = list(rx_freq.rx_intf_antennas)
+            for meta in integration_meta['sequences']:
+                for rx_freq in meta['rxchannel']:
+                    rx_main_antennas[rx_freq['slice_id']] = list(rx_freq['rx_main_antennas'])
+                    rx_intf_antennas[rx_freq['slice_id']] = list(rx_freq['rx_intf_antennas'])
 
-            # Build strings from antennas used in the protobuf. This will be used to know
+            # Build strings from antennas used in the message. This will be used to know
             # what antennas were recorded on since we sample all available USRP channels
             # and some channels may not be transmitted on, or connected.
             main_ant_str = lambda x: "antenna_{}".format(x)
@@ -1037,7 +1030,7 @@ class DataWrite(object):
                     num_ants = len(parameters['antenna_arrays_order'])
 
                     parameters['data_dimensions'] = np.array([num_ants,
-                                                              integration_meta.num_sequences,
+                                                              integration_meta['num_sequences'],
                                                               parameters['num_samps']],
                                                              dtype=np.uint32)
 
@@ -1067,7 +1060,7 @@ class DataWrite(object):
 
         def write_raw_rf_params(param):
             """
-            Opens the shared memory location in the protobuf and writes the samples out to file.
+            Opens the shared memory location in the message and writes the samples out to file.
             Write medium must be able to sustain high write bandwidth. Shared memory is destroyed
             after write. Some variables are captured in scope.
 
@@ -1141,37 +1134,37 @@ class DataWrite(object):
 
             """
             tx_data = None
-            for meta in integration_meta.sequences:
+            for meta in integration_meta['sequences']:
                 if meta.HasField('tx_data'):
                     tx_data = TX_TEMPLATE.copy()
                     break
 
             if tx_data is not None:
-                for meta in integration_meta.sequences:
-                    tx_data['tx_rate'].append(meta.tx_data.txrate)
-                    tx_data['tx_center_freq'].append(meta.tx_data.txctrfreq)
+                for meta in integration_meta['sequences']:
+                    tx_data['tx_rate'].append(meta['tx_data']['txrate'])
+                    tx_data['tx_center_freq'].append(meta['tx_data']['txctrfreq'])
                     tx_data['pulse_timing_us'].append(
-                        meta.tx_data.pulse_timing_us)
-                    tx_data['pulse_sample_start'].append(meta.tx_data.pulse_sample_start)
-                    tx_data['dm_rate'].append(meta.tx_data.dmrate)
+                        meta['tx_data']['pulse_timing_us'])
+                    tx_data['pulse_sample_start'].append(meta['tx_data']['pulse_sample_start'])
+                    tx_data['dm_rate'].append(meta['tx_data']['dmrate'])
 
                     tx_samples = []
                     decimated_tx_samples = []
                     decimated_tx_antennas = []
                     tx_antennas = []
 
-                    for ant in meta.tx_data.tx_samples:
-                        tx_antennas.append(ant.tx_antenna_number)
-                        real = np.array(ant.real, dtype=np.float32)
-                        imag = np.array(ant.imag, dtype=np.float32)
+                    for ant in meta['tx_data']['tx_samples']:
+                        tx_antennas.append(ant['tx_antenna_number'])
+                        real = np.array(ant['real'], dtype=np.float32)
+                        imag = np.array(ant['imag'], dtype=np.float32)
 
                         cmplx = np.array(real + 1j * imag, dtype=np.complex64)
                         tx_samples.append(cmplx)
 
-                    for ant in meta.tx_data.decimated_tx_samples:
-                        decimated_tx_antennas.append(ant.tx_antenna_number)
-                        real = np.array(ant.real, dtype=np.float32)
-                        imag = np.array(ant.imag, dtype=np.float32)
+                    for ant in meta['tx_data']['decimated_tx_samples']:
+                        decimated_tx_antennas.append(ant['tx_antenna_number'])
+                        real = np.array(ant['real'], dtype=np.float32)
+                        imag = np.array(ant['imag'], dtype=np.float32)
 
                         cmplx = np.array(real + 1j * imag, dtype=np.complex64)
                         decimated_tx_samples.append(cmplx)
@@ -1225,65 +1218,65 @@ class DataWrite(object):
                         shm_obj.unlink()
 
         parameters_holder = {}
-        for meta in integration_meta.sequences:
-            for rx_freq in meta.rxchannel:
+        for meta in integration_meta['sequences']:
+            for rx_freq in meta['rxchannel']:
                 parameters = DATA_TEMPLATE.copy()
                 parameters['borealis_git_hash'] = self.git_hash.decode('utf-8')
-                parameters['experiment_id'] = np.int64(integration_meta.experiment_id)
-                parameters['experiment_name'] = integration_meta.experiment_name
-                parameters['experiment_comment'] = integration_meta.experiment_comment
-                parameters['scheduling_mode'] = integration_meta.scheduling_mode
-                parameters['slice_comment'] = rx_freq.slice_comment
-                parameters['slice_id'] = np.uint32(rx_freq.slice_id)
-                parameters['averaging_method'] = rx_freq.averaging_method # string
-                parameters['slice_interfacing'] = rx_freq.slice_interfacing # string
-                parameters['num_slices'] = len(integration_meta.sequences) * len(meta.rxchannel)
+                parameters['experiment_id'] = np.int64(integration_meta['experiment_id'])
+                parameters['experiment_name'] = integration_meta['experiment_name']
+                parameters['experiment_comment'] = integration_meta['experiment_comment']
+                parameters['scheduling_mode'] = integration_meta['scheduling_mode']
+                parameters['slice_comment'] = rx_freq['slice_comment']
+                parameters['slice_id'] = np.uint32(rx_freq['slice_id'])
+                parameters['averaging_method'] = rx_freq['averaging_method'] # string
+                parameters['slice_interfacing'] = rx_freq['slice_interfacing'] # string
+                parameters['num_slices'] = len(integration_meta['sequences']) * len(meta['rxchannel'])
                 parameters['station'] = self.options.site_id
-                parameters['num_sequences'] = integration_meta.num_sequences
-                parameters['num_ranges'] = np.uint32(rx_freq.num_ranges)
-                parameters['range_sep'] = np.float32(rx_freq.range_sep)
+                parameters['num_sequences'] = integration_meta['num_sequences']
+                parameters['num_ranges'] = np.uint32(rx_freq['num_ranges'])
+                parameters['range_sep'] = np.float32(rx_freq['range_sep'])
                 # time to first range and back. convert to meters, div by c then convert to us
-                rtt = (rx_freq.first_range * 2 * 1.0e3 / speed_of_light) * 1.0e6
+                rtt = (rx_freq['first_range'] * 2 * 1.0e3 / speed_of_light) * 1.0e6
                 parameters['first_range_rtt'] = np.float32(rtt)
-                parameters['first_range'] = np.float32(rx_freq.first_range)
+                parameters['first_range'] = np.float32(rx_freq['first_range'])
                 parameters['rx_sample_rate'] = data_parsing.output_sample_rate  # this applies to pre-bf and bfiq
-                parameters['scan_start_marker'] = integration_meta.scan_flag  # Should this change to scan_start_marker?
-                parameters['int_time'] = np.float32(integration_meta.integration_time)
-                parameters['tx_pulse_len'] = np.uint32(rx_freq.pulse_len)
-                parameters['tau_spacing'] = np.uint32(rx_freq.tau_spacing)
-                parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
-                parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
-                parameters['freq'] = np.uint32(rx_freq.rxfreq)
+                parameters['scan_start_marker'] = integration_meta['scan_flag']  # Should this change to scan_start_marker?
+                parameters['int_time'] = np.float32(integration_meta['integration_time'])
+                parameters['tx_pulse_len'] = np.uint32(rx_freq['pulse_len'])
+                parameters['tau_spacing'] = np.uint32(rx_freq['tau_spacing'])
+                parameters['main_antenna_count'] = np.uint32(len(rx_freq['rx_main_antennas']))
+                parameters['intf_antenna_count'] = np.uint32(len(rx_freq['rx_intf_antennas']))
+                parameters['freq'] = np.uint32(rx_freq['rxfreq'])
                 parameters[
-                    'rx_center_freq'] = integration_meta.rx_center_freq 
+                    'rx_center_freq'] = integration_meta['rx_center_freq'] 
                 parameters['samples_data_type'] = "complex float"
-                parameters['pulses'] = np.array(rx_freq.ptab.pulse_position, dtype=np.uint32)
+                parameters['pulses'] = np.array(rx_freq['ptab']['pulse_position'], dtype=np.uint32)
 
                 encodings = []
-                for encoding in rx_freq.sequence_encodings:
+                for encoding in rx_freq['sequence_encodings']:
                     encoding = np.array(encoding.encoding_value, dtype=np.float32)
                     encodings.append(encoding)
 
                 encodings = np.array(encodings, dtype=np.float32)
                 parameters['pulse_phase_offset'] = encodings
-                parameters['data_normalization_factor'] = integration_meta.data_normalization_factor
+                parameters['data_normalization_factor'] = integration_meta['data_normalization_factor']
 
                 lags = []
-                for lag in rx_freq.ltab.lag:
-                    lags.append([lag.pulse_position[0], lag.pulse_position[1]])
+                for lag in rx_freq['ltab']['lag']:
+                    lags.append([lag['pulse_position'][0], lag['pulse_position'][1]])
 
                 parameters['lags'] = np.array(lags, dtype=np.uint32)
 
-                parameters['blanked_samples'] = np.array(meta.blanks, dtype=np.uint32)
+                parameters['blanked_samples'] = np.array(meta['blanks'], dtype=np.uint32)
                 parameters['sqn_timestamps'] = data_parsing.timestamps
 
                 parameters['beam_nums'] = []
                 parameters['beam_azms'] = []
-                for beam in rx_freq.beams:
-                    parameters['beam_nums'].append(np.uint32(beam.beamnum))
-                    parameters['beam_azms'].append(beam.beamazimuth)
+                for beam in rx_freq['beams']:
+                    parameters['beam_nums'].append(np.uint32(beam['beamnum']))
+                    parameters['beam_azms'].append(beam['beamazimuth'])
 
-                parameters['noise_at_freq'] = [0.0] * integration_meta.num_sequences  # TODO update. should come from data_parsing
+                parameters['noise_at_freq'] = [0.0] * integration_meta['num_sequences']  # TODO update. should come from data_parsing
 
                 parameters['gps_locked'] = data_parsing.gps_locked
                 parameters['gps_to_system_time_diff'] = data_parsing.gps_to_system_time_diff
@@ -1295,7 +1288,7 @@ class DataWrite(object):
                 # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs
                 # all get set within the separate write functions.
 
-                parameters_holder[rx_freq.slice_id] = parameters
+                parameters_holder[rx_freq['slice_id']] = parameters
 
         if write_rawacf and data_parsing.mainacfs_available:
             write_correlations(copy.deepcopy(parameters_holder))
@@ -1378,10 +1371,9 @@ def main():
         if radctrl_to_data_write in socks and socks[radctrl_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, dw_print)
 
-            integration_meta = datawritemetadata_pb2.IntegrationTimeMetadata()
-            integration_meta.ParseFromString(data)
+            integration_meta = pickle.loads(data)
 
-            integration_metadata_dict[integration_meta.last_seqn_num] = integration_meta
+            integration_metadata_dict[integration_meta['last_seqn_num']] = integration_meta
 
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes_from_any_iden(dsp_to_data_write)
@@ -1419,9 +1411,9 @@ def main():
 
                         integration_metadata = integration_metadata_dict.pop(data_parsing.sequence_num)
 
-                        if integration_metadata.experiment_name != current_experiment:
+                        if integration_metadata['experiment_name'] != current_experiment:
                             data_write = DataWrite(options)
-                            current_experiment = integration_metadata.experiment_name
+                            current_experiment = integration_metadata['experiment_name']
 
                         kwargs = dict(write_bfiq=args.enable_bfiq,
                                       write_antenna_iq=args.enable_antenna_iq,

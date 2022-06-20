@@ -38,7 +38,6 @@ else:
 
 from driverpacket_pb2 import DriverPacket
 from sigprocpacket_pb2 import SigProcPacket
-from datawritemetadata_pb2 import IntegrationTimeMetadata
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
@@ -331,7 +330,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                             debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
-    :param packet: The IntegrationTimeMetadata protobuf packet.
+    :param packet: The IntegrationTimeMetadata message dict.
     :param radctrl_to_datawrite: The socket to send the packet on.
     :param datawrite_radctrl_iden: Identity of datawrite on the socket.
     :param seqnum: The last sequence number (identifier) that is valid for this integration
@@ -360,96 +359,117 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     keys are the antenna numbers (there is a sample set for each transmit antenna).
     """
 
-    packet.Clear()
-    packet.experiment_id = experiment_id
-    packet.experiment_name = experiment_name
-    packet.experiment_comment = experiment_comment
-    packet.rx_center_freq = rx_center_freq
-    packet.num_sequences = num_sequences
-    packet.last_seqn_num = seqnum
-    packet.scan_flag = scan_flag
-    packet.integration_time = inttime.total_seconds()
-    packet.output_sample_rate = output_sample_rate
-    packet.data_normalization_factor = reduce(lambda x, y: x * y, filter_scaling_factors)  # multiply all
-    packet.scheduling_mode = scheduling_mode
+    packet = {}
+    packet['experiment_id'] = experiment_id
+    packet['experiment_name'] = experiment_name
+    packet['experiment_comment'] = experiment_comment
+    packet['rx_center_freq'] = rx_center_freq
+    packet['num_sequences'] = num_sequences
+    packet['last_seqn_num'] = seqnum
+    packet['scan_flag'] = scan_flag
+    packet['integration_time'] = inttime.total_seconds()
+    packet['output_sample_rate'] = output_sample_rate
+    packet['data_normalization_factor'] = reduce(lambda x, y: x * y, filter_scaling_factors)  # multiply all
+    packet['scheduling_mode'] = scheduling_mode
 
+    packet['sequences'] = []
     for sequence_index, sequence in enumerate(sequences):
-        sequence_add = packet.sequences.add()
-        sequence_add.blanks[:] = sequence.blanks
+        sequence_add = {}
+        sequence_add['blanks'] = sequence.blanks
         if debug_samples:
-            sequence_add.tx_data.txrate = debug_samples[sequence_index]['txrate']
-            sequence_add.tx_data.txctrfreq = debug_samples[sequence_index]['txctrfreq']
-            sequence_add.tx_data.pulse_timing_us[:] = debug_samples[sequence_index][
+            tx_data = {}
+            tx_data['txrate'] = debug_samples[sequence_index]['txrate']
+            tx_data['txctrfreq'] = debug_samples[sequence_index]['txctrfreq']
+            tx_data['pulse_timing_us'] = debug_samples[sequence_index][
                 'pulse_timing']
-            sequence_add.tx_data.pulse_sample_start[:] = debug_samples[sequence_index][
+            tx_data['pulse_sample_start'] = debug_samples[sequence_index][
                 'pulse_sample_start']
+
+            tx_data['tx_samples'] = {}
             for ant, ant_samples in debug_samples[sequence_index]['sequence_samples'].items():
-                tx_samples_add = sequence_add.tx_data.tx_samples.add()
-                tx_samples_add.real[:] = ant_samples['real']
-                tx_samples_add.imag[:] = ant_samples['imag']
-                tx_samples_add.tx_antenna_number = ant
-            sequence_add.tx_data.dmrate = debug_samples[sequence_index]['dmrate']
+                tx_ant_data = {}
+                tx_ant_data['real'] = ant_samples['real']
+                tx_ant_data['imag'] = ant_samples['imag']
+                tx_ant_data['tx_antenna_number'] = ant
+                tx_data['tx_samples'].append(tx_ant_data)
+
+            tx_data['dmrate'] = debug_samples[sequence_index]['dmrate']
+            
+            tx_data['decimated_tx_samples'] = []
             for ant, ant_samples in debug_samples[sequence_index]['decimated_samples'].items():
-                tx_samples_add = sequence_add.tx_data.decimated_tx_samples.add()
-                tx_samples_add.real[:] = ant_samples['real']
-                tx_samples_add.imag[:] = ant_samples['imag']
-                tx_samples_add.tx_antenna_number = ant
+                decimated_tx_samples = {}
+                decimated_tx_samples['real'] = ant_samples['real']
+                decimated_tx_samples['imag'] = ant_samples['imag']
+                decimated_tx_samples['tx_antenna_number'] = ant
+                tx_data['decimated_tx_samples'].append(decimated_tx_samples)
+            sequence_add['tx_data'] = tx_data
+
+        sequence_add['rxchannel'] = []
         for slice_id in sequence.slice_ids:
-            rxchan_add = sequence_add.rxchannel.add()
-            rxchan_add.slice_id = slice_id
-            rxchan_add.slice_comment = sequence.slice_dict[slice_id]['comment']
-            rxchan_add.interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
-            rxchan_add.rx_only = sequence.slice_dict[slice_id]['rxonly']
-            rxchan_add.pulse_len = sequence.slice_dict[slice_id]['pulse_len']
-            rxchan_add.tau_spacing = sequence.slice_dict[slice_id]['tau_spacing']
+            rxchannel = {}
+            rxchannel['slice_id'] = slice_id
+            rxchannel['slice_comment'] = sequence.slice_dict[slice_id]['comment']
+            rxchannel['interfacing'] = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
+            rxchannel['rx_only'] = sequence.slice_dict[slice_id]['rxonly']
+            rxchannel['pulse_len'] = sequence.slice_dict[slice_id]['pulse_len']
+            rxchannel['tau_spacing'] = sequence.slice_dict[slice_id]['tau_spacing']
 
             if sequence.slice_dict[slice_id]['rxonly']:
-                rxchan_add.rxfreq = sequence.slice_dict[slice_id]['rxfreq']
+                rxchannel['rxfreq'] = sequence.slice_dict[slice_id]['rxfreq']
             else:
-                rxchan_add.rxfreq = sequence.slice_dict[slice_id]['txfreq']
+                rxchannel['rxfreq'] = sequence.slice_dict[slice_id]['txfreq']
 
-            rxchan_add.ptab.pulse_position[:] = sequence.slice_dict[slice_id]['pulse_sequence']
+            rxchannel['ptab'] = {}
+            rxchannel['ptab']['pulse_position'] = sequence.slice_dict[slice_id]['pulse_sequence']
 
             # We always build one sequence in advance, so we trim the last one from when radar
             # control stops processing the averaging period.
+            rxchannel['sequence_encodings'] = []
             for encoding in sequence.output_encodings[slice_id][:num_sequences]:
-                rx_encode = rxchan_add.sequence_encodings.add()
+                sqn_encodings = {}
                 python_type = encoding.flatten().tolist()
-                rx_encode.encoding_value[:] = python_type
+                sqn_encodings['encoding_value'] = python_type
+                rxchannel['sequence_encodings'].append(sqn_encodings)
             sequence.output_encodings[slice_id] = []
 
 
-            rxchan_add.rx_main_antennas[:] = sequence.slice_dict[slice_id]['rx_main_antennas']
-            rxchan_add.rx_intf_antennas[:] = sequence.slice_dict[slice_id]['rx_int_antennas']
+            rxchannel['rx_main_antennas'] = sequence.slice_dict[slice_id]['rx_main_antennas']
+            rxchannel['rx_intf_antennas'] = sequence.slice_dict[slice_id]['rx_int_antennas']
 
             beams = sequence.slice_dict[slice_id]["beam_order"][beam_iter]
             if isinstance(beams, int):
                 beams = [beams]
 
+            rxchannel['beams'] = []
             for beam in beams:
-                beam_add = rxchan_add.beams.add()
-                beam_add.beamazimuth = sequence.slice_dict[slice_id]["beam_angle"][beam]
-                beam_add.beamnum = beam
+                beam_dict = {}
+                beam_dict['beamazimuth'] = sequence.slice_dict[slice_id]["beam_angle"][beam]
+                beam_dict['beamnum'] = beam
 
-            rxchan_add.first_range = sequence.slice_dict[slice_id]['first_range']
-            rxchan_add.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
-            rxchan_add.range_sep = sequence.slice_dict[slice_id]['range_sep']
+            rxchannel['first_range'] = sequence.slice_dict[slice_id]['first_range']
+            rxchannel['num_ranges'] = sequence.slice_dict[slice_id]['num_ranges']
+            rxchannel['range_sep'] = sequence.slice_dict[slice_id]['range_sep']
             if sequence.slice_dict[slice_id]['acf']:
-                rxchan_add.acf = sequence.slice_dict[slice_id]['acf']
-                rxchan_add.xcf = sequence.slice_dict[slice_id]['xcf']
-                rxchan_add.acfint = sequence.slice_dict[slice_id]['acfint']
+                rxchannel['acf'] = sequence.slice_dict[slice_id]['acf']
+                rxchannel['xcf'] = sequence.slice_dict[slice_id]['xcf']
+                rxchannel['acfint'] = sequence.slice_dict[slice_id]['acfint']
+                
+                rxchannel['ltab'] = {}
+                rxchannel['ltab']['lag'] = []
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
-                    lag_add = rxchan_add.ltab.lag.add()
-                    lag_add.pulse_position[:] = lag
-                    lag_add.lag_num = int(lag[1] - lag[0])
-                rxchan_add.averaging_method = sequence.slice_dict[slice_id]['averaging_method']
-            rxchan_add.slice_interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
+                    lag_add = {}
+                    lag_add['pulse_position'] = lag
+                    lag_add['lag_num'] = int(lag[1] - lag[0])
+                rxchannel['averaging_method'] = sequence.slice_dict[slice_id]['averaging_method']
+            rxchannel['slice_interfacing'] = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
+        sequence_add['rxchannel'].append(rxchannel)
+    packet['sequences'].append(sequence_add)
 
     if __debug__:
         rad_ctrl_print('Sending metadata to datawrite.')
 
     socket_operations.send_bytes(radctrl_to_datawrite, datawrite_radctrl_iden,
-                                 packet.SerializeToString())
+                                 pickle.dumps(packet, protocol=pickle.HIGHEST_PROTOCOL))
 
 
 def round_up_time(dt=None, round_to=60):
@@ -493,7 +513,7 @@ def radar():
     # Initialize driverpacket.
     driverpacket = DriverPacket()
     sigprocpacket = SigProcPacket()
-    integration_time_packet = IntegrationTimeMetadata()
+    integration_time_packet = {}
 
     # Get config options.
     options = ExperimentOptions()
