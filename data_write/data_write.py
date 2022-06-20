@@ -1135,7 +1135,7 @@ class DataWrite(object):
             """
             tx_data = None
             for meta in integration_meta['sequences']:
-                if meta.HasField('tx_data'):
+                if 'tx_data' in meta.keys():
                     tx_data = TX_TEMPLATE.copy()
                     break
 

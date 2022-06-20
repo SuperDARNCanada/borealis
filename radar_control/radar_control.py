@@ -395,7 +395,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
             tx_data['pulse_sample_start'] = debug_samples[sequence_index][
                 'pulse_sample_start']
 
-            tx_data['tx_samples'] = {}
+            tx_data['tx_samples'] = []
             for ant, ant_samples in debug_samples[sequence_index]['sequence_samples'].items():
                 tx_ant_data = {}
                 tx_ant_data['real'] = ant_samples['real']
