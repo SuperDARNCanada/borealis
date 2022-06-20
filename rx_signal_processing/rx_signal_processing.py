@@ -34,7 +34,6 @@ else:
     sys.path.append(borealis_path + '/build/release/utils/protobuf')
 
 import rxsamplesmetadata_pb2
-import sigprocpacket_pb2
 
 sys.path.append(borealis_path + '/utils/')
 import signal_processing_options.signal_processing_options as spo
@@ -146,17 +145,16 @@ def main():
 
         reply = so.recv_bytes(dsp_to_radar_control, sig_options.radctrl_dsp_identity, pprint)
 
-        sp_packet = sigprocpacket_pb2.SigProcPacket()
-        sp_packet.ParseFromString(reply)
+        sp_packet = pickle.loads(reply)
 
-        rx_rate = np.float64(sp_packet.rxrate)
-        output_sample_rate = np.float64(sp_packet.output_sample_rate)
-        first_rx_sample_off = sp_packet.offset_to_first_rx_sample
-        rx_center_freq = sp_packet.rxctrfreq
+        rx_rate = np.float64(sp_packet['rxrate'])
+        output_sample_rate = np.float64(sp_packet['output_sample_rate'])
+        first_rx_sample_off = sp_packet['offset_to_first_rx_sample']
+        rx_center_freq = sp_packet['rxctrfreq']
 
         processed_data = {}
 
-        processed_data['sequence_num'] = sp_packet.sequence_num
+        processed_data['sequence_num'] = sp_packet['sequence_num']
         processed_data['rx_sample_rate'] = rx_rate
         processed_data['output_sample_rate'] = output_sample_rate
 
@@ -167,28 +165,28 @@ def main():
         # Parse out details and force the data type so that Cupy can optimize with standardized
         # data types.
         slice_details = []
-        for i, chan in enumerate(sp_packet.rxchannel):
+        for i, chan in enumerate(sp_packet['rxchannel']):
             detail = {}
 
             # This is the negative of what you would normally expect (i.e. -1 * offset of rxfreq from center freq)
             # because the filter taps do not get flipped when convolving. I.e. we do the cross-correlation instead of
             # convolution, to save some computational complexity from flipping the filter sequence.
             # It works out to the same result.
-            mixing_freqs.append(rx_center_freq - chan.rxfreq)
+            mixing_freqs.append(rx_center_freq - chan['rxfreq'])
 
-            detail['slice_id'] = chan.slice_id
+            detail['slice_id'] = chan['slice_id']
             detail['slice_num'] = i
-            detail['first_range'] = np.float32(chan.first_range)
-            detail['range_sep'] = np.float32(chan.range_sep)
-            detail['tau_spacing'] = np.uint32(chan.tau_spacing)
-            detail['num_range_gates'] = np.uint32(chan.num_ranges)
-            detail['first_range_off'] = np.uint32(chan.first_range / chan.range_sep)
+            detail['first_range'] = np.float32(chan['first_range'])
+            detail['range_sep'] = np.float32(chan['range_sep'])
+            detail['tau_spacing'] = np.uint32(chan['tau_spacing'])
+            detail['num_range_gates'] = np.uint32(chan['num_ranges'])
+            detail['first_range_off'] = np.uint32(chan['first_range'] / chan['range_sep'])
             lag_phase_offsets = []
 
             lags = []
-            for lag in chan.lags:
-                lags.append([lag.pulse_1, lag.pulse_2])
-                lag_phase_offsets.append(lag.phase_offset_real + 1j * lag.phase_offset_imag)
+            for lag in chan['lags']:
+                lags.append([lag['pulse_1'], lag['pulse_2']])
+                lag_phase_offsets.append(lag['phase_offset_real'] + 1j * lag['phase_offset_imag'])
 
             detail['lag_phase_offsets'] = np.array(lag_phase_offsets, dtype=np.complex128)
 
@@ -197,12 +195,12 @@ def main():
 
             main_beams = []
             intf_beams = []
-            for bd in chan.beam_directions:
+            for bd in chan['beam_directions']:
                 main_beam = []
                 intf_beam = []
 
-                for j, phase in enumerate(bd.phase):
-                    p = phase.real_phase + 1j * phase.imag_phase
+                for j, phase in enumerate(bd['phase']):
+                    p = phase['real_phase'] + 1j * phase['imag_phase']
 
                     if j < sig_options.main_antenna_count:
                         main_beam.append(p)
@@ -245,9 +243,9 @@ def main():
         rx_metadata = rxsamplesmetadata_pb2.RxSamplesMetadata()
         rx_metadata.ParseFromString(reply)
 
-        if sp_packet.sequence_num != rx_metadata.sequence_num:
+        if sp_packet['sequence_num'] != rx_metadata.sequence_num:
             pprint(sm.COLOR('red', "ERROR: Packets from driver and radctrl don't match"))
-            err = "sp_packet seq num {}, rx_metadata seq num {}".format(sp_packet.sequence_num,
+            err = "sp_packet seq num {}, rx_metadata seq num {}".format(sp_packet['sequence_num'],
                                                                         rx_metadata.sequence_num)
             pprint(sm.COLOR('red', err))
             sys.exit(-1)
@@ -263,12 +261,12 @@ def main():
 
             dm_msg = "Decimation rates: "
             taps_msg = "Number of filter taps per stage: "
-            for stage in sp_packet.decimation_stages:
-                dm_rates.append(stage.dm_rate)
-                dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
+            for stage in sp_packet['decimation_stages']:
+                dm_rates.append(stage['dm_rate'])
+                dm_scheme_taps.append(np.array(stage['filter_taps'], dtype=np.complex64))
 
-                dm_msg += str(stage.dm_rate) + " "
-                taps_msg += str(len(stage.filter_taps)) + " "
+                dm_msg += str(stage['dm_rate']) + " "
+                taps_msg += str(len(stage['filter_taps'])) + " "
 
             dm_rates = np.array(dm_rates, dtype=np.uint32)
             pprint(dm_msg)
@@ -353,9 +351,9 @@ def main():
             copy_end = time.time()
             time_diff = (copy_end - start) * 1000
             pprint("Time to copy samples for #{}: {}ms".format(sequence_num, time_diff))
-            reply_packet = sigprocpacket_pb2.SigProcPacket()
-            reply_packet.sequence_num = sequence_num
-            msg = reply_packet.SerializeToString()
+            reply_packet = {}
+            reply_packet['sequence_num'] = sequence_num
+            msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
 
             request = so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, pprint)
             so.send_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, msg)
@@ -388,8 +386,8 @@ def main():
             end = time.time()
 
             time_diff = (end - copy_end) * 1000
-            reply_packet.kerneltime = time_diff
-            msg = reply_packet.SerializeToString()
+            reply_packet['kerneltime'] = time_diff
+            msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
 
             pprint("Time to decimate, beamform and correlate for #{}: {}ms".format(sequence_num,
                                                                                    time_diff))
@@ -508,7 +506,7 @@ def main():
                                                                                     time_diff))
             so.send_bytes(dsp_to_dw, sig_options.dw_dsp_identity, message)
 
-        args = {"sequence_num": copy.deepcopy(sp_packet.sequence_num),
+        args = {"sequence_num": copy.deepcopy(sp_packet['sequence_num']),
                 "main_beam_angles": copy.deepcopy(main_beam_angles),
                 "intf_beam_angles": copy.deepcopy(intf_beam_angles),
                 "mixing_freqs": copy.deepcopy(mixing_freqs),
