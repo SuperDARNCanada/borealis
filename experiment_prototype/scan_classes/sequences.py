@@ -513,7 +513,9 @@ class Sequence(ScanClassBase):
                 debug_dict['decimated_samples'][i] = deci_samples_dict
 
         if __debug__:
-            fill_dbg_dict()
+            # fill_dbg_dict()
+            debug_dict['sequence_samples'] = sequence
+            debug_dict['decimated_samples'] = sequence[:, debug_dict['dmrate']]
         else:
             debug_dict = None
 

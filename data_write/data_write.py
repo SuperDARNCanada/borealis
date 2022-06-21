@@ -1147,34 +1147,10 @@ class DataWrite(object):
                         meta['tx_data']['pulse_timing_us'])
                     tx_data['pulse_sample_start'].append(meta['tx_data']['pulse_sample_start'])
                     tx_data['dm_rate'].append(meta['tx_data']['dmrate'])
-
-                    tx_samples = []
-                    decimated_tx_samples = []
-                    decimated_tx_antennas = []
-                    tx_antennas = []
-
-                    for ant in meta['tx_data']['tx_samples']:
-                        tx_antennas.append(ant['tx_antenna_number'])
-                        real = np.array(ant['real'], dtype=np.float32)
-                        imag = np.array(ant['imag'], dtype=np.float32)
-
-                        cmplx = np.array(real + 1j * imag, dtype=np.complex64)
-                        tx_samples.append(cmplx)
-
-                    for ant in meta['tx_data']['decimated_tx_samples']:
-                        decimated_tx_antennas.append(ant['tx_antenna_number'])
-                        real = np.array(ant['real'], dtype=np.float32)
-                        imag = np.array(ant['imag'], dtype=np.float32)
-
-                        cmplx = np.array(real + 1j * imag, dtype=np.complex64)
-                        decimated_tx_samples.append(cmplx)
-
-                    tx_data['tx_samples'].append(tx_samples)
-                    tx_data['decimated_tx_samples'].append(decimated_tx_samples)
-
+                    tx_data['tx_samples'].append(meta['tx_data']['tx_samples'])
+                    tx_data['decimated_tx_samples'].append(meta['tx_data']['decimated_tx_samples'])
                 tx_data['tx_samples'] = np.array(tx_data['tx_samples'], dtype=np.complex64)
-                tx_data['decimated_tx_samples'] = np.array(tx_data['decimated_tx_samples'],
-                                                           dtype=np.complex64)
+                tx_data['decimated_tx_samples'] = np.array(tx_data['decimated_tx_samples'], dtype=np.complex64)
 
                 name = dataset_name.replace('{sliceid}.', '').format(dformat='txdata')
                 output_file = dataset_location.format(name=name)

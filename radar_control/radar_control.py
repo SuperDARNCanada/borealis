@@ -395,23 +395,11 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
             tx_data['pulse_sample_start'] = debug_samples[sequence_index][
                 'pulse_sample_start']
 
-            tx_data['tx_samples'] = []
-            for ant, ant_samples in debug_samples[sequence_index]['sequence_samples'].items():
-                tx_ant_data = {}
-                tx_ant_data['real'] = ant_samples['real']
-                tx_ant_data['imag'] = ant_samples['imag']
-                tx_ant_data['tx_antenna_number'] = ant
-                tx_data['tx_samples'].append(tx_ant_data)
+            tx_data['tx_samples'] = debug_samples[sequence_index]['sequence_samples']
 
             tx_data['dmrate'] = debug_samples[sequence_index]['dmrate']
             
-            tx_data['decimated_tx_samples'] = []
-            for ant, ant_samples in debug_samples[sequence_index]['decimated_samples'].items():
-                decimated_tx_samples = {}
-                decimated_tx_samples['real'] = ant_samples['real']
-                decimated_tx_samples['imag'] = ant_samples['imag']
-                decimated_tx_samples['tx_antenna_number'] = ant
-                tx_data['decimated_tx_samples'].append(decimated_tx_samples)
+            tx_data['decimated_tx_samples'] = debug_samples[sequence_index]['decimated_samples']
             sequence_add['tx_data'] = tx_data
 
         sequence_add['rxchannel'] = []
