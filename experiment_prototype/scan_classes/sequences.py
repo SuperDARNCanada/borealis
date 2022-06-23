@@ -126,9 +126,13 @@ class Sequence(ScanClassBase):
                     errmsg = 'Actual Frequency {} is Not Equal to Intended Wave Freq {}'.format(real_freq,
                                                                                                 wave_freq_hz)
                     raise ExperimentException(errmsg)  # TODO change to warning? only happens on non-SINE
-
-                main_phase_shift = get_phase_shift(exp_slice['beam_angle'], tx_freq_khz, main_antenna_count,
-                                                   main_antenna_spacing)
+                
+                if exp_slice['tx_array_pattern'] is not None:
+                    # Returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
+                    main_phase_shift = exp_slice['tx_array_pattern'](tx_freq_khz, exp_slice['tx_antennas'], main_antenna_spacing)
+                else:
+                    main_phase_shift = get_phase_shift(exp_slice['beam_angle'], tx_freq_khz, main_antenna_count,
+                                                       main_antenna_spacing)
                 intf_phase_shift = get_phase_shift(exp_slice['beam_angle'], tx_freq_khz, intf_antenna_count,
                                                    intf_antenna_spacing, intf_offset[0])
                 # We want to apply all the phases to the basic samples. We can flatten the phases
@@ -160,9 +164,7 @@ class Sequence(ScanClassBase):
                                                                         basic_samples.shape)
 
                 # zero out the antennas not being used.
-                temp = np.zeros_like(phased_samps_for_beams, dtype=phased_samps_for_beams.dtype)
-                temp[:, exp_slice['tx_antennas'], :] = phased_samps_for_beams[:, exp_slice['tx_antennas'], :]
-                phased_samps_for_beams = temp[:, exp_slice['tx_antennas'], :]
+                phased_samps_for_beams = phased_samps_for_beams[:, exp_slice['tx_antennas'], :]
 
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
