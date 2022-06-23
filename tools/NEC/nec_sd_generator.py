@@ -99,58 +99,67 @@ class Tower(object):
         :param guylines: Flag to add in steel guylines. Default False
         :raises ValueError when the spacing_m, angle and num_wires are incompatible
         """
-        # Build tower upright, top, and guylines. Cross sections not included as wire must connect at nodes.
+        # Build tower upright, cross braces, and guylines.
         # Also wires cannot lay along the ground plane, this produces segment errors.
-        # Todo: Build antenna tower cross sections
+        self.tower_wires = []
 
         x_offset = side_length / 2.0
         y_offset = global_y - side_length * math.sin(math.pi / 3) - balun_offset
+        radius = get_mm_radius_from_awg(awg) / 1000.0
         guyline_span = start_height_m
 
-        x1 = [global_x, global_x - x_offset, global_x + x_offset,
-              global_x, global_x - x_offset, global_x, global_x + x_offset,
-              global_x, global_x - x_offset, global_x + x_offset, global_x]
-        x2 = [global_x, global_x - x_offset, global_x + x_offset,
-              global_x - x_offset, global_x, global_x + x_offset, global_x,
-              global_x, global_x - x_offset - guyline_span, global_x + x_offset + guyline_span, global_x]
-        y1 = [global_y - balun_offset, y_offset, y_offset,
-              global_y - balun_offset, y_offset, y_offset, y_offset,
-              global_y - balun_offset, y_offset, y_offset, y_offset]
-        y2 = [global_y - balun_offset, y_offset, y_offset,
-              y_offset, y_offset, y_offset, global_y - balun_offset,
-              global_y + guyline_span - balun_offset, y_offset - 0.01, y_offset + 0.01, y_offset - guyline_span]
-        z1 = [global_z, global_z, global_z,
-              global_z + start_height_m, global_z + start_height_m, global_z + start_height_m, global_z + start_height_m,
-              global_z + start_height_m, global_z + start_height_m, global_z + start_height_m, global_z + start_height_m]
-        z2 = [global_z + start_height_m, global_z + start_height_m, global_z + start_height_m,
-              global_z + start_height_m, global_z + start_height_m, global_z + start_height_m, global_z + start_height_m,
-              global_z, global_z, global_z, global_z]
+        # x, y coordinates of vertical beams
+        vertical_front_beam = (global_x,            global_y - balun_offset)
+        vertical_left_beam  = (global_x - x_offset, y_offset)
+        vertical_right_beam = (global_x + x_offset, y_offset)
 
-        self.tower_wires = []
-        radius = get_mm_radius_from_awg(awg) / 1000.0
-        for i in range(len(x1)-4):
-            self.tower_wires.append(Wire(x1[i], y1[i], z1[i], x2[i], y2[i], z2[i],
+        # Create the vertical beams
+        self.tower_wires.append(Wire(vertical_right_beam[0], vertical_right_beam[1], global_z,
+                                     vertical_right_beam[0], vertical_right_beam[1], global_z + start_height_m,
+                                     radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+        self.tower_wires.append(Wire(vertical_front_beam[0], vertical_front_beam[1], global_z,
+                                     vertical_front_beam[0], vertical_front_beam[1], global_z + start_height_m,
+                                     radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+        self.tower_wires.append(Wire(vertical_left_beam[0], vertical_left_beam[1], global_z,
+                                     vertical_left_beam[0], vertical_left_beam[1], global_z + start_height_m,
+                                     radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+
+        def create_crossbrace(height_m):
+            """Create a crossbrace connecting vertical beams."""
+            self.tower_wires.append(Wire(vertical_front_beam[0], vertical_front_beam[1], global_z + height_m,
+                                         vertical_left_beam[0],  vertical_left_beam[1],  global_z + height_m,
                                          radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+            self.tower_wires.append(Wire(vertical_front_beam[0], vertical_front_beam[1], global_z + height_m,
+                                         vertical_right_beam[0], vertical_right_beam[1], global_z + height_m,
+                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+            self.tower_wires.append(Wire(vertical_right_beam[0], vertical_right_beam[1], global_z + height_m,
+                                         vertical_left_beam[0],  vertical_left_beam[1],  global_z + height_m,
+                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+
+        crossbrace_spacing_m = 10.0      # Vertical distance between cross braces
+        num_braces = int(start_height_m / crossbrace_spacing_m)
+        for i in range(num_braces):
+            pass
+            create_crossbrace(global_z + start_height_m - i * crossbrace_spacing_m)
 
         # Add the guylines
         if guylines:
-            for i in range(len(x1)-3, len(x1)):
-                self.tower_wires.append(Wire(x1[i], y1[i], z1[i], x2[i], y2[i], z2[i],
-                                                 radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
-
-        # # Front guyline
-        # self.tower_wires.append(Wire(x1[-4], y1[-4], z1[-4], x2[-4], y2[-4], z2[-4],
-        #                                      radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
-        #
-        # # Side guylines
-        # self.tower_wires.append(Wire(x1[-3], y1[-3], z1[-3], x2[-3], y2[-3], z2[-3],
-        #                              radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
-        # self.tower_wires.append(Wire(x1[-2], y1[-2], z1[-2], x2[-2], y2[-2], z2[-2],
-        #                              radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
-        #
-        # # Back guyline
-        # self.tower_wires.append(Wire(x1[-1], y1[-1], z1[-1], x2[-1], y2[-1], z2[-1],
-        #                              radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+            # Pointing down boresight
+            self.tower_wires.append(Wire(vertical_front_beam[0], vertical_front_beam[1], global_z + start_height_m,
+                                         vertical_front_beam[0], vertical_front_beam[1] + guyline_span, global_z,
+                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+            # Pointing left of boresight
+            self.tower_wires.append(Wire(vertical_left_beam[0], vertical_left_beam[1], global_z + start_height_m,
+                                         vertical_left_beam[0] - guyline_span, vertical_left_beam[1] - 0.01, global_z,
+                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+            # Pointing right of boresight
+            self.tower_wires.append(Wire(vertical_right_beam[0], vertical_right_beam[1], global_z + start_height_m,
+                                         vertical_right_beam[0] + guyline_span, vertical_right_beam[1] + 0.01, global_z,
+                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
+            # Pointing opposite of boresight
+            self.tower_wires.append(Wire(vertical_front_beam[0], vertical_right_beam[1], global_z + start_height_m,
+                                         vertical_front_beam[0] - guyline_span, vertical_right_beam[1], global_z,
+                                         radius=radius, segments=0, conductivity=galvanized_steel_conductivity))
 
     def repr_geometry(self):
         """
