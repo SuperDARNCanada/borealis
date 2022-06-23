@@ -180,7 +180,7 @@ class Reflector(object):
     """
 
     def __init__(self, length_m, spacing_m, start_height_m=15.0, num_wires=0, awg=13, angle=45,
-                 global_x=0.0, global_y=0.0, global_z=0.0):
+                 global_x=0.0, global_y=0.0, global_z=0.0, y_offset=0.3*math.sin(math.pi/3)+0.1):
         """
         :param length_m: The length of the reflector wires in meters
         :param spacing_m: The straight line distance between successive reflector wires in meters
@@ -204,7 +204,7 @@ class Reflector(object):
             for reflector_wire in range(0, num_wires):
                 x1 = -length_m / 2.0
                 x2 = length_m / 2.0
-                y = -reflector_wire * math.cos(angle * math.pi / 180.0) * spacing_m
+                y = -reflector_wire * math.cos(angle * math.pi / 180.0) * spacing_m - y_offset
                 z = reflector_wire * math.sin(angle * math.pi / 180.0) * spacing_m
                 self.reflector_wires.append(Wire(x1 + global_x, y + global_y,
                                                  start_height_m - z + global_z, x2 + global_x,
@@ -1406,7 +1406,7 @@ if __name__ == '__main__':
 
         if not args.without_fence:
             if args.antennas > 0:
-                reflector_length = (args.antennas + 1) * args.antenna_spacing
+                reflector_length = args.antennas * args.antenna_spacing
                 reflector_spacing = 0.707
                 f.write(str(Reflector(reflector_length, reflector_spacing, num_wires=21)))
 
@@ -1414,7 +1414,7 @@ if __name__ == '__main__':
                 # f.write(str(DisplacedVerticalReflector(reflector_length, reflector_spacing,
                 #                                        displacement=reflector_displacement, num_wires=16)))
             if args.int_antennas > 0:
-                int_reflector_length = (args.int_antennas + 1) * args.antenna_spacing
+                int_reflector_length = args.int_antennas * args.antenna_spacing
                 int_reflector_spacing = 0.707
                 f.write(str(Reflector(int_reflector_length, int_reflector_spacing,
                                       global_x=args.int_x_spacing, global_y=args.int_y_spacing,
