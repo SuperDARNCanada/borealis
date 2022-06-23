@@ -149,7 +149,7 @@ tx_antenna_pattern *see Beam Shaping below*
     for each tx antenna used in the experiment. The return value of the function must be
     an array of size [# of tx antennas] with all elements having magnitude <= 1.
 
-rx_antenna_patter *see Beam Shaping below*
+rx_antenna_pattern *see Beam Shaping below*
     experiment-defined function which returns a complex weighting factor for each rx 
     antenna used in the experiment. The return value of the function must be an array with
     the same dimensions as the number of receive antennas specified as a parameter to the 
@@ -1266,8 +1266,8 @@ class ExperimentPrototype(object):
 
         Check for the minimum requirements of the slice. The following keys are always required:
         "pulse_sequence", "tau_spacing", "pulse_len", "num_ranges", "first_range", (one of "intt" or "intn"),
-        "beam_angle", and "beam_order". This function may modify the values in this slice dictionary
-        to ensure that it is able to be run and that the values make sense.
+        and the keys for one of the "Beam Shaping" situations. This function may modify the values in this
+        slice dictionary to ensure that it is able to be run and that the values make sense.
 
         :param exp_slice: slice to check.
         """
@@ -1321,50 +1321,61 @@ class ExperimentPrototype(object):
                     exp_slice.pop('intn')
             exp_slice['intt'] = float(exp_slice['intt'])
 
-        if 'beam_angle' not in exp_slice.keys(): # "beam_angle" is a required key
-            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
-                " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
-            raise ExperimentException(errmsg)
-        if not isinstance(exp_slice['beam_angle'], list):
-            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
-                " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
-            raise ExperimentException(errmsg)
-        for element in exp_slice['beam_angle']:
-            if not isinstance(element, float) and not isinstance(element, int):
-                errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
-                    " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+        if 'beam_order' in exp_slice.keys() and 'beam_angle' in exp_slice.keys():
+            # Invalid situation, can't specify all of these keys
+            if 'tx_antenna_pattern' in exp_slice.keys() and 'rx_antenna_pattern' in exp_slice.keys():
+                errmsg = "Slice may not specify all of 'beam_order', 'beam_angle', 'tx_antenna_pattern', and " \
+                         "'rx_antenna_pattern'. Slice: {}".format(exp_slice)
                 raise ExperimentException(errmsg)
-            if isinstance(element, int):
-                element = float(element)
 
-        if 'beam_order' not in exp_slice.keys():
-            errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
-                     " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
-            raise ExperimentException(errmsg)
-        if not isinstance(exp_slice['beam_order'], list):
-            errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
-                     " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
-            raise ExperimentException(errmsg)
-        for element in exp_slice['beam_order']:
-            if not isinstance(element, int) and not isinstance(element, list):
+            # Check the validity of 'beam_angle' specified
+            if not isinstance(exp_slice['beam_angle'], list):
+                errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
+                         " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(
+                    exp_slice)
+                raise ExperimentException(errmsg)
+            for element in exp_slice['beam_angle']:
+                if not isinstance(element, float) and not isinstance(element, int):
+                    errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
+                             " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(
+                        exp_slice)
+                    raise ExperimentException(errmsg)
+                if isinstance(element, int):
+                    element = float(element)
+
+            # Check the validity of 'beam_order' specified
+            if not isinstance(exp_slice['beam_order'], list):
                 errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
                          " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
                 raise ExperimentException(errmsg)
-            if isinstance(element, list):
-                for beamnum in element:
-                    if not isinstance(beamnum, int):
-                        errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
-                                 " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
-                        raise ExperimentException(errmsg)
-                    if beamnum >= len(exp_slice['beam_angle']):
-                        errmsg = "Beam number {} could not index in beam_angle list of length {}." \
-                                 " Slice: {}".format(beamnum, len(exp_slice['beam_angle']), exp_slice)
-                        raise ExperimentException(errmsg)
-            else:
-                if element >= len(exp_slice['beam_angle']):
-                    errmsg = "Beam number {} could not index in beam_angle list of length {}." \
-                             " Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
+            for element in exp_slice['beam_order']:
+                if not isinstance(element, int) and not isinstance(element, list):
+                    errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                             " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(
+                        exp_slice)
                     raise ExperimentException(errmsg)
+                if isinstance(element, list):
+                    for beamnum in element:
+                        if not isinstance(beamnum, int):
+                            errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                                     " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(
+                                exp_slice)
+                            raise ExperimentException(errmsg)
+                        if beamnum >= len(exp_slice['beam_angle']):
+                            errmsg = "Beam number {} could not index in beam_angle list of length {}." \
+                                     " Slice: {}".format(beamnum, len(exp_slice['beam_angle']), exp_slice)
+                            raise ExperimentException(errmsg)
+                else:
+                    if element >= len(exp_slice['beam_angle']):
+                        errmsg = "Beam number {} could not index in beam_angle list of length {}." \
+                                 " Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
+                        raise ExperimentException(errmsg)
+
+        # No beam_order or beam_angle, must have both 'tx_antenna_pattern' and 'rx_antenna_pattern' specified
+        elif 'tx_antenna_pattern' not in exp_slice.keys() or 'rx_antenna_pattern' not in exp_slice.keys():
+            errmsg = "Slice does not have enough parameters defined to determine tx and rx beamforming." \
+                     " Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
 
     @staticmethod
     def set_slice_identifiers(exp_slice):
@@ -1581,6 +1592,15 @@ class ExperimentPrototype(object):
             slice_with_defaults['pulse_phase_offset'] = None
         if 'scanbound' not in exp_slice:
             slice_with_defaults['scanbound'] = None
+
+        if 'beam_angle' not in exp_slice:
+            slice_with_defaults['beam_angle'] = None
+        if 'beam_order' not in exp_slice:
+            slice_with_defaults['beam_order'] = None
+        if 'tx_antenna_pattern' not in exp_slice:
+            slice_with_defaults['tx_antenna_pattern'] = None
+        if 'rx_antenna_pattern' not in exp_slice:
+            slice_with_defaults['rx_antenna_pattern'] = None
 
         # we only have one of intn or intt because of slice checks already completed in
         # check_slice_minimum_requirements.
@@ -1908,50 +1928,98 @@ class ExperimentPrototype(object):
             phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses, num_samps)
 
             if not isinstance(phase_encoding, np.ndarray):
-                error_list.append("Slice {} Phase encoding return is not numpy array".format(
-                exp_slice['slice_id']))
+                error_list.append("Slice {} Phase encoding return is not numpy array".format(exp_slice['slice_id']))
             else:
                 if len(phase_encoding.shape) > 2:
-                    error_list.append("Slice {} Phase encoding return must be 1 or 2 dimensions "\
-                                        " and must be broadcastable to num samples".format(
-                                                                            exp_slice['slice_id']))
+                    error_list.append("Slice {} Phase encoding return must be 1 or 2 dimensions and must be "
+                                      "broadcastable to num samples".format(exp_slice['slice_id']))
                 else:
                     phase_encoding = phase_encoding.reshape((phase_encoding.shape[0],-1))
 
                     if phase_encoding.shape[0] != num_pulses:
-                        error_list.append("Slice {} Phase encoding return 1st dimension must be "\
-                                            "equal to number of pulses".format(
-                                                                            exp_slice['slice_id']))
+                        error_list.append("Slice {} Phase encoding return 1st dimension must be equal to number of "
+                                          "pulses".format(exp_slice['slice_id']))
 
                     if not (phase_encoding.shape[1] == 1 or phase_encoding.shape[1] == num_samps):
-                        error_list.append("Slice {} Phase encoding return 2nd dimension must be "\
-                                            "broadcastable to number of samples".format(
-                                                                            exp_slice['slice_id']))
+                        error_list.append("Slice {} Phase encoding return 2nd dimension must be broadcastable to "
+                                          "number of samples".format(exp_slice['slice_id']))
+        if exp_slice['tx_antenna_pattern']:
+            if not callable(exp_slice['tx_antenna_pattern']):
+                error_list.append("Slice {} tx antenna pattern must be a function".format(exp_slice['slice_id']))
+            else:
+                tx_freq_khz = exp_slice['txfreq']
+                tx_antennas = exp_slice['tx_antennas']
+                antenna_spacing = options.main_antenna_spacing
+                antenna_pattern = exp_slice['tx_antenna_pattern'](tx_freq_khz, tx_antennas, antenna_spacing)
 
-        if list_tests.has_duplicates(exp_slice['beam_angle']):
-            error_list.append("Slice {} beam angles has duplicate directions".format(
-                exp_slice['slice_id']))
+                if not isinstance(antenna_pattern, np.ndarray):
+                    error_list.append("Slice {} tx antenna pattern return is not a numpy array"
+                                      "".format(exp_slice['slice_id']))
+                else:
+                    if len(antenna_pattern.shape) > 1:
+                        error_list.append("Slice {} tx antenna pattern return must be 1 dimension"
+                                          "".format(exp_slice['slice_id']))
+                    if antenna_pattern.shape[0] != len(tx_antennas):
+                        error_list.append("Slice {} tx antenna pattern return must be same length as number of "
+                                          "tx antennas".format(exp_slice['slice_id']))
+                    antenna_pattern_mag = np.abs(antenna_pattern)
+                    if np.max(antenna_pattern_mag) > 1.0:
+                        error_list.append("Slice {} tx antenna pattern return must not have any values with a "
+                                          "magnitude greater than 1".format(exp_slice['slice_id']))
 
-        if not list_tests.is_increasing(exp_slice['beam_angle']):
-            error_list.append("Slice {} beam_angle not increasing clockwise (E of N "
-                              "is positive)".format(exp_slice['slice_id']))
+        if exp_slice['rx_antenna_pattern']:
+            if not callable(exp_slice['rx_antenna_pattern']):
+                error_list.append("Slice {} rx antenna pattern must be a function".format(exp_slice['slice_id']))
+            else:
+                if 'txfreq' in exp_slice:
+                    rx_freq_khz = exp_slice['txfreq']
+                else:
+                    rx_freq_khz = exp_slice['rxfreq']
+
+                for rx_antennas in [exp_slice['rx_main_antennas'], exp_slice['rx_int_antennas']]:
+                    antenna_spacing = options.main_antenna_spacing
+                    antenna_pattern = exp_slice['rx_antenna_pattern'](rx_freq_khz, rx_antennas, antenna_spacing)
+
+                    if not isinstance(antenna_pattern, np.ndarray):
+                        error_list.append("Slice {} rx antenna pattern return is not a numpy array"
+                                          "".format(exp_slice['slice_id']))
+                    else:
+                        if len(antenna_pattern.shape) > 1:
+                            error_list.append("Slice {} rx antenna pattern return must be 1 dimension"
+                                              "".format(exp_slice['slice_id']))
+                        if antenna_pattern.shape[0] != len(rx_antennas):
+                            error_list.append("Slice {} rx antenna pattern return must be same length as number of "
+                                              "rx antennas".format(exp_slice['slice_id']))
+                        antenna_pattern_mag = np.abs(antenna_pattern)
+                        if np.max(antenna_pattern_mag) > 1.0:
+                            error_list.append("Slice {} rx antenna pattern return must not have any values with a "
+                                              "magnitude greater than 1".format(exp_slice['slice_id']))
+        if exp_slice['beam_angle']:
+            if list_tests.has_duplicates(exp_slice['beam_angle']):
+                error_list.append("Slice {} beam angles has duplicate directions".format(
+                    exp_slice['slice_id']))
+
+            if not list_tests.is_increasing(exp_slice['beam_angle']):
+                error_list.append("Slice {} beam_angle not increasing clockwise (E of N "
+                                  "is positive)".format(exp_slice['slice_id']))
 
         # Check if the list of beams to transmit on is empty
-        if not exp_slice['beam_order']:
+        if exp_slice['beam_angle'] and not exp_slice['beam_order']:
             error_list.append("Slice {} beam order scan empty".format(
                 exp_slice['slice_id']))
 
         # Check that the beam numbers in the beam_order exist
-        for bmnum in exp_slice['beam_order']:
-            if isinstance(bmnum, int):
-                if bmnum >= len(exp_slice['beam_angle']):
-                    error_list.append("Slice {} scan beam number {} DNE".format(
-                        exp_slice['slice_id'], bmnum))
-            elif isinstance(bmnum, list):
-                for imaging_bmnum in bmnum:
-                    if imaging_bmnum >= len(exp_slice['beam_angle']):
+        if exp_slice['beam_order']:
+            for bmnum in exp_slice['beam_order']:
+                if isinstance(bmnum, int):
+                    if bmnum >= len(exp_slice['beam_angle']):
                         error_list.append("Slice {} scan beam number {} DNE".format(
                             exp_slice['slice_id'], bmnum))
+                elif isinstance(bmnum, list):
+                    for imaging_bmnum in bmnum:
+                        if imaging_bmnum >= len(exp_slice['beam_angle']):
+                            error_list.append("Slice {} scan beam number {} DNE".format(
+                                exp_slice['slice_id'], bmnum))
 
         # check scan boundary not less than minimum required scan time.
         if exp_slice['scanbound']:
