@@ -90,7 +90,7 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
                            "pulse_phase_offset", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt",
                            "intn", "beam_angle", "beam_order", "scanbound", "txfreq", "rxfreq", "clrfrqrange",
                            "averaging_method", "acf", "xcf", "acfint", "wavetype", "seqoffset", "iwavetable",
-                           "qwavetable", "comment", "range_sep", "lag_table"])
+                           "qwavetable", "comment", "range_sep", "lag_table", "tx_antenna_pattern", "rx_antenna_pattern"])
 
 """
 These are the keys that are set by the user when initializing a slice. Some
@@ -123,7 +123,7 @@ intt *required or intn required*
 intn *required or intt required*
     number of averages to make a single averaging period (integration), only used if intt = None.
 
-beam_angle *required*
+beam_angle *see Beam Shaping below*
     list of beam directions, in degrees off azimuth. Positive is E of N. The beam_angle list
     length = number of beams. Traditionally beams have been 3.24 degrees separated but we
     don't refer to them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will
@@ -131,7 +131,7 @@ beam_angle *required*
     needed to write the beam_order list. This is like a mapping of beam number (list
     index) to beam direction off boresight.
 
-beam_order *required*
+beam_order *see Beam Shaping below*
     beam numbers written in order of preference, one element in this list corresponds to
     one averaging period. Can have lists within the list, resulting in multiple beams
     running simultaneously in the averaging period, so imaging. A beam number of 0 in
@@ -144,6 +144,20 @@ beam_order *required*
     integration. When we do imaging we will still have to quantize the directions we
     are looking in to certain beam directions.
 
+tx_antenna_pattern *see Beam Shaping below*
+    experiment-defined function which returns a complex weighting factor of magnitude <= 1
+    for each tx antenna used in the experiment. The return value of the function must be
+    an array of size [# of tx antennas] with all elements having magnitude <= 1.
+
+rx_antenna_patter *see Beam Shaping below*
+    experiment-defined function which returns a complex weighting factor for each rx 
+    antenna used in the experiment. The return value of the function must be an array with
+    the same dimensions as the number of receive antennas specified as a parameter to the 
+    function. For example, if there are 16 receive antennas in the main antenna array, the returned
+    value should by an array of length 16. For the case of a 4-antenna array, the returned 
+    value should be an array of length 4. This function should flexibly handle differently
+    sized antenna arrays corresponding to the main and interferometer arrays.
+
 clrfrqrange *required or txfreq or rxfreq required*
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
     in kHz. **Not currently supported.**
@@ -155,6 +169,28 @@ rxfreq *required or clrfrqrange or txfreq required*
     receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only
     necessary to specify if you want a receive-only slice.
 
+**Beam Shaping**
+The following keys must be specified in accordance with one of the following situations:
+
+1. beam_angle and beam_order specified only
+    The beams correspond to tx and rx directions, as in traditional SuperDARN operation.
+
+2. tx_antenna_pattern and rx_antenna_pattern specified
+    tx_antenna_pattern is an experiment-defined function for weighting the transmission of each
+    antenna. rx_antenna_pattern is an experiment-defined function for weighting the reception
+    of each antenna. This allows arbitrary beamforming and beamspoiling for both tx and rx.
+
+3. tx_antenna_pattern, beam_angle, and beam_order specified
+    tx_antenna_pattern is used to shape the waveform from each antenna, but reception is done
+    according to the beam angles and orders.
+
+4. rx_antenna_pattern, beam_angle, and beam_order specified
+    The transmitted waveform is determined by beam_angle and beam_order like usual, and the 
+    received waveform for each antenna is weighted by rx_antenna_pattern.
+
+When creating an experiment, choose one of these situations and specify only the keys listed
+for the situation. Any experiment which does not exactly fit one of these situations above 
+will raise an Exception and fail.
 
 **Defaultable Slice Keys**
 
