@@ -999,6 +999,17 @@ def create_main_array(num_antennas, antenna_spacing_m,
             if towers:
                 tower_objects.append(Tower(global_x=x_position, guylines=guylines))
 
+    if towers:
+        # Add in the end towers
+        x_position = array_length_m / 2.0 + antenna_spacing_m / 2.0
+        tower_objects.append(Tower(global_x=-x_position, guylines=guylines))
+        tower_objects.append(Tower(global_x=x_position, guylines=guylines))
+
+        # Add in the short towers between each tall antenna tower
+        for tower in range(0, num_antennas-1):
+            x_position = tower * antenna_spacing_m - array_length_m/2 + antenna_spacing_m/2
+            tower_objects.append(Tower(global_x=x_position, start_height_m=12.0, guylines=guylines))
+
     return antenna_objects, tower_objects
 
 
@@ -1047,6 +1058,17 @@ def create_int_array(num_antennas, antenna_spacing_m, int_x_spacing_m, int_y_spa
             if towers:
                 tower_objects.append(Tower(global_x=global_x_position, global_y=int_y_spacing_m,
                                        global_z=int_z_spacing_m, guylines=guylines))
+    if towers:
+        # Add in the end towers
+        x_position = array_length_m / 2.0 + antenna_spacing_m / 2.0
+        tower_objects.append(Tower(global_x=-x_position, global_y=int_y_spacing_m, guylines=guylines))
+        tower_objects.append(Tower(global_x=x_position, global_y=int_y_spacing_m, guylines=guylines))
+
+        # Add in the short towers between each tall antenna tower
+        for tower in range(0, num_antennas-1):
+            x_position = tower * antenna_spacing_m - array_length_m/2 + antenna_spacing_m/2
+            tower_objects.append(Tower(global_x=x_position, global_y=int_y_spacing_m, start_height_m=12.0,
+                                       guylines=guylines))
 
     return antenna_objects, tower_objects
 
@@ -1291,16 +1313,16 @@ if __name__ == '__main__':
             else:
                 antennas_down.append(int(antenna))
 
-    receivers_down = []
+    transceivers_down = []
     if args.transceivers_down is not None and args.transceivers_down != "":
-        receivers = args.receivers_down.strip().split(',')
-        for receiver in receivers:
+        transceivers = args.transceivers_down.strip().split(',')
+        for transceiver in transceivers:
             # If they specified a range, then include all numbers in that range (including endpoints)
-            if '-' in receiver:
-                small_receiver, big_receiver = receiver.split('-')
-                receivers_down.extend(range(int(small_receiver), int(big_receiver) + 1))
+            if '-' in transceiver:
+                small_transceiver, big_transceiver = transceiver.split('-')
+                transceivers_down.extend(range(int(small_transceiver), int(big_transceiver) + 1))
             else:
-                receivers_down.append(int(receiver))
+                transceivers_down.append(int(transceiver))
 
     antenna_magnitudes = []
     antenna_phases = []
@@ -1324,7 +1346,7 @@ if __name__ == '__main__':
                                                        args.int_antennas, num_sub_arrays=2)
         for m_ant in range(0, args.antennas):
             antenna_magnitudes.append(1)
-            # if m_ant in antennas_down or m_ant in receivers_down:
+            # if m_ant in antennas_down or m_ant in transceivers_down:
             #     antenna_magnitudes.append(0)
             # else:
             #     antenna_magnitudes.append(1)
@@ -1334,11 +1356,11 @@ if __name__ == '__main__':
 
     else:
         for m_ant in range(0, args.antennas):
-            receivers_down_to_left = bisect(receivers_down, m_ant)
-            if m_ant in receivers_down:
-                receivers_down_to_left -= 1     # bisect([0, 1], 0) returns 1, i.e. will add to back of equal elements
-            phase = rel_phase * (m_ant - receivers_down_to_left)
-            if m_ant in antennas_down or m_ant in receivers_down:
+            transceivers_down_to_left = bisect(transceivers_down, m_ant)
+            if m_ant in transceivers_down:
+                transceivers_down_to_left -= 1     # bisect([0, 1], 0) returns 1, i.e. will add to back of equal elements
+            phase = rel_phase * (m_ant - transceivers_down_to_left)
+            if m_ant in antennas_down or m_ant in transceivers_down:
                 antenna_magnitudes.append(0)
             else:
                 antenna_magnitudes.append(1)
