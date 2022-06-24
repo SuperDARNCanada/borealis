@@ -200,7 +200,7 @@ class ParseData(object):
                     holder[slice_id]['shm'] = []
                 holder[slice_id]['shm'].append(shm)
 
-            if 'main_acf' in data_set.keys():
+            if 'mainacf' in data_set.keys():
                 self._mainacfs_available = True
                 accumulate_data(self._mainacfs_accumulator, data_set['mainacf'])
 
