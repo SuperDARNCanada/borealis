@@ -29,6 +29,7 @@ from functools import reduce
 sys.path.append(os.environ["BOREALISPATH"])
 from experiment_prototype.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
+from utils.message_formats.message_formats import AveperiodMetadataMessage, SequenceMetadataMessage
 import utils.shared_macros.shared_macros as sm
 
 if __debug__:
@@ -333,14 +334,14 @@ def search_for_experiment(radar_control_to_exp_handler,
     return new_experiment_received, experiment
 
 
-def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden,
+def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, num_sequences, scan_flag, inttime, sequences, beam_iter,
                             experiment_id, experiment_name, scheduling_mode, output_sample_rate,
                             experiment_comment, filter_scaling_factors, rx_center_freq,
                             debug_samples=None):
     """
     Send the metadata about this integration time to datawrite so that it can be recorded.
-    :param packet: The IntegrationTimeMetadata message dict.
+    :param message: The IntegrationTimeMetadata message dict.
     :param radctrl_to_datawrite: The socket to send the packet on.
     :param datawrite_radctrl_iden: Identity of datawrite on the socket.
     :param seqnum: The last sequence number (identifier) that is valid for this integration
@@ -369,56 +370,47 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
     keys are the antenna numbers (there is a sample set for each transmit antenna).
     """
 
-    packet = {}
-    packet['experiment_id'] = experiment_id
-    packet['experiment_name'] = experiment_name
-    packet['experiment_comment'] = experiment_comment
-    packet['rx_center_freq'] = rx_center_freq
-    packet['num_sequences'] = num_sequences
-    packet['last_seqn_num'] = seqnum
-    packet['scan_flag'] = scan_flag
-    packet['integration_time'] = inttime.total_seconds()
-    packet['output_sample_rate'] = output_sample_rate
-    packet['data_normalization_factor'] = reduce(lambda x, y: x * y, filter_scaling_factors)  # multiply all
-    packet['scheduling_mode'] = scheduling_mode
+    message = AveperiodMetadataMessage()
+    message.experiment_id = experiment_id
+    message.experiment_name = experiment_name
+    message.experiment_comment = experiment_comment
+    message.rx_ctr_freq = rx_center_freq
+    message.num_sequences = num_sequences
+    message.last_sqn_num = seqnum
+    message.scan_flag = scan_flag
+    message.aveperiod_time = inttime.total_seconds()
+    message.output_sample_rate = output_sample_rate
+    message.data_normalization_factor = reduce(lambda x, y: x * y, filter_scaling_factors)  # multiply all
+    message.scheduling_mode = scheduling_mode
 
-    packet['sequences'] = []
     for sequence_index, sequence in enumerate(sequences):
-        sequence_add = {}
-        sequence_add['blanks'] = sequence.blanks
+        sequence_add = {'blanks': sequence.blanks}
+
         if debug_samples:
-            tx_data = {}
-            tx_data['txrate'] = debug_samples[sequence_index]['txrate']
-            tx_data['txctrfreq'] = debug_samples[sequence_index]['txctrfreq']
-            tx_data['pulse_timing_us'] = debug_samples[sequence_index][
-                'pulse_timing']
-            tx_data['pulse_sample_start'] = debug_samples[sequence_index][
-                'pulse_sample_start']
-
-            tx_data['tx_samples'] = debug_samples[sequence_index]['sequence_samples']
-
-            tx_data['dmrate'] = debug_samples[sequence_index]['dmrate']
-            
-            tx_data['decimated_tx_samples'] = debug_samples[sequence_index]['decimated_samples']
+            tx_data = {'tx_rate': debug_samples[sequence_index]['txrate'],
+                       'tx_ctr_freq': debug_samples[sequence_index]['txctrfreq'],
+                       'pulse_timing_us': debug_samples[sequence_index]['pulse_timing'],
+                       'pulse_sample_start': debug_samples[sequence_index]['pulse_sample_start'],
+                       'tx_samples': debug_samples[sequence_index]['sequence_samples'],
+                       'dm_rate': debug_samples[sequence_index]['dmrate'],
+                       'decimated_tx_samples': debug_samples[sequence_index]['decimated_samples']}
             sequence_add['tx_data'] = tx_data
 
-        sequence_add['rxchannel'] = []
+        sequence_add['rx_channel'] = []
         for slice_id in sequence.slice_ids:
-            rxchannel = {}
-            rxchannel['slice_id'] = slice_id
-            rxchannel['slice_comment'] = sequence.slice_dict[slice_id]['comment']
-            rxchannel['interfacing'] = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
-            rxchannel['rx_only'] = sequence.slice_dict[slice_id]['rxonly']
-            rxchannel['pulse_len'] = sequence.slice_dict[slice_id]['pulse_len']
-            rxchannel['tau_spacing'] = sequence.slice_dict[slice_id]['tau_spacing']
+            rxchannel = {'slice_id': slice_id,
+                         'slice_comment': sequence.slice_dict[slice_id]['comment'],
+                         'interfacing': '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing']),
+                         'rx_only': sequence.slice_dict[slice_id]['rxonly'],
+                         'pulse_len': sequence.slice_dict[slice_id]['pulse_len'],
+                         'tau_spacing': sequence.slice_dict[slice_id]['tau_spacing']}
 
             if sequence.slice_dict[slice_id]['rxonly']:
-                rxchannel['rxfreq'] = sequence.slice_dict[slice_id]['rxfreq']
+                rxchannel['rx_freq'] = sequence.slice_dict[slice_id]['rxfreq']
             else:
-                rxchannel['rxfreq'] = sequence.slice_dict[slice_id]['txfreq']
+                rxchannel['rx_freq'] = sequence.slice_dict[slice_id]['txfreq']
 
-            rxchannel['ptab'] = {}
-            rxchannel['ptab']['pulse_position'] = sequence.slice_dict[slice_id]['pulse_sequence']
+            rxchannel['ptab'] = sequence.slice_dict[slice_id]['pulse_sequence']
 
             # We always build one sequence in advance, so we trim the last one from when radar
             # control stops processing the averaging period.
@@ -430,44 +422,42 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
                 rxchannel['sequence_encodings'].append(sqn_encodings)
             sequence.output_encodings[slice_id] = []
 
-
             rxchannel['rx_main_antennas'] = sequence.slice_dict[slice_id]['rx_main_antennas']
             rxchannel['rx_intf_antennas'] = sequence.slice_dict[slice_id]['rx_int_antennas']
 
-            beams = sequence.slice_dict[slice_id]["beam_order"][beam_iter]
+            beams = sequence.slice_dict[slice_id]['beam_order'][beam_iter]
             if isinstance(beams, int):
                 beams = [beams]
 
             rxchannel['beams'] = []
             for beam in beams:
-                beam_dict = {}
-                beam_dict['beamazimuth'] = sequence.slice_dict[slice_id]["beam_angle"][beam]
-                beam_dict['beamnum'] = beam
+                beam_dict = {'beam_azimuth': sequence.slice_dict[slice_id]['beam_angle'][beam],
+                             'beam_num': beam}
+                rxchannel['beams'].append(beam_dict)
 
             rxchannel['first_range'] = sequence.slice_dict[slice_id]['first_range']
             rxchannel['num_ranges'] = sequence.slice_dict[slice_id]['num_ranges']
             rxchannel['range_sep'] = sequence.slice_dict[slice_id]['range_sep']
+
             if sequence.slice_dict[slice_id]['acf']:
                 rxchannel['acf'] = sequence.slice_dict[slice_id]['acf']
                 rxchannel['xcf'] = sequence.slice_dict[slice_id]['xcf']
                 rxchannel['acfint'] = sequence.slice_dict[slice_id]['acfint']
                 
                 rxchannel['ltab'] = {}
-                rxchannel['ltab']['lag'] = []
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
-                    lag_add = {}
-                    lag_add['pulse_position'] = lag
-                    lag_add['lag_num'] = int(lag[1] - lag[0])
+                    lag_add = {'pulse_position': lag,
+                               'lag_num': int(lag[1] - lag[0])}
+                    rxchannel['ltab'].append(lag_add)
                 rxchannel['averaging_method'] = sequence.slice_dict[slice_id]['averaging_method']
-            rxchannel['slice_interfacing'] = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
-        sequence_add['rxchannel'].append(rxchannel)
-    packet['sequences'].append(sequence_add)
+            sequence_add['rxchannel'].append(rxchannel)
+        message.sequences.append(sequence_add)
 
     if __debug__:
         rad_ctrl_print('Sending metadata to datawrite.')
 
     socket_operations.send_bytes(radctrl_to_datawrite, datawrite_radctrl_iden,
-                                 pickle.dumps(packet, protocol=pickle.HIGHEST_PROTOCOL))
+                                 pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL))
 
 
 def round_up_time(dt=None, round_to=60):
