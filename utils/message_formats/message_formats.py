@@ -216,11 +216,11 @@ class ProcessedSequenceMessage(object):
         self._debug_data.append(stage)
 
 
-class AveperiodMetadataMessage(object):
+class SequenceMetadataMessage(object):
     """
-    Defines a message containing metadata about an averaging period of data.
+    Defines a message containing metadata about a sequence of data.
     This message format is for communication from radar_control to
-    data_write.
+    rx_signal_processing.
     """
     def __init__(self):
         super().__init__()
@@ -300,13 +300,13 @@ class AveperiodMetadataMessage(object):
         """Add a decimation stage to the message."""
         for key, val in stage.items():
             if key not in self.__decimation_stage_allowed_types.keys():
-                raise KeyError("Invalid key {} when adding stage to AveperiodMetadataMessage".format(key))
+                raise KeyError("Invalid key {} when adding stage to SequenceMetadataMessage".format(key))
             if not isinstance(val, self.__decimation_stage_allowed_types[key]):
                 raise ValueError("Value of '{}' is not type {}".format(key, self.__decimation_stage_allowed_types[key]))
         self._decimation_stages.append(stage)
 
     def remove_all_decimation_stages(self):
-        """Remove all decimation_stage entries so the list can be refilled for the next averaging period"""
+        """Remove all decimation_stage entries so the list can be refilled for the next sequence"""
         self._decimation_stages = []
 
     @property
@@ -314,14 +314,14 @@ class AveperiodMetadataMessage(object):
         return self._rx_channels
 
     def remove_all_rx_channels(self):
-        """Remove all rx_channel entries so the list can be refilled for the next averaging period"""
+        """Remove all rx_channel entries so the list can be refilled for the next sequence"""
         self._rx_channels = []
 
     def add_rx_channel(self, channel: dict):
         """Add an rx_channel dict to the message."""
         for key, val in channel.items():
             if key not in self.__decimation_stage_allowed_types.keys():
-                raise KeyError("Invalid key {} when adding stage to AveperiodMetadataMessage".format(key))
+                raise KeyError("Invalid key {} when adding stage to SequenceMetadataMessage".format(key))
             if not isinstance(val, self.__rx_channel_allowed_types[key]):
                 raise ValueError("Value of '{}' is not type {}".format(key, self.__rx_channel_allowed_types[key]))
             if key == 'beam_directions':
@@ -355,3 +355,12 @@ class AveperiodMetadataMessage(object):
                 raise KeyError("Invalid key {} in lag".format(key))
             if not isinstance(val, self.__lag_allowed_types[key]):
                 raise ValueError("Value of '{}' is not type {}".format(key, self.__lag_allowed_types[key]))
+
+
+class AveperiodMetadataMessage(object):
+    """
+    Defines a message containing metadata about an averaging period of data.
+    This message format is for communication from radar_control to
+    data_write.
+    """
+
