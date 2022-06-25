@@ -36,6 +36,7 @@ else:
 import rxsamplesmetadata_pb2
 
 sys.path.append(borealis_path + '/utils/')
+from message_formats.message_formats import ProcessedSequenceMessage, SequenceMetadataMessage
 import signal_processing_options.signal_processing_options as spo
 from zmq_borealis_helpers import socket_operations as so
 import shared_macros.shared_macros as sm
@@ -68,21 +69,18 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
     Fills the datawrite message with processed data.
 
     :param      processed_data:  The processed data message
-    :type       processed_data:  dict
+    :type       processed_data:  ProcessedSequenceMessage
     :param      slice_details:   The details for each slice that was processed.
     :type       slice_details:   list
     :param      data_outputs:    The processed data outputs.
     :type       data_outputs:    dict
     """
 
-    processed_data['outputdataset'] = []
     for sd in slice_details:
-        output_data_set = {}
-
-        output_data_set['slice_id'] = sd['slice_id']
-        output_data_set['num_beams'] = sd['num_beams']
-        output_data_set['num_ranges'] = sd['num_range_gates']
-        output_data_set['num_lags'] = sd['num_lags']
+        output_dataset = {'slice_id': sd['slice_id'],
+                           'num_beams': sd['num_beams'],
+                           'num_ranges': sd['num_range_gates'],
+                           'num_lags': sd['num_lags']}
 
         def add_array(ndarray):
             """
@@ -101,19 +99,19 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
                 return name
 
         main_corrs = data_outputs['main_corrs'][sd['slice_num']]
-        output_data_set['mainacf'] = add_array(main_corrs)
+        output_dataset['main_acf_shm'] = add_array(main_corrs)
 
         try:
             intf_corrs = data_outputs['intf_corrs'][sd['slice_num']]
-            output_data_set['intacf'] = add_array(intf_corrs)
+            output_dataset['intf_acf_shm'] = add_array(intf_corrs)
 
             cross_corrs = data_outputs['cross_corrs'][sd['slice_num']]
-            output_data_set['xcf'] = add_array(cross_corrs)
+            output_dataset['xcf_shm'] = add_array(cross_corrs)
         except:
             # No interferometer data
             pass
 
-        processed_data['outputdataset'].append(output_data_set)
+        processed_data.add_output_dataset.append(output_dataset)
 
 
 def main():
@@ -152,11 +150,11 @@ def main():
         first_rx_sample_off = sqn_meta_message.offset_to_first_rx_sample
         rx_center_freq = sqn_meta_message.rx_ctr_freq
 
-        processed_data = {}
+        processed_data = ProcessedSequenceMessage()
 
-        processed_data['sequence_num'] = sqn_meta_message.sequence_num
-        processed_data['rx_sample_rate'] = rx_rate
-        processed_data['output_sample_rate'] = output_sample_rate
+        processed_data.sequence_num = sqn_meta_message.sequence_num
+        processed_data.rx_sample_rate = rx_rate
+        processed_data.output_sample_rate = output_sample_rate
 
         mixing_freqs = []
         main_beam_angles = []
@@ -289,14 +287,14 @@ def main():
         start_sample = int(math.fmod(sample_in_time, ringbuffer.shape[1]))
         end_sample = start_sample + samples_needed
 
-        processed_data['initialization_time'] = rx_metadata.initialization_time
-        processed_data['sequence_start_time'] = rx_metadata.sequence_start_time
-        processed_data['gps_to_system_time_diff'] = rx_metadata.gps_to_system_time_diff
-        processed_data['agc_status_bank_h'] = rx_metadata.agc_status_bank_h
-        processed_data['lp_status_bank_h'] = rx_metadata.lp_status_bank_h
-        processed_data['agc_status_bank_l'] = rx_metadata.agc_status_bank_l
-        processed_data['lp_status_bank_l'] = rx_metadata.lp_status_bank_l
-        processed_data['gps_locked'] = rx_metadata.gps_locked
+        processed_data.initialization_time = rx_metadata.initialization_time
+        processed_data.sequence_start_time = rx_metadata.sequence_start_time
+        processed_data.gps_to_system_time_diff = rx_metadata.gps_to_system_time_diff
+        processed_data.agc_status_bank_h = rx_metadata.agc_status_bank_h
+        processed_data.lp_status_bank_h = rx_metadata.lp_status_bank_h
+        processed_data.agc_status_bank_l = rx_metadata.agc_status_bank_l
+        processed_data.lp_status_bank_l = rx_metadata.lp_status_bank_l
+        processed_data.gps_locked = rx_metadata.gps_locked
 
         # This work is done in a thread
         def sequence_worker(**kwargs):
@@ -448,15 +446,13 @@ def main():
             stages.append(stage)
 
             # Put all filter stage and antennas data in the message
-            processed_data['debug_data'] = []
             for stage in stages:
-                debug_data = {}
-                debug_data['stagename'] = stage['stage_name']
-                debug_data['main_shm'] = stage['main_shm']
+                debug_data = {'stagename': stage['stage_name'],
+                              'main_shm': stage['main_shm']}
                 if 'intf_shm' in stage.keys():
                     debug_data['intf_shm'] = stage['intf_shm']
                 debug_data['num_samps'] = stage['num_samps']
-                processed_data['debug_data'].append(debug_data)
+                processed_data.add_debug_data(debug_data)
 
             done_filling_debug = time.time()
             time_filling_debug = (done_filling_debug - start) * 1000
@@ -469,8 +465,8 @@ def main():
                 rawrf_shm = shared_memory.SharedMemory(create=True, size=rawrf_size)
                 rawrf_array = np.ndarray((ringbuffer.shape[0], indices.shape[-1]), dtype=np.complex64, buffer=rawrf_shm.buf)
                 rawrf_array[...] = ringbuffer.take(indices, axis=1, mode='wrap')
-                processed_data['rf_samples_location'] = rawrf_shm.name
-                processed_data['rawrf_num_samps'] = indices.shape[-1]
+                processed_data.rawrf_shm = rawrf_shm.name
+                processed_data.rawrf_num_samps = indices.shape[-1]
                 rawrf_shm.close()
 
             done_filling_rawrf = time.time()
@@ -479,9 +475,9 @@ def main():
 
             # Add bfiq and correlations data
             beamformed_m = processed_main_samples.beamformed_samples
-            processed_data['bfiq_main_shm'] = processed_main_samples.shared_mem['bfiq'].name
-            processed_data['max_num_beams'] = beamformed_m.shape[1]    # [num_slices, num_beams, num_samps]
-            processed_data['num_samps'] = beamformed_m.shape[-1]
+            processed_data.bfiq_main_shm = processed_main_samples.shared_mem['bfiq'].name
+            processed_data.max_num_beams = beamformed_m.shape[1]    # [num_slices, num_beams, num_samps]
+            processed_data.num_samps = beamformed_m.shape[-1]
             processed_main_samples.shared_mem['bfiq'].close()
 
             data_outputs['main_corrs'] = main_corrs
@@ -489,13 +485,13 @@ def main():
             if sig_options.intf_antenna_count > 0:
                 data_outputs['cross_corrs'] = cross_corrs
                 data_outputs['intf_corrs'] = intf_corrs
-                processed_data['bfiq_intf_shm'] = processed_intf_samples.shared_mem['bfiq'].name
+                processed_data.bfiq_intf_shm = processed_intf_samples.shared_mem['bfiq'].name
                 processed_intf_samples.shared_mem['bfiq'].close()
 
             # Fill message with the slice-specific fields
             fill_datawrite_message(processed_data, slice_details, data_outputs)
 
-            message = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
+            sqn_message = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
 
             end = time.time()
             time_for_bfiq_acf = (end - done_filling_rawrf) * 1000
@@ -504,7 +500,7 @@ def main():
             time_diff = (end - start) * 1000
             pprint("Time to serialize and send processed data for #{}: {}ms".format(sequence_num,
                                                                                     time_diff))
-            so.send_bytes(dsp_to_dw, sig_options.dw_dsp_identity, message)
+            so.send_bytes(dsp_to_dw, sig_options.dw_dsp_identity, sqn_message)
 
         args = {"sequence_num": copy.deepcopy(sqn_meta_message.sequence_num),
                 "main_beam_angles": copy.deepcopy(main_beam_angles),

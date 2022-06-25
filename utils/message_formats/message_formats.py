@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 #
 # Copyright 2022 SuperDARN Canada
+# Author: Remington Rohel
+from typing import List, Any
+
 import numpy as np
 
 
@@ -43,8 +46,11 @@ class ProcessedSequenceMessage(object):
         self._rawrf_shm = ""
         self._rawrf_num_samps = 0
         self._debug_data = []
+        self._output_datasets = []
 
         self.__stage_allowed_types = {'stage_name': str, 'main_shm': str, 'intf_shm': str, 'num_samps': int}
+        self.__output_dataset_types = {'slice_id': int, 'num_beams': int, 'num_ranges': int, 'num_lags': int,
+                                       'main_acf_shm': str, 'intf_acf_shm': str, 'xcf_shm': str}
 
     @property
     def sequence_num(self):
@@ -218,6 +224,15 @@ class ProcessedSequenceMessage(object):
         """Add a stage of debug data to the message"""
         check_dict(stage, self.__stage_allowed_types, 'stage')
         self._debug_data.append(stage)
+
+    @property
+    def output_datasets(self):
+        return self._output_datasets
+
+    def add_output_dataset(self, data_set: dict):
+        """Add an output dataset to the message"""
+        check_dict(data_set, self.__output_dataset_types, 'output_dataset')
+        self._output_datasets.append(data_set)
 
 
 class SequenceMetadataMessage(object):
