@@ -1948,22 +1948,23 @@ class ExperimentPrototype(object):
                 error_list.append("Slice {} tx antenna pattern must be a function".format(exp_slice['slice_id']))
             else:
                 tx_freq_khz = exp_slice['txfreq']
-                tx_antennas = exp_slice['tx_antennas']
+                tx_antenna_count = options.main_antenna_count
                 antenna_spacing = options.main_antenna_spacing
-                antenna_pattern = exp_slice['tx_antenna_pattern'](tx_freq_khz, tx_antennas, antenna_spacing)
+                antenna_pattern = exp_slice['tx_antenna_pattern'](tx_freq_khz, tx_antenna_count, antenna_spacing)
 
                 if not isinstance(antenna_pattern, np.ndarray):
                     error_list.append("Slice {} tx antenna pattern return is not a numpy array"
                                       "".format(exp_slice['slice_id']))
                 else:
-                    if len(antenna_pattern.shape) > 1:
-                        error_list.append("Slice {} tx antenna pattern return must be 1 dimension"
-                                          "".format(exp_slice['slice_id']))
-                    if antenna_pattern.shape[0] != len(tx_antennas):
-                        error_list.append("Slice {} tx antenna pattern return must be same length as number of "
-                                          "tx antennas".format(exp_slice['slice_id']))
+                    if len(antenna_pattern.shape) != 2:
+                        error_list.append("Slice {} tx antenna pattern return shape {} must be 2-dimensional"
+                                          "".format(exp_slice['slice_id'], antenna_pattern.shape))
+                    elif antenna_pattern.shape[1] != tx_antenna_count:
+                        error_list.append("Slice {} tx antenna pattern return 2nd dimension ({}) must be equal to number of "
+                                          "main antennas ({})".format(exp_slice['slice_id'], antenna_pattern.shape[1],
+                                                                      tx_antenna_count))
                     antenna_pattern_mag = np.abs(antenna_pattern)
-                    if np.max(antenna_pattern_mag) > 1.0:
+                    if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
                         error_list.append("Slice {} tx antenna pattern return must not have any values with a "
                                           "magnitude greater than 1".format(exp_slice['slice_id']))
 
@@ -1976,22 +1977,23 @@ class ExperimentPrototype(object):
                 else:
                     rx_freq_khz = exp_slice['rxfreq']
 
-                for rx_antennas in [exp_slice['rx_main_antennas'], exp_slice['rx_int_antennas']]:
+                for rx_antenna_count in [options.main_antenna_count, options.intf_antenna_count]:
                     antenna_spacing = options.main_antenna_spacing
-                    antenna_pattern = exp_slice['rx_antenna_pattern'](rx_freq_khz, rx_antennas, antenna_spacing)
+                    antenna_pattern = exp_slice['rx_antenna_pattern'](rx_freq_khz, rx_antenna_count, antenna_spacing)
 
                     if not isinstance(antenna_pattern, np.ndarray):
                         error_list.append("Slice {} rx antenna pattern return is not a numpy array"
                                           "".format(exp_slice['slice_id']))
                     else:
-                        if len(antenna_pattern.shape) > 1:
-                            error_list.append("Slice {} rx antenna pattern return must be 1 dimension"
-                                              "".format(exp_slice['slice_id']))
-                        if antenna_pattern.shape[0] != len(rx_antennas):
-                            error_list.append("Slice {} rx antenna pattern return must be same length as number of "
-                                              "rx antennas".format(exp_slice['slice_id']))
+                        if len(antenna_pattern.shape) != 2:
+                            error_list.append("Slice {} rx antenna pattern return shape {} must be 2-dimensional"
+                                              "".format(exp_slice['slice_id'], antenna_pattern.shape))
+                        elif antenna_pattern.shape[1] != rx_antenna_count:
+                            error_list.append("Slice {} rx antenna pattern return 2nd dimensions ({}) must be equal to number of "
+                                              "rx antennas ({})".format(exp_slice['slice_id'], antenna_pattern.shape[1],
+                                                                        rx_antenna_count))
                         antenna_pattern_mag = np.abs(antenna_pattern)
-                        if np.max(antenna_pattern_mag) > 1.0:
+                        if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
                             error_list.append("Slice {} rx antenna pattern return must not have any values with a "
                                               "magnitude greater than 1".format(exp_slice['slice_id']))
         if exp_slice['beam_angle']:

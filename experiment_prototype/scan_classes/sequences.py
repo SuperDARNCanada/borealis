@@ -129,9 +129,9 @@ class Sequence(ScanClassBase):
                 
                 rx_freq_khz = tx_freq_khz
                 
-                if exp_slice['tx_array_pattern'] is not None:
+                if exp_slice['tx_antenna_pattern'] is not None:
                     # Returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
-                    main_phase_shift = exp_slice['tx_array_pattern'](tx_freq_khz, exp_slice['tx_antennas'], main_antenna_spacing)
+                    main_phase_shift = exp_slice['tx_antenna_pattern'](tx_freq_khz, main_antenna_count, main_antenna_spacing)
                 else:
                     main_phase_shift = get_phase_shift(exp_slice['beam_angle'], tx_freq_khz, main_antenna_count,
                                                        main_antenna_spacing)
@@ -168,11 +168,11 @@ class Sequence(ScanClassBase):
             else:
                 rx_freq_khz = experiment.slice_dict[slice_id]['rxfreq']
                 self.basic_slice_pulses[slice_id] = []
-            
+            print("Main Phases: {}".format(main_phase_shift)) 
             # Now we set up the phases for receive side
             if exp_slice['rx_antenna_pattern'] is not None:
-                main_phase_shift = exp_slice['rx_antenna_pattern'](rx_freq_khz, exp_slice['rx_main_antennas'], main_antenna_spacing)
-                intf_phase_shift = exp_slice['rx_antenna_pattern'](rx_freq_khz, exp_slice['rx_intf_antennas'], intf_antenna_spacing)
+                main_phase_shift = exp_slice['rx_antenna_pattern'](rx_freq_khz, main_antenna_count, main_antenna_spacing)
+                intf_phase_shift = exp_slice['rx_antenna_pattern'](rx_freq_khz, intf_antenna_count, intf_antenna_spacing)
             else:
                 main_phase_shift = get_phase_shift(exp_slice['beam_angle'], rx_freq_khz, main_antenna_count,
                                                    main_antenna_spacing)
