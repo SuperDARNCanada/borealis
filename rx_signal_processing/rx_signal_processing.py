@@ -145,16 +145,16 @@ def main():
 
         reply = so.recv_bytes(dsp_to_radar_control, sig_options.radctrl_dsp_identity, pprint)
 
-        sp_packet = pickle.loads(reply)
+        sqn_meta_message = pickle.loads(reply)
 
-        rx_rate = np.float64(sp_packet['rxrate'])
-        output_sample_rate = np.float64(sp_packet['output_sample_rate'])
-        first_rx_sample_off = sp_packet['offset_to_first_rx_sample']
-        rx_center_freq = sp_packet['rxctrfreq']
+        rx_rate = np.float64(sqn_meta_message.rx_rate)
+        output_sample_rate = np.float64(sqn_meta_message.output_sample_rate)
+        first_rx_sample_off = sqn_meta_message.offset_to_first_rx_sample
+        rx_center_freq = sqn_meta_message.rx_ctr_freq
 
         processed_data = {}
 
-        processed_data['sequence_num'] = sp_packet['sequence_num']
+        processed_data['sequence_num'] = sqn_meta_message.sequence_num
         processed_data['rx_sample_rate'] = rx_rate
         processed_data['output_sample_rate'] = output_sample_rate
 
@@ -165,7 +165,7 @@ def main():
         # Parse out details and force the data type so that Cupy can optimize with standardized
         # data types.
         slice_details = []
-        for i, chan in enumerate(sp_packet['rxchannel']):
+        for i, chan in enumerate(sqn_meta_message.rx_channels):
             detail = {}
 
             # This is the negative of what you would normally expect (i.e. -1 * offset of rxfreq from center freq)
@@ -243,9 +243,9 @@ def main():
         rx_metadata = rxsamplesmetadata_pb2.RxSamplesMetadata()
         rx_metadata.ParseFromString(reply)
 
-        if sp_packet['sequence_num'] != rx_metadata.sequence_num:
+        if sqn_meta_message.sequence_num != rx_metadata.sequence_num:
             pprint(sm.COLOR('red', "ERROR: Packets from driver and radctrl don't match"))
-            err = "sp_packet seq num {}, rx_metadata seq num {}".format(sp_packet['sequence_num'],
+            err = "sqn_meta_message seq num {}, rx_metadata seq num {}".format(sqn_meta_message.sequence_num,
                                                                         rx_metadata.sequence_num)
             pprint(sm.COLOR('red', err))
             sys.exit(-1)
@@ -261,7 +261,7 @@ def main():
 
             dm_msg = "Decimation rates: "
             taps_msg = "Number of filter taps per stage: "
-            for stage in sp_packet['decimation_stages']:
+            for stage in sqn_meta_message.decimation_stages:
                 dm_rates.append(stage['dm_rate'])
                 dm_scheme_taps.append(np.array(stage['filter_taps'], dtype=np.complex64))
 
@@ -506,7 +506,7 @@ def main():
                                                                                     time_diff))
             so.send_bytes(dsp_to_dw, sig_options.dw_dsp_identity, message)
 
-        args = {"sequence_num": copy.deepcopy(sp_packet['sequence_num']),
+        args = {"sequence_num": copy.deepcopy(sqn_meta_message.sequence_num),
                 "main_beam_angles": copy.deepcopy(main_beam_angles),
                 "intf_beam_angles": copy.deepcopy(intf_beam_angles),
                 "mixing_freqs": copy.deepcopy(mixing_freqs),

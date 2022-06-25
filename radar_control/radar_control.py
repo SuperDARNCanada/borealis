@@ -140,13 +140,13 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
     del driverpacket.channel_samples[:]  # TODO find out - Is this necessary in conjunction with .Clear()?
 
 
-def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
+def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                       brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
                       slice_dict, beam_dict, sequence_time, first_rx_sample_start,
                       main_antenna_count, rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
         Happens every sequence.
-        :param packet: the signal processing packet. Dict
+        :param message: the SequenceMetadataMessage object
         :param radctrl_to_dsp: The sender socket for sending data to dsp
         :param dsp_radctrl_iden: The reciever socket identity on the dsp side
         :param rxrate: The receive sampling rate (Hz).
@@ -174,36 +174,36 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
 
     # TODO: does the for loop below need to happen every time. Could be only updated
     # as necessary to make it more efficient.
-    packet = {}
-    packet['sequence_time'] = sequence_time
-    packet['sequence_num'] = seqnum
-    packet['offset_to_first_rx_sample'] = first_rx_sample_start
-    packet['rxrate'] = rxrate
-    packet['output_sample_rate'] = output_sample_rate
-    packet['rxctrfreq'] = rxctrfreq * 1.0e3
+
+    # These get re-used, so we empty the lists first
+    message.remove_all_rx_channels()
+    message.remove_all_decimation_stages()
+
+    message.sequence_time = sequence_time
+    message.sequence_num = seqnum
+    message.offset_to_first_rx_sample = first_rx_sample_start
+    message.rx_rate = rxrate
+    message.output_sample_rate = output_sample_rate
+    message.rx_ctr_freq = rxctrfreq * 1.0e3
 
     if decimation_scheme is not None:
-        packet['decimation_stages'] = []
         for stage in decimation_scheme.stages:
-            dm_stage_add = {}
-            dm_stage_add['stage_num'] = stage.stage_num
-            dm_stage_add['input_rate'] = stage.input_rate
-            dm_stage_add['dm_rate'] = stage.dm_rate
-            dm_stage_add['filter_taps'] = stage.filter_taps
-            packet['decimation_stages'].append(dm_stage_add)
+            dm_stage_add = {'stage_num': stage.stage_num,
+                            'input_rate': stage.input_rate,
+                            'dm_rate': stage.dm_rate,
+                            'filter_taps': stage.filter_taps}
+            message.add_decimation_stage(dm_stage_add)
 
-    packet['rxchannel'] = []
     for num, slice_id in enumerate(slice_ids):
-        chan_add = {}
-        chan_add['slice_id'] = slice_id
-        chan_add['tau_spacing'] = slice_dict[slice_id]['tau_spacing']  # us
+        chan_add = {'slice_id': slice_id,
+                    'tau_spacing': slice_dict[slice_id]['tau_spacing']}
         # send the translational frequencies to dsp in order to bandpass filter correctly.
         if slice_dict[slice_id]['rxonly']:
-            chan_add['rxfreq'] = slice_dict[slice_id]['rxfreq'] * 1.0e3
+            chan_add['rx_freq'] = slice_dict[slice_id]['rxfreq'] * 1.0e3
         elif slice_dict[slice_id]['clrfrqflag']:
             pass  # TODO - get freq from clear frequency search.
         else:
-            chan_add['rxfreq'] = slice_dict[slice_id]['txfreq'] * 1.0e3
+            chan_add['rx_freq'] = slice_dict[slice_id]['txfreq'] * 1.0e3
         chan_add['num_ranges'] = slice_dict[slice_id]['num_ranges']
         chan_add['first_range'] = slice_dict[slice_id]['first_range']
         chan_add['range_sep'] = slice_dict[slice_id]['range_sep']
@@ -229,25 +229,22 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
 
             beam_add['phase'] = []
             for phase in temp_main:
-                phase_add = {}
-                phase_add['real_phase'] = phase.real
-                phase_add['imag_phase'] = phase.imag
+                phase_add = {'real_phase': phase.real,
+                             'imag_phase': phase.imag}
                 beam_add['phase'].append(phase_add)
 
             for phase in temp_intf:
-                phase_add = {}
-                phase_add['real_phase'] = phase.real
-                phase_add['imag_phase'] = phase.imag
+                phase_add = {'real_phase': phase.real,
+                             'imag_phase': phase.imag}
                 beam_add['phase'].append(phase_add)
             chan_add['beam_directions'].append(beam_add)
         
         chan_add['lags'] = []
         for lag in slice_dict[slice_id]['lag_table']:
-            lag_add = {}
-            lag_add['pulse_1'] = lag[0]
-            lag_add['pulse_2'] = lag[1]
-            lag_add['lag_num'] = int(lag[1] - lag[0])
-            
+            lag_add = {'pulse_1': lag[0],
+                       'pulse_2': lag[1],
+                       'lag_num': int(lag[1] - lag[0])}
+
             # Get the phase offset for this pulse combination
             if len(pulse_phase_offsets[slice_id]) != 0:
                 pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
@@ -262,7 +259,7 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
             lag_add['phase_offset_real'] = np.real(phase_offset)
             lag_add['phase_offset_imag'] = np.imag(phase_offset)
             chan_add['lags'].append(lag_add)
-        packet['rxchannel'].append(chan_add)
+        message.add_rx_channel(chan_add)
     
     # Brian requests sequence metadata for timeouts
     if TIME_PROFILE:
@@ -279,11 +276,11 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         request_output = "Brian requested -> {}".format(request)
         rad_ctrl_print(request_output)
 
-    bytes_packet = pickle.dumps(packet, protocol=pickle.HIGHEST_PROTOCOL)
+    bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
 
     socket_operations.send_obj(radctrl_to_brian, brian_radctrl_iden, bytes_packet)
 
-    socket_operations.send_obj(radctrl_to_dsp, dsp_radctrl_iden, pickle.dumps(packet, protocol=pickle.HIGHEST_PROTOCOL))
+    socket_operations.send_obj(radctrl_to_dsp, dsp_radctrl_iden, pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL))
 
 
 def search_for_experiment(radar_control_to_exp_handler,
@@ -334,13 +331,14 @@ def search_for_experiment(radar_control_to_exp_handler,
     return new_experiment_received, experiment
 
 
-def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden,
+def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, num_sequences, scan_flag, inttime, sequences, beam_iter,
                             experiment_id, experiment_name, scheduling_mode, output_sample_rate,
                             experiment_comment, filter_scaling_factors, rx_center_freq,
                             debug_samples=None):
     """
     Send the metadata about this averaging period to datawrite so that it can be recorded.
+    :param message: The AveperiodMetadataMessage
     :param radctrl_to_datawrite: The socket to send the packet on.
     :param datawrite_radctrl_iden: Identity of datawrite on the socket.
     :param seqnum: The last sequence number (identifier) that is valid for this averaging
@@ -369,7 +367,7 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden,
     keys are the antenna numbers (there is a sample set for each transmit antenna).
     """
 
-    message = AveperiodMetadataMessage()
+    message.remove_all_sequences()
     message.experiment_id = experiment_id
     message.experiment_name = experiment_name
     message.experiment_comment = experiment_comment
@@ -499,8 +497,8 @@ def radar():
 
     # Initialize driverpacket.
     driverpacket = DriverPacket()
-    sigprocpacket = {}
-    aveperiod_packet = {}
+    sigprocpacket = SequenceMetadataMessage()
+    aveperiod_packet = AveperiodMetadataMessage()
 
     # Get config options.
     options = ExperimentOptions()
@@ -854,17 +852,18 @@ def radar():
                     scan_flag = False
 
                 last_sequence_num = seqnum_start + num_sequences - 1
+
                 def send_dw():
                     send_datawrite_metadata(aveperiod_packet, radar_control_to_dw,
-                                        options.dw_to_radctrl_identity, last_sequence_num,
-                                        num_sequences, scan_flag, averaging_period_time,
-                                        aveperiod.sequences, aveperiod.beam_iter,
-                                        experiment.cpid, experiment.experiment_name,
-                                        experiment.scheduling_mode,
-                                        experiment.output_rx_rate, experiment.comment_string,
-                                        experiment.decimation_scheme.filter_scaling_factors,
-                                        experiment.rxctrfreq,
-                                        debug_samples=debug_samples)
+                                            options.dw_to_radctrl_identity, last_sequence_num,
+                                            num_sequences, scan_flag, averaging_period_time,
+                                            aveperiod.sequences, aveperiod.beam_iter,
+                                            experiment.cpid, experiment.experiment_name,
+                                            experiment.scheduling_mode,
+                                            experiment.output_rx_rate, experiment.comment_string,
+                                            experiment.decimation_scheme.filter_scaling_factors,
+                                            experiment.rxctrfreq,
+                                            debug_samples=debug_samples)
 
                 thread = threading.Thread(target=send_dw)
                 thread.daemon = True
