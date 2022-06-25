@@ -334,23 +334,22 @@ def search_for_experiment(radar_control_to_exp_handler,
     return new_experiment_received, experiment
 
 
-def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_iden,
+def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, num_sequences, scan_flag, inttime, sequences, beam_iter,
                             experiment_id, experiment_name, scheduling_mode, output_sample_rate,
                             experiment_comment, filter_scaling_factors, rx_center_freq,
                             debug_samples=None):
     """
-    Send the metadata about this integration time to datawrite so that it can be recorded.
-    :param message: The IntegrationTimeMetadata message dict.
+    Send the metadata about this averaging period to datawrite so that it can be recorded.
     :param radctrl_to_datawrite: The socket to send the packet on.
     :param datawrite_radctrl_iden: Identity of datawrite on the socket.
-    :param seqnum: The last sequence number (identifier) that is valid for this integration
+    :param seqnum: The last sequence number (identifier) that is valid for this averaging
     period. Used to verify and synchronize driver, dsp, datawrite.
-    :param num_sequences: The number of sequences that were sent in this integration period. (number of
+    :param num_sequences: The number of sequences that were sent in this averaging period. (number of
     sequences to average together).
-    :param scan_flag: True if this integration period is the first in a scan.
-    :param inttime: The time that expired during this integration period.
-    :param sequences: The sequences of class Sequence for this integration period (AveragingPeriod).
+    :param scan_flag: True if this averaging period is the first in a scan.
+    :param inttime: The time that expired during this averaging period.
+    :param sequences: The sequences of class Sequence for this averaging period (AveragingPeriod).
     :param beam_iter: The beam iterator of this averaging period.
     :param experiment_id: the ID of the experiment that is running
     :param experiment_name: the experiment name to be placed in the data files.
@@ -361,7 +360,7 @@ def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_ide
     :param filter_scaling_factors: The decimation scheme scaling factors used for the experiment,
     to get the scaling for the data for accurate power measurements between experiments.
     :param rx_center_freq: The receive center frequency (kHz)
-    :param debug_samples: the debug samples for this integration period, to be written to the
+    :param debug_samples: the debug samples for this averaging period, to be written to the
     file if debug is set. This is a list of dictionaries for each Sequence in the
     AveragingPeriod. The dictionary is set up in the sample_building module function
     create_debug_sequence_samples. The keys are 'txrate', 'txctrfreq', 'pulse_timing',
@@ -493,7 +492,7 @@ def radar():
     For every pulse sequence, processing information is sent to the signal processing
     block.
 
-    After every integration time (AveragingPeriod), the experiment block is given the
+    After every averaging period, the experiment block is given the
     opportunity to change the experiment (not currently implemented). If a new
     experiment is sent, radar will halt the old one and begin with the new experiment.
     """
@@ -501,7 +500,7 @@ def radar():
     # Initialize driverpacket.
     driverpacket = DriverPacket()
     sigprocpacket = {}
-    integration_time_packet = {}
+    aveperiod_packet = {}
 
     # Get config options.
     options = ExperimentOptions()
@@ -528,8 +527,8 @@ def radar():
 
     # seqnum is used as a identifier in all packets while
     # radar is running so set it up here.
-    # seqnum will get increased by num_sequences (number of averages or sequences in the integration period)
-    # at the end of every integration time.
+    # seqnum will get increased by num_sequences (number of averages or sequences in the averaging period)
+    # at the end of every averaging period.
     seqnum_start = 0
 
     #  Wait for experiment handler at the start until we have an experiment to run.
@@ -549,7 +548,7 @@ def radar():
                  experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
                  experiment.rxrate)
 
-    first_integration = True
+    first_aveperiod = True
     next_scan_start = None
     decimation_scheme = experiment.decimation_scheme
     while True:
@@ -574,7 +573,7 @@ def radar():
                 rad_ctrl_print("Scan number: {}".format(scan_num))
             # scan iter is the iterator through the scanbound or through the number of averaging periods in the scan.
             scan_iter = 0
-            # if a new experiment was received during the last scan, it finished the integration period it was on and
+            # if a new experiment was received during the last scan, it finished the averaging period it was on and
             # returned here with new_experiment_waiting set to True. Break to load new experiment.
             if new_experiment_waiting:  # start anew on first scan if we have a new experiment.
                 break
@@ -594,8 +593,8 @@ def radar():
                         next_scan_num = 0
                     next_scanbound = experiment.scan_objects[next_scan_num].scanbound
 
-                if first_integration:
-                    # on the very first integration of Borealis starting, calculate the start minute
+                if first_aveperiod:
+                    # on the very first averaging period of Borealis starting, calculate the start minute
                     # align scanbound reference time to find when to start
                     now = datetime.utcnow()
                     dt = now.replace(second=0, microsecond=0)
@@ -627,9 +626,9 @@ def radar():
                 if TIME_PROFILE:
                     time_start_of_aveperiod = datetime.utcnow()
 
-                # get new experiment here, before starting a new integration.
+                # get new experiment here, before starting a new averaging period.
                 # If new_experiment_waiting is set here, implement new_experiment after this
-                # integration period. There may be a new experiment waiting, or a new experiment.
+                # averaging period. There may be a new experiment waiting, or a new experiment.
                 if not new_experiment_waiting and not new_experiment_loaded:
                     new_experiment_waiting, new_experiment = search_for_experiment(
                         radar_control_to_exp_handler,
@@ -643,8 +642,8 @@ def radar():
                 # all phases are set up for this averaging period for the beams required.
                 # Time to start averaging in the below loop.
                 if not scan.scanbound:
-                    integration_period_start_time = datetime.utcnow()  # ms
-                    rad_ctrl_print("Integration start time: {}".format(integration_period_start_time))
+                    averaging_period_start_time = datetime.utcnow()  # ms
+                    rad_ctrl_print("Averaging Period start time: {}".format(averaging_period_start_time))
                 if aveperiod.intt is not None:
                     intt_break = True
 
@@ -655,7 +654,7 @@ def radar():
                         beam_scanbound = start_minute + timedelta(seconds=scan.scanbound[scan_iter])
                         time_diff = beam_scanbound - datetime.utcnow()
                         if time_diff.total_seconds() > 0:
-                            if __debug__ or first_integration:
+                            if __debug__ or first_aveperiod:
                                 msg = "{}s until averaging period {} at time {}"
                                 msg = msg.format(sm.COLOR("blue", time_diff.total_seconds()),
                                                  sm.COLOR("yellow", scan_iter),
@@ -674,15 +673,15 @@ def radar():
                                                  sm.COLOR("red", beam_scanbound))
                                 rad_ctrl_print(msg)
 
-                        integration_period_start_time = datetime.utcnow()  # ms
-                        msg = "Integration start time: {}"
-                        msg = msg.format(sm.COLOR("red", integration_period_start_time))
+                        averaging_period_start_time = datetime.utcnow()  # ms
+                        msg = "Averaging period start time: {}"
+                        msg = msg.format(sm.COLOR("red", averaging_period_start_time))
                         rad_ctrl_print(msg)
 
                         # Here we find how much system time has elapsed to find the true amount
                         # of time we can integrate for this scan boundary. We can then see if
-                        # we have enough time left to run the integration period.
-                        time_elapsed = integration_period_start_time - start_minute
+                        # we have enough time left to run the averaging period.
+                        time_elapsed = averaging_period_start_time - start_minute
                         if scan_iter < len(scan.scanbound) - 1:
                             scanbound_time = scan.scanbound[scan_iter + 1]
                             # TODO: scanbound_time could be in the past if system has taken
@@ -693,7 +692,7 @@ def radar():
                             # if scan.align_to_beamorder is True
                             bound_time_remaining = scanbound_time - time_elapsed.total_seconds()
                         else:
-                            bound_time_remaining = next_scan_start - integration_period_start_time
+                            bound_time_remaining = next_scan_start - averaging_period_start_time
                             bound_time_remaining = bound_time_remaining.total_seconds()
 
                         msg = "scan {} averaging period {}: bound_time_remaining {}s"
@@ -703,19 +702,19 @@ def radar():
                         rad_ctrl_print(msg)
 
                         if bound_time_remaining < aveperiod.intt * 1e-3:
-                            # reduce the integration period to only the time remaining
+                            # reduce the averaging period to only the time remaining
                             # until the next scan boundary.
                             # TODO: Check for bound_time_remaining > 0
                             # to be sure there is actually time to run this intt
                             # (if bound_time_remaining < 0, we need a solution to
                             # reset)
-                            integration_period_done_time = integration_period_start_time + \
+                            averaging_period_done_time = averaging_period_start_time + \
                                             timedelta(milliseconds=bound_time_remaining * 1e3)
                         else:
-                            integration_period_done_time = integration_period_start_time + \
+                            averaging_period_done_time = averaging_period_start_time + \
                                             timedelta(milliseconds=aveperiod.intt)
                     else:  # no scanbound for this scan
-                        integration_period_done_time = integration_period_start_time + \
+                        averaging_period_done_time = averaging_period_start_time + \
                                             timedelta(milliseconds=aveperiod.intt)
                 else:  # intt does not exist, therefore using intn
                     intt_break = False
@@ -742,14 +741,14 @@ def radar():
                         # Alternating sequences if there are multiple in the averaging_period.
                         start_time = datetime.utcnow()
                         if intt_break:
-                            if start_time >= integration_period_done_time:
+                            if start_time >= averaging_period_done_time:
                                 time_remains = False
-                                integration_period_time = (start_time - integration_period_start_time)
+                                averaging_period_time = (start_time - averaging_period_start_time)
                                 break
-                        else:  # break at a certain number of integrations
+                        else:  # break at a certain number of sequences
                             if num_sequences == ending_number_of_sequences:
                                 time_remains = False
-                                integration_period_time = start_time - integration_period_start_time
+                                averaging_period_time = start_time - averaging_period_start_time
                                 break
 
                         # on first sequence, we make the first set of samples.
@@ -832,9 +831,9 @@ def radar():
 
                         num_sequences += 1
 
-                        if first_integration:
+                        if first_aveperiod:
                             decimation_scheme = None
-                            first_integration = False
+                            first_aveperiod = False
 
                         # Sequence is done
                         if __debug__:
@@ -848,7 +847,7 @@ def radar():
                 rad_ctrl_print(msg)
 
                 if scan.aveperiod_iter == 0 and aveperiod.beam_iter == 0:
-                    # This is the first integration time in the scan object.
+                    # This is the first averaging period in the scan object.
                     # if scanbound is aligned to beamorder, the scan_iter will also = 0 at this point.
                     scan_flag = True
                 else:
@@ -856,9 +855,9 @@ def radar():
 
                 last_sequence_num = seqnum_start + num_sequences - 1
                 def send_dw():
-                    send_datawrite_metadata(integration_time_packet, radar_control_to_dw,
+                    send_datawrite_metadata(aveperiod_packet, radar_control_to_dw,
                                         options.dw_to_radctrl_identity, last_sequence_num,
-                                        num_sequences, scan_flag, integration_period_time,
+                                        num_sequences, scan_flag, averaging_period_time,
                                         aveperiod.sequences, aveperiod.beam_iter,
                                         experiment.cpid, experiment.experiment_name,
                                         experiment.scheduling_mode,
