@@ -56,7 +56,7 @@ class Scan(ScanClassBase):
             self.scan_beams[slice_id] = self.slice_dict[slice_id]['beam_order']
 
         self.aveperiods = []
-        self.nested_slice_list = self.get_inttime_slice_ids()
+        self.nested_slice_list = self.get_aveperiod_slice_ids()
 
         for params in self.prep_for_nested_scan_class():
             self.aveperiods.append(AveragingPeriod(*params))
@@ -84,7 +84,7 @@ class Scan(ScanClassBase):
         self.aveperiod_iter = 0 # used to keep track of index into aveperiods list.
         # AveragingPeriod will be in slice_id # order
 
-    def get_inttime_slice_ids(self):
+    def get_aveperiod_slice_ids(self):
         """
         Return the slice_ids that are within the AveragingPeriods in this Scan instance.
 
@@ -135,15 +135,15 @@ class Scan(ScanClassBase):
 
         # Add the beam order and beam direction information that is necessary for
         # AveragingPeriods specifically.
-        for params, inttime_list in zip(params_list, self.nested_slice_list):
+        for params, aveperiod_list in zip(params_list, self.nested_slice_list):
             # Make sure the number of averaging periods (as determined by length of slice['scan'])
             # is the same for slices combined in the averaging period.
-            self.nested_beamorder = {}
-            self.nested_beamdir = {}
-            for slice_id in inttime_list:
-                self.nested_beamorder[slice_id] = self.scan_beams[slice_id]
-                self.nested_beamdir[slice_id] = self.beamdir[slice_id]
-            params.append(self.nested_beamorder)
-            params.append(self.nested_beamdir)
+            nested_beamorder = {}
+            nested_beamdir = {}
+            for slice_id in aveperiod_list:
+                nested_beamorder[slice_id] = self.scan_beams[slice_id]
+                nested_beamdir[slice_id] = self.beamdir[slice_id]
+            params.append(nested_beamorder)
+            params.append(nested_beamdir)
 
         return params_list
