@@ -49,7 +49,7 @@ class ProcessedSequenceMessage(object):
         self._output_datasets = []
 
         self.__stage_allowed_types = {'stage_name': str, 'main_shm': str, 'intf_shm': str, 'num_samps': int}
-        self.__output_dataset_types = {'slice_id': int, 'num_beams': int, 'num_ranges': int, 'num_lags': int,
+        self.__output_dataset_types = {'slice_id': int, 'num_beams': int, 'num_ranges': np.uint32, 'num_lags': int,
                                        'main_acf_shm': str, 'intf_acf_shm': str, 'xcf_shm': str}
 
     @property
@@ -220,7 +220,7 @@ class ProcessedSequenceMessage(object):
         """Remove all debug_data entries so the list can be refilled for the next sequence"""
         self._debug_data = []
 
-    def add_stage(self, stage: dict):
+    def add_debug_data(self, stage: dict):
         """Add a stage of debug data to the message"""
         check_dict(stage, self.__stage_allowed_types, 'stage')
         self._debug_data.append(stage)
@@ -252,11 +252,11 @@ class SequenceMetadataMessage(object):
         self._rx_ctr_freq = 0.0
         self._decimation_stages = []
         self._rx_channels = []
-        self.__decimation_stage_allowed_types = {'stage_num': str, 'input_rate': float, 'dm_rate': float,
-                                                 'filter_taps': np.ndarray}
+        self.__decimation_stage_allowed_types = {'stage_num': int, 'input_rate': float, 'dm_rate': int,
+                                                 'filter_taps': list}
 
-        self.__rx_channel_allowed_types = {'slice_id': str, 'tau_spacing': int, 'rx_freq': float, 'clrfrqflag': bool,
-                                           'num_ranges': int, 'first_range': int, 'range_sep': int,
+        self.__rx_channel_allowed_types = {'slice_id': int, 'tau_spacing': int, 'rx_freq': float, 'clrfrqflag': bool,
+                                           'num_ranges': int, 'first_range': int, 'range_sep': float,
                                            'beam_directions': list, 'lags': list}
         self.__beam_directions_allowed_types = {'phase': list}
         self.__phase_allowed_types = {'real_phase': float, 'imag_phase': float}
@@ -484,9 +484,9 @@ class AveperiodMetadataMessage(object):
         check_dict(sequence, self.__sequence_allowed_types, 'sequence')
         if 'tx_data' in sequence.keys():
             check_dict(sequence['tx_data'], self.__tx_data_allowed_types, 'tx_data')
-        if 'rx_channel' in sequence.keys():
-            for channel in sequence['rx_channel']:
-                check_dict(channel, self.__rx_channel_allowed_types, 'rx_channel')
+        if 'rx_channels' in sequence.keys():
+            for channel in sequence['rx_channels']:
+                check_dict(channel, self.__rx_channel_allowed_types, 'rx_channels')
                 if 'beams' in channel.keys():
                     for beam in channel['beams']:
                         check_dict(beam, self.__beam_allowed_types, 'beam')

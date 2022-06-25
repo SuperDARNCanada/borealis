@@ -393,7 +393,7 @@ def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_ide
                        'decimated_tx_samples': debug_samples[sequence_index]['decimated_samples']}
             sequence_add['tx_data'] = tx_data
 
-        sequence_add['rx_channel'] = []
+        sequence_add['rx_channels'] = []
         for slice_id in sequence.slice_ids:
             rxchannel = {'slice_id': slice_id,
                          'slice_comment': sequence.slice_dict[slice_id]['comment'],
@@ -441,13 +441,13 @@ def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_ide
                 rxchannel['xcf'] = sequence.slice_dict[slice_id]['xcf']
                 rxchannel['acfint'] = sequence.slice_dict[slice_id]['acfint']
                 
-                rxchannel['ltab'] = {}
+                rxchannel['ltab'] = []
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = {'pulse_position': lag,
                                'lag_num': int(lag[1] - lag[0])}
                     rxchannel['ltab'].append(lag_add)
                 rxchannel['averaging_method'] = sequence.slice_dict[slice_id]['averaging_method']
-            sequence_add['rxchannel'].append(rxchannel)
+            sequence_add['rx_channels'].append(rxchannel)
         message.sequences.append(sequence_add)
 
     if __debug__:

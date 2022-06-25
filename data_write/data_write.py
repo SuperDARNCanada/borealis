@@ -280,7 +280,7 @@ class ParseData(object):
         stages = []
         # Loop through all the filter stage data 
         for debug_stage in self.processed_data.debug_data:
-            stage_dict = {'stage_name': debug_stage['stagename'],
+            stage_dict = {'stage_name': debug_stage['stage_name'],
                           'stage_samps': debug_stage['num_samps'],
                           'main_shm': debug_stage['main_shm'],
                           'intf_shm': debug_stage['intf_shm']}
@@ -303,7 +303,7 @@ class ParseData(object):
         self._antenna_iq_available = True
 
         # Iterate over every data set, one data set per slice
-        for i, data_set in enumerate(self.processed_data.output_dataset):
+        for i, data_set in enumerate(self.processed_data.output_datasets):
             slice_id = data_set['slice_id']
 
             # non beamformed IQ samples are available
@@ -343,7 +343,7 @@ class ParseData(object):
         self._rx_rate = data.rx_sample_rate
         self._output_sample_rate = data.output_sample_rate
 
-        for data_set in data.rx_channels:
+        for data_set in data.output_datasets:
             self._slice_ids.add(data_set['slice_id'])
 
         if data.rawrf_shm != '':
@@ -1003,7 +1003,7 @@ class DataWrite(object):
             rx_intf_antennas = {}
 
             for meta in aveperiod_meta.sequences:
-                for rx_freq in meta['rxchannel']:
+                for rx_freq in meta['rx_channels']:
                     rx_main_antennas[rx_freq['slice_id']] = list(rx_freq['rx_main_antennas'])
                     rx_intf_antennas[rx_freq['slice_id']] = list(rx_freq['rx_intf_antennas'])
 
@@ -1220,15 +1220,15 @@ class DataWrite(object):
                 parameters['first_range'] = np.float32(rx_freq['first_range'])
                 parameters['rx_sample_rate'] = data_parsing.output_sample_rate  # this applies to pre-bf and bfiq
                 parameters['scan_start_marker'] = aveperiod_meta.scan_flag  # Should this change to scan_start_marker?
-                parameters['int_time'] = np.float32(aveperiod_meta.integration_time)
+                parameters['int_time'] = np.float32(aveperiod_meta.aveperiod_time)
                 parameters['tx_pulse_len'] = np.uint32(rx_freq['pulse_len'])
                 parameters['tau_spacing'] = np.uint32(rx_freq['tau_spacing'])
                 parameters['main_antenna_count'] = np.uint32(len(rx_freq['rx_main_antennas']))
                 parameters['intf_antenna_count'] = np.uint32(len(rx_freq['rx_intf_antennas']))
-                parameters['freq'] = np.uint32(rx_freq['rxfreq'])
+                parameters['freq'] = np.uint32(rx_freq['rx_freq'])
                 parameters['rx_center_freq'] = aveperiod_meta.rx_ctr_freq
                 parameters['samples_data_type'] = "complex float"
-                parameters['pulses'] = np.array(rx_freq['ptab']['pulse_position'], dtype=np.uint32)
+                parameters['pulses'] = np.array(rx_freq['ptab'], dtype=np.uint32)
 
                 encodings = []
                 for encoding in rx_freq['sequence_encodings']:
@@ -1240,7 +1240,7 @@ class DataWrite(object):
                 parameters['data_normalization_factor'] = aveperiod_meta.data_normalization_factor
 
                 lags = []
-                for lag in rx_freq['ltab']['lag']:
+                for lag in rx_freq['ltab']:
                     lags.append([lag['pulse_position'][0], lag['pulse_position'][1]])
 
                 parameters['lags'] = np.array(lags, dtype=np.uint32)
@@ -1251,8 +1251,8 @@ class DataWrite(object):
                 parameters['beam_nums'] = []
                 parameters['beam_azms'] = []
                 for beam in rx_freq['beams']:
-                    parameters['beam_nums'].append(np.uint32(beam['beamnum']))
-                    parameters['beam_azms'].append(beam['beamazimuth'])
+                    parameters['beam_nums'].append(np.uint32(beam['beam_num']))
+                    parameters['beam_azms'].append(beam['beam_azimuth'])
 
                 parameters['noise_at_freq'] = [0.0] * aveperiod_meta.num_sequences  # TODO update. should come from data_parsing
 
@@ -1351,7 +1351,7 @@ def main():
 
             aveperiod_meta = pickle.loads(data)
 
-            aveperiod_metadata_dict[aveperiod_meta.last_seqn_num] = aveperiod_meta
+            aveperiod_metadata_dict[aveperiod_meta.last_sqn_num] = aveperiod_meta
 
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes_from_any_iden(dsp_to_data_write)
@@ -1389,9 +1389,9 @@ def main():
 
                         aveperiod_metadata = aveperiod_metadata_dict.pop(data_parsing.sequence_num)
 
-                        if aveperiod_metadata['experiment_name'] != current_experiment:
+                        if aveperiod_metadata.experiment_name != current_experiment:
                             data_write = DataWrite(options)
-                            current_experiment = aveperiod_metadata['experiment_name']
+                            current_experiment = aveperiod_metadata.experiment_name
 
                         kwargs = dict(write_bfiq=args.enable_bfiq,
                                       write_antenna_iq=args.enable_antenna_iq,

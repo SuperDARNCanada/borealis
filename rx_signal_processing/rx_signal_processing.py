@@ -111,7 +111,7 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
             # No interferometer data
             pass
 
-        processed_data.add_output_dataset.append(output_dataset)
+        processed_data.add_output_dataset(output_dataset)
 
 
 def main():
@@ -170,7 +170,7 @@ def main():
             # because the filter taps do not get flipped when convolving. I.e. we do the cross-correlation instead of
             # convolution, to save some computational complexity from flipping the filter sequence.
             # It works out to the same result.
-            mixing_freqs.append(rx_center_freq - chan['rxfreq'])
+            mixing_freqs.append(rx_center_freq - chan['rx_freq'])
 
             detail['slice_id'] = chan['slice_id']
             detail['slice_num'] = i
@@ -447,7 +447,7 @@ def main():
 
             # Put all filter stage and antennas data in the message
             for stage in stages:
-                debug_data = {'stagename': stage['stage_name'],
+                debug_data = {'stage_name': stage['stage_name'],
                               'main_shm': stage['main_shm']}
                 if 'intf_shm' in stage.keys():
                     debug_data['intf_shm'] = stage['intf_shm']
