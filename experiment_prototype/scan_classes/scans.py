@@ -53,7 +53,7 @@ class Scan(ScanClassBase):
         self.scan_beams = {}
         for slice_id in self.slice_ids:
             self.beamdir[slice_id] = self.slice_dict[slice_id]['beam_angle']
-            self.scan_beams[slice_id] = self.slice_dict[slice_id]['beam_order']
+            self.scan_beams[slice_id] = self.slice_dict[slice_id]['rx_beam_order']
 
         self.aveperiods = []
         self.nested_slice_list = self.get_aveperiod_slice_ids()

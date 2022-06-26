@@ -186,7 +186,7 @@ Below is an example of properly inheriting the prototype class and defining your
 
         def __init__(self):
             cpid = 123123  # this must be a unique id for your control program.
-            super(MyClass, self).__init__(cpid,
+            super().__init__(cpid,
                 comment_string='My experiment explanation')
 
 The experiment handler will create an instance of your experiment when your experiment is scheduled to start running. Your class is a child class of ExperimentPrototype and because of this, the parent class needs to be instantiated when the experiment is instantiated. This is important because the experiment_handler will build the scans required by your class in a way that is easily readable and iterable by the radar control program. This is done by methods that are set up in the ExperimentPrototype parent class.
@@ -236,18 +236,40 @@ beam_angle *required*
     16-beam list: `[-24.3, -21.06, -17.82, -14.58, -11.34, -8.1, -4.86, -1.62, 1.62, 4.86, 8.1, 11.34, 14.58, 21.06,
     24.3]`
 
-beam_order *required*
+rx_beam_order *required*
     beam numbers written in order of preference, one element in this list corresponds to
-    one integration period. Can have lists within the list, resulting in multiple beams
+    one averaging period. Can have lists within the list, resulting in multiple beams
     running simultaneously in the averaging period, so imaging. A beam number of 0 in
     this list gives us the direction of the 0th element in the beam_angle list. It is
-    up to the writer to ensure their beam pattern makes sense. Typically beam_order is
+    up to the writer to ensure their beam pattern makes sense. Typically rx_beam_order is
     just in order (scanning W to E or E to W, ie. [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-    11, 12, 13, 14, 15]. You can list numbers multiple times in the beam_order list,
+    11, 12, 13, 14, 15]. You can list numbers multiple times in the rx_beam_order list,
     for example [0, 1, 1, 2, 1] or use multiple beam numbers in a single
-    integration time (example [[0, 1], [3, 4]], which would trigger an imaging
+    averaging period (example [[0, 1], [3, 4]], which would trigger an imaging
     integration. When we do imaging we will still have to quantize the directions we
-    are looking in to certain beam directions.
+    are looking in to certain beam directions. It is up to the user to ensure that this
+    field works well with the specified tx_beam_order or tx_antenna_pattern.
+
+tx_beam_order *required or tx_antenna_pattern required*
+    beam numbers written in order of preference, one element in this list corresponds to
+    one averaging period. A beam number of 0 in this list gives us the direction of the
+    0th element in the beam_angle list. It is up to the writer to ensure their beam pattern
+    makes sense. Typically tx_beam_order is just in order (scanning W to E or E to W, i.e.
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]. You can list numbers multiple
+    times in the tx_beam_order list, for example [0, 1, 1, 2, 1], but unlike rx_beam_order,
+    you CANNOT use multiple beam numbers in a single averaging period. In other words, this
+    field MUST be a list of integers, as opposed to rx_beam_order, which can be a list of
+    lists of integers. The length of this list must be equal to the length of the
+    rx_beam_order list. For more complicated transmission patterns, specify the
+    tx_antenna_pattern field instead. Exactly one of tx_beam_order and tx_antenna_pattern
+    must be specified.
+
+tx_antenna_pattern *required or tx_beam_order required*
+    experiment-defined function which returns a complex weighting factor of magnitude <= 1
+    for each tx antenna used in the experiment. The return value of the function must be
+    an array of size [num_beams, num_main_antennas] with all elements having magnitude <= 1.
+    The first dimension of the returned array (num_beams) equal the length of the rx_beam_order
+    list. This field is mutually exclusive with tx_beam_order.
 
 clrfrqrange *required or txfreq or rxfreq required*
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
@@ -387,7 +409,8 @@ An example of adding a slice to your experiment is as follows::
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": [-24.3, -21.06, -17.82, -14.58, -11.34, -8.1, -4.86, -1.62, 1.62, 4.86, 8.1, 11.34,
             14.58, 21.06, 24.3],  # 16 beams, separated by 3.24 degrees
-            "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+            "rx_beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+            "tx_beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
             "txfreq" : 10500, #kHz
             "acf": True,
