@@ -88,8 +88,8 @@ Slices which are interfaced in this manner must share:
 
 slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_sequence",
                            "pulse_phase_offset", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt",
-                           "intn", "beam_angle", "beam_order", "scanbound", "txfreq", "rxfreq", "clrfrqrange",
-                           "averaging_method", "acf", "xcf", "acfint", "wavetype", "seqoffset", "iwavetable",
+                           "intn", "beam_angle", "tx_beam_order", "rx_beam_order", "scanbound", "txfreq", "rxfreq", 
+                           "clrfrqrange", "averaging_method", "acf", "xcf", "acfint", "wavetype", "seqoffset", "iwavetable",
                            "qwavetable", "comment", "range_sep", "lag_table", "tx_antenna_pattern", "rx_antenna_pattern"])
 
 """
@@ -123,40 +123,47 @@ intt *required or intn required*
 intn *required or intt required*
     number of averages to make a single averaging period (integration), only used if intt = None.
 
-beam_angle *see Beam Shaping below*
+beam_angle *required*
     list of beam directions, in degrees off azimuth. Positive is E of N. The beam_angle list
     length = number of beams. Traditionally beams have been 3.24 degrees separated but we
     don't refer to them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will
     be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
-    needed to write the beam_order list. This is like a mapping of beam number (list
+    needed to write the [rx|tx]_beam_order list. This is like a mapping of beam number (list
     index) to beam direction off boresight.
 
-beam_order *see Beam Shaping below*
+rx_beam_order *required*
     beam numbers written in order of preference, one element in this list corresponds to
     one averaging period. Can have lists within the list, resulting in multiple beams
     running simultaneously in the averaging period, so imaging. A beam number of 0 in
     this list gives us the direction of the 0th element in the beam_angle list. It is
-    up to the writer to ensure their beam pattern makes sense. Typically beam_order is
+    up to the writer to ensure their beam pattern makes sense. Typically rx_beam_order is
     just in order (scanning W to E or E to W, ie. [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-    11, 12, 13, 14, 15]. You can list numbers multiple times in the beam_order list,
+    11, 12, 13, 14, 15]. You can list numbers multiple times in the rx_beam_order list,
     for example [0, 1, 1, 2, 1] or use multiple beam numbers in a single
     averaging period (example [[0, 1], [3, 4]], which would trigger an imaging
     integration. When we do imaging we will still have to quantize the directions we
     are looking in to certain beam directions.
 
-tx_antenna_pattern *see Beam Shaping below*
+tx_beam_order *required or tx_antenna_pattern required*
+    beam numbers written in order of preference, one element in this list corresponds to
+    one averaging period. A beam number of 0 in this list gives us the direction of the
+    0th element in the beam_angle list. It is up to the writer to ensure their beam pattern
+    makes sense. Typically tx_beam_order is just in order (scanning W to E or E to W, i.e.
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]. You can list numbers multiple
+    times in the tx_beam_order list, for example [0, 1, 1, 2, 1], but unlike rx_beam_order,
+    you CANNOT use multiple beam numbers in a single averaging period. In other words, this
+    field MUST be a list of integers, as opposed to rx_beam_order, which can be a list of
+    lists of integers. The length of this list must be equal to the length of the 
+    rx_beam_order list. For more complicated transmission patterns, specify the 
+    tx_antenna_pattern field instead. Exactly one of tx_beam_order and tx_antenna_pattern
+    must be specified.
+
+tx_antenna_pattern *required or tx_beam_order required*
     experiment-defined function which returns a complex weighting factor of magnitude <= 1
     for each tx antenna used in the experiment. The return value of the function must be
-    an array of size [# of tx antennas] with all elements having magnitude <= 1.
-
-rx_antenna_pattern *see Beam Shaping below*
-    experiment-defined function which returns a complex weighting factor for each rx 
-    antenna used in the experiment. The return value of the function must be an array with
-    the same dimensions as the number of receive antennas specified as a parameter to the 
-    function. For example, if there are 16 receive antennas in the main antenna array, the returned
-    value should by an array of length 16. For the case of a 4-antenna array, the returned 
-    value should be an array of length 4. This function should flexibly handle differently
-    sized antenna arrays corresponding to the main and interferometer arrays.
+    an array of size [num_beams, num_main_antennas] with all elements having magnitude <= 1.
+    The first dimension of the returned array (num_beams) equal the length of the rx_beam_order
+    list. This field is mutually exclusive with tx_beam_order. 
 
 clrfrqrange *required or txfreq or rxfreq required*
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
@@ -168,29 +175,6 @@ txfreq *required or clrfrqrange or rxfreq required*
 rxfreq *required or clrfrqrange or txfreq required*
     receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only
     necessary to specify if you want a receive-only slice.
-
-**Beam Shaping**
-The following keys must be specified in accordance with one of the following situations:
-
-1. beam_angle and beam_order specified only
-    The beams correspond to tx and rx directions, as in traditional SuperDARN operation.
-
-2. tx_antenna_pattern and rx_antenna_pattern specified
-    tx_antenna_pattern is an experiment-defined function for weighting the transmission of each
-    antenna. rx_antenna_pattern is an experiment-defined function for weighting the reception
-    of each antenna. This allows arbitrary beamforming and beamspoiling for both tx and rx.
-
-3. tx_antenna_pattern, beam_angle, and beam_order specified
-    tx_antenna_pattern is used to shape the waveform from each antenna, but reception is done
-    according to the beam angles and orders.
-
-4. rx_antenna_pattern, beam_angle, and beam_order specified
-    The transmitted waveform is determined by beam_angle and beam_order like usual, and the 
-    received waveform for each antenna is weighted by rx_antenna_pattern.
-
-When creating an experiment, choose one of these situations and specify only the keys listed
-for the situation. Any experiment which does not exactly fit one of these situations above 
-will raise an Exception and fail.
 
 **Defaultable Slice Keys**
 
@@ -1321,12 +1305,7 @@ class ExperimentPrototype(object):
                     exp_slice.pop('intn')
             exp_slice['intt'] = float(exp_slice['intt'])
 
-        if 'beam_order' in exp_slice.keys() and 'beam_angle' in exp_slice.keys():
-            # Invalid situation, can't specify all of these keys
-            if 'tx_antenna_pattern' in exp_slice.keys() and 'rx_antenna_pattern' in exp_slice.keys():
-                errmsg = "Slice may not specify all of 'beam_order', 'beam_angle', 'tx_antenna_pattern', and " \
-                         "'rx_antenna_pattern'. Slice: {}".format(exp_slice)
-                raise ExperimentException(errmsg)
+        if 'rx_beam_order' in exp_slice.keys() and 'beam_angle' in exp_slice.keys():
 
             # Check the validity of 'beam_angle' specified
             if not isinstance(exp_slice['beam_angle'], list):
@@ -1343,21 +1322,21 @@ class ExperimentPrototype(object):
                 if isinstance(element, int):
                     element = float(element)
 
-            # Check the validity of 'beam_order' specified
-            if not isinstance(exp_slice['beam_order'], list):
-                errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+            # Check the validity of 'rx_beam_order' specified
+            if not isinstance(exp_slice['rx_beam_order'], list):
+                errmsg = "Slice must specify rx_beam_order that must be a list of ints or lists (of ints)" \
                          " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
                 raise ExperimentException(errmsg)
-            for element in exp_slice['beam_order']:
+            for element in exp_slice['rx_beam_order']:
                 if not isinstance(element, int) and not isinstance(element, list):
-                    errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                    errmsg = "Slice must specify rx_beam_order that must be a list of ints or lists (of ints)" \
                              " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(
                         exp_slice)
                     raise ExperimentException(errmsg)
                 if isinstance(element, list):
                     for beamnum in element:
                         if not isinstance(beamnum, int):
-                            errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                            errmsg = "Slice must specify rx_beam_order that must be a list of ints or lists (of ints)" \
                                      " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(
                                 exp_slice)
                             raise ExperimentException(errmsg)
@@ -1371,9 +1350,29 @@ class ExperimentPrototype(object):
                                  " Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
                         raise ExperimentException(errmsg)
 
-        # No beam_order or beam_angle, must have both 'tx_antenna_pattern' and 'rx_antenna_pattern' specified
-        elif 'tx_antenna_pattern' not in exp_slice.keys() or 'rx_antenna_pattern' not in exp_slice.keys():
-            errmsg = "Slice does not have enough parameters defined to determine tx and rx beamforming." \
+            if 'tx_beam_order' in exp_slice.keys():
+                if 'tx_antenna_pattern' in exp_slice.keys():
+                    errmsg = "Slice may not have both tx_antenna_pattern and tx_beam_order. Slice: {}".format(exp_slice)
+                    raise ExperimentException(errmsg)
+                if not isinstance(exp_slice['tx_beam_order'], list):
+                    errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in "
+                             "the beam_angle list. Slice: {}".format(exp_slice))
+                    raise ExperimentException(errmsg)
+                for element in exp_slice['tx_beam_order']:
+                    if not isinstance(element, int):
+                        errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in "
+                                 "the beam_angle list. Slice: {}".format(exp_slice))
+                        raise ExperimentException(errmsg)
+                    if beamnum >= len(exp_slice['beam_angle']):
+                        errmsg = "Beam number {} in tx_beam_order could not index in beam_angle list of length {}."
+                                 " Slice: {}".format(beamnum, len(exp_slice['beam_angle']), exp_slice)
+                        raise ExperimentException(errmsg)
+            else:
+                errmsg = "Slice must have one of tx_antenna_pattern or tx_beam_order specified. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
+
+        else:
+            errmsg = "Slice must have rx_beam_order and beam_angle specified." \
                      " Slice: {}".format(exp_slice)
             raise ExperimentException(errmsg)
 
@@ -1593,14 +1592,10 @@ class ExperimentPrototype(object):
         if 'scanbound' not in exp_slice:
             slice_with_defaults['scanbound'] = None
 
-        if 'beam_angle' not in exp_slice:
-            slice_with_defaults['beam_angle'] = None
-        if 'beam_order' not in exp_slice:
-            slice_with_defaults['beam_order'] = None
+        if 'tx_beam_order' not in exp_slice:
+            slice_with_defaults['tx_beam_order'] = None
         if 'tx_antenna_pattern' not in exp_slice:
             slice_with_defaults['tx_antenna_pattern'] = None
-        if 'rx_antenna_pattern' not in exp_slice:
-            slice_with_defaults['rx_antenna_pattern'] = None
 
         # we only have one of intn or intt because of slice checks already completed in
         # check_slice_minimum_requirements.
@@ -1711,7 +1706,7 @@ class ExperimentPrototype(object):
         The following are always required for processing acf, xcf, and acfint which we will assume
         we are always doing:
         "pulse_sequence", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt", "intn", "beam_angle",
-        "beam_order"
+        "rx_beam_order"
 
         The following are required depending on slice type:
         "txfreq", "rxfreq", "clrfrqrange"
@@ -1968,34 +1963,6 @@ class ExperimentPrototype(object):
                         error_list.append("Slice {} tx antenna pattern return must not have any values with a "
                                           "magnitude greater than 1".format(exp_slice['slice_id']))
 
-        if exp_slice['rx_antenna_pattern']:
-            if not callable(exp_slice['rx_antenna_pattern']):
-                error_list.append("Slice {} rx antenna pattern must be a function".format(exp_slice['slice_id']))
-            else:
-                if 'txfreq' in exp_slice:
-                    rx_freq_khz = exp_slice['txfreq']
-                else:
-                    rx_freq_khz = exp_slice['rxfreq']
-
-                for rx_antenna_count in [options.main_antenna_count, options.intf_antenna_count]:
-                    antenna_spacing = options.main_antenna_spacing
-                    antenna_pattern = exp_slice['rx_antenna_pattern'](rx_freq_khz, rx_antenna_count, antenna_spacing)
-
-                    if not isinstance(antenna_pattern, np.ndarray):
-                        error_list.append("Slice {} rx antenna pattern return is not a numpy array"
-                                          "".format(exp_slice['slice_id']))
-                    else:
-                        if len(antenna_pattern.shape) != 2:
-                            error_list.append("Slice {} rx antenna pattern return shape {} must be 2-dimensional"
-                                              "".format(exp_slice['slice_id'], antenna_pattern.shape))
-                        elif antenna_pattern.shape[1] != rx_antenna_count:
-                            error_list.append("Slice {} rx antenna pattern return 2nd dimensions ({}) must be equal to number of "
-                                              "rx antennas ({})".format(exp_slice['slice_id'], antenna_pattern.shape[1],
-                                                                        rx_antenna_count))
-                        antenna_pattern_mag = np.abs(antenna_pattern)
-                        if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
-                            error_list.append("Slice {} rx antenna pattern return must not have any values with a "
-                                              "magnitude greater than 1".format(exp_slice['slice_id']))
         if exp_slice['beam_angle']:
             if list_tests.has_duplicates(exp_slice['beam_angle']):
                 error_list.append("Slice {} beam angles has duplicate directions".format(
@@ -2006,22 +1973,28 @@ class ExperimentPrototype(object):
                                   "is positive)".format(exp_slice['slice_id']))
 
         # Check if the list of beams to transmit on is empty
-        if exp_slice['beam_angle'] and not exp_slice['beam_order']:
-            error_list.append("Slice {} beam order scan empty".format(
+        if exp_slice['beam_angle'] and not exp_slice['rx_beam_order']:
+            error_list.append("Slice {} rx beam order scan empty".format(
                 exp_slice['slice_id']))
 
-        # Check that the beam numbers in the beam_order exist
-        if exp_slice['beam_order']:
-            for bmnum in exp_slice['beam_order']:
-                if isinstance(bmnum, int):
-                    if bmnum >= len(exp_slice['beam_angle']):
-                        error_list.append("Slice {} scan beam number {} DNE".format(
+        # Check that the beam numbers in the tx_beam_order exist
+        if exp_slice['tx_beam_order']:
+            for bmnum in exp_slice['tx_beam_order']:
+                if bmnum >= len(exp_slice['beam_angle']):
+                    error_list.append("Slice {} scan tx beam number {} DNE".format(
+                        exp_slice['slice_id'], bmnum))
+
+        # Check that the beam nubmers in the rx_beam_order exist
+        for bmnum in exp_slice['rx_beam_order']:
+            if isintance(bmnum, int):
+                if bmnum >= len(exp_slice['beam_angle']):
+                    error_list.append("Slice {} scan rx beam number {} DNE".format(
+                        exp_slice['slice_id'], bmnum))
+            elif isinstance(bmnum, list):
+                for imaging_bmnum in bmnum:
+                    if imaging_bmnum >= len(exp_slice['beam_angle']):
+                        error_list.append("Slice {} scan rx beam number {} DNE".format(
                             exp_slice['slice_id'], bmnum))
-                elif isinstance(bmnum, list):
-                    for imaging_bmnum in bmnum:
-                        if imaging_bmnum >= len(exp_slice['beam_angle']):
-                            error_list.append("Slice {} scan beam number {} DNE".format(
-                                exp_slice['slice_id'], bmnum))
 
         # check scan boundary not less than minimum required scan time.
         if exp_slice['scanbound']:

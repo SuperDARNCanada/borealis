@@ -136,48 +136,21 @@ class Sequence(ScanClassBase):
                     main_phase_shift = get_phase_shift(exp_slice['beam_angle'], tx_freq_khz, main_antenna_count,
                                                        main_antenna_spacing)
 
-                # We want to apply all the phases to the basic samples. We can flatten the phases
-                # so that can multiply them all with the basic samples. This can later be reshaped
-                # so that each antenna has a set of phased samples for each beam.
-                # If there are N antennas and M beams
-
-                # if we let antennaxbeamy = abxy from the previous matrix (now flattened to be able to multiply)
-                # and basic_samples[i] = bsi
-                # And there are S basic_samples then...
-
-                # Now we have:
-                # [ab00bs0 ab00bs1 ... ab00bsS-1
-                # ab10bs0 ab10bs1 ... ab10bsS-1
-                # ...
-                # ab(N-1)0bs0 ab(N-1)0bs1 ... ab(N-1)0bsS-1
-                # ab01bs0 ab01bs1 ... ab01bsS-1
-                # ...
-                # ab(N-1)1bs0 ab(N-1)1bs1 ... ab(N-1)1*bsS-1
-                # ...
-                # ab(N-1)(M-1)*bs0 ... ... ...........ab(N-1)(M-1)*bsS-1]
-
-                # And to access a sample for a specific beam and antenna:
-                # phased_samps_for_beams[antenna+(N)*beam][sample]
-                phased_samps_for_beams = np.outer(main_phase_shift.flatten(), basic_samples)
-
-                # beams by antenna by samples
-                phased_samps_for_beams = phased_samps_for_beams.reshape(main_phase_shift.shape +
-                                                                        basic_samples.shape)
-
+                # main_phase_shift: [num_beams, num_antennas]
+                # basic_samples:    [num_samples]
+                # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
+                phased_samps_for_beams = np.einsum('ij,k->ijk', main_phase_shift, basic_samples)
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
                 rx_freq_khz = experiment.slice_dict[slice_id]['rxfreq']
                 self.basic_slice_pulses[slice_id] = []
             print("Main Phases: {}".format(main_phase_shift)) 
+            
             # Now we set up the phases for receive side
-            if exp_slice['rx_antenna_pattern'] is not None:
-                main_phase_shift = exp_slice['rx_antenna_pattern'](rx_freq_khz, main_antenna_count, main_antenna_spacing)
-                intf_phase_shift = exp_slice['rx_antenna_pattern'](rx_freq_khz, intf_antenna_count, intf_antenna_spacing)
-            else:
-                main_phase_shift = get_phase_shift(exp_slice['beam_angle'], rx_freq_khz, main_antenna_count,
-                                                   main_antenna_spacing)
-                intf_phase_shift = get_phase_shift(exp_slice['beam_angle'], rx_freq_khz, intf_antenna_count,
-                                                   intf_antenna_spacing, intf_offset[0])
+            main_phase_shift = get_phase_shift(exp_slice['beam_angle'], rx_freq_khz, main_antenna_count,
+                                               main_antenna_spacing)
+            intf_phase_shift = get_phase_shift(exp_slice['beam_angle'], rx_freq_khz, intf_antenna_count,
+                                               intf_antenna_spacing, intf_offset[0])
 
             self.rx_beam_phases[slice_id] = {'main': main_phase_shift, 'intf': intf_phase_shift}
             
@@ -437,7 +410,7 @@ class Sequence(ScanClassBase):
 
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
-            beam_num = exp_slice['beam_order'][beam_iter]
+            beam_num = exp_slice['tx_beam_order'][beam_iter]
             basic_samples = self.basic_slice_pulses[slice_id][beam_num]  # num_antennas x num_samps
 
             num_pulses = len(exp_slice['pulse_sequence'])
