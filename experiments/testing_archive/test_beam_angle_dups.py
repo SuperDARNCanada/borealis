@@ -37,7 +37,8 @@ class TestExperiment(ExperimentPrototype):
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": [-26.25, -26.25, -19.25, -15.75, -12.25, -8.75, -5.25, 
                 -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75, 26.25],  # Duplicate of -26.25, should fail
-            "beam_order": beams_to_use,
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
             "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,

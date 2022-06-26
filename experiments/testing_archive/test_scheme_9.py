@@ -33,7 +33,8 @@ class TestScheme9(ExperimentPrototype):
             "intn": 21,  # number of averages if intt is None.
             "beam_angle": [0.0], # [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                           # -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75, 26.25],
-            "beam_order": [0],
+            "rx_beam_order": [0],
+            "tx_beam_order": [0],
             #"scanboundflag": True,  # there is a scan boundary
             #"scanbound": 60000,  # ms
             "txfreq": 10500,
