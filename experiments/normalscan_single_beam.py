@@ -27,7 +27,8 @@ class NormalscanSingleBeam(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": [2], # beam 3
+            "rx_beam_order": [2], # beam 3
+            "tx_beam_order": [2],
             "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing

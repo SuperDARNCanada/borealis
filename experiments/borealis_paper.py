@@ -32,7 +32,8 @@ class BorealisPaper(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": scf.INTT_8P,
             "beam_angle": [1.75],
-            "beam_order": [0],
+            "rx_beam_order": [0],
+            "tx_beam_order": [0],
             "txfreq" : 13100,
             "acf" : True
         }

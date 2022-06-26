@@ -31,7 +31,8 @@ class Politescan(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": scf.INTT_8P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
             "scanbound" : scf.easy_scanbound(scf.INTT_7P, beams_to_use),
             "rxfreq" : 10500, #kHz
             "acf": True,

@@ -88,7 +88,8 @@ class IBCollabMode(ExperimentPrototype):
             "first_range": 90,  # closer than standard first range (180 km)
             "intt": 1900,  # duration of an integration, in ms
             "beam_angle": bangle,
-            "beam_order": beams_arr,
+            "rx_beam_order": beams_arr,
+            "tx_beam_order": beams_arr,
             "scanbound": [i * 2.0 for i in range(len(beams_arr))],
             "txfreq": freq,  # kHz
             "acf": True,

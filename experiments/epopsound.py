@@ -87,7 +87,8 @@ class Epopsound(ExperimentPrototype):
             "intt": 1000, #ms
             "scanbound": scanbound,
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
             "acf": True,
             "xcf": True,
             "acfint": True
@@ -106,7 +107,8 @@ class Epopsound(ExperimentPrototype):
                 slice_1.update({
                     "pulse_sequence": scf.SEQUENCE_7P,
                     "tau_spacing": scf.TAU_SPACING_7P,
-                    "beam_order": marker_beam_to_use
+                    "rx_beam_order": marker_beam_to_use,
+                    "tx_beam_order": marker_beam_to_use,
                     })
                 slices.append(slice_1)
 

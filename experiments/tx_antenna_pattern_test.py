@@ -60,7 +60,7 @@ class TxAntennaPatternTest(ExperimentPrototype):
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "tx_antenna_pattern": tx_antenna_pattern,
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": [beams_to_use],
+            "rx_beam_order": [beams_to_use],
             "txfreq" : freq, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing

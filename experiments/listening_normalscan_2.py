@@ -46,7 +46,8 @@ class ListeningNormalscan2(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
             # scanbound ends at 48s.
             "scanbound": [i * (3500 * 1e-3) for i in range(len(beams_to_use))],
             "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
@@ -64,7 +65,8 @@ class ListeningNormalscan2(ExperimentPrototype):
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             # offset beams so not looking in same direction.
-            "beam_order": beams_to_use[8:] + beams_to_use[0:8],
+            "rx_beam_order": beams_to_use[8:] + beams_to_use[0:8],
+            "tx_beam_order": beams_to_use[8:] + beams_to_use[0:8],
             "scanbound" : [i * (3500 * 1e-3) for i in range(len(beams_to_use))],
             "rxfreq" : scf.COMMON_MODE_FREQ_2, #kHz, separate frequency
             "acf": True,
