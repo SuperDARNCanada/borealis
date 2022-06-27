@@ -144,7 +144,7 @@ class Sequence(ScanClassBase):
             else:
                 rx_freq_khz = experiment.slice_dict[slice_id]['rxfreq']
                 self.basic_slice_pulses[slice_id] = []
-            print("Main Phases: {}".format(main_phase_shift)) 
+            print("Main Phases: {}".format(main_phase_shift))
             
             # Now we set up the phases for receive side
             main_phase_shift = get_phase_shift(exp_slice['beam_angle'], rx_freq_khz, main_antenna_count,
@@ -531,7 +531,7 @@ class Sequence(ScanClassBase):
 
         temp_dict = copy.deepcopy(self.rx_beam_phases)
         for k, v in temp_dict.items():
-            beam_num = self.slice_dict[k]['beam_order'][beam_iter]
+            beam_num = self.slice_dict[k]['rx_beam_order'][beam_iter]
             if not isinstance(beam_num, list):
                 beam_num = [beam_num]
             v['main'] = v['main'][beam_num, :]

@@ -22,6 +22,11 @@ def tx_antenna_pattern(tx_freq_khz, tx_antenna_count, antenna_spacing):
     print("Shape: {}".format(pattern.shape))
     return pattern.reshape((1, pattern.size))
 
+def alternating_phase(tx_freq_khz, tx_antenna_count, antenna_spacing):
+    pattern = [0.5 if i % 2 == 0 else -1.0 for i in range(tx_antenna_count)]
+    pattern = np.array(pattern).reshape((1, tx_antenna_count))
+    return pattern
+
 
 class TxAntennaPatternTest(ExperimentPrototype):
 
@@ -61,6 +66,7 @@ class TxAntennaPatternTest(ExperimentPrototype):
             "tx_antenna_pattern": tx_antenna_pattern,
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "rx_beam_order": [beams_to_use],
+            "tx_beam_order": [0],
             "txfreq" : freq, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
