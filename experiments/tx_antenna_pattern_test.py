@@ -24,7 +24,6 @@ def tx_antenna_pattern(tx_freq_khz, tx_antenna_count, antenna_spacing):
 
 def alternating_phase(tx_freq_khz, tx_antenna_count, antenna_spacing):
     pattern = [0.5 if i % 2 == 0 else -1.0 for i in range(tx_antenna_count)]
-    print(pattern)
     pattern = np.array(pattern).reshape((1, tx_antenna_count))
     return pattern
 

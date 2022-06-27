@@ -143,8 +143,7 @@ class Sequence(ScanClassBase):
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
                 rx_freq_khz = experiment.slice_dict[slice_id]['rxfreq']
-                self.basic_slice_pulses[slice_id] = []
-            print("Main Phases: {}".format(main_phase_shift)) 
+                self.basic_slice_pulses[slice_id] = [] 
             
             # Now we set up the phases for receive side
             main_phase_shift = get_phase_shift(exp_slice['beam_angle'], rx_freq_khz, main_antenna_count,
