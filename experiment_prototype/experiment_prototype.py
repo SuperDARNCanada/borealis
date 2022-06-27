@@ -90,7 +90,7 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
                            "pulse_phase_offset", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt",
                            "intn", "beam_angle", "beam_order", "scanbound", "txfreq", "rxfreq", "clrfrqrange",
                            "averaging_method", "acf", "xcf", "acfint", "wavetype", "seqoffset", "iwavetable",
-                           "qwavetable", "comment", "range_sep", "lag_table"])
+                           "qwavetable", "comment", "range_sep", "lag_table", "wait_for_first_scanbound"])
 
 """
 These are the keys that are set by the user when initializing a slice. Some
@@ -225,8 +225,12 @@ seqoffset *defaults*
     frequencies in the same pulse, etc. Default is 0 offset.
 
 tx_antennas *defaults*
-    The antennas to transmit on, default is all main antennas given max
-    number from config.
+    The antennas to transmit on, default is all main antennas given max number from config.
+    
+wait_for_first_scanbound *defaults*
+    A boolean flag for an experiment to wait until the nearest minute boundary before transmitting. 
+    Default is True, False indicates experiment will not wait for the first averaging period, but
+    will instead begin transmitting on the nearest averaging period. 
 
 xcf *defaults*
     flag for cross-correlation data. The default is True if acf is True, otherwise False.
@@ -494,6 +498,7 @@ class ExperimentPrototype(object):
         self.__scan_objects = []
         self.__scanbound = False
         self.__running_experiment = None  # this will be of ScanClassBase type
+        self.__wait_for_first_scanbound = True
 
     __slice_keys = slice_key_set
     __hidden_slice_keys = hidden_key_set
@@ -815,6 +820,16 @@ class ExperimentPrototype(object):
             return min_freq
         else:
             return 1000 # Hz
+
+    @property
+    def wait_for_first_scanbound(self):
+        """
+        A boolean flag for an experiment to wait until the nearest minute boundary before transmitting.
+
+        Default is True, False indicates experiment will not wait for the first averaging period, but
+        will instead begin transmitting on the nearest averaging period.
+        """
+        return self.__wait_for_first_scanbound
 
     @property
     def interface(self):
