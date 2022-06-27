@@ -39,7 +39,7 @@ class ImptTest(ExperimentPrototype):
             "beam_angle": [1.75],
             "rx_beam_order": [0],
             "tx_beam_order": [0],
-            "txfreq" : 13100,
+            "freq" : 13100,
         }
 
         impt_slice = copy.deepcopy(default_slice)

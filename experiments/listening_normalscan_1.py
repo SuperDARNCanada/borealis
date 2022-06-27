@@ -48,7 +48,7 @@ class ListeningNormalscan1(ExperimentPrototype):
             "tx_beam_order": beams_to_use,
             # scanbound ends at 48s.
             "scanbound": [i * 3.0 for i in range(len(beams_to_use))],
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
@@ -65,7 +65,7 @@ class ListeningNormalscan1(ExperimentPrototype):
             "rx_beam_order": [0],
             "tx_beam_order": [0],
             "scanbound" : [50.0],  #50th second of minute
-            "rxfreq" : scf.COMMON_MODE_FREQ_1, #kHz, same frequency but receive-only
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz, same frequency but receive-only
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

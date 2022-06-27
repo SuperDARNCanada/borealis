@@ -28,7 +28,7 @@ class Blank(ExperimentPrototype):
         #     "scanbound": 60000,  # ms
         #     "clrfrqflag": True,  # search for clear frequency before transmitting
         #     "clrfrqrange": [12200, 12500],  # frequency range for clear frequency search,
-        #     # kHz including a clrfrqrange overrides rxfreq and txfreq so these are no
+        #     # kHz including a clrfrqrange overrides freq so these are no
         #     # longer necessary as they will be set by the frequency chosen from the range.
         #     "xcf": True,  # cross-correlation processing
         #     "acfint": True,  # interferometer acfs

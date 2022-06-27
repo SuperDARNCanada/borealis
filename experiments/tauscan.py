@@ -47,7 +47,7 @@ class Tauscan(ExperimentPrototype):
             "rx_beam_order": beams_to_use,
             "tx_beam_order": beams_to_use,
             "scanbound" : [i * 7.0 for i in range(len(beams_to_use))],
-            "txfreq" : freq, #kHz
+            "freq" : freq, #kHz
             "acf" : True,
             "xcf" : True,
             "acfint" : True,

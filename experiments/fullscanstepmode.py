@@ -87,7 +87,7 @@ class FullScanStepMode(ExperimentPrototype):
                 "rx_beam_order": beams_to_use,
                 "tx_beam_order": beams_to_use,
                 "scanbound" : [i * (3.5 * len(all_steps)) for i in range(len(beams_to_use))],
-                "txfreq" : step, #kHz
+                "freq" : step, #kHz
                 "acf": True,
                 "xcf": True,  # cross-correlation processing
                 "acfint" : True,  # interferometer acfs

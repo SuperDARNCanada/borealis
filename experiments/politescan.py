@@ -34,7 +34,7 @@ class Politescan(ExperimentPrototype):
             "rx_beam_order": beams_to_use,
             "tx_beam_order": beams_to_use,
             "scanbound" : scf.easy_scanbound(scf.INTT_7P, beams_to_use),
-            "rxfreq" : 10500, #kHz
+            "freq" : 10500, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

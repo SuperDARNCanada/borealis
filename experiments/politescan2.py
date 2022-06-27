@@ -47,7 +47,7 @@ class Politescan2(ExperimentPrototype):
             "tx_beam_order": beams_to_use,
             # scanbound ends at 48s.
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))],
-            "rxfreq" : 10500, #kHz
+            "freq" : 10500, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
@@ -65,7 +65,7 @@ class Politescan2(ExperimentPrototype):
             "rx_beam_order": beams_to_use,
             "tx_beam_order": beams_to_use,
             "scanbound" : [i * 3.5 for i in range(len(beams_to_use))], 
-            "rxfreq" : 13000, #kHz, separate frequency
+            "freq" : 13000, #kHz, separate frequency
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

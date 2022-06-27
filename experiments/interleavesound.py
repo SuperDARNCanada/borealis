@@ -52,7 +52,7 @@ class InterleaveSound(ExperimentPrototype):
             "tx_beam_order": beams_to_use,
             # this scanbound will be aligned because len(beam_order) = len(scanbound)
             "scanbound" : [i * common_scanbound_spacing for i in range(len(beams_to_use))],
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
@@ -75,7 +75,7 @@ class InterleaveSound(ExperimentPrototype):
                 "rx_beam_order": sounding_beams,
                 "tx_beam_order": sounding_beams,
                 "scanbound" : sounding_scanbound,
-                "txfreq" : freq,
+                "freq" : freq,
                 "acf": True,
                 "xcf": True,  # cross-correlation processing
                 "acfint": True,  # interferometer acfs

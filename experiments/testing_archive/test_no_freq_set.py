@@ -44,13 +44,13 @@ class TestExperiment(ExperimentPrototype):
             "acfint": True,  # interferometer acfs
         }
 
-        # No txfreq, rxfreq or clrfrqrange
+        # No freq or clrfrqrange
         try:
-            del slice_1['txfreq']
+            del slice_1['freq']
         except:
             pass
         try:
-            del slice_1['rxfreq']
+            del slice_1['freq']
         except:
             pass
         try:

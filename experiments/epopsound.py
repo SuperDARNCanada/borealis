@@ -97,7 +97,7 @@ class Epopsound(ExperimentPrototype):
         for freq in freqs:
             # for each freq add 
             base_slice.update({
-                "txfreq": freq
+                "freq": freq
                 })
             slices.append(base_slice)
 

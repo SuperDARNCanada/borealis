@@ -39,7 +39,7 @@ class TestExperiment(ExperimentPrototype):
             "rx_beam_order": beams_to_use + beams_to_use,
             "tx_beam_order": beams_to_use + beams_to_use,
             "scanbound": [i * 3.5 for i in range(2 * len(beams_to_use))],  # I'm not sure how to test this right now
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

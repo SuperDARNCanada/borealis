@@ -53,7 +53,7 @@ class Normalscan(ExperimentPrototype):
             "rx_beam_order": beams_to_use,
             "tx_beam_order": beams_to_use,
             "scanbound": scf.easy_scanbound(scf.INTT_7P, beams_to_use), #1 min scan
-            "txfreq" : freq, #kHz
+            "freq" : freq, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

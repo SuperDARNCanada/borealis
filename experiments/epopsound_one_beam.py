@@ -82,7 +82,7 @@ class Epopsound(ExperimentPrototype):
             # for each freq add 
             new_slice = copy.deepcopy(base_slice)
             new_slice.update({
-                "txfreq": freq
+                "freq": freq
                 })
 
             if marker_period > 0:
@@ -119,6 +119,6 @@ class Epopsound(ExperimentPrototype):
                 "tau_spacing": scf.TAU_SPACING_7P,
                 "rx_beam_order": [beam],
                 "tx_beam_order": [beam],
-                "txfreq": freqs[0]
+                "freq": freqs[0]
                 })
             self.add_slice(slice_1, interfacing_dict={0: 'SCAN'})

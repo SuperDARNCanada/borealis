@@ -44,8 +44,8 @@ class Twofsound(ExperimentPrototype):
             #"scanbound": 60000,  # ms
             #"clrfrqflag": True,  # search for clear frequency before transmitting
             #"clrfrqrange": [13100, 13400],  # frequency range for clear frequency search,
-            "txfreq" : 10500,
-            # kHz including a clrfrqrange overrides rxfreq and txfreq so these are no
+            "freq" : 10500,
+            # kHz including a clrfrqrange overrides freq so these are no
             # longer necessary as they will be set by the frequency chosen from the
             # range.
             "acf": True,
@@ -73,7 +73,7 @@ class Twofsound(ExperimentPrototype):
             #"scanbound": 60000,  # ms
             #"clrfrqflag": True,  # search for clear frequency before transmitting
             #"clrfrqrange": [10200, 10500],  # range for clear frequency search, kHz
-            "txfreq": 13000,
+            "freq": 13000,
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
@@ -82,7 +82,7 @@ class Twofsound(ExperimentPrototype):
         list_of_slices = [slice_1, slice_2]
         sum_of_freq = 0
         for slice in list_of_slices:
-            sum_of_freq += slice['txfreq']# kHz, oscillator mixer frequency on the USRP for TX
+            sum_of_freq += slice['freq']# kHz, oscillator mixer frequency on the USRP for TX
         rxctrfreq = txctrfreq = int(sum_of_freq/len(list_of_slices))
         
         

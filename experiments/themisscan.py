@@ -63,7 +63,7 @@ class ThemisScan(ExperimentPrototype):
             "rx_beam_order": beams_to_use,
             "tx_beam_order": beams_to_use,
             "scanbound" : [i * 3 for i in range(len(beams_to_use))],
-            "txfreq" : freq, #kHz
+            "freq" : freq, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

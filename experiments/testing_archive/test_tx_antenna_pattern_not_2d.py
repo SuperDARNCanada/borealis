@@ -59,7 +59,7 @@ class TxAntennaPatternTest(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "rx_beam_order": [beams_to_use],
             "tx_beam_order": [0],
-            "txfreq": freq,  # kHz
+            "freq": freq,  # kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

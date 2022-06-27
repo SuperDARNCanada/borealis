@@ -34,10 +34,10 @@ class OneBox(ExperimentPrototype):
             "tx_beam_order": [0],
             #"scanboundflag": True,  # there is a scan boundary
             #"scanbound": 60000,  # ms
-            "txfreq": 13332,
+            "freq": 13332,
             #"clrfrqflag": True,  # search for clear frequency before transmitting
             #"clrfrqrange": [13200, 13500],  # frequency range for clear frequency search, kHz
-            # including a clrfrqrange overrides rxfreq and txfreq so these are no longer necessary
+            # including a clrfrqrange overrides freq so these are no longer necessary
             # as they will be set by the frequency chosen from the range.
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
@@ -64,7 +64,7 @@ class OneBox(ExperimentPrototype):
         #     "scanbound": 60000,  # ms
         #     "clrfrqflag": True,  # search for clear frequency before transmitting
         #     "clrfrqrange": [13100, 13200],  # frequency range for clear frequency search, kHz
-        #     # including a clrfrqrange overrides rxfreq and txfreq so these are no longer necessary
+        #     # including a clrfrqrange overrides freq so these are no longer necessary
         #     # as they will be set by the frequency chosen from the range.
         #     "xcf": True,  # cross-correlation processing
         #     "acfint": True,  # interferometer acfs

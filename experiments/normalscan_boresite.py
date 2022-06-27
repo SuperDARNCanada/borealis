@@ -29,7 +29,7 @@ class NormalscanBoresite(ExperimentPrototype):
             "beam_angle": [0.0],
             "rx_beam_order": [0],
             "tx_beam_order": [0],
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
