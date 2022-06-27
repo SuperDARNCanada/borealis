@@ -75,7 +75,7 @@ testing_archive.test_bad_interface::Interface value with slice .* not valid. Typ
 testing_archive.test_bad_slice_id::Cannot add slice: the interfacing_dict set interfacing to an unknown slice .* not in slice ids
 testing_archive.test_bad_interfacing::The interfacing values of new slice cannot be reconciled. Interfacing with slice .* and with slice .* does not make sense with existing interface between slices of .*
 
-# **** The following 23 tests are from ExperimentPrototype class, check_slice() method ****
+# **** The following 29 tests are from ExperimentPrototype class, check_slice() method ****
 testing_archive.test_unused_param::Slice .* has a parameter that is not used: .* = .*
 testing_archive.test_too_many_tx_antennas::Slice .* has too many main TX antenna channels .* greater than config .*
 testing_archive.test_too_many_rx_antennas::Slice .* has too many main RX antenna channels .* greater than config .*
@@ -99,6 +99,13 @@ testing_archive.test_scanbound_negative::Slice .* scanbound times must be non-ne
 testing_archive.test_scanbound_not_increasing::Slice .* scanbound times must be increasing
 testing_archive.test_intt_longer_than_scanbound::Slice .* intt .*ms longer than scanbound time .*s
 testing_archive.test_intt_longer_than_scanbounds::Slice .* intt .*ms longer than one of the scanbound times
+testing_archive.test_tx_antenna_pattern_not_callable::Slice .* tx antenna pattern must be a function
+testing_archive.test_tx_antenna_pattern_not_numpy::Slice .* tx antenna pattern return is not a numpy array
+testing_archive.test_tx_antenna_pattern_not_2d::Slice .* tx antenna pattern return shape .* must be 2-dimensional
+testing_archive.test_tx_antenna_pattern_dim_mismatch::Slice .* tx antenna pattern return 2nd dimension \(.*\) must be equal to number of main antennas \(.*\)
+testing_archive.test_tx_antenna_pattern_magnitude::Slice .* tx antenna pattern return must not have any values with a magnitude greater than 1
+testing_archive.test_tx_beam_order_listnum_too_high::Slice .* scan tx beam number .* DNE
+testing_archive.test_tx_beams::Slice .* has no beams
 
 ##### I'm not sure how to test the following 1 test right now #####
 #testing_archive.test_beam_order_too_long::Slice .* beam order too long for scanbound
@@ -117,7 +124,7 @@ testing_archive.test_intt_longer_than_scanbounds::Slice .* intt .*ms longer than
 ##### The following test seems to be superceded by other specific parameter tests
 #testing_archive.test_missing_param::Slice .* is missing Necessary Parameter .*
 
-# **** The following 23 tests (18+4 extra from the dne tests) are from ExperimentPrototype class, check_slice_minimum_requirements() method ****
+# **** The following 28 tests (22+5 extra from the dne tests) are from ExperimentPrototype class, check_slice_minimum_requirements() method ****
 testing_archive.test_sequence_dne::Slice must specify pulse_sequence that must be a list of integers
 testing_archive.test_sequence_not_list::Slice must specify pulse_sequence that must be a list of integers
 testing_archive.test_sequence_not_int::Slice must specify pulse_sequence that must be a list of integers
@@ -141,6 +148,11 @@ testing_archive.test_beam_order_not_ints_or_lists::Slice must specify rx_beam_or
 testing_archive.test_beam_order_lists_not_ints::Slice must specify rx_beam_order that must be a list of ints or lists \(of ints\) corresponding to the order of the angles in the beam_angle list
 testing_archive.test_beam_order_lists_bad_index::Beam number .* could not index in beam_angle list of length .*. Slice: .*
 testing_archive.test_beam_order_bad_index::Beam number .* could not index in beam_angle list of length .*. Slice: .*
+testing_archive.test_tx_beam_order_dne::tx_beam_order must be a list of ints corresponding to the order of the angles in the beam_angle list. Slice: .*
+testing_archive.test_tx_beam_order_not_list::tx_beam_order must be a list of ints corresponding to the order of the angles in the beam_angle list. Slice: .*
+testing_archive.test_tx_beam_order_list_not_ints::tx_beam_order must be a list of ints corresponding to the order of the angles in the beam_angle list. Slice: .*
+testing_archive.test_tx_beam_order_listnum_too_high::Beam number .* in tx_beam_order could not index in beam_angle list of length .*. Slice: .*
+testing_archive.test_tx_beam_order_not_same_len_as_rx::tx_beam_order does not have same length as rx_beam_order. Slice: .*
 
 # **** The following 13 tests are from ExperimentPrototype class, check_slice_specific_requirements() method ****
 testing_archive.test_clrfrqrng_not_list::clrfrqrange must be an integer list of length = 2

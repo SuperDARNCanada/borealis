@@ -35,9 +35,8 @@ class TestExperiment(ExperimentPrototype):
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
-            "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "rx_beam_order": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,90],  # At least one is larger than the len(beam_angle)
-            "tx_beam_order": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],  # At least one is larger than the len(beam_angle)
+            "beam_angle": scf.STD_16_BEAM_ANGLE,  # beam_order dne
+            "rx_beam_order": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
             "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
