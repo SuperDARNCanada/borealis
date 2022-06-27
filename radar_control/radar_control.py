@@ -535,6 +535,7 @@ def radar():
     new_experiment_waiting = False
     new_experiment_loaded = True
 
+    # Flag to decide whether or not to wait for the first averaging period before starting
     wait_for_first_period = False
 
     # Send driver initial setup data - rates and center frequency from experiment.
@@ -570,8 +571,9 @@ def radar():
             # scan iter is the iterator through the scanbound or through the number of averaging periods in the scan.
             if first_integration and not wait_for_first_period:
                 # on first integration, determine current averaging period and set scan_iter to it
-                current_second = datetime.utcnow().second
-                scan_iter = next((i - 1 for i, v in enumerate(scan.scanbound) if v > current_second), 0)
+                now = datetime.utcnow()
+                current_minute = now.replace(second=0, microsecond=0)
+                scan_iter = next((i for i, v in enumerate(scan.scanbound) if current_minute + timedelta(seconds=v) > now), 0)
             else:
                 # otherwise start at first averaging period
                 scan_iter = 0
@@ -601,7 +603,6 @@ def radar():
                     # align scanbound reference time to find when to start
                     now = datetime.utcnow()
                     dt = now.replace(second=0, microsecond=0)
-
                     if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now:
                         start_minute = dt
                     else:
