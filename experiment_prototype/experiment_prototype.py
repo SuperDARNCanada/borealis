@@ -498,7 +498,6 @@ class ExperimentPrototype(object):
         self.__scan_objects = []
         self.__scanbound = False
         self.__running_experiment = None  # this will be of ScanClassBase type
-        self.__wait_for_first_scanbound = True
 
     __slice_keys = slice_key_set
     __hidden_slice_keys = hidden_key_set
@@ -820,16 +819,6 @@ class ExperimentPrototype(object):
             return min_freq
         else:
             return 1000 # Hz
-
-    @property
-    def wait_for_first_scanbound(self):
-        """
-        A boolean flag for an experiment to wait until the nearest minute boundary before transmitting.
-
-        Default is True, False indicates experiment will not wait for the first averaging period, but
-        will instead begin transmitting on the nearest averaging period.
-        """
-        return self.__wait_for_first_scanbound
 
     @property
     def interface(self):
@@ -1653,6 +1642,9 @@ class ExperimentPrototype(object):
 
         if 'comment' not in exp_slice:
             slice_with_defaults['comment'] = ''
+
+        if 'wait_for_first_scanbound' not in exp_slice:
+            slice_with_defaults['wait_for_first_scanbound'] = True
 
         return slice_with_defaults
 
