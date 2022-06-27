@@ -91,7 +91,6 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
         :param rxrate: the rx sampling rate (Hz).
         :param numberofreceivesamples: number of samples to receive at the rx_sample_rate from config.ini file. This
             determines length of Scope Sync GPIO being high for this sequence.
-        :param seqtime: TODO define
         :param SOB: start of burst boolean, true for first pulse in sequence.
         :param EOB: end of burst boolean, true for last pulse in sequence.
         :param timing: in us, the time past timezero to send this pulse. Timezero is the start of the sequence.
@@ -151,7 +150,6 @@ def send_dsp_metadata(packet, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian
         :param packet: the signal processing packet of the protobuf sigprocpacket type.
         :param radctrl_to_dsp: The sender socket for sending data to dsp
         :param dsp_radctrl_iden: The reciever socket identity on the dsp side
-        :param radctrl_to_brian: TODO define
         :param rxrate: The receive sampling rate (Hz).
         :param output_sample_rate: The output sample rate desired for the output data (Hz).
         :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
@@ -283,8 +281,8 @@ def search_for_experiment(radar_control_to_exp_handler,
                           status):
     """
     Check for new experiments from the experiment handler
-    :param radar_control_to_exp_handler: TODO define
-    :param radctrl_to_exphan_iden: The TODO define
+    :param radar_control_to_exp_handler:
+    :param radctrl_to_exphan_iden: The
     :param status: status string (EXP_NEEDED or NO_ERROR).
     :returns new_experiment_received: boolean (True for new experiment received)
     :returns experiment: experiment instance (or None if there is no new experiment)
@@ -457,7 +455,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
 def round_up_time(dt=None, round_to=60):
     """Round a datetime object to any time lapse in seconds
     dt : datetime.datetime object, default now.
-    round_to : Closest number of seconds to round to, default 1 minute.
+    roundTo : Closest number of seconds to round to, default 1 minute.
     Author: Thierry Husson 2012 - Use it as you want but don't blame me.
     Modified: K.Kotyk 2019
 
@@ -543,15 +541,6 @@ def radar():
                  experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
                  experiment.rxrate)
 
-    # Select whether to start the radar on the minute boundary or not.
-    # True: Start on minute boundary
-    # False: Start immediately
-    round_to_minute = True
-    if round_to_minute:
-        round_to = 60
-    else:
-        round_to = 0
-
     first_integration = True
     next_scan_start = None
     decimation_scheme = experiment.decimation_scheme
@@ -606,7 +595,7 @@ def radar():
                     if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now:
                         start_minute = dt
                     else:
-                        start_minute = round_up_time(now, round_to)
+                        start_minute = round_up_time(now)
                 else:  # At the start of a scan object that has scanbound, recalculate the start
                     # minute to the previously calculated next_scan_start
                     start_minute = next_scan_start.replace(second=0, microsecond=0)
@@ -622,7 +611,7 @@ def radar():
                 if end_minute + timedelta(seconds=next_scanbound[0]) >= end_of_scan:
                     next_scan_start = end_minute + timedelta(seconds=next_scanbound[0])
                 else:
-                    next_scan_start = round_up_time(end_of_scan, round_to) + timedelta(seconds=next_scanbound[0])
+                    next_scan_start = round_up_time(end_of_scan) + timedelta(seconds=next_scanbound[0])
 
             while scan_iter < scan.num_aveperiods_in_scan and not new_experiment_waiting:
                 # If there are multiple aveperiods in a scan they are alternated (INTTIME interfaced)
