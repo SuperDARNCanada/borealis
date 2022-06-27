@@ -535,6 +535,9 @@ def radar():
     new_experiment_waiting = False
     new_experiment_loaded = True
 
+    # Flag for starting the radar on the minute boundary
+    wait_for_first_scanbound = experiment.slice_dict.get("wait_for_first_scanbound")
+
     # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
     setup_driver(driverpacket, radar_control_to_driver, options.driver_to_radctrl_identity,
@@ -566,7 +569,7 @@ def radar():
                 rad_ctrl_print("Scan number: {}".format(scan_num))
 
             # scan iter is the iterator through the scanbound or through the number of averaging periods in the scan.
-            if first_integration and not experiment.wait_for_first_scanbound:
+            if first_integration and not wait_for_first_scanbound:
                 # on first integration, determine current averaging period and set scan_iter to it
                 now = datetime.utcnow()
                 current_minute = now.replace(second=0, microsecond=0)
