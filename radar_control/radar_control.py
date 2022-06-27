@@ -546,11 +546,7 @@ def radar():
     # Select whether to start the radar on the minute boundary or not.
     # True: Start on minute boundary
     # False: Start immediately
-    round_to_minute = True
-    if round_to_minute:
-        round_to = 60
-    else:
-        round_to = 0
+    round_to_minute = False
 
     first_integration = True
     next_scan_start = None
@@ -603,10 +599,10 @@ def radar():
                     now = datetime.utcnow()
                     dt = now.replace(second=0, microsecond=0)
 
-                    if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now:
+                    if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now or round_to_minute:
                         start_minute = dt
                     else:
-                        start_minute = round_up_time(now, round_to)
+                        start_minute = round_up_time(now)
                 else:  # At the start of a scan object that has scanbound, recalculate the start
                     # minute to the previously calculated next_scan_start
                     start_minute = next_scan_start.replace(second=0, microsecond=0)
@@ -619,10 +615,10 @@ def radar():
                 end_of_scan = start_minute + timedelta(seconds=scan.scanbound[-1]) + timedelta(seconds=last_aveperiod_intt * 1e-3)
                 end_minute = end_of_scan.replace(second=0, microsecond=0)
 
-                if end_minute + timedelta(seconds=next_scanbound[0]) >= end_of_scan:
+                if end_minute + timedelta(seconds=next_scanbound[0]) >= end_of_scan or round_to_minute:
                     next_scan_start = end_minute + timedelta(seconds=next_scanbound[0])
                 else:
-                    next_scan_start = round_up_time(end_of_scan, round_to) + timedelta(seconds=next_scanbound[0])
+                    next_scan_start = round_up_time(end_of_scan) + timedelta(seconds=next_scanbound[0])
 
             while scan_iter < scan.num_aveperiods_in_scan and not new_experiment_waiting:
                 # If there are multiple aveperiods in a scan they are alternated (INTTIME interfaced)
