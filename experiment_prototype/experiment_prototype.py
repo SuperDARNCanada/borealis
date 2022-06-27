@@ -1351,29 +1351,22 @@ class ExperimentPrototype(object):
                                  " Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
                         raise ExperimentException(errmsg)
 
-            if 'tx_beam_order' in exp_slice.keys():
-                if 'tx_antenna_pattern' in exp_slice.keys():
-                    errmsg = "Slice may not have both tx_antenna_pattern and tx_beam_order. Slice: {}".format(exp_slice)
-                    raise ExperimentException(errmsg)
-                if not isinstance(exp_slice['tx_beam_order'], list):
+            if not isinstance(exp_slice['tx_beam_order'], list):
+                errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in " \
+                         "the beam_angle list. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
+            if len(exp_slice['tx_beam_order']) != len(exp_slice['rx_beam_order']):
+                errmsg = "tx_beam_order does not have same length as rx_beam_order. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
+            for element in exp_slice['tx_beam_order']:
+                if not isinstance(element, int):
                     errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in " \
                              "the beam_angle list. Slice: {}".format(exp_slice)
                     raise ExperimentException(errmsg)
-                if len(exp_slice['tx_beam_order']) != len(exp_slice['rx_beam_order']):
-                    errmsg = "tx_beam_order does not have same length as rx_beam_order. Slice: {}".format(exp_slice)
+                if element >= len(exp_slice['beam_angle']) and 'tx_antenna_pattern' not in exp_slice.keys():
+                    errmsg = "Beam number {} in tx_beam_order could not index in beam_angle list of length {}. " \
+                             "Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
                     raise ExperimentException(errmsg)
-                for element in exp_slice['tx_beam_order']:
-                    if not isinstance(element, int):
-                        errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in " \
-                                 "the beam_angle list. Slice: {}".format(exp_slice)
-                        raise ExperimentException(errmsg)
-                    if element >= len(exp_slice['beam_angle']):
-                        errmsg = "Beam number {} in tx_beam_order could not index in beam_angle list of length {}. " \
-                                 "Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
-                        raise ExperimentException(errmsg)
-            else:
-                errmsg = "Slice must have one of tx_antenna_pattern or tx_beam_order specified. Slice: {}".format(exp_slice)
-                raise ExperimentException(errmsg)
 
         else:
             errmsg = "Slice must have rx_beam_order and beam_angle specified." \
@@ -1942,6 +1935,7 @@ class ExperimentPrototype(object):
                     if not (phase_encoding.shape[1] == 1 or phase_encoding.shape[1] == num_samps):
                         error_list.append("Slice {} Phase encoding return 2nd dimension must be broadcastable to "
                                           "number of samples".format(exp_slice['slice_id']))
+
         if exp_slice['tx_antenna_pattern']:
             if not callable(exp_slice['tx_antenna_pattern']):
                 error_list.append("Slice {} tx antenna pattern must be a function".format(exp_slice['slice_id']))
@@ -1984,11 +1978,15 @@ class ExperimentPrototype(object):
         # Check that the beam numbers in the tx_beam_order exist
         if exp_slice['tx_beam_order']:
             for bmnum in exp_slice['tx_beam_order']:
-                if bmnum >= len(exp_slice['beam_angle']):
+                if exp_slice['tx_antenna_pattern']:
+                    num_beams = antenna_pattern.shape[0]
+                else:
+                    num_beams = len(exp_slice['beam_angle'])
+                if bmnum >= num_beams:
                     error_list.append("Slice {} scan tx beam number {} DNE".format(
                         exp_slice['slice_id'], bmnum))
 
-        # Check that the beam nubmers in the rx_beam_order exist
+        # Check that the beam numbers in the rx_beam_order exist
         for bmnum in exp_slice['rx_beam_order']:
             if isinstance(bmnum, int):
                 if bmnum >= len(exp_slice['beam_angle']):
