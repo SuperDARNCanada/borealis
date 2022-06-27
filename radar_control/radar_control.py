@@ -603,7 +603,6 @@ def radar():
                     # align scanbound reference time to find when to start
                     now = datetime.utcnow()
                     dt = now.replace(second=0, microsecond=0)
-
                     if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now:
                         start_minute = dt
                     else:
