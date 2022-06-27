@@ -143,9 +143,10 @@ rx_beam_order *required*
     averaging period (example [[0, 1], [3, 4]], which would trigger an imaging
     integration. When we do imaging we will still have to quantize the directions we
     are looking in to certain beam directions. It is up to the user to ensure that this 
-    field works well with the specified tx_beam_order or tx_antenna_pattern.
+    field works well with the specified transmission defined by tx_beam_order (and possibly
+    tx_antenna_pattern).
 
-tx_beam_order *required or tx_antenna_pattern required*
+tx_beam_order *required*
     beam numbers written in order of preference, one element in this list corresponds to
     one averaging period. A beam number of 0 in this list gives us the direction of the
     0th element in the beam_angle list. It is up to the writer to ensure their beam pattern
@@ -155,16 +156,8 @@ tx_beam_order *required or tx_antenna_pattern required*
     you CANNOT use multiple beam numbers in a single averaging period. In other words, this
     field MUST be a list of integers, as opposed to rx_beam_order, which can be a list of
     lists of integers. The length of this list must be equal to the length of the 
-    rx_beam_order list. For more complicated transmission patterns, specify the 
-    tx_antenna_pattern field instead. Exactly one of tx_beam_order and tx_antenna_pattern
-    must be specified.
-
-tx_antenna_pattern *required or tx_beam_order required*
-    experiment-defined function which returns a complex weighting factor of magnitude <= 1
-    for each tx antenna used in the experiment. The return value of the function must be
-    an array of size [num_beams, num_main_antennas] with all elements having magnitude <= 1.
-    The first dimension of the returned array (num_beams) equal the length of the rx_beam_order
-    list. This field is mutually exclusive with tx_beam_order. 
+    rx_beam_order list. If tx_antenna_pattern is given, the items in tx_beam_order specify
+    which row of the return from tx_antenna_pattern to use to beamform a given transmission.
 
 clrfrqrange *required or txfreq or rxfreq required*
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
@@ -252,6 +245,13 @@ tx_antennas *defaults*
 xcf *defaults*
     flag for cross-correlation data. The default is True if acf is True, otherwise False.
 
+tx_antenna_pattern *defaults*
+    experiment-defined function which returns a complex weighting factor of magnitude <= 1
+    for each tx antenna used in the experiment. The return value of the function must be
+    an array of size [num_beams, num_main_antennas] with all elements having magnitude <= 1.
+    This function is analogous to the beam_angle field in that it defines the transmission 
+    pattern for the array, and the tx_beam_order field specifies which "beam" to use in a 
+    given averaging period.
 
 **Read-only Slice Keys**
 
@@ -1306,7 +1306,8 @@ class ExperimentPrototype(object):
                     exp_slice.pop('intn')
             exp_slice['intt'] = float(exp_slice['intt'])
 
-        if 'rx_beam_order' in exp_slice.keys() and 'beam_angle' in exp_slice.keys():
+        if 'rx_beam_order' in exp_slice.keys() and 'beam_angle' in exp_slice.keys() and \
+                'tx_beam_order' in exp_slice.keys():
 
             # Check the validity of 'beam_angle' specified
             if not isinstance(exp_slice['beam_angle'], list):
@@ -1351,32 +1352,26 @@ class ExperimentPrototype(object):
                                  " Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
                         raise ExperimentException(errmsg)
 
-            if 'tx_beam_order' in exp_slice.keys():
-                if 'tx_antenna_pattern' in exp_slice.keys():
-                    errmsg = "Slice may not have both tx_antenna_pattern and tx_beam_order. Slice: {}".format(exp_slice)
-                    raise ExperimentException(errmsg)
-                if not isinstance(exp_slice['tx_beam_order'], list):
-                    errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in " \
-                             "the beam_angle list. Slice: {}".format(exp_slice)
-                    raise ExperimentException(errmsg)
-                if len(exp_slice['tx_beam_order']) != len(exp_slice['rx_beam_order']):
-                    errmsg = "tx_beam_order does not have same length as rx_beam_order. Slice: {}".format(exp_slice)
-                    raise ExperimentException(errmsg)
-                for element in exp_slice['tx_beam_order']:
-                    if not isinstance(element, int):
-                        errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in " \
-                                 "the beam_angle list. Slice: {}".format(exp_slice)
-                        raise ExperimentException(errmsg)
-                    if element >= len(exp_slice['beam_angle']):
-                        errmsg = "Beam number {} in tx_beam_order could not index in beam_angle list of length {}. " \
-                                 "Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
-                        raise ExperimentException(errmsg)
-            else:
-                errmsg = "Slice must have one of tx_antenna_pattern or tx_beam_order specified. Slice: {}".format(exp_slice)
+            if not isinstance(exp_slice['tx_beam_order'], list):
+                errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in " \
+                         "the beam_angle list. Slice: {}".format(exp_slice)
                 raise ExperimentException(errmsg)
+            if len(exp_slice['tx_beam_order']) != len(exp_slice['rx_beam_order']):
+                errmsg = "tx_beam_order does not have same length as rx_beam_order. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
+            for element in exp_slice['tx_beam_order']:
+                if not isinstance(element, int):
+                    errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in " \
+                             "the beam_angle list or an array of phases in the tx_antenna_pattern return. Slice: {}" \
+                             "".format(exp_slice)
+                    raise ExperimentException(errmsg)
+                if element >= len(exp_slice['beam_angle']):
+                    errmsg = "Beam number {} in tx_beam_order could not index in beam_angle list of length {}. " \
+                             "Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
+                    raise ExperimentException(errmsg)
 
         else:
-            errmsg = "Slice must have rx_beam_order and beam_angle specified." \
+            errmsg = "Slice must have rx_beam_order, tx_beam_order, and beam_angle specified." \
                      " Slice: {}".format(exp_slice)
             raise ExperimentException(errmsg)
 
@@ -1595,9 +1590,6 @@ class ExperimentPrototype(object):
             slice_with_defaults['pulse_phase_offset'] = None
         if 'scanbound' not in exp_slice:
             slice_with_defaults['scanbound'] = None
-
-        if 'tx_beam_order' not in exp_slice:
-            slice_with_defaults['tx_beam_order'] = None
         if 'tx_antenna_pattern' not in exp_slice:
             slice_with_defaults['tx_antenna_pattern'] = None
 
@@ -1958,10 +1950,14 @@ class ExperimentPrototype(object):
                     if len(antenna_pattern.shape) != 2:
                         error_list.append("Slice {} tx antenna pattern return shape {} must be 2-dimensional"
                                           "".format(exp_slice['slice_id'], antenna_pattern.shape))
-                    elif antenna_pattern.shape[1] != tx_antenna_count:
-                        error_list.append("Slice {} tx antenna pattern return 2nd dimension ({}) must be equal to number of "
-                                          "main antennas ({})".format(exp_slice['slice_id'], antenna_pattern.shape[1],
-                                                                      tx_antenna_count))
+                        if antenna_pattern.shape[1] != tx_antenna_count:
+                            error_list.append("Slice {} tx antenna pattern return 2nd dimension ({}) must be equal to number of "
+                                              "main antennas ({})".format(exp_slice['slice_id'], antenna_pattern.shape[1],
+                                                                          tx_antenna_count))
+                    if antenna_pattern.shape[0] != len(exp_slice['tx_beam_order']):
+                        error_list.append("Slice {} tx antenna pattern return 1st dimension ({}) must be equal to the length of "
+                                          " tx_beam_order list ({})".format(exp_slice['slice_id'], antenna_pattern.shape[0],
+                                                                            len(exp_slice['tx_beam_order'])))
                     antenna_pattern_mag = np.abs(antenna_pattern)
                     if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
                         error_list.append("Slice {} tx antenna pattern return must not have any values with a "
@@ -1984,7 +1980,11 @@ class ExperimentPrototype(object):
         # Check that the beam numbers in the tx_beam_order exist
         if exp_slice['tx_beam_order']:
             for bmnum in exp_slice['tx_beam_order']:
-                if bmnum >= len(exp_slice['beam_angle']):
+                if exp_slice['tx_antenna_pattern']:
+                    num_beams = antenna_pattern.shape[0]
+                else:
+                    num_beams = len(exp_slice['beam_angle'])
+                if bmnum >= num_beams:
                     error_list.append("Slice {} scan tx beam number {} DNE".format(
                         exp_slice['slice_id'], bmnum))
 

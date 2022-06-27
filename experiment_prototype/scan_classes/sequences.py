@@ -531,7 +531,7 @@ class Sequence(ScanClassBase):
 
         temp_dict = copy.deepcopy(self.rx_beam_phases)
         for k, v in temp_dict.items():
-            beam_num = self.slice_dict[k]['beam_order'][beam_iter]
+            beam_num = self.slice_dict[k]['rx_beam_order'][beam_iter]
             if not isinstance(beam_num, list):
                 beam_num = [beam_num]
             v['main'] = v['main'][beam_num, :]

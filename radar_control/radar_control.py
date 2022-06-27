@@ -422,7 +422,7 @@ def send_datawrite_metadata(packet, radctrl_to_datawrite, datawrite_radctrl_iden
             rxchan_add.rx_main_antennas[:] = sequence.slice_dict[slice_id]['rx_main_antennas']
             rxchan_add.rx_intf_antennas[:] = sequence.slice_dict[slice_id]['rx_int_antennas']
 
-            beams = sequence.slice_dict[slice_id]["beam_order"][beam_iter]
+            beams = sequence.slice_dict[slice_id]["rx_beam_order"][beam_iter]
             if isinstance(beams, int):
                 beams = [beams]
 
