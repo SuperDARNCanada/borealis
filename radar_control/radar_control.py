@@ -535,6 +535,8 @@ def radar():
     new_experiment_waiting = False
     new_experiment_loaded = True
 
+    wait_for_first_period = False
+
     # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
     setup_driver(driverpacket, radar_control_to_driver, options.driver_to_radctrl_identity,
@@ -564,8 +566,16 @@ def radar():
         for scan_num, scan in enumerate(experiment.scan_objects):
             if __debug__:
                 rad_ctrl_print("Scan number: {}".format(scan_num))
+
             # scan iter is the iterator through the scanbound or through the number of averaging periods in the scan.
-            scan_iter = 0
+            if first_integration and not wait_for_first_period:
+                # on first integration, determine current averaging period and set scan_iter to it
+                current_second = datetime.utcnow().second
+                scan_iter = next((i - 1 for i, v in enumerate(scan.scanbound) if v > current_second), 0)
+            else:
+                # otherwise start at first averaging period
+                scan_iter = 0
+
             # if a new experiment was received during the last scan, it finished the integration period it was on and
             # returned here with new_experiment_waiting set to True. Break to load new experiment.
             if new_experiment_waiting:  # start anew on first scan if we have a new experiment.
