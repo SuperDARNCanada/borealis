@@ -291,7 +291,7 @@ class ParseData(object):
             stage_data = np.ndarray((num_slices, num_main_antennas, stage_samps), dtype=np.complex64,
                                     buffer=stage_main_shm.buf)
             self._antenna_iq_accumulator['main_shm'].append(stage_main_shm)
-            if 'intf_shm' in debug_stage.keys():
+            if debug_stage.intf_shm:
                 stage_intf_shm = shared_memory.SharedMemory(name=debug_stage.intf_shm)
                 stage_intf_data = np.ndarray((num_slices, num_intf_antennas, stage_samps), dtype=np.complex64,
                                              buffer=stage_intf_shm.buf)
@@ -309,14 +309,14 @@ class ParseData(object):
 
             # non beamformed IQ samples are available
             for debug_stage in stages:
-                stage_name = debug_stage.stage_name
+                stage_name = debug_stage['stage_name']
 
                 if stage_name not in self._antenna_iq_accumulator[slice_id]:
                     self._antenna_iq_accumulator[slice_id][stage_name] = collections.OrderedDict()
                 
                 antenna_iq_stage = self._antenna_iq_accumulator[slice_id][stage_name]
 
-                antennas_data = debug_stage.data[i]
+                antennas_data = debug_stage['data'][i]
                 antenna_iq_stage["num_samps"] = antennas_data.shape[-1]
 
                 # Loops over antenna data within stage
@@ -1285,9 +1285,10 @@ class DataWrite(object):
                 write_raw_rf_params(one_slice_params)
             else:
                 for rf_samples_location in data_parsing.rawrf_locations:
-                    shm = shared_memory.SharedMemory(name=rf_samples_location)
-                    shm.close()
-                    shm.unlink()
+                    if rf_samples_location is not None:
+                        shm = shared_memory.SharedMemory(name=rf_samples_location)
+                        shm.close()
+                        shm.unlink()
 
         if write_tx:
             write_tx_data()
