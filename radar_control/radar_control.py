@@ -210,8 +210,8 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
         main_bms = beam_dict[slice_id]['main']
         intf_bms = beam_dict[slice_id]['intf']
 
+        beams = []
         for i in range(main_bms.shape[0]):
-            beam_add = messages.BeamDirection()
             # Don't need to send channel numbers, will always send beamdir with length = total antennas.
             # Beam directions are formated e^i*phi so that a 0 will indicate not
             # to receive on that channel.
@@ -225,13 +225,9 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
             intfs = slice_dict[slice_id]['rx_int_antennas']
             temp_intf[intfs] = intf_bms[i][intfs]
 
-            for phase in temp_main:
-                phase_add = messages.Phase(phase.real, phase.imag)
-                beam_add.add_phase(phase_add)
-            for phase in temp_intf:
-                phase_add = messages.Phase(phase.real, phase.imag)
-                beam_add.add_phase(phase_add)
-            chan_add.add_beam_direction(beam_add)
+            # Combine main and intf such that for a given beam all main phases come first.
+            beams.append(np.hstack(temp_main, temp_intf))
+        chan_add.beam_phases = np.array(beams)
         
         for lag in slice_dict[slice_id]['lag_table']:
             lag_add = messages.Lag(lag[0], lag[1], int(lag[1] - lag[0]))

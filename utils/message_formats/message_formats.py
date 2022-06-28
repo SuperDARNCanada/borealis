@@ -3,18 +3,7 @@
 # Copyright 2022 SuperDARN Canada
 # Author: Remington Rohel
 from dataclasses import dataclass, field
-from typing import List, Any
-
 import numpy as np
-
-
-def check_dict(data: dict, types: dict, identifier: str):
-    """Checks that the entries of a dictionary are of the correct types."""
-    for key, val in data.items():
-        if key not in types.keys():
-            raise KeyError("Invalid key {} when adding {}".format(key, identifier))
-        if not isinstance(val, types[key]):
-            raise ValueError("Value of '{}' is not type {}".format(key, types[key]))
 
 
 @dataclass
@@ -98,27 +87,6 @@ class DecimationStageMessage:
 
 
 @dataclass
-class Phase:
-    """Defines a phase structure within a BeamDirections dataclass"""
-    real_phase: float = None
-    imag_phase: float = None
-
-
-@dataclass
-class BeamDirection:
-    """Defines a beam_direction structure within an RxChannel dataclass"""
-    phase: list[Phase] = field(default_factory=list)
-
-    def remove_all_phases(self):
-        """Remove all phase entries so the list can be refilled for the next sequence"""
-        self.phase = []
-
-    def add_phase(self, channel: Phase):
-        """Add a Phase structure to the dataclass."""
-        self.phase.append(channel)
-
-
-@dataclass
 class Lag:
     """Defines a lag structure within an RxChannel dataclass"""
     pulse_1: int = None
@@ -138,16 +106,8 @@ class RxChannel:
     num_ranges: int = None
     first_range: int = None
     range_sep: float = None
-    beam_directions: list[BeamDirection] = field(default_factory=list)
+    beam_phases: np.ndarray = None
     lags: list[Lag] = field(default_factory=list)
-
-    def remove_all_beam_directions(self):
-        """Remove all beam_direction entries so the list can be refilled for the next sequence"""
-        self.beam_directions = []
-
-    def add_beam_direction(self, beam: BeamDirection):
-        """Add a BeamDirection dataclass to the message."""
-        self.beam_directions.append(beam)
 
     def remove_all_lags(self):
         """Remove all lag entries so the list can be refilled for the next sequence"""

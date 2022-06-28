@@ -189,24 +189,10 @@ def main():
             detail['lags'] = np.array(lags, dtype=np.uint32)
             detail['num_lags'] = len(lags)
 
-            main_beams = []
-            intf_beams = []
-            for bd in chan.beam_directions:
-                main_beam = []
-                intf_beam = []
+            main_beams = chan.beam_phases[:, :sig_options.main_antenna_count]
+            intf_beams = chan.beam_phases[:, sig_options.main_antenna_count:]
 
-                for j, phase in enumerate(bd.phase):
-                    p = phase.real_phase + 1j * phase.imag_phase
-
-                    if j < sig_options.main_antenna_count:
-                        main_beam.append(p)
-                    else:
-                        intf_beam.append(p)
-
-                main_beams.append(main_beam)
-                intf_beams.append(intf_beam)
-
-            detail['num_beams'] = len(main_beams)
+            detail['num_beams'] = main_beams.shape[0]
 
             slice_details.append(detail)
             main_beam_angles.append(main_beams)
@@ -215,14 +201,14 @@ def main():
         # Different slices can have a different amount of beams used. Slices that use fewer beams
         # than the max number of beams are padded with zeros so that matrix calculations can be
         # used. The extra beams that are processed will be not be parsed for data writing.
-        max_num_beams = max([len(x) for x in main_beam_angles])
+        max_num_beams = max([x.shape[0] for x in main_beam_angles])
 
         def pad_beams(angles, ant_count):
             for x in angles:
-                if len(x) < max_num_beams:
-                    beam_pad = [0.0j] * ant_count
-                    for i in range(max_num_beams - len(x)):
-                        x.append(beam_pad)
+                if x.shape[0] < max_num_beams:
+                    temp = np.zeros_like((max_num_beams, ant_count), x.dtype)
+                    temp[:x.shape[0], :] = x
+                    x = temp    # Reassign to the new larger array with zero-padded beams
 
         pad_beams(main_beam_angles, sig_options.main_antenna_count)
         pad_beams(intf_beam_angles, sig_options.intf_antenna_count)
