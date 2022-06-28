@@ -36,7 +36,8 @@ else:
 import rxsamplesmetadata_pb2
 
 sys.path.append(borealis_path + '/utils/')
-from message_formats.message_formats import ProcessedSequenceMessage, SequenceMetadataMessage
+from message_formats.message_formats import ProcessedSequenceMessage, SequenceMetadataMessage, DebugDataStage, \
+    OutputDataset
 import signal_processing_options.signal_processing_options as spo
 from zmq_borealis_helpers import socket_operations as so
 import shared_macros.shared_macros as sm
@@ -77,10 +78,7 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
     """
 
     for sd in slice_details:
-        output_dataset = {'slice_id': sd['slice_id'],
-                           'num_beams': sd['num_beams'],
-                           'num_ranges': sd['num_range_gates'],
-                           'num_lags': sd['num_lags']}
+        output_dataset = OutputDataset(sd['slice_id'], sd['num_beams'], sd['num_range_gates'], sd['num_lags'])
 
         def add_array(ndarray):
             """
@@ -99,14 +97,14 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
                 return name
 
         main_corrs = data_outputs['main_corrs'][sd['slice_num']]
-        output_dataset['main_acf_shm'] = add_array(main_corrs)
+        output_dataset.main_acf_shm = add_array(main_corrs)
 
         try:
             intf_corrs = data_outputs['intf_corrs'][sd['slice_num']]
-            output_dataset['intf_acf_shm'] = add_array(intf_corrs)
+            output_dataset.intf_acf_shm = add_array(intf_corrs)
 
             cross_corrs = data_outputs['cross_corrs'][sd['slice_num']]
-            output_dataset['xcf_shm'] = add_array(cross_corrs)
+            output_dataset.xcf_shm = add_array(cross_corrs)
         except:
             # No interferometer data
             pass
@@ -416,43 +414,41 @@ def main():
                     data[...] = cp.asnumpy(data_array)
                 else:
                     data[...] = data_array
-                holder['{}_shm'.format(array_name)] = shm.name
-                holder['num_samps'] = data_array.shape[-1]
+
+                if array_name == 'main':
+                    holder.main_shm = shm.name
+                elif array_name == 'intf':
+                    holder.intf_shm = shm.name
+                else:
+                    print("Warning: unknown debug data array {}".format(array_name))
+
+                holder.num_samps = data_array.shape[-1]
                 shm.close()
             
             # Add the filter stage data if in debug mode
             if __debug__:
                 for i, main_data in enumerate(processed_main_samples.filter_outputs[:-1]):
-                    stage = {}
-                    stage['stage_name'] = 'stage_{}'.format(i)
+                    stage = DebugDataStage('stage_{}'.format(i))
                     debug_data_in_shm(stage, main_data, 'main')
 
                     if sig_options.intf_antenna_count > 0:
                         intf_data = processed_intf_samples.filter_outputs[i]
                         debug_data_in_shm(stage, intf_data, 'intf')
-                    stages.append(stage)
+
+                    processed_data.append(stage)
 
             # Add antennas_iq data
-            stage = {}
-            stage['stage_name'] = 'antennas'
+            stage = DebugDataStage()
+            stage.stage_name = 'antennas'
             main_shm = processed_main_samples.shared_mem['antennas_iq']
-            stage['main_shm'] = main_shm.name
-            stage['num_samps'] = processed_main_samples.antennas_iq_samples.shape[-1]
+            stage.main_shm = main_shm.name
+            stage.num_samps = processed_main_samples.antennas_iq_samples.shape[-1]
             main_shm.close()
             if sig_options.intf_antenna_count > 0:
                 intf_shm = processed_intf_samples.shared_mem['antennas_iq']
-                stage['intf_shm'] = intf_shm.name
+                stage.intf_shm = intf_shm.name
                 intf_shm.close()
-            stages.append(stage)
-
-            # Put all filter stage and antennas data in the message
-            for stage in stages:
-                debug_data = {'stage_name': stage['stage_name'],
-                              'main_shm': stage['main_shm']}
-                if 'intf_shm' in stage.keys():
-                    debug_data['intf_shm'] = stage['intf_shm']
-                debug_data['num_samps'] = stage['num_samps']
-                processed_data.add_debug_data(debug_data)
+            processed_data.append(stage)
 
             done_filling_debug = time.time()
             time_filling_debug = (done_filling_debug - start) * 1000
