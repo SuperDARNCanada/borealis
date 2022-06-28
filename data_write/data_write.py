@@ -1239,7 +1239,7 @@ class DataWrite(object):
                 parameters['data_normalization_factor'] = aveperiod_meta.data_normalization_factor
 
                 lags = []
-                for lag in rx_freq.ltab:
+                for lag in rx_freq.ltabs:
                     lags.append([lag.pulse_position[0], lag.pulse_position[1]])
 
                 parameters['lags'] = np.array(lags, dtype=np.uint32)
