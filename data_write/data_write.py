@@ -35,7 +35,8 @@ if not borealis_path:
     raise ValueError("BOREALISPATH env variable not set")
 
 sys.path.append(borealis_path + '/utils/')
-from message_formats.message_formats import ProcessedSequenceMessage, AveperiodMetadataMessage
+from message_formats.message_formats import ProcessedSequenceMessage, AveperiodMetadataMessage, DebugDataStage, \
+    OutputDataset
 import shared_macros.shared_macros as sm
 import data_write_options.data_write_options as dwo
 from zmq_borealis_helpers import socket_operations as so
@@ -176,9 +177,9 @@ class ParseData(object):
         """
 
         for data_set in self.processed_data.output_datasets:
-            slice_id = data_set['slice_id']
+            slice_id = data_set.slice_id
 
-            data_shape = (data_set['num_beams'], data_set['num_ranges'], data_set['num_lags'])
+            data_shape = (data_set.num_beams, data_set.num_ranges, data_set.num_lags)
 
             def accumulate_data(holder, message_data):
                 """
@@ -201,17 +202,17 @@ class ParseData(object):
                     holder[slice_id]['shm'] = []
                 holder[slice_id]['shm'].append(shm)
 
-            if 'main_acf_shm' in data_set.keys():
+            if data_set.main_acf_shm:
                 self._mainacfs_available = True
-                accumulate_data(self._mainacfs_accumulator, data_set['main_acf_shm'])
+                accumulate_data(self._mainacfs_accumulator, data_set.main_acf_shm)
 
-            if 'xcf_shm' in data_set.keys():
+            if data_set.xcf_shm:
                 self._xcfs_available = True
-                accumulate_data(self._xcfs_accumulator, data_set['xcf_shm'])
+                accumulate_data(self._xcfs_accumulator, data_set.xcf_shm)
 
-            if 'intf_acf_shm' in data_set.keys():
+            if data_set.intf_acf_shm:
                 self._intfacfs_available = True
-                accumulate_data(self._intfacfs_accumulator, data_set['intf_acf_shm'])
+                accumulate_data(self._intfacfs_accumulator, data_set.intf_acf_shm)
 
     def parse_bfiq(self):
         """
@@ -241,7 +242,7 @@ class ParseData(object):
         self._bfiq_available = True
 
         for i, data_set in enumerate(self.processed_data.output_datasets):
-            slice_id = data_set['slice_id']
+            slice_id = data_set.slice_id
 
             self._bfiq_accumulator[slice_id]['num_samps'] = num_samps
 
@@ -257,7 +258,7 @@ class ParseData(object):
                 else:
                     holder['data'] = np.concatenate((holder['data'], data))
 
-            for beam in range(data_set['num_beams']):
+            for beam in range(data_set.num_beams):
                 accumulate_data(self._bfiq_accumulator[slice_id]['main'], main_data[i, beam, :])
                 if intf_available:
                     accumulate_data(self._bfiq_accumulator[slice_id]['intf'], intf_data[i, beam, :])
@@ -280,18 +281,18 @@ class ParseData(object):
         stages = []
         # Loop through all the filter stage data 
         for debug_stage in self.processed_data.debug_data:
-            stage_dict = {'stage_name': debug_stage['stage_name'],
-                          'stage_samps': debug_stage['num_samps'],
-                          'main_shm': debug_stage['main_shm'],
-                          'intf_shm': debug_stage['intf_shm']}
+            stage_dict = {'stage_name': debug_stage.stage_name,
+                          'stage_samps': debug_stage.num_samps,
+                          'main_shm': debug_stage.main_shm,
+                          'intf_shm': debug_stage.intf_shm}
 
-            stage_samps = debug_stage['num_samps']
-            stage_main_shm = shared_memory.SharedMemory(name=debug_stage['main_shm'])
+            stage_samps = debug_stage.num_samps
+            stage_main_shm = shared_memory.SharedMemory(name=debug_stage.main_shm)
             stage_data = np.ndarray((num_slices, num_main_antennas, stage_samps), dtype=np.complex64,
                                     buffer=stage_main_shm.buf)
             self._antenna_iq_accumulator['main_shm'].append(stage_main_shm)
             if 'intf_shm' in debug_stage.keys():
-                stage_intf_shm = shared_memory.SharedMemory(name=debug_stage['intf_shm'])
+                stage_intf_shm = shared_memory.SharedMemory(name=debug_stage.intf_shm)
                 stage_intf_data = np.ndarray((num_slices, num_intf_antennas, stage_samps), dtype=np.complex64,
                                              buffer=stage_intf_shm.buf)
                 stage_data = np.hstack((stage_data, stage_intf_data))
@@ -304,18 +305,18 @@ class ParseData(object):
 
         # Iterate over every data set, one data set per slice
         for i, data_set in enumerate(self.processed_data.output_datasets):
-            slice_id = data_set['slice_id']
+            slice_id = data_set.slice_id
 
             # non beamformed IQ samples are available
             for debug_stage in stages:
-                stage_name = debug_stage['stage_name']
+                stage_name = debug_stage.stage_name
 
                 if stage_name not in self._antenna_iq_accumulator[slice_id]:
                     self._antenna_iq_accumulator[slice_id][stage_name] = collections.OrderedDict()
                 
                 antenna_iq_stage = self._antenna_iq_accumulator[slice_id][stage_name]
 
-                antennas_data = debug_stage['data'][i]
+                antennas_data = debug_stage.data[i]
                 antenna_iq_stage["num_samps"] = antennas_data.shape[-1]
 
                 # Loops over antenna data within stage
@@ -344,7 +345,7 @@ class ParseData(object):
         self._output_sample_rate = data.output_sample_rate
 
         for data_set in data.output_datasets:
-            self._slice_ids.add(data_set['slice_id'])
+            self._slice_ids.add(data_set.slice_id)
 
         if data.rawrf_shm != '':
             self._raw_rf_available = True
