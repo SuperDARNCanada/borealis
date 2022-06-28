@@ -435,7 +435,7 @@ def main():
                         intf_data = processed_intf_samples.filter_outputs[i]
                         debug_data_in_shm(stage, intf_data, 'intf')
 
-                    processed_data.append(stage)
+                    processed_data.add_debug_data(stage)
 
             # Add antennas_iq data
             stage = DebugDataStage()
@@ -448,7 +448,7 @@ def main():
                 intf_shm = processed_intf_samples.shared_mem['antennas_iq']
                 stage.intf_shm = intf_shm.name
                 intf_shm.close()
-            processed_data.append(stage)
+            processed_data.add_debug_data(stage)
 
             done_filling_debug = time.time()
             time_filling_debug = (done_filling_debug - start) * 1000
