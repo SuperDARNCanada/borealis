@@ -22,10 +22,10 @@ class DebugDataStage:
     """
     Defines a stage of debug data (filtered data or antennas_iq data plus associated metadata).
     """
-    stage_name: str
-    main_shm: str
-    intf_shm: str
-    num_samps: int
+    stage_name: str = None
+    main_shm: str = None
+    intf_shm: str = None
+    num_samps: int = None
 
 
 @dataclass
@@ -33,13 +33,13 @@ class OutputDataset:
     """
     Defines an output dataset message.
     """
-    slice_id: int
-    num_beams: int
-    num_ranges: int
-    num_lags: int
-    main_acf_shm: str
-    intf_acf_shm: str
-    xcf_shm: str
+    slice_id: int = None
+    num_beams: int = None
+    num_ranges: int = None
+    num_lags: int = None
+    main_acf_shm: str = None
+    intf_acf_shm: str = None
+    xcf_shm: str = None
 
 
 @dataclass
@@ -48,26 +48,26 @@ class ProcessedSequenceMessage:
     Defines a message containing metadata about a processed sequence of data.
     This message format is for communication from rx_signal_processing to data_write.
     """
-    sequence_num: int
-    rx_sample_rate: float
-    output_sample_rate: float
-    initialization_time: float
-    sequence_start_time: float
-    gps_to_system_time_diff: float
-    agc_status_bank_h: int
-    lp_status_bank_h: int
-    agc_status_bank_l: int
-    lp_status_bank_l: int
-    gps_locked: bool
-    bfiq_main_shm: str
-    bfiq_intf_shm: str
-    max_num_beams: int
-    num_samps: int
-    main_corrs_shm: str
-    intf_corrs_shm: str
-    cross_corrs_shm: str
-    rawrf_shm: str
-    rawrf_num_samps: int
+    sequence_num: int = None
+    rx_sample_rate: float = None
+    output_sample_rate: float = None
+    initialization_time: float = None
+    sequence_start_time: float = None
+    gps_to_system_time_diff: float = None
+    agc_status_bank_h: int = None
+    lp_status_bank_h: int = None
+    agc_status_bank_l: int = None
+    lp_status_bank_l: int = None
+    gps_locked: bool = None
+    bfiq_main_shm: str = None
+    bfiq_intf_shm: str = None
+    max_num_beams: int = None
+    num_samps: int = None
+    main_corrs_shm: str = None
+    intf_corrs_shm: str = None
+    cross_corrs_shm: str = None
+    rawrf_shm: str = None
+    rawrf_num_samps: int = None
     debug_data: list[DebugDataStage] = field(default_factory=list)
     output_datasets: list[OutputDataset] = field(default_factory=list)
 
