@@ -1004,9 +1004,9 @@ class DataWrite(object):
             rx_intf_antennas = {}
 
             for meta in aveperiod_meta.sequences:
-                for rx_freq in meta['rx_channels']:
-                    rx_main_antennas[rx_freq['slice_id']] = list(rx_freq['rx_main_antennas'])
-                    rx_intf_antennas[rx_freq['slice_id']] = list(rx_freq['rx_intf_antennas'])
+                for rx_freq in meta.rx_channels:
+                    rx_main_antennas[rx_freq.slice_id] = list(rx_freq.rx_main_antennas)
+                    rx_intf_antennas[rx_freq.slice_id] = list(rx_freq.rx_intf_antennas)
 
             # Build strings from antennas used in the message. This will be used to know
             # what antennas were recorded on since we sample all available USRP channels
@@ -1139,22 +1139,20 @@ class DataWrite(object):
             """
             tx_data = None
             for meta in aveperiod_meta.sequences:
-                if 'tx_data' in meta.keys():
+                if meta.tx_data is not None:
                     tx_data = TX_TEMPLATE.copy()
                     break
 
             if tx_data is not None:
                 for meta in aveperiod_meta.sequences:
-                    meta_data = meta['tx_data']
-                    tx_data['tx_rate'].append(meta_data['tx_rate'])
-                    tx_data['tx_center_freq'].append(meta_data['tx_ctr_freq'])
-                    tx_data['pulse_timing_us'].append(meta_data['pulse_timing_us'])
-                    tx_data['pulse_sample_start'].append(meta_data['pulse_sample_start'])
-                    tx_data['dm_rate'].append(meta_data['dm_rate'])
-                    tx_data['tx_samples'].append(meta_data['tx_samples'])
-                    tx_data['decimated_tx_samples'].append(meta_data['decimated_tx_samples'])
-                tx_data['tx_samples'] = np.array(tx_data['tx_samples'], dtype=np.complex64)
-                tx_data['decimated_tx_samples'] = np.array(tx_data['decimated_tx_samples'], dtype=np.complex64)
+                    meta_data = meta.tx_data
+                    tx_data['tx_rate'].append(meta_data.tx_rate)
+                    tx_data['tx_center_freq'].append(meta_data.tx_ctr_freq)
+                    tx_data['pulse_timing_us'].append(meta_data.pulse_timing_us)
+                    tx_data['pulse_sample_start'].append(meta_data.pulse_sample_start)
+                    tx_data['dm_rate'].append(meta_data.dm_rate)
+                    tx_data['tx_samples'].append(meta_data.tx_samples)
+                    tx_data['decimated_tx_samples'].append(meta_data.decimated_tx_samples)
 
                 name = dataset_name.replace('{sliceid}.', '').format(dformat='txdata')
                 output_file = dataset_location.format(name=name)
@@ -1199,40 +1197,40 @@ class DataWrite(object):
 
         parameters_holder = {}
         for meta in aveperiod_meta.sequences:
-            for rx_freq in meta['rx_channels']:
+            for rx_freq in meta.rx_channels:
                 parameters = DATA_TEMPLATE.copy()
                 parameters['borealis_git_hash'] = self.git_hash.decode('utf-8')
                 parameters['experiment_id'] = np.int64(aveperiod_meta.experiment_id)
                 parameters['experiment_name'] = aveperiod_meta.experiment_name
                 parameters['experiment_comment'] = aveperiod_meta.experiment_comment
                 parameters['scheduling_mode'] = aveperiod_meta.scheduling_mode
-                parameters['slice_comment'] = rx_freq['slice_comment']
-                parameters['slice_id'] = np.uint32(rx_freq['slice_id'])
-                parameters['averaging_method'] = rx_freq['averaging_method']    # string
-                parameters['slice_interfacing'] = rx_freq['interfacing']        # string
-                parameters['num_slices'] = len(aveperiod_meta.sequences) * len(meta['rx_channels'])
+                parameters['slice_comment'] = rx_freq.slice_comment
+                parameters['slice_id'] = np.uint32(rx_freq.slice_id)
+                parameters['averaging_method'] = rx_freq.averaging_method    # string
+                parameters['slice_interfacing'] = rx_freq.interfacing        # string
+                parameters['num_slices'] = len(aveperiod_meta.sequences) * len(meta.rx_channels)
                 parameters['station'] = self.options.site_id
                 parameters['num_sequences'] = aveperiod_meta.num_sequences
-                parameters['num_ranges'] = np.uint32(rx_freq['num_ranges'])
-                parameters['range_sep'] = np.float32(rx_freq['range_sep'])
+                parameters['num_ranges'] = np.uint32(rx_freq.num_ranges)
+                parameters['range_sep'] = np.float32(rx_freq.range_sep)
                 # time to first range and back. convert to meters, div by c then convert to us
-                rtt = (rx_freq['first_range'] * 2 * 1.0e3 / speed_of_light) * 1.0e6
+                rtt = (rx_freq.first_range * 2 * 1.0e3 / speed_of_light) * 1.0e6
                 parameters['first_range_rtt'] = np.float32(rtt)
-                parameters['first_range'] = np.float32(rx_freq['first_range'])
+                parameters['first_range'] = np.float32(rx_freq.first_range)
                 parameters['rx_sample_rate'] = data_parsing.output_sample_rate  # this applies to pre-bf and bfiq
                 parameters['scan_start_marker'] = aveperiod_meta.scan_flag  # Should this change to scan_start_marker?
                 parameters['int_time'] = np.float32(aveperiod_meta.aveperiod_time)
-                parameters['tx_pulse_len'] = np.uint32(rx_freq['pulse_len'])
-                parameters['tau_spacing'] = np.uint32(rx_freq['tau_spacing'])
-                parameters['main_antenna_count'] = np.uint32(len(rx_freq['rx_main_antennas']))
-                parameters['intf_antenna_count'] = np.uint32(len(rx_freq['rx_intf_antennas']))
-                parameters['freq'] = np.uint32(rx_freq['rx_freq'])
+                parameters['tx_pulse_len'] = np.uint32(rx_freq.pulse_len)
+                parameters['tau_spacing'] = np.uint32(rx_freq.tau_spacing)
+                parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
+                parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
+                parameters['freq'] = np.uint32(rx_freq.rx_freq)
                 parameters['rx_center_freq'] = aveperiod_meta.rx_ctr_freq
                 parameters['samples_data_type'] = "complex float"
-                parameters['pulses'] = np.array(rx_freq['ptab'], dtype=np.uint32)
+                parameters['pulses'] = np.array(rx_freq.ptab, dtype=np.uint32)
 
                 encodings = []
-                for encoding in rx_freq['sequence_encodings']:
+                for encoding in rx_freq.sequence_encodings:
                     encoding = np.array(encoding.encoding_value, dtype=np.float32)
                     encodings.append(encoding)
 
@@ -1241,19 +1239,19 @@ class DataWrite(object):
                 parameters['data_normalization_factor'] = aveperiod_meta.data_normalization_factor
 
                 lags = []
-                for lag in rx_freq['ltab']:
-                    lags.append([lag['pulse_position'][0], lag['pulse_position'][1]])
+                for lag in rx_freq.ltab:
+                    lags.append([lag.pulse_position[0], lag.pulse_position[1]])
 
                 parameters['lags'] = np.array(lags, dtype=np.uint32)
 
-                parameters['blanked_samples'] = np.array(meta['blanks'], dtype=np.uint32)
+                parameters['blanked_samples'] = np.array(meta.blanks, dtype=np.uint32)
                 parameters['sqn_timestamps'] = data_parsing.timestamps
 
                 parameters['beam_nums'] = []
                 parameters['beam_azms'] = []
-                for beam in rx_freq['beams']:
-                    parameters['beam_nums'].append(np.uint32(beam['beam_num']))
-                    parameters['beam_azms'].append(beam['beam_azimuth'])
+                for beam in rx_freq.beams:
+                    parameters['beam_nums'].append(np.uint32(beam.beam_num))
+                    parameters['beam_azms'].append(beam.beam_azimuth)
 
                 parameters['noise_at_freq'] = [0.0] * aveperiod_meta.num_sequences  # TODO update. should come from data_parsing
 
@@ -1267,7 +1265,7 @@ class DataWrite(object):
                 # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs
                 # all get set within the separate write functions.
 
-                parameters_holder[rx_freq['slice_id']] = parameters
+                parameters_holder[rx_freq.slice_id] = parameters
 
         if write_rawacf and data_parsing.mainacfs_available:
             write_correlations(copy.deepcopy(parameters_holder))

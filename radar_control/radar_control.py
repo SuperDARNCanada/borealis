@@ -372,73 +372,68 @@ def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_ide
     message.scheduling_mode = scheduling_mode
 
     for sequence_index, sequence in enumerate(sequences):
-        sequence_add = {'blanks': sequence.blanks}
+        sequence_add = messages.Sequence()
+        sequence_add.blanks = sequence.blanks
 
         if debug_samples:
-            tx_data = {'tx_rate': debug_samples[sequence_index]['txrate'],
-                       'tx_ctr_freq': debug_samples[sequence_index]['txctrfreq'],
-                       'pulse_timing_us': debug_samples[sequence_index]['pulse_timing'],
-                       'pulse_sample_start': debug_samples[sequence_index]['pulse_sample_start'],
-                       'tx_samples': debug_samples[sequence_index]['sequence_samples'],
-                       'dm_rate': debug_samples[sequence_index]['dmrate'],
-                       'decimated_tx_samples': debug_samples[sequence_index]['decimated_samples']}
-            sequence_add['tx_data'] = tx_data
+            tx_data = messages.TxData()
+            tx_data.tx_rate = debug_samples[sequence_index]['txrate']
+            tx_data.tx_ctr_freq = debug_samples[sequence_index]['txctrfreq']
+            tx_data.pulse_timing_us = debug_samples[sequence_index]['pulse_timing']
+            tx_data.pulse_sample_start = debug_samples[sequence_index]['pulse_sample_start']
+            tx_data.tx_samples = debug_samples[sequence_index]['sequence_samples']
+            tx_data.dm_rate = debug_samples[sequence_index]['dmrate']
+            tx_data.decimated_tx_samples = debug_samples[sequence_index]['decimated_samples']
+            sequence_add.tx_data = tx_data
 
-        sequence_add['rx_channels'] = []
         for slice_id in sequence.slice_ids:
-            rxchannel = {'slice_id': slice_id,
-                         'slice_comment': sequence.slice_dict[slice_id]['comment'],
-                         'interfacing': '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing']),
-                         'rx_only': sequence.slice_dict[slice_id]['rxonly'],
-                         'pulse_len': sequence.slice_dict[slice_id]['pulse_len'],
-                         'tau_spacing': sequence.slice_dict[slice_id]['tau_spacing']}
+            rxchannel = messages.RxChannelMetadata()
+            rxchannel.slice_id = slice_id
+            rxchannel.slice_comment = sequence.slice_dict[slice_id]['comment']
+            rxchannel.interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
+            rxchannel.rx_only = sequence.slice_dict[slice_id]['rxonly']
+            rxchannel.pulse_len = sequence.slice_dict[slice_id]['pulse_len']
+            rxchannel.tau_spacing = sequence.slice_dict[slice_id]['tau_spacing']
 
             if sequence.slice_dict[slice_id]['rxonly']:
-                rxchannel['rx_freq'] = sequence.slice_dict[slice_id]['rxfreq']
+                rxchannel.rx_freq = sequence.slice_dict[slice_id]['rxfreq']
             else:
-                rxchannel['rx_freq'] = sequence.slice_dict[slice_id]['txfreq']
+                rxchannel.rx_freq = sequence.slice_dict[slice_id]['txfreq']
 
-            rxchannel['ptab'] = sequence.slice_dict[slice_id]['pulse_sequence']
+            rxchannel.ptab = sequence.slice_dict[slice_id]['pulse_sequence']
 
             # We always build one sequence in advance, so we trim the last one from when radar
             # control stops processing the averaging period.
-            rxchannel['sequence_encodings'] = []
             for encoding in sequence.output_encodings[slice_id][:num_sequences]:
-                sqn_encodings = {}
                 python_type = encoding.flatten().tolist()
-                sqn_encodings['encoding_value'] = python_type
-                rxchannel['sequence_encodings'].append(sqn_encodings)
+                rxchannel.add_sqn_encodings(python_type)
             sequence.output_encodings[slice_id] = []
 
-            rxchannel['rx_main_antennas'] = sequence.slice_dict[slice_id]['rx_main_antennas']
-            rxchannel['rx_intf_antennas'] = sequence.slice_dict[slice_id]['rx_int_antennas']
+            rxchannel.rx_main_antennas = sequence.slice_dict[slice_id]['rx_main_antennas']
+            rxchannel.rx_intf_antennas = sequence.slice_dict[slice_id]['rx_int_antennas']
 
             beams = sequence.slice_dict[slice_id]['beam_order'][beam_iter]
             if isinstance(beams, int):
                 beams = [beams]
 
-            rxchannel['beams'] = []
             for beam in beams:
-                beam_dict = {'beam_azimuth': sequence.slice_dict[slice_id]['beam_angle'][beam],
-                             'beam_num': beam}
-                rxchannel['beams'].append(beam_dict)
+                beam_add = messages.Beam(sequence.slice_dict[slice_id]['beam_angle'][beam], beam)
+                rxchannel.add_beam(beam_add)
 
-            rxchannel['first_range'] = sequence.slice_dict[slice_id]['first_range']
-            rxchannel['num_ranges'] = sequence.slice_dict[slice_id]['num_ranges']
-            rxchannel['range_sep'] = sequence.slice_dict[slice_id]['range_sep']
+            rxchannel.first_range = sequence.slice_dict[slice_id]['first_range']
+            rxchannel.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
+            rxchannel.range_sep = sequence.slice_dict[slice_id]['range_sep']
 
             if sequence.slice_dict[slice_id]['acf']:
-                rxchannel['acf'] = sequence.slice_dict[slice_id]['acf']
-                rxchannel['xcf'] = sequence.slice_dict[slice_id]['xcf']
-                rxchannel['acfint'] = sequence.slice_dict[slice_id]['acfint']
+                rxchannel.acf = sequence.slice_dict[slice_id]['acf']
+                rxchannel.xcf = sequence.slice_dict[slice_id]['xcf']
+                rxchannel.acfint = sequence.slice_dict[slice_id]['acfint']
                 
-                rxchannel['ltab'] = []
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
-                    lag_add = {'pulse_position': lag,
-                               'lag_num': int(lag[1] - lag[0])}
-                    rxchannel['ltab'].append(lag_add)
-                rxchannel['averaging_method'] = sequence.slice_dict[slice_id]['averaging_method']
-            sequence_add['rx_channels'].append(rxchannel)
+                    lag_add = messages.LagTable(lag, int(lag[1] - lag[0]))
+                    rxchannel.add_ltab(lag_add)
+                rxchannel.averaging_method = sequence.slice_dict[slice_id]['averaging_method']
+            sequence_add.add_rx_channel(rxchannel)
         message.sequences.append(sequence_add)
 
     if __debug__:

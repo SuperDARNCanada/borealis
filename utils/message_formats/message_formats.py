@@ -187,155 +187,128 @@ class SequenceMetadataMessage:
         self.rx_channels = []
 
     def add_rx_channel(self, channel: RxChannel):
-        """Add an rx_channel dict to the message."""
+        """Add an rx_channel dataclass to the message."""
         self.rx_channels.append(channel)
 
 
-class AveperiodMetadataMessage(object):
+@dataclass
+class Beam:
+    """Defines a beam structure for inclusion in an RxChannelMetadata dataclass"""
+    beam_azimuth: float = None
+    beam_num: int = None
+
+
+@dataclass
+class LagTable:
+    """Defines a ltab structure for inclusion in an RxChannelMetadata dataclass"""
+    pulse_position: list[int] = field(default_factory=list)
+    lag_num: int = None
+
+
+@dataclass
+class RxChannelMetadata:
+    """Defines an RxChannelMetadata structure for inclusion in an AveperiodMetadataMessage"""
+    slice_id: int = None
+    slice_comment: str = None
+    interfacing: str = None
+    rx_only: bool = None
+    pulse_len: int = None
+    tau_spacing: int = None
+    rx_freq: float = None
+    ptab: list[int] = field(default_factory=list)
+    sequence_encodings: list = field(default_factory=list)
+    rx_main_antennas: list[int] = field(default_factory=list)
+    rx_intf_antennas: list[int] = field(default_factory=list)
+    beams: list[Beam] = field(default_factory=list)
+    first_range: int = None
+    num_ranges: int = None
+    range_sep: int = None
+    acf: bool = None
+    xcf: bool = None
+    acfint: bool = None
+    ltabs: list[LagTable] = field(default_factory=list)
+    averaging_method: str = None
+
+    def remove_all_sqn_encodings(self):
+        """Remove all sequence_encoding entries so the list can be refilled for the next sequence"""
+        self.sequence_encodings = []
+
+    def add_sqn_encodings(self, encodings: list):
+        """Add a sequence_encodings list to the message."""
+        self.sequence_encodings.append(encodings)
+
+    def remove_all_beams(self):
+        """Remove all beam entries so the list can be refilled for the next sequence"""
+        self.beams = []
+
+    def add_beam(self, beam: Beam):
+        """Add a Beam dataclass to the message."""
+        self.beams.append(beam)
+
+    def remove_all_ltabs(self):
+        """Remove all beam entries so the list can be refilled for the next sequence"""
+        self.ltabs = []
+
+    def add_ltab(self, ltab: LagTable):
+        """Add a LagTable dataclass to the message."""
+        self.ltabs.append(ltab)
+
+
+@dataclass
+class TxData:
+    """Defines a tx_data structure for inclusion in a Sequence dataclass"""
+    tx_rate: float = None
+    tx_ctr_freq: float = None
+    pulse_timing_us: float = None
+    pulse_sample_start: int = None
+    tx_samples: np.ndarray = None
+    dm_rate: int = None
+    decimated_tx_samples: np.ndarray = None
+
+
+@dataclass
+class Sequence:
+    """Defines a sequence structure for inclusion in an AveperiodMetadataMessage"""
+    blanks: list[int] = field(default_factory=list)
+    tx_data: TxData = None
+    rx_channels: list[RxChannelMetadata] = field(default_factory=list)
+
+    def remove_all_rx_channels(self):
+        """Remove all rx_channel entries so the list can be refilled for the next sequence"""
+        self.rx_channels = []
+
+    def add_rx_channel(self, channel: RxChannelMetadata):
+        """Add an rx channel metadata dataclass to the message."""
+        self.rx_channels.append(channel)
+
+
+@dataclass
+class AveperiodMetadataMessage:
     """
     Defines a message containing metadata about an averaging period of data.
     This message format is for communication from radar_control to
     data_write.
     """
-    def __init__(self):
-        super().__init__()
+    experiment_id: int = None
+    experiment_name: str = None
+    experiment_comment: str = None
+    rx_ctr_freq: float = None
+    num_sequences: int = None
+    last_sqn_num: int = None
+    scan_flag: bool = None
+    aveperiod_time: float = None
+    output_sample_rate: float = None
+    data_normalization_factor: float = None
+    scheduling_mode: str = None
+    sequences: list = field(default_factory=list)
 
-        self._experiment_id = 0
-        self._experiment_name = ""
-        self._experiment_comment = ""
-        self._rx_ctr_freq = 0.0
-        self._num_sequences = 0
-        self._last_sqn_num = 0
-        self._scan_flag = False
-        self._aveperiod_time = 0.0
-        self._output_sample_rate = 0.0
-        self._data_normalization_factor = 0.0
-        self._scheduling_mode = ""
-        self._sequences = []
-
-        self.__sequence_allowed_types = {'blanks': list, 'tx_data': dict, 'rx_channels': list}
-        self.__tx_data_allowed_types = {'tx_rate': float, 'tx_ctr_freq': float, 'pulse_timing_us': float,
-                                        'pulse_sample_start': int, 'tx_samples': np.ndarray, 'dm_rate': int,
-                                        'decimated_tx_samples': np.ndarray}
-        self.__rx_channel_allowed_types = {'slice_id': int, 'slice_comment': str, 'interfacing': str, 'rx_only': bool,
-                                           'pulse_len': int, 'tau_spacing': int, 'rx_freq': float, 'ptab': list,
-                                           'sequence_encodings': list, 'rx_main_antennas': list,
-                                           'rx_intf_antennas': list, 'beams': list, 'first_range': int,
-                                           'num_ranges': int, 'range_sep': int, 'acf': bool, 'xcf': bool,
-                                           'acfint': bool, 'ltab': dict, 'averaging_method': str}
-        self.__beam_allowed_types = {'beam_azimuth': float, 'beam_num': int}
-        self.__ltab_allowed_types = {'pulse_position': list, 'lag_num': int}
-
-    @property
-    def experiment_id(self):
-        return self._experiment_id
-
-    @experiment_id.setter
-    def experiment_id(self, exp_id: int):
-        self._experiment_id = exp_id
-
-    @property
-    def experiment_name(self):
-        return self._experiment_name
-
-    @experiment_name.setter
-    def experiment_name(self, name: str):
-        self._experiment_name = name
-
-    @property
-    def experiment_comment(self):
-        return self._experiment_comment
-
-    @experiment_comment.setter
-    def experiment_comment(self, comment: str):
-        self._experiment_comment = comment
-
-    @property
-    def rx_ctr_freq(self):
-        return self._rx_ctr_freq
-
-    @rx_ctr_freq.setter
-    def rx_ctr_freq(self, freq: float):
-        self._rx_ctr_freq = freq
-
-    @property
-    def num_sequences(self):
-        return self._num_sequences
-
-    @num_sequences.setter
-    def num_sequences(self, num: int):
-        self._num_sequences = num
-
-    @property
-    def last_sqn_num(self):
-        return self._last_sqn_num
-
-    @last_sqn_num.setter
-    def last_sqn_num(self, num: int):
-        self._last_sqn_num = num
-
-    @property
-    def scan_flag(self):
-        return self._scan_flag
-
-    @scan_flag.setter
-    def scan_flag(self, flag: bool):
-        self._scan_flag = flag
-
-    @property
-    def aveperiod_time(self):
-        return self._aveperiod_time
-
-    @aveperiod_time.setter
-    def aveperiod_time(self, time: float):
-        self._aveperiod_time = time
-
-    @property
-    def output_sample_rate(self):
-        return self._output_sample_rate
-
-    @output_sample_rate.setter
-    def output_sample_rate(self, rate: float):
-        self._output_sample_rate = rate
-
-    @property
-    def data_normalization_factor(self):
-        return self._data_normalization_factor
-
-    @data_normalization_factor.setter
-    def data_normalization_factor(self, factor: float):
-        self._data_normalization_factor = factor
-
-    @property
-    def scheduling_mode(self):
-        return self._scheduling_mode
-
-    @scheduling_mode.setter
-    def scheduling_mode(self, mode: str):
-        self._scheduling_mode = mode
-
-    @property
-    def sequences(self):
-        return self._sequences
+    sequence_allowed_types = {'blanks': list, 'tx_data': dict, 'rx_channels': list}
 
     def remove_all_sequences(self):
         """Remove all sequence entries so the list can be refilled for the next averaging period."""
-        self._sequences = []
+        self.sequences = []
 
     def add_sequence(self, sequence: dict):
         """Add a sequence dict to the message."""
-        check_dict(sequence, self.__sequence_allowed_types, 'sequence')
-        if 'tx_data' in sequence.keys():
-            check_dict(sequence['tx_data'], self.__tx_data_allowed_types, 'tx_data')
-        if 'rx_channels' in sequence.keys():
-            for channel in sequence['rx_channels']:
-                check_dict(channel, self.__rx_channel_allowed_types, 'rx_channels')
-                if 'beams' in channel.keys():
-                    for beam in channel['beams']:
-                        check_dict(beam, self.__beam_allowed_types, 'beam')
-                if 'ltab' in channel.keys():
-                    for ltab in channel['ltab']:
-                        check_dict(ltab, self.__ltab_allowed_types, 'lag_table')
-
-        self._sequences.append(sequence)
+        self.sequences.append(sequence)
 
