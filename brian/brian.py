@@ -221,7 +221,7 @@ def sequence_timing(opts):
 
             if __debug__:
                 reply_output = "Radar control sent -> sequence {} time {} ms"
-                reply_output = reply_output.format(sigp['sequence_num'], sigp['sequence_time'])
+                reply_output = reply_output.format(sigp.sequence_num, sigp.sequence_time)
                 printing(reply_output)
 
             #Request acknowledgement of sequence from driver
