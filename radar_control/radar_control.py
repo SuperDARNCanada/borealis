@@ -226,7 +226,7 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
             temp_intf[intfs] = intf_bms[i][intfs]
 
             # Combine main and intf such that for a given beam all main phases come first.
-            beams.append(np.hstack(temp_main, temp_intf))
+            beams.append(np.hstack((temp_main, temp_intf)))
         chan_add.beam_phases = np.array(beams)
         
         for lag in slice_dict[slice_id]['lag_table']:
