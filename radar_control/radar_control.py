@@ -29,7 +29,7 @@ from functools import reduce
 sys.path.append(os.environ["BOREALISPATH"])
 from experiment_prototype.experiment_exception import ExperimentException
 from utils.experiment_options.experimentoptions import ExperimentOptions
-from utils.message_formats.message_formats import AveperiodMetadataMessage, SequenceMetadataMessage
+import utils.message_formats.message_formats as messages
 import utils.shared_macros.shared_macros as sm
 
 if __debug__:
@@ -188,32 +188,30 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
 
     if decimation_scheme is not None:
         for stage in decimation_scheme.stages:
-            dm_stage_add = {'stage_num': stage.stage_num,
-                            'input_rate': stage.input_rate,
-                            'dm_rate': stage.dm_rate,
-                            'filter_taps': stage.filter_taps}
+            dm_stage_add = messages.DecimationStageMessage(stage.stage_num, stage.input_rate, stage.dm_rate,
+                                                           stage.filter_taps)
             message.add_decimation_stage(dm_stage_add)
 
     for num, slice_id in enumerate(slice_ids):
-        chan_add = {'slice_id': slice_id,
-                    'tau_spacing': slice_dict[slice_id]['tau_spacing']}
+        chan_add = messages.RxChannel(slice_id)
+        chan_add.tau_spacing = slice_dict[slice_id]['tau_spacing']
+
         # send the translational frequencies to dsp in order to bandpass filter correctly.
         if slice_dict[slice_id]['rxonly']:
-            chan_add['rx_freq'] = slice_dict[slice_id]['rxfreq'] * 1.0e3
+            chan_add.rx_freq = slice_dict[slice_id]['rxfreq'] * 1.0e3
         elif slice_dict[slice_id]['clrfrqflag']:
             pass  # TODO - get freq from clear frequency search.
         else:
-            chan_add['rx_freq'] = slice_dict[slice_id]['txfreq'] * 1.0e3
-        chan_add['num_ranges'] = slice_dict[slice_id]['num_ranges']
-        chan_add['first_range'] = slice_dict[slice_id]['first_range']
-        chan_add['range_sep'] = slice_dict[slice_id]['range_sep']
+            chan_add.rx_freq = slice_dict[slice_id]['txfreq'] * 1.0e3
+        chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
+        chan_add.first_range = slice_dict[slice_id]['first_range']
+        chan_add.range_sep = slice_dict[slice_id]['range_sep']
 
         main_bms = beam_dict[slice_id]['main']
         intf_bms = beam_dict[slice_id]['intf']
 
-        chan_add['beam_directions'] = []
         for i in range(main_bms.shape[0]):
-            beam_add = {}
+            beam_add = messages.BeamDirection()
             # Don't need to send channel numbers, will always send beamdir with length = total antennas.
             # Beam directions are formated e^i*phi so that a 0 will indicate not
             # to receive on that channel.
@@ -227,23 +225,16 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
             intfs = slice_dict[slice_id]['rx_int_antennas']
             temp_intf[intfs] = intf_bms[i][intfs]
 
-            beam_add['phase'] = []
             for phase in temp_main:
-                phase_add = {'real_phase': phase.real,
-                             'imag_phase': phase.imag}
-                beam_add['phase'].append(phase_add)
-
+                phase_add = messages.Phase(phase.real, phase.imag)
+                beam_add.add_phase(phase_add)
             for phase in temp_intf:
-                phase_add = {'real_phase': phase.real,
-                             'imag_phase': phase.imag}
-                beam_add['phase'].append(phase_add)
-            chan_add['beam_directions'].append(beam_add)
+                phase_add = messages.Phase(phase.real, phase.imag)
+                beam_add.add_phase(phase_add)
+            chan_add.add_beam_direction(beam_add)
         
-        chan_add['lags'] = []
         for lag in slice_dict[slice_id]['lag_table']:
-            lag_add = {'pulse_1': lag[0],
-                       'pulse_2': lag[1],
-                       'lag_num': int(lag[1] - lag[0])}
+            lag_add = messages.Lag(lag[0], lag[1], int(lag[1] - lag[0]))
 
             # Get the phase offset for this pulse combination
             if len(pulse_phase_offsets[slice_id]) != 0:
@@ -256,9 +247,9 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
             else:
                 phase_offset = 1.0 + 0.0j
 
-            lag_add['phase_offset_real'] = np.real(phase_offset)
-            lag_add['phase_offset_imag'] = np.imag(phase_offset)
-            chan_add['lags'].append(lag_add)
+            lag_add.phase_offset_real = np.real(phase_offset)
+            lag_add.phase_offset_imag = np.imag(phase_offset)
+            chan_add.add_lag(lag_add)
         message.add_rx_channel(chan_add)
     
     # Brian requests sequence metadata for timeouts
@@ -497,8 +488,8 @@ def radar():
 
     # Initialize driverpacket.
     driverpacket = DriverPacket()
-    sigprocpacket = SequenceMetadataMessage()
-    aveperiod_packet = AveperiodMetadataMessage()
+    sigprocpacket = messages.SequenceMetadataMessage()
+    aveperiod_packet = messages.AveperiodMetadataMessage()
 
     # Get config options.
     options = ExperimentOptions()

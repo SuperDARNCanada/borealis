@@ -88,117 +88,107 @@ class ProcessedSequenceMessage:
         self.output_datasets.append(data_set)
 
 
-class SequenceMetadataMessage(object):
+@dataclass
+class DecimationStageMessage:
+    """Defines a decimation_stage structure within a SequenceMetadataMessage"""
+    stage_num: int = None
+    input_rate: float = None
+    dm_rate: int = None
+    filter_taps: list[float] = field(default_factory=list)
+
+
+@dataclass
+class Phase:
+    """Defines a phase structure within a BeamDirections dataclass"""
+    real_phase: float = None
+    imag_phase: float = None
+
+
+@dataclass
+class BeamDirection:
+    """Defines a beam_direction structure within an RxChannel dataclass"""
+    phase: list[Phase] = field(default_factory=list)
+
+    def remove_all_phases(self):
+        """Remove all phase entries so the list can be refilled for the next sequence"""
+        self.phase = []
+
+    def add_phase(self, channel: Phase):
+        """Add a Phase structure to the dataclass."""
+        self.phase.append(channel)
+
+
+@dataclass
+class Lag:
+    """Defines a lag structure within an RxChannel dataclass"""
+    pulse_1: int = None
+    pulse_2: int = None
+    lag_num: int = None
+    phase_offset_real: float = None
+    phase_offset_imag: float = None
+
+
+@dataclass
+class RxChannel:
+    """Defines an rx_channel structure within a SequenceMetadataMessage"""
+    slice_id: int = None
+    tau_spacing: int = None
+    rx_freq: float = None
+    clrfrqflag: bool = None
+    num_ranges: int = None
+    first_range: int = None
+    range_sep: float = None
+    beam_directions: list[BeamDirection] = field(default_factory=list)
+    lags: list[Lag] = field(default_factory=list)
+
+    def remove_all_beam_directions(self):
+        """Remove all beam_direction entries so the list can be refilled for the next sequence"""
+        self.beam_directions = []
+
+    def add_beam_direction(self, beam: BeamDirection):
+        """Add a BeamDirection dataclass to the message."""
+        self.beam_directions.append(beam)
+
+    def remove_all_lags(self):
+        """Remove all lag entries so the list can be refilled for the next sequence"""
+        self.lags = []
+
+    def add_lag(self, lag: Lag):
+        """Add a Lag dataclass to the message."""
+        self.lags.append(lag)
+
+
+@dataclass
+class SequenceMetadataMessage:
     """
     Defines a message containing metadata about a sequence of data.
     This message format is for communication from radar_control to
     rx_signal_processing.
     """
-    def __init__(self):
-        super().__init__()
+    sequence_num: int = None
+    sequence_time: float = None
+    offset_to_first_rx_sample: int = None
+    rx_rate: float = None
+    output_sample_rate: float = None
+    rx_ctr_freq: float = None
+    decimation_stages: list[DecimationStageMessage] = field(default_factory=list)
+    rx_channels: list[RxChannel] = field(default_factory=list)
 
-        self._sequence_num = 0
-        self._sequence_time = 0.0
-        self._offset_to_first_rx_sample = 0
-        self._rx_rate = 0.0
-        self._output_sample_rate = 0.0
-        self._rx_ctr_freq = 0.0
-        self._decimation_stages = []
-        self._rx_channels = []
-        self.__decimation_stage_allowed_types = {'stage_num': int, 'input_rate': float, 'dm_rate': int,
-                                                 'filter_taps': list}
-
-        self.__rx_channel_allowed_types = {'slice_id': int, 'tau_spacing': int, 'rx_freq': float, 'clrfrqflag': bool,
-                                           'num_ranges': int, 'first_range': int, 'range_sep': float,
-                                           'beam_directions': list, 'lags': list}
-        self.__beam_directions_allowed_types = {'phase': list}
-        self.__phase_allowed_types = {'real_phase': float, 'imag_phase': float}
-        self.__lag_allowed_types = {'pulse_1': int, 'pulse_2': int, 'lag_num': int, 'phase_offset_real': float,
-                                    'phase_offset_imag': float}
-
-    @property
-    def sequence_num(self):
-        return self._sequence_num
-
-    @sequence_num.setter
-    def sequence_num(self, num: int):
-        self._sequence_num = num
-
-    @property
-    def sequence_time(self):
-        return self._sequence_time
-
-    @sequence_time.setter
-    def sequence_time(self, time: float):
-        self._sequence_time = time
-
-    @property
-    def offset_to_first_rx_sample(self):
-        return self._offset_to_first_rx_sample
-
-    @offset_to_first_rx_sample.setter
-    def offset_to_first_rx_sample(self, offset: int):
-        self._offset_to_first_rx_sample = offset
-
-    @property
-    def rx_rate(self):
-        return self._rx_rate
-
-    @rx_rate.setter
-    def rx_rate(self, rate: float):
-        self._rx_rate = rate
-
-    @property
-    def output_sample_rate(self):
-        return self._output_sample_rate
-
-    @output_sample_rate.setter
-    def output_sample_rate(self, rate: float):
-        self._output_sample_rate = rate
-
-    @property
-    def rx_ctr_freq(self):
-        return self._rx_ctr_freq
-
-    @rx_ctr_freq.setter
-    def rx_ctr_freq(self, freq: float):
-        self._rx_ctr_freq = freq
-
-    @property
-    def decimation_stages(self):
-        return self._decimation_stages
-
-    def add_decimation_stage(self, stage: dict):
+    def add_decimation_stage(self, stage: DecimationStageMessage):
         """Add a decimation stage to the message."""
-        check_dict(stage, self.__decimation_stage_allowed_types, 'decimation_stage')
-        self._decimation_stages.append(stage)
+        self.decimation_stages.append(stage)
 
     def remove_all_decimation_stages(self):
         """Remove all decimation_stage entries so the list can be refilled for the next sequence"""
-        self._decimation_stages = []
-
-    @property
-    def rx_channels(self):
-        return self._rx_channels
+        self.decimation_stages = []
 
     def remove_all_rx_channels(self):
         """Remove all rx_channel entries so the list can be refilled for the next sequence"""
-        self._rx_channels = []
+        self.rx_channels = []
 
-    def add_rx_channel(self, channel: dict):
+    def add_rx_channel(self, channel: RxChannel):
         """Add an rx_channel dict to the message."""
-        check_dict(channel, self.__rx_channel_allowed_types, 'rx_channel')
-        if 'beam_directions' in channel.keys():
-            for bd in channel['beam_directions']:
-                check_dict(bd, self.__beam_directions_allowed_types, 'beam_direction')
-                if 'phase' in bd.keys():
-                    for phase in bd['phase']:
-                        check_dict(phase, self.__phase_allowed_types, 'phase')
-        self._rx_channels.append(channel)
-
-    def _check_lags(self, lag: dict):
-        """Check that all items in a lag dict are valid"""
-        check_dict(lag, self.__lag_allowed_types, 'lag')
+        self.rx_channels.append(channel)
 
 
 class AveperiodMetadataMessage(object):

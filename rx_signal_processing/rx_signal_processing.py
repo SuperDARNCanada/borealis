@@ -168,21 +168,21 @@ def main():
             # because the filter taps do not get flipped when convolving. I.e. we do the cross-correlation instead of
             # convolution, to save some computational complexity from flipping the filter sequence.
             # It works out to the same result.
-            mixing_freqs.append(rx_center_freq - chan['rx_freq'])
+            mixing_freqs.append(rx_center_freq - chan.rx_freq)
 
-            detail['slice_id'] = chan['slice_id']
+            detail['slice_id'] = chan.slice_id
             detail['slice_num'] = i
-            detail['first_range'] = np.float32(chan['first_range'])
-            detail['range_sep'] = np.float32(chan['range_sep'])
-            detail['tau_spacing'] = np.uint32(chan['tau_spacing'])
-            detail['num_range_gates'] = np.uint32(chan['num_ranges'])
-            detail['first_range_off'] = np.uint32(chan['first_range'] / chan['range_sep'])
+            detail['first_range'] = np.float32(chan.first_range)
+            detail['range_sep'] = np.float32(chan.range_sep)
+            detail['tau_spacing'] = np.uint32(chan.tau_spacing)
+            detail['num_range_gates'] = np.uint32(chan.num_ranges)
+            detail['first_range_off'] = np.uint32(chan.first_range / chan.range_sep)
             lag_phase_offsets = []
 
             lags = []
-            for lag in chan['lags']:
-                lags.append([lag['pulse_1'], lag['pulse_2']])
-                lag_phase_offsets.append(lag['phase_offset_real'] + 1j * lag['phase_offset_imag'])
+            for lag in chan.lags:
+                lags.append([lag.pulse_1, lag.pulse_2])
+                lag_phase_offsets.append(lag.phase_offset_real + 1j * lag.phase_offset_imag)
 
             detail['lag_phase_offsets'] = np.array(lag_phase_offsets, dtype=np.complex128)
 
@@ -191,12 +191,12 @@ def main():
 
             main_beams = []
             intf_beams = []
-            for bd in chan['beam_directions']:
+            for bd in chan.beam_directions:
                 main_beam = []
                 intf_beam = []
 
-                for j, phase in enumerate(bd['phase']):
-                    p = phase['real_phase'] + 1j * phase['imag_phase']
+                for j, phase in enumerate(bd.phase):
+                    p = phase.real_phase + 1j * phase.imag_phase
 
                     if j < sig_options.main_antenna_count:
                         main_beam.append(p)
@@ -258,11 +258,11 @@ def main():
             dm_msg = "Decimation rates: "
             taps_msg = "Number of filter taps per stage: "
             for stage in sqn_meta_message.decimation_stages:
-                dm_rates.append(stage['dm_rate'])
-                dm_scheme_taps.append(np.array(stage['filter_taps'], dtype=np.complex64))
+                dm_rates.append(stage.dm_rate)
+                dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
 
-                dm_msg += str(stage['dm_rate']) + " "
-                taps_msg += str(len(stage['filter_taps'])) + " "
+                dm_msg += str(stage.dm_rate) + " "
+                taps_msg += str(len(stage.filter_taps)) + " "
 
             dm_rates = np.array(dm_rates, dtype=np.uint32)
             pprint(dm_msg)
