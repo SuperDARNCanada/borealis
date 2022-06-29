@@ -6,9 +6,9 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <vector>
 #include "utils/options/options.hpp"
 #include "utils/driver_options/driveroptions.hpp"
-
 
 /**
  * @brief      Extracts the relevant driver options from the config into class variables.
@@ -16,7 +16,28 @@
 DriverOptions::DriverOptions() {
     Options::parse_config_file();
 
-    devices_ = config_pt.get<std::string>("devices");
+    devices_ = config_pt.get<std::string>("device_options");                   //TODO
+    
+    auto n200_list = config_pt.get_child("n200s");
+    auto count = 0;
+    for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
+    {
+        // Start iterator on first item (addr)
+        auto iter = n200->second.begin();
+        // Get n200 address
+        auto addr = iter->second.data();
+        // Move to next item (isActivated)
+        iter++;
+        auto isActivated = iter->second.data();
+        // If current n200 is activated, add to devices
+        if (isActivated.compare("true") == 0)
+        {
+            devices_ = devices_ + ",addr" + std::to_string(count) + "=" + addr;
+            count++;
+        }
+    }
+    std::cout << devices_ << std::endl;
+
     clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
     /*Remove whitespace/new lines from device list*/
     boost::remove_erase_if (devices_, boost::is_any_of(" \n\f\t\v"));
@@ -66,9 +87,9 @@ DriverOptions::DriverOptions() {
     agc_signal_read_delay_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("agc_signal_read_delay"));
     main_antenna_count_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("main_antenna_count"));
+                                config_pt.get<std::string>("main_antenna_count"));          // TODO
     interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("interferometer_antenna_count"));
+                                config_pt.get<std::string>("interferometer_antenna_count"));// TODO
 
     auto make_channels = [&](std::string chs){
 
@@ -84,11 +105,11 @@ DriverOptions::DriverOptions() {
         return channels;
     };
 
-    auto ma_recv_str = config_pt.get<std::string>("main_antenna_usrp_rx_channels");
-    auto ia_recv_str = config_pt.get<std::string>("interferometer_antenna_usrp_rx_channels");
+    auto ma_recv_str = config_pt.get<std::string>("main_antenna_usrp_rx_channels");             // TODO
+    auto ia_recv_str = config_pt.get<std::string>("interferometer_antenna_usrp_rx_channels");   // TODO
     auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
-    auto ma_tx_str = config_pt.get<std::string>("main_antenna_usrp_tx_channels");
+    auto ma_tx_str = config_pt.get<std::string>("main_antenna_usrp_tx_channels");               // TODO
 
     receive_channels_ = make_channels(total_recv_chs_str);
     transmit_channels_ = make_channels(ma_tx_str);
