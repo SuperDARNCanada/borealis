@@ -16,7 +16,7 @@
 DriverOptions::DriverOptions() {
     Options::parse_config_file();
 
-    devices_ = config_pt.get<std::string>("device_options");                   //TODO
+    devices_ = config_pt.get<std::string>("device_options");
     
     auto n200_list = config_pt.get_child("n200s");
     auto count = 0;
@@ -36,7 +36,7 @@ DriverOptions::DriverOptions() {
             count++;
         }
     }
-    std::cout << devices_ << std::endl;
+    // std::cout << devices_ << std::endl;
 
     clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
     /*Remove whitespace/new lines from device list*/
@@ -87,9 +87,9 @@ DriverOptions::DriverOptions() {
     agc_signal_read_delay_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("agc_signal_read_delay"));
     main_antenna_count_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("main_antenna_count"));          // TODO
+                                config_pt.get<std::string>("main_antenna_count"));
     interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("interferometer_antenna_count"));// TODO
+                                config_pt.get<std::string>("interferometer_antenna_count"));
 
     auto make_channels = [&](std::string chs){
 
@@ -105,11 +105,34 @@ DriverOptions::DriverOptions() {
         return channels;
     };
 
-    auto ma_recv_str = config_pt.get<std::string>("main_antenna_usrp_rx_channels");             // TODO
-    auto ia_recv_str = config_pt.get<std::string>("interferometer_antenna_usrp_rx_channels");   // TODO
-    auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
+    std::string ma_recv_str = "";
+    std::string ma_tx_str = "";
+    for (auto i = 0; i < main_antenna_count_; i++){
+        // Main_antenna_usrp_rx_channels
+        ma_recv_str = ma_recv_str + std::to_string(i*2);
+        // Main_antenna_usrp_tx_channels
+        ma_tx_str = ma_tx_str + std::to_string(i);
+        
+        if (i < main_antenna_count_ - 1){
+            ma_recv_str = ma_recv_str + ",";
+            ma_tx_str = ma_tx_str + ",";
+        }
+    }
+    // std::cout << ma_recv_str << std::endl;
+    // std::cout << ma_tx_str << std:: endl;
 
-    auto ma_tx_str = config_pt.get<std::string>("main_antenna_usrp_tx_channels");               // TODO
+    std::string ia_recv_str = "";
+    for (auto i = 0; i < interferometer_antenna_count_; i++){
+        // Interferometer_antenna_usrp_rx_channels
+        ia_recv_str = ia_recv_str + std::to_string(i*2 + 1);
+
+        if (i < interferometer_antenna_count_ - 1){
+            ia_recv_str = ia_recv_str + ",";
+        }
+    }
+    // std::cout << ia_recv_str << std:: endl;
+
+    auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
     receive_channels_ = make_channels(total_recv_chs_str);
     transmit_channels_ = make_channels(ma_tx_str);
