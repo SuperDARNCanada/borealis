@@ -274,15 +274,21 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
     auto time_now = borealis_clocks.box_time;
     // Earliest possible time to start sending samples
-    auto min_start_time = time_now + delay;
+    auto sequence_start_time = time_now + delay;
+
     // Get the digit of the next tenth of a second after min_start_time
-    auto tenth_of_second = std::ceil(min_start_time.get_frac_secs() * 10) / 10;
+    double tenth_of_second = std::ceil(sequence_start_time.get_frac_secs() * 10);
+    double fractional_second = tenth_of_second / 10;
+    // this occurs if the current time is 0.9+ seconds, so the rounding takes it up to 1.0 seconds.
+    if (fractional_second >= 0.95) {
+      fractional_second = 0.0;
+    }
 
     // Start the sequence at the next tenth of a second.
-    if (tenth_of_second < 0.1) {
-      auto sequence_start_time = uhd::time_spec_t(min_start_time.get_full_secs()+1, tenth_of_second);
+    if (fractional_second < 0.05) {
+      sequence_start_time = uhd::time_spec_t(sequence_start_time.get_full_secs()+1, fractional_second);
     } else {
-      auto sequence_start_time = uhd::time_spec_t(min_start_time.get_full_secs(), tenth_of_second);
+      sequence_start_time = uhd::time_spec_t(sequence_start_time.get_full_secs(), fractional_second);
     }
 
     auto seqn_sampling_time = num_recv_samples/rx_rate;
@@ -471,6 +477,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream();
 
   auto usrp_buffer_size = rx_stream->get_max_num_samps();
+
   /* The ringbuffer_size is calculated this way because it's first truncated (size_t)
      then rescaled by usrp_buffer_size */
   size_t ringbuffer_size = size_t(driver_options.get_ringbuffer_size()/
