@@ -276,19 +276,21 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     // Earliest possible time to start sending samples
     auto sequence_start_time = time_now + delay;
 
-    // Get the digit of the next tenth of a second after min_start_time
-    double tenth_of_second = std::ceil(sequence_start_time.get_frac_secs() * 10);
-    double fractional_second = tenth_of_second / 10;
-    // this occurs if the current time is 0.9+ seconds, so the rounding takes it up to 1.0 seconds.
-    if (fractional_second >= 0.95) {
-      fractional_second = 0.0;
-    }
+    if (driver_packet.align_sequences == true) {
+      // Get the digit of the next tenth of a second after min_start_time
+      double tenth_of_second = std::ceil(sequence_start_time.get_frac_secs() * 10);
+      double fractional_second = tenth_of_second / 10;
+      // this occurs if the current time is 0.9+ seconds, so the rounding takes it up to 1.0 seconds.
+      if (fractional_second >= 0.95) {
+        fractional_second = 0.0;
+      }
 
-    // Start the sequence at the next tenth of a second.
-    if (fractional_second < 0.05) {
-      sequence_start_time = uhd::time_spec_t(sequence_start_time.get_full_secs()+1, fractional_second);
-    } else {
-      sequence_start_time = uhd::time_spec_t(sequence_start_time.get_full_secs(), fractional_second);
+      // Start the sequence at the next tenth of a second.
+      if (fractional_second < 0.05) {
+        sequence_start_time = uhd::time_spec_t(sequence_start_time.get_full_secs()+1, fractional_second);
+      } else {
+        sequence_start_time = uhd::time_spec_t(sequence_start_time.get_full_secs(), fractional_second);
+      }
     }
 
     auto seqn_sampling_time = num_recv_samples/rx_rate;
