@@ -400,6 +400,10 @@ class Sequence(ScanClassBase):
 
         self.blanks = self.find_blanks()
 
+        self.align_sequences = False
+        for _, slice_obj in self.slice_dict.items():
+            self.align_sequences = self.align_sequences or slice_obj['align_sequences']
+
     def make_sequence(self, beam_iter, sequence_num):
         """
         Create the samples needed for each pulse in the sequence. This function is optimized to

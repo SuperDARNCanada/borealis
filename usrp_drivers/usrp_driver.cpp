@@ -276,7 +276,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     // Earliest possible time to start sending samples
     auto sequence_start_time = time_now + delay;
 
-    if (driver_packet.align_sequences == true) {
+    if (driver_packet.align_sequences() == true) {
       // Get the digit of the next tenth of a second after min_start_time
       double tenth_of_second = std::ceil(sequence_start_time.get_frac_secs() * 10);
       double fractional_second = tenth_of_second / 10;
