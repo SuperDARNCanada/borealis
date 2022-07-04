@@ -24,55 +24,84 @@ DriverOptions::DriverOptions() {
     devices_ = config_pt.get<std::string>("device_options");
     
     auto n200_list = config_pt.get_child("n200s");
-    auto n200_counter = 0;
-    auto int_counter = 0;
-    std::string ma_recv_str = "";
-    std::string ma_tx_str = "";
-    std::string ia_recv_str = "";
+    // auto n200_counter = 0;
+    std::string main_ant_sorted [main_antenna_count_];  // N200 IP addr sorted by antenna number
+    bool int_ant_sorted [main_antenna_count_];   // Array of flags stating if n200 has int antenna
+
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
     {
         // Start iterator on first item (addr)
         auto iter = n200->second.begin();
+
         // Get n200 address
         auto addr = iter->second.data();
-        // Move to next item (isActivated)
+
+        // Get isActivated flag
         iter++;
         auto isActivated = iter->second.data();
-        // If current n200 is activated, add to devices
+
+        // If current n200 is activated, add to devices. If not, skip
+        // TODO : Parse json string into a bool instead of string
         if (isActivated.compare("true") == 0)
         {
-            devices_ = devices_ + ",addr" + std::to_string(n200_counter) + "=" + addr;
+            // devices_ = devices_ + ",addr" + std::to_string(n200_counter) + "=" + addr;
 
-            // Main_antenna_usrp_rx_channels
-            ma_recv_str = ma_recv_str + std::to_string(n200_counter*2);
-            // Main_antenna_usrp_tx_channels
-            ma_tx_str = ma_tx_str + std::to_string(n200_counter);
+            // Get antenna connected to current N200
+            iter++; 
+            auto main_antenna_num = boost::lexical_cast<uint32_t>(iter->second.data());
             
-            if (n200_counter < main_antenna_count_ - 1){
-                ma_recv_str = ma_recv_str + ",";
-                ma_tx_str = ma_tx_str + ",";
-            }
-            
-            iter++; iter++;  // Move to interferometer antenna
+            // Create a sorted array of all N200s by storing each address in the
+            // corresponding index
+            main_ant_sorted[main_antenna_num] = addr;
+
+            // Get interferometer antenna connected to current N200
+            iter++;
             auto int_antenna = iter->second.data();
-            if (int_antenna.compare("") != 0)
-            {
-                // Interferometer_antenna_usrp_rx_channels
-                ia_recv_str = ia_recv_str + std::to_string(n200_counter*2 + 1);
 
-                if (int_counter < interferometer_antenna_count_ - 1){
-                    ia_recv_str = ia_recv_str + ",";
-                }
-                int_counter++;
+            // If N200 has interferometer, set flag at current antenna index
+            if (int_antenna.compare("") != 0) {
+                int_ant_sorted[main_antenna_num] = true;
+            }
+            else {
+                int_ant_sorted[main_antenna_num] = false;
             }
 
-            n200_counter++;
+            // n200_counter++;
         }
     }
-    // std::cout << devices_ << std::endl;
-    // std::cout << ma_recv_str << std::endl;
-    // std::cout << ma_tx_str << std:: endl;
-    // std::cout << ia_recv_str << std:: endl;
+
+    // Loop through sorted list of N200 addresses and create devices_ & channels strings
+    auto int_counter = 0;
+    std::string ma_recv_str = "";
+    std::string ma_tx_str = "";
+    std::string ia_recv_str = "";
+    for (auto i = 0; i < main_antenna_count_; i++) {
+        devices_ = devices_ + ",addr" + std::to_string(i) + "=" + main_ant_sorted[i];
+
+        // Main antenna
+        ma_recv_str = ma_recv_str + std::to_string(i*2);    // Receive
+        ma_tx_str = ma_tx_str + std::to_string(i);          // Transmit
+        if (i < main_antenna_count_ - 1) {
+            ma_recv_str = ma_recv_str + ",";
+            ma_tx_str = ma_tx_str + ",";
+        }
+
+        // Interferometer antenna
+        if (int_ant_sorted[i]) {
+            ia_recv_str = ia_recv_str + std::to_string(2*i + 1);
+            if (int_counter < interferometer_antenna_count_ - 1) {
+                ia_recv_str = ia_recv_str + ",";
+            }
+            int_counter++;
+        }
+    }
+
+
+    std::cout << devices_ << std::endl;
+    std::cout << ma_recv_str << std::endl;
+    std::cout << ma_tx_str << std:: endl;
+    std::cout << ia_recv_str << std:: endl;
+
 
     auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
