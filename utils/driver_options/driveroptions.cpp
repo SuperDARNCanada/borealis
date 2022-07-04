@@ -24,7 +24,7 @@ DriverOptions::DriverOptions() {
     devices_ = config_pt.get<std::string>("device_options");
     
     auto n200_list = config_pt.get_child("n200s");
-    // auto n200_counter = 0;
+    auto n200_counter = 0;
     std::string main_ant_sorted [main_antenna_count_];  // N200 IP addr sorted by antenna number
     bool int_ant_sorted [main_antenna_count_];   // Array of flags stating if n200 has int antenna
 
@@ -41,7 +41,6 @@ DriverOptions::DriverOptions() {
         auto isActivated = iter->second.data();
 
         // If current n200 is activated, add to devices. If not, skip
-        // TODO : Parse json string into a bool instead of string
         if (isActivated.compare("true") == 0)
         {
             // devices_ = devices_ + ",addr" + std::to_string(n200_counter) + "=" + addr;
@@ -50,9 +49,16 @@ DriverOptions::DriverOptions() {
             iter++; 
             auto main_antenna_num = boost::lexical_cast<uint32_t>(iter->second.data());
             
-            // Create a sorted array of all N200s by storing each address in the
-            // corresponding index
-            main_ant_sorted[main_antenna_num] = addr;
+            // Create a sorted array of all N200s by storing each address in the corresponding index
+            if (main_ant_sorted[main_antenna_num].compare("") != 0) {
+                throw std::invalid_argument("Antenna " + std::to_string(main_antenna_num) + " assigned to multiple N200s");
+            }
+            else if (main_antenna_num < 0 || main_antenna_num >= main_antenna_count_) {
+                throw std::invalid_argument("Main antenna number invalid");
+            }
+            else {
+                main_ant_sorted[main_antenna_num] = addr;
+            }
 
             // Get interferometer antenna connected to current N200
             iter++;
@@ -66,8 +72,14 @@ DriverOptions::DriverOptions() {
                 int_ant_sorted[main_antenna_num] = false;
             }
 
-            // n200_counter++;
+            n200_counter++;
         }
+    }
+
+    // Check number of activated N200s is valid
+    if (n200_counter != main_antenna_count_) {
+        throw std::invalid_argument("Invalid number of activated N200s. Expected "
+                         + std::to_string(main_antenna_count_) + ", got " + std::to_string(n200_counter));
     }
 
     // Loop through sorted list of N200 addresses and create devices_ & channels strings
@@ -97,10 +109,10 @@ DriverOptions::DriverOptions() {
     }
 
 
-    std::cout << devices_ << std::endl;
-    std::cout << ma_recv_str << std::endl;
-    std::cout << ma_tx_str << std:: endl;
-    std::cout << ia_recv_str << std:: endl;
+    // std::cout << devices_ << std::endl;
+    // std::cout << ma_recv_str << std::endl;
+    // std::cout << ma_tx_str << std:: endl;
+    // std::cout << ia_recv_str << std:: endl;
 
 
     auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
