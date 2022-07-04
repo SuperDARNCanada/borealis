@@ -16,10 +16,19 @@
 DriverOptions::DriverOptions() {
     Options::parse_config_file();
 
+    main_antenna_count_ = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("main_antenna_count"));
+    interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("interferometer_antenna_count"));
+
     devices_ = config_pt.get<std::string>("device_options");
     
     auto n200_list = config_pt.get_child("n200s");
-    auto count = 0;
+    auto n200_counter = 0;
+    auto int_counter = 0;
+    std::string ma_recv_str = "";
+    std::string ma_tx_str = "";
+    std::string ia_recv_str = "";
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
     {
         // Start iterator on first item (addr)
@@ -32,11 +41,40 @@ DriverOptions::DriverOptions() {
         // If current n200 is activated, add to devices
         if (isActivated.compare("true") == 0)
         {
-            devices_ = devices_ + ",addr" + std::to_string(count) + "=" + addr;
-            count++;
+            devices_ = devices_ + ",addr" + std::to_string(n200_counter) + "=" + addr;
+
+            // Main_antenna_usrp_rx_channels
+            ma_recv_str = ma_recv_str + std::to_string(n200_counter*2);
+            // Main_antenna_usrp_tx_channels
+            ma_tx_str = ma_tx_str + std::to_string(n200_counter);
+            
+            if (n200_counter < main_antenna_count_ - 1){
+                ma_recv_str = ma_recv_str + ",";
+                ma_tx_str = ma_tx_str + ",";
+            }
+            
+            iter++; iter++;  // Move to interferometer antenna
+            auto int_antenna = iter->second.data();
+            if (int_antenna.compare("") != 0)
+            {
+                // Interferometer_antenna_usrp_rx_channels
+                ia_recv_str = ia_recv_str + std::to_string(n200_counter*2 + 1);
+
+                if (int_counter < interferometer_antenna_count_ - 1){
+                    ia_recv_str = ia_recv_str + ",";
+                }
+                int_counter++;
+            }
+
+            n200_counter++;
         }
     }
     // std::cout << devices_ << std::endl;
+    // std::cout << ma_recv_str << std::endl;
+    // std::cout << ma_tx_str << std:: endl;
+    // std::cout << ia_recv_str << std:: endl;
+
+    auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
     clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
     /*Remove whitespace/new lines from device list*/
@@ -86,10 +124,6 @@ DriverOptions::DriverOptions() {
                                 config_pt.get<std::string>("tr_window_time"));
     agc_signal_read_delay_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("agc_signal_read_delay"));
-    main_antenna_count_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("main_antenna_count"));
-    interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("interferometer_antenna_count"));
 
     auto make_channels = [&](std::string chs){
 
@@ -104,35 +138,6 @@ DriverOptions::DriverOptions() {
 
         return channels;
     };
-
-    std::string ma_recv_str = "";
-    std::string ma_tx_str = "";
-    for (auto i = 0; i < main_antenna_count_; i++){
-        // Main_antenna_usrp_rx_channels
-        ma_recv_str = ma_recv_str + std::to_string(i*2);
-        // Main_antenna_usrp_tx_channels
-        ma_tx_str = ma_tx_str + std::to_string(i);
-        
-        if (i < main_antenna_count_ - 1){
-            ma_recv_str = ma_recv_str + ",";
-            ma_tx_str = ma_tx_str + ",";
-        }
-    }
-    // std::cout << ma_recv_str << std::endl;
-    // std::cout << ma_tx_str << std:: endl;
-
-    std::string ia_recv_str = "";
-    for (auto i = 0; i < interferometer_antenna_count_; i++){
-        // Interferometer_antenna_usrp_rx_channels
-        ia_recv_str = ia_recv_str + std::to_string(i*2 + 1);
-
-        if (i < interferometer_antenna_count_ - 1){
-            ia_recv_str = ia_recv_str + ",";
-        }
-    }
-    // std::cout << ia_recv_str << std:: endl;
-
-    auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
     receive_channels_ = make_channels(total_recv_chs_str);
     transmit_channels_ = make_channels(ma_tx_str);
