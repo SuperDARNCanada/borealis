@@ -28,6 +28,7 @@ DriverOptions::DriverOptions() {
     std::string main_ant_sorted [main_antenna_count_];  // N200 IP addr sorted by antenna number
     bool int_ant_sorted [main_antenna_count_];   // Array of flags stating if n200 has int antenna
 
+    // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
     {
         // Start iterator on first item (addr)
@@ -43,8 +44,6 @@ DriverOptions::DriverOptions() {
         // If current n200 is activated, add to devices. If not, skip
         if (isActivated.compare("true") == 0)
         {
-            // devices_ = devices_ + ",addr" + std::to_string(n200_counter) + "=" + addr;
-
             // Get antenna connected to current N200
             iter++; 
             auto main_antenna_num = boost::lexical_cast<uint32_t>(iter->second.data());
@@ -108,18 +107,12 @@ DriverOptions::DriverOptions() {
         }
     }
 
-
-    // std::cout << devices_ << std::endl;
-    // std::cout << ma_recv_str << std::endl;
-    // std::cout << ma_tx_str << std:: endl;
-    // std::cout << ia_recv_str << std:: endl;
-
+    /*Remove whitespace/new lines from device list*/
+    boost::remove_erase_if (devices_, boost::is_any_of(" \n\f\t\v"));
 
     auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
     clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
-    /*Remove whitespace/new lines from device list*/
-    boost::remove_erase_if (devices_, boost::is_any_of(" \n\f\t\v"));
 
     tx_subdev_ = config_pt.get<std::string>("tx_subdev");
     main_rx_subdev_ = config_pt.get<std::string>("main_rx_subdev");
