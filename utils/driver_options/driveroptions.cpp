@@ -25,11 +25,11 @@ DriverOptions::DriverOptions() {
     
     auto n200_list = config_pt.get_child("n200s");
     auto n200_counter = 0;
-    std::string devices_sorted [main_antenna_count_ + interferometer_antenna_count_];  // N200 IP addr sorted by antenna number
+    std::string devices_sorted [main_antenna_count_];  // N200 IP addr sorted by antenna number
     bool rx_sorted [main_antenna_count_];
     bool tx_sorted [main_antenna_count_];
     uint32_t int_antenna_sorted [interferometer_antenna_count_];   // Contains index of N200s with interferometers, sorted by intf number
-    auto intf_counter = 0;      // Counter for number of N200s connected to only interferometers
+    bool rx_int_sorted [interferometer_antenna_count_] = { false };
 
     // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
@@ -45,54 +45,47 @@ DriverOptions::DriverOptions() {
         bool rx = (iter->second.data().compare("true") == 0);
         iter++;
         bool tx = (iter->second.data().compare("true") == 0);
-
-        // Get device number. Main array comes first, sorted by main antenna number, then the devices connected
-        // only to an interferometer are added last. 
-        iter++; 
-        uint32_t device_num;
-        try {
-            device_num = boost::lexical_cast<uint32_t>(iter->second.data());
-        } catch(boost::bad_lexical_cast e) {
-            device_num = main_antenna_count_ + intf_counter;    // No antenna specified (read empty string)
-            intf_counter++;
-        }
-
-        // Get interferometer antenna connected to current N200
         iter++;
-        bool rx_int = (iter->second.data().compare("") != 0);
-
+        bool rx_int = (iter->second.data().compare("true") == 0);
 
         // If current n200 is transmitting, receiving, or receiving from interferometer, add to devices
         if (tx || rx || rx_int)
         {
+            // Get device number. Main array comes first, sorted by main antenna number, then the devices connected
+            // only to an interferometer are added last. 
+            iter++; 
+            auto device_num = boost::lexical_cast<uint32_t>(iter->second.data());
+
+            // Get interferometer antenna connected to current N200
+            iter++;
+            bool int_connected = (iter->second.data().compare("") != 0);
+
+
+            // // Create a sorted array of all N200s by storing each address, rx flag, and tx flag in the corresponding index
+            // if (devices_sorted[device_num].compare("") != 0) {
+            //     throw std::invalid_argument("Antenna " + std::to_string(device_num) + " assigned to multiple N200s");
+            // }
+            // else if (device_num < 0 || device_num >= main_antenna_count_ + interferometer_antenna_count_) {
+            //     throw std::invalid_argument("Device number invalid");
+            // }
+            // else {
+            devices_sorted[device_num] = addr;
+            tx_sorted[device_num] = tx;
+            rx_sorted[device_num] = rx;
             
-            // Create a sorted array of all N200s by storing each address, rx flag, and tx flag in the corresponding index
-            if (devices_sorted[device_num].compare("") != 0) {
-                throw std::invalid_argument("Antenna " + std::to_string(device_num) + " assigned to multiple N200s");
-            }
-            else if (device_num < 0 || device_num >= main_antenna_count_ + interferometer_antenna_count_) {
-                throw std::invalid_argument("Device number invalid");
-            }
-            else {
-                devices_sorted[device_num] = addr;
-                if (device_num < main_antenna_count_) {
-                    tx_sorted[device_num] = tx;
-                    rx_sorted[device_num] = rx;
-                }
-            }
+            // }
 
             // If N200 has interferometer, store device number in order by interferometer number
             if (rx_int) {
                 auto int_antenna_num = boost::lexical_cast<uint32_t>(iter->second.data());
                 int_antenna_sorted[int_antenna_num] = device_num;
+                rx_int_sorted[int_antenna_num] = true;
                 // std::cout << "int_antenna_sorted[" << int_antenna_num << "] = " << int_antenna_sorted[int_antenna_num] << std::endl;
             }
 
             // n200_counter++;
         }
     }
-
-    std::cout << int_antenna_sorted[4] << std::endl;
 
     // // Check number of activated N200s is valid
     // if (n200_counter != main_antenna_count_) {
@@ -101,14 +94,10 @@ DriverOptions::DriverOptions() {
     // }
 
     // Loop through sorted list of N200s and create devices_ string
-    for (auto i = 0; i < main_antenna_count_ + intf_counter; i++) {
-        devices_ = devices_ + ",addr" + std::to_string(i) + "=" + devices_sorted[i];
-    }
-
-    // Loop through main antennas and create channel string
     std::string ma_recv_str = "";
     std::string ma_tx_str = "";
-    for (auto i = 0; i < main_antenna_count_; i++) {    
+    for (auto i = 0; i < main_antenna_count_; i++) {
+        devices_ = devices_ + ",addr" + std::to_string(i) + "=" + devices_sorted[i];
         if (rx_sorted[i]) {
             ma_recv_str = ma_recv_str + std::to_string(i*2) + ",";    // Receive
         }
@@ -120,9 +109,11 @@ DriverOptions::DriverOptions() {
     // Interferometer antenna
     std::string ia_recv_str = "";
     for (auto i = 0; i < interferometer_antenna_count_; i++) {
-        std::cout << "int_antenna_sorted[" << i << "] = " << int_antenna_sorted[i] << std::endl;
+        // std::cout << "int_antenna_sorted[" << i << "] = " << int_antenna_sorted[i] << std::endl;
         // std::cout << int_antenna_sorted[i] << std::endl;
-        ia_recv_str = ia_recv_str + std::to_string(2*int_antenna_sorted[i] + 1) + ",";
+        if (rx_int_sorted[i]) {
+            ia_recv_str = ia_recv_str + std::to_string(2*int_antenna_sorted[i] + 1) + ",";
+        }
     }
     // Remove trailing comma
     ma_recv_str.pop_back();
