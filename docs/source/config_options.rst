@@ -195,6 +195,8 @@ Config Parameters
 +--------------------------------+---------------------------+--------------------------------------+
 | data_directory                 | /data/borealis_data       | Location of output data files.       |
 +--------------------------------+---------------------------+--------------------------------------+
+| log_directory                  | /data/borealis_logs       | Location of output log files         |
++--------------------------------+---------------------------+--------------------------------------+
 
 **********************
 Example configurations
@@ -269,7 +271,7 @@ There are several instances when you'll need to modify this file for correct ope
 
     This can be done by changing the following parameters:
 
-#. `devices` - Should only have one address (addr0=192.168.10.xxx)
+    #. `devices` - Should only have one address (addr0=192.168.10.xxx)
 
     #. `main_antenna_count` - If you only have one N200, this should be set to 1, as there is only one transmit channel per N200.
 
