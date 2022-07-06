@@ -416,7 +416,7 @@ def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_ide
                 beam_add = messages.Beam(sequence.slice_dict[slice_id]['beam_angle'][beam], beam)
                 rxchannel.add_beam(beam_add)
 
-            rxchannel.first_range = sequence.slice_dict[slice_id]['first_range']
+            rxchannel.first_range = float(sequence.slice_dict[slice_id]['first_range'])
             rxchannel.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
             rxchannel.range_sep = sequence.slice_dict[slice_id]['range_sep']
 

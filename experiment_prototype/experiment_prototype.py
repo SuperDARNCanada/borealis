@@ -1262,8 +1262,11 @@ class ExperimentPrototype(object):
             errmsg = "Slice must specify num_ranges that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
-        if 'first_range' not in exp_slice.keys() or not isinstance(exp_slice['first_range'], int):
-            errmsg = "Slice must specify first_range in km that must be an integer"
+        if 'first_range' not in exp_slice.keys():
+            errmsg = "Slice must specify first_range in km that must be a number"
+            raise ExperimentException(errmsg, exp_slice)
+        if not isinstance(exp_slice['first_range'], float) and not isinstance(exp_slice['first_range'], int):
+            errmsg = "Slice must specify first_range in km that must be a number"
             raise ExperimentException(errmsg, exp_slice)
 
         if 'intt' not in exp_slice.keys():

@@ -180,7 +180,7 @@ class RxChannelMetadata:
     rx_main_antennas: list[int] = field(default_factory=list)
     rx_intf_antennas: list[int] = field(default_factory=list)
     beams: list[Beam] = field(default_factory=list)
-    first_range: int = None
+    first_range: float = None
     num_ranges: int = None
     range_sep: int = None
     acf: bool = None
@@ -219,7 +219,7 @@ class TxData:
     """Defines a tx_data structure for inclusion in a Sequence dataclass"""
     tx_rate: float = None
     tx_ctr_freq: float = None
-    pulse_timing_us: float = None
+    pulse_timing_us: int = None
     pulse_sample_start: int = None
     tx_samples: np.ndarray = None   # [num_antennas, num_samples]
     dm_rate: int = None
@@ -261,8 +261,6 @@ class AveperiodMetadataMessage:
     data_normalization_factor: float = None
     scheduling_mode: str = None
     sequences: list = field(default_factory=list)
-
-    sequence_allowed_types = {'blanks': list, 'tx_data': dict, 'rx_channels': list}
 
     def remove_all_sequences(self):
         """Remove all sequence entries so the list can be refilled for the next averaging period."""
