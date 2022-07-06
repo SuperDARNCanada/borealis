@@ -99,6 +99,7 @@ testing_archive.test_scanbound_negative::Slice .* scanbound times must be non-ne
 testing_archive.test_scanbound_not_increasing::Slice .* scanbound times must be increasing
 testing_archive.test_intt_longer_than_scanbound::Slice .* intt .*ms longer than scanbound time .*s
 testing_archive.test_intt_longer_than_scanbounds::Slice .* intt .*ms longer than one of the scanbound times
+testing_archive.test_wait_for_first_scanbound_type::Slice .* wait_for_first_scanbound must be True or False, got .* instead 
 
 ##### I'm not sure how to test the following 1 test right now #####
 #testing_archive.test_beam_order_too_long::Slice .* beam order too long for scanbound

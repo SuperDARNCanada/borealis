@@ -1956,7 +1956,13 @@ class ExperimentPrototype(object):
                                               "scanbound times".format(exp_slice['slice_id'],
                                                                        exp_slice['intt']))
                             break
-
+        
+        # Check wait_for_first_scanbound
+        if type(exp_slice['wait_for_first_scanbound']) is not bool:
+            error_list.append("Slice {} wait_for_first_scanbound must be True or False, got {} "
+                                                "instead".format(exp_slice['slice_id'],
+                                                                 exp_slice['wait_for_first_scanbound']))
+        
         # TODO other checks
 
         return error_list
