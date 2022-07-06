@@ -79,9 +79,9 @@ class DSP(object):
 
         # Move the antennas_iq samples to the CPU for beamforming
         if cupy_available:
-            self.antennas_iq_samples = xp.asnumpy(self.antennas_iq_samples)
+            self.antennas_iq_samples[...] = xp.asnumpy(antennas_iq_samples)[...]
         else:
-            self.antennas_iq_samples = antennas_iq_samples
+            self.antennas_iq_samples[...] = antennas_iq_samples[...]
         self.shared_mem['antennas_iq'] = ant_shm
 
         self.beamform_samples(self.antennas_iq_samples, beam_phases)
