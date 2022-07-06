@@ -217,7 +217,7 @@ class ParseData(object):
     def parse_bfiq(self):
         """
         Parses out any possible beamformed IQ data from the message. Runs on every processeddata
-        packet(contains all sampling period data). All variables are captured from outer scope.
+        message (contains all sampling period data). All variables are captured from outer scope.
 
         """
 
