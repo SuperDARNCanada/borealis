@@ -26,13 +26,13 @@ DriverOptions::DriverOptions() {
     
     auto n200_list = config_pt.get_child("n200s");
     // These maps are sorted by their keys (device number / int antenna number)
-    std::map<uint32_t, std::string> devices_map; // Maps device number to IP address
-    std::map<uint32_t, bool> rx_map;             // Maps device number to rx flag
-    std::map<uint32_t, bool> tx_map;             // Maps device number to tx flag
-    std::map<uint32_t, uint32_t> int_antenna_map;// Maps interferometer antenna number to device number
+    std::map<uint32_t, std::string> devices_map;    // Maps device number to IP address
+    std::map<uint32_t, bool> rx_map;                // Maps device number to rx flag
+    std::map<uint32_t, bool> tx_map;                // Maps device number to tx flag
+    std::map<uint32_t, uint32_t> int_antenna_map;   // Maps interferometer antenna number to device number
 
-    auto main_ant_counter = 0;
-    auto int_ant_counter = 0;
+    auto main_antenna_counter = 0;
+    auto int_antenna_counter = 0;
 
     // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
@@ -67,27 +67,26 @@ DriverOptions::DriverOptions() {
             if (rx_int) {
                 auto int_antenna_num = boost::lexical_cast<uint32_t>(iter->second.data());
                 int_antenna_map[int_antenna_num] = device_num;
-                int_ant_counter++;
+                int_antenna_counter++;
             }
             if (tx || rx) {
-                main_ant_counter++;
+                main_antenna_counter++;
             }
         }
     }
 
     // Check that main_antenna_count_ and interferometer_antenna_count_ 
     // are consistent with how many N200 channels are active
-    if (main_antenna_count_ != main_ant_counter) {
+    if (main_antenna_count_ != main_antenna_counter) {
         auto err_msg = "Specified main_antenna_count_ = " + std::to_string(main_antenna_count_)
-                         + " but found " + std::to_string(main_ant_counter) + " N200s configured.";
+                         + " but found " + std::to_string(main_antenna_counter) + " N200s configured.";
         throw std::invalid_argument(err_msg);
     }
-    if (interferometer_antenna_count_ != int_ant_counter) {
+    if (interferometer_antenna_count_ != int_antenna_counter) {
         auto err_msg = "Specified interferometer_antenna_count_ = " + std::to_string(interferometer_antenna_count_)
-                         + " but found " + std::to_string(int_ant_counter) + " N200s configured.";
+                         + " but found " + std::to_string(int_antenna_counter) + " N200s configured.";
         throw std::invalid_argument(err_msg);
     }
-
 
     // To ensure device numbers follow UHD conventions (0 to N in steps of 1),
     // the addr_idx must be mapped to the device number to get the correct
@@ -123,11 +122,6 @@ DriverOptions::DriverOptions() {
     ma_recv_str.pop_back();
     ma_tx_str.pop_back();
     ia_recv_str.pop_back();
-
-    // std::cout << devices_ << std::endl;
-    // std::cout << ma_recv_str << std::endl;
-    // std::cout << ma_tx_str << std::endl;
-    // std::cout << ia_recv_str << std::endl;
 
     auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
