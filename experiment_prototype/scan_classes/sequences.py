@@ -129,27 +129,27 @@ class Sequence(ScanClassBase):
 
                 if exp_slice['tx_antenna_pattern'] is not None:
                     # Returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
-                    main_phase_shift = exp_slice['tx_antenna_pattern'](freq_khz, main_antenna_count, main_antenna_spacing)
+                    tx_main_phase_shift = exp_slice['tx_antenna_pattern'](freq_khz, main_antenna_count, main_antenna_spacing)
                 else:
-                    main_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, main_antenna_count,
+                    tx_main_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, main_antenna_count,
                                                        main_antenna_spacing)
 
                 # main_phase_shift: [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
-                phased_samps_for_beams = np.einsum('ij,k->ijk', main_phase_shift, basic_samples)
+                phased_samps_for_beams = np.einsum('ij,k->ijk', tx_main_phase_shift, basic_samples)
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
                 self.basic_slice_pulses[slice_id] = []
-            print("Main Phases: {}".format(main_phase_shift))
+            print("Main Phases: {}".format(tx_main_phase_shift))
             
             # Now we set up the phases for receive side
-            main_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, main_antenna_count,
-                                               main_antenna_spacing)
-            intf_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, intf_antenna_count,
-                                               intf_antenna_spacing, intf_offset[0])
+            rx_main_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, main_antenna_count,
+                                                  main_antenna_spacing)
+            rx_intf_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, intf_antenna_count,
+                                                  intf_antenna_spacing, intf_offset[0])
 
-            self.rx_beam_phases[slice_id] = {'main': main_phase_shift, 'intf': intf_phase_shift}
+            self.rx_beam_phases[slice_id] = {'main': rx_main_phase_shift, 'intf': rx_intf_phase_shift}
             
             for pulse_time in exp_slice['pulse_sequence']:
                 pulse_timing_us = pulse_time * exp_slice['tau_spacing'] + exp_slice['seqoffset']

@@ -1303,6 +1303,10 @@ class ExperimentPrototype(object):
             exp_slice['intt'] = float(exp_slice['intt'])
 
         # Check the validity of 'beam_angle' specified
+        if 'beam_angle' not in exp_slice.keys():
+            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or floats) which are angles " \
+                     "of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
         if not isinstance(exp_slice['beam_angle'], list):
             errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or floats) which are angles " \
                      "of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
@@ -1314,6 +1318,10 @@ class ExperimentPrototype(object):
                 raise ExperimentException(errmsg)
 
         # Check the validity of 'rx_beam_order' specified
+        if 'rx_beam_order' not in exp_slice.keys():
+            errmsg = "Slice must specify rx_beam_order that must be a list of ints or lists (of ints)" \
+                     " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+            raise ExperimentException(errmsg)
         if not isinstance(exp_slice['rx_beam_order'], list):
             errmsg = "Slice must specify rx_beam_order that must be a list of ints or lists (of ints)" \
                      " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
@@ -1950,11 +1958,11 @@ class ExperimentPrototype(object):
 
         # Check that the beam numbers in the tx_beam_order exist
         if exp_slice['tx_beam_order']:
+            if exp_slice['tx_antenna_pattern']:
+                num_beams = antenna_pattern.shape[0]
+            else:
+                num_beams = len(exp_slice['beam_angle'])
             for bmnum in exp_slice['tx_beam_order']:
-                if exp_slice['tx_antenna_pattern']:
-                    num_beams = antenna_pattern.shape[0]
-                else:
-                    num_beams = len(exp_slice['beam_angle'])
                 if bmnum >= num_beams:
                     error_list.append("Slice {} scan tx beam number {} DNE".format(
                         exp_slice['slice_id'], bmnum))
