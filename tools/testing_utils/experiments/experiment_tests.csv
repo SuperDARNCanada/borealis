@@ -75,7 +75,7 @@ testing_archive.test_bad_interface::Interface value with slice .* not valid. Typ
 testing_archive.test_bad_slice_id::Cannot add slice: the interfacing_dict set interfacing to an unknown slice .* not in slice ids
 testing_archive.test_bad_interfacing::The interfacing values of new slice cannot be reconciled. Interfacing with slice .* and with slice .* does not make sense with existing interface between slices of .*
 
-# **** The following 29 tests are from ExperimentPrototype class, check_slice() method ****
+# **** The following 30 tests are from ExperimentPrototype class, check_slice() method ****
 testing_archive.test_unused_param::Slice .* has a parameter that is not used: .* = .*
 testing_archive.test_too_many_tx_antennas::Slice .* has too many main TX antenna channels .* greater than config .*
 testing_archive.test_too_many_rx_antennas::Slice .* has too many main RX antenna channels .* greater than config .*
