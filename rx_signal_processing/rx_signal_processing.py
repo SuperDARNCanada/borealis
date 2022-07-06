@@ -99,15 +99,17 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
         main_corrs = data_outputs['main_corrs'][sd['slice_num']]
         output_dataset.main_acf_shm = add_array(main_corrs)
 
+        intf_available = True
         try:
             intf_corrs = data_outputs['intf_corrs'][sd['slice_num']]
-            output_dataset.intf_acf_shm = add_array(intf_corrs)
-
             cross_corrs = data_outputs['cross_corrs'][sd['slice_num']]
-            output_dataset.xcf_shm = add_array(cross_corrs)
-        except:
+        except KeyError as e:
             # No interferometer data
-            pass
+            intf_available = False
+
+        if intf_available:
+            output_dataset.intf_acf_shm = add_array(intf_corrs)
+            output_dataset.xcf_shm = add_array(cross_corrs)
 
         processed_data.add_output_dataset(output_dataset)
 
@@ -380,7 +382,7 @@ def main():
             request = so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, pprint)
             so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
 
-            # Extract outputs from processing into groups that will be put into proto fields.
+            # Extract outputs from processing into groups that will be put into message fields.
             start = time.time()
             data_outputs = {}
             stages = []
@@ -388,7 +390,7 @@ def main():
             def debug_data_in_shm(holder, data_array, array_name):
                 """
                 Adds an array of antennas data (filter outputs or antennas_iq) into a dictionary
-                for later entry in a processed data packet.
+                for later entry in a processed data message.
 
                 :param holder: Dictionary to store the shared memory parameters.
                 :param data_array: cp.ndarray or np.ndarray of the data.
@@ -406,7 +408,7 @@ def main():
                 elif array_name == 'intf':
                     holder.intf_shm = shm.name
                 else:
-                    print("Warning: unknown debug data array {}".format(array_name))
+                    raise RuntimeError("Error: unknown debug data array {}".format(array_name))
 
                 holder.num_samps = data_array.shape[-1]
                 shm.close()
@@ -451,9 +453,11 @@ def main():
                 processed_data.rawrf_num_samps = indices.shape[-1]
                 rawrf_shm.close()
 
-            done_filling_rawrf = time.time()
-            time_filling_rawrf = (done_filling_rawrf - done_filling_debug) * 1000
-            pprint("Time to put rawrf in shared memory for #{}: {}ms".format(sequence_num, time_filling_rawrf))
+                done_filling_rawrf = time.time()
+                time_filling_rawrf = (done_filling_rawrf - done_filling_debug) * 1000
+                pprint("Time to put rawrf in shared memory for #{}: {}ms".format(sequence_num, time_filling_rawrf))
+
+            start_filling_bfiq_time = time.time()
 
             # Add bfiq and correlations data
             beamformed_m = processed_main_samples.beamformed_samples
@@ -476,7 +480,7 @@ def main():
             sqn_message = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
 
             end = time.time()
-            time_for_bfiq_acf = (end - done_filling_rawrf) * 1000
+            time_for_bfiq_acf = (end - start_filling_bfiq_time) * 1000
             pprint("Time to add bfiq and acfs to processeddata message for #{}: {}ms".format(sequence_num, time_for_bfiq_acf))
 
             time_diff = (end - start) * 1000
