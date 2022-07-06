@@ -172,7 +172,7 @@ class ParseData(object):
     def parse_correlations(self):
         """
         Parses out the possible correlation data from the message. Runs on every new processeddata
-        packet(contains all sampling period data). The expectation value is calculated at the end
+        message (contains all sampling period data). The expectation value is calculated at the end
         of a sampling period by a different function.
         """
 
