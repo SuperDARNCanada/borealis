@@ -42,8 +42,17 @@ class SignalProcessingOptions(object):
         self._dw_dsp_identity = raw_config["dw_to_dsp_identity"]
         self._ringbuffer_name = raw_config["ringbuffer_name"]
 
-        self._main_antenna_count = int(raw_config["main_antenna_count"])
-        self._intf_antenna_count = int(raw_config["interferometer_antenna_count"])
+        # Parse N200 array and calculate main and intf antenna count
+        self._main_antenna_count = 0
+        self._intf_antenna_count = 0
+        for n200 in raw_config["n200s"]:
+            rx = bool(n200["rx"])
+            tx = bool(n200["tx"])
+            rx_int = bool(n200["rx_int"])
+            if rx or tx:
+                self._main_antenna_count += 1
+            if rx_int:
+                self._intf_antenna_count += 1
 
 
 
