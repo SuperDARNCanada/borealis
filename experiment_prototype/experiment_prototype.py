@@ -192,11 +192,10 @@ pulse_phase_offset *defaults*
     in this function. The default is None if no function handle is supplied.
 
     encode_fn(beam_iter, sequence_num, num_pulses, num_samples):
-        return np.ones(size=(num_pulses, num_samples))
+        return np.ones(size=(num_pulses))
 
-    The return value must be numpy broadcastable elementwise to an array of num_pulses x num_samples
-    in size.  The result is either a single phase shift for each pulse or a phase shift specified
-    for each sample in the pulses of the slice.
+    The return value must be numpy array of num_pulses in size.
+    The result is a single phase shift for each pulse, in degrees.
 
     Result is expected to be real and in degrees and will be converted to complex radians.
 
@@ -1873,24 +1872,15 @@ class ExperimentPrototype(object):
 
             if not isinstance(phase_encoding, np.ndarray):
                 error_list.append("Slice {} Phase encoding return is not numpy array".format(
-                exp_slice['slice_id']))
+                    exp_slice['slice_id']))
             else:
-                if len(phase_encoding.shape) > 2:
-                    error_list.append("Slice {} Phase encoding return must be 1 or 2 dimensions "\
-                                        " and must be broadcastable to num samples".format(
+                if len(phase_encoding.shape) > 1:
+                    error_list.append("Slice {} Phase encoding return must be 1 dimensional".format(
                                                                             exp_slice['slice_id']))
                 else:
-                    phase_encoding = phase_encoding.reshape((phase_encoding.shape[0],-1))
-
                     if phase_encoding.shape[0] != num_pulses:
-                        error_list.append("Slice {} Phase encoding return 1st dimension must be "\
-                                            "equal to number of pulses".format(
-                                                                            exp_slice['slice_id']))
-
-                    if not (phase_encoding.shape[1] == 1 or phase_encoding.shape[1] == num_samps):
-                        error_list.append("Slice {} Phase encoding return 2nd dimension must be "\
-                                            "broadcastable to number of samples".format(
-                                                                            exp_slice['slice_id']))
+                        error_list.append("Slice {} Phase encoding return dimension must be "
+                                          "equal to number of pulses".format(exp_slice['slice_id']))
 
         if list_tests.has_duplicates(exp_slice['beam_angle']):
             error_list.append("Slice {} beam angles has duplicate directions".format(
