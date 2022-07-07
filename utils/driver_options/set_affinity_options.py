@@ -25,7 +25,7 @@ class SetAffinityOptions(object):
 
         if not os.environ["BOREALISPATH"]:
             raise ValueError("BOREALISPATH env variable not set")
-        config_path = os.environ["BOREALISPATH"] + "/config.ini"
+        config_path = os.environ["BOREALISPATH"] + "/config_new.ini"
         try:
             with open(config_path, 'r') as config_data:
                 raw_config = json.load(config_data)

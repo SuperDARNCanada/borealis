@@ -17,6 +17,11 @@
 DriverOptions::DriverOptions() {
     Options::parse_config_file();
 
+    main_antenna_count_ = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("main_antenna_count"));
+    interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("interferometer_antenna_count"));
+
     devices_ = config_pt.get<std::string>("device_options");
     
     auto n200_list = config_pt.get_child("n200s");
@@ -26,9 +31,8 @@ DriverOptions::DriverOptions() {
     std::map<uint32_t, bool> tx_map;                // Maps device number to tx flag
     std::map<uint32_t, uint32_t> int_antenna_map;   // Maps interferometer antenna number to device number
 
-    // Count up antennas while looping through N200 array
-    main_antenna_count_ = 0;
-    interferometer_antenna_count_ = 0;
+    auto main_antenna_counter = 0;
+    auto int_antenna_counter = 0;
 
     // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
@@ -63,12 +67,25 @@ DriverOptions::DriverOptions() {
             if (rx_int) {
                 auto int_antenna_num = boost::lexical_cast<uint32_t>(iter->second.data());
                 int_antenna_map[int_antenna_num] = device_num;
-                interferometer_antenna_count_++;
+                int_antenna_counter++;
             }
             if (tx || rx) {
-                main_antenna_count_++;
+                main_antenna_counter++;
             }
         }
+    }
+
+    // Check that main_antenna_count_ and interferometer_antenna_count_ 
+    // are consistent with how many N200 channels are active
+    if (main_antenna_count_ != main_antenna_counter) {
+        auto err_msg = "Specified main_antenna_count_ = " + std::to_string(main_antenna_count_)
+                         + " but found " + std::to_string(main_antenna_counter) + " N200s configured.";
+        throw std::invalid_argument(err_msg);
+    }
+    if (interferometer_antenna_count_ != int_antenna_counter) {
+        auto err_msg = "Specified interferometer_antenna_count_ = " + std::to_string(interferometer_antenna_count_)
+                         + " but found " + std::to_string(int_antenna_counter) + " N200s configured.";
+        throw std::invalid_argument(err_msg);
     }
 
     // To ensure device numbers follow UHD conventions (0 to N in steps of 1),
