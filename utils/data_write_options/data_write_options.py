@@ -40,8 +40,18 @@ class DataWriteOptions(object):
         self._pulse_ramp_time = float(raw_config["pulse_ramp_time"])
         self._tr_window_time = float(raw_config["tr_window_time"])
         self._router_address = raw_config["router_address"]
-        self._main_antenna_count = int(raw_config["main_antenna_count"])
-        self._intf_antenna_count = int(raw_config["interferometer_antenna_count"])
+
+        # Parse N200 array and calculate main and intf antenna count
+        self._main_antenna_count = 0
+        self._intf_antenna_count = 0
+        for n200 in raw_config["n200s"]:
+            rx = bool(n200["rx"])
+            tx = bool(n200["tx"])
+            rx_int = bool(n200["rx_int"])
+            if rx or tx:
+                self._main_antenna_count += 1
+            if rx_int:
+                self._intf_antenna_count += 1
 
     @property
     def rt_to_dw_identity(self):

@@ -10,10 +10,30 @@
 SignalProcessingOptions::SignalProcessingOptions() {
   Options::parse_config_file();
 
-  main_antenna_count = boost::lexical_cast<uint32_t>(
-                config_pt.get<std::string>("main_antenna_count"));
-  interferometer_antenna_count = boost::lexical_cast<uint32_t>(
-                config_pt.get<std::string>("interferometer_antenna_count"));
+  // Parse N200 array and calculate main and intf antenna count
+  main_antenna_count = 0;
+  interferometer_antenna_count = 0;
+  auto n200_list = config_pt.get_child("n200s");
+  for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++) {
+    // Start iterator on first item (addr)
+    auto iter = n200->second.begin();
+
+    // Get rx, tx, and rx_int flags
+    iter++;
+    bool rx = (iter->second.data().compare("true") == 0);
+    iter++;
+    bool tx = (iter->second.data().compare("true") == 0);
+    iter++;
+    bool rx_int = (iter->second.data().compare("true") == 0);
+
+    if (rx || tx) {
+      main_antenna_count += 1;
+    }
+    if (rx_int) {
+      interferometer_antenna_count += 1;
+    }
+  }
+  
   router_address = config_pt.get<std::string>("router_address");
   dsp_to_radctrl_identity = config_pt.get<std::string>("dsp_to_radctrl_identity");
   dsp_driver_identity = config_pt.get<std::string>("dsp_to_driver_identity");
