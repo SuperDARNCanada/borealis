@@ -65,6 +65,7 @@ DriverOptions::DriverOptions() {
 
             // If N200 has interferometer, map device number to interferometer antenna number
             if (rx_int) {
+                iter++;
                 auto int_antenna_num = boost::lexical_cast<uint32_t>(iter->second.data());
                 int_antenna_map[int_antenna_num] = device_num;
                 int_antenna_counter++;
