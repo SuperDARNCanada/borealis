@@ -10,12 +10,8 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | device_options                 | recv_frame_size=4000          | UHD USRP device arguments.            |
 +--------------------------------+-------------------------------+---------------------------------------+
-| main_antenna_count             | 16                            | Number of main array antennas (TX/RX) |
-+--------------------------------+-------------------------------+---------------------------------------+
 | main_antennas                  | 0,1,2,3,4,5,6,7,8,9,          | Mapping of main rx/tx channels to     |
 |                                | 10,11,12,13,14,15             | antennas in the main array            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| interferometer_antenna_count   | 4                             | Number of interferometer antennas     |
 +--------------------------------+-------------------------------+---------------------------------------+
 | interferometer_antennas        | 1,3,5,7                       | Mapping of intf rx channels to        |
 |                                |                               | antennas in the interferometer array  |
@@ -229,14 +225,12 @@ There are several instances when you'll need to modify this file for correct ope
 #. One of your main array antennas is not working properly (broken coax, blown lightning arrestor, etc)
 
     The rx and tx flags for the associated N200 should be set to false. This will disable the 
-    receive and transmit channels, and stop the N200s from collecting samples from that antenna. Additionally, 
-    adjust the main_antennas_count entry in the config file to the number of remaining working antennas.
+    receive and transmit channels, and stop the N200s from collecting samples from that antenna.
 
 #. One of your interferometer array antennas is not working properly (broken coax, blown lightning arrestor, etc)
 
     The rx_int flag for the associated N200 should be set to false. This will disable the interferometer
-    receive channel for that antenna, and stop the N200s from collecting samples from that antenna. Additionally, 
-    adjust the interferometer_antennas_count entry in the config file to the number of remaining working antennas.
+    receive channel for that antenna, and stop the N200s from collecting samples from that antenna.
 
 #. One of your transmitter's transmit paths is not working, but the receive path is still working properly
 
@@ -263,14 +257,12 @@ There are several instances when you'll need to modify this file for correct ope
 
 #. One of your N200s is not working properly but you're located remotely and cannot insert the spare N200
 
-    This particular N200 will have to be deactivated. To do this, set all flags to false (tx, rx, and rx_int). Adjust
-    main_antenna_count and interferometer_antenna_count to the number of remaining connected antennas.
+    This particular N200 will have to be deactivated. To do this, set all flags to false (tx, rx, and rx_int).
 
 #. You have a non-standard array
 
     One example of a non-standard array would be a different number of interferometer antennas than four. To implement 
-    this, set the interferometer_antenna_count to the desired value, and modify the individual N200 entries to specify
-    which N200s are connected to interferometer antennas.
+    this, modify the individual N200 entries to specify which N200s are connected to interferometer antennas.
 
 #. You want to change the location of ATR signals on the daughterboards
 
@@ -290,9 +282,5 @@ There are several instances when you'll need to modify this file for correct ope
     This can be done by changing the following parameters:
 
     #. `n200s` - Set tx, rx, and rx_int flags to true for only one N200, all other N200s should have their flags set to false.
-
-    #. `main_antenna_count` - If you only have one N200, this should be set to 1, as there is only one transmit channel per N200.
-
-    #. `interferometer_antenna_count` - With only one N200, this should be set to 0 or 1.
 
     #. `pps` and `ref` - These should both be set to `internal`, as you don't have an Octoclock to provide a reference PPS or 10MHz reference signal.
