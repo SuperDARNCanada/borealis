@@ -225,7 +225,9 @@ There are several instances when you'll need to modify this file for correct ope
 #. One of your main array antennas is not working properly (broken coax, blown lightning arrestor, etc)
 
     The rx and tx flags for the associated N200 should be set to false. This will disable the 
-    receive and transmit channels, and stop the N200s from collecting samples from that antenna.
+    receive and transmit channels, and stop the N200s from collecting samples from that antenna. 
+    Note: If the N200 is also connected to an interferometer antenna, the interferometer antenna will
+    also have to be disconnected by setting rx_int to false, or moving it to a different N200.
 
 #. One of your interferometer array antennas is not working properly (broken coax, blown lightning arrestor, etc)
 
@@ -235,12 +237,12 @@ There are several instances when you'll need to modify this file for correct ope
 #. One of your transmitter's transmit paths is not working, but the receive path is still working properly
 
     The tx flag for the associated N200 should be set to false. This will disable the transmission channel
-    on the bad transmit path.
+    on the bad transmit path. **Note: This configuration does not work with the current iteration of Borealis**
 
 #. One of your transmitter's receive paths is not working, but the transmit path is still working properly
 
     The rx flag for the associated N200 should be set to false. This will disable the receive channel
-    on the bad receive path.
+    on the bad receive path. **Note: This configuration does not work with the current iteration of Borealis**
 
 #. One of your transmitters is not working at all
 
