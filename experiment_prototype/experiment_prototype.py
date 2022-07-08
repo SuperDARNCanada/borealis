@@ -228,11 +228,11 @@ tx_antennas *defaults*
     The antennas to transmit on, default is all main antennas given max number from config.
     
 wait_for_first_scanbound *defaults*
-    A boolean flag to determine when an experiment starts running. True (default) means an experiment
-    will wait until the nearest minute boundary before transmitting. False indicates experiment will 
-    not wait for the first averaging period (at the minute boundary), but will instead begin 
-    transmitting on the nearest averaging period. Note: for multi-slice experiments, the first slice 
-    is the only one impacted by this parameter.
+    A boolean flag to determine when an experiment starts running. True (default) means an 
+    experiment will wait until the first averaging period in a scan to start transmitting. 
+    False means an experiment will not wait for the first averaging period , but will instead 
+    start transmitting at the nearest averaging period. Note: for multi-slice experiments, the 
+    first slice is the only one impacted by this parameter.
 
 xcf *defaults*
     flag for cross-correlation data. The default is True if acf is True, otherwise False.
