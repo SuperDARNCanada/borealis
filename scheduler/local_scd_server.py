@@ -1,10 +1,10 @@
 #!/usr/bin/python3
 
-# Copyright 2019 SuperDARN Canada
+# Copyright 2022 SuperDARN Canada
 #
 # local_scd_server.py
 # 2019-04-18
-# Moniters for new SWG files and adds the SWG info to the scd if there is an update.
+# Monitors for new SWG files and adds the SWG info to the scd if there is an update.
 #
 import subprocess as sp
 import scd_utils
@@ -18,63 +18,71 @@ SWG_GIT_REPO_DIR = 'schedules'
 SWG_GIT_REPO = "https://github.com/SuperDARN/schedules.git"
 
 EXPERIMENTS = {
-    "sas" : {
-              "common_time" : "twofsound",
-              "discretionary_time" : "twofsound",
-              "htr_common_time" : "twofsound",
-              "themis_time" : "themisscan",
-              "special_time_normal" : "twofsound",
-              "rbsp_time" : "rbspscan",
-              "no_switching_time" : "normalscan",
-              "interleaved_time" : "interleavedscan"
+    "sas": {
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound"
     },
-    "pgr" : {
-              "common_time" : "twofsound",
-              "discretionary_time" : "twofsound",
-              "htr_common_time" : "twofsound",
-              "themis_time" : "themisscan",
-              "special_time_normal" : "twofsound",
-              "rbsp_time" : "rbspscan",
-              "no_switching_time" : "normalscan",
-              "interleaved_time" : "interleavedscan"
+    "pgr": {
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound"
     },
-    "rkn" : {
-              "common_time" : "twofsound",
-              "discretionary_time" : "twofsound",
-              "htr_common_time" : "twofsound",
-              "themis_time" : "themisscan",
-              "special_time_normal" : "twofsound",
-              "rbsp_time" : "rbspscan",
-              "no_switching_time" : "normalscan",
-              "interleaved_time" : "interleavedscan"
+    "rkn": {
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound"
     },
-    "inv" : {
-              "common_time" : "twofsound",
-              "discretionary_time" : "twofsound",
-              "htr_common_time" : "twofsound",
-              "themis_time" : "themisscan",
-              "special_time_normal" : "twofsound",
-              "rbsp_time" : "rbspscan",
-              "no_switching_time" : "normalscan",
-              "interleaved_time" : "interleavedscan"
+    "inv": {
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound"
     },
-    "cly" : {
-              "common_time" : "twofsound",
-              "discretionary_time" : "twofsound",
-              "htr_common_time" : "twofsound",
-              "themis_time" : "themisscan",
-              "special_time_normal" : "twofsound",
-              "rbsp_time" : "rbspscan",
-              "no_switching_time" : "normalscan",
-              "interleaved_time" : "interleavedscan"
+    "cly": {
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound"
     }
 }
+
+
 class SWG(object):
     """Holds the data needed for processing a SWG file.
 
     Attributes:
         scd_dir (str): Path to the SCD files dir.
     """
+
     def __init__(self, scd_dir):
         super(SWG, self).__init__()
         self.scd_dir = scd_dir
@@ -86,7 +94,6 @@ class SWG(object):
             cmd = 'cd {}; git clone {}'.format(self.scd_dir, SWG_GIT_REPO)
             sp.call(cmd, shell=True)
 
-
     def new_swg_file_available(self):
         """Checks if a new swg file is uploaded via git.
 
@@ -97,7 +104,7 @@ class SWG(object):
         # This command will return the number of new commits available in master. This signals that
         # there are new SWG files available.
         cmd = "cd {}/{}; git fetch; git log ..origin/master --oneline | wc -l".format(self.scd_dir,
-                                                                        SWG_GIT_REPO_DIR)
+                                                                                      SWG_GIT_REPO_DIR)
         shell_output = sp.check_output(cmd, shell=True)
 
         return bool(int(shell_output))
@@ -133,32 +140,31 @@ class SWG(object):
         Args:
             modes (Dict): Holds the modes that correspond to the SWG requests.
             radar (String): Radar acronym.
+            first_run (bool): Is this the first run? If so - start with current month
 
         Returns:
             TYPE: List of all the parsed parameters.
         """
 
-
         if first_run:
             month_to_use = datetime.datetime.utcnow()
         else:
-            month_to_use = next_month = self.get_next_month()
+            month_to_use = self.get_next_month()
 
         year = month_to_use.strftime("%Y")
         month = month_to_use.strftime("%m")
 
-
         swg_file = "{scd_dir}/{swg_dir}/{yyyy}/{yyyymm}.swg".format(scd_dir=self.scd_dir,
                                                                     swg_dir=SWG_GIT_REPO_DIR,
                                                                     yyyy=year,
-                                                                    yyyymm=year+month)
+                                                                    yyyymm=year + month)
 
         with open(swg_file, 'r') as f:
             swg_lines = f.readlines()
 
         skip_line = False
         parsed_params = []
-        for idx,line in enumerate(swg_lines):
+        for idx, line in enumerate(swg_lines):
 
             # Skip line is used for special time radar lines
             if skip_line:
@@ -173,24 +179,22 @@ class SWG(object):
             if not line.strip():
                 continue
 
-            #Lines starting with '#' are comments
+            # Lines starting with '#' are comments
             if line[0] == "#":
                 continue
 
             items = line.split()
 
-            #First line is month and year
+            # First line is month and year
             if idx == 0:
                 continue
 
             start_day = items[0][0:2]
             start_hr = items[0][3:]
-            end_day = items[1][0:2]
-            end_hr = items[1][3:]
 
             if "Common Time" in line:
                 mode_type = "common"
-                # 2018 11 23 no longer scheduling twofsound as common time.
+                # 2018 11 23 no longer scheduling twofsound as common time during 'no switching'
                 if "no switching" in line:
                     mode_to_use = modes["no_switching_time"]
                 else:
@@ -199,39 +203,36 @@ class SWG(object):
             if "Special Time" in line:
                 mode_type = "special"
                 if "ALL" in line or radar.upper() in line:
-
                     if "THEMIS" in line:
-                            mode_to_use = modes["themis_time"]
+                        mode_to_use = modes["themis_time"]
                     elif "ST-APOG" in line or "RBSP" in line:
                         mode_to_use = modes["rbsp_time"]
                     elif "ARASE" in line:
                         mode_to_use = modes["interleaved_time"]
+                    elif "normalsound" in line:
+                        mode_to_use = modes["normalsound_time"]
                     else:
                         print("Unknown Special Time: using default common time")
                         mode_to_use = modes["htr_common_time"]
                 else:
                     mode_to_use = modes["special_time_normal"]
 
-                # Skip next line
-                #skip_line = True
-
             if "Discretionary Time" in line:
                 mode_type = "discretionary"
                 mode_to_use = modes["discretionary_time"]
 
             param = {"yyyymmdd": "{}{}{}".format(year, month, start_day),
-                     "hhmm" : "{}:00".format(start_hr),
-                     "experiment" : mode_to_use,
-                     "scheduling_mode" : mode_type}
+                     "hhmm": "{}:00".format(start_hr),
+                     "experiment": mode_to_use,
+                     "scheduling_mode": mode_type}
             parsed_params.append(param)
 
         return parsed_params
 
 
-
 def main():
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
-    parser.add_argument('--emails-filepath',required=True, help='A list of emails to send logs to')
+    parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
     parser.add_argument('--first-run', action="store_true", help='This will generate the first set'
                                                                  ' of schedule files if running on'
@@ -273,19 +274,20 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
+                        site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'],
+                                          ex["scheduling_mode"])
                     except ValueError as e:
                         error_msg = ("{logtime} {sitescd}: Unable to add line with parameters:\n"
                                      "\t {date} {time} {experiment} {mode}\n"
                                      "\t Exception thrown:\n"
                                      "\t\t {exception}\n")
                         error_msg = error_msg.format(logtime=today.strftime("%c"),
-                                                        sitescd=site_scd.scd_filename,
-                                                        date=ex['yyyymmdd'],
-                                                        time=ex['hhmm'],
-                                                        experiment=ex['experiment'],
-                                                        mode=ex['scheduling_mode'],
-                                                        exception=str(e))
+                                                     sitescd=site_scd.scd_filename,
+                                                     date=ex['yyyymmdd'],
+                                                     time=ex['hhmm'],
+                                                     experiment=ex['experiment'],
+                                                     mode=ex['scheduling_mode'],
+                                                     exception=str(e))
 
                         with open(scd_logs + scd_error_log, 'a') as f:
                             f.write(error_msg)
@@ -300,8 +302,6 @@ def main():
 
                         errors = True
                         break
-
-
 
             subject = "Scheduling report for swg lines"
             if not errors:
@@ -319,14 +319,14 @@ def main():
                         success_msg += "\t\t{}\n".format(line)
 
                 with open(scd_logs + scd_error_log, 'a') as f:
-                        f.write(success_msg)
+                    f.write(success_msg)
             else:
                 errors = False
 
             emailer.email_log(subject, scd_logs + scd_error_log)
 
             if args.first_run:
-                break;
+                break
 
         else:
             time.sleep(300)
