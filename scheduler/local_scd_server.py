@@ -205,10 +205,7 @@ class SWG(object):
                     elif "ST-APOG" in line or "RBSP" in line:
                         mode_to_use = modes["rbsp_time"]
                     elif "ARASE" in line:
-                        if "themis" in swg_lines[idx+1]:
-                            mode_to_use = modes["themis_time"]
-                        if "interleaved" in swg_lines[idx+1]:
-                            mode_to_use = modes["interleaved_time"]
+                        mode_to_use = modes["interleaved_time"]
                     else:
                         print("Unknown Special Time: using default common time")
                         mode_to_use = modes["htr_common_time"]
