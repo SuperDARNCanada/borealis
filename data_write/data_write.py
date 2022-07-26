@@ -263,8 +263,8 @@ class ParseData(object):
 
                     antenna_iq_stage = self._antenna_iq_accumulator[slice_id][stage_name]
                     # Loops over antenna data within stage
-                    for ant_num, ant_data in enumerate(debug_samples.antennadata):
-                        ant_str = "antenna_{0}".format(ant_num)
+                    for ant_data in debug_samples.antennadata:
+                        ant_str = ant_data.antenna_name
 
                         cmplx = np.empty(len(ant_data.antennasamples), dtype=np.complex64)
                         antenna_iq_stage["num_samps"] = len(ant_data.antennasamples)
@@ -965,7 +965,7 @@ class DataWrite(object):
 
             param['rx_sample_rate'] = np.float32(data_parsing.rx_rate)
 
-            total_ants = self.options.main_antenna_count + self.options.intf_antenna_count
+            total_ants = len(self.options.main_antennas) + len(self.options.intf_antennas)
             param['num_samps'] = np.uint32(len(samples_list[0]) / total_ants)
 
             param['data_descriptors'] = ["num_sequences", "num_antennas", "num_samps"]
@@ -996,7 +996,7 @@ class DataWrite(object):
             tx_data = None
             for meta in integration_meta.sequences:
                 if meta.HasField('tx_data'):
-                    tx_data = TX_TEMPLATE.copy()
+                    tx_data = copy.deepcopy(TX_TEMPLATE)
                     break
 
             if tx_data is not None:
@@ -1074,8 +1074,8 @@ class DataWrite(object):
                 parameters['int_time'] = np.float32(integration_meta.integration_time)
                 parameters['tx_pulse_len'] = np.uint32(rx_freq.pulse_len)
                 parameters['tau_spacing'] = np.uint32(rx_freq.tau_spacing)
-                parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
-                parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
+                parameters['main_antenna_count'] = np.uint32(self.options.main_antenna_count)
+                parameters['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
                 parameters['freq'] = np.uint32(rx_freq.rxfreq)
                 parameters[
                     'rx_center_freq'] = integration_meta.rx_center_freq 

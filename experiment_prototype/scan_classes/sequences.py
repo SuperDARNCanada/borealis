@@ -229,7 +229,36 @@ class Sequence(ScanClassBase):
         # sequence. Should this be specifiable inside the experiment. (so you could give one
         # slice a higher power weighting if you wanted)
 
-        self.power_divider = max([p['combine_total'] for p in self.pulses])
+        # This conditional block checks whether the slices interfaced in this sequence use any of
+        # the same antennas. If they don't, the power should not be divided, because no single
+        # N200 is being asked to deliver power from multiple slices. If some antennas are being
+        # shared, then the power divider defaults to the normal division (divide by the maximum
+        # number of overlapping pulses).
+        power_set = False   # Flag if we have set the power divider yet
+        if len(self.slice_dict) > 1:    # Multiple slices in this sequence
+            # Get all the antennas for each slice interfaced in this sequence
+            slice_antennas = [set(s['tx_antennas']) for s in self.slice_dict.values()]
+
+            # Figure out if the slices use the same antennas.
+            overlapping_antennas = False
+            for i in range(len(slice_antennas)):
+                for j in range(i+1, len(slice_antennas)):
+                    overlap = slice_antennas[i].intersection(slice_antennas[j])
+                    # Two slices share antennas, so break out and default to normal power splitting
+                    if len(overlap) > 0:
+                        overlapping_antennas = True
+                        break
+                if overlapping_antennas:    # Break out from the outer loop as well, no need to continue
+                    break
+
+            # If the slices don't use the same antennas, then there is no need to split the power
+            if not overlapping_antennas:
+                self.power_divider = 1
+                power_set = True
+
+        # Power has not been set, so split it how it normally would be split
+        if not power_set:
+            self.power_divider = max([p['combine_total'] for p in self.pulses])
 
         # All pulse dictionaries with the same combined_pulse_index make up a combined pulse.
         # A repeat is when a combined pulse is after a combined pulse that is
@@ -377,6 +406,7 @@ class Sequence(ScanClassBase):
         sequence_list = []
         txrate = self.transmit_metadata['txrate']
         txctrfreq = self.transmit_metadata['txctrfreq']
+        main_antennas = self.transmit_metadata['main_antennas']
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         main_antenna_spacing = self.transmit_metadata['main_antenna_spacing']
         pulse_ramp_time = self.transmit_metadata['pulse_ramp_time']
@@ -412,7 +442,7 @@ class Sequence(ScanClassBase):
                 # simple power_divider integer
                 pulse_samples, pulse_antennas = (
                     make_pulse_samples(one_pulse_list, self.power_divider, self.slice_dict,
-                                       slice_to_beamdir_dict, txrate, txctrfreq,
+                                       slice_to_beamdir_dict, txrate, txctrfreq, main_antennas,
                                        main_antenna_count, main_antenna_spacing, pulse_ramp_time,
                                        max_usrp_dac_amplitude, tr_window_time))
                 if pulse_index == 0:

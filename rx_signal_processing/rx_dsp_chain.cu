@@ -59,6 +59,7 @@ int main(int argc, char **argv){
   std::vector<uint32_t> dm_rates;
   double rx_rate;
   uint32_t total_antennas;
+  std::vector<std::string> antenna_names;
   double output_sample_rate;
 
   auto first_time = true;
@@ -75,8 +76,25 @@ int main(int argc, char **argv){
     }
 
     if (first_time) {
-      total_antennas = sig_options.get_main_antenna_count() +
-                  sig_options.get_interferometer_antenna_count();
+      total_antennas = sig_options.get_main_antennas().size() +
+                  sig_options.get_interferometer_antennas().size();
+
+      std::stringstream ss;
+      std::string ant_name;
+      auto main_antennas = sig_options.get_main_antennas();
+      for (uint32_t main_ant = 0; main_ant<main_antennas.size(); main_ant++){
+        ss << "antenna_" << main_antennas[main_ant];
+        ss >> ant_name;
+	std::stringstream().swap(ss);	// Clear the stringstream for the next antenna
+	antenna_names.push_back(ant_name);
+      }
+      auto intf_antennas = sig_options.get_interferometer_antennas();
+      for (uint32_t intf_ant = 0; intf_ant<intf_antennas.size(); intf_ant++){
+	ss << "antenna_" << intf_antennas[intf_ant] + sig_options.get_main_antenna_count();
+	ss >> ant_name;
+	std::stringstream().swap(ss);	// Clear the stringstream for the next antenna
+        antenna_names.push_back(ant_name);
+      }
 
       // First time - set up rx rate and filters.
       rx_rate = sp_packet.rxrate(); //Hz
@@ -171,6 +189,12 @@ int main(int argc, char **argv){
       auto tau_spacing = rx_channel.tau_spacing();
       auto new_rx_slice = rx_slice(rx_freq, slice_id, num_ranges, beam_count, first_range, range_sep,
                                     tau_spacing);
+      
+      auto num_antennas = sp_packet.rxchannel(channel).antenna_names_size();
+      for (uint32_t ant_counter=0; ant_counter<num_antennas; ant_counter++) {
+	auto ant_string = sp_packet.rxchannel(channel).antenna_names(ant_counter);
+	new_rx_slice.antenna_names.push_back(ant_string);
+      }
 
       auto num_lags = sp_packet.rxchannel(channel).lags_size();
       for (uint32_t lag_counter=0; lag_counter<num_lags; lag_counter++) {
@@ -199,7 +223,7 @@ int main(int argc, char **argv){
           new_angle.x = phase.real_phase();
           new_angle.y = phase.imag_phase();
 
-          if (phase_num < sig_options.get_main_antenna_count()) {
+          if (phase_num < sig_options.get_main_antennas().size()) {
             main_phases.push_back(new_angle);
           }
           else {
@@ -285,7 +309,7 @@ int main(int argc, char **argv){
     auto last_filter_output = dp->get_last_filter_output_d();
     call_decimate<DecimationType::bandpass>(dp->get_rf_samples_p(),
       last_filter_output, dp->get_bp_filters_p(), dm_rates[0],
-      samples_needed, complex_taps[0].size(),
+      samples_needed, complex_taps[0].size()/rx_freqs.size(),
       rx_freqs.size(), total_antennas, rx_rate, dp->get_frequencies_p(),
       "Bandpass stage of decimation", dp->get_cuda_stream());
 
@@ -320,7 +344,7 @@ int main(int argc, char **argv){
       prev_output = last_filter_output;
     }
 
-    dp->cuda_postprocessing_callback(total_antennas, samples_needed, samples_per_antenna,
+    dp->cuda_postprocessing_callback(total_antennas, antenna_names, samples_needed, samples_per_antenna,
                                       total_output_samples);
 
   } //for(;;)

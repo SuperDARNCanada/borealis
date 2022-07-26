@@ -101,10 +101,11 @@ class SWG(object):
             TYPE: True, if new git update is available.
         """
 
-        # This command will return the number of new commits available in master. This signals that
+        # This command will return the number of new commits available in main. This signals that
         # there are new SWG files available.
-        cmd = "cd {}/{}; git fetch; git log ..origin/master --oneline | wc -l".format(self.scd_dir,
-                                                                                      SWG_GIT_REPO_DIR)
+
+        cmd = "cd {}/{}; git fetch; git log ..origin/main --oneline | wc -l".format(self.scd_dir,
+                                                                        SWG_GIT_REPO_DIR)
         shell_output = sp.check_output(cmd, shell=True)
 
         return bool(int(shell_output))
@@ -113,7 +114,7 @@ class SWG(object):
         """Uses git to grab the new scd updates.
 
         """
-        cmd = "cd {}/{}; git pull origin master".format(self.scd_dir, SWG_GIT_REPO_DIR)
+        cmd = "cd {}/{}; git pull origin main".format(self.scd_dir, SWG_GIT_REPO_DIR)
         sp.call(cmd, shell=True)
 
     def get_next_month(self):
@@ -274,8 +275,10 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'],
-                                          ex["scheduling_mode"])
+                        print("add_line date: {}, with experiment: {}, mode: {}".format(ex['yyyymmdd'],
+                                                                                        ex['experiment'],
+                                                                                        ex['scheduling_mode']))
+                        site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
                     except ValueError as e:
                         error_msg = ("{logtime} {sitescd}: Unable to add line with parameters:\n"
                                      "\t {date} {time} {experiment} {mode}\n"
