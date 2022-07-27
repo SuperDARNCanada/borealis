@@ -231,7 +231,8 @@ The file fields in the bfiq array files are:
 | | max_num_sequences]              | | These timestamps come back from the USRP  | 
 | |                                 | | driver and the USRPs are GPS disciplined  |
 | |                                 | | and synchronized using the Octoclock.     |
-| |                                 | | Provided in  that do not have             |
+| |                                 | | Provided in seconds since epoch.          |
+| |                                 | | Note that records do not have             |
 | |                                 | | num_sequences = max_num_sequences will    | 
 | |                                 | | have padded zeros. The num_sequences      | 
 | |                                 | | array should be used to determine the     | 
