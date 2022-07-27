@@ -165,7 +165,7 @@ The file fields in the antennas_iq array files are:
 | | max_num_sequences]              | | These timestamps come back from the USRP  | 
 | |                                 | | driver and the USRPs are GPS disciplined  |
 | |                                 | | and synchronized using the Octoclock.     |
-| |                                 | | provided in seconds since epoch.          |
+| |                                 | | Provided in seconds since epoch.          |
 | |                                 | | Note that records that do not have        | 
 | |                                 | | num_sequences = max_num_sequences will    | 
 | |                                 | | have padded zeros. The num_sequences      | 
