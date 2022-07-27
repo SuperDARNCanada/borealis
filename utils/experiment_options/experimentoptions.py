@@ -120,8 +120,8 @@ class ExperimentOptions:
         self._beam_sep = params[9]  # degrees, nominal 3.24 degrees
         self._velocity_sign = params[10]  # +1.0 or -1.0
         self._phase_sign = params[11]  # +1 indicates correct interferometry phase, -1 indicates 180
-        self._tdiff_a = params[12]  # ns for channel A.
-        self._tdiff_b = params[13]  # ns for channel B.
+        self._tdiff_a = params[12]  # us for channel A.
+        self._tdiff_b = params[13]  # us for channel B.
 
         self._intf_offset = [float(params[14]), float(params[15]), float(params[16])]
         # interferometer offset from
@@ -187,8 +187,8 @@ class ExperimentOptions:
                     \n    boresight_shift = {} degrees. \
                     \n    beam_sep = {} degrees\
                     \n    velocity_sign = {} \
-                    \n    tdiff_a = {} ns \
-                    \n    tdiff_b = {} ns \
+                    \n    tdiff_a = {} us \
+                    \n    tdiff_b = {} us \
                     \n    phase_sign = {} \
                     \n    intf_offset = {} \
                     \n    analog_rx_rise = {} us \
@@ -424,11 +424,11 @@ class ExperimentOptions:
 
     @property
     def tdiff_a(self):
-        return self._tdiff_a  # ns
+        return self._tdiff_a  # us
 
     @property
     def tdiff_b(self):
-        return self._tdiff_b  # ns
+        return self._tdiff_b  # us
 
     @property
     def analog_rx_attenuator(self):
