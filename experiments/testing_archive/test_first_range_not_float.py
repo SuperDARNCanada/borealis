@@ -33,7 +33,7 @@ class TestExperiment(ExperimentPrototype):
             "tau_spacing": scf.TAU_SPACING_7P,
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
-            "first_range": '180.7',  # not an int
+            "first_range": '180.7',  # not a float
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "beam_order": beams_to_use,

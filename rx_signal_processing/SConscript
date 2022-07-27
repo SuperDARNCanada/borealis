@@ -29,5 +29,5 @@ import os
 
 Import('*')
 
-Prog('rx_signal_processing', Glob("./*.c*"), with_libs='utils::utils',
-     LIBS=['protobuf','m','zmq','rt','armadillo'])
+#Prog('rx_signal_processing', Glob("./*.c*"), with_libs='utils::utils',
+#     LIBS=['protobuf','m','zmq','rt','armadillo'])
