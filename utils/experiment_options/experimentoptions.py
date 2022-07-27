@@ -118,7 +118,7 @@ class ExperimentOptions:
         self._boresight = params[7]  # degrees from geographic north, CCW = negative.
         self._boresight_shift = params[8]  # degrees from physical boresight. nominal 0.0 degrees
         self._beam_sep = params[9]  # degrees, nominal 3.24 degrees
-        self._velocity_sign = params[8]  # +1.0 or -1.0
+        self._velocity_sign = params[10]  # +1.0 or -1.0
         self._phase_sign = params[11]  # +1 indicates correct interferometry phase, -1 indicates 180
         self._tdiff_a = params[12]  # ns for channel A.
         self._tdiff_b = params[13]  # ns for channel B.
