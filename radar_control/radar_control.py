@@ -197,12 +197,10 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
         chan_add.tau_spacing = slice_dict[slice_id]['tau_spacing']
 
         # send the translational frequencies to dsp in order to bandpass filter correctly.
-        if slice_dict[slice_id]['rxonly']:
-            chan_add.rx_freq = slice_dict[slice_id]['rxfreq'] * 1.0e3
-        elif slice_dict[slice_id]['clrfrqflag']:
+        if slice_dict[slice_id]['clrfrqflag']:
             pass  # TODO - get freq from clear frequency search.
         else:
-            chan_add.rx_freq = slice_dict[slice_id]['txfreq'] * 1.0e3
+            chan_add.rx_freq = slice_dict[slice_id]['freq'] * 1.0e3
         chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
         chan_add.first_range = slice_dict[slice_id]['first_range']
         chan_add.range_sep = slice_dict[slice_id]['range_sep']
@@ -228,7 +226,7 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
             # Combine main and intf such that for a given beam all main phases come first.
             beams.append(np.hstack((temp_main, temp_intf)))
         chan_add.beam_phases = np.array(beams)
-        
+
         for lag in slice_dict[slice_id]['lag_table']:
             lag_add = messages.Lag(lag[0], lag[1], int(lag[1] - lag[0]))
 
@@ -247,7 +245,7 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
             lag_add.phase_offset_imag = np.imag(phase_offset)
             chan_add.add_lag(lag_add)
         message.add_rx_channel(chan_add)
-    
+
     # Brian requests sequence metadata for timeouts
     if TIME_PROFILE:
         time_waiting = datetime.utcnow()
@@ -390,11 +388,7 @@ def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_ide
             rxchannel.rx_only = sequence.slice_dict[slice_id]['rxonly']
             rxchannel.pulse_len = sequence.slice_dict[slice_id]['pulse_len']
             rxchannel.tau_spacing = sequence.slice_dict[slice_id]['tau_spacing']
-
-            if sequence.slice_dict[slice_id]['rxonly']:
-                rxchannel.rx_freq = sequence.slice_dict[slice_id]['rxfreq']
-            else:
-                rxchannel.rx_freq = sequence.slice_dict[slice_id]['txfreq']
+            rxchannel.rx_freq = sequence.slice_dict[slice_id]['freq']
 
             rxchannel.ptab = sequence.slice_dict[slice_id]['pulse_sequence']
 
@@ -408,7 +402,7 @@ def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_ide
             rxchannel.rx_main_antennas = sequence.slice_dict[slice_id]['rx_main_antennas']
             rxchannel.rx_intf_antennas = sequence.slice_dict[slice_id]['rx_int_antennas']
 
-            beams = sequence.slice_dict[slice_id]['beam_order'][beam_iter]
+            beams = sequence.slice_dict[slice_id]['rx_beam_order'][beam_iter]
             if isinstance(beams, int):
                 beams = [beams]
 
@@ -424,7 +418,7 @@ def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_ide
                 rxchannel.acf = sequence.slice_dict[slice_id]['acf']
                 rxchannel.xcf = sequence.slice_dict[slice_id]['xcf']
                 rxchannel.acfint = sequence.slice_dict[slice_id]['acfint']
-                
+
                 for lag in sequence.slice_dict[slice_id]['lag_table']:
                     lag_add = messages.LagTable(lag, int(lag[1] - lag[0]))
                     rxchannel.add_ltab(lag_add)

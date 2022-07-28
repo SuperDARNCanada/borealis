@@ -36,9 +36,10 @@ class TestExperiment(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": ['0', '1', '2', '3'],  # not list of lists or list of integers
+            "rx_beam_order": ['0', '1', '2', '3'],  # not list of lists or list of integers
+            "tx_beam_order": [0, 1, 2, 3],
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
