@@ -186,12 +186,12 @@ lag_table *defaults*
     and last pulses used for lag-0.
 
 pulse_phase_offset *defaults*
-    a handle to a function that will be used to generate phases that will be applied to each pulse
-    in the sequence. If a function is supplied, the beam iterator, sequence number, number of pulses
-    in the sequence, and number of tx samples in each pulse are passed as arguments that can be used
-    in this function. The default is None if no function handle is supplied.
+    a handle to a function that will be used to generate one phase per each pulse in the sequence. 
+    If a function is supplied, the beam iterator, sequence number, and number of pulses in the sequence 
+    are passed as arguments that can be used in this function. The default is None if no function 
+    handle is supplied.
 
-    encode_fn(beam_iter, sequence_num, num_pulses, num_samples):
+    encode_fn(beam_iter, sequence_num, num_pulses):
         return np.ones(size=(num_pulses))
 
     The return value must be numpy array of num_pulses in size.
@@ -1862,13 +1862,12 @@ class ExperimentPrototype(object):
                                   "pulse sequence defined".format(exp_slice['slice_id']))
 
         if exp_slice['pulse_phase_offset']:
-            num_samps = round(self.txrate * (exp_slice['pulse_len'] * 1e-6))
             num_pulses = len(exp_slice['pulse_sequence'])
 
             # Test the encoding fn with beam iterator of 0 and sequence num of 0.
             # test the user's phase encoding function on first beam (beam_iterator = 0)
             # and first sequence (sequence_number = 0)
-            phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses, num_samps)
+            phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses)
 
             if not isinstance(phase_encoding, np.ndarray):
                 error_list.append("Slice {} Phase encoding return is not numpy array".format(

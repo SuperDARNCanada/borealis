@@ -436,10 +436,8 @@ class Sequence(ScanClassBase):
             num_pulses = len(exp_slice['pulse_sequence'])
             encode_fn = exp_slice['pulse_phase_offset']
             if encode_fn:
-                num_samples = basic_samples.shape[1]
-
                 # Must return 1D array of length [pulses].
-                phase_encoding = encode_fn(beam_num, sequence_num, num_pulses, num_samples)
+                phase_encoding = encode_fn(beam_num, sequence_num, num_pulses)
 
                 # dimensions: [pulses]
                 # Append list of phase encodings for this sequence, one per pulse. 
