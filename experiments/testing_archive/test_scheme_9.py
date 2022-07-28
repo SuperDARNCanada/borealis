@@ -33,13 +33,14 @@ class TestScheme9(ExperimentPrototype):
             "intn": 21,  # number of averages if intt is None.
             "beam_angle": [0.0], # [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                           # -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75, 26.25],
-            "beam_order": [0],
+            "rx_beam_order": [0],
+            "tx_beam_order": [0],
             #"scanboundflag": True,  # there is a scan boundary
             #"scanbound": 60000,  # ms
-            "txfreq": 10500,
+            "freq": 10500,
             #"clrfrqflag": True,  # search for clear frequency before transmitting
             #"clrfrqrange": [13200, 13500],  # frequency range for clear frequency search, kHz
-            # including a clrfrqrange overrides rxfreq and txfreq so these are no longer necessary
+            # including a clrfrqrange overrides freq so these are no longer necessary
             # as they will be set by the frequency chosen from the range.
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
@@ -66,7 +67,7 @@ class TestScheme9(ExperimentPrototype):
         #     "scanbound": 60000,  # ms
         #     "clrfrqflag": True,  # search for clear frequency before transmitting
         #     "clrfrqrange": [13100, 13200],  # frequency range for clear frequency search, kHz
-        #     # including a clrfrqrange overrides rxfreq and txfreq so these are no longer necessary
+        #     # including a clrfrqrange overrides freq so these are no longer necessary
         #     # as they will be set by the frequency chosen from the range.
         #     "xcf": True,  # cross-correlation processing
         #     "acfint": True,  # interferometer acfs

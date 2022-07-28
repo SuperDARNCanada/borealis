@@ -14,6 +14,7 @@ message DriverPacket {
   double timetosendsamples = 9;
   bool SOB = 10;
   bool EOB = 11;
+  bool align_sequences = 12;
 
   message SamplesBuffer {
     repeated float real = 1;

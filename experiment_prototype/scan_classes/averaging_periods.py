@@ -104,12 +104,13 @@ class AveragingPeriod(ScanClassBase):
                     raise ExperimentException(errmsg)
 
         for slice_id in self.slice_ids: 
-            if len(self.slice_dict[slice_id]['beam_order']) != len(self.slice_dict[self.slice_ids[0]]['beam_order']):
+            if len(self.slice_dict[slice_id]['rx_beam_order']) != \
+               len(self.slice_dict[self.slice_ids[0]]['rx_beam_order']):
                 errmsg = "Slices {} and {} are SEQUENCE or CONCURRENT interfaced but do not have the" \
-                         " same number of integrations in their beam order" \
+                         " same number of averaging periods in their beam order" \
                          .format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
-        self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]]['beam_order'])
+        self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]]['rx_beam_order'])
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 
@@ -123,7 +124,6 @@ class AveragingPeriod(ScanClassBase):
         self.one_pulse_only = False
 
         self.beam_iter = 0 # used to keep track of place in beam order.
-
 
     def get_sequence_slice_ids(self):
         """
@@ -140,14 +140,14 @@ class AveragingPeriod(ScanClassBase):
          this averagingperiod.
         """
 
-        integ_combos = []
+        sequence_combos = []
 
         # Remove SEQUENCE combos as we are trying to separate those.
         for k, interface_type in self.interface.items():  # TODO make example
             if interface_type == "CONCURRENT":
-                integ_combos.append(list(k))
+                sequence_combos.append(list(k))
 
-        combos = self.slice_combos_sorter(integ_combos, self.slice_ids)
+        combos = self.slice_combos_sorter(sequence_combos, self.slice_ids)
 
         if __debug__:
             print("sequences slice id combos: {}".format(combos))
