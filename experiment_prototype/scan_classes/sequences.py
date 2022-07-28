@@ -22,6 +22,7 @@ from operator import itemgetter
 import collections
 import sys
 import os
+from functools import reduce
 
 from sample_building.sample_building import get_samples, get_phase_shift
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
@@ -400,9 +401,9 @@ class Sequence(ScanClassBase):
 
         self.blanks = self.find_blanks()
 
-        self.align_sequences = False
-        for _, slice_obj in self.slice_dict.items():
-            self.align_sequences = self.align_sequences or slice_obj['align_sequences']
+        self.align_sequences = reduce(lambda a, b: a or b, [s['align_sequences'] for s in self.slice_dict.values()])
+        if self.align_sequences:
+            sequence_print("Aligning sequences to 0.1 second boundaries.")
 
     def make_sequence(self, beam_iter, sequence_num):
         """
