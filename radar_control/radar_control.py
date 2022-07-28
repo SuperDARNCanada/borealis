@@ -74,7 +74,7 @@ def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrf
 
 def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samples_array,
                    txctrfreq, rxctrfreq, txrate, rxrate, numberofreceivesamples, seqtime, SOB, EOB, timing,
-                   seqnum, repeat=False):
+                   seqnum, align_sequences, repeat=False):
     """ Place data in the driver packet and send it via zeromq to the driver.
         :param driverpacket: the protobuf packet to fill and pass over zmq
         :param radctrl_to_driver: the sender socket for sending the driverpacket
@@ -95,6 +95,8 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
         :param timing: in us, the time past timezero to send this pulse. Timezero is the start of the sequence.
         :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
             with increasing sequences while radar_control is running. It is only reset when program restarts.
+        :param align_sequences: a boolean indicating whether to align the start of the sequence to a clean tenth
+            of a second.
         :param repeat: a boolean indicating whether the pulse is the exact same as the last pulse
         in the sequence, in which case we will save the time and not send the samples list and other
         params that will be the same.
@@ -107,6 +109,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
     driverpacket.sequence_num = seqnum
     driverpacket.numberofreceivesamples = numberofreceivesamples
     driverpacket.seqtime = seqtime
+    driverpacket.align_sequences = align_sequences
 
     if repeat:
         # antennas empty
@@ -148,7 +151,7 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
         Happens every sequence.
         :param message: the SequenceMetadataMessage object
         :param radctrl_to_dsp: The sender socket for sending data to dsp
-        :param dsp_radctrl_iden: The reciever socket identity on the dsp side
+        :param dsp_radctrl_iden: The receiver socket identity on the dsp side
         :param rxrate: The receive sampling rate (Hz).
         :param output_sample_rate: The output sample rate desired for the output data (Hz).
         :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
@@ -753,6 +756,7 @@ def radar():
                                                pulse_transmit_data['endofburst'],
                                                pulse_transmit_data['timing'],
                                                seqnum_start + num_sequences,
+                                               sequence.align_sequences,
                                                repeat=pulse_transmit_data['isarepeat'])
 
                             if TIME_PROFILE:

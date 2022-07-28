@@ -90,7 +90,7 @@ slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas"
                            "pulse_phase_offset", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt",
                            "intn", "beam_angle", "beam_order", "scanbound", "txfreq", "rxfreq", "clrfrqrange",
                            "averaging_method", "acf", "xcf", "acfint", "wavetype", "seqoffset", "iwavetable",
-                           "qwavetable", "comment", "range_sep", "lag_table"])
+                           "qwavetable", "comment", "range_sep", "lag_table", "align_sequences"])
 
 """
 These are the keys that are set by the user when initializing a slice. Some
@@ -170,6 +170,9 @@ acf *defaults*
 acfint *defaults*
     flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
     False.
+
+align_sequences *defaults*
+    flag for aligning the start of the first pulse in each sequence to tenths of a second. Default False.
 
 averaging_method *defaults*
     a string defining the type of averaging to be done. Current methods are 'mean' or 'median'.
@@ -1642,6 +1645,9 @@ class ExperimentPrototype(object):
         if 'comment' not in exp_slice:
             slice_with_defaults['comment'] = ''
 
+        if 'align_sequences' not in exp_slice:
+            slice_with_defaults['align_sequences'] = False
+
         return slice_with_defaults
 
     def setup_slice(self, exp_slice):
@@ -1653,7 +1659,7 @@ class ExperimentPrototype(object):
 
         The following are always able to be defaulted, so are optional:
         "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_phase_offset", "scanboundflag",
-        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset", "averaging_method"
+        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset", "averaging_method", "align_sequences"
 
         The following are always required for processing acf, xcf, and acfint which we will assume
         we are always doing:
