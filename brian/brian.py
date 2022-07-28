@@ -13,6 +13,7 @@ from datetime import datetime
 import threading
 import argparse
 import zmq
+import pickle
 
 sys.path.append(os.environ["BOREALISPATH"])
 
@@ -21,7 +22,6 @@ if __debug__:
 else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
 
-import sigprocpacket_pb2
 import rxsamplesmetadata_pb2
 
 sys.path.append(os.environ["BOREALISPATH"] + '/utils/experiment_options')
@@ -217,8 +217,7 @@ def sequence_timing(opts):
             #Get new sequence metadata from radar control
             reply = so.recv_obj(brian_to_radar_control, opts.radctrl_to_brian_identity, printing)
 
-            sigp = sigprocpacket_pb2.SigProcPacket()
-            sigp.ParseFromString(reply)
+            sigp = pickle.loads(reply)
 
             if __debug__:
                 reply_output = "Radar control sent -> sequence {} time {} ms"
@@ -235,18 +234,17 @@ def sequence_timing(opts):
             #Get acknowledgement that work began in processing.
             reply = so.recv_bytes_from_any_iden(brian_to_dsp_begin)
 
-            sig_p = sigprocpacket_pb2.SigProcPacket()
-            sig_p.ParseFromString(reply)
+            sig_p = pickle.loads(reply)
 
             if __debug__:
-                reply_output = "Dsp began -> sqnum {}".format(sig_p.sequence_num)
+                reply_output = "Dsp began -> sqnum {}".format(sig_p['sequence_num'])
                 printing(reply_output)
 
             #Requesting acknowledgement of work ends from DSP
 
             if __debug__:
                 printing("Requesting work end from DSP")
-            iden = opts.dspend_to_brian_identity + str(sig_p.sequence_num)
+            iden = opts.dspend_to_brian_identity + str(sig_p['sequence_num'])
             so.send_request(brian_to_dsp_end, iden, "Requesting work ends")
 
             #acknowledge we want to start something new.
@@ -258,20 +256,19 @@ def sequence_timing(opts):
             #Receive ack that work finished on previous sequence.
             reply = so.recv_bytes_from_any_iden(brian_to_dsp_end)
 
-            sig_p = sigprocpacket_pb2.SigProcPacket()
-            sig_p.ParseFromString(reply)
+            sig_p = pickle.loads(reply)
 
             if __debug__:
                 reply_output = "Dsp sent -> time {}, sqnum {}"
-                reply_output = reply_output.format(sig_p.kerneltime, sig_p.sequence_num)
+                reply_output = reply_output.format(sig_p['kerneltime'], sig_p['sequence_num'])
                 printing(reply_output)
 
-            if sig_p.sequence_num != 0:
-                if sig_p.kerneltime > last_processing_time:
+            if sig_p['sequence_num'] != 0:
+                if sig_p['kerneltime'] > last_processing_time:
                     late_counter += 1
                 else:
                     late_counter = 0
-            last_processing_time = sig_p.kerneltime
+            last_processing_time = sig_p['kerneltime']
 
             if __debug__:
                 printing("Late counter {}".format(late_counter))

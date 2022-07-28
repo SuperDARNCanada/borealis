@@ -134,8 +134,8 @@ testing_archive.test_pulse_len_dne::Slice must specify pulse_len in us that must
 testing_archive.test_pulse_len_not_int::Slice must specify pulse_len in us that must be an integer
 testing_archive.test_num_ranges_dne::Slice must specify num_ranges that must be an integer
 testing_archive.test_num_ranges_not_int::Slice must specify num_ranges that must be an integer
-testing_archive.test_first_range_dne::Slice must specify first_range in km that must be an integer
-testing_archive.test_first_range_not_int::Slice must specify first_range in km that must be an integer
+testing_archive.test_first_range_dne::Slice must specify first_range in km that must be a number
+testing_archive.test_first_range_not_float::Slice must specify first_range in km that must be a number
 testing_archive.test_no_intt_intn::Slice must specify either an intn \(unitless\) or intt in ms
 testing_archive.test_intn_not_int::intn must be an integer
 testing_archive.test_intt_not_num::intt must be a number

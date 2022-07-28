@@ -471,26 +471,9 @@ class Sequence(ScanClassBase):
 
         debug_dict = copy.deepcopy(self.debug_dict)
 
-        def fill_dbg_dict():
-            """
-            This needs major speed optimization to work at realtime
-            """
-            decimated_samples = sequence[:, debug_dict['dmrate']]
-            for i in range(main_antenna_count):
-                samples = sequence[i]
-                deci_samples = decimated_samples[i]
-
-                samples_dict = {'real': samples.real.tolist(),
-                                'imag': samples.imag.tolist()}
-
-                deci_samples_dict = {'real': decimated_samples.real.tolist(),
-                                     'imag': decimated_samples.imag.tolist()}
-
-                debug_dict['sequence_samples'][i] = samples_dict
-                debug_dict['decimated_samples'][i] = deci_samples_dict
-
         if __debug__:
-            fill_dbg_dict()
+            debug_dict['sequence_samples'] = sequence
+            debug_dict['decimated_samples'] = sequence[:, ::debug_dict['dmrate']]
         else:
             debug_dict = None
 
