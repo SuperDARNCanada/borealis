@@ -1061,7 +1061,7 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
     :param num_antennas: How many antennas in the array
     :return: Array containing appropriate phases for a broadened beam.
     """
-    cached_values = {
+    cached_values_16_antennas = {
         10.4e6: [33.21168501, 63.39856497,  133.51815213, 232.59694556, 287.65482653, 299.43588532, 313.30394893],
         10.5e6: [33.22157987, 63.44769218,  134.09072554, 232.41818196, 288.18043116, 299.96678003, 312.81034918],
         10.6e6: [33.49341546, 63.918406,    135.76673356, 232.41342064, 288.68373728, 299.8089564,  312.19755493],
@@ -1075,13 +1075,34 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
         13.1e6: [75.41723909, 133.59413156, 216.03815626, 287.94258174, 343.50035796, 369.91299149, 337.96682569],
         13.2e6: [67.98474247, 126.21855408, 209.5839628,  285.48610109, 333.17276884, 370.37654775, 329.43903017]
     }
-    if frequency_hz in cached_values.keys() and num_antennas == 16:
-        print("Using cached values")
-        phases_deg = np.array(cached_values[frequency_hz])
-        angles = np.zeros(num_antennas)
-        angles[1:phases_deg.size+1] = phases_deg
-        angles[phases_deg.size+1:-1] = np.flip(phases_deg)
-        return angles, np.ones(num_antennas)
+    cached_values_8_antennas = {
+        10.4e6: [0., 25.65596691, 78.37293679, 139.64736262, 139.64736262, 78.37293679, 25.65596691, 0.],
+        10.5e6: [0., 25.08958919, 77.59100768, 140.85808655, 140.85808655, 77.59100768, 25.08958919, 0.],
+        10.6e6: [0., 24.57335302, 76.75481191, 141.98499171, 141.98499171, 76.75481191, 24.57335302, 0.],
+        10.7e6: [0., 23.8098711,  75.90392693, 143.01444351, 143.01444351, 75.90392693, 23.8098711,  0.],
+        10.8e6: [0., 22.11931133, 73.23562257, 143.47732068, 143.47732068, 73.23562257, 22.11931133, 0.],
+        10.9e6: [0., 22.85211015, 72.76130323, 144.37536937, 144.37536937, 72.76130323, 22.85211015, 0.],
+        12.2e6: [0., 24.12132192, 67.43277427, 160.59421469, 160.59421469, 67.43277427, 24.12132192, 0.],
+        12.3e6: [0., 25.79888664, 68.32548572, 162.24856417, 162.24856417, 68.32548572, 25.79888664, 0.],
+        12.5e6: [0., 29.73310292, 70.83940609, 166.04550735, 166.04550735, 70.83940609, 29.73310292, 0.],
+        13.0e6: [0., 41.4313578,  82.16477044, 175.25809179, 175.25809179, 82.16477044, 41.4313578,  0.],
+        13.1e6: [0., 43.20693263, 84.14234248, 175.38631445, 175.38631445, 84.14234248, 43.20693263, 0.],
+        13.2e6: [0., 43.42908842, 84.21675093, 174.68458927, 174.68458927, 84.21675093, 43.42908842, 0.]
+    }
+
+    if num_antennas == 16:
+        if frequency_hz in cached_values_16_antennas.keys():
+            print("Using cached values")
+            phases_deg = np.array(cached_values_16_antennas[frequency_hz])
+            angles = np.zeros(num_antennas)
+            angles[1:phases_deg.size+1] = phases_deg
+            angles[phases_deg.size+1:-1] = np.flip(phases_deg)
+            return angles, np.ones(num_antennas)
+    elif num_antennas == 8:
+        if frequency_hz in cached_values_8_antennas.keys():
+            print("Using cached values")
+            phases_deg = np.array(cached_values_8_antennas[frequency_hz])
+            return phases_deg, np.ones(num_antennas)
 
     # Apply an amplitude taper across the elements of the array.
     amplitude_taper = np.ones(num_antennas)
