@@ -36,9 +36,10 @@ class TestExperiment(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3600,  # duration of an integration, in ms, longer than the scanbound, should fail
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": [0],
+            "rx_beam_order": [0],
+            "tx_beam_order": [0],
             "scanbound": [3.5], 
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

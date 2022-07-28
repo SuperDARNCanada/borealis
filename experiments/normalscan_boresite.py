@@ -27,8 +27,9 @@ class NormalscanBoresite(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": [0.0],
-            "beam_order": [0],
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "rx_beam_order": [0],
+            "tx_beam_order": [0],
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

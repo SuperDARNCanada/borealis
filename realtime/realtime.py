@@ -13,7 +13,7 @@ import sys
 import queue
 import json
 import zlib
-import pydarn
+import pydarnio
 import numpy as np
 from backscatter import fitacf
 
@@ -60,11 +60,11 @@ def _main():
 
                 slice_num = int(fields[5])
                 try:
-                    rt_print("Using pyDARN to convert {}".format(filename))
-                    converted = pydarn.BorealisConvert(filename, "rawacf", "/dev/null", slice_num,
+                    rt_print("Using pyDARNio to convert {}".format(filename))
+                    converted = pydarnio.BorealisConvert(filename, "rawacf", "/dev/null", slice_num,
                                                     "site")
                     os.remove(filename)
-                except pydarn.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
+                except pydarnio.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
                     rt_print("Error converting {}".format(filename))
                     os.remove(filename)
                     continue
