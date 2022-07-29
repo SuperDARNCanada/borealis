@@ -1231,7 +1231,7 @@ class DataWrite(object):
 
                 encodings = []
                 for encoding in rx_freq.sequence_encodings:
-                    encoding = np.array(encoding.encoding_value, dtype=np.float32)
+                    encoding = np.array(encoding, dtype=np.float32)
                     encodings.append(encoding)
 
                 encodings = np.array(encodings, dtype=np.float32)

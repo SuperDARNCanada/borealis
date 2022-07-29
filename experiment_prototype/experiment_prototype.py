@@ -88,7 +88,7 @@ Slices which are interfaced in this manner must share:
 
 slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_sequence",
                            "pulse_phase_offset", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt",
-                           "intn", "beam_angle", "tx_beam_order", "rx_beam_order", "scanbound", "freq",
+                           "intn", "beam_angle", "tx_beam_order", "rx_beam_order", "scanbound", "freq", "align_sequences",
                            "clrfrqrange", "averaging_method", "acf", "xcf", "acfint", "wavetype", "seqoffset",
                            "iwavetable", "qwavetable", "comment", "range_sep", "lag_table", "tx_antenna_pattern"])
 
