@@ -21,7 +21,7 @@ import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
 
-def phase_encode(beam_iter, sequence_num, num_pulses, num_samples):
+def phase_encode(beam_iter, sequence_num, num_pulses):
     return np.random.uniform(-180.0, 180, num_pulses)
 
 class ImptTest(ExperimentPrototype):

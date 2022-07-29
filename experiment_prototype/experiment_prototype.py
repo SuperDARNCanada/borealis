@@ -185,17 +185,16 @@ lag_table *defaults*
     and last pulses used for lag-0.
 
 pulse_phase_offset *defaults*
-    a handle to a function that will be used to generate phases that will be applied to each pulse
-    in the sequence. If a function is supplied, the beam iterator, sequence number, number of pulses
-    in the sequence, and number of tx samples in each pulse are passed as arguments that can be used
-    in this function. The default is None if no function handle is supplied.
+    a handle to a function that will be used to generate one phase per each pulse in the sequence. 
+    If a function is supplied, the beam iterator, sequence number, and number of pulses in the sequence 
+    are passed as arguments that can be used in this function. The default is None if no function 
+    handle is supplied.
 
-    encode_fn(beam_iter, sequence_num, num_pulses, num_samples):
-        return np.ones(size=(num_pulses, num_samples))
+    encode_fn(beam_iter, sequence_num, num_pulses):
+        return np.ones(size=(num_pulses))
 
-    The return value must be numpy broadcastable elementwise to an array of num_pulses x num_samples
-    in size.  The result is either a single phase shift for each pulse or a phase shift specified
-    for each sample in the pulses of the slice.
+    The return value must be numpy array of num_pulses in size.
+    The result is a single phase shift for each pulse, in degrees.
 
     Result is expected to be real and in degrees and will be converted to complex radians.
 
@@ -1901,30 +1900,24 @@ class ExperimentPrototype(object):
                                   "pulse sequence defined".format(exp_slice['slice_id']))
 
         if exp_slice['pulse_phase_offset']:
-            num_samps = round(self.txrate * (exp_slice['pulse_len'] * 1e-6))
             num_pulses = len(exp_slice['pulse_sequence'])
 
             # Test the encoding fn with beam iterator of 0 and sequence num of 0.
             # test the user's phase encoding function on first beam (beam_iterator = 0)
             # and first sequence (sequence_number = 0)
-            phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses, num_samps)
+            phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses)
 
             if not isinstance(phase_encoding, np.ndarray):
-                error_list.append("Slice {} Phase encoding return is not numpy array".format(exp_slice['slice_id']))
+                error_list.append("Slice {} Phase encoding return is not numpy array".format(
+                    exp_slice['slice_id']))
             else:
-                if len(phase_encoding.shape) > 2:
-                    error_list.append("Slice {} Phase encoding return must be 1 or 2 dimensions and must be "
-                                      "broadcastable to num samples".format(exp_slice['slice_id']))
+                if len(phase_encoding.shape) > 1:
+                    error_list.append("Slice {} Phase encoding return must be 1 dimensional".format(
+                                                                            exp_slice['slice_id']))
                 else:
-                    phase_encoding = phase_encoding.reshape((phase_encoding.shape[0],-1))
-
                     if phase_encoding.shape[0] != num_pulses:
-                        error_list.append("Slice {} Phase encoding return 1st dimension must be equal to number of "
-                                          "pulses".format(exp_slice['slice_id']))
-
-                    if not (phase_encoding.shape[1] == 1 or phase_encoding.shape[1] == num_samps):
-                        error_list.append("Slice {} Phase encoding return 2nd dimension must be broadcastable to "
-                                          "number of samples".format(exp_slice['slice_id']))
+                        error_list.append("Slice {} Phase encoding return dimension must be "
+                                          "equal to number of pulses".format(exp_slice['slice_id']))
 
         if exp_slice['tx_antenna_pattern']:
             if not callable(exp_slice['tx_antenna_pattern']):
