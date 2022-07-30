@@ -34,7 +34,10 @@ class FullFOV(ExperimentPrototype):
             num_ranges = scf.POLARDARN_NUM_RANGES
 
         # default frequency set here
-        freq = scf.COMMON_MODE_FREQ_1
+        if scf.opts.site_id in ['inv', 'cly']:
+            freq = scf.COMMON_MODE_FREQ_2
+        else:
+            freq = scf.COMMON_MODE_FREQ_1
 
         if kwargs:
             if 'freq' in kwargs.keys():
