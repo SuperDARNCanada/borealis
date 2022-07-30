@@ -10,7 +10,6 @@
     :author: Marci Detwiller
 """
 
-from __future__ import print_function
 import sys
 import copy
 import os
