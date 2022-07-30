@@ -16,13 +16,6 @@ import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
-def widebeam_pattern(frequency_khz, total_antennas, antenna_spacing_m):
-    """
-    Wraps around scf.easy_widebeam() for use in
-    """
-    return scf.easy_widebeam(total_antennas, frequency_khz)
-
-
 class FullFOV(ExperimentPrototype):
     def __init__(self, **kwargs):
         """
@@ -60,7 +53,7 @@ class FullFOV(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "rx_beam_order": [[i for i in range(num_antennas)]],
             "tx_beam_order": [0],   # only one pattern
-            "tx_antenna_pattern": scf.easy_widebeam(num_antennas, freq, antenna_spacing),
+            "tx_antenna_pattern": scf.easy_widebeam,
             "freq": freq,  # kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
