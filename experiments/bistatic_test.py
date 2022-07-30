@@ -5,7 +5,9 @@
 # the array which illuminates the full FOV, and receives on all antennas.
 # The first pulse in each sequence starts on the 0.1 second boundaries,
 # to enable bistatic listening on other radars.
-
+# This mode also chooses a frequency from another radar to listen in on,
+# also across the entire FOV simultaneously.
+import copy
 import sys
 import os
 
@@ -24,7 +26,7 @@ class FullFOV(ExperimentPrototype):
         freq: int
 
         """
-        cpid = 3713
+        cpid = 3715
         super().__init__(cpid)
 
         num_ranges = scf.STD_NUM_RANGES
@@ -42,7 +44,7 @@ class FullFOV(ExperimentPrototype):
 
         num_antennas = scf.opts.main_antenna_count
 
-        self.add_slice({  # slice_id = 0, there is only one slice.
+        slice_0 = {
             "pulse_sequence": scf.SEQUENCE_7P,
             "tau_spacing": scf.TAU_SPACING_7P,
             "pulse_len": scf.PULSE_LEN_45KM,
@@ -58,5 +60,21 @@ class FullFOV(ExperimentPrototype):
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
             "align_sequences": True     # align start of sequence to tenths of a second
-        })
+        }
 
+        slice_1 = copy.deepcopy(slice_0)
+
+        # Remove these to create an rx-only slice
+        slice_1.pop('tx_antenna_pattern')
+        slice_1.pop('tx_beam_order')
+
+        if scf.opts.site_id == 'rkn':
+            freq1 = 12200       # INV freq 2
+        elif scf.opts.site_id == 'pgr':
+            freq1 = 12500       # CLY freq 2
+        else:
+            freq1 = 10900       # RKN freq 1
+        slice_1['freq'] = freq1
+
+        self.add_slice(slice_0)
+        self.add_slice(slice_1, interfacing_dict={0: 'CONCURRENT'})

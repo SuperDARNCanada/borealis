@@ -50,7 +50,7 @@ class FullFOV2Freq(ExperimentPrototype):
         freq: int
 
         """
-        cpid = 3713
+        cpid = 3714
         super().__init__(cpid)
 
         num_ranges = scf.STD_NUM_RANGES
@@ -68,7 +68,6 @@ class FullFOV2Freq(ExperimentPrototype):
                 tx_freq_2 = int(kwargs['freq2'])
 
         num_antennas = scf.opts.main_antenna_count
-        antenna_spacing = scf.opts.main_antenna_spacing
 
         # This slice uses the left half of the array to transmit on one frequency.
         slice_0 = {
