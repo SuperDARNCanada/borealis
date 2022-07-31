@@ -145,6 +145,7 @@ def transmit(driver_c: zmq.Context, usrp_d: usrp.USRP, driver_options: DriverOpt
         agc_status_bank_l = 0b0
         lp_status_bank_l = 0b0
         pulses = []
+        tx_print("Looping around..")
         while more_pulses:
             pulse_data = so.recv_pulse(driver_to_radctrl, driver_options.radctrl_to_driver_identity, tx_print)
 #
@@ -202,12 +203,12 @@ def transmit(driver_c: zmq.Context, usrp_d: usrp.USRP, driver_options: DriverOpt
 
             sample_unpack_end = datetime.now(tz=timezone.utc)
             sample_unpack_duration = sample_unpack_end - sample_unpack_start
-            tx_print("Sample unpack time: {} us".format(sample_unpack_duration.microseconds))
+            #tx_print("Sample unpack time: {} us".format(sample_unpack_duration.microseconds))
 
             tx_setup_end_time = datetime.now(tz=timezone.utc)
             tx_setup_duration = tx_setup_end_time - tx_setup_start_time
 
-            tx_print("Total setup time: {} us".format(tx_setup_duration.microseconds))
+            #tx_print("Total setup time: {} us".format(tx_setup_duration.microseconds))
 
             time_to_send_samples.append(driver_packet.timetosendsamples)
 
@@ -287,7 +288,7 @@ def transmit(driver_c: zmq.Context, usrp_d: usrp.USRP, driver_options: DriverOpt
 
             time_to_send_pulse_end = datetime.now(tz=timezone.utc)
             time_to_send_pulse_duration = time_to_send_pulse_end - time_to_send_pulse_start
-            tx_print("Time to send pulse {} to USRP: {} us".format(i, time_to_send_pulse_duration.microseconds))
+            #tx_print("Time to send pulse {} to USRP: {} us".format(i, time_to_send_pulse_duration.microseconds))
 
         sending_samples_end = datetime.now(timezone.utc)
         total_send_time = sending_samples_end - sending_samples_start
@@ -323,14 +324,14 @@ def transmit(driver_c: zmq.Context, usrp_d: usrp.USRP, driver_options: DriverOpt
                     lates[async_md.channel] += 1
 
             for j in range(len(tx_channels)):
-                # if __debug__:
-                tx_print("Channel {} got {} lates for pulse {}".format(j, lates[j], i))
+                if __debug__:
+                    tx_print("Channel {} got {} lates for pulse {}".format(j, lates[j], i))
 
-            # if __debug__:
-            tx_print("Sequence {} got {} acks out of {} channels for pulse {}"
-                     "".format(sqn_num, channel_acks, len(tx_channels), i))
-            tx_print("Sequence {} got {} lates out of {} channels for pulse {}"
-                     "".format(sqn_num, channel_lates, len(tx_channels), i))
+            if __debug__:
+                tx_print("Sequence {} got {} acks out of {} channels for pulse {}"
+                         "".format(sqn_num, channel_acks, len(tx_channels), i))
+                tx_print("Sequence {} got {} lates out of {} channels for pulse {}"
+                         "".format(sqn_num, channel_lates, len(tx_channels), i))
 
         get_tx_metadata_end = datetime.now(tz=timezone.utc)
         get_tx_metadata_duration = get_tx_metadata_end - get_tx_metadata_start
@@ -387,11 +388,13 @@ def transmit(driver_c: zmq.Context, usrp_d: usrp.USRP, driver_options: DriverOpt
 
         samples_metadata_str = samples_metadata.SerializeToString()
 
+        tx_print("Waiting for dsp to request metadata...")
         # Here we wait for a request from dsp for the samples metadata, then send it, bro!
         # https://www.youtube.com/watch?v=WIrWyr3HgXI
         request = so.recv_request(driver_to_dsp, driver_options.dsp_to_driver_identity, tx_print)
         so.send_pulse(driver_to_dsp, driver_options.dsp_to_driver_identity, samples_metadata_str)
 
+        tx_print("Waiting for brian to request metadata...")
         # Here we wait for a request from brian for the samples metadata, then send it
         request = so.recv_request(driver_to_brian, driver_options.brian_to_driver_identity, tx_print)
         so.send_pulse(driver_to_brian, driver_options.brian_to_driver_identity, samples_metadata_str)

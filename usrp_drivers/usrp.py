@@ -391,11 +391,11 @@ class USRP(object):
 
             wait_for_update()
 
-            self._usrp.set_time_next_pps(self._gps_clock.get_time() + 1)
+            self._usrp.set_time_next_pps(uhd.types.TimeSpec(self._gps_clock.get_time() + 1))
 
             wait_for_update()
 
-            clock_time = self._gps_clock.get_time()
+            clock_time = uhd.types.TimeSpec(self._gps_clock.get_time())
 
             for board in range(self._num_mboards):
                 usrp_time = self._usrp.get_time_last_pps(board)
