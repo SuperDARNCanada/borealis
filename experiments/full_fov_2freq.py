@@ -20,28 +20,6 @@ import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
-def left_half_widebeam(frequency_khz, total_antennas, antenna_spacing_m):
-    """
-    Wraps around scf.easy_widebeam() to specify transmission on the left
-    half of the array.
-    """
-    phases = scf.easy_widebeam(frequency_khz, total_antennas // 2, antenna_spacing_m)
-    all_antenna_phases = np.zeros(1, total_antennas)
-    all_antenna_phases[0, :total_antennas//2] = phases
-    return all_antenna_phases
-
-
-def right_half_widebeam(frequency_khz, total_antennas, antenna_spacing_m):
-    """
-    Wraps around scf.easy_widebeam() to specify transmission on the right
-    half of the array.
-    """
-    phases = scf.easy_widebeam(frequency_khz, total_antennas // 2, antenna_spacing_m)
-    all_antenna_phases = np.zeros(1, total_antennas)
-    all_antenna_phases[0, total_antennas//2:] = phases
-    return all_antenna_phases
-
-
 class FullFOV2Freq(ExperimentPrototype):
     def __init__(self, **kwargs):
         """
@@ -80,7 +58,7 @@ class FullFOV2Freq(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "rx_beam_order": [[i for i in range(num_antennas)]],
             "tx_beam_order": [0],  # only one pattern
-            "tx_antenna_pattern": left_half_widebeam,
+            "tx_antenna_pattern": scf.easy_widebeam,
             "tx_antennas": [i for i in range(num_antennas // 2)],
             "freq": tx_freq_1,  # kHz
             "acf": True,
@@ -92,7 +70,6 @@ class FullFOV2Freq(ExperimentPrototype):
         # Transmit on the second frequency on the right half of the array
         slice_1 = copy.deepcopy(slice_0)
         slice_1['freq'] = tx_freq_2
-        slice_1['tx_antenna_pattern'] = right_half_widebeam
         slice_1['tx_antennas'] = [i + (num_antennas // 2) for i in range(num_antennas // 2)]
 
         self.add_slice(slice_0)
