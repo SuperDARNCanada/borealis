@@ -195,14 +195,14 @@ class DSP(object):
         :type       filtered_samples:  ndarray [num_slices, num_antennas, num_samples]
         :param      beam_phases:       The beam phases used to phase each antenna's samples before
                                        combining.
-        :type       beam_phases:       list
+        :type       beam_phases:       ndarray [num_slices, num_beams, num_antennas]
 
         """
         # [num_slices, num_beams, num_antennas]
         beam_phases = np.array(beam_phases)
 
         # [num_slices, num_beams, num_samples]
-        final_shape = (filtered_samples.shape[0], beam_phases.shape[2], filtered_samples.shape[2])
+        final_shape = (filtered_samples.shape[0], beam_phases.shape[1], filtered_samples.shape[2])
         final_size = np.dtype(np.complex64).itemsize * reduce(lambda a,b: a*b, final_shape)
         bf_shm = shared_memory.SharedMemory(create=True, size=final_size)
         self.beamformed_samples = np.ndarray(final_shape, dtype=np.complex64, buffer=bf_shm.buf)
