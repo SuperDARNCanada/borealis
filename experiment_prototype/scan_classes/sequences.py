@@ -272,10 +272,11 @@ class Sequence(ScanClassBase):
         all_antennas = []
         for slice_id in self.slice_ids:
             print("basic_slice_pulses[{}]: {}".format(slice_id, self.basic_slice_pulses[slice_id]))
-            self.basic_slice_pulses[slice_id] *= max_usrp_dac_amplitude / power_divider[slice_id]
+            if not exp_slice['rxonly']:
+                self.basic_slice_pulses[slice_id] *= max_usrp_dac_amplitude / power_divider[slice_id]
 
-            slice_tx_antennas = self.slice_dict[slice_id]['tx_antennas']
-            all_antennas.extend(slice_tx_antennas)
+                slice_tx_antennas = self.slice_dict[slice_id]['tx_antennas']
+                all_antennas.extend(slice_tx_antennas)
 
         sequence_antennas = list(set(all_antennas))
 
@@ -412,6 +413,8 @@ class Sequence(ScanClassBase):
 
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
+            if exp_slice['rxonly']:
+                continue
             beam_num = exp_slice['tx_beam_order'][beam_iter]
             basic_samples = self.basic_slice_pulses[slice_id][beam_num]  # num_antennas x num_samps
 
