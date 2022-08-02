@@ -349,9 +349,9 @@ def install_realtime():
 
     rt_cmd = "bash -c \"cd /usr/local;" \
     "git clone https://github.com/vtsuperdarn/hdw.dat.git;" \
-    "mkdir -p $BOREALISPATH/borealisrt_env;" \
-    "virtualenv -p python3.9 $BOREALISPATH/borealisrt_env;" \
-    "source $BOREALISPATH/borealisrt_env/bin/activate;" \
+    "mkdir -p $BOREALISPATH/borealisrt_env3.9;" \
+    "virtualenv -p python3.9 $BOREALISPATH/borealisrt_env3.9;" \
+    "source $BOREALISPATH/borealisrt_env3.9/bin/activate;" \
     "pip install zmq;" \
     "pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
     "pip install pydarnio;" \
