@@ -142,7 +142,6 @@ class Sequence(ScanClassBase):
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
                 self.basic_slice_pulses[slice_id] = []
-            print("Main Phases: {}".format(tx_main_phase_shift))
             
             # Now we set up the phases for receive side
             rx_main_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, main_antenna_count,
@@ -272,6 +271,7 @@ class Sequence(ScanClassBase):
         # Normalize all combined pulses to the max USRP DAC amplitude
         all_antennas = []
         for slice_id in self.slice_ids:
+            print("basic_slice_pulses[{}]: {}".format(slice_id, self.basic_slice_pulses[slice_id]))
             self.basic_slice_pulses[slice_id] *= max_usrp_dac_amplitude / power_divider[slice_id]
 
             slice_tx_antennas = self.slice_dict[slice_id]['tx_antennas']
