@@ -243,25 +243,18 @@ class ParseData(object):
 
         for i, data_set in enumerate(self.processed_data.output_datasets):
             slice_id = data_set.slice_id
+            num_beams = data_set.num_beams
 
             self._bfiq_accumulator[slice_id]['num_samps'] = num_samps
+            
+            if 'main_data' not in self._bfiq_accumulator[slice_id]:
+                self._bfiq_accumulator[slice_id]['main_data'] = []
+            self._bfiq_accumulator[slice_id]['main_data'].append(main_data[i, :num_beams, :])
 
-            def accumulate_data(holder, data):
-                """
-                Puts data in holder for future writing.
-
-                :param holder: dict
-                :param data: numpy.ndarray
-                """
-                if 'data' not in holder:
-                    holder['data'] = data
-                else:
-                    holder['data'] = np.concatenate((holder['data'], data))
-
-            for beam in range(data_set.num_beams):
-                accumulate_data(self._bfiq_accumulator[slice_id]['main'], main_data[i, beam, :])
-                if intf_available:
-                    accumulate_data(self._bfiq_accumulator[slice_id]['intf'], intf_data[i, beam, :])
+            if intf_available:
+                if 'intf_data' not in self._bfiq_accumulator[slice_id]:
+                    self._bfiq_accumulator[slice_id]['intf_data'] = []
+                self._bfiq_accumulator[slice_id]['intf_data'].append(intf_data[i, :num_beams, :])
 
     def parse_antenna_iq(self):
         """
@@ -327,10 +320,36 @@ class ParseData(object):
                         antenna_iq_stage[ant_str] = {}
 
                     if 'data' not in antenna_iq_stage[ant_str]:
-                        antenna_iq_stage[ant_str]['data'] = antennas_data[ant_num, :]
-                    else:
-                        arr = antenna_iq_stage[ant_str]
-                        arr['data'] = np.concatenate((arr['data'], antennas_data[ant_num, :]))
+                        antenna_iq_stage[ant_str]['data'] = []
+                    antenna_iq_stage[ant_str]['data'].append(antennas_data[ant_num, :])
+
+    def numpify_arrays(self):
+        """ Consolidates data for each data type to one array.
+
+        In parse_[type](), new data arrays are appended to a list for speed considerations.
+        This function converts these lists into numpy arrays.
+        """
+        for slice_data in self._antenna_iq_accumulator.values():
+            for param_name, param_data in slice_data.items():
+                if 'shm' in param_name: # not a dictionary, just the name of a shared memory object
+                    continue
+                for ant_data in param_data.values():
+                    ant_data['data'] = np.array(ant_data['data'], dtype=np.complex64)
+
+        for slice_data in self._bfiq_accumulator.values():
+            for param_name, param_data in slice_data.items():
+                if 'shm' in param_name: # not a dictionary, just the name of a shared memory object
+                    continue
+                param_data = np.array(param_data, dtype=np.complex64)
+
+        for slice_data in self._mainacfs_accumulator.values():
+            slice_data['data'] = np.array(slice_data['data'], np.complex64)
+
+        for slice_data in self._intfacfs_accumulator.values():
+            slice_data['data'] = np.array(slice_data['data'], np.complex64)
+
+        for slice_data in self._xcfs_accumulator.values():
+            slice_data['data'] = np.array(slice_data['data'], np.complex64)
 
     def update(self, data):
         """ Parses the message and updates the accumulator fields with the new data.
@@ -942,11 +961,11 @@ class DataWrite(object):
                 flattened_data = []
                 num_antenna_arrays = 1
                 parameters['antenna_arrays_order'].append("main")
-                flattened_data.append(bfiq[slice_id]['main']['data'])
+                flattened_data.append(bfiq[slice_id]['main_data'])
                 if "intf" in bfiq[slice_id]:
                     num_antenna_arrays += 1
                     parameters['antenna_arrays_order'].append("intf")
-                    flattened_data.append(bfiq[slice_id]['intf']['data'])
+                    flattened_data.append(bfiq[slice_id]['intf_data'])
 
                 flattened_data = np.concatenate(flattened_data)
                 parameters['data'] = flattened_data
