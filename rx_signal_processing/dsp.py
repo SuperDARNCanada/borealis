@@ -206,7 +206,7 @@ class DSP(object):
         final_size = np.dtype(np.complex64).itemsize * reduce(lambda a,b: a*b, final_shape)
         bf_shm = shared_memory.SharedMemory(create=True, size=final_size)
         self.beamformed_samples = np.ndarray(final_shape, dtype=np.complex64, buffer=bf_shm.buf)
-        self.beamformed_samples = np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
+        self.beamformed_samples[...] = np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
 
         self.shared_mem['bfiq'] = bf_shm
 
