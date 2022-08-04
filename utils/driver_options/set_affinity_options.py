@@ -54,10 +54,8 @@ class SetAffinityOptions(object):
                 device_num = int(n200["main_antenna"])
                 devices_map[device_num] = n200["addr"]
 
-        addr_idx = 0
-        for device_num in sorted(devices_map.keys()):
+        for addr_idx, device_num in enumerate(sorted(devices_map.keys())):
             self._device_str = self._device_str + ",addr" + str(addr_idx) + "=" + devices_map[device_num]
-            addr_idx += 1
 
 
     @property

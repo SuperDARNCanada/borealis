@@ -66,9 +66,9 @@ DriverOptions::DriverOptions() {
                 int_antenna_map[int_antenna_num] = device_num;
                 interferometer_antenna_count_++;
             }
-            if (tx || rx) {
-                main_antenna_count_++;
-            }
+        }
+        if (tx || rx) {
+            main_antenna_count_++;
         }
     }
 

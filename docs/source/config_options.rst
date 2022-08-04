@@ -23,7 +23,7 @@ Config Parameters
 |                                | | rx_int : false              | of antennas can be stored here (extra |
 |                                | | main_antenna : "0"          | ones must have all flags set to       |
 |                                | | interferometer_antenna : "" | false.) rx, tx, and rx_int set the    |
-|                                | | }, {                        | transmit, receive, and interferometer |
+|                                | | }, {                        | receive, transmit, and interferometer |
 |                                | | addr : "192.168.10.101"     | receive channels, respectively. The   |
 |                                | | rx : true                   | antenna numbers refer to the physical |
 |                                | | tx : false                  | antennas that are connected to the    |
