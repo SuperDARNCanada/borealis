@@ -15,16 +15,32 @@ SignalProcessingOptions::SignalProcessingOptions() {
   interferometer_antenna_count = 0;
   auto n200_list = config_pt.get_child("n200s");
   for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++) {
-    // Start iterator on first item (addr)
-    auto iter = n200->second.begin();
-
-    // Get rx, tx, and rx_int flags
-    iter++;
-    bool rx = (iter->second.data().compare("true") == 0);
-    iter++;
-    bool tx = (iter->second.data().compare("true") == 0);
-    iter++;
-    bool rx_int = (iter->second.data().compare("true") == 0);
+    // Iterate through all N200 parameters and store them in variables
+    for (auto iter = n200->second.begin(); iter != n200->second.end(); iter++)
+    {
+      auto param = iter->first;
+      if (param.compare("addr") == 0) {
+        auto addr = iter->second.data();
+      }
+      else if (param.compare("rx") == 0) {
+        bool rx = (iter->second.data().compare("true") == 0);
+      }
+      else if (param.compare("tx") == 0) {
+        bool tx = (iter->second.data().compare("true") == 0);
+      }
+      else if (param.compare("rx_int") == 0) {
+        bool rx_int = (iter->second.data().compare("true") == 0);
+      }
+      else if (param.compare("main_antenna") == 0) {
+        auto main_antenna = iter->second.data();
+      }
+      else if (param.compare("interferometer_antenna") == 0) {
+        auto interferometer_antenna = iter->second.data();
+      }
+      else {
+        throw std::invalid_argument("Invalid N200 parameter in config file");
+      }
+    }
 
     if (rx || tx) {
       main_antenna_count += 1;

@@ -33,26 +33,38 @@ DriverOptions::DriverOptions() {
     // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
     {
-        // Start iterator on first item (addr)
-        auto iter = n200->second.begin();
-
-        // Get n200 IP address
-        auto addr = iter->second.data();
-
-        // Get rx, tx, and rx_int flags
-        iter++;
-        bool rx = (iter->second.data().compare("true") == 0);
-        iter++;
-        bool tx = (iter->second.data().compare("true") == 0);
-        iter++;
-        bool rx_int = (iter->second.data().compare("true") == 0);
+        // Iterate through all N200 parameters and store them in variables
+        for (auto iter = n200->second.begin(); iter != n200->second.end(); iter++)
+        {
+            auto param = iter->first;
+            if (param.compare("addr") == 0) {
+                auto addr = iter->second.data();
+            }
+            else if (param.compare("rx") == 0) {
+                bool rx = (iter->second.data().compare("true") == 0);
+            }
+            else if (param.compare("tx") == 0) {
+                bool tx = (iter->second.data().compare("true") == 0);
+            }
+            else if (param.compare("rx_int") == 0) {
+                bool rx_int = (iter->second.data().compare("true") == 0);
+            }
+            else if (param.compare("main_antenna") == 0) {
+                auto main_antenna = iter->second.data();
+            }
+            else if (param.compare("interferometer_antenna") == 0) {
+                auto interferometer_antenna = iter->second.data();
+            }
+            else {
+                throw std::invalid_argument("Invalid N200 parameter in config file");
+            }
+        }
 
         // If current n200 is transmitting, receiving, or receiving from interferometer, add to devices
         if (tx || rx || rx_int)
         {
             // Get device number. Devices are sorted by the main antenna they are connected to
-            iter++; 
-            auto device_num = boost::lexical_cast<uint32_t>(iter->second.data());
+            auto device_num = boost::lexical_cast<uint32_t>(main_antenna);
 
             // Add the address, tx flag, and rx flag to the respective dictionaries keyed with the device num
             devices_map[device_num] = addr;
@@ -61,8 +73,7 @@ DriverOptions::DriverOptions() {
 
             // If N200 has interferometer, map device number to interferometer antenna number
             if (rx_int) {
-                iter++;
-                auto int_antenna_num = boost::lexical_cast<uint32_t>(iter->second.data());
+                auto int_antenna_num = boost::lexical_cast<uint32_t>(interferometer_antenna);
                 int_antenna_map[int_antenna_num] = device_num;
                 interferometer_antenna_count_++;
             }
