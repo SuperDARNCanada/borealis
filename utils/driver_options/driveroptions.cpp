@@ -33,6 +33,12 @@ DriverOptions::DriverOptions() {
     // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
     {
+        auto addr = "";
+        bool rx = false;
+        bool tx = false;
+        bool rx_int = false;
+        auto main_antenna = "";
+        auto interferometer_antenna = "";
         // Iterate through all N200 parameters and store them in variables
         for (auto iter = n200->second.begin(); iter != n200->second.end(); iter++)
         {
