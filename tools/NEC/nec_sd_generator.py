@@ -4,10 +4,10 @@
 
 Designed to generate wire structures/loads/etc for using with a NEC program like 4nec2 or eznec.
 Part 3 of the NEC2 users manual was referenced heavily (http://www.nec2.org/other/nec2prt3.pdf)
-Also see: https://www.qsl.net/4nec2/ for the latest version of 4nec2 (5.8.17 released Jan 2020)
+Also see: https://www.qsl.net/4nec2/ for the latest version of 4nec2 (5.9.3 released May 2021)
 
-Author: Kevin Krieger, Adam lozinsky
-Copyright 2020 SuperDARN Canada
+Author: Kevin Krieger, Adam lozinsky, Remington Rohel
+Copyright 2022 SuperDARN Canada
 """
 
 import argparse
@@ -47,7 +47,7 @@ def usage_msg():
 
     This script can be used to generate some common orientations of the SuperDARN antenna arrays
     for use with a NEC engine. Some programs that can read NEC inputs are 4nec2 or eznec. This
-    script has been tested with the free, latest version of 4nec2, 5.8.17, updated January 2020 and
+    script has been tested with the free, latest version of 4nec2, 5.9.3, updated May 2021 and
     available here: https://www.qsl.net/4nec2/.
 
     In order to use this with 4nec2, simply open 4nec2 and go to 'File->Open 4nec2 in/out file' and
@@ -173,7 +173,7 @@ class Reflector(object):
     """
 
     def __init__(self, length_m, spacing_m, start_height_m=15.0, num_wires=0, awg=13, angle=45,
-                 global_x=0.0, global_y=0.0, global_z=0.0):
+                 global_x=0.0, global_y=0.0, global_z=0.0, extra_reflector=False):
         """
         :param length_m: The length of the reflector wires in meters
         :param spacing_m: The straight line distance between successive reflector wires in meters
@@ -181,6 +181,7 @@ class Reflector(object):
         :param num_wires: The number of reflector fence wires. If not given, the max is calculated
         :param awg: The wire gauge in American Wire Gauge of the reflector wires. Defaults to 13
         :param angle: The angle the reflector fence makes with the ground in degrees
+        :param extra_reflector: Put an extra reflector wire 10 meters in -z direction from top wire
         :raises ValueError when the spacing_m, angle and num_wires are incompatible
         """
         # TODO: if spacing_m, angle and num_wires are incompatible (i.e. wires in the ground)
@@ -202,6 +203,14 @@ class Reflector(object):
                 self.reflector_wires.append(Wire(x1 + global_x, y + global_y,
                                                  start_height_m - z + global_z, x2 + global_x,
                                                  y + global_y, start_height_m - z + global_z,
+                                                 radius))
+            # Add an extra reflector on the bottom, 10 meters below the top reflector wire
+            if extra_reflector:
+                x1 = -length_m / 2.0
+                x2 = length_m / 2.0
+                z = 10.0
+                self.reflector_wires.append(Wire(x1 + global_x, global_y, start_height_m - z + global_z,
+                                                 x2 + global_x, global_y, start_height_m - z + global_z,
                                                  radius))
 
     def __repr__(self):
@@ -1180,6 +1189,8 @@ if __name__ == '__main__':
     parser.add_argument("-b", "--beam", help="Beam to transmit on?", default=BORESIGHT_BEAM, type=float)
     parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", default=10.5)
     parser.add_argument("-F", "--without_fence", help="Generate the array without fence", action="store_true")
+    parser.add_argument("-e", "--extra_reflector", help="Generate the reflector with an extra bottom wire",
+                        action="store_true")
     parser.add_argument("-B", "--broadened_beam", help="Use a broadened beam phase distribution",
                         action="store_true")
     geometry_group = parser.add_argument_group("Array Geometry")
@@ -1229,16 +1240,16 @@ if __name__ == '__main__':
             else:
                 antennas_down.append(int(antenna))
 
-    receivers_down = []
-    if args.receivers_down is not None and args.receivers_down != "":
-        receivers = args.receivers_down.strip().split(',')
-        for receiver in receivers:
+    transceivers_down = []
+    if args.transceivers_down is not None and args.transceivers_down != "":
+        transceivers = args.transceivers_down.strip().split(',')
+        for transceiver in transceivers:
             # If they specified a range, then include all numbers in that range (including endpoints)
-            if '-' in receiver:
-                small_receiver, big_receiver = receiver.split('-')
-                receivers_down.extend(range(int(small_receiver), int(big_receiver) + 1))
+            if '-' in transceiver:
+                small_transceiver, big_transceiver = transceiver.split('-')
+                transceivers_down.extend(range(int(small_transceiver), int(big_transceiver) + 1))
             else:
-                receivers_down.append(int(receiver))
+                transceivers_down.append(int(transceiver))
 
     antenna_magnitudes = []
     antenna_phases = []
@@ -1262,7 +1273,7 @@ if __name__ == '__main__':
                                                           args.int_antennas)
         # for m_ant in range(0, args.antennas):
         #     antenna_magnitudes.append(1)
-        #     if m_ant in antennas_down or m_ant in receivers_down:
+        #     if m_ant in antennas_down or m_ant in transceivers_down:
         #         antenna_magnitudes.append(0)
         #     else:
         #         antenna_magnitudes.append(1)
@@ -1272,11 +1283,11 @@ if __name__ == '__main__':
 
     else:
         for m_ant in range(0, args.antennas):
-            receivers_down_to_left = bisect(receivers_down, m_ant)
-            if m_ant in receivers_down:
-                receivers_down_to_left -= 1     # bisect([0, 1], 0) returns 1, i.e. will add to back of equal elements
-            phase = rel_phase * (m_ant - receivers_down_to_left)
-            if m_ant in antennas_down or m_ant in receivers_down:
+            transceivers_down_to_left = bisect(transceivers_down, m_ant)
+            if m_ant in transceivers_down:
+                transceivers_down_to_left -= 1     # bisect([0, 1], 0) returns 1, i.e. will add to back of equal elements
+            phase = rel_phase * (m_ant - transceivers_down_to_left)
+            if m_ant in antennas_down or m_ant in transceivers_down:
                 antenna_magnitudes.append(0)
             else:
                 antenna_magnitudes.append(1)
@@ -1315,13 +1326,14 @@ if __name__ == '__main__':
             if args.antennas > 0:
                 reflector_length = (args.antennas + 1) * args.antenna_spacing
                 reflector_spacing = 0.707
-                f.write(str(Reflector(reflector_length, reflector_spacing, num_wires=21)))
+                f.write(str(Reflector(reflector_length, reflector_spacing, num_wires=21,
+                                      extra_reflector=args.extra_reflector)))
             if args.int_antennas > 0:
                 int_reflector_length = (args.int_antennas + 1) * args.antenna_spacing
                 int_reflector_spacing = 0.707
                 f.write(str(Reflector(int_reflector_length, int_reflector_spacing,
                                       global_x=args.int_x_spacing, global_y=args.int_y_spacing,
-                                      global_z=args.int_z_spacing, num_wires=21)))
+                                      global_z=args.int_z_spacing, num_wires=21, extra_reflector=args.extra_reflector)))
         f.write(end_geometry())
 
         # We're finished with the geometry, so now write out the cards that tell NEC various other
