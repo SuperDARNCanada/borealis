@@ -235,6 +235,7 @@ def main():
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
     parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
+    parser.add_argument('--force', help='Force an update to the schedules for the next month')
     parser.add_argument('--first-run', action="store_true", help='This will generate the first set'
                                                                  ' of schedule files if running on'
                                                                  ' a fresh directory. If the next'
@@ -261,8 +262,10 @@ def main():
     site_scds = [scd_utils.SCDUtils("{}/{}.scd".format(scd_dir, s)) for s in sites]
     swg = SWG(scd_dir)
 
+    force_next_month = args.force
+
     while True:
-        if swg.new_swg_file_available() or args.first_run:
+        if swg.new_swg_file_available() or args.first_run or force_next_month:
             swg.pull_new_swg_file()
 
             site_experiments = [swg.parse_swg_to_scd(EXPERIMENTS[s], s, args.first_run)
@@ -330,6 +333,8 @@ def main():
 
             if args.first_run:
                 break
+
+            force_next_month = False
 
         else:
             time.sleep(300)
