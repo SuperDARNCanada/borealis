@@ -235,7 +235,8 @@ def main():
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
     parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
-    parser.add_argument('--force', help='Force an update to the schedules for the next month')
+    parser.add_argument('--force', action="store_true", help='Force an update to the schedules '
+                                                             'for the next month')
     parser.add_argument('--first-run', action="store_true", help='This will generate the first set'
                                                                  ' of schedule files if running on'
                                                                  ' a fresh directory. If the next'
