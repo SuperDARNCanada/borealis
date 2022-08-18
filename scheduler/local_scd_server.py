@@ -208,7 +208,7 @@ class SWG(object):
                         mode_to_use = modes["themis_time"]
                     elif "ST-APOG" in line or "RBSP" in line:
                         mode_to_use = modes["rbsp_time"]
-                    elif "ARASE" in line:
+                    elif "ARASE" in line or "interleavescan" in line:
                         mode_to_use = modes["interleaved_time"]
                     elif "normalsound" in line:
                         mode_to_use = modes["normalsound_time"]
