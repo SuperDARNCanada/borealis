@@ -95,8 +95,9 @@ class RBSPScan(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
-            "txfreq" : freq, #kHz
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
+            "freq" : freq, #kHz
             "scanbound" : scf.easy_scanbound(scf.INTT_7P, beams_to_use), #2 min scanbound
             "acf": True,
             "xcf": True,  # cross-correlation processing

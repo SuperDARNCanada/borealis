@@ -28,8 +28,6 @@
 Import('*')
 import os
 
-RadarProtos = ['driverpacket.proto','rxsamplesmetadata.proto',
-                'sigprocpacket.proto','processeddata.proto',
-		'datawritemetadata.proto']
+RadarProtos = ['driverpacket.proto','rxsamplesmetadata.proto']
 Proto(RadarProtos)
 

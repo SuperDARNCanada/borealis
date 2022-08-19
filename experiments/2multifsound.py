@@ -36,20 +36,21 @@ class TwoMultifsound(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
-            "txfreq" : freqs[0], #kHz
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
+            "freq" : freqs[0], #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         }
 
         slice_2 = copy.deepcopy(slice_1)
-        slice_2['txfreq'] = freqs[1]
+        slice_2['freq'] = freqs[1]
 
         list_of_slices = [slice_1, slice_2]
         sum_of_freq = 0
         for slice in list_of_slices:
-            sum_of_freq += slice['txfreq']# kHz, oscillator mixer frequency on the USRP for TX
+            sum_of_freq += slice['freq']# kHz, oscillator mixer frequency on the USRP for TX
         rxctrfreq = txctrfreq = int(sum_of_freq/len(list_of_slices))
 
 

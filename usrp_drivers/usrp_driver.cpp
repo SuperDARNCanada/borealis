@@ -273,7 +273,28 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     // Getting usrp box time to find out when to send samples. box_time continuously being updated.
     auto delay = uhd::time_spec_t(SET_TIME_COMMAND_DELAY);
     auto time_now = borealis_clocks.box_time;
+    // Earliest possible time to start sending samples
     auto sequence_start_time = time_now + delay;
+
+    if (driver_packet.align_sequences() == true) {
+      // Get the digit of the next tenth of a second after min_start_time
+      double tenth_of_second = std::ceil(sequence_start_time.get_frac_secs() * 10);	// Result is integer in 1 through 10
+      double fractional_second = tenth_of_second / 10;
+      // this occurs if the current time is 0.9+ seconds, so the rounding takes it up to 1.0 seconds.
+      // 0.95 chosen as fractional second will always be 0.0, 0.1, ..., 1.0 so it falls in between 0.9 and 1.0
+      if (fractional_second >= 0.95) {
+        fractional_second = 0.0;
+      }
+
+      // Start the sequence at the next tenth of a second.
+      // 0.05 chosen as fractional second will always be 0.0, 0.1, etc so it falls in between.
+      if (fractional_second < 0.05) {
+	// this occurs if the fractional second is 0.0 because the second has rolled over
+        sequence_start_time = uhd::time_spec_t(sequence_start_time.get_full_secs()+1, fractional_second);
+      } else {
+        sequence_start_time = uhd::time_spec_t(sequence_start_time.get_full_secs(), fractional_second);
+      }
+    }
 
     auto seqn_sampling_time = num_recv_samples/rx_rate;
     TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " full usrp time stuff ",
@@ -461,6 +482,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   uhd::rx_streamer::sptr rx_stream = usrp_d.get_usrp_rx_stream();
 
   auto usrp_buffer_size = rx_stream->get_max_num_samps();
+
   /* The ringbuffer_size is calculated this way because it's first truncated (size_t)
      then rescaled by usrp_buffer_size */
   size_t ringbuffer_size = size_t(driver_options.get_ringbuffer_size()/
