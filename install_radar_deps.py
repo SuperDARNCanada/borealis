@@ -200,6 +200,8 @@ def install_protobuf():
     proto_cmd = "cd ${IDIR};" \
                 "git clone https://github.com/protocolbuffers/protobuf.git;" \
                 "cd protobuf || exit;" \
+                "git checkout v3.19.4;" \        # This is to avoid builder.py errors
+                "git submodule init && git submodule update;" \  # For googletest library
                 "./autogen.sh;" \
                 "./configure;" \
                 "make -j${CORES};" \
