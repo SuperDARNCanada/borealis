@@ -89,8 +89,8 @@ Slices which are interfaced in this manner must share:
 slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_sequence",
                            "pulse_phase_offset", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt",
                            "intn", "beam_angle", "tx_beam_order", "rx_beam_order", "scanbound", "freq", "align_sequences",
-                           "clrfrqrange", "averaging_method", "acf", "xcf", "acfint", "wavetype", "seqoffset",
-                           "iwavetable", "qwavetable", "comment", "range_sep", "lag_table", "tx_antenna_pattern"])
+                           "clrfrqrange", "averaging_method", "acf", "xcf", "acfint", "wavetype", "seqoffset", "iwavetable",
+                           "qwavetable", "comment", "range_sep", "lag_table", "tx_antenna_pattern", "wait_for_first_scanbound"])
 
 """
 These are the keys that are set by the user when initializing a slice. Some
@@ -223,8 +223,14 @@ seqoffset *defaults*
     frequencies in the same pulse, etc. Default is 0 offset.
 
 tx_antennas *defaults*
-    The antennas to transmit on, default is all main antennas given max
-    number from config.
+    The antennas to transmit on, default is all main antennas given max number from config.
+    
+wait_for_first_scanbound *defaults*
+    A boolean flag to determine when an experiment starts running. True (default) means an 
+    experiment will wait until the first averaging period in a scan to start transmitting. 
+    False means an experiment will not wait for the first averaging period, but will instead 
+    start transmitting at the nearest averaging period. Note: for multi-slice experiments, the 
+    first slice is the only one impacted by this parameter.
 
 tx_antenna_pattern *defaults*
     experiment-defined function which returns a complex weighting factor of magnitude <= 1
@@ -1675,8 +1681,12 @@ class ExperimentPrototype(object):
         if 'comment' not in exp_slice:
             slice_with_defaults['comment'] = ''
 
+        if 'wait_for_first_scanbound' not in exp_slice:
+            slice_with_defaults['wait_for_first_scanbound'] = True
+
         if 'align_sequences' not in exp_slice:
             slice_with_defaults['align_sequences'] = False
+
 
         return slice_with_defaults
 
@@ -2011,7 +2021,13 @@ class ExperimentPrototype(object):
                                               "scanbound times".format(exp_slice['slice_id'],
                                                                        exp_slice['intt']))
                             break
-
+        
+        # Check wait_for_first_scanbound
+        if type(exp_slice['wait_for_first_scanbound']) is not bool:
+            error_list.append("Slice {} wait_for_first_scanbound must be True or False, got {} "
+                                                "instead".format(exp_slice['slice_id'],
+                                                                 exp_slice['wait_for_first_scanbound']))
+        
         # TODO other checks
 
         return error_list

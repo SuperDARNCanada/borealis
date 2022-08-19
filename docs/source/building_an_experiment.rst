@@ -354,6 +354,13 @@ tx_beam_order *defaults, but required if tx_antenna_pattern given*
     which row of the return from tx_antenna_pattern to use to beamform a given transmission.
     Default is None, i.e. rx_only slice.
 
+wait_for_first_scanbound *defaults*
+    A boolean flag to determine when an experiment starts running. True (default) means an 
+    experiment will wait until the first averaging period in a scan to start transmitting. 
+    False means an experiment will not wait for the first averaging period, but will instead 
+    start transmitting at the nearest averaging period. Note: for multi-slice experiments, the 
+    first slice is the only one impacted by this parameter.
+
 xcf *defaults*
     flag for cross-correlation data. The default is True if acf is True, otherwise False.
 

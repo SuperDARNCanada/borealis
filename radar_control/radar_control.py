@@ -518,6 +518,9 @@ def radar():
     new_experiment_waiting = False
     new_experiment_loaded = True
 
+    # Flag for starting the radar on the minute boundary
+    wait_for_first_scanbound = experiment.slice_dict.get("wait_for_first_scanbound")
+
     # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
     setup_driver(driverpacket, radar_control_to_driver, options.driver_to_radctrl_identity,
@@ -547,9 +550,19 @@ def radar():
         for scan_num, scan in enumerate(experiment.scan_objects):
             if __debug__:
                 rad_ctrl_print("Scan number: {}".format(scan_num))
+
             # scan iter is the iterator through the scanbound or through the number of averaging periods in the scan.
-            scan_iter = 0
-            # if a new experiment was received during the last scan, it finished the averaging period it was on and
+            if first_integration and not wait_for_first_scanbound:
+                # on first integration, determine current averaging period and set scan_iter to it
+                now = datetime.utcnow()
+                current_minute = now.replace(second=0, microsecond=0)
+                scan_iter = next((i for i, v in enumerate(scan.scanbound) if current_minute + timedelta(seconds=v) > now), 0)
+            else:
+                # otherwise start at first averaging period
+                scan_iter = 0
+
+            # if a new experiment was received during the last scan, it finished the integration period it was on and
+
             # returned here with new_experiment_waiting set to True. Break to load new experiment.
             if new_experiment_waiting:  # start anew on first scan if we have a new experiment.
                 break
@@ -574,7 +587,6 @@ def radar():
                     # align scanbound reference time to find when to start
                     now = datetime.utcnow()
                     dt = now.replace(second=0, microsecond=0)
-
                     if dt + timedelta(seconds=scan.scanbound[scan_iter]) >= now:
                         start_minute = dt
                     else:

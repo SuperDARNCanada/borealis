@@ -106,6 +106,7 @@ testing_archive.test_tx_antenna_pattern_dim_mismatch::Slice .* tx antenna patter
 testing_archive.test_tx_antenna_pattern_magnitude::Slice .* tx antenna pattern return must not have any values with a magnitude greater than 1
 testing_archive.test_tx_beam_order_listnum_too_high::Slice .* scan tx beam number .* DNE
 testing_archive.test_tx_beams::Slice .* has no beams
+testing_archive.test_wait_for_first_scanbound_type::Slice .* wait_for_first_scanbound must be True or False, got .* instead 
 
 ##### I'm not sure how to test the following 1 test right now #####
 #testing_archive.test_beam_order_too_long::Slice .* beam order too long for scanbound
