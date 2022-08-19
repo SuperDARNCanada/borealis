@@ -222,7 +222,7 @@ def install_zmq():
                     "tar xzf LATEST.tar.gz;" \
                     "cd libsodium-stable || exit;" \
                     "./configure;" \
-                    "make && make check;" \
+                    "make -j${CORES} && make -j${CORES} check;" \
                     "make install;" \
                     "ldconfig;"
     execute_cmd(libsodium_cmd)
