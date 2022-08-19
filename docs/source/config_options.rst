@@ -28,10 +28,11 @@ Config Parameters
 |                                | | rx : true                   | antenna numbers refer to the physical |
 |                                | | tx : false                  | antennas that are connected to the    |
 |                                | | rx_int : true               | N200s. The number of main and         |
-|                                | | main_antenna : "1"          | interferometer                        |
-|                                | | interferometer_antenna : "0"| antennas that are activated here must |
-|                                | | }, ...                      | agree with the count variables        |
-|                                |                               | specified above.                      |
+|                                | | main_antenna : "1"          | interferometer antennas that are      |
+|                                | | interferometer_antenna : "0"| activated here must agree with the    |
+|                                | | }, ...                      | count variables specified above.      |
+|                                |                               | The ordering of the N200 parameters   | 
+|                                |                               | doesn't matter.                       |
 +--------------------------------+-------------------------------+---------------------------------------+
 | addr (n200s)                   | 192.168.10.100                | IP address of the specified N200      |
 +--------------------------------+-------------------------------+---------------------------------------+
