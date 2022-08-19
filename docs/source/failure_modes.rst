@@ -195,7 +195,8 @@ ImportError: cannot import name 'builder'`
 
 Reason:
 There are two components to the protobuf installation - the package and the protoc compiler.
-Starting with version 3.20.0, the builder.py file was made to consolidate some things with this library.
+Starting with version 3.20.0, the builder.py file was made for consolidation with this library, 'Protobuf python generated codes are simplified. Descriptors and message classes' definitions are now dynamic created in internal/builder.py.'
+See https://github.com/protocolbuffers/protobuf/releases?page=2
 We have had troubles installing versions newer than this, so we recommend using previous versions.
 
 Solution:
