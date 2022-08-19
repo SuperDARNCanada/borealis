@@ -167,6 +167,7 @@ def install_packages():
            "matplotlib",
            "virtualenv",
            "protobuf",
+           "numpy",
            "zmq"]
 
     if "openSUSE" in DISTRO:
