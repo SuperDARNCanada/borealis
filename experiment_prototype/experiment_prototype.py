@@ -230,7 +230,7 @@ tx_antennas *defaults*
 wait_for_first_scanbound *defaults*
     A boolean flag to determine when an experiment starts running. True (default) means an 
     experiment will wait until the first averaging period in a scan to start transmitting. 
-    False means an experiment will not wait for the first averaging period , but will instead 
+    False means an experiment will not wait for the first averaging period, but will instead 
     start transmitting at the nearest averaging period. Note: for multi-slice experiments, the 
     first slice is the only one impacted by this parameter.
 
