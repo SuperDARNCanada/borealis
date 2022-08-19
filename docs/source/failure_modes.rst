@@ -195,8 +195,8 @@ ImportError: cannot import name 'builder'`
 
 Reason:
 There are two components to the protobuf installation - the package and the protoc compiler.
-The package must be a newer version than the compiler. You can check the compiler
-version with `protoc --version`, and the package version with `pip show protobuf`.
+Starting with version 3.20.0, the builder.py file was made to consolidate some things with this library.
+We have had troubles installing versions newer than this, so we recommend using previous versions.
 
 Solution:
 Either upgrade your protobuf version or install an older version of the protoc compiler.
