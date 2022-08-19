@@ -252,7 +252,7 @@ def install_ntp():
               "cp -v /usr/include/sys/timepps.h /usr/include/ || exit;" \
               "wget -N http://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-4.2.8p13.tar.gz;" \
               "tar xvf ntp-4.2.8p13.tar.gz;" \
-              "cd ntp-4.2.8p13/ || exit; " \
+              "cd ntp-4.2.8p13/ || exit;" \
               "./configure --enable-atom;" \
               "make -j${CORES};" \
               "make install;"
