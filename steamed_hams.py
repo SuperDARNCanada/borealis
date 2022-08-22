@@ -17,6 +17,8 @@ import os
 import time
 import json
 
+PYTHON_VERSION = '3.9'
+
 def usage_msg():
     """
     Return the usage message for this process.
@@ -170,10 +172,10 @@ modules= {"brian" : "", "experiment_handler" : "",
 
 for mod in modules:
     opts = python_opts.format(module=mod)
-    modules[mod] = "python3.9 {opts} {module}/{module}.py".format(opts=opts, module=mod)
+    modules[mod] = "python{version} {opts} {module}/{module}.py".format(opts=opts, module=mod, version=PYTHON_VERSION)
 
-modules['realtime'] = "source borealisrt_env3.9/bin/activate;" + modules['realtime']
-modules['rx_signal_processing'] = "source dspenv3.9/bin/activate;" + modules['rx_signal_processing']
+modules['realtime'] = "source borealisrt_env{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['realtime']
+modules['rx_signal_processing'] = "source dspenv{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['rx_signal_processing']
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
 if args.kwargs_string:
