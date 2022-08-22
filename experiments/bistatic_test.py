@@ -23,7 +23,7 @@ class FullFOV(ExperimentPrototype):
         """
         kwargs:
 
-        freq: int
+        freq: int, kHz
 
         """
         cpid = 3715
