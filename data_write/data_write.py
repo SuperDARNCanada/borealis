@@ -139,13 +139,9 @@ class ParseData(object):
 
         self._bfiq_available = False
         self._bfiq_accumulator = self.nested_dict()
-        self._bfiq_accumulator['main_shm'] = []
-        self._bfiq_accumulator['intf_shm'] = []
 
         self._antenna_iq_accumulator = self.nested_dict()
         self._antenna_iq_available = False
-        self._antenna_iq_accumulator['main_shm'] = []
-        self._antenna_iq_accumulator['intf_shm'] = []
 
         self._mainacfs_available = False
         self._mainacfs_accumulator = self.nested_dict()
@@ -195,12 +191,9 @@ class ParseData(object):
                 # Put the data in the accumulator
                 if 'data' not in holder[slice_id]:
                     holder[slice_id]['data'] = []
-                holder[slice_id]['data'].append(acf_data)
-
-                # Keep track of the shared memory so it can be unlinked later
-                if 'shm' not in holder[slice_id]:
-                    holder[slice_id]['shm'] = []
-                holder[slice_id]['shm'].append(shm)
+                holder[slice_id]['data'].append(acf_data.copy())
+                shm.close()
+                shm.unlink()
 
             if data_set.main_acf_shm:
                 self._mainacfs_available = True
@@ -229,15 +222,19 @@ class ParseData(object):
         num_samps = self.processed_data.num_samps
         
         main_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_main_shm)
-        main_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=main_shm.buf)
-        self._bfiq_accumulator['main_shm'].append(main_shm)
+        temp_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=main_shm.buf)
+        main_data = temp_data.copy()
+        main_shm.close()
+        main_shm.unlink()
 
         intf_available = False
         if self.processed_data.bfiq_intf_shm != '':
             intf_available = True
             intf_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_intf_shm)
-            intf_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=intf_shm.buf)
-            self._bfiq_accumulator['intf_shm'].append(intf_shm)
+            temp_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=intf_shm.buf)
+            intf_data = temp_data.copy()
+            intf_shm.close()
+            intf_shm.unlink()
 
         self._bfiq_available = True
 
@@ -281,15 +278,19 @@ class ParseData(object):
 
             stage_samps = debug_stage.num_samps
             stage_main_shm = shared_memory.SharedMemory(name=debug_stage.main_shm)
-            stage_data = np.ndarray((num_slices, num_main_antennas, stage_samps), dtype=np.complex64,
+            stage_main_data = np.ndarray((num_slices, num_main_antennas, stage_samps), dtype=np.complex64,
                                     buffer=stage_main_shm.buf)
-            self._antenna_iq_accumulator['main_shm'].append(stage_main_shm)
+            stage_data = stage_main_data.copy()     # Move data out of shared memory so we can close it
+            stage_main_shm.close()
+            stage_main_shm.unlink()
+
             if debug_stage.intf_shm:
                 stage_intf_shm = shared_memory.SharedMemory(name=debug_stage.intf_shm)
                 stage_intf_data = np.ndarray((num_slices, num_intf_antennas, stage_samps), dtype=np.complex64,
                                              buffer=stage_intf_shm.buf)
-                stage_data = np.hstack((stage_data, stage_intf_data))
-                self._antenna_iq_accumulator['intf_shm'].append(stage_intf_shm)
+                stage_data = np.hstack((stage_data, stage_intf_data.copy()))
+                stage_intf_shm.close()
+                stage_intf_shm.unlink()
      
             stage_dict['data'] = stage_data
             stages.append(stage_dict)
@@ -329,18 +330,19 @@ class ParseData(object):
         In parse_[type](), new data arrays are appended to a list for speed considerations.
         This function converts these lists into numpy arrays.
         """
-        for slice_data in self._antenna_iq_accumulator.values():
-            for param_name, param_data in slice_data.items():
-                if 'shm' in param_name: # not a dictionary, just the name of a shared memory object
-                    continue
-                for ant_data in param_data.values():
-                    ant_data['data'] = np.array(ant_data['data'], dtype=np.complex64)
+        for slice_id, slice_data in self._antenna_iq_accumulator.items():
+            if isinstance(slice_id, int):       # filtering out 'data_descriptors'
+                for param_name, param_data in slice_data.items():
+                    for array_name, array_data in param_data.items():
+                        if array_name != 'num_samps':
+                            array_data['data'] = np.array(array_data['data'], dtype=np.complex64)
 
-        for slice_data in self._bfiq_accumulator.values():
-            for param_name, param_data in slice_data.items():
-                if 'shm' in param_name: # not a dictionary, just the name of a shared memory object
-                    continue
-                param_data = np.array(param_data, dtype=np.complex64)
+        for slice_id, slice_data in self._bfiq_accumulator.items():
+            if isinstance(slice_id, int):       # filtering out 'data_descriptors'
+                for param_name, param_data in slice_data.items():
+                    if 'shm' in param_name: # not a dictionary, just the name of a shared memory object
+                        continue
+                    param_data = np.array(param_data, dtype=np.complex64)
 
         for slice_data in self._mainacfs_accumulator.values():
             slice_data['data'] = np.array(slice_data['data'], np.complex64)
@@ -1178,42 +1180,6 @@ class DataWrite(object):
 
                 write_file(output_file, tx_data, self.tx_data_two_hr_name)
 
-        def unlink_shm(data_parsing):
-            """Closes and unlinks all SharedMemory instances."""
-            if data_parsing.antenna_iq_available:
-                for main_shm in data_parsing.antenna_iq_accumulator['main_shm']:
-                    main_shm.close()
-                    main_shm.unlink()
-                for intf_shm in data_parsing.antenna_iq_accumulator['intf_shm']:
-                    intf_shm.close()
-                    intf_shm.unlink()
-
-            if data_parsing.bfiq_available:
-                for main_shm in data_parsing.bfiq_accumulator['main_shm']:
-                    main_shm.close()
-                    main_shm.unlink()
-                for intf_shm in data_parsing.bfiq_accumulator['intf_shm']:
-                    intf_shm.close()
-                    intf_shm.unlink()
-
-            if data_parsing.mainacfs_available:
-                for slice_obj in data_parsing.mainacfs_accumulator.values():
-                    for shm_obj in slice_obj['shm']:
-                        shm_obj.close()
-                        shm_obj.unlink()
-
-            if data_parsing.xcfs_available:
-                for slice_obj in data_parsing.xcfs_accumulator.values():
-                    for shm_obj in slice_obj['shm']:
-                        shm_obj.close()
-                        shm_obj.unlink()
-
-            if data_parsing.intfacfs_available:
-                for slice_obj in data_parsing.intfacfs_accumulator.values():
-                    for shm_obj in slice_obj['shm']:
-                        shm_obj.close()
-                        shm_obj.unlink()
-
         parameters_holder = {}
         for meta in aveperiod_meta.sequences:
             for rx_freq in meta.rx_channels:
@@ -1310,8 +1276,6 @@ class DataWrite(object):
         if write_tx:
             write_tx_data()
 
-        unlink_shm(data_parsing)
-
         end = time.time()
         dw_print("Time to write to {}: {} ms".format(dataset_name, (end - start) * 1000))
 
@@ -1405,7 +1369,7 @@ def main():
             for pd in sorted_q:
                 if not first_time:
                     if data_parsing.sequence_num in aveperiod_metadata_dict:
-
+                        data_parsing.numpify_arrays()
                         aveperiod_metadata = aveperiod_metadata_dict.pop(data_parsing.sequence_num)
 
                         if aveperiod_metadata.experiment_name != current_experiment:
