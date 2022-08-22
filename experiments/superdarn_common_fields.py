@@ -117,7 +117,6 @@ elif opts.site_id == "cly":
     SOUNDING_FREQS = [10550, 11200, 11900, 13550]
 else:
     SOUNDING_FREQS = [10600, 11250, 11950, 13150]
-    # SOUNDING_FREQS = [9500, 10300, 11000, 11700, 13250, 14200, 15200]
 
 
 def easy_widebeam(frequency_khz, num_antennas, antenna_spacing_m):
