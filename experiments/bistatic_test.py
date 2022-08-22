@@ -43,7 +43,7 @@ class FullFOV(ExperimentPrototype):
             if 'freq' in kwargs.keys():
                 freq = kwargs['freq']
 
-        self.printing('Frequency set to {}'.format(freq))
+        self.printing('Frequency set to {} kHz'.format(freq))
 
         num_antennas = scf.opts.main_antenna_count
 
