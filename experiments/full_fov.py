@@ -24,7 +24,7 @@ class FullFOV(ExperimentPrototype):
         freq: int
 
         """
-        cpid = 3713
+        cpid = 3800
         super().__init__(cpid)
 
         num_ranges = scf.STD_NUM_RANGES

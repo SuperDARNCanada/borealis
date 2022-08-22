@@ -29,7 +29,7 @@ class FullFOV2Freq(ExperimentPrototype):
         freq2: int, kHz
 
         """
-        cpid = 3714
+        cpid = 3810
         super().__init__(cpid)
 
         num_ranges = scf.STD_NUM_RANGES
