@@ -1116,8 +1116,8 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
 
     wavelength = speed_of_light / frequency_hz
 
-    fov_left_bound = -24.3 * np.pi / 180    # Left bound of FOV in radians CW of boresight
-    fov_right_bound = 24.3 * np.pi / 180    # Right bound of FOV in radians CW of boresight
+    fov_left_bound = np.deg2rad(-24.3)    # Left bound of FOV in radians CW of boresight
+    fov_right_bound = np.deg2rad(24.3)    # Right bound of FOV in radians CW of boresight
 
     k0 = 2 * np.pi / wavelength   # Wave number
 
@@ -1130,7 +1130,7 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
         kn[i] = np.sin(fov_left_bound + (fov_right_bound - fov_left_bound) * mag) * k0
         element_phases[i+1] = element_phases[i] + kn[i] * antenna_spacing_m
 
-    return element_phases * 180 / np.pi, amplitude_taper
+    return np.rad2deg(element_phases), amplitude_taper
 
 
 def calculate_circular_phase(frequency_hz, antenna_spacing_m, num_antennas):
