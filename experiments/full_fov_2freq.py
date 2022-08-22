@@ -25,7 +25,8 @@ class FullFOV2Freq(ExperimentPrototype):
         """
         kwargs:
 
-        freq: int
+        freq1: int, kHz
+        freq2: int, kHz
 
         """
         cpid = 3714
