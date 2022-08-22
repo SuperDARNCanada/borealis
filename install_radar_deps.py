@@ -186,10 +186,10 @@ def install_packages():
         except sp.CalledProcessError as err:
             print(err)
 
-    update_pip = "pip3.9 install --upgrade pip"
+    update_pip = "sudo -u radar pip{version} install --upgrade pip".format(version=args.python_version)
     execute_cmd(update_pip)
 
-    pip_cmd = "pip3.9 install " + " ".join(pip)
+    pip_cmd = "sudo -u radar pip{version} install ".format(version=args.python_version) + " ".join(pip)
     execute_cmd(pip_cmd)
 
 
@@ -201,8 +201,8 @@ def install_protobuf():
     proto_cmd = "cd ${IDIR};" \
                 "git clone https://github.com/protocolbuffers/protobuf.git;" \
                 "cd protobuf || exit;" \
-                "git checkout v3.19.4;" \        # This is to avoid builder.py errors
-                "git submodule init && git submodule update;" \  # For googletest library
+                "git checkout v3.19.4;" \
+                "git submodule init && git submodule update;" \
                 "./autogen.sh;" \
                 "./configure;" \
                 "make -j${CORES};" \
@@ -361,17 +361,14 @@ def install_realtime():
     Create virtual environment and install utilities needed for RT capabilities.
     """
 
-    rt_cmd = "bash -c \"cd /usr/local;" \
-             "git clone https://github.com/SuperDARN/hdw.git;" \
-             "mkdir -p $BOREALISPATH/borealisrt_env;" \
-             "virtualenv -p python3.9 $BOREALISPATH/borealisrt_env;" \
-             "source $BOREALISPATH/borealisrt_env/bin/activate;" \
-             "pip install zmq;" \
-             "pip install git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
-             "pip install pydarn;" \
-             "deactivate;\""
-
-    execute_cmd(rt_cmd)
+    execute_cmd("mkdir -p $BOREALISPATH/borealisrt_env")
+    execute_cmd("virtualenv -p python{version} $BOREALISPATH/borealisrt_env;".format(version=args.python_version))
+    pip_cmd = "source $BOREALISPATH/borealisrt_env/bin/activate;" \
+              "sudo -u radar pip install zmq pydarn;" \
+              "sudo -u radar pip install git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
+              "deactivate;"
+              
+    execute_cmd(pip_cmd)
 
 
 def install_dspenv():
@@ -379,13 +376,13 @@ def install_dspenv():
     Create virtual environment and install utilities needed for python DSP.
     """
 
-    rt_cmd = "bash -c \"mkdir -p $BOREALISPATH/dspenv;" \
-             "virtualenv -p python3.9 $BOREALISPATH/dspenv;" \
-             "source $BOREALISPATH/dspenv/bin/activate;" \
-             "pip install zmq numpy scipy matplotlib cupy protobuf posix_ipc;" \
-             "deactivate;\""
-
-    execute_cmd(rt_cmd)
+    execute_cmd("bash -c \"mkdir -p $BOREALISPATH/dspenv;\"")
+    execute_cmd("virtualenv -p python{version} $BOREALISPATH/dspenv;".format(version=args.python_version))
+    pip_cmd = "source $BOREALISPATH/dspenv/bin/activate;" \
+              "sudo -u radar pip install zmq numpy scipy matplotlib cupy protobuf posix_ipc;" \
+              "deactivate;"
+              
+    execute_cmd(pip_cmd)
 
 
 def install_directories():
@@ -400,7 +397,8 @@ def install_directories():
 
 
 def install_hdw_dat():
-
+    
+    execute_cmd("git clone https://github.com/SuperDARN/hdw.git /usr/local/hdw/")
     install_hdw_cmd = "cp -v /usr/local/hdw/hdw.dat.{radar_abbreviation} $BOREALISPATH" \
                       "".format(radar_abbreviation=args.radar)
     execute_cmd(install_hdw_cmd)
@@ -420,6 +418,8 @@ parser.add_argument("--borealis-dir", help="Path to the Borealis installation di
 parser.add_argument("--user", help="The username of the user who will run borealis. Default 'radar'", default="radar")
 parser.add_argument("--group", help="The group name of the user who will run borealis. Default 'users'",
                     default="users")
+parser.add_argument("--python-version", help="The version of Python to use for the installation. Default 3.9",
+                    default='3.9')
 parser.add_argument("radar", help="The three letter abbreviation for this radar. Example: sas")
 parser.add_argument("install_dir", help="Path to the installation directory")
 args = parser.parse_args()
@@ -446,6 +446,8 @@ DISTRO = get_distribution()
 # Set env variables that will be read by subshells
 os.environ['IDIR'] = args.install_dir
 os.environ['CORES'] = str(mp.cpu_count())
+
+execute_cmd('echo "PYTHON_VERSION={version}" >> /home/{user}/.bashrc'.format(version=args.python_version, user=args.user))
 
 install_packages()
 install_protobuf()

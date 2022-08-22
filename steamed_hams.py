@@ -17,6 +17,8 @@ import os
 import time
 import json
 
+PYTHON_VERSION = os.environ['PYTHON_VERSION']
+
 def usage_msg():
     """
     Return the usage message for this process.
