@@ -208,7 +208,7 @@ class SWG(object):
                         mode_to_use = modes["themis_time"]
                     elif "ST-APOG" in line or "RBSP" in line:
                         mode_to_use = modes["rbsp_time"]
-                    elif "ARASE" in line:
+                    elif "ARASE" in line or "interleavescan" in line:
                         mode_to_use = modes["interleaved_time"]
                     elif "normalsound" in line:
                         mode_to_use = modes["normalsound_time"]
@@ -235,6 +235,8 @@ def main():
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
     parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
+    parser.add_argument('--force', action="store_true", help='Force an update to the schedules '
+                                                             'for the next month')
     parser.add_argument('--first-run', action="store_true", help='This will generate the first set'
                                                                  ' of schedule files if running on'
                                                                  ' a fresh directory. If the next'
@@ -261,8 +263,10 @@ def main():
     site_scds = [scd_utils.SCDUtils("{}/{}.scd".format(scd_dir, s)) for s in sites]
     swg = SWG(scd_dir)
 
+    force_next_month = args.force
+
     while True:
-        if swg.new_swg_file_available() or args.first_run:
+        if swg.new_swg_file_available() or args.first_run or force_next_month:
             swg.pull_new_swg_file()
 
             site_experiments = [swg.parse_swg_to_scd(EXPERIMENTS[s], s, args.first_run)
@@ -330,6 +334,8 @@ def main():
 
             if args.first_run:
                 break
+
+            force_next_month = False
 
         else:
             time.sleep(300)
