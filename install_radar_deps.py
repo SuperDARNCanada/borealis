@@ -335,9 +335,14 @@ def install_cuda():
     """
     Install CUDA.
     """
-    cuda_file = ""
     if "openSUSE" in DISTRO:
-        cuda_file = 'cuda_11.4.3_470.82.01_linux.run'
+        pre_cuda_setup_cmd = "groupadd video;" \
+                             "usermod -a -G video $USER;" \
+                             "rpm --erase gpg-pubkey-7fa2af80*;" \
+                             "zypper addrepo https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo;" \
+                             "zypper refresh;"
+        execute_cmd(pre_cuda_setup_cmd)
+        cuda_cmd = "zypper install cuda"
     elif 'Ubuntu' in DISTRO:
         pre_cuda_setup_cmd = "apt-get install -y gcc-7 g++-7;" \
                              "update-alternatives --remove-all gcc;" \
@@ -348,10 +353,11 @@ def install_cuda():
                              "update-alternatives --config g++;"
         execute_cmd(pre_cuda_setup_cmd)
         cuda_file = 'cuda_11.4.3_470.82.01_linux.run'
-
-    cuda_cmd = "cd ${{IDIR}};" \
-               "wget -N http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};" \
-               "sh {cuda_file} --silent --toolkit --samples;".format(cuda_file=cuda_file)
+        cuda_cmd = "cd ${{IDIR}};" \
+                   "wget -N http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};" \
+                   "sh {cuda_file} --silent --toolkit --samples;".format(cuda_file=cuda_file)
+    else:
+        cuda_cmd = f'echo "Failed; No CUDA install script for Linux Distribution: {DISTRO}"'
 
     execute_cmd(cuda_cmd)
 
