@@ -130,7 +130,7 @@ class Sequence(ScanClassBase):
 
                 if exp_slice['tx_antenna_pattern'] is not None:
                     # Returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
-                    tx_main_phase_shift = exp_slice['tx_antenna_pattern'](freq_khz, main_antenna_count, main_antenna_spacing)
+                    tx_main_phase_shift = exp_slice['tx_antenna_pattern'](freq_khz, len(exp_slice['tx_antennas']), main_antenna_spacing)
                 else:
                     tx_main_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, main_antenna_count,
                                                        main_antenna_spacing)
@@ -142,7 +142,6 @@ class Sequence(ScanClassBase):
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
                 self.basic_slice_pulses[slice_id] = []
-            print("Main Phases: {}".format(tx_main_phase_shift))
             
             # Now we set up the phases for receive side
             rx_main_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, main_antenna_count,
@@ -272,10 +271,12 @@ class Sequence(ScanClassBase):
         # Normalize all combined pulses to the max USRP DAC amplitude
         all_antennas = []
         for slice_id in self.slice_ids:
-            self.basic_slice_pulses[slice_id] *= max_usrp_dac_amplitude / power_divider[slice_id]
+            print("basic_slice_pulses[{}]: {}".format(slice_id, self.basic_slice_pulses[slice_id]))
+            if not exp_slice['rxonly']:
+                self.basic_slice_pulses[slice_id] *= max_usrp_dac_amplitude / power_divider[slice_id]
 
-            slice_tx_antennas = self.slice_dict[slice_id]['tx_antennas']
-            all_antennas.extend(slice_tx_antennas)
+                slice_tx_antennas = self.slice_dict[slice_id]['tx_antennas']
+                all_antennas.extend(slice_tx_antennas)
 
         sequence_antennas = list(set(all_antennas))
 
@@ -412,6 +413,8 @@ class Sequence(ScanClassBase):
 
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
+            if exp_slice['rxonly']:
+                continue
             beam_num = exp_slice['tx_beam_order'][beam_iter]
             basic_samples = self.basic_slice_pulses[slice_id][beam_num]  # num_antennas x num_samps
 

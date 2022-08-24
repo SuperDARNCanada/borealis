@@ -10,7 +10,6 @@
     :author: Marci Detwiller
 """
 
-from __future__ import print_function
 import sys
 import copy
 import os
@@ -235,7 +234,7 @@ wait_for_first_scanbound *defaults*
 tx_antenna_pattern *defaults*
     experiment-defined function which returns a complex weighting factor of magnitude <= 1
     for each tx antenna used in the experiment. The return value of the function must be
-    an array of size [num_beams, num_main_antennas] with all elements having magnitude <= 1.
+    an array of size [num_beams, num_tx_antennas] with all elements having magnitude <= 1.
     This function is analogous to the beam_angle field in that it defines the transmission 
     pattern for the array, and the tx_beam_order field specifies which "beam" to use in a 
     given averaging period.
@@ -1934,7 +1933,7 @@ class ExperimentPrototype(object):
                 error_list.append("Slice {} tx antenna pattern must be a function".format(exp_slice['slice_id']))
             else:
                 tx_freq_khz = exp_slice['freq']
-                tx_antenna_count = options.main_antenna_count
+                tx_antenna_count = len(exp_slice['tx_antennas'])
                 antenna_spacing = options.main_antenna_spacing
                 antenna_pattern = exp_slice['tx_antenna_pattern'](tx_freq_khz, tx_antenna_count, antenna_spacing)
 
@@ -1947,7 +1946,7 @@ class ExperimentPrototype(object):
                                           "".format(exp_slice['slice_id'], antenna_pattern.shape))
                     elif antenna_pattern.shape[1] != tx_antenna_count:
                         error_list.append("Slice {} tx antenna pattern return 2nd dimension ({}) must be equal to number of "
-                                          "main antennas ({})".format(exp_slice['slice_id'], antenna_pattern.shape[1],
+                                          "tx antennas ({})".format(exp_slice['slice_id'], antenna_pattern.shape[1],
                                                                       tx_antenna_count))
                     antenna_pattern_mag = np.abs(antenna_pattern)
                     if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
