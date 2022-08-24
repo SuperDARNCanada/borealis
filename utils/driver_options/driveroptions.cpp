@@ -33,6 +33,12 @@ DriverOptions::DriverOptions() {
     // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
     {
+        auto addr = "";
+        bool rx = false;
+        bool tx = false;
+        bool rx_int = false;
+        auto main_antenna = "";
+        auto interferometer_antenna = "";
         // Iterate through all N200 parameters and store them in variables
         for (auto iter = n200->second.begin(); iter != n200->second.end(); iter++)
         {
@@ -91,6 +97,7 @@ DriverOptions::DriverOptions() {
     // Loop through sorted list of N200s and create devices_ string
     std::string ma_recv_str = "";
     std::string ma_tx_str = "";
+    std::string ma_channel_str = "";
     for (auto element : devices_map) {
         auto device_num = element.first;
         device_num_to_addr_idx[device_num] = addr_idx;  // Store conversion for interferometer use
@@ -102,21 +109,29 @@ DriverOptions::DriverOptions() {
         if (tx_map[device_num]) {
             ma_tx_str = ma_tx_str + std::to_string(addr_idx) + ",";
         }
+        if (rx_map[device_num] || tx_map[device_num]) {
+            ma_channel_str = ma_channel_str + device_num + ",";
+        }
         addr_idx++;
     }
 
     // Interferometer antenna
-    std::string ia_recv_str = "";
+    std::string ia_recv_str = "";       // Interferometer receive channel string
+    std::string ia_channel_str = "";    // Interferometer antenna string
     for (auto element : int_antenna_map) {
+        auto intf_antenna_num = element.first;
         auto device_num = element.second;
         auto addr_idx = device_num_to_addr_idx[device_num]; // Get correct address index
         ia_recv_str = ia_recv_str + std::to_string(2*addr_idx + 1) + ",";
+        ia_channel_str = ia_channel_str + intf_antenna_num + ",";
     }
 
     // Remove trailing comma from channel strings
     ma_recv_str.pop_back();
     ma_tx_str.pop_back();
+    ma_channel_str.pop_back();
     ia_recv_str.pop_back();
+    ia_channel_str.pop_back();
 
     auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
@@ -183,6 +198,8 @@ DriverOptions::DriverOptions() {
 
     receive_channels_ = make_channels(total_recv_chs_str);
     transmit_channels_ = make_channels(ma_tx_str);
+    main_antennas_ = make_channels(ma_channel_str);
+    interferometer_antennas_ = make_channels(ia_channel_str);
 
     router_address_ = config_pt.get<std::string>("router_address");
     driver_to_radctrl_identity_ = config_pt.get<std::string>("driver_to_radctrl_identity");
@@ -399,6 +416,16 @@ double DriverOptions::get_agc_signal_read_delay() const
 }
 
 /**
+ * @brief      Gets all antennas connected to N200s
+ * 
+ * @return     The list of antennas connected to N200s
+ */
+std::vector<size_t> DriverOptions::get_main_antennas() const
+{
+    return main_antennas_;
+}
+
+/**
  * @brief      Gets the main antenna count.
  *
  * @return     The main antenna count.
@@ -406,6 +433,16 @@ double DriverOptions::get_agc_signal_read_delay() const
 uint32_t DriverOptions::get_main_antenna_count() const
 {
     return main_antenna_count_;
+}
+
+/**
+ * @brief      Gets all interferometer antennas connected to N200s
+ * 
+ * @return     The list of interferometer antennas connected to N200s
+ */
+std::vector<size_t> DriverOptions::get_interferometer_antennas() const
+{
+    return interferometer_antennas_;
 }
 
 /**

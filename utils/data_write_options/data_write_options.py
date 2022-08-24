@@ -44,14 +44,22 @@ class DataWriteOptions(object):
         # Parse N200 array and calculate main and intf antenna count
         self._main_antenna_count = 0
         self._intf_antenna_count = 0
+        self._main_antennas = []
+        self._intf_antennas = []
         for n200 in raw_config["n200s"]:
             rx = bool(n200["rx"])
             tx = bool(n200["tx"])
             rx_int = bool(n200["rx_int"])
             if rx or tx:
-                self._main_antenna_count += 1
+                self._main_antenna_count += 1       # TODO: Potentially change this to physical antennas only, not only antennas tx'ing and rx'ing
+                main_antenna_num = int(n200["main_antenna"])
+                self._main_antennas.append(main_antenna_num)
             if rx_int:
-                self._intf_antenna_count += 1
+                self._intf_antenna_count += 1       # TODO: Same as above
+                intf_antenna_num = int(n200["interferometer_antenna"])
+                self._intf_antennas.append(intf_antenna_num)
+        self._main_antennas.sort()
+        self._intf_antennas.sort()
 
     @property
     def rt_to_dw_identity(self):
@@ -203,6 +211,26 @@ class DataWriteOptions(object):
         """
 
         return self._intf_antenna_count
+
+    @property
+    def main_antennas(self):
+        """
+        Gets the index of antennas in the main array corresponding to the transceiver channels.
+        :return:    indices of transceiver channels mapped to antennas in main array.
+        :rtype:     list[int]
+        """
+
+        return self._main_antennas
+
+    @property
+    def intf_antennas(self):
+        """
+        Gets the index of antennas in the interferometer array corresponding to the receiver channels.
+        :return:    indices of receiver channels mapped to antennas in interferometer array.
+        :rtype:     list[int]
+        """
+
+        return self._intf_antennas
 
 if __name__ == '__main__':
     DataWriteOptions()
