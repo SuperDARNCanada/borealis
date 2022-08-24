@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <regex>
+#include <iostream>
 #include "utils/options/options.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 
@@ -31,8 +32,8 @@ SignalProcessingOptions::SignalProcessingOptions() {
   main_antenna_count = 0;
   interferometer_antenna_count = 0;
 
-  std::vector<std::string> main_antenna_vec;
-  std::vector<std::string> intf_antenna_vec;
+  std::vector<uint32_t> main_antenna_vec;
+  std::vector<uint32_t> intf_antenna_vec;
   auto n200_list = config_pt.get_child("n200s");
   for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++) {
     std::string addr = "";
@@ -69,11 +70,13 @@ SignalProcessingOptions::SignalProcessingOptions() {
     }
     if (rx || tx) {
       main_antenna_count += 1;
-      main_antenna_vec.push_back(main_antenna);
+      auto main_antenna_num = boost::lexical_cast<uint32_t>(main_antenna);
+      main_antenna_vec.push_back(main_antenna_num);
     }
     if (rx_int) {
       interferometer_antenna_count += 1;
-      intf_antenna_vec.push_back(interferometer_antenna);
+      auto int_antenna_num = boost::lexical_cast<uint32_t>(interferometer_antenna);
+      intf_antenna_vec.push_back(int_antenna_num);
     }
   }
   std::sort(main_antenna_vec.begin(), main_antenna_vec.end());
@@ -81,13 +84,16 @@ SignalProcessingOptions::SignalProcessingOptions() {
   std::string main_antenna_list = "";
   std::string interferometer_antenna_list = "";
   for (auto antenna_num : main_antenna_vec) {
-    main_antenna_list = main_antenna_list + antenna_num + ",";
+    main_antenna_list = main_antenna_list + std::to_string(antenna_num) + ",";
   }
-  for (auto intf_num ; intf_antenna_vec) {
-    interferometer_antenna_list = interferometer_antenna_list + intf_num + ",";
+  for (auto intf_num : intf_antenna_vec) {
+    interferometer_antenna_list = interferometer_antenna_list + std::to_string(intf_num) + ",";
   }
   main_antenna_list.pop_back();
   interferometer_antenna_list.pop_back();
+
+  std::cout << main_antenna_list << std::endl;
+  std::cout << interferometer_antenna_list << std::endl;
 
   main_antennas = split(main_antenna_list, ",");
   interferometer_antennas = split(interferometer_antenna_list, ",");

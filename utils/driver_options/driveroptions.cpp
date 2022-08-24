@@ -110,7 +110,7 @@ DriverOptions::DriverOptions() {
             ma_tx_str = ma_tx_str + std::to_string(addr_idx) + ",";
         }
         if (rx_map[device_num] || tx_map[device_num]) {
-            ma_channel_str = ma_channel_str + device_num + ",";
+            ma_channel_str = ma_channel_str + std::to_string(device_num) + ",";
         }
         addr_idx++;
     }
@@ -123,8 +123,11 @@ DriverOptions::DriverOptions() {
         auto device_num = element.second;
         auto addr_idx = device_num_to_addr_idx[device_num]; // Get correct address index
         ia_recv_str = ia_recv_str + std::to_string(2*addr_idx + 1) + ",";
-        ia_channel_str = ia_channel_str + intf_antenna_num + ",";
+        ia_channel_str = ia_channel_str + std::to_string(intf_antenna_num) + ",";
     }
+
+    std::cout << ia_channel_str << std::endl;
+    std::cout << ma_channel_str << std::endl;
 
     // Remove trailing comma from channel strings
     ma_recv_str.pop_back();

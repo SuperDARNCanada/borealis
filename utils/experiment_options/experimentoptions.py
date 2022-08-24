@@ -35,7 +35,7 @@ class ExperimentOptions:
             self._main_antenna_count = 0
             self._interferometer_antenna_count = 0
             self._main_antennas = []
-            self._intferometer_antennas = []
+            self._interferometer_antennas = []
             for n200 in config["n200s"]:
                 rx = bool(n200["rx"])
                 tx = bool(n200["tx"])
@@ -47,9 +47,9 @@ class ExperimentOptions:
                 if rx_int:
                     self._interferometer_antenna_count += 1       # TODO: Same as above
                     intf_antenna_num = int(n200["interferometer_antenna"])
-                    self._intferometer_antennas.append(intf_antenna_num)
+                    self._interferometer_antennas.append(intf_antenna_num)
             self._main_antennas.sort()
-            self._intferometer_antennas.sort()
+            self._interferometer_antennas.sort()
                     
             self._main_antenna_spacing = float(config['main_antenna_spacing'])
             self._interferometer_antenna_spacing = float(config['interferometer_antenna_spacing'])
