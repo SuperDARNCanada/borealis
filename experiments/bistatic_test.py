@@ -33,7 +33,7 @@ class BistaticTest(ExperimentPrototype):
         freq: int, kHz
 
         """
-        cpid = 4000
+        cpid = 3820
         super().__init__(cpid)
 
         num_ranges = scf.STD_NUM_RANGES
