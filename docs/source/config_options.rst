@@ -10,12 +10,6 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | device_options                 | recv_frame_size=4000          | UHD USRP device arguments.            |
 +--------------------------------+-------------------------------+---------------------------------------+
-| main_antennas                  | 0,1,2,3,4,5,6,7,8,9,          | Mapping of main rx/tx channels to     |
-|                                | 10,11,12,13,14,15             | antennas in the main array            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| interferometer_antennas        | 1,3,5,7                       | Mapping of intf rx channels to        |
-|                                |                               | antennas in the interferometer array  |
-+--------------------------------+-------------------------------+---------------------------------------+
 | n200s                          | | {                           | List of all N200s, both active and    |
 |                                | | addr : "192.168.10.100"     | not. Order of N200s is specified by   |
 |                                | | rx : true                   | main_antenna, so N200s can be listed  |
