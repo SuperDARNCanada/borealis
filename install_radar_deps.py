@@ -348,10 +348,10 @@ def install_realtime():
     """
 
     rt_cmd = "bash -c \"cd /usr/local;" \
-    "git clone https://github.com/vtsuperdarn/hdw.dat.git;" \
-    "mkdir -p $BOREALISPATH/borealisrt_env3.9;" \
-    "virtualenv -p python3.9 $BOREALISPATH/borealisrt_env3.9;" \
-    "source $BOREALISPATH/borealisrt_env3.9/bin/activate;" \
+    "git clone https://github.com/SuperDARN/hdw.git;" \
+    "mkdir -p $BOREALISPATH/borealisrt_env;" \
+    "virtualenv -p python3.9 $BOREALISPATH/borealisrt_env;" \
+    "source $BOREALISPATH/borealisrt_env/bin/activate;" \
     "pip install zmq;" \
     "pip install git+git://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
     "pip install pydarnio;" \
@@ -384,7 +384,7 @@ def install_directories():
 
 def install_hdw_dat():
 
-    install_hdw_cmd = "cp -v /usr/local/hdw.dat/hdw.dat.{radar_abbreviation} $BOREALISPATH"
+    install_hdw_cmd = "cp -v /usr/local/hdw/hdw.dat.{radar_abbreviation} $BOREALISPATH"
     install_hdw_cmd = install_hdw_cmd.format(radar_abbreviation=args.radar)
 
 def install_config():
