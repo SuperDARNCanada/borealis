@@ -9,7 +9,9 @@
 class SignalProcessingOptions: public Options {
  public:
   explicit SignalProcessingOptions();
+  std::vector<uint32_t> get_main_antennas() const;
   uint32_t get_main_antenna_count() const;
+  std::vector<uint32_t> get_interferometer_antennas() const;
   uint32_t get_interferometer_antenna_count() const;
 
   std::string get_router_address() const;
@@ -28,7 +30,9 @@ class SignalProcessingOptions: public Options {
   std::string get_ringbuffer_name() const;
 
  private:
+  std::vector<uint32_t> main_antennas;
   uint32_t main_antenna_count;
+  std::vector<uint32_t> interferometer_antennas;
   uint32_t interferometer_antenna_count;
   std::string router_address;
   std::string dsp_to_radctrl_identity;

@@ -3,9 +3,26 @@
 #include <boost/range/algorithm_ext/erase.hpp>
 #include <boost/lexical_cast.hpp>
 #include <string>
+#include <vector>
+#include <regex>
 #include "utils/options/options.hpp"
 #include "utils/signal_processing_options/signalprocessingoptions.hpp"
 
+std::vector<uint32_t> split(const std::string str, const std::string regex_str)
+{
+    std::regex re(regex_str);
+    std::vector<std::string> str_list(
+    std::sregex_token_iterator(str.begin(), str.end(), re, -1),
+    std::sregex_token_iterator()
+  );
+
+  std::vector<uint32_t> int_list;
+  for (auto& item: str_list) {
+    int_list.push_back(boost::lexical_cast<uint32_t>(item));
+  }
+
+  return int_list;
+}
 
 SignalProcessingOptions::SignalProcessingOptions() {
   Options::parse_config_file();
@@ -13,6 +30,9 @@ SignalProcessingOptions::SignalProcessingOptions() {
   // Parse N200 array and calculate main and intf antenna count
   main_antenna_count = 0;
   interferometer_antenna_count = 0;
+
+  std::vector<std::string> main_antenna_vec;
+  std::vector<std::string> intf_antenna_vec;
   auto n200_list = config_pt.get_child("n200s");
   for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++) {
     std::string addr = "";
@@ -49,12 +69,29 @@ SignalProcessingOptions::SignalProcessingOptions() {
     }
     if (rx || tx) {
       main_antenna_count += 1;
+      main_antenna_vec.push_back(main_antenna);
     }
     if (rx_int) {
       interferometer_antenna_count += 1;
+      intf_antenna_vec.push_back(interferometer_antenna);
     }
   }
-  
+  std::sort(main_antenna_vec.begin(), main_antenna_vec.end());
+  std::sort(intf_antenna_vec.begin(), intf_antenna_vec.end());
+  std::string main_antenna_list = "";
+  std::string interferometer_antenna_list = "";
+  for (auto antenna_num : main_antenna_vec) {
+    main_antenna_list = main_antenna_list + antenna_num + ",";
+  }
+  for (auto intf_num ; intf_antenna_vec) {
+    interferometer_antenna_list = interferometer_antenna_list + intf_num + ",";
+  }
+  main_antenna_list.pop_back();
+  interferometer_antenna_list.pop_back();
+
+  main_antennas = split(main_antenna_list, ",");
+  interferometer_antennas = split(interferometer_antenna_list, ",");
+
   router_address = config_pt.get<std::string>("router_address");
   dsp_to_radctrl_identity = config_pt.get<std::string>("dsp_to_radctrl_identity");
   dsp_driver_identity = config_pt.get<std::string>("dsp_to_driver_identity");
@@ -71,10 +108,19 @@ SignalProcessingOptions::SignalProcessingOptions() {
   ringbuffer_name = config_pt.get<std::string>("ringbuffer_name");
 }
 
+std::vector<uint32_t> SignalProcessingOptions::get_main_antennas() const
+{
+  return main_antennas;
+}
 
 uint32_t SignalProcessingOptions::get_main_antenna_count() const
 {
   return main_antenna_count;
+}
+
+std::vector<uint32_t> SignalProcessingOptions::get_interferometer_antennas() const
+{
+  return interferometer_antennas;
 }
 
 uint32_t SignalProcessingOptions::get_interferometer_antenna_count() const
