@@ -340,8 +340,6 @@ class ParseData(object):
         for slice_id, slice_data in self._bfiq_accumulator.items():
             if isinstance(slice_id, int):       # filtering out 'data_descriptors'
                 for param_name, param_data in slice_data.items():
-                    if 'shm' in param_name: # not a dictionary, just the name of a shared memory object
-                        continue
                     param_data = np.array(param_data, dtype=np.complex64)
 
         for slice_data in self._mainacfs_accumulator.values():
