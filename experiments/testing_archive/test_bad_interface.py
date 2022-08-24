@@ -37,16 +37,17 @@ class TestExperiment(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         }
         self.add_slice(slice_1)
         slice_2 = copy.deepcopy(slice_1)
-        slice_2['txfreq'] = scf.COMMON_MODE_FREQ_2
+        slice_2['freq'] = scf.COMMON_MODE_FREQ_2
         # Interface value from one slice to another is not a valid type from interface_types
         # Interface type is not in the interface_types list
         self.add_slice(slice_2, interfacing_dict={0:'THISWILLBREAK'})

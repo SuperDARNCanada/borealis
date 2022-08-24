@@ -57,7 +57,7 @@ class ScanClassBase(object):
         # list of slice_ids included in this scan_class_base
         self.slice_ids = object_keys
 
-        # dictionary (key = slice_id) of dictionaries (keys = slice parameters)
+        # dictionary (key = slice_id) of dictionaries (value = slice parameters)
         self.slice_dict = object_slice_dict
 
         # interfacing dictionary (key = (slice_id_1, slice_id_2), value = one of
