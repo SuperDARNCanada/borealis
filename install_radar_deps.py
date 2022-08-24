@@ -48,8 +48,15 @@ def execute_cmd(cmd):
     :returns:   Decoded output of the command.
     :rtype:     string
     """
-    output = sp.check_output(cmd, shell=True)
-    return output.decode('utf-8')
+    # try/except block lets install script continue even if something fails
+    try:
+        output = sp.check_output(cmd, shell=True)
+    except sp.CalledProcessError as err:
+        output = err.output
+
+    output = output.decode('utf-8')
+    print(output)  # catches echo statements
+    return output
 
 
 def get_distribution():
@@ -338,11 +345,13 @@ def install_cuda():
     if "openSUSE" in DISTRO:
         pre_cuda_setup_cmd = "groupadd video;" \
                              "usermod -a -G video $USER;" \
-                             "rpm --erase gpg-pubkey-7fa2af80*;" \
-                             "zypper addrepo https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo;" \
-                             "zypper refresh;"
+                             "rpm --erase gpg-pubkey-7fa2af80*"
         execute_cmd(pre_cuda_setup_cmd)
-        cuda_cmd = "zypper install cuda"
+        cuda_zypper_cmd = "zypper removerepo cuda-opensuse15-x86_64;" \
+                          "zypper addrepo https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo;" \
+                          "zypper refresh;"
+        execute_cmd(cuda_zypper_cmd)
+        cuda_cmd = "zypper install -y cuda"
     elif 'Ubuntu' in DISTRO:
         pre_cuda_setup_cmd = "apt-get install -y gcc-7 g++-7;" \
                              "update-alternatives --remove-all gcc;" \
@@ -373,7 +382,7 @@ def install_realtime():
               "sudo -u radar pip install zmq pydarn;" \
               "sudo -u radar pip install git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
               "deactivate;"
-              
+
     execute_cmd(pip_cmd)
 
 
@@ -387,12 +396,11 @@ def install_dspenv():
     pip_cmd = "source $BOREALISPATH/dspenv/bin/activate;" \
               "sudo -u radar pip install zmq numpy scipy matplotlib cupy protobuf posix_ipc;" \
               "deactivate;"
-              
+
     execute_cmd(pip_cmd)
 
 
 def install_directories():
-
     mkdirs_cmd = "mkdir -p /data/borealis_logs;" \
                  "mkdir -p /data/borealis_data;" \
                  "chown {normal_user}:{normal_group} /data/borealis_*;"
@@ -403,7 +411,6 @@ def install_directories():
 
 
 def install_hdw_dat():
-    
     execute_cmd("git clone https://github.com/SuperDARN/hdw.git /usr/local/hdw/")
     install_hdw_cmd = "cp -v /usr/local/hdw/hdw.dat.{radar_abbreviation} $BOREALISPATH" \
                       "".format(radar_abbreviation=args.radar)
@@ -411,7 +418,6 @@ def install_hdw_dat():
 
 
 def install_config():
-
     install_config_cmd = "bash -c 'cd $BOREALISPATH';" \
                          "git submodule update --init;" \
                          "chown -R {normal_user}:{normal_group} borealis_config_files;"
@@ -453,7 +459,8 @@ DISTRO = get_distribution()
 os.environ['IDIR'] = args.install_dir
 os.environ['CORES'] = str(mp.cpu_count())
 
-execute_cmd('echo "export PYTHON_VERSION={version}" >> /home/{user}/.bashrc'.format(version=args.python_version, user=args.user))
+execute_cmd('echo "export PYTHON_VERSION={version}" >> /home/{user}/.bashrc'.format(version=args.python_version,
+                                                                                    user=args.user))
 
 install_packages()
 install_protobuf()
