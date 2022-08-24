@@ -349,7 +349,7 @@ def install_cuda():
         execute_cmd(pre_cuda_setup_cmd)
         cuda_zypper_cmd = "zypper removerepo cuda-opensuse15-x86_64;" \
                           "zypper addrepo https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo;" \
-                          "zypper refresh;"
+                          "echo a | zypper refresh;"
         execute_cmd(cuda_zypper_cmd)
         cuda_cmd = "zypper install -y cuda"
     elif 'Ubuntu' in DISTRO:
