@@ -447,7 +447,7 @@ DISTRO = get_distribution()
 os.environ['IDIR'] = args.install_dir
 os.environ['CORES'] = str(mp.cpu_count())
 
-execute_cmd('echo "PYTHON_VERSION={version}" >> /home/{user}/.bashrc'.format(version=args.python_version, user=args.user))
+execute_cmd('echo "export PYTHON_VERSION={version}" >> /home/{user}/.bashrc'.format(version=args.python_version, user=args.user))
 
 install_packages()
 install_protobuf()
