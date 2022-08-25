@@ -1061,8 +1061,51 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
     :param num_antennas: How many antennas in the array
     :return: Array containing appropriate phases for a broadened beam.
     """
+    cached_values_16_antennas = {
+        10.4e6: [33.21168501, 63.39856497,  133.51815213, 232.59694556, 287.65482653, 299.43588532, 313.30394893],
+        10.5e6: [33.22157987, 63.44769218,  134.09072554, 232.41818196, 288.18043116, 299.96678003, 312.81034918],
+        10.6e6: [33.49341546, 63.918406,    135.76673356, 232.41342064, 288.68373728, 299.8089564,  312.19755493],
+        10.7e6: [33.42706054, 63.94880958,  136.78441366, 232.43324622, 288.91978353, 299.57226291, 311.74840496],
+        10.8e6: [33.13909903, 63.56879316,  137.23017826, 232.17488475, 289.01436937, 299.53525025, 311.23785241],
+        10.9e6: [33.15305158, 63.55105706,  137.93590292, 232.13550152, 289.46328775, 299.78227805, 310.57614029],
+        12.2e6: [70.91038811, 122.60927618, 214.92179098, 276.38784179, 325.25390655, 351.3873793,  316.5693829],
+        12.3e6: [71.78224973, 124.29124213, 215.26781585, 277.84490172, 326.57004062, 353.22972278, 318.83181539],
+        12.5e6: [75.1870308,  128.12468688, 216.50545923, 281.26273571, 334.23044519, 357.70997722, 326.41420518],
+        13.0e6: [65.30441048, 122.04513377, 208.77532736, 282.14858123, 329.88094473, 368.67442895, 324.92709286],
+        13.1e6: [75.41723909, 133.59413156, 216.03815626, 287.94258174, 343.50035796, 369.91299149, 337.96682569],
+        13.2e6: [67.98474247, 126.21855408, 209.5839628,  285.48610109, 333.17276884, 370.37654775, 329.43903017]
+    }
+    cached_values_8_antennas = {
+        10.4e6: [0., 25.65596691, 78.37293679, 139.64736262, 139.64736262, 78.37293679, 25.65596691, 0.],
+        10.5e6: [0., 25.08958919, 77.59100768, 140.85808655, 140.85808655, 77.59100768, 25.08958919, 0.],
+        10.6e6: [0., 24.57335302, 76.75481191, 141.98499171, 141.98499171, 76.75481191, 24.57335302, 0.],
+        10.7e6: [0., 23.8098711,  75.90392693, 143.01444351, 143.01444351, 75.90392693, 23.8098711,  0.],
+        10.8e6: [0., 22.11931133, 73.23562257, 143.47732068, 143.47732068, 73.23562257, 22.11931133, 0.],
+        10.9e6: [0., 22.85211015, 72.76130323, 144.37536937, 144.37536937, 72.76130323, 22.85211015, 0.],
+        12.2e6: [0., 24.12132192, 67.43277427, 160.59421469, 160.59421469, 67.43277427, 24.12132192, 0.],
+        12.3e6: [0., 25.79888664, 68.32548572, 162.24856417, 162.24856417, 68.32548572, 25.79888664, 0.],
+        12.5e6: [0., 29.73310292, 70.83940609, 166.04550735, 166.04550735, 70.83940609, 29.73310292, 0.],
+        13.0e6: [0., 41.4313578,  82.16477044, 175.25809179, 175.25809179, 82.16477044, 41.4313578,  0.],
+        13.1e6: [0., 43.20693263, 84.14234248, 175.38631445, 175.38631445, 84.14234248, 43.20693263, 0.],
+        13.2e6: [0., 43.42908842, 84.21675093, 174.68458927, 174.68458927, 84.21675093, 43.42908842, 0.]
+    }
+
+    if num_antennas == 16:
+        if frequency_hz in cached_values_16_antennas.keys():
+            print("Using cached values")
+            phases_deg = np.array(cached_values_16_antennas[frequency_hz])
+            angles = np.zeros(num_antennas)
+            angles[1:phases_deg.size+1] = phases_deg
+            angles[phases_deg.size+1:-1] = np.flip(phases_deg)
+            return angles, np.ones(num_antennas)
+    elif num_antennas == 8:
+        if frequency_hz in cached_values_8_antennas.keys():
+            print("Using cached values")
+            phases_deg = np.array(cached_values_8_antennas[frequency_hz])
+            return phases_deg, np.ones(num_antennas)
+
     # Apply an amplitude taper across the elements of the array.
-    amplitude_taper = windows.hamming(num_antennas)
+    amplitude_taper = np.ones(num_antennas)
 
     # Normalize by the square of the element amplitudes
     normalization = np.dot(amplitude_taper, amplitude_taper)
@@ -1073,8 +1116,8 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
 
     wavelength = speed_of_light / frequency_hz
 
-    fov_left_bound = -24.3 * np.pi / 180    # Left bound of FOV in radians CW of boresight
-    fov_right_bound = 24.3 * np.pi / 180    # Right bound of FOV in radians CW of boresight
+    fov_left_bound = np.deg2rad(-24.3)    # Left bound of FOV in radians CW of boresight
+    fov_right_bound = np.deg2rad(24.3)    # Right bound of FOV in radians CW of boresight
 
     k0 = 2 * np.pi / wavelength   # Wave number
 
@@ -1084,10 +1127,10 @@ def calculate_broadened_phase(frequency_hz, antenna_spacing_m, num_antennas):
 
     # Calculate the phase difference between adjacent elements, assuming the leftmost element has phase 0
     for i, mag in enumerate(normalized_taper_cumsum[:-1]):
-        kn[i] = (fov_left_bound + (fov_right_bound - fov_left_bound) * mag) * k0
+        kn[i] = np.sin(fov_left_bound + (fov_right_bound - fov_left_bound) * mag) * k0
         element_phases[i+1] = element_phases[i] + kn[i] * antenna_spacing_m
 
-    return element_phases * 180 / np.pi, amplitude_taper
+    return np.rad2deg(element_phases), amplitude_taper
 
 
 def calculate_circular_phase(frequency_hz, antenna_spacing_m, num_antennas):
@@ -1178,7 +1221,7 @@ if __name__ == '__main__':
                                                                  "as '5-7,11'",
                                default="", type=str)
     parser.add_argument("-b", "--beam", help="Beam to transmit on?", default=BORESIGHT_BEAM, type=float)
-    parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", default=10.5)
+    parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", default=10.5, type=float)
     parser.add_argument("-F", "--without_fence", help="Generate the array without fence", action="store_true")
     parser.add_argument("-B", "--broadened_beam", help="Use a broadened beam phase distribution",
                         action="store_true")
@@ -1229,16 +1272,16 @@ if __name__ == '__main__':
             else:
                 antennas_down.append(int(antenna))
 
-    receivers_down = []
-    if args.receivers_down is not None and args.receivers_down != "":
-        receivers = args.receivers_down.strip().split(',')
-        for receiver in receivers:
+    transceivers_down = []
+    if args.transceivers_down is not None and args.transceivers_down != "":
+        transceivers = args.transceivers_down.strip().split(',')
+        for transceiver in transceivers:
             # If they specified a range, then include all numbers in that range (including endpoints)
-            if '-' in receiver:
-                small_receiver, big_receiver = receiver.split('-')
-                receivers_down.extend(range(int(small_receiver), int(big_receiver) + 1))
+            if '-' in transceiver:
+                small_transceiver, big_transceiver = transceiver.split('-')
+                transceivers_down.extend(range(int(small_transceiver), int(big_transceiver) + 1))
             else:
-                receivers_down.append(int(receiver))
+                transceivers_down.append(int(transceiver))
 
     antenna_magnitudes = []
     antenna_phases = []
@@ -1262,7 +1305,7 @@ if __name__ == '__main__':
                                                           args.int_antennas)
         # for m_ant in range(0, args.antennas):
         #     antenna_magnitudes.append(1)
-        #     if m_ant in antennas_down or m_ant in receivers_down:
+        #     if m_ant in antennas_down or m_ant in transceivers_down:
         #         antenna_magnitudes.append(0)
         #     else:
         #         antenna_magnitudes.append(1)
@@ -1272,11 +1315,11 @@ if __name__ == '__main__':
 
     else:
         for m_ant in range(0, args.antennas):
-            receivers_down_to_left = bisect(receivers_down, m_ant)
-            if m_ant in receivers_down:
-                receivers_down_to_left -= 1     # bisect([0, 1], 0) returns 1, i.e. will add to back of equal elements
-            phase = rel_phase * (m_ant - receivers_down_to_left)
-            if m_ant in antennas_down or m_ant in receivers_down:
+            transceivers_down_to_left = bisect(transceivers_down, m_ant)
+            if m_ant in transceivers_down:
+                transceivers_down_to_left -= 1     # bisect([0, 1], 0) returns 1, i.e. will add to back of equal elements
+            phase = rel_phase * (m_ant - transceivers_down_to_left)
+            if m_ant in antennas_down or m_ant in transceivers_down:
                 antenna_magnitudes.append(0)
             else:
                 antenna_magnitudes.append(1)
