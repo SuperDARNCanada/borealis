@@ -31,9 +31,10 @@ class ExperimentOptions:
             errmsg = 'Cannot open config file at {}'.format(config_file)
             raise ExperimentException(errmsg)
         try:
-            # Parse N200 array and calculate main and intf antenna count
-            self._main_antenna_count = 0
-            self._interferometer_antenna_count = 0
+            self._main_antenna_count = int(config["main_antenna_count"])
+            self._intf_antenna_count = int(config["interferometer_antenna_count"])
+
+            # Parse N200 array and calculate main and intf antennas operating
             self._main_antennas = []
             self._interferometer_antennas = []
             for n200 in config["n200s"]:

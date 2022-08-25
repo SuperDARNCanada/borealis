@@ -26,9 +26,11 @@ DriverOptions::DriverOptions() {
     std::map<uint32_t, bool> tx_map;                // Maps device number to tx flag
     std::map<uint32_t, uint32_t> int_antenna_map;   // Maps interferometer antenna number to device number
 
-    // Count up antennas while looping through N200 array
-    main_antenna_count_ = 0;
-    interferometer_antenna_count_ = 0;
+    // Get number of physical antennas
+    main_antenna_count_ = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("main_antenna_count"));
+    interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("interferometer_antenna_count"));
 
     // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
@@ -81,11 +83,7 @@ DriverOptions::DriverOptions() {
             if (rx_int) {
                 auto int_antenna_num = boost::lexical_cast<uint32_t>(interferometer_antenna);
                 int_antenna_map[int_antenna_num] = device_num;
-                interferometer_antenna_count_++;
             }
-        }
-        if (tx || rx) {
-            main_antenna_count_++;
         }
     }
 
@@ -125,9 +123,6 @@ DriverOptions::DriverOptions() {
         ia_recv_str = ia_recv_str + std::to_string(2*addr_idx + 1) + ",";
         ia_channel_str = ia_channel_str + std::to_string(intf_antenna_num) + ",";
     }
-
-    std::cout << ia_channel_str << std::endl;
-    std::cout << ma_channel_str << std::endl;
 
     // Remove trailing comma from channel strings
     ma_recv_str.pop_back();
