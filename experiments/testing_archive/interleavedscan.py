@@ -24,12 +24,13 @@ class Interleavedscan(ExperimentPrototype):
             "intn": 21,  # number of averages if intt is None.
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75, 26.25],
-            "beam_order": [0, 4, 8, 12, 2, 6, 10, 14, 1, 5, 9, 13, 3, 7, 11, 15],
+            "rx_beam_order": [0, 4, 8, 12, 2, 6, 10, 14, 1, 5, 9, 13, 3, 7, 11, 15],
+            "tx_beam_order": [0, 4, 8, 12, 2, 6, 10, 14, 1, 5, 9, 13, 3, 7, 11, 15],
             "scanboundflag": True,  # there is a scan boundary
             "scanbound": 60000,  # ms
             "clrfrqflag": True,  # search for clear frequency before transmitting
             "clrfrqrange": [12200, 12500],  # frequency range for clear frequency search, kHz
-            # including a clrfrqrange overrides rxfreq and txfreq so these are no longer necessary
+            # including a clrfrqrange overrides freq so these are no longer necessary
             # as they will be set by the frequency chosen from the range.
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

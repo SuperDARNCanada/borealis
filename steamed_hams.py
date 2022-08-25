@@ -19,6 +19,7 @@ import json
 
 PYTHON_VERSION = os.environ['PYTHON_VERSION']
 
+
 def usage_msg():
     """
     Return the usage message for this process.
@@ -168,14 +169,14 @@ else:
 #Configure python first
 modules= {"brian" : "", "experiment_handler" : "",
                 "radar_control" : "", "data_write" : "",
-                "realtime" : ""} #, "rx_signal_processing" : ""}
+                "realtime" : "", "rx_signal_processing" : ""}
 
 for mod in modules:
     opts = python_opts.format(module=mod)
-    modules[mod] = "python3.9 {opts} {module}/{module}.py".format(opts=opts, module=mod)
+    modules[mod] = "python{version} {opts} {module}/{module}.py".format(version=PYTHON_VERSION, opts=opts, module=mod)
 
-modules['realtime'] = "source borealisrt_env/bin/activate;" + modules['realtime']
-# modules['rx_signal_processing'] = "source dspenv/bin/activate;" + modules['rx_signal_processing']
+modules['realtime'] = "source borealisrt_env{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['realtime']
+modules['rx_signal_processing'] = "source dspenv{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['rx_signal_processing']
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
 if args.kwargs_string:
@@ -184,7 +185,7 @@ else:
     modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type
     
 #Configure C progs
-c_progs = ['usrp_driver', 'rx_signal_processing']
+c_progs = ['usrp_driver']#, 'rx_signal_processing']
 for cprg in c_progs:
     modules[cprg] = "source mode {}; {} {}".format(mode, c_debug_opts, cprg)
 

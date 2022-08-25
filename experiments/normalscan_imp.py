@@ -16,7 +16,7 @@ import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
-def phase_encode(beam_iter, sequence_num, num_pulses, num_samples):
+def phase_encode(beam_iter, sequence_num, num_pulses):
     return np.random.uniform(-180.0, 180, num_pulses)
 
 
@@ -58,9 +58,10 @@ class NormalscanImp(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
             "scanbound": scf.easy_scanbound(scf.INTT_7P, beams_to_use),  # 1 min scan
-            "txfreq": freq,  # kHz
+            "freq": freq,  # kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs

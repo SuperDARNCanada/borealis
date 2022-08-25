@@ -2,11 +2,14 @@ import numpy as np
 from scipy.fftpack import fft
 import math
 import time
+from multiprocessing import shared_memory
+from functools import reduce
 
 try:
     import cupy as xp
 except ImportError:
     import numpy as xp
+
     cupy_available = False
 else:
     cupy_available = True
@@ -61,6 +64,7 @@ class DSP(object):
         self.filters = None
         self.filter_outputs = []
         self.beamformed_samples = None
+        self.shared_mem = {}
 
         self.create_filters(filter_taps, mixing_freqs, rx_rate)
 
@@ -69,8 +73,20 @@ class DSP(object):
         for i in range(1, len(self.filters)):
             self.apply_lowpass_decimate(self.filter_outputs[i - 1], self.filters[i], dm_rates[i])
 
-        self.beamform_samples(self.filter_outputs[-1], beam_phases)
+        # Create shared memory for antennas_iq data
+        antennas_iq_samples = self.filter_outputs[-1]
+        ant_shm = shared_memory.SharedMemory(create=True, size=antennas_iq_samples.nbytes)
+        self.antennas_iq_samples = np.ndarray(antennas_iq_samples.shape, dtype=np.complex64, buffer=ant_shm.buf)
 
+        # Move the antennas_iq samples to the CPU for beamforming
+        if cupy_available:
+            self.antennas_iq_samples[...] = xp.asnumpy(antennas_iq_samples)[...]
+        else:
+            self.antennas_iq_samples[...] = antennas_iq_samples[...]
+        self.shared_mem['antennas_iq'] = ant_shm
+
+        self.beamform_samples(self.antennas_iq_samples, beam_phases)
+        
     def create_filters(self, filter_taps, mixing_freqs, rx_rate):
         """
         Creates and shapes the filters arrays using the original sets of filter taps. The first
@@ -162,7 +178,7 @@ class DSP(object):
         # We need to force the input into the GPU to be float16, float32, or complex64 so that the einsum result is
         # complex64 and NOT complex128. The GPU is significantly slower (10x++) working with complex128 numbers.
         # We do not require the additional precision.
-        lp_filter = xp.array(lp_filter, dtype=xp.float32)
+        lp_filter = xp.array(lp_filter, dtype=xp.complex64)
         input_samples = windowed_view(input_samples, lp_filter.shape[-1], dm_rate)
 
         # [1, num_taps]
@@ -179,16 +195,20 @@ class DSP(object):
         :type       filtered_samples:  ndarray [num_slices, num_antennas, num_samples]
         :param      beam_phases:       The beam phases used to phase each antenna's samples before
                                        combining.
-        :type       beam_phases:       list
+        :type       beam_phases:       ndarray [num_slices, num_beams, num_antennas]
 
         """
-        beam_phases = xp.array(beam_phases)
-
-        # [num_slices, num_antennas, num_samples]
         # [num_slices, num_beams, num_antennas]
-        beamformed_samples = xp.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
+        beam_phases = np.array(beam_phases)
 
-        self.beamformed_samples = beamformed_samples
+        # [num_slices, num_beams, num_samples]
+        final_shape = (filtered_samples.shape[0], beam_phases.shape[1], filtered_samples.shape[2])
+        final_size = np.dtype(np.complex64).itemsize * reduce(lambda a,b: a*b, final_shape)
+        bf_shm = shared_memory.SharedMemory(create=True, size=final_size)
+        self.beamformed_samples = np.ndarray(final_shape, dtype=np.complex64, buffer=bf_shm.buf)
+        self.beamformed_samples[...] = np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
+
+        self.shared_mem['bfiq'] = bf_shm
 
     @staticmethod
     def correlations_from_samples(beamformed_samples_1, beamformed_samples_2, output_sample_rate, slice_index_details):
@@ -209,11 +229,8 @@ class DSP(object):
 
         # [num_slices, num_beams, num_samples]
         # [num_slices, num_beams, num_samples]
-        correlated = xp.einsum('ijk,ijl->ijkl', beamformed_samples_1,
+        correlated = np.einsum('ijk,ijl->ijkl', beamformed_samples_1,
                                beamformed_samples_2.conj())
-
-        if cupy_available:
-            correlated = xp.asnumpy(correlated)
 
         values = []
         for s in slice_index_details:
@@ -331,11 +348,12 @@ def quick_test(n):
     # print((b-a) * 1000)
     # fft_and_plot(x[2][0], F_s)
 
+
 if __name__ == '__main__':
-    #import os
-    #print('PID: ', os.getpid())
-    #time.sleep(60)
-    #if cupy_available:
+    # import os
+    # print('PID: ', os.getpid())
+    # time.sleep(60)
+    # if cupy_available:
     #    xp.show_config()
     # Actually run the test.
     quick_test(500)

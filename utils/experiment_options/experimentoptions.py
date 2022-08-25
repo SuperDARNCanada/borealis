@@ -8,7 +8,6 @@ Config data comes from the config.ini file, the hdw.dat file, and the restrict.d
 """
 
 import json
-import datetime
 import os
 
 from experiment_prototype.experiment_exception import ExperimentException
@@ -17,6 +16,7 @@ borealis_path = os.environ['BOREALISPATH']
 config_file = borealis_path + '/config.ini'
 hdw_dat_file = borealis_path + '/hdw.dat.'
 restricted_freq_file = borealis_path + '/restrict.dat.'
+
 
 class ExperimentOptions:
     # TODO long init file, consider using multiple functions
@@ -87,10 +87,6 @@ class ExperimentOptions:
             # TODO: error
             raise e
 
-        today = datetime.datetime.today()
-        year_start = datetime.datetime(today.year, 1, 1, 0, 0, 0, 0)  # start of the year
-        year_timedelta = today - year_start
-
         try:
             with open(hdw_dat_file + self.site_id) as hdwdata:
                 lines = hdwdata.readlines()
@@ -100,59 +96,42 @@ class ExperimentOptions:
 
         lines[:] = [line for line in lines if line[0] != "#"]  # remove comments
         lines[:] = [line for line in lines if len(line.split()) != 0]  # remove blanks
-        lines[:] = [line for line in lines if int(line.split()[1]) > today.year or
-                    (int(line.split()[1]) == today.year and float(line.split()[2]) >
-                     year_timedelta.total_seconds())]  # only take present & future hdw data
 
-        # there should only be one line left, however if there are more we will take the
-        # one that expires first.
-        if len(lines) > 1:
-            times = [[line.split()[1], line.split()[2]] for line in lines]
-            min_year = times[0][0]
-            min_yrsec = times[0][1]
-            hdw_index = 0
-            for i in range(len(times)):
-                year = times[i][0]
-                yrsec = times[i][1]
-                if year < min_year:
-                    hdw_index = i
-                elif year == min_year:
-                    if yrsec < min_yrsec:
-                        hdw_index = i
-            hdw = lines[hdw_index]
-        else:
-            try:
-                hdw = lines[0]
-            except IndexError:
-                errmsg = 'Cannot find any valid lines for this time period in the hardware file ' \
-                         '{}'.format((hdw_dat_file + self.site_id))
-                raise ExperimentException(errmsg)
+        # Take the final line
+        try:
+            hdw = lines[-1]
+        except IndexError:
+            errmsg = 'Cannot find any valid lines in the hardware file: ' \
+                     '{}'.format((hdw_dat_file + self.site_id))
+            raise ExperimentException(errmsg)
         # we now have the correct line of data.
 
         params = hdw.split()
-        if len(params) != 19:
-            errmsg = 'Found {} parameters in hardware file, expected 19'.format(len(params))
+        if len(params) != 22:
+            errmsg = 'Found {} parameters in hardware file, expected 22'.format(len(params))
             raise ExperimentException(errmsg)
 
-        self._geo_lat = params[3]  # decimal degrees, S = negative
-        self._geo_long = params[4]  # decimal degrees, W = negative
-        self._altitude = params[5]  # metres
-        self._boresight = params[6]  # degrees from geographic north, CCW = negative.
-        self._beam_sep = params[7]  # degrees TODO is this necessary, or is this a min. - for
-        # post-processing software in RST? check with others.
-        self._velocity_sign = params[8]  # +1.0 or -1.0
-        self._analog_rx_attenuator = params[9]  # dB
-        self._tdiff = params[10] # ns
-        self._phase_sign = params[11]
-        self._intf_offset = [float(params[12]), float(params[13]), float(params[14])]
+        self._status = params[1]  # 1 operational, -1 offline
+        self._geo_lat = params[4]  # decimal degrees, S = negative
+        self._geo_long = params[5]  # decimal degrees, W = negative
+        self._altitude = params[6]  # metres
+        self._boresight = params[7]  # degrees from geographic north, CCW = negative.
+        self._boresight_shift = params[8]  # degrees from physical boresight. nominal 0.0 degrees
+        self._beam_sep = params[9]  # degrees, nominal 3.24 degrees
+        self._velocity_sign = params[10]  # +1.0 or -1.0
+        self._phase_sign = params[11]  # +1 indicates correct interferometry phase, -1 indicates 180
+        self._tdiff_a = params[12]  # us for channel A.
+        self._tdiff_b = params[13]  # us for channel B.
+
+        self._intf_offset = [float(params[14]), float(params[15]), float(params[16])]
         # interferometer offset from
         # midpoint of main, metres [x, y, z] where x is along line of antennas, y is along array
         # normal and z is altitude difference, in m.
-        self._analog_rx_rise = params[15]  # us
-        self._analog_atten_stages = params[16]  # number of stages
-        self._max_range_gates = params[17]
-        self._max_beams = params[18]  # so a beam number always points in a certain direction
-        # TODO Is this last one necessary - why don't we specify directions in angle. - also for post-processing so check if it applies to Borealis
+        self._analog_rx_rise = params[17]  # us
+        self._analog_rx_attenuator = params[18]  # dB
+        self._analog_atten_stages = params[19]  # number of stages
+        self._max_range_gates = params[20]
+        self._max_beams = params[21]  # so a beam number always points in a certain direction
 
         try:
             with open(restricted_freq_file + self.site_id) as restricted_freq_data:
@@ -205,13 +184,15 @@ class ExperimentOptions:
                     \n    geo_long = {} degrees\
                     \n    altitude = {} metres \
                     \n    boresight = {} degrees from geographic north, CCW = negative. \
+                    \n    boresight_shift = {} degrees. \
                     \n    beam_sep = {} degrees\
                     \n    velocity_sign = {} \
-                    \n    analog_rx_attenuator = {} dB \
-                    \n    tdiff = {} us \
+                    \n    tdiff_a = {} us \
+                    \n    tdiff_b = {} us \
                     \n    phase_sign = {} \
                     \n    intf_offset = {} \
                     \n    analog_rx_rise = {} us \
+                    \n    analog_rx_attenuator = {} dB \
                     \n    analog_atten_stages = {} \
                     \n    max_range_gates = {} \
                     \n    max_beams = {} \
@@ -230,9 +211,10 @@ class ExperimentOptions:
                                 self.tr_window_time, self.max_output_sample_rate,
                                 self.max_number_of_filtering_stages, self.max_number_of_filter_taps_per_stage,
                                 self.site_id, self.geo_lat, self.geo_long,
-                                self.altitude, self.boresight, self.beam_sep, self.velocity_sign,
-                                self.analog_rx_attenuator, self.tdiff, self.phase_sign,
-                                self.intf_offset, self.analog_rx_rise, self.analog_atten_stages,
+                                self.altitude, self.boresight, self.boresight_shift, self.beam_sep,
+                                self.velocity_sign, self.tdiff_a, self.tdiff_b, self.phase_sign,
+                                self.intf_offset, self.analog_rx_rise, self.analog_rx_attenuator,
+                                self.analog_atten_stages,
                                 self.max_range_gates, self.max_beams, self.max_freq, self.min_freq,
                                 self. minimum_pulse_length, self.minimum_tau_spacing_length,
                                 self.minimum_pulse_separation, self.tr_window_time,
@@ -428,6 +410,10 @@ class ExperimentOptions:
         return self._boresight  # degrees from geographic north, CCW = negative.
 
     @property
+    def boresight_shift(self):
+        return self._boresight_shift  # degrees
+
+    @property
     def beam_sep(self):
         return self._beam_sep  # degrees TODO is this necessary, or is this a min. - for
                         # post-processing software in RST? check with others.
@@ -437,12 +423,16 @@ class ExperimentOptions:
         return self._velocity_sign   # +1.0 or -1.0
 
     @property
-    def analog_rx_attenuator(self):
-        return self._analog_rx_attenuator  # dB
+    def tdiff_a(self):
+        return self._tdiff_a  # us
 
     @property
-    def tdiff(self):
-        return self._tdiff  # ns
+    def tdiff_b(self):
+        return self._tdiff_b  # us
+
+    @property
+    def analog_rx_attenuator(self):
+        return self._analog_rx_attenuator  # dB
 
     @property
     def phase_sign(self):

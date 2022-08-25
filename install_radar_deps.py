@@ -376,10 +376,11 @@ def install_realtime():
     Create virtual environment and install utilities needed for RT capabilities.
     """
 
+
     execute_cmd("mkdir -p $BOREALISPATH/borealisrt_env")
     execute_cmd("virtualenv -p python{version} $BOREALISPATH/borealisrt_env;".format(version=args.python_version))
     pip_cmd = "source $BOREALISPATH/borealisrt_env/bin/activate;" \
-              "sudo -u radar pip install zmq pydarn;" \
+              "sudo -u radar pip install zmq pydarnio;" \
               "sudo -u radar pip install git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
               "deactivate;"
 
