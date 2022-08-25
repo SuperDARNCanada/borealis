@@ -32,7 +32,7 @@ class ExperimentOptions:
             raise ExperimentException(errmsg)
         try:
             self._main_antenna_count = int(config["main_antenna_count"])
-            self._intf_antenna_count = int(config["interferometer_antenna_count"])
+            self._interferometer_antenna_count = int(config["interferometer_antenna_count"])
 
             # Parse N200 array and calculate main and intf antennas operating
             self._main_antennas = []
@@ -42,11 +42,9 @@ class ExperimentOptions:
                 tx = bool(n200["tx"])
                 rx_int = bool(n200["rx_int"])
                 if rx or tx:
-                    self._main_antenna_count += 1       # TODO: Potentially change this to physical antennas only, not only antennas tx'ing and rx'ing
                     main_antenna_num = int(n200["main_antenna"])
                     self._main_antennas.append(main_antenna_num)
                 if rx_int:
-                    self._interferometer_antenna_count += 1       # TODO: Same as above
                     intf_antenna_num = int(n200["interferometer_antenna"])
                     self._interferometer_antennas.append(intf_antenna_num)
             self._main_antennas.sort()

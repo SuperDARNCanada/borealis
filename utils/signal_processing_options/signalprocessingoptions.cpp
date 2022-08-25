@@ -28,9 +28,9 @@ std::vector<uint32_t> split(const std::string str, const std::string regex_str)
 SignalProcessingOptions::SignalProcessingOptions() {
   Options::parse_config_file();
 
-  main_antenna_count_ = boost::lexical_cast<uint32_t>(
+  main_antenna_count = boost::lexical_cast<uint32_t>(
                               config_pt.get<std::string>("main_antenna_count"));
-  interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
+  interferometer_antenna_count = boost::lexical_cast<uint32_t>(
                               config_pt.get<std::string>("interferometer_antenna_count"));
 
   // Parse N200 list and determine which antennas are active
