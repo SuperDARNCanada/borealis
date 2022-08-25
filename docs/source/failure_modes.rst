@@ -182,3 +182,22 @@ The root cause is unknown, but symptoms are:
 To fix this issue and restart the radar:
     - Power cycle the machine
 
+Protobuf library is not working
+-------------------------------
+Symptoms: The following error in one or more screens when attempting to run the radar.
+
+`Traceback (most recent call last):
+  File "brian/brian.py", line 24, in <module>
+    import driverpacket_pb2
+  File "/home/radar/borealis//build/release/utils/protobuf/driverpacket_pb2.py", line 5, in <module>
+    from google.protobuf.internal import builder as _builder
+ImportError: cannot import name 'builder'`
+
+Reason:
+There are two components to the protobuf installation - the package and the protoc compiler.
+Starting with version 3.20.0, the builder.py file was made for consolidation with this library, 'Protobuf python generated codes are simplified. Descriptors and message classes' definitions are now dynamic created in internal/builder.py.'
+See https://github.com/protocolbuffers/protobuf/releases?page=2
+We have had troubles installing versions newer than this, so we recommend using previous versions.
+
+Solution:
+Either upgrade your protobuf version or install an older version of the protoc compiler.
