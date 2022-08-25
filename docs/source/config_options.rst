@@ -10,6 +10,12 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | device_options                 | recv_frame_size=4000          | UHD USRP device arguments.            |
 +--------------------------------+-------------------------------+---------------------------------------+
+| main_antenna_count             | 16                            | Number of physical main array         |
+|                                |                               | antennas, regardless of N200 status   |
++--------------------------------+-------------------------------+---------------------------------------+
+| interferometer_antenna_count   | 4                             | Number of physical interferometer     |
+|                                |                               | antennas, regardless of N200 status   |
++--------------------------------+-------------------------------+---------------------------------------+
 | n200s                          | | {                           | List of all N200s, both active and    |
 |                                | | addr : "192.168.10.100"     | not. Order of N200s is specified by   |
 |                                | | rx : true                   | main_antenna, so N200s can be listed  |
@@ -242,8 +248,7 @@ There are several instances when you'll need to modify this file for correct ope
 #. One of your transmitters is not working at all
 
     The rx and tx flags for the N200 connected to the non-working transmitter should both be set to false. 
-    This will disable the transmit and receive channels for that transmitter. Additionally, adjust the 
-    main_antennas_count entry in the config file to the number of remaining working transmitters.
+    This will disable the transmit and receive channels for that transmitter.
 
 #. One of your N200s is not working properly and you've inserted the spare N200
 
@@ -259,7 +264,8 @@ There are several instances when you'll need to modify this file for correct ope
 #. You have a non-standard array
 
     One example of a non-standard array would be a different number of interferometer antennas than four. To implement 
-    this, modify the individual N200 entries to specify which N200s are connected to interferometer antennas.
+    this, modify the individual N200 entries to specify which N200s are connected to interferometer antennas. Additionally,
+    set the main and interferometer antenna count parameters to the number of physical antennas in the array.
 
 #. You want to change the location of ATR signals on the daughterboards
 
