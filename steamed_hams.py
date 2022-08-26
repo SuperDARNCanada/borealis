@@ -185,7 +185,7 @@ else:
     modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type
     
 #Configure C progs
-c_progs = ['usrp_driver']#, 'rx_signal_processing']
+c_progs = ['usrp_driver']
 for cprg in c_progs:
     modules[cprg] = "source mode {}; {} {}".format(mode, c_debug_opts, cprg)
 
