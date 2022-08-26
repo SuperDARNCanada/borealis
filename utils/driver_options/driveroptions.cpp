@@ -6,9 +6,10 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <vector>
+#include <map>
 #include "utils/options/options.hpp"
 #include "utils/driver_options/driveroptions.hpp"
-
 
 /**
  * @brief      Extracts the relevant driver options from the config into class variables.
@@ -16,10 +17,123 @@
 DriverOptions::DriverOptions() {
     Options::parse_config_file();
 
-    devices_ = config_pt.get<std::string>("devices");
+    devices_ = config_pt.get<std::string>("device_options");
+    
+    auto n200_list = config_pt.get_child("n200s");
+    // These maps are sorted by their keys (device number / int antenna number)
+    std::map<uint32_t, std::string> devices_map;    // Maps device number to IP address
+    std::map<uint32_t, bool> rx_map;                // Maps device number to rx flag
+    std::map<uint32_t, bool> tx_map;                // Maps device number to tx flag
+    std::map<uint32_t, uint32_t> int_antenna_map;   // Maps interferometer antenna number to device number
+
+    // Get number of physical antennas
+    main_antenna_count_ = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("main_antenna_count"));
+    interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("interferometer_antenna_count"));
+
+    // Iterate through all N200s in the json array
+    for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
+    {
+        std::string addr = "";
+        bool rx = false;
+        bool tx = false;
+        bool rx_int = false;
+        std::string main_antenna = "";
+        std::string interferometer_antenna = "";
+        // Iterate through all N200 parameters and store them in variables
+        for (auto iter = n200->second.begin(); iter != n200->second.end(); iter++)
+        {
+            auto param = iter->first;
+            if (param.compare("addr") == 0) {
+                addr = iter->second.data();
+            }
+            else if (param.compare("rx") == 0) {
+                rx = (iter->second.data().compare("true") == 0);
+            }
+            else if (param.compare("tx") == 0) {
+                tx = (iter->second.data().compare("true") == 0);
+            }
+            else if (param.compare("rx_int") == 0) {
+                rx_int = (iter->second.data().compare("true") == 0);
+            }
+            else if (param.compare("main_antenna") == 0) {
+                main_antenna = iter->second.data();
+            }
+            else if (param.compare("interferometer_antenna") == 0) {
+                interferometer_antenna = iter->second.data();
+            }
+            else {
+                throw std::invalid_argument("Invalid N200 parameter in config file");
+            }
+        }
+
+        // If current n200 is transmitting, receiving, or receiving from interferometer, add to devices
+        if (tx || rx || rx_int)
+        {
+            // Get device number. Devices are sorted by the main antenna they are connected to
+            auto device_num = boost::lexical_cast<uint32_t>(main_antenna);
+
+            // Add the address, tx flag, and rx flag to the respective dictionaries keyed with the device num
+            devices_map[device_num] = addr;
+            tx_map[device_num] = tx;
+            rx_map[device_num] = rx;
+
+            // If N200 has interferometer, map device number to interferometer antenna number
+            if (rx_int) {
+                auto int_antenna_num = boost::lexical_cast<uint32_t>(interferometer_antenna);
+                int_antenna_map[int_antenna_num] = device_num;
+            }
+        }
+    }
+
+    // To ensure device numbers follow UHD conventions (0 to N in steps of 1),
+    // the addr_idx must be mapped to the device number to get the correct
+    // addr_idx for the interferometer antennas.
+    auto addr_idx = 0;
+    std::map<uint32_t,uint32_t> device_num_to_addr_idx; 
+    // Loop through sorted list of N200s and create devices_ string
+    std::string ma_recv_str = "";
+    std::string ma_tx_str = "";
+    std::string ma_channel_str = "";
+    for (auto element : devices_map) {
+        auto device_num = element.first;
+        device_num_to_addr_idx[device_num] = addr_idx;  // Store conversion for interferometer use
+
+        devices_ = devices_ + ",addr" + std::to_string(addr_idx) + "=" + devices_map[device_num];
+        if (rx_map[device_num]) {
+            ma_recv_str = ma_recv_str + std::to_string(addr_idx*2) + ",";
+        }
+        if (tx_map[device_num]) {
+            ma_tx_str = ma_tx_str + std::to_string(addr_idx) + ",";
+        }
+        if (rx_map[device_num] || tx_map[device_num]) {
+            ma_channel_str = ma_channel_str + std::to_string(device_num) + ",";
+        }
+        addr_idx++;
+    }
+
+    // Interferometer antenna
+    std::string ia_recv_str = "";       // Interferometer receive channel string
+    std::string ia_channel_str = "";    // Interferometer antenna string
+    for (auto element : int_antenna_map) {
+        auto intf_antenna_num = element.first;
+        auto device_num = element.second;
+        auto addr_idx = device_num_to_addr_idx[device_num]; // Get correct address index
+        ia_recv_str = ia_recv_str + std::to_string(2*addr_idx + 1) + ",";
+        ia_channel_str = ia_channel_str + std::to_string(intf_antenna_num) + ",";
+    }
+
+    // Remove trailing comma from channel strings
+    ma_recv_str.pop_back();
+    ma_tx_str.pop_back();
+    ma_channel_str.pop_back();
+    ia_recv_str.pop_back();
+    ia_channel_str.pop_back();
+
+    auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
+
     clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
-    /*Remove whitespace/new lines from device list*/
-    boost::remove_erase_if (devices_, boost::is_any_of(" \n\f\t\v"));
 
     tx_subdev_ = config_pt.get<std::string>("tx_subdev");
     main_rx_subdev_ = config_pt.get<std::string>("main_rx_subdev");
@@ -65,10 +179,6 @@ DriverOptions::DriverOptions() {
                                 config_pt.get<std::string>("tr_window_time"));
     agc_signal_read_delay_ = boost::lexical_cast<double>(
                                 config_pt.get<std::string>("agc_signal_read_delay"));
-    main_antenna_count_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("main_antenna_count"));
-    interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("interferometer_antenna_count"));
 
     auto make_channels = [&](std::string chs){
 
@@ -84,14 +194,10 @@ DriverOptions::DriverOptions() {
         return channels;
     };
 
-    auto ma_recv_str = config_pt.get<std::string>("main_antenna_usrp_rx_channels");
-    auto ia_recv_str = config_pt.get<std::string>("interferometer_antenna_usrp_rx_channels");
-    auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
-
-    auto ma_tx_str = config_pt.get<std::string>("main_antenna_usrp_tx_channels");
-
     receive_channels_ = make_channels(total_recv_chs_str);
     transmit_channels_ = make_channels(ma_tx_str);
+    main_antennas_ = make_channels(ma_channel_str);
+    interferometer_antennas_ = make_channels(ia_channel_str);
 
     router_address_ = config_pt.get<std::string>("router_address");
     driver_to_radctrl_identity_ = config_pt.get<std::string>("driver_to_radctrl_identity");
@@ -308,6 +414,16 @@ double DriverOptions::get_agc_signal_read_delay() const
 }
 
 /**
+ * @brief      Gets all antennas connected to N200s
+ * 
+ * @return     The list of antennas connected to N200s
+ */
+std::vector<size_t> DriverOptions::get_main_antennas() const
+{
+    return main_antennas_;
+}
+
+/**
  * @brief      Gets the main antenna count.
  *
  * @return     The main antenna count.
@@ -315,6 +431,16 @@ double DriverOptions::get_agc_signal_read_delay() const
 uint32_t DriverOptions::get_main_antenna_count() const
 {
     return main_antenna_count_;
+}
+
+/**
+ * @brief      Gets all interferometer antennas connected to N200s
+ * 
+ * @return     The list of interferometer antennas connected to N200s
+ */
+std::vector<size_t> DriverOptions::get_interferometer_antennas() const
+{
+    return interferometer_antennas_;
 }
 
 /**

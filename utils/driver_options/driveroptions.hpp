@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <string>
+#include <vector>
 #include "utils/options/options.hpp"
 
 class DriverOptions: public Options {
@@ -29,7 +30,9 @@ class DriverOptions: public Options {
         uint32_t get_test_mode() const;
         double get_tr_window_time() const;
         double get_agc_signal_read_delay() const;
+        std::vector<size_t> get_main_antennas() const;
         uint32_t get_main_antenna_count() const;
+        std::vector<size_t> get_interferometer_antennas() const;
         uint32_t get_interferometer_antenna_count() const;
         double get_ringbuffer_size() const;
         std::vector<size_t> get_receive_channels() const;
@@ -59,7 +62,9 @@ class DriverOptions: public Options {
         std::string gpio_bank_low_;
         double tr_window_time_;
         double agc_signal_read_delay_;
+        std::vector<size_t> main_antennas_;
         uint32_t main_antenna_count_;
+        std::vector<size_t> interferometer_antennas_;
         uint32_t interferometer_antenna_count_;
         double ringbuffer_size_bytes_;
         uint32_t atr_rx_;

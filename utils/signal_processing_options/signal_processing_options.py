@@ -41,7 +41,6 @@ class SignalProcessingOptions(object):
         self._exphan_dsp_identity = raw_config["exphan_to_dsp_identity"]
         self._dw_dsp_identity = raw_config["dw_to_dsp_identity"]
         self._ringbuffer_name = raw_config["ringbuffer_name"]
-
         self._main_antenna_count = int(raw_config["main_antenna_count"])
         self._intf_antenna_count = int(raw_config["interferometer_antenna_count"])
 
