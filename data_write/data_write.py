@@ -798,13 +798,6 @@ class DataWrite(object):
                 if e.args[0] == errno.ENOSPC:
                     print("No space left on device. Exiting")
                     os._exit(-1)
-                # Don't try-catch this, because we want it to fail hard if we can't write files
-                try:
-                    os.makedirs(dataset_directory)
-                except OSError as e:
-                    if e.args[0] == errno.ENOSPC:
-                        print("No space left on device. Exiting")
-                        os._exit(-1)
 
             if file_ext == 'hdf5':
                 full_two_hr_file = "{0}/{1}.hdf5.site".format(dataset_directory, two_hr_file_with_type)
@@ -812,8 +805,6 @@ class DataWrite(object):
                 try:
                     fd = os.open(full_two_hr_file, os.O_CREAT)
                     os.close(fd)
-                except FileExistsError:
-                    pass
                 except OSError as e:
                     if e.args[0] == errno.ENOSPC:
                         print("No space left on device. Exiting")
