@@ -66,7 +66,6 @@ class ListeningNormalscan2(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             # offset beams so not looking in same direction.
             "rx_beam_order": beams_to_use[8:] + beams_to_use[0:8],
-            "tx_beam_order": beams_to_use[8:] + beams_to_use[0:8],
             "scanbound" : [i * (3500 * 1e-3) for i in range(len(beams_to_use))],
             "freq" : scf.COMMON_MODE_FREQ_2, #kHz, separate frequency
             "acf": True,
