@@ -50,8 +50,7 @@ STD_8P_LAG_TABLE = [[0, 0],
 PULSE_LEN_45KM = 300  # us
 PULSE_LEN_15KM = 100  # us
 
-STD_16_BEAM_ANGLE = [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75, -5.25, -1.75,
-                     1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75, 26.25]
+STD_16_BEAM_ANGLE = [(float(opts.beam_sep) * (beam_dir - 15/2)) for beam_dir in range(0, 16)]
 
 STD_NUM_RANGES = 75
 POLARDARN_NUM_RANGES = 75
