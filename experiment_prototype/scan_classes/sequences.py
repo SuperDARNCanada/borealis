@@ -25,6 +25,8 @@ from functools import reduce
 from sample_building.sample_building import get_samples, get_phase_shift
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 from experiment_prototype.experiment_exception import ExperimentException
+
+sys.path.append(os.environ["BOREALISPATH"])
 import utils.shared_macros.shared_macros as sm
 
 sequence_print = sm.MODULE_PRINT("sequence building", "magenta")

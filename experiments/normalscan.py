@@ -2,6 +2,12 @@
 
 # write an experiment that creates a new control program.
 
+import sys
+import os
+
+BOREALISPATH = os.environ['BOREALISPATH']
+sys.path.append(BOREALISPATH)
+
 import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 

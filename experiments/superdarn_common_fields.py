@@ -1,4 +1,9 @@
+import sys
+import os
 import numpy as np
+
+BOREALISPATH = os.environ['BOREALISPATH']
+sys.path.append(BOREALISPATH)
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 opts = ExperimentOptions()

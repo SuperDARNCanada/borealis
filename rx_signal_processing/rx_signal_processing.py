@@ -3,6 +3,7 @@ Copyright SuperDARN Canada 2020
 Original Auth: Keith Kotyk
 """
 import sys
+import os
 import time
 import threading
 import numpy as np
@@ -21,15 +22,22 @@ except:
 else:
     cupy_available = True
 
-from utils.message_formats.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
-import utils.signal_processing_options.signal_processing_options as spo
-from utils.zmq_borealis_helpers import socket_operations as so
-import utils.shared_macros.shared_macros as sm
+borealis_path = os.environ['BOREALISPATH']
+if not borealis_path:
+    raise ValueError("BOREALISPATH env variable not set")
 
 if __debug__:
-    from build.debug.utils.protobuf import rxsamplesmetadata_pb2
+    sys.path.append(borealis_path + '/build/debug/utils/protobuf')
 else:
-    from build.release.utils.protobuf import rxsamplesmetadata_pb2
+    sys.path.append(borealis_path + '/build/release/utils/protobuf')
+
+import rxsamplesmetadata_pb2
+
+sys.path.append(borealis_path + '/utils/')
+from message_formats.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
+import signal_processing_options.signal_processing_options as spo
+from zmq_borealis_helpers import socket_operations as so
+import shared_macros.shared_macros as sm
 
 pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
 

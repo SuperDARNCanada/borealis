@@ -17,12 +17,16 @@ import pydarnio
 import numpy as np
 from backscatter import fitacf
 
-import utils.realtime_options.realtime_options as rto
-from utils.zmq_borealis_helpers import socket_operations as so
-import utils.shared_macros.shared_macros as sm
+borealis_path = os.environ['BOREALISPATH']
+if not borealis_path:
+    raise ValueError("BOREALISPATH env variable not set")
+
+sys.path.append(borealis_path + '/utils/')
+import realtime_options.realtime_options as rto
+from zmq_borealis_helpers import socket_operations as so
+import shared_macros.shared_macros as sm
 
 rt_print = sm.MODULE_PRINT("Realtime", "green")
-
 
 def _main():
     opts = rto.RealtimeOptions()

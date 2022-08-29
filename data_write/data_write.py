@@ -28,9 +28,14 @@ from scipy.constants import speed_of_light
 import copy
 import pickle
 
-import utils.shared_macros.shared_macros as sm
-import utils.data_write_options.data_write_options as dwo
-from utils.zmq_borealis_helpers import socket_operations as so
+borealis_path = os.environ['BOREALISPATH']
+if not borealis_path:
+    raise ValueError("BOREALISPATH env variable not set")
+
+sys.path.append(borealis_path + '/utils/')
+import shared_macros.shared_macros as sm
+import data_write_options.data_write_options as dwo
+from zmq_borealis_helpers import socket_operations as so
 
 dw_print = sm.MODULE_PRINT("Data Write", "cyan")
 
