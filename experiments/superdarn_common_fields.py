@@ -114,7 +114,7 @@ else:
     SOUNDING_FREQS = [10600, 11250, 11950, 13150]
 
 
-def easy_widebeam(frequency_khz, num_antennas, antenna_spacing_m):
+def easy_widebeam(frequency_khz, tx_antennas, antenna_spacing_m):
     """
     Returns phases in degrees for each antenna in the main array that will generate a wide beam pattern
     that illuminates the full FOV. Only 8 or 16 antennas at common frequencies are supported.
@@ -162,15 +162,17 @@ def easy_widebeam(frequency_khz, num_antennas, antenna_spacing_m):
         13100: [0., 43.20693263, 84.14234248, 175.38631445, 175.38631445, 84.14234248, 43.20693263, 0.],
         13200: [0., 43.42908842, 84.21675093, 174.68458927, 174.68458927, 84.21675093, 43.42908842, 0.]
     }
-
-    if num_antennas == 16:
+    num_antennas = opts.main_antenna_count
+    phases = np.zeros(num_antennas)
+    if len(tx_antennas) == 16:
         if frequency_khz in cached_values_16_antennas.keys():
-            phases = np.exp(1j * np.pi/180. * np.array(cached_values_16_antennas[frequency_khz]))
+            phases[tx_antennas] = np.exp(1j * np.pi/180. * np.array(cached_values_16_antennas[frequency_khz]))
             return phases.reshape(1, num_antennas)
-    elif num_antennas == 8:
+    elif len(tx_antennas) == 8:
         if frequency_khz in cached_values_8_antennas.keys():
-            phases = np.exp(1j * np.pi/180. * np.array(cached_values_8_antennas[frequency_khz]))
+            phases[tx_antennas] = np.exp(1j * np.pi/180. * np.array(cached_values_8_antennas[frequency_khz]))
             return phases.reshape(1, num_antennas)
     # If you get this far, the number of antennas or frequency is not supported for this function.
-    raise ValueError("Invalid parameters for easy_widebeam(): num_antennas: {}, frequency_khz: {}"
-                     "".format(num_antennas, frequency_khz))
+    raise ValueError("Invalid parameters for easy_widebeam(): tx_antennas: {}, frequency_khz: {}, "
+                     "main_antenna_count: {}"
+                     "".format(tx_antennas, frequency_khz, num_antennas))

@@ -127,10 +127,11 @@ class Sequence(ScanClassBase):
 
                 if exp_slice['tx_antenna_pattern'] is not None:
                     # Returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
-                    tx_main_phase_shift = exp_slice['tx_antenna_pattern'](freq_khz, len(exp_slice['tx_antennas']), main_antenna_spacing)
+                    tx_main_phase_shift = exp_slice['tx_antenna_pattern'](freq_khz, exp_slice['tx_antennas'],
+                                                                          main_antenna_spacing)
                 else:
                     tx_main_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, main_antenna_count,
-                                                       main_antenna_spacing)
+                                                          main_antenna_spacing)
 
                 # main_phase_shift: [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
@@ -449,7 +450,7 @@ class Sequence(ScanClassBase):
 
                         start = pulse['tr_window_num_samps'] + pulse_sample_start
                         end = start + pulse_samples_len
-                        sequence[tx_antennas, start:end] += samples[i]
+                        sequence[tx_antennas, start:end] += samples[i, tx_antennas, :]
 
         # copy the encoded and combined samples into the metadata for the sequence.
         pulse_data = []
