@@ -386,7 +386,7 @@ The file fields under the record name in bfiq site files are:
 +----------------------------------+---------------------------------------------+
 | | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      |
 | | *[float32, ]*                  | | offset. Contains one phase offset per     |
-| |                                | | pulse in pulses or one phase offset per   |
+| |                                | | pulse in pulses, or none.                 |
 | |                                | | sample in each pulse, or none.            |
 +----------------------------------+---------------------------------------------+
 | | **pulses**                     | | The pulse sequence in units of the        | 
