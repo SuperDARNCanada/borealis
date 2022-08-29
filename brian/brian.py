@@ -7,15 +7,12 @@
 # Communicate with all processes to administrate the borealis software
 
 import sys
-import os
 import time
 from datetime import datetime
 import threading
 import argparse
 import zmq
 import pickle
-
-sys.path.append(os.environ["BOREALISPATH"])
 import utils.experiment_options.experimentoptions as options
 import utils.zmq_borealis_helpers.socket_operations as so
 
@@ -25,6 +22,7 @@ else:
     from build.release.utils.protobuf import rxsamplesmetadata_pb2
 
 TIME_PROFILE = True
+
 
 def router(opts):
     """The router is responsible for moving traffic between modules by routing traffic using

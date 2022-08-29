@@ -1,20 +1,10 @@
 import subprocess as sp
-import os
 import itertools as it
 import sys
-import time
 
-sys.path.append(os.environ["BOREALISPATH"])
+import utils.zmq_borealis_helpers.socket_operations as so
+import utils.driver_options.set_affinity_options as op
 
-if __debug__:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
-else:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
-
-sys.path.append(os.environ["BOREALISPATH"] + '/utils/zmq_borealis_helpers')
-sys.path.append(os.environ["BOREALISPATH"] + '/utils/driver_options')
-import socket_operations as so
-import set_affinity_options as op
 
 def get_tids(process_name):
 

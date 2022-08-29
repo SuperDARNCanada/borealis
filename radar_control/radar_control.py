@@ -13,17 +13,14 @@
     :author: Marci Detwiller
 """
 
-import sys
 import time
 from datetime import datetime, timedelta
-import os
 import zmq
 import pickle
 import threading
 import numpy as np
 from functools import reduce
 
-sys.path.append(os.environ["BOREALISPATH"])
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 from utils.experiment_options.experimentoptions import ExperimentOptions

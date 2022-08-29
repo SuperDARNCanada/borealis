@@ -12,7 +12,6 @@
 
 import sys
 import copy
-import os
 import math
 import numpy as np
 import itertools
@@ -20,13 +19,9 @@ from scipy.constants import speed_of_light
 import re
 from pathlib import Path
 
-BOREALISPATH = os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
-
 from experiment_prototype.experiment_exception import ExperimentException
 from sample_building.sample_building import get_wavetables
 from experiment_prototype import list_tests
-
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
 from experiment_prototype.decimation_scheme.decimation_scheme import create_default_scheme

@@ -3,12 +3,8 @@
 """ 
 IB collab mode written by Devin Huyghebaert 20200609
 """
-import os
-import sys
-import datetime
 
-BOREALISPATH = os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
+import datetime
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf

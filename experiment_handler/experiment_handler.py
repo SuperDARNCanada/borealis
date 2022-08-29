@@ -16,16 +16,12 @@
 """
 
 import zmq
-import os
 import sys
 import argparse
 import inspect
 import importlib
 import threading
 import pickle
-
-BOREALISPATH = os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from utils.zmq_borealis_helpers import socket_operations

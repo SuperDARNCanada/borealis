@@ -1,16 +1,9 @@
 #!/usr/bin/python
 
-import os
-import sys
-
-BOREALISPATH = os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
-
 # write an experiment that creates a new control program.
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
 
 class NormalscanSingleBeam(ExperimentPrototype):
     # with 7 PULSE sequence

@@ -2,12 +2,6 @@
 
 #Copyright SuperDARN Canada 2019
 
-import os
-import sys
-
-BOREALISPATH = os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
-
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 

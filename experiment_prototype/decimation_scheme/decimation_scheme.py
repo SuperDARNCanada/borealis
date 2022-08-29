@@ -1,15 +1,9 @@
 
-import os
-import sys
 import math
-from scipy.signal import firwin, remez, kaiserord, kaiser_beta
-
-BOREALISPATH = os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
+from scipy.signal import firwin, remez, kaiserord
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.experiment_exception import ExperimentException
-from functools import reduce
 
 
 class DecimationStage(object):

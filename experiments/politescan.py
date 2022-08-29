@@ -3,14 +3,10 @@
 # politescan
 # Marci Detwiller Jan 7/2019
 # Adapted from ROS politescan (Dieter Andre, Kevin Krieger)
-import os
-import sys
-
-BOREALISPATH = os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
+
 
 class Politescan(ExperimentPrototype):
 
