@@ -16,19 +16,13 @@ import zmq
 import pickle
 
 sys.path.append(os.environ["BOREALISPATH"])
+import utils.experiment_options.experimentoptions as options
+import utils.zmq_borealis_helpers.socket_operations as so
 
 if __debug__:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
+    from build.debug.utils.protobuf import rxsamplesmetadata_pb2
 else:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
-
-import rxsamplesmetadata_pb2
-
-sys.path.append(os.environ["BOREALISPATH"] + '/utils/experiment_options')
-import experimentoptions as options
-
-sys.path.append(os.environ["BOREALISPATH"] + '/utils/zmq_borealis_helpers')
-import socket_operations as so
+    from build.release.utils.protobuf import rxsamplesmetadata_pb2
 
 TIME_PROFILE = True
 

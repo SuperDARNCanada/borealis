@@ -25,20 +25,16 @@ from functools import reduce
 
 sys.path.append(os.environ["BOREALISPATH"])
 from experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 from utils.experiment_options.experimentoptions import ExperimentOptions
 import utils.message_formats.message_formats as messages
 import utils.shared_macros.shared_macros as sm
+from utils.zmq_borealis_helpers import socket_operations
 
 if __debug__:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')
+    from build.debug.utils.protobuf.driverpacket_pb2 import DriverPacket
 else:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
-
-from driverpacket_pb2 import DriverPacket
-
-from experiment_prototype.experiment_prototype import ExperimentPrototype
-
-from utils.zmq_borealis_helpers import socket_operations
+    from build.release.utils.protobuf.driverpacket_pb2 import DriverPacket
 
 TIME_PROFILE = False
 
