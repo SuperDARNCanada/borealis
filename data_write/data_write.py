@@ -119,7 +119,7 @@ class ParseData(object):
 
     Attributes:
         nested_dict (Python default nested dictionary): alias to a nested defaultdict
-        processed_data (dict): Contains a processeddata message from dsp socket.
+        processed_data (ProcessedSequenceMessage): Contains a message from dsp socket.
     """
 
     def __init__(self):
