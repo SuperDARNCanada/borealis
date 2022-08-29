@@ -78,7 +78,7 @@ bindkey ^[[1;5B focus down
 
 #Realtime produces no real useful output at this time so we have it in a hidden window. It can
 #still be switched to within screen if needed.
-screen -t "Realtime" bash -c "{START_RT}"
+#screen -t "Realtime" bash -c "{START_RT}"
 screen -t "Brian" bash -c "{START_BRIAN}"
 split
 
@@ -101,9 +101,9 @@ split -v
 focus right
 screen -t "Radar Control" bash -c "{START_RADCTRL}"
 
-#split -v
-#focus right
-#screen -t "Realtime" bash -c "{START_RT}"
+split -v
+focus right
+screen -t "Realtime" bash -c "{START_RT}"
 
 detach
 """
@@ -162,6 +162,12 @@ elif args.run_mode == "engineeringdebug":
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
     data_write_args = "--file-type=hdf5 --enable-bfiq --enable-antenna-iq --enable-raw-rf --enable-tx;"
+elif args.run_mode == "filterdata":
+    # run all modules in debug with rawrf, antennas_iq, and filter stage data. 
+    python_opts = "-u"
+    c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
+    mode = "engineeringdebug"
+    data_write_args = "--file-type=hdf5 --enable-raw-rf --enable-antenna-iq"
 else:
     print("Mode {} is unknown. Exiting without running Borealis".format(args.run_mode))
     sys.exit(-1)

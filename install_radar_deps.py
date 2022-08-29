@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env python3
 
 """
 Copyright SuperDARN Canada 2020
@@ -401,6 +401,7 @@ def install_dspenv():
 def install_directories():
     mkdirs_cmd = "mkdir -p /data/borealis_logs;" \
                  "mkdir -p /data/borealis_data;" \
+                 "mkdir -p ${HOME}/logs;" \
                  "chown {normal_user}:{normal_group} /data/borealis_*;"
 
     mkdirs_cmd = mkdirs_cmd.format(normal_user=args.user, normal_group=args.group)

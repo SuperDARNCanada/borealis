@@ -14,7 +14,7 @@ import experiments.superdarn_common_fields as scf
 class NormalscanBoresite(ExperimentPrototype):
     # with 7 PULSE sequence
     def __init__(self):
-        cpid = 100000001
+        cpid = 32000
 
         super(NormalscanBoresite, self).__init__(cpid)
 

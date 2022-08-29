@@ -49,7 +49,7 @@ class ExperimentOptions:
                     self._interferometer_antennas.append(intf_antenna_num)
             self._main_antennas.sort()
             self._interferometer_antennas.sort()
-                    
+
             self._main_antenna_spacing = float(config['main_antenna_spacing'])
             self._interferometer_antenna_spacing = float(config['interferometer_antenna_spacing'])
             self._max_tx_sample_rate = float(config['max_tx_sample_rate'])
@@ -451,8 +451,7 @@ class ExperimentOptions:
 
     @property
     def beam_sep(self):
-        return self._beam_sep  # degrees TODO is this necessary, or is this a min. - for
-                        # post-processing software in RST? check with others.
+        return self._beam_sep  # degrees
 
     @property
     def velocity_sign(self):

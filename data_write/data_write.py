@@ -153,7 +153,7 @@ class ParseData(object):
         self._slice_ids = set()
         self._timestamps = []
 
-        self._gps_locked = True  # init True so that logical AND works properly in update() method 
+        self._gps_locked = True  # init True so that logical AND works properly in update() method
         self._gps_to_system_time_diff = 0.0
 
         self._agc_status_word = 0b0
@@ -214,11 +214,11 @@ class ParseData(object):
 
         self._bfiq_accumulator['data_descriptors'] = ['num_antenna_arrays', 'num_sequences',
                                                       'num_beams', 'num_samps']
-    
+
         num_slices = len(self.processed_data.output_datasets)
         max_num_beams = self.processed_data.max_num_beams
         num_samps = self.processed_data.num_samps
-        
+
         main_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_main_shm)
         temp_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=main_shm.buf)
         main_data = temp_data.copy()
@@ -241,7 +241,7 @@ class ParseData(object):
             num_beams = data_set.num_beams
 
             self._bfiq_accumulator[slice_id]['num_samps'] = num_samps
-            
+
             if 'main_data' not in self._bfiq_accumulator[slice_id]:
                 self._bfiq_accumulator[slice_id]['main_data'] = []
             self._bfiq_accumulator[slice_id]['main_data'].append(main_data[i, :num_beams, :])
@@ -266,7 +266,7 @@ class ParseData(object):
         num_intf_antennas = self.options.intf_antenna_count
 
         stages = []
-        # Loop through all the filter stage data 
+        # Loop through all the filter stage data
         for debug_stage in self.processed_data.debug_data:
             stage_samps = debug_stage.num_samps
             stage_main_shm = shared_memory.SharedMemory(name=debug_stage.main_shm)
@@ -303,7 +303,7 @@ class ParseData(object):
 
                 if stage_name not in self._antenna_iq_accumulator[slice_id]:
                     self._antenna_iq_accumulator[slice_id][stage_name] = collections.OrderedDict()
-                
+
                 antenna_iq_stage = self._antenna_iq_accumulator[slice_id][stage_name]
 
                 antennas_data = debug_stage['data'][i]
@@ -675,7 +675,7 @@ class DataWrite(object):
 
         # Ignoring warning that arises from using integers as the keys of the data dictionary.
         warnings.simplefilter('ignore', tables.NaturalNameWarning)
-        
+
         try:
             dd.io.save(filename, time_stamped_dd, compression=None)
         except Exception as e:
@@ -1091,7 +1091,7 @@ class DataWrite(object):
             "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
             "main_antenna_count", "intf_antenna_count", "samples_data_type",
             "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
-            "rx_center_freq", "blanked_samples", "scheduling_mode", "gps_locked", 
+            "rx_center_freq", "blanked_samples", "scheduling_mode", "gps_locked",
             "gps_to_system_time_diff", "agc_status_word", "lp_status_word"]
 
             # Some fields don't make much sense when working with the raw rf. It's expected
@@ -1109,7 +1109,7 @@ class DataWrite(object):
 
             samples_list = []
             shms = []
-            total_ants = self.options.main_antenna_count + self.options.intf_antenna_count
+            total_ants = len(self.options.main_antennas) + len(self.options.intf_antennas)
 
             for raw in raw_rf:
                 shm = shared_memory.SharedMemory(name=raw)
@@ -1152,7 +1152,7 @@ class DataWrite(object):
             tx_data = None
             for meta in aveperiod_meta.sequences:
                 if meta.tx_data is not None:
-                    tx_data = TX_TEMPLATE.copy()
+                    tx_data = copy.deepcopy(TX_TEMPLATE)
                     break
 
             if tx_data is not None:

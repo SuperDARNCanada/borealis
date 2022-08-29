@@ -48,4 +48,27 @@ This directory has code written by Max to calculate the offsets for combinations
 
 ## dsp_testing ## 
 
-TODO: Keith
+This directory houses some tests which can be used as a testbench for DSP development. 
+
+### decimate.cu ###
+
+Several implementations of CUDA kernels for simultaneous filtering and downsampling.
+
+### decimate_single_core.cpp ###
+
+Standalone C++ script to test simultaneous filtering and downsampling on the CPU.
+
+### dsp_analyze.py ###
+
+This script contains functionality for plotting rf data written to file in an ascii format.
+
+### rx_signal_processing_tests ###
+
+This directory houses several C++ and CUDA files which mimic the rx_signal_processing C++ and CUDA files
+as closely as possible, without any dependency on other modules. These files depend on the
+core DSP files (borealis/rx_signal_processing/decimate.cu and .../filtering.cu), and as such
+provide a test bench for any development on these files. Simulated data is generated with
+rx_dsp_chain.cu, then passed into dsp_testing.cu which operates as closely to 
+borealis/rx_signal_processing/dsp.cu as possible, without any protobufs and without doing any
+beamforming or correlating. The filter taps and data after each stage of filtering/downsampling
+are saved to csv files for analysis.

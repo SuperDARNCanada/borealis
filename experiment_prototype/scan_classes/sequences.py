@@ -139,7 +139,7 @@ class Sequence(ScanClassBase):
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
                 self.basic_slice_pulses[slice_id] = []
-            
+
             # Now we set up the phases for receive side
             rx_main_phase_shift = get_phase_shift(exp_slice['beam_angle'], freq_khz, main_antenna_count,
                                                   main_antenna_spacing)
@@ -147,7 +147,7 @@ class Sequence(ScanClassBase):
                                                   intf_antenna_spacing, intf_offset[0])
 
             self.rx_beam_phases[slice_id] = {'main': rx_main_phase_shift, 'intf': rx_intf_phase_shift}
-            
+
             for pulse_time in exp_slice['pulse_sequence']:
                 pulse_timing_us = pulse_time * exp_slice['tau_spacing'] + exp_slice['seqoffset']
                 pulse_sample_start = round((pulse_timing_us * 1e-6) * txrate)
@@ -193,11 +193,11 @@ class Sequence(ScanClassBase):
             # If there are overlaps (two pulses within minimum separation time) then make them into one single pulse
             min_sep = self.transmit_metadata['minimum_pulse_separation']
             if pulse_timing_us < last_timing_us + last_pulse_len_us + min_sep:
-                # If the current pulse is completely enveloped by the previous pulse, 
+                # If the current pulse is completely enveloped by the previous pulse,
                 # these values won't change or else we are truncating the previous pulse.
-                new_pulse_len = max(pulse_timing_us - last_timing_us + pulse_len_us, 
+                new_pulse_len = max(pulse_timing_us - last_timing_us + pulse_len_us,
                                     last_pulse_len_us)
-                new_pulse_samps = max(pulse_sample_start - last_sample_start + pulse_num_samps, 
+                new_pulse_samps = max(pulse_sample_start - last_sample_start + pulse_num_samps,
                                       last_pulse_num_samps)
 
                 pulse_data['total_pulse_len'] = new_pulse_len
@@ -254,7 +254,7 @@ class Sequence(ScanClassBase):
         power_divider = {slice_id: len(ids) + 1 for slice_id, ids in slice_overlaps.items()}
 
         # Now we iterate through each slice, and check if the slices it overlaps with overlap with each
-        # other. If they don't, we can subtract 1 from the power divider for the slice. 
+        # other. If they don't, we can subtract 1 from the power divider for the slice.
         for ref_slice, overlaps in slice_overlaps.items():
             overlap_list = list(overlaps)
             for i in range(len(overlap_list)):
@@ -327,7 +327,7 @@ class Sequence(ScanClassBase):
 
         # The delay is long enough for any slice's pulse length and num_ranges to be accounted for.
 
-        # FIND the sequence time. Add some TR setup time before the first pulse. The
+        # Find the sequence time. Add some TR setup time before the first pulse. The
         # timing to the last pulse is added, as well as its pulse length and the TR delay
         # at the end of last pulse.
 
@@ -399,6 +399,7 @@ class Sequence(ScanClassBase):
         :rtype:     Dict
         """
         main_antenna_count = self.transmit_metadata['main_antenna_count']
+        main_antennas = self.transmit_metadata['main_antennas']
         txrate = self.transmit_metadata['txrate']
 
         buffer_len = int(txrate * self.sstime * 1e-6)
@@ -421,7 +422,7 @@ class Sequence(ScanClassBase):
                 phase_encoding = encode_fn(beam_num, sequence_num, num_pulses)
 
                 # dimensions: [pulses]
-                # Append list of phase encodings for this sequence, one per pulse. 
+                # Append list of phase encodings for this sequence, one per pulse.
                 # output_encodings contains a list of lists for each slice id
                 self.output_encodings[slice_id].append(phase_encoding)
 

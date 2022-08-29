@@ -22,20 +22,20 @@ Here is an actual rack configuration as installed by SuperDARN Canada at the Sas
 
 The items installed in the rack at the Saskatoon site are listed below in order from top to bottom in the rack:
 
-- Netgear XS708E 10Gb switch
-- USRP rackmount shelf (in-house design) with 4 x N200s
-- Ettus Octoclock
-- USRP rackmount shelf (in-house design) with 4 x N200s
-- Netgear XS708E 10Gb switch
-- Rackmount shelf with 4 x low-noise amplifiers for the interferometer array channels, and a terminal strip for power (supplied by 15V Acopian)
-- Ettus Octoclock-G (with GPSDO)
-- USRP rackmount shelf (in-house design) with 4 x N200s
-- Ettus Octoclock
-- USRP rackmount shelf (in-house design) with 4 x N200s
-- Netgear XS708E 10Gb switch
-- Synology Network Attached Storage device
-- APC Smart UPS
-- 15V Acopian power supply
+ - Netgear XS708E 10Gb switch
+ - USRP rackmount shelf (in-house design) with 4 x N200s
+ - Ettus Octoclock
+ - USRP rackmount shelf (in-house design) with 4 x N200s
+ - Netgear XS708E 10Gb switch
+ - Rackmount shelf with 4 x low-noise amplifiers for the interferometer array channels, and a terminal strip for power (supplied by 15V Acopian)
+ - Ettus Octoclock-G (with GPSDO)
+ - USRP rackmount shelf (in-house design) with 4 x N200s
+ - Ettus Octoclock
+ - USRP rackmount shelf (in-house design) with 4 x N200s
+ - Netgear XS708E 10Gb switch
+ - Synology Network Attached Storage device
+ - APC Smart UPS
+ - 15V Acopian power supply
 
 In addition to these items, there are the following:
 
@@ -67,11 +67,11 @@ Initial Test of the Unit
 
 *Test the USRP*
 
-#. Use the UHD utilities `rx_samples_to_file`, `tx_bursts` and `txrx_loopback_to_file` to verify the USRP works. Use the scope to see the transmit signal. The RX samples will be a binary file that can be quickly read in a plotted with Numpy/Matplotlib. While testing, watch the front panel LEDs to see that they work as expected.
+	Use the UHD utilities `rx_samples_to_file`, `tx_bursts` and `txrx_loopback_to_file` to verify the USRP works. Use the scope to see the transmit signal. The RX samples will be a binary file that can be quickly read in a plotted with Numpy/Matplotlib. While testing, watch the front panel LEDs to see that they work as expected.
 
 *Disassembly for Enclosure Modifications*
 
-#. If the USRP is working correctly, the inner motherboard, fan, daughtercards and RF cables can all be removed from the unit. Carefully peel the product sticker and store with the motherboard, this contains the MAC address, SN and PN of the unit. All removed components and the sticker can be stored in the anti-static bags that were supplied with the unit. The enclosure is ready for machining the additional holes. Ensure that you note which way the fan was installed for reinstallation later.
+	If the USRP is working correctly, the inner motherboard, fan, daughtercards and RF cables can all be removed from the unit. Carefully peel the product sticker and store with the motherboard, this contains the MAC address, SN and PN of the unit. All removed components and the sticker can be stored in the anti-static bags that were supplied with the unit. The enclosure is ready for machining the additional holes. Ensure that you note which way the fan was installed for reinstallation later.
 
 Custom Enclosure Modifications
 ------------------------------
@@ -87,12 +87,21 @@ Installing the Custom-Made TXIO Board
 -------------------------------------
 
 #. Once the enclosures are machined, the electronics and components can all be reinstalled. Place the product sticker back in place on the rear of the unit. There are slight indentations in the case to indicate where the product sticker goes. Connect RXA to port RF1, connect RXB to port RF2, and connect TXA to the additional front panel hole that was added.
-#. Install the LEDs (TODO: Add description of how to install LED clip here) into their corresponding holes. The order of the LED install patterns from left to right are the TX only indicator (RED), the IDLE indicator (YELLOW), the RX only indicator (GREEN) and the TR indicator (BLUE). Optionally, add labels to the LEDs on the front panel.
+#. Install the LEDs and their clips
+    #. Insert the LED clips from the front of the N200.
+    #. Insert the LEDs from the back into their respective clips. The order of the LED install patterns from left to right are: TX only indicator (RED), IDLE indicator (YELLOW), RX only indicator (GREEN) the TR indicator (BLUE). Push from both sides (on the LED and the clip) until the LED snaps into place.
+    #. Slide the spacers over the LEDs from the back onto the clips. These spacers will hold the clips in place and prevent LEDs from popping back inside the N200 when pushed from the front. To make it easier to fit the spacers on the clips, stretch the spacers out to a slightly larger diameter. The easiest way to do this is after warming up the spacer with a heat gun, push the spacer onto a steel alignment punch using a 1/4" washer. 
+    #. Optional: add labels to each LED.
+    
+    .. image:: img/txio_leds.jpg
+       :scale: 50%
+       :alt: LEDs installed with spacers
+       :align: center
+    
 #. Install the fan, making sure to re-install it the same way it was originally installed.
 
     .. image:: img/txio_fan_direction.jpg
-       :height: 500px
-       :width: 500px
+       :scale: 50%
        :alt: Arrows indicate fan rotation and air flow direction
        :align: center
 
@@ -101,42 +110,46 @@ Installing the Custom-Made TXIO Board
 
 #. Begin by connecting eight 0.1" female-female jumper cables to pins 1-4 and 6-9 of the D-sub connector. The other ends of these wires connects to header J2 on the TXIO board
 
-	+--------+------+------+------+
-	| Colour | Sig  | DSUB | J2   |
-      	+========+======+======+======+
-	| Brown  | AGC- | 1    | 7    |
-	+--------+------+------+------+
-	| Orange | TR-  | 2    | 8    |
-	+--------+------+------+------+
-	| Blue   | TM-  | 3    | 2    |
-	+--------+------+------+------+
-	| Grey   | LP-  | 4    | 1    |
-	+--------+------+------+------+
-	| [NC]   | [NC] | 5    | [NC] |
-	+--------+------+------+------+
-	| Red    | AGC+ | 6    | 9    |
-	+--------+------+------+------+
-	| Yellow | TR+  | 7    | 10   |
-	+--------+------+------+------+
-	| Green  | TM+  | 8    | 4    |
-	+--------+------+------+------+
-	| Purple | LP+  | 9    | 3    |
-	+--------+------+------+------+
+	+---------+-----------+-------------+----------+
+	| J2 Pin  | Pin label | Wire colour | DSUB Pin | 
+	+=========+===========+=============+==========+
+	| 1       | LP-       | Grey        | 4        |
+	+---------+-----------+-------------+----------+
+	| 2       | TM-       | Blue        | 3        |
+	+---------+-----------+-------------+----------+
+	| 3       | LP+       | Purple      | 9        |
+	+---------+-----------+-------------+----------+
+	| 4       | TM+       | Green       | 8        |
+	+---------+-----------+-------------+----------+
+	| 5       | GND       | [NC]        | [NC]     |
+	+---------+-----------+-------------+----------+
+	| 6       | GND       | [NC]        | [NC]     |
+	+---------+-----------+-------------+----------+
+	| 7       | AGC-      | Brown       | 1        |
+	+---------+-----------+-------------+----------+
+	| 8       | TR-       | Orange      | 2        |
+	+---------+-----------+-------------+----------+
+	| 9       | AGC+      | Red         | 6        |
+	+---------+-----------+-------------+----------+
+	| 10      | TR+       | Yellow      | 7        |
+	+---------+-----------+-------------+----------+
+	| [NC]    | [NC]      | [NC]        | 5        |
+	+---------+-----------+-------------+----------+
 
     .. image:: img/txio_dsub_fanpwr.jpg
-       :scale: 80%
+       :scale: 50%
        :alt: TXIO dsub wire connections
        :align: center
 
     .. image:: img/txio_lfrx_signals.jpg
-       :scale: 80%
+       :scale: 50%
        :alt: TXIO lrfx signal connections
        :align: center
 
 #. Connect the four U.Fl to SMA female bulkhead cables to J4, J5, J6 and J7 of the TXIO board. Orientation of the cables doesn't matter, as they will fit in the N200 case if rotated properly.
 
     .. image:: img/txio_pcb_connections.jpg
-       :scale: 80%
+       :scale: 50%
        :alt: TXIO PCB view
        :align: center
 
@@ -226,9 +239,9 @@ TXIO OUTPUT TESTS
 
     #. Connect a needle probe to channel two of your oscilloscope, to be used in later tests.
 
-    #. Run test_txio_gpio.py located in borealis/tools/n200_gpio_test/ [TODO: VERIFY LOCATION ONCE MERGED]. Usage is as follows:
+    #. Run test_txio_gpio.py located in borealis/tools/test_txio_gpio/. Usage is as follows (assuming default IP address):
 
-        `python3 test_txio_gpio.py <N200_ip_address>`
+        `python3 test_txio_gpio.py 192.168.10.2`
 
     #. When prompted to enter the pins corresponding to the TXIO signals, press enter to accept the default pin settings. This will begin the tests.
 
@@ -376,6 +389,17 @@ the onboard COM port is to the left of the 'AA' shown on the 7-segment display.
 .. image:: img/pps_ntp_2.jpg
    :scale: 80%
    :alt: Modified coaxial cable connected to the COM port DCD and GND pins on the motherboard
+   :align: center
+
+
+In case your motherboard does not have a COM port routed out to a pin header, you can purchase and use
+a PCIe serial port card. One such part that is known to work is the Rosewill RC-301EU. The photo below
+shows how one of these cards was modified by removing the physical D-Sub connector and using a bulkhead
+SMA connector in place.
+
+.. image:: img/pcie_serialport_pps.jpg
+   :scale: 80%
+   :alt: Modify one SMA coaxial cable to connect to the DCD and GND pins of the pcie header
    :align: center
 
 -------------------------

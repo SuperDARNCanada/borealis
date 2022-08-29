@@ -28,12 +28,11 @@ import traceback
 
 sys.path.append(os.environ["BOREALISPATH"])
 
-from testing.borealis_tests.testing_utils.plot_borealis_hdf5_data.plotting_borealis_data_utils import *
-from testing.borealis_tests.testing_utils.beamforming_utils import *
+from tools.testing_utils.plot_borealis_hdf5_data.plotting_borealis_data_utils import *
+from tools.testing_utils.beamforming_utils import *
 
 borealis_path = os.environ['BOREALISPATH']
 config_file = borealis_path + '/config.ini'
-
 
 
 def testing_parser():
@@ -66,7 +65,7 @@ def main():
         errmsg = 'Cannot open config file at {}'.format(config_file)
         raise Exception(errmsg)
 
-    data_directory = config['data_directory']
+    data_directory = os.path.dirname(data_file_path)
     antenna_spacing = float(config['main_antenna_spacing'])
     intf_antenna_spacing = float(config['interferometer_antenna_spacing'])
 
@@ -76,17 +75,24 @@ def main():
     timestamp_of_file = '.'.join(data_file_metadata[0:3])
     station_name = data_file_metadata[3]
     slice_id_number = data_file_metadata[4]
-    type_of_file = data_file_metadata[-2]  # XX.hdf5
+
+    file_suffix = data_file_metadata[-1]
+
+    if file_suffix not in ['hdf5', 'site']:
+        raise Exception('Incorrect File Suffix: {}'.format(file_suffix))
+
+    if file_suffix == 'hdf5':
+        type_of_file = data_file_metadata[-2]  # XX.hdf5
+    else:  # site
+        type_of_file = data_file_metadata[-3]  # XX.hdf5.site    
+        file_suffix = data_file_metadata[-2] + '.' + data_file_metadata[-1]
+
     if type_of_file == slice_id_number:
         slice_id_number = '0'  # choose the first slice to search for other available files.
     else:
         type_of_file = slice_id_number + '.' + type_of_file
-    file_suffix = data_file_metadata[-1]
 
-    if file_suffix != 'hdf5':
-        raise Exception('Incorrect File Suffix: {}'.format(file_suffix))
-
-    output_samples_filetype = slice_id_number + ".output_samples_iq"
+    output_samples_filetype = slice_id_number + ".antennas_iq"
     bfiq_filetype = slice_id_number + ".bfiq"
     rawrf_filetype = "rawrf"
     tx_filetype = "txdata"
@@ -100,8 +106,8 @@ def main():
     data = {}
     for file_type in list(file_types_avail):  # copy of file_types_avail so we can modify it within.
         try:
-            filename = data_directory + '/' + date_of_file + '/' + timestamp_of_file + \
-                        '.' + station_name + '.' + file_type + '.hdf5'
+            filename = data_directory + '/' + timestamp_of_file + \
+                        '.' + station_name + '.' + file_type + '.' + file_suffix
             data[file_type] = deepdish.io.load(filename)
         except:
             file_types_avail.remove(file_type)

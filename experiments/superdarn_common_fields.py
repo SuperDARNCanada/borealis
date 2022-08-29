@@ -61,7 +61,6 @@ STD_16_FORWARD_BEAM_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 1
 STD_16_REVERSE_BEAM_ORDER = [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
 
 # Scanning directions here for now.
-opts = ExperimentOptions()
 IS_FORWARD_RADAR = IS_REVERSE_RADAR = False
 if opts.site_id in ["sas", "rkn", "inv"]:
     IS_FORWARD_RADAR = True
@@ -92,9 +91,9 @@ else:
 
 def easy_scanbound(intt, beams):
     """
-    Create integration time boundaries for the scan at the exact 
-    integration time (intt) boundaries. For new experiments, you 
-    may wish to ensure that your intt * len(beams) approaches a 
+    Create integration time boundaries for the scan at the exact
+    integration time (intt) boundaries. For new experiments, you
+    may wish to ensure that your intt * len(beams) approaches a
     minute mark to reduce delay in waiting for the next scanbound.
     """
     return [i * (intt * 1e-3) for i in range(len(beams))]
@@ -102,15 +101,15 @@ def easy_scanbound(intt, beams):
 
 # set sounding frequencies
 if opts.site_id == "sas":
-    SOUNDING_FREQS = [10525, 11000, 11700, 13100]
+    SOUNDING_FREQS = [9690, 10500, 11000, 11700, 12400, 12900, 13150]
 elif opts.site_id == "pgr":
-    SOUNDING_FREQS = [10350, 11050, 11750, 13150]
+    SOUNDING_FREQS = [9600, 10590, 11050, 11750, 13090, 12850, 12400]
 elif opts.site_id == "rkn":
-    SOUNDING_FREQS = [10400, 11100, 11800, 13450]
+    SOUNDING_FREQS = [11100, 9600, 10500, 12400, 11800, 13090, 12825]
 elif opts.site_id == "inv":
-    SOUNDING_FREQS = [10450, 11150, 11850, 13125]
+    SOUNDING_FREQS = [11150, 9690, 12400, 10590, 11850, 12800, 13100]
 elif opts.site_id == "cly":
-    SOUNDING_FREQS = [10550, 11200, 11900, 13550]
+    SOUNDING_FREQS = [11900, 12400, 11100, 10400, 9600, 12800, 13050]
 else:
     SOUNDING_FREQS = [10600, 11250, 11950, 13150]
 

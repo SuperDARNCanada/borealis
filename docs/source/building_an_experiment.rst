@@ -307,9 +307,9 @@ rx_main_antennas *defaults*
 scanbound *defaults*
     A list of seconds past the minute for averaging periods in a scan to align to. Defaults
     to None, not required. If you set this, you will want to ensure that there is a slightly 
-    larger amount of time in the scan boundaries than the averaging period set for the slice. 
+    larger amount of time in the scan boundaries than the averaging period set for the slice.
     For example, if you want to align averaging periods at the 3 second marks, you may want to
-    have a set averaging period of ~2.9s to ensure that the experiment will start on time. 
+    have a set averaging period of ~2.9s to ensure that the experiment will start on time.
     Typically 50ms difference will be enough. This is especially important for the last averaging
     period in the scan, as the experiment will always wait for the next scan start boundary
     (potentially causing a minute of downtime). You could also just leave a small amount
@@ -324,7 +324,7 @@ seqoffset *defaults*
 tx_antennas *defaults*
     The antennas to transmit on, default is all main antennas given max
     number from config.
-    
+
 tx_antenna_pattern *defaults*
     experiment-defined function which returns a complex weighting factor of magnitude <= 1
     for each tx antenna used in the experiment. The return value of the function must be
@@ -348,10 +348,10 @@ tx_beam_order *defaults, but required if tx_antenna_pattern given*
     Default is None, i.e. rx_only slice.
 
 wait_for_first_scanbound *defaults*
-    A boolean flag to determine when an experiment starts running. True (default) means an 
-    experiment will wait until the first averaging period in a scan to start transmitting. 
-    False means an experiment will not wait for the first averaging period, but will instead 
-    start transmitting at the nearest averaging period. Note: for multi-slice experiments, the 
+    A boolean flag to determine when an experiment starts running. True (default) means an
+    experiment will wait until the first averaging period in a scan to start transmitting.
+    False means an experiment will not wait for the first averaging period, but will instead
+    start transmitting at the nearest averaging period. Note: for multi-slice experiments, the
     first slice is the only one impacted by this parameter.
 
 xcf *defaults*

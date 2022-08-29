@@ -275,7 +275,7 @@ The file fields under the record name in bfiq site files are:
 | |                                | | transmitter. A '1' indicates an agc fault |
 | |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
-| | **antenna_arrays_order**       | | States what order the data is in and      | 
+| | **antenna_arrays_order**       | | States what order the data is in and      |
 | | *[unicode, ]*                  | | describes the data layout for the         |
 | |                                | | num_antenna_arrays data dimension         |
 +----------------------------------+---------------------------------------------+

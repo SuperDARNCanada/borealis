@@ -201,3 +201,86 @@ We have had troubles installing versions newer than this, so we recommend using 
 
 Solution:
 Either upgrade your protobuf version or install an older version of the protoc compiler.
+
+Number of sequences per integration time decreasing over time
+-------------------------------------------------------------
+This behaviour has been seen when setting up Borealis on new computers. Typically the radar starts
+and records 30-32 sequences per integration, but over the span of a half hour or more may decrease
+down to 10-20 sequences per integration.
+
+This is caused by a communication error between the brian and realtime modules, likely due to the
+value of `realtime_address` in config.ini. Make sure that the realtime_address uses a configure
+interface that is "UP". See Software Setup for instructions.
+
+Borealis only takes runs one integration time then stops
+--------------------------------------------------------
+This is an unresolved issue, which seems to be caused by the Signal Processing module. Restarting
+borealis sometimes fixes it, but you may need to restart multiple times.
+
+ZMQError in realtime module
+---------------------------
+This behaviour has been seen when setting up Borealis on new computers. The following error message
+is displayed::
+
+    Traceback (most recent call last):
+      File "realtime/realtime.py", line 113, in <module>
+        _main()
+      File "realtime/realtime.py", line 39, in _main
+        realtime_socket.bind(opts.rt_address)
+      File "/home/radar/borealis/borealisrt_env/lib64/python3.6/site-packages/zmq/sugar/socket.py", line 172, in bind
+        super().bind(addr)
+      File "zmq/backend/cython/socket.pyx", line 540, in zmq.backend.cython.socket.Socket.bind
+      File "zmq/backend/cython/checkrc.pxd", line 28, in zmq.backend.cython.checkrc._check_rc
+    zmq.error.ZMQError: No such device
+
+The reason for the error is due to improper configuration of the `realtime_address` in config.ini.
+Instructions for proper configuration can be found in the Software Setup section.
+
+No module named 'deepdish'
+__________________________
+This behaviour has been seen when setting up Borealis on new computers. DeepDish is a library for
+reading/writing hdf5 files, which is used by the realtime module. Due to updates in the pyDARN
+library, deepdish is no longer a dependency of pyDARN. The following error message in the realtime
+screen is indicative of this error::
+
+    Traceback (most recent call last):
+      File "realtime/realtime.py", line 16, in <module>
+        import pydarn
+      File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarn-2.1-py3.6.egg/pydarn/__init__.py", line 17, in <module>
+        from .io.superdarn_io import SuperDARNRead
+      File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarn-2.1-py3.6.egg/pydarn/io/superdarn_io.py", line 5, in <module>
+        import pydarnio
+      File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarnio-1.1.0-py3.6.egg/pydarnio/__init__.py", line 43, in <module>
+        from .borealis.borealis import BorealisRead
+      File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarnio-1.1.0-py3.6.egg/pydarnio/borealis/borealis.py", line 46, in <module>
+        from .borealis_site import BorealisSiteRead, BorealisSiteWrite
+      File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarnio-1.1.0-py3.6.egg/pydarnio/borealis/borealis_site.py", line 38, in <module>
+        import deepdish as dd
+    ModuleNotFoundError: No module named 'deepdish'
+
+The Software Setup page has been updated with instructions on how to set up the borealisrt_env
+virtual environment without encountering this error.
+
+Error while loading shared library libncurses.so.5
+--------------------------------------------------
+This behaviour is seen when running borealis in `debug` or `engineeringdebug` modes.
+Libncurses5 is a dependency of cuda-gdb. By default, the newest version of
+libncurses is installed with cuda-gdb; however, libncurses6 doesn't seem to work
+with the version of cuda-gdb used.
+
+To fix this problem, install libncurses5 on your borealis computer. On OpenSuSe, this
+can be done using `sudo zypper in libncurses5`.
+
+nvcc fatal: Unsupported gpu architecture 'compute_xx'
+-----------------------------------------------------
+This error code is seen when building Borealis with a GPU that isn't supported by your
+version of CUDA. The compute capability of the GPU can be found by running deviceQuery
+and checking the version number given by the line:
+    - CUDA Capability Major/Minor version number:    7.5
+
+In this case, the compute_xx number is 75. You can see the supported compute_xx numbers
+for your current CUDA version by running:
+    - nvcc --help
+
+and checking the versions listed under the option --gpu-code. Updating your CUDA version
+should resolve this issue.

@@ -3,7 +3,7 @@ Software
 ========
 
 SuperDARN Canada uses OpenSUSE for an operating system, but any Linux system that can support the NVIDIA drivers for the graphics card will work.
-The current latest version of OpenSuSe (15.1) is known to work. **Commands that require root privileges will have a `sudo` or `su` command ahead of them, or explicitly say 'as root', all others should be executed as the normal user (recommended name: radar) that will run Borealis**
+The current latest version of OpenSuSe (15.3) is known to work. **Commands that require root privileges will have a `sudo` or `su` command ahead of them, or explicitly say 'as root', all others should be executed as the normal user (recommended name: radar) that will run Borealis**
 
 #. Install the latest version of the NVIDIA drivers (see https://en.opensuse.org/SDB:NVIDIA_drivers). The driver must be able to support running the GPU selected and must also be compatible with the version of CUDA that supports the compute capability version of the GPU. Getting the OS to run stable with NVIDIA is the most important step, **so make sure you read this page carefully**.
 
@@ -19,21 +19,21 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
 
     - cpupower frequency-info
 
-#. Use ethtool to set the interface ring buffer size for both rx and tx. This should be added to a script that occurs on reboot for the interface used to connect to the USRPs. This is done to help prevent packet loss when the network traffic exceeds the capacity of the network adapter.
+#. Use ethtool to set the interface ring buffer size for both rx and tx. Make sure to use an ethernet device which is connected to the 10 Gb card of the computer (not necessarily eth0). This should be added to a script that occurs on reboot for the interface used to connect to the USRPs. This is done to help prevent packet loss when the network traffic exceeds the capacity of the network adapter.
 
-    - sudo ethtool -G eth0 tx 4096 rx 4096.
+    - sudo ethtool -G <10G_network_device> tx 4096 rx 4096.
 
 #. To see that this works as intended, and that it persists across reboots, you can execute the following, which will output the maximums and the current settings.
 
-    - sudo ethtool -g eth0
+    - sudo ethtool -g <10G_network_device>
 
 #. Use the network manager or a line in the reboot script to change the MTU of the interface for the interface used to connect to the USRPs. A larger MTU will reduce the amount of network overhead. An MTU larger than 1500 bytes allows what is known as Jumbo frames, which can use up to 9000 bytes of payload.
 
-    - sudo ip link set eth0 mtu 9000
+    - sudo ip link set <10G_network_device> mtu 9000
 
 #. To verify that the MTU was set correctly:
 
-    - ip link show eth0
+    - ip link show <10G_network_device>
 
 #. Use sysctl to adjust the kernel network buffer sizes. This should be added to a script that occurs on reboot for the interface used to connect to the USRPs. That's 50 million for `rmem_max` and 2.5 million for `wmwem_max`.
 
@@ -49,10 +49,10 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
 
     - @reboot /sbin/sysctl -w net.ipv6.conf.all.disable_ipv6=1
     - @reboot /sbin/sysctl -w net.ipv6.conf.default.disable_ipv6=1
-    - @reboot /usr/sbin/ethtool -G eth1 tx 4096 rx 4096
-    - @reboot /usr/sbin/ethtool -G eth2 tx 4096 rx 4096
-    - @reboot /sbin/ip link set dev eth1 mtu 9000
-    - @reboot /sbin/ip link set dev eth2 mtu 9000
+    - @reboot /usr/sbin/ethtool -G <10G_network_device_1> tx 4096 rx 4096
+    - @reboot /usr/sbin/ethtool -G <10G_network_device_2> tx 4096 rx 4096
+    - @reboot /sbin/ip link set dev <10G_network_device_1> mtu 9000
+    - @reboot /sbin/ip link set dev <10G_network_device_2> mtu 9000
     - @reboot /usr/bin/cpupower frequency-set -g performance
     - @reboot /sbin/sysctl -w net.core.rmem_max=50000000
     - @reboot /sbin/sysctl -w net.core.wmem_max=2500000
@@ -64,6 +64,7 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - systemctl enable tuned
     - systemctl start tuned
     - tuned-adm profile network-latency
+    - exit
 
 #. To verify the system's new profile:
 
@@ -89,13 +90,16 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - git submodule init && git submodule update
     - ln -svi $BOREALISPATH/borealis_config_files/[radarcode]_config.ini config.ini
 
-#. If you're building Borealis for a non University of Saskatcheawn radar, use a Usask `config.ini` file (located `here <https://github.com/SuperDARNCanada/borealis_config_files>`_) as a template or the config file `documentation <https://borealis.readthedocs.io/en/latest/config_options.html>`_ to create your own file in the borealis directory.
+#. If you're building Borealis for a non University of Saskatchewan radar, use a Usask `config.ini` file (located `here <https://github.com/SuperDARNCanada/borealis_config_files>`_) as a template or the config file `documentation <https://borealis.readthedocs.io/en/latest/config_options.html>`_ to create your own file in the borealis directory.
+
+#. In `config.ini`, there is an entry called "realtime_address". This defines the protocol, interface, and port that the realtime module uses for socket communication. This should be set to `"realtime_address" : "tcp://<interface>:9696"`, where <interface> is a configured interface on your computer such as "eth0" or "wlan0". Running `ip addr`, you should choose a device which is UP.
 
 #. The Borealis software has a script called `install_radar_deps.py` to help install dependencies. This script has to be run with root privileges. This script can be modified to add the package manager of a different distribution if it doesn't exist yet. Make sure that the version of CUDA is up to date and supports your card. This script makes an attempt to correctly install Boost and create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD does not configure correctly, an improper Boost installation or library naming convention is the likely reason. Note that you need python3 installed before you can run this script. The radar abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'.
 
     - cd $BOREALISPATH
     - chmod +x install_radar_deps.py
-    - sudo ./install_radar_deps.py [radar abbreviation] $BOREALISPATH > install_log.txt 2>&1
+    - su
+    - python3 install_radar_deps.py [radar abbreviation] $BOREALISPATH > install_log.txt 2>&1
 
 #. Install pyDARNio for realtime data support as well as testing and data conversion support:
 
@@ -148,10 +152,6 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
         requestkey 1
         controlkey 1
 
-#. As part of the realtime capabilities, the hdw.dat repo will be cloned to the computer(default will be /usr/local/hdw.dat). The hdw.dat files are also used for radar operation. Create a symbolic link for this radar in the $BOREALISPATH directory.
-
-    - ln -svi /usr/local/hdw.dat/hdw.dat.[radarcode] $BOREALISPATH/hdw.dat.[radarcode]
-
 #. Edit /etc/security/limits.conf (as root) to add the following line that allows UHD to set thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail if the user executing UHD doesn't have permission.
 
     - @users - rtprio 99
@@ -168,19 +168,20 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
     - crontab -e
     - Add the line `@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log 2>&1`
 
-#. Create necessary directories. Here is an example for a user named `radar` and the standard configuration in the 'config.ini' file:
+#. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0, especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do this, search the system log for 'tty' (either dmesg or the syslog). An example output with a PCIe expansion card is below. The output shows the first two ttyS0 and 1 are builtin to the motherboard chipset and are not accessible on this x299 PRO from MSI. The next two ttyS4 and S5 are located on the XR17V35X chip which is located on the rosewill card:
 
-    - sudo mkdir -p /data/borealis_logs
-    - sudo mkdir -p /data/borealis_data
-    - sudo chown radar:users /data/borealis_logs
-    - sudo chown radar:users /data/borealis_data
-    - mkdir $HOME/logs
+    .. code-block::
 
-#. Finally, add the GPS disciplined NTP lines to the root start up script.
+        [ 1.624103] serial8250: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A
+        [ 1.644875] serial8250: ttyS1 at I/O 0x2f8 (irq = 3, base_baud = 115200) is a 16550A
+        [ 1.645850] 0000:b4:00.0: ttyS4 at MMIO 0xfbd00000 (irq = 37, base_baud = 7812500) is a XR17V35X
+        [ 1.645964] 0000:b4:00.0: ttyS5 at MMIO 0xfbd00400 (irq = 37, base_baud = 7812500) is a XR17V35X
 
-    - /sbin/modprobe pps_ldisc && /usr/sbin/ldattach 18 /dev/ttyS0 && /usr/local/bin/ntpd
+#. Try attaching the ttySx line to a PPS line discipline using ldattach:
 
-#. Verify that the PPS signal incoming on the DCD line of ttyS0 is properly routed and being received. You'll get two lines every second corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since the epoch.
+   - /usr/sbin/ldattach PPS /dev/ttyS[0,1,2,3,etc]
+
+#. Verify that the PPS signal incoming on the DCD line of ttyS0 (or ttySx where x can be any digit 0,1,2,3...) is properly routed and being received. You'll get two lines every second corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since the epoch. If it's the incorrect one, you'll only see a timeout.
 
     .. code-block::
 
@@ -191,6 +192,28 @@ The current latest version of OpenSuSe (15.1) is known to work. **Commands that 
         ok, found 1 source(s), now start fetching data...
         source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755247.199734241, sequence: 249187
         source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755248.199734605, sequence: 249188
+
+#. If you're having trouble finding out which /dev/ppsx device to use, try grepping the output of dmesg to find out. Here's an example that shows how pps0 and 1 are connected to ptp1 and 2, pps2 is connected to /dev/ttyS0 and pps3 is connected to /dev/ttyS5.:
+
+   .. code-block::
+
+        [ 0.573439] pps_core: LinuxPPS API ver. 1 registered
+        [ 0.573439] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+        [ 8.792473] pps pps0: new PPS source ptp1
+        [ 9.040732] pps pps1: new PPS source ptp2
+        [ 10.044514] pps_ldisc: PPS line discipline registered
+        [ 10.045957] pps pps2: new PPS source serial0
+        [ 10.045960] pps pps2: source "/dev/ttyS0" added
+        [ 227.629896] pps pps3: new PPS source serial5
+        [ 227.629899] pps pps3: source "/dev/ttyS5" added
+
+#. Now add the GPS disciplined NTP lines to the root startup script using the tty you have your PPS connected to.
+
+    - /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/[PPS tty] && /usr/local/bin/ntpd
+
+#. Verify that the realtime module is able to communicate with other modules. This can be done by running the following command in a new terminal while borealis is running. If all is well, the command should output that there is a device listening on the channel specified.
+
+   - ss --all | grep 9696
 
 #. For further reading on networking and tuning with the USRP devices, see https://files.ettus.com/manual/page_transport.html and https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks. Also see http://doc.ntp.org/current-stable/drivers/driver22.html for information about the PPS ntp clock discipline, and the man pages for:
 

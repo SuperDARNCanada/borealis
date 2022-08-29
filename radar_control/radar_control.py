@@ -138,8 +138,8 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
 
 def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                       brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
-                      slice_dict, beam_dict, sequence_time, first_rx_sample_start,
-                      rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
+                      slice_dict, beam_dict, sequence_time, first_rx_sample_start, main_antenna_count,
+                      antenna_indices, rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
         Happens every sequence.
         :param message: the SequenceMetadataMessage object
@@ -160,6 +160,8 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
              transmissions.
         :param first_rx_sample_start: The sample where the first rx sample will start relative to the
              tx data.
+        :param main_antenna_count: number of main array antennas, from the config file.
+        :param antenna_indices: Indices of all physical antennas which are connected to N200s.
         :param rxctrfreq: the center frequency of receiving.
         :param pulse_phase_offsets: Phase offsets (degrees) applied to each pulse in the sequence
         :param decimation_scheme: object of type DecimationScheme that has all decimation and
@@ -521,6 +523,12 @@ def radar():
     first_aveperiod = True
     next_scan_start = None
     decimation_scheme = experiment.decimation_scheme
+
+    # Indices of all N200s connected to N200s while the radar is running. Indices start from 0 with the
+    # main array and start from main_antenna_count in the interferometer antenna array.
+    all_antenna_indices = options.main_antennas + \
+                          [i + options.main_antenna_count for i in options.interferometer_antennas]
+
     while True:
         # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.
         # TODO : further documentation throughout in comments (high level) and in separate documentation.
@@ -756,7 +764,7 @@ def radar():
                                                repeat=pulse_transmit_data['isarepeat'])
 
                             if TIME_PROFILE:
-                                
+
                                 pulses_to_driver_time = datetime.utcnow() - start_time
                                 output = 'Time for pulses to driver: {}'.format(pulses_to_driver_time)
                                 rad_ctrl_print(output)
@@ -779,7 +787,7 @@ def radar():
                                               decimation_scheme)
 
                             if TIME_PROFILE:
-                                
+
                                 sequence_metadata_time = datetime.utcnow() - start_time
                                 output = 'Time to send meta to DSP: {}'.format(sequence_metadata_time)
                                 rad_ctrl_print(output)
@@ -791,7 +799,7 @@ def radar():
                             pulse_transmit_data_tracker[sequence_index][num_sequences+1] = sqn
 
                             if TIME_PROFILE:
-                                
+
                                 new_sequence_time = datetime.utcnow() - start_time
                                 output = 'Time to make new sequence: {}'.format(new_sequence_time)
                                 rad_ctrl_print(output)

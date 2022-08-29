@@ -14,7 +14,7 @@ import experiments.superdarn_common_fields as scf
 class TwoMultifsound(ExperimentPrototype):
 
     def __init__(self):
-        cpid = 350300
+        cpid = 3570
 
         if scf.IS_FORWARD_RADAR:
             beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER

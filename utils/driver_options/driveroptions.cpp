@@ -18,7 +18,7 @@ DriverOptions::DriverOptions() {
     Options::parse_config_file();
 
     devices_ = config_pt.get<std::string>("device_options");
-    
+
     auto n200_list = config_pt.get_child("n200s");
     // These maps are sorted by their keys (device number / int antenna number)
     std::map<uint32_t, std::string> devices_map;    // Maps device number to IP address
@@ -91,7 +91,7 @@ DriverOptions::DriverOptions() {
     // the addr_idx must be mapped to the device number to get the correct
     // addr_idx for the interferometer antennas.
     auto addr_idx = 0;
-    std::map<uint32_t,uint32_t> device_num_to_addr_idx; 
+    std::map<uint32_t,uint32_t> device_num_to_addr_idx;
     // Loop through sorted list of N200s and create devices_ string
     std::string ma_recv_str = "";
     std::string ma_tx_str = "";
@@ -415,7 +415,7 @@ double DriverOptions::get_agc_signal_read_delay() const
 
 /**
  * @brief      Gets all antennas connected to N200s
- * 
+ *
  * @return     The list of antennas connected to N200s
  */
 std::vector<size_t> DriverOptions::get_main_antennas() const
@@ -435,7 +435,7 @@ uint32_t DriverOptions::get_main_antenna_count() const
 
 /**
  * @brief      Gets all interferometer antennas connected to N200s
- * 
+ *
  * @return     The list of interferometer antennas connected to N200s
  */
 std::vector<size_t> DriverOptions::get_interferometer_antennas() const

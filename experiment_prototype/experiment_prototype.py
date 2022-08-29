@@ -483,6 +483,7 @@ class ExperimentPrototype(object):
         # to where the samples are built.
         self.__transmit_metadata = {
             'output_rx_rate': self.output_rx_rate,
+            'main_antennas': self.options.main_antennas,
             'main_antenna_count': self.options.main_antenna_count,
             'intf_antenna_count': self.options.interferometer_antenna_count,
             'tr_window_time': self.options.tr_window_time,
@@ -1569,15 +1570,13 @@ class ExperimentPrototype(object):
 
         # TODO future proof this by specifying tx_main and tx_int ?? or give spatial information in config
         if 'tx_antennas' not in exp_slice:
-            slice_with_defaults['tx_antennas'] = [i for i in range(0,
-                                                                  self.options.main_antenna_count)]
+            slice_with_defaults['tx_antennas'] = [i for i in self.options.main_antennas]
             # all possible antennas.
         if 'rx_main_antennas' not in exp_slice:
-            slice_with_defaults['rx_main_antennas'] = [i for i in
-                                                       range(0, self.options.main_antenna_count)]
+            slice_with_defaults['rx_main_antennas'] = [i for i in self.options.main_antennas]
         if 'rx_int_antennas' not in exp_slice:
             slice_with_defaults['rx_int_antennas'] = \
-                [i for i in range(0, self.options.interferometer_antenna_count)]
+                [i for i in self.options.interferometer_antennas]
         if 'pulse_phase_offset' not in exp_slice:
             slice_with_defaults['pulse_phase_offset'] = None
         if 'scanbound' not in exp_slice:
@@ -1686,7 +1685,6 @@ class ExperimentPrototype(object):
         if 'align_sequences' not in exp_slice:
             slice_with_defaults['align_sequences'] = False
 
-
         return slice_with_defaults
 
     def setup_slice(self, exp_slice):
@@ -1698,7 +1696,8 @@ class ExperimentPrototype(object):
 
         The following are always able to be defaulted, so are optional:
         "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_phase_offset", "scanboundflag",
-        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset", "averaging_method", "align_sequences"
+        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset", "averaging_method", "align_sequences",
+        and "wait_for_first_scanbound".
 
         The following are always required for processing acf, xcf, and acfint which we will assume
         we are always doing:
@@ -2019,13 +2018,13 @@ class ExperimentPrototype(object):
                                               "scanbound times".format(exp_slice['slice_id'],
                                                                        exp_slice['intt']))
                             break
-        
+
         # Check wait_for_first_scanbound
         if type(exp_slice['wait_for_first_scanbound']) is not bool:
             error_list.append("Slice {} wait_for_first_scanbound must be True or False, got {} "
                                                 "instead".format(exp_slice['slice_id'],
                                                                  exp_slice['wait_for_first_scanbound']))
-        
+
         # TODO other checks
 
         return error_list

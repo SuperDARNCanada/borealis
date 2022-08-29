@@ -31,7 +31,7 @@ Config Parameters
 |                                | | main_antenna : "1"          | interferometer antennas that are      |
 |                                | | interferometer_antenna : "0"| activated here must agree with the    |
 |                                | | }, ...                      | count variables specified above.      |
-|                                |                               | The ordering of the N200 parameters   | 
+|                                |                               | The ordering of the N200 parameters   |
 |                                |                               | doesn't matter.                       |
 +--------------------------------+-------------------------------+---------------------------------------+
 | addr (n200s)                   | 192.168.10.100                | IP address of the specified N200      |
@@ -225,8 +225,8 @@ There are several instances when you'll need to modify this file for correct ope
 
 #. One of your main array antennas is not working properly (broken coax, blown lightning arrestor, etc)
 
-    The rx and tx flags for the associated N200 should be set to false. This will disable the 
-    receive and transmit channels, and stop the N200s from collecting samples from that antenna. 
+    The rx and tx flags for the associated N200 should be set to false. This will disable the
+    receive and transmit channels, and stop the N200s from collecting samples from that antenna.
     Note: If the N200 is also connected to an interferometer antenna, the interferometer antenna will
     also have to be disconnected by setting rx_int to false, or moving it to a different N200.
 
@@ -247,15 +247,15 @@ There are several instances when you'll need to modify this file for correct ope
 
 #. One of your transmitters is not working at all
 
-    The rx and tx flags for the N200 connected to the non-working transmitter should both be set to false. 
+    The rx and tx flags for the N200 connected to the non-working transmitter should both be set to false.
     This will disable the transmit and receive channels for that transmitter.
 
 #. One of your N200s is not working properly and you've inserted the spare N200
 
     Add an entry for the replacement N200, and copy rx, tx, rx_int, main_antenna, and interferometer_antenna from the
-    broken N200. Set all the flags for the broken N200 to false, and set main_antenna and interferometer_antenna to 
+    broken N200. Set all the flags for the broken N200 to false, and set main_antenna and interferometer_antenna to
     empty strings to deactivate the N200. The entry for the broken N200 can be left in the config file for future use,
-    as the code will ignore the broken N200 and replace it with the new one. 
+    as the code will ignore the broken N200 and replace it with the new one.
 
 #. One of your N200s is not working properly but you're located remotely and cannot insert the spare N200
 
@@ -263,7 +263,7 @@ There are several instances when you'll need to modify this file for correct ope
 
 #. You have a non-standard array
 
-    One example of a non-standard array would be a different number of interferometer antennas than four. To implement 
+    One example of a non-standard array would be a different number of interferometer antennas than four. To implement
     this, modify the individual N200 entries to specify which N200s are connected to interferometer antennas. Additionally,
     set the main and interferometer antenna count parameters to the number of physical antennas in the array.
 
@@ -271,7 +271,7 @@ There are several instances when you'll need to modify this file for correct ope
 
     This can be done by changing the values of the following config parameters:
     atr_rx, atr_tx, atr_xx, atr_0x, tst_md, lo_pwr, agc_st.
-    The value `atr_rx = 0x0006` means that the ATR_RX signal will appear on the pins 1 and 2 (referenced from 0). I.e. 
+    The value `atr_rx = 0x0006` means that the ATR_RX signal will appear on the pins 1 and 2 (referenced from 0). I.e.
     every bit that is a '1' in this hex value indicates which pin the signal will appear on.
 
 #. You want to change the polarity of the ATR signals on the daughterboards

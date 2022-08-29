@@ -214,6 +214,7 @@ class DataWriteOptions(object):
     def main_antennas(self):
         """
         Gets the index of antennas in the main array corresponding to the transceiver channels.
+
         :return:    indices of transceiver channels mapped to antennas in main array.
         :rtype:     list[int]
         """
@@ -224,6 +225,7 @@ class DataWriteOptions(object):
     def intf_antennas(self):
         """
         Gets the index of antennas in the interferometer array corresponding to the receiver channels.
+
         :return:    indices of receiver channels mapped to antennas in interferometer array.
         :rtype:     list[int]
         """
