@@ -958,11 +958,11 @@ class DataWrite(object):
                 flattened_data = []
                 num_antenna_arrays = 1
                 parameters['antenna_arrays_order'].append("main")
-                flattened_data.append(bfiq[slice_id]['main_data'])
+                flattened_data.append(bfiq[slice_id]['main_data'].flatten())
                 if "intf" in bfiq[slice_id]:
                     num_antenna_arrays += 1
                     parameters['antenna_arrays_order'].append("intf")
-                    flattened_data.append(bfiq[slice_id]['intf_data'])
+                    flattened_data.append(bfiq[slice_id]['intf_data'].flatten())
 
                 flattened_data = np.concatenate(flattened_data)
                 parameters['data'] = flattened_data
@@ -1053,7 +1053,7 @@ class DataWrite(object):
                     data = []
                     for k, data_dict in antenna_iq[slice_id][stage].items():
                         if k in parameters['antenna_arrays_order']:
-                            data.append(data_dict['data'])
+                            data.append(data_dict['data'].flatten())
 
                     flattened_data = np.concatenate(data)
                     parameters['data'] = flattened_data
@@ -1115,7 +1115,7 @@ class DataWrite(object):
                 shm = shared_memory.SharedMemory(name=raw)
                 rawrf_array = np.ndarray((total_ants, num_rawrf_samps), dtype=np.complex64, buffer=shm.buf)
 
-                samples_list.append(rawrf_array)
+                samples_list.append(rawrf_array.flatten())
 
                 shms.append(shm)
 
