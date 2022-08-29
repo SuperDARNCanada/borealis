@@ -6,7 +6,7 @@ Keith Kotyk
 
 Installation script for Borealis utilities.
 NOTE: This script has been tested on:
-    OpenSuSe 15.1
+    OpenSuSe 15.1-15.3
     Ubuntu 19.10
     Ubuntu 20.04
 """
@@ -188,10 +188,7 @@ def install_packages():
     for pck in packages:
         install_cmd = pck_mgr + " install -y " + pck
         print(install_cmd)
-        try:
-            execute_cmd(install_cmd)
-        except sp.CalledProcessError as err:
-            print(err)
+        execute_cmd(install_cmd)
 
     update_pip = "sudo -u radar pip{version} install --upgrade pip".format(version=args.python_version)
     execute_cmd(update_pip)
