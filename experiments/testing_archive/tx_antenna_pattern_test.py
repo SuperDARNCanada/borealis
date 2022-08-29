@@ -14,6 +14,7 @@ import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
+# Either of these functions can be used for testing purposes.
 def tx_antenna_pattern(tx_freq_khz, tx_antenna_count, antenna_spacing):
     """Sets the amplitude and phase weighting for each tx antenna"""
     k = 2 * np.pi * tx_freq_khz / speed_of_light
