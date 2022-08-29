@@ -42,26 +42,6 @@ import shared_macros.shared_macros as sm
 pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
 
 
-def ndarray_in_shr_mem(ndarray):
-    """
-    This function opens a new shared memory section and copys a ndarray into it.
-
-    :param      ndarray:  The ndarray
-    :type       ndarray:  ndarray
-
-    :returns:   Dict holding the name and new shr mem array.
-    :rtype:     dict
-    """
-    new_shm = ipc.SharedMemory(name=None, flags=(ipc.O_CREAT | ipc.O_EXCL), size=ndarray.nbytes)
-    mapfile = mmap.mmap(new_shm.fd, new_shm.size)
-
-    shr_arr = np.frombuffer(mapfile, dtype=ndarray.dtype).reshape(ndarray.shape)
-    shr_arr[:] = ndarray
-
-    new_shm.close_fd()
-    return {'name': new_shm.name, 'data': shr_arr}
-
-
 def fill_datawrite_message(processed_data, slice_details, data_outputs):
     """
     Fills the datawrite message with processed data.
@@ -115,14 +95,10 @@ def main():
     sig_options = spo.SignalProcessingOptions()
 
     sockets = so.create_sockets([sig_options.dsp_radctrl_identity,
-                                 sig_options.dsp_driver_identity,
-                                 sig_options.dsp_exphan_identity,
-                                 sig_options.dsp_dw_identity], sig_options.router_address)
+                                 sig_options.dsp_driver_identity], sig_options.router_address)
 
     dsp_to_radar_control = sockets[0]
     dsp_to_driver = sockets[1]
-    dsp_to_experiment_handler = sockets[2]
-    dsp_to_dw = sockets[3]
 
     ringbuffer = None
 
@@ -336,7 +312,7 @@ def main():
             reply_packet['sequence_num'] = sequence_num
             msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
 
-            request = so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, pprint)
+            so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, pprint)
             so.send_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, msg)
 
             # Process main samples
@@ -376,13 +352,12 @@ def main():
             time_diff = (end - start) * 1000
             pprint("Total time for #{}: {}ms".format(sequence_num, time_diff))
 
-            request = so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, pprint)
+            so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, pprint)
             so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
 
             # Extract outputs from processing into groups that will be put into message fields.
             start = time.time()
             data_outputs = {}
-            stages = []
 
             def debug_data_in_shm(holder, data_array, array_name):
                 """
