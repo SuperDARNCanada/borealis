@@ -792,7 +792,12 @@ class DataWrite(object):
             :param two_hr_file_with_type:   Name of the two hour file with data type added. String
 
             """
-            if not os.path.exists(dataset_directory):
+            try:
+                os.makedirs(dataset_directory, exist_ok=True)
+            except OSError as e:
+                if e.args[0] == errno.ENOSPC:
+                    print("No space left on device. Exiting")
+                    os._exit(-1)
                 # Don't try-catch this, because we want it to fail hard if we can't write files
                 try:
                     os.makedirs(dataset_directory)
