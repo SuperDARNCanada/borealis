@@ -34,7 +34,6 @@ if not borealis_path:
     raise ValueError("BOREALISPATH env variable not set")
 
 sys.path.append(borealis_path + '/utils/')
-from message_formats.message_formats import ProcessedSequenceMessage, AveperiodMetadataMessage, DebugDataStage, \
     OutputDataset
 import shared_macros.shared_macros as sm
 import data_write_options.data_write_options as dwo
