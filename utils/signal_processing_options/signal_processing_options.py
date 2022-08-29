@@ -221,5 +221,26 @@ class SignalProcessingOptions(object):
         return self._intf_antenna_count
 
 
+    @property
+    def main_antennas(self):
+        """
+        Gets the list of main antennas.
+
+        :returns:   List of main antennas being used.
+        :rtype:     list
+        """
+        return self._main_antennas
+
+    @property
+    def intf_antennas(self):
+        """
+        Gets the list of intf antennas.
+
+        :returns:   List of intf antennas being used.
+        :rtype:     list
+        """
+        return self._intf_antennas
+
+
 if __name__ == '__main__':
     SignalProcessingOptions()
