@@ -788,7 +788,7 @@ def radar():
                                               decimation_scheme)
 
                             if TIME_PROFILE:
-                                time_after_sequence_metadata = datetime.utcnow()
+                                
                                 sequence_metadata_time = time_after_sequence_metadata - start_time
                                 output = 'Time to send meta to DSP: {}'.format(sequence_metadata_time)
                                 rad_ctrl_print(output)
