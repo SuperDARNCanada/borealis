@@ -676,7 +676,7 @@ class DataWrite(object):
 
         time_stamped_dd = {}
         time_stamped_dd[dt_str] = data_dict
-
+    # Ignoring warning that arises from using integers as the keys of the data dictionary.
         warnings.simplefilter('ignore', tables.NaturalNameWarning)
         
         try:
