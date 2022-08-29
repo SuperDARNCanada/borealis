@@ -810,7 +810,7 @@ class DataWrite(object):
                 full_two_hr_file = "{0}/{1}.hdf5.site".format(dataset_directory, two_hr_file_with_type)
 
                 try:
-                    fd = os.open(full_two_hr_file, os.O_CREAT | os.O_EXCL)
+                    fd = os.open(full_two_hr_file, os.O_CREAT)
                     os.close(fd)
                 except FileExistsError:
                     pass
