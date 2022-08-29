@@ -21,7 +21,6 @@ import zmq
 import pickle
 import threading
 import numpy as np
-
 from functools import reduce
 
 sys.path.append(os.environ["BOREALISPATH"])
