@@ -235,7 +235,7 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
                 lag0_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[0])
                 lag1_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[1])
                 phase_in_rad = np.radians(pulse_phase_offset[lag0_idx] - pulse_phase_offset[lag1_idx])
-                phase_offset = np.exp(1j * np.array(phase_in_rad, np.float64))
+                phase_offset = np.exp(1j * np.array(phase_in_rad, np.float32))
             # Catch case where no pulse phase offsets are specified
             else:
                 phase_offset = 1.0 + 0.0j

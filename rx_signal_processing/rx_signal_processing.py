@@ -159,7 +159,7 @@ def main():
                 lags.append([lag.pulse_1, lag.pulse_2])
                 lag_phase_offsets.append(lag.phase_offset_real + 1j * lag.phase_offset_imag)
 
-            detail['lag_phase_offsets'] = np.array(lag_phase_offsets, dtype=np.complex128)
+            detail['lag_phase_offsets'] = np.array(lag_phase_offsets, dtype=np.complex64)
 
             detail['lags'] = np.array(lags, dtype=np.uint32)
             detail['num_lags'] = len(lags)
