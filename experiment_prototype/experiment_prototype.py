@@ -1254,7 +1254,7 @@ class ExperimentPrototype(object):
 
         Check for the minimum requirements of the slice. The following keys are always required:
         "pulse_sequence", "tau_spacing", "pulse_len", "num_ranges", "first_range", (one of "intt" or "intn"),
-        and the keys for one of the "Beam Shaping" situations. This function may modify the values in this
+        and "rx_beam_order". This function may modify the values in this
         slice dictionary to ensure that it is able to be run and that the values make sense.
 
         :param exp_slice: slice to check.
