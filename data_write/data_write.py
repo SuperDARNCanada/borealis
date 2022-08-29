@@ -22,7 +22,6 @@ import subprocess as sp
 import argparse as ap
 import numpy as np
 import deepdish as dd
-import posix_ipc as ipc
 import tables
 import zmq
 import faulthandler
