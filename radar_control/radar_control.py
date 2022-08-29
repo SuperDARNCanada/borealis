@@ -547,7 +547,7 @@ def radar():
                 rad_ctrl_print("Scan number: {}".format(scan_num))
 
             # scan iter is the iterator through the scanbound or through the number of averaging periods in the scan.
-            if first_integration and not wait_for_first_scanbound:
+            if first_aveperiod and not wait_for_first_scanbound:
                 # on first integration, determine current averaging period and set scan_iter to it
                 now = datetime.utcnow()
                 current_minute = now.replace(second=0, microsecond=0)
