@@ -78,7 +78,6 @@ bindkey ^[[1;5B focus down
 
 #Realtime produces no real useful output at this time so we have it in a hidden window. It can
 #still be switched to within screen if needed.
-#screen -t "Realtime" bash -c "{START_RT}"
 screen -t "Brian" bash -c "{START_BRIAN}"
 split
 
