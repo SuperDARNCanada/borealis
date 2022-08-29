@@ -789,7 +789,7 @@ def radar():
 
                             if TIME_PROFILE:
                                 
-                                sequence_metadata_time = time_after_sequence_metadata - start_time
+                                sequence_metadata_time = datetime.utcnow() - start_time
                                 output = 'Time to send meta to DSP: {}'.format(sequence_metadata_time)
                                 rad_ctrl_print(output)
 
