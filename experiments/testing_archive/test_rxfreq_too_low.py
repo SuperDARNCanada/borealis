@@ -37,7 +37,6 @@ class TestExperiment(ExperimentPrototype):
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "rx_beam_order": beams_to_use,
-            "tx_beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
             "freq" : eo().min_freq - 1, # Below the min freq
             "acf": True,
