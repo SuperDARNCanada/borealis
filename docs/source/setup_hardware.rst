@@ -321,7 +321,7 @@ Computer and Networking
 
 To be able to run Borealis at high data rates, a powerful CPU with many cores and a high number of PCI lanes is needed. The team recommends an Intel i9 10 core CPU or better. Likewise a good NVIDIA GPU is needed for fast data processing. The team recommends a GeForce 1080TI/2080 or better. Just make sure the drivers are up to date on Linux for the model. A 10Gb (or multiple 1Gb interfaces) or better network interface is also required.
 
-Not all networking equipment works well together or with USRP equipment. Some prototyping with different models may be required.
+Not all networking equipment works well together or with USRP equipment. Some prototyping with different models may be required. Essentially, Borealis requires high throughput and low latency. Typically, commerical grade equipment cannout provide high throughput and low latency simultaneously. You will need enterprise level switches, or a custom server with PCIe card extensions, or use a select few commerical devices. As maunfacutring and availablity changes some prototyping with different models may be required. 
 
 Once these components are selected, the supporting components such as motherboard, cooling and hard drives can all be selected. Assemble the computer following the instructions that come with the motherboard.
 
