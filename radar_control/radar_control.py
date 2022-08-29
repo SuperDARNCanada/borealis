@@ -766,7 +766,7 @@ def radar():
 
                             if TIME_PROFILE:
                                 
-                                pulses_to_driver_time = time_after_pulses - start_time
+                                pulses_to_driver_time = datetime.utcnow() - start_time
                                 output = 'Time for pulses to driver: {}'.format(pulses_to_driver_time)
                                 rad_ctrl_print(output)
 
