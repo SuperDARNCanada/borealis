@@ -807,9 +807,9 @@ class DataWrite(object):
                     if e.args[0] == errno.ENOSPC:
                         print("No space left on device. Exiting")
                         os._exit(-1)
-                else:
-                    print("Unknown error when opening two hour file. Exiting")
-                    os._exit(-1)
+                    else:
+                        print("Unknown error when opening two hour file. Exiting")
+                        os._exit(-1)
 
                 self.write_hdf5_file(tmp_file, final_data_dict, epoch_milliseconds)
 
