@@ -709,7 +709,7 @@ class DataWrite(object):
         :param write_raw_rf:        Should raw rf samples be written to file? Bool.
         :param write_tx:            Should the generated tx samples and metadata be written to file? Bool.
         :param file_ext:            Type of file extention to use. String
-        :param aveperiod_meta:      Metadata from radar control about averaging period. Dict
+        :param aveperiod_meta:      Metadata from radar control about averaging period. AveperiodMetadataMessage
         :param data_parsing:        All parsed and concatenated data from averaging period stored
                                     in ParseData object.
         :param rt_dw:               Pair of socket and iden for RT purposes.
