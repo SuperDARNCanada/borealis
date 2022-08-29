@@ -62,7 +62,6 @@ class Politescan2(ExperimentPrototype):
             "beam_angle": scf.STD_16_BEAM_ANGLE,  
             # offset beams so not looking in same direction. 
             "rx_beam_order": beams_to_use,
-            "tx_beam_order": beams_to_use,
             "scanbound" : [i * 3.5 for i in range(len(beams_to_use))], 
             "freq" : 13000, #kHz, separate frequency
             "acf": True,
