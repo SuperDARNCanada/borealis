@@ -316,7 +316,7 @@ def main():
             so.send_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, msg)
 
             # Process main samples
-            main_sequence_samples = sequence_samples[:sig_options.main_antenna_count, :]
+            main_sequence_samples = sequence_samples[:len(sig_options.main_antennas), :]
             pprint("Main buffer shape: {}".format(main_sequence_samples.shape))
             processed_main_samples = dsp.DSP(main_sequence_samples, rx_rate, dm_rates,
                                              dm_scheme_taps, mixing_freqs, main_beam_angles)
@@ -327,7 +327,7 @@ def main():
 
             # If interferometer is used, process those samples too.
             if sig_options.intf_antenna_count > 0:
-                intf_sequence_samples = sequence_samples[sig_options.main_antenna_count:, :]
+                intf_sequence_samples = sequence_samples[len(sig_options.main_antennas):, :]
                 pprint("Intf buffer shape: {}".format(intf_sequence_samples.shape))
                 processed_intf_samples = dsp.DSP(intf_sequence_samples, rx_rate, dm_rates,
                                                  dm_scheme_taps, mixing_freqs, intf_beam_angles)

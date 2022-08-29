@@ -208,15 +208,10 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
             # Don't need to send channel numbers, will always send beamdir with length = total antennas.
             # Beam directions are formated e^i*phi so that a 0 will indicate not
             # to receive on that channel.
-
-            temp_main = np.zeros_like(main_bms[i], main_bms[i].dtype)
-            temp_intf = np.zeros_like(intf_bms[i], intf_bms[i].dtype)
-
             mains = slice_dict[slice_id]['rx_main_antennas']
-            temp_main[mains] = main_bms[i][mains]
-
             intfs = slice_dict[slice_id]['rx_int_antennas']
-            temp_intf[intfs] = intf_bms[i][intfs]
+            temp_main = main_bms[i][mains]
+            temp_intf = intf_bms[i][intfs]
 
             # Combine main and intf such that for a given beam all main phases come first.
             beams.append(np.hstack((temp_main, temp_intf)))
