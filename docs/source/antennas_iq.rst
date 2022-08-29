@@ -172,7 +172,6 @@ The file fields in the antennas_iq array files are:
 | | **pulse_phase_offset**          | | For pulse encoding phase, in degrees      |
 | | *float32*                       | | offset. Contains one phase offset per     | 
 | | [] or [num pulses x 1]          | | pulse in pulses                           |
-| | [num pulses x samples per pulse]| | per sample                                |
 +-----------------------------------+---------------------------------------------+
 | | **pulses**                      | | The pulse sequence in units of the        |
 | | *uint32*                        | | tau_spacing.                              |
