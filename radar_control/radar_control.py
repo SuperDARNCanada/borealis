@@ -801,7 +801,7 @@ def radar():
 
                             if TIME_PROFILE:
                                 
-                                new_sequence_time = time_after_making_new_sqn - start_time
+                                new_sequence_time = datetime.utcnow() - start_time
                                 output = 'Time to make new sequence: {}'.format(new_sequence_time)
                                 rad_ctrl_print(output)
 
