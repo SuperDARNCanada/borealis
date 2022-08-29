@@ -43,7 +43,20 @@ class SignalProcessingOptions(object):
         self._ringbuffer_name = raw_config["ringbuffer_name"]
         self._main_antenna_count = int(raw_config["main_antenna_count"])
         self._intf_antenna_count = int(raw_config["interferometer_antenna_count"])
-
+        self._main_antennas = []
+        self._intf_antennas = []
+        for n200 in raw_config["n200s"]:
+            rx = bool(n200["rx"])
+            tx = bool(n200["tx"])
+            rx_int = bool(n200["rx_int"])
+            if rx or tx:
+                main_antenna_num = int(n200["main_antenna"])
+                self._main_antennas.append(main_antenna_num)
+            if rx_int:
+                intf_antenna_num = int(n200["interferometer_antenna"])
+                self._intf_antennas.append(intf_antenna_num)
+        self._main_antennas.sort()
+        self._intf_antennas.sort()
 
 
     @property
