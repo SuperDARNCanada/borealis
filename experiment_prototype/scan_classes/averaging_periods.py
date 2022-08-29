@@ -12,6 +12,10 @@
     :author: Marci Detwiller
 """
 
+from experiment_prototype.scan_classes.sequences import Sequence
+from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.experiment_exception import ExperimentException
+
 """ Scans are made up of AveragingPeriods, these are typically a 3sec time of
 the same pulse sequence pointing in one direction.  AveragingPeriods are made
 up of Sequences, typically the same sequence run ave. 20-30 times after a clear
@@ -19,13 +23,6 @@ frequency search.  Sequences are made up of pulse_time lists, which give
 timing, slice, and pulsenumber. CPObject provides channels, pulseshift (if
 any), freq, pulse length, beamdir, and wavetype.
 """
-
-import sys
-import operator
-
-from experiment_prototype.scan_classes.sequences import Sequence
-from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
-from experiment_prototype.experiment_exception import ExperimentException
 
 
 class AveragingPeriod(ScanClassBase):

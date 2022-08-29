@@ -7,7 +7,6 @@
 # to enable bistatic listening on other radars.
 # This mode also chooses a frequency from another radar to listen in on,
 # also across the entire FOV simultaneously.
-import copy
 import sys
 import os
 
@@ -46,8 +45,6 @@ class BistaticTest(ExperimentPrototype):
         else:   # RKN and PGR listen to CLY
             freq = 10700    # CLY freq 1
 
-        num_antennas = scf.opts.main_antenna_count
-
         slice_0 = {
             "pulse_sequence": scf.SEQUENCE_7P,
             "tau_spacing": scf.TAU_SPACING_7P,
@@ -56,7 +53,7 @@ class BistaticTest(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "rx_beam_order": [[i for i in range(len(scf.STD_16_BEAM_ANGLE)]],
+            "rx_beam_order": [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]],
             "freq": freq,  # kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing

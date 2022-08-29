@@ -11,7 +11,6 @@
 import sys
 import os
 import copy
-import numpy as np
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)

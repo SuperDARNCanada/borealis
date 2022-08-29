@@ -191,7 +191,7 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
                                                            stage.filter_taps)
             message.add_decimation_stage(dm_stage_add)
 
-    for num, slice_id in enumerate(slice_ids):
+    for slice_id in slice_ids:
         chan_add = messages.RxChannel(slice_id)
         chan_add.tau_spacing = slice_dict[slice_id]['tau_spacing']
 

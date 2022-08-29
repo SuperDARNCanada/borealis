@@ -21,8 +21,3 @@ utils package
     :members:
     :undoc-members:
     :show-inheritance:
-
-.. automodule:: utils.experiment_options.experimentoptions
-    :members:
-    :undoc-members:
-    :show-inheritance:

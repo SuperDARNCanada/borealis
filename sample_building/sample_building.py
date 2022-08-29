@@ -7,14 +7,11 @@
 # and functions for creating samples
 # as well as shifting them as required.
 
-from scipy.fftpack import fft
 from scipy.constants import speed_of_light
-from scipy.signal import gaussian
 import numpy as np
 import math
-import json
-from datetime import datetime
 from experiment_prototype.experiment_exception import ExperimentException
+
 
 def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):
     """

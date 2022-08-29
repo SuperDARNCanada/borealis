@@ -100,7 +100,6 @@ class Sequence(ScanClassBase):
         pulse_ramp_time = self.transmit_metadata['pulse_ramp_time']
         max_usrp_dac_amplitude = self.transmit_metadata['max_usrp_dac_amplitude']
         tr_window_time = self.transmit_metadata['tr_window_time']
-        output_rx_rate = self.transmit_metadata['output_rx_rate']
         intf_offset = self.transmit_metadata['intf_offset']
         dm_rate = self.transmit_metadata['dm_rate']
 
@@ -401,7 +400,6 @@ class Sequence(ScanClassBase):
         """
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         txrate = self.transmit_metadata['txrate']
-        tr_window_time = self.transmit_metadata['tr_window_time']
 
         buffer_len = int(txrate * self.sstime * 1e-6)
         # This is going to act as buffer for mixing pulses. It is the length of the receive samples

@@ -4,7 +4,6 @@
 
 import os
 import sys
-import copy
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)

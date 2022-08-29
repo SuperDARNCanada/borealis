@@ -4,13 +4,13 @@
 
 import os
 import sys
-import copy
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
+
 
 class RBSPScan(ExperimentPrototype):
     """rbspscan was first run in 2012 to support the Van Allen probes satellite mission

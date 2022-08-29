@@ -8,7 +8,6 @@ import os
 import time
 import threading
 import numpy as np
-import math
 import copy
 from scipy.constants import speed_of_light
 import h5py
@@ -129,8 +128,6 @@ def main():
     threads = []
 
     rx_rate = np.float32(5e6)
-    output_sample_rate = np.float32(rx_rate / total_dm_rate)
-    first_rx_sample_off = 0
 
     decimation_scheme = create_default_scheme()
     decimation_stages = decimation_scheme.stages
@@ -161,12 +158,10 @@ def main():
             intf_beam = []
 
             for j, phase in enumerate(np.ones(total_antennas)):
-                p = phase       # boresight, for simplicity
-
                 if j < sig_options.main_antenna_count:
-                    main_beam.append(p)
+                    main_beam.append(phase)
                 else:
-                    intf_beam.append(p)
+                    intf_beam.append(phase)
 
             main_beams.append(main_beam)
             intf_beams.append(intf_beam)
@@ -229,8 +224,6 @@ def main():
         intf_beam_angles = kwargs['intf_beam_angles']
         mixing_freqs = kwargs['mixing_freqs']
         slice_details = kwargs['slice_details']
-        start_sample = kwargs['start_sample']
-        end_sample = kwargs['end_sample']
 
         pprint(sm.COLOR('green', "Processing #{}".format(sequence_num)))
         pprint("Mixing freqs for #{}: {}".format(sequence_num, mixing_freqs))

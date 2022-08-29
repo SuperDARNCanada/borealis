@@ -10,7 +10,6 @@ sys.path.append(BOREALISPATH)
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
 
 class NormalscanBoresite(ExperimentPrototype):
     # with 7 PULSE sequence

@@ -29,8 +29,7 @@ from experiment_prototype import list_tests
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, DecimationStage, \
-    create_default_scheme
+from experiment_prototype.decimation_scheme.decimation_scheme import create_default_scheme
 
 interface_types = tuple(['SCAN', 'AVEPERIOD', 'SEQUENCE', 'CONCURRENT'])
 """ The types of interfacing available for slices in the experiment.
@@ -223,13 +222,6 @@ seqoffset *defaults*
 
 tx_antennas *defaults*
     The antennas to transmit on, default is all main antennas given max number from config.
-    
-wait_for_first_scanbound *defaults*
-    A boolean flag to determine when an experiment starts running. True (default) means an 
-    experiment will wait until the first averaging period in a scan to start transmitting. 
-    False means an experiment will not wait for the first averaging period, but will instead 
-    start transmitting at the nearest averaging period. Note: for multi-slice experiments, the 
-    first slice is the only one impacted by this parameter.
 
 tx_antenna_pattern *defaults*
     experiment-defined function which returns a complex weighting factor of magnitude <= 1
@@ -252,6 +244,13 @@ tx_beam_order *defaults, but required if tx_antenna_pattern given*
     rx_beam_order list. If tx_antenna_pattern is given, the items in tx_beam_order specify
     which row of the return from tx_antenna_pattern to use to beamform a given transmission.
     Default is None, i.e. rx_only slice.
+
+wait_for_first_scanbound *defaults*
+    A boolean flag to determine when an experiment starts running. True (default) means an 
+    experiment will wait until the first averaging period in a scan to start transmitting. 
+    False means an experiment will not wait for the first averaging period, but will instead 
+    start transmitting at the nearest averaging period. Note: for multi-slice experiments, the 
+    first slice is the only one impacted by this parameter.
 
 xcf *defaults*
     flag for cross-correlation data. The default is True if acf is True, otherwise False.
@@ -374,6 +373,9 @@ class ExperimentPrototype(object):
 
         if not isinstance(cpid, int):
             errmsg = 'CPID must be a unique int'
+            raise ExperimentException(errmsg)
+        if cpid > np.iinfo(np.int16).max:
+            errmsg = 'CPID must be representable by a 16-bit signed integer'
             raise ExperimentException(errmsg)
         # Quickly check for uniqueness with a search in the experiments directory first
         # taking care not to look for CPID in any experiments that are just tests (located in the
@@ -521,8 +523,6 @@ class ExperimentPrototype(object):
 
     __slice_keys = slice_key_set
     __hidden_slice_keys = hidden_key_set
-    __default_output_rx_rate = default_output_rx_rate
-    __default_rx_bandwidth = default_rx_bandwidth
 
     @property
     def cpid(self):
@@ -2004,8 +2004,8 @@ class ExperimentPrototype(object):
                         exp_slice['slice_id']))
             else:
                 # Check if any scanbound times are shorter than the intt.
+                tolerance = 1e-9
                 if len(exp_slice['scanbound']) == 1:
-                    tolerance = 1e-9
                     if exp_slice['intt'] > (exp_slice['scanbound'][0] * 1000 + tolerance):
                         error_list.append("Slice {} intt {}ms longer than "
                                           "scanbound time {}s".format(exp_slice['slice_id'],
@@ -2013,7 +2013,6 @@ class ExperimentPrototype(object):
                                                                       exp_slice['scanbound'][0]))
                 else:
                     for i in range(len(exp_slice['scanbound']) - 1):
-                        tolerance = 1e-9
                         beam_time = (exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000
                         if exp_slice['intt'] > beam_time + tolerance:
                             error_list.append("Slice {} intt {}ms longer than one of the "

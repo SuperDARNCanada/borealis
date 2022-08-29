@@ -19,7 +19,6 @@ class FullScanStepMode(ExperimentPrototype):
     """
 
     def __init__(self):
-        description = ""
         cpid = 3561
 
         top = 15000

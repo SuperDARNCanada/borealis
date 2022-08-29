@@ -5,7 +5,6 @@ Keith Kotyk
 """
 
 import copy
-import datetime
 import math
 import os
 import sys

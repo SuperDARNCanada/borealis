@@ -4,7 +4,6 @@
 
 import os
 import sys
-import copy
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -63,7 +62,7 @@ class InterleaveSound(ExperimentPrototype):
         sounding_intt_ms = sounding_scanbound_spacing * 1.0e3 - 250
 
         sounding_scanbound = [48 + i * sounding_scanbound_spacing for i in range(8)]
-        for num, freq in enumerate(scf.SOUNDING_FREQS):
+        for freq in scf.SOUNDING_FREQS:
             slices.append({
                 "pulse_sequence": scf.SEQUENCE_8P,
                 "tau_spacing": scf.TAU_SPACING_8P,
@@ -75,7 +74,7 @@ class InterleaveSound(ExperimentPrototype):
                 "rx_beam_order": sounding_beams,
                 "tx_beam_order": sounding_beams,
                 "scanbound" : sounding_scanbound,
-                "freq" : freq,
+                "freq": freq,
                 "acf": True,
                 "xcf": True,  # cross-correlation processing
                 "acfint": True,  # interferometer acfs

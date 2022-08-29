@@ -120,8 +120,10 @@ class ParseData(object):
         processed_data (ProcessedSequenceMessage): Contains a message from dsp socket.
     """
 
-    def __init__(self):
+    def __init__(self, data_write_options):
         super(ParseData, self).__init__()
+
+        self.options = data_write_options
 
         # defaultdict will populate non-specified entries in the dictionary with the default
         # value given as an argument, in this case a dictionary. Nesting it in a lambda lets you
@@ -260,22 +262,16 @@ class ParseData(object):
 
         # Get data dimensions for reading in the shared memory
         num_slices = len(self.processed_data.output_datasets)
-        options = dwo.DataWriteOptions()
-        num_main_antennas = options.main_antenna_count
-        num_intf_antennas = options.intf_antenna_count
+        num_main_antennas = self.options.main_antenna_count
+        num_intf_antennas = self.options.intf_antenna_count
 
         stages = []
         # Loop through all the filter stage data 
         for debug_stage in self.processed_data.debug_data:
-            stage_dict = {'stage_name': debug_stage.stage_name,
-                          'stage_samps': debug_stage.num_samps,
-                          'main_shm': debug_stage.main_shm,
-                          'intf_shm': debug_stage.intf_shm}
-
             stage_samps = debug_stage.num_samps
             stage_main_shm = shared_memory.SharedMemory(name=debug_stage.main_shm)
             stage_main_data = np.ndarray((num_slices, num_main_antennas, stage_samps), dtype=np.complex64,
-                                    buffer=stage_main_shm.buf)
+                                         buffer=stage_main_shm.buf)
             stage_data = stage_main_data.copy()     # Move data out of shared memory so we can close it
             stage_main_shm.close()
             stage_main_shm.unlink()
@@ -287,8 +283,12 @@ class ParseData(object):
                 stage_data = np.hstack((stage_data, stage_intf_data.copy()))
                 stage_intf_shm.close()
                 stage_intf_shm.unlink()
-     
-            stage_dict['data'] = stage_data
+
+            stage_dict = {'stage_name': debug_stage.stage_name,
+                          'stage_samps': debug_stage.num_samps,
+                          'main_shm': debug_stage.main_shm,
+                          'intf_shm': debug_stage.intf_shm,
+                          'data': stage_data}
             stages.append(stage_dict)
 
         self._antenna_iq_available = True
@@ -328,7 +328,7 @@ class ParseData(object):
         """
         for slice_id, slice_data in self._antenna_iq_accumulator.items():
             if isinstance(slice_id, int):       # filtering out 'data_descriptors'
-                for param_name, param_data in slice_data.items():
+                for param_data in slice_data.values():
                     for array_name, array_data in param_data.items():
                         if array_name != 'num_samps':
                             array_data['data'] = np.array(array_data['data'], dtype=np.complex64)
@@ -336,7 +336,7 @@ class ParseData(object):
         for slice_id, slice_data in self._bfiq_accumulator.items():
             if isinstance(slice_id, int):       # filtering out 'data_descriptors'
                 for param_name, param_data in slice_data.items():
-                    param_data = np.array(param_data, dtype=np.complex64)
+                    slice_data[param_name] = np.array(param_data, dtype=np.complex64)
 
         for slice_data in self._mainacfs_accumulator.values():
             slice_data['data'] = np.array(slice_data['data'], np.complex64)
@@ -835,6 +835,9 @@ class DataWrite(object):
             main_acfs, intf_acfs, and xcfs are all passed to data_write for all sequences
             individually. At this point, they will be combined into data for a single integration
             time via averaging.
+
+            Args:
+                parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
             """
 
             needed_fields = ["borealis_git_hash", "experiment_id",
@@ -847,11 +850,7 @@ class DataWrite(object):
             "xcfs", "noise_at_freq", "data_normalization_factor", "slice_id", "slice_interfacing",
             "averaging_method", "scheduling_mode", "gps_locked", "gps_to_system_time_diff",
             "agc_status_word", "lp_status_word"]
-            # note num_ranges not in needed_fields but are used to make
-            # correlation_dimensions
-
-            # unneeded_fields = ['data_dimensions', 'data_descriptors', 'antenna_arrays_order',
-            # 'data', 'num_ranges', 'num_samps', 'rx_center_freq', 'pulse_phase_offset']
+            # Note: num_ranges not in needed_fields but is used to make correlation_dimensions
 
             main_acfs = data_parsing.mainacfs_accumulator
             xcfs = data_parsing.xcfs_accumulator
@@ -946,7 +945,6 @@ class DataWrite(object):
             "agc_status_word", "lp_status_word"]
 
             bfiq = data_parsing.bfiq_accumulator
-            bfiq_keys = bfiq.keys()
             slice_id_list = [x for x in bfiq.keys() if isinstance(x, int)]
 
             # Pop these off so we dont include them in later iteration.
@@ -979,9 +977,6 @@ class DataWrite(object):
                     if field not in needed_fields:
                         parameters.pop(field, None)
 
-                # for field in unneeded_fields:
-                #     parameters.pop(field, None)
-
             for slice_id, parameters in parameters_holder.items():
                 name = dataset_name.format(sliceid=slice_id, dformat="bfiq")
                 output_file = dataset_location.format(name=name)
@@ -998,7 +993,6 @@ class DataWrite(object):
 
             Args:
                 parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
-
             """
 
             needed_fields = ["borealis_git_hash", "experiment_id",
@@ -1182,7 +1176,7 @@ class DataWrite(object):
             for rx_freq in meta.rx_channels:
                 parameters = DATA_TEMPLATE.copy()
                 parameters['borealis_git_hash'] = self.git_hash.decode('utf-8')
-                parameters['experiment_id'] = np.int64(aveperiod_meta.experiment_id)
+                parameters['experiment_id'] = np.int16(aveperiod_meta.experiment_id)
                 parameters['experiment_name'] = aveperiod_meta.experiment_name
                 parameters['experiment_comment'] = aveperiod_meta.experiment_comment
                 parameters['scheduling_mode'] = aveperiod_meta.scheduling_mode
@@ -1310,8 +1304,7 @@ def main():
     if __debug__:
         dw_print("Socket connected")
 
-    data_parsing = ParseData()
-    final_aveperiod = sys.maxsize
+    data_parsing = ParseData(options)
 
     current_experiment = None
     data_write = None
@@ -1386,7 +1379,7 @@ def main():
                         thread = threading.Thread(target=data_write.output_data, kwargs=kwargs)
                         thread.daemon = True
                         thread.start()
-                        data_parsing = ParseData()
+                        data_parsing = ParseData(options)
 
                 first_time = False
 
