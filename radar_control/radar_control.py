@@ -765,7 +765,7 @@ def radar():
                                                repeat=pulse_transmit_data['isarepeat'])
 
                             if TIME_PROFILE:
-                                time_after_pulses = datetime.utcnow()
+                                
                                 pulses_to_driver_time = time_after_pulses - start_time
                                 output = 'Time for pulses to driver: {}'.format(pulses_to_driver_time)
                                 rad_ctrl_print(output)
