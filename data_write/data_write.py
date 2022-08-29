@@ -12,7 +12,6 @@ import os
 import datetime
 import json
 import collections
-import mmap
 import warnings
 import time
 import threading
@@ -165,8 +164,8 @@ class ParseData(object):
 
     def parse_correlations(self):
         """
-        Parses out the possible correlation data from the message. Runs on every new processeddata
-        message (contains all sampling period data). The expectation value is calculated at the end
+        Parses out the possible correlation data from the message. Runs on every new ProcessedSequenceMessage
+        (contains all sampling period data). The expectation value is calculated at the end
         of a sampling period by a different function.
         """
 
@@ -207,8 +206,8 @@ class ParseData(object):
 
     def parse_bfiq(self):
         """
-        Parses out any possible beamformed IQ data from the message. Runs on every processeddata
-        message (contains all sampling period data). All variables are captured from outer scope.
+        Parses out any possible beamformed IQ data from the message. Runs on every ProcessedSequenceMessage
+        (contains all sampling period data). All variables are captured from outer scope.
 
         """
 
@@ -253,8 +252,8 @@ class ParseData(object):
 
     def parse_antenna_iq(self):
         """
-        Parses out any pre-beamformed IQ if available. Runs on every processeddata
-        packet(contains all sampling period data). All variables are captured from outer scope.
+        Parses out any pre-beamformed IQ if available. Runs on every ProcessedSequenceMessage
+        (contains all sampling period data). All variables are captured from outer scope.
         """
 
         self._antenna_iq_accumulator['data_descriptors'] = ['num_antennas', 'num_sequences',
