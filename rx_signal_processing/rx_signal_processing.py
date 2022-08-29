@@ -102,7 +102,7 @@ def main():
 
     ringbuffer = None
 
-    total_antennas = sig_options.main_antenna_count + sig_options.intf_antenna_count
+    total_antennas = len(sig_options.main_antennas) + len(sig_options.intf_antennas)
 
     dm_rates = []
     dm_scheme_taps = []
@@ -164,8 +164,8 @@ def main():
             detail['lags'] = np.array(lags, dtype=np.uint32)
             detail['num_lags'] = len(lags)
 
-            main_beams = chan.beam_phases[:, :sig_options.main_antenna_count]
-            intf_beams = chan.beam_phases[:, sig_options.main_antenna_count:]
+            main_beams = chan.beam_phases[:, :len(sig_options.main_antennas)]
+            intf_beams = chan.beam_phases[:, len(sig_options.main_antennas):]
 
             detail['num_beams'] = main_beams.shape[0]
 
@@ -185,8 +185,8 @@ def main():
                     temp[:x.shape[0], :] = x
                     x = temp    # Reassign to the new larger array with zero-padded beams
 
-        pad_beams(main_beam_angles, sig_options.main_antenna_count)
-        pad_beams(intf_beam_angles, sig_options.intf_antenna_count)
+        pad_beams(main_beam_angles, len(sig_options.main_antennas))
+        pad_beams(intf_beam_angles, len(sig_options.intf_antennas))
 
         main_beam_angles = np.array(main_beam_angles, dtype=np.complex64)
         intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)

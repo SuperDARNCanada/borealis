@@ -459,7 +459,7 @@ class Sequence(ScanClassBase):
             num_samples = pulse['total_num_samps']
             start = pulse_sample_start
             end = start + num_samples + 2 * pulse['tr_window_num_samps']
-            samples = sequence[..., start:end]
+            samples = sequence[main_antennas, start:end]    # Only keep around the samples for active N200s
 
             new_pulse_info = copy.deepcopy(pulse['pulse_transmit_data'])
             new_pulse_info['samples_array'] = samples
@@ -476,7 +476,7 @@ class Sequence(ScanClassBase):
 
         if __debug__:
             debug_dict['sequence_samples'] = sequence
-            debug_dict['decimated_samples'] = sequence[:, ::debug_dict['dmrate']]
+            debug_dict['decimated_samples'] = sequence[main_antennas, ::debug_dict['dmrate']]
         else:
             debug_dict = None
 
