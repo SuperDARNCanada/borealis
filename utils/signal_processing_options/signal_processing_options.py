@@ -209,4 +209,4 @@ class SignalProcessingOptions(object):
 
 
 if __name__ == '__main__':
-    DataWriteOptions()
+    SignalProcessingOptions()
