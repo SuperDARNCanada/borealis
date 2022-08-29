@@ -55,19 +55,20 @@ class MultifreqWidebeam(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": [0],
-            "beam_order": [0],
-            "txfreq": tx_freq_1,  # kHz
+            "rx_beam_order": [0],
+            "tx_beam_order": [0],
+            "freq": tx_freq_1,  # kHz
             "tx_antennas": [6, 7],  # Using two tx antennas from the middle of array
         }
 
         slice_2 = copy.deepcopy(slice_1)    # slice_id = 1, the second slice
-        slice_2['txfreq'] = tx_freq_2
+        slice_2['freq'] = tx_freq_2
         slice_2['tx_antennas'] = [8, 9]     # Use separate pair of antennas near middle of array
 
         list_of_slices = [slice_1, slice_2]
         sum_of_freq = 0
         for slice in list_of_slices:
-            sum_of_freq += slice['txfreq']  # kHz, oscillator mixer frequency on the USRP for TX
+            sum_of_freq += slice['freq']  # kHz, oscillator mixer frequency on the USRP for TX
         rxctrfreq = txctrfreq = int(sum_of_freq / len(list_of_slices))
 
         super().__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq,

@@ -50,8 +50,9 @@ class Widebeam_3tx(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": [0],
-            "beam_order": [0],
-            "txfreq": freq,  # kHz
+            "rx_beam_order": [0],
+            "tx_beam_order": [0],
+            "freq": freq,  # kHz
             "tx_antennas": [6, 7, 8],  # Using three tx antennas from near the middle of array
         })
 
