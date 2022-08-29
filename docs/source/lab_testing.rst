@@ -6,7 +6,7 @@ Good lab tests to include before deployement include:
 
 1. Loopback tests at boresight
    - allows you to see the differences in channel power after digitizing
-   - can also verify that boxes are synchronized because boresite with equal cable lengths to receive should give you the same output on all antennas (phases should be the same, check with rawrf and antennas_iq)
+   - verifies that N200's are synchronized, this is due to boresite steering having no phase offset so with all equal cable lengths the phase output on all antennas should be the same (check with rawrf and antennas_iq)
    - scripts are available under tools/testing_utils/plot_borealis_hdf5_data/
 
 2. Logic analyzer tests with a transmitter
