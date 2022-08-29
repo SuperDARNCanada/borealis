@@ -169,7 +169,7 @@ testing_archive.test_rxfreq_too_low::rxfreq must be a number \(kHz\) between rx 
 testing_archive.test_txfreq_not_num::txfreq must be a number \(kHz\) between tx min and max frequencies .* and rx min and max frequencies .* for the radar license and be within range given center frequencies \(.* kHz\), sampling rates \(.* kHz\), and transition band \(.* kHz\)
 testing_archive.test_txfreq_too_high::txfreq must be a number \(kHz\) between tx min and max frequencies .* and rx min and max frequencies .* for the radar license and be within range given center frequencies \(.* kHz\), sampling rates \(.* kHz\), and transition band \(.* kHz\)
 testing_archive.test_txfreq_too_low::txfreq must be a number \(kHz\) between tx min and max frequencies .* and rx min and max frequencies .* for the radar license and be within range given center frequencies \(.* kHz\), sampling rates \(.* kHz\), and transition band \(.* kHz\)
-#testing_archive.test_txfreq_restricted::txfreq is within a restricted frequency range .*
+testing_archive.test_txfreq_restricted::txfreq is within a restricted frequency range .*
 
 # **** The following 1 test is from ExperimentPrototype class, self_check() method ****
 testing_archive.test_no_slices::Invalid num_slices less than 1
