@@ -4,14 +4,12 @@ Original Auth: Keith Kotyk
 """
 import sys
 import os
-import mmap
 import time
 import threading
 import numpy as np
 import posix_ipc as ipc
 from multiprocessing import shared_memory
 import mmap
-import zmq
 import dsp
 import math
 import copy
