@@ -13,7 +13,6 @@
     :author: Marci Detwiller
 """
 
-import cmath
 import sys
 import time
 from datetime import datetime, timedelta
@@ -21,7 +20,6 @@ import os
 import zmq
 import pickle
 import threading
-import math
 import numpy as np
 
 from functools import reduce
@@ -146,7 +144,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
 def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                       brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
                       slice_dict, beam_dict, sequence_time, first_rx_sample_start,
-                      main_antenna_count, rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
+                      rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
         Happens every sequence.
         :param message: the SequenceMetadataMessage object
@@ -167,7 +165,6 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
              transmissions.
         :param first_rx_sample_start: The sample where the first rx sample will start relative to the
              tx data.
-        :param main_antenna_count: number of main array antennas, from the config file.
         :param rxctrfreq: the center frequency of receiving.
         :param pulse_phase_offsets: Phase offsets (degrees) applied to each pulse in the sequence
         :param decimation_scheme: object of type DecimationScheme that has all decimation and
@@ -176,7 +173,7 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
     """
 
     # TODO: does the for loop below need to happen every time. Could be only updated
-    # as necessary to make it more efficient.
+    #  as necessary to make it more efficient.
 
     # These get re-used, so we empty the lists first
     message.remove_all_rx_channels()
@@ -397,8 +394,7 @@ def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_ide
             # We always build one sequence in advance, so we trim the last one from when radar
             # control stops processing the averaging period.
             for encoding in sequence.output_encodings[slice_id][:num_sequences]:
-                python_type = encoding.flatten().tolist()
-                rxchannel.add_sqn_encodings(python_type)
+                rxchannel.add_sqn_encodings(encoding.flatten().tolist())
             sequence.output_encodings[slice_id] = []
 
             rxchannel.rx_main_antennas = sequence.slice_dict[slice_id]['rx_main_antennas']
