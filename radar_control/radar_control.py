@@ -800,7 +800,7 @@ def radar():
                             pulse_transmit_data_tracker[sequence_index][num_sequences+1] = sqn
 
                             if TIME_PROFILE:
-                                time_after_making_new_sqn = datetime.utcnow()
+                                
                                 new_sequence_time = time_after_making_new_sqn - start_time
                                 output = 'Time to make new sequence: {}'.format(new_sequence_time)
                                 rad_ctrl_print(output)
