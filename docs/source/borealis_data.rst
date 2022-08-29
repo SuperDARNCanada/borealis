@@ -75,7 +75,7 @@ Reading Data
 ------------
 
 To read the files in python, we recommend using `h5py <https://docs.h5py.org/en/stable/>`_,  `PyTables <https://www.pytables.org/>`_, or `deepdish <https://deepdish.readthedocs.io/en/latest/index.html>`_ packages.
-If you are looking to generate SuperDARN standard plots, we recommend using the the `pyDARNio package <https://github.com/superdarn/pydarnio>`_, which can
+If you are looking to generate SuperDARN standard plots, we recommend using the the `pyDARN package <https://github.com/superdarn/pydarn>`_, which can
 read Borealis files specifically. After converting to dmap, standard SuperDARN plots including RTI plots and fan plot can be produced.
 
 *************************
