@@ -18,7 +18,7 @@ import pickle
 sys.path.append(os.environ["BOREALISPATH"])
 import utils.experiment_options.experimentoptions as options
 import utils.zmq_borealis_helpers.socket_operations as so
-import utils.shared_macros as sm
+import utils.shared_macros.shared_macros as sm
 
 if __debug__:
     from build.debug.utils.protobuf import rxsamplesmetadata_pb2
