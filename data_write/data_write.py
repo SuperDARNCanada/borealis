@@ -262,8 +262,8 @@ class ParseData(object):
 
         # Get data dimensions for reading in the shared memory
         num_slices = len(self.processed_data.output_datasets)
-        num_main_antennas = self.options.main_antenna_count
-        num_intf_antennas = self.options.intf_antenna_count
+        num_main_antennas = len(self.options.main_antennas)
+        num_intf_antennas = len(self.options.intf_antennas)
 
         stages = []
         # Loop through all the filter stage data
