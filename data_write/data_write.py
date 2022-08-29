@@ -33,7 +33,6 @@ if not borealis_path:
     raise ValueError("BOREALISPATH env variable not set")
 
 sys.path.append(borealis_path + '/utils/')
-    OutputDataset
 import shared_macros.shared_macros as sm
 import data_write_options.data_write_options as dwo
 from zmq_borealis_helpers import socket_operations as so

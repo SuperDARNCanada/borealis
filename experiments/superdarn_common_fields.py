@@ -6,6 +6,7 @@ BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
+opts = ExperimentOptions()
 
 # TODO: We should protect these values from changing, I noticed during testing that I used a
 # TODO: call to reverse() on one and it affected the rest of the testing afterwards
