@@ -676,7 +676,8 @@ class DataWrite(object):
 
         time_stamped_dd = {}
         time_stamped_dd[dt_str] = data_dict
-    # Ignoring warning that arises from using integers as the keys of the data dictionary.
+
+        # Ignoring warning that arises from using integers as the keys of the data dictionary.
         warnings.simplefilter('ignore', tables.NaturalNameWarning)
         
         try:
@@ -685,9 +686,10 @@ class DataWrite(object):
             if "No space left on device" in str(e):
                 print("No space left on device. Exiting")
                 os._exit(-1)
-    else:
-        print('Unknown error when saving to file: {}'.format(e))
-        os._exit(-1)
+            else:
+                print('Unknown error when saving to file: {}'.format(e))
+                os._exit(-1)
+
     def write_dmap_file(self, filename, data_dict):
         """
         Write out data to a dmap file. If the file already exists it will be overwritten.
