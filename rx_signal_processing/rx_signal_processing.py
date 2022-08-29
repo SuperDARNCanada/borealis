@@ -34,8 +34,7 @@ else:
 import rxsamplesmetadata_pb2
 
 sys.path.append(borealis_path + '/utils/')
-from message_formats.message_formats import ProcessedSequenceMessage, SequenceMetadataMessage, DebugDataStage, \
-    OutputDataset
+from message_formats.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
 import signal_processing_options.signal_processing_options as spo
 from zmq_borealis_helpers import socket_operations as so
 import shared_macros.shared_macros as sm
