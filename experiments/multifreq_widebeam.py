@@ -76,4 +76,4 @@ class MultifreqWidebeam(ExperimentPrototype):
 
         self.add_slice(slice_1)
 
-        self.add_slice(slice_2, interfacing_dict={0: 'PULSE'})
+        self.add_slice(slice_2, interfacing_dict={0: 'CONCURRENT'})
