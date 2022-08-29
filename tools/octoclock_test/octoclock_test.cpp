@@ -129,16 +129,6 @@ int main(int argc, char *argv[]) {
         std::cout << "GPS Time: " << gps_time_str << std::endl;
         TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_locked: ", gps_lock_str = clock->get_sensor("gps_locked", boardnumber).value);
         std::cout << "GPS locked: " << gps_lock_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_gpgga: ", gps_gpgga_str = clock->get_sensor("gps_gpgga", boardnumber).value);
-        std::cout << "GPS GPGGA: " << gps_gpgga_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_gprmc: ", gps_gprmc_str = clock->get_sensor("gps_gprmc", boardnumber).value);
-        std::cout << "GPS GPRMC: " << gps_gprmc_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_servo: ", gps_servo_str = clock->get_sensor("gps_servo", boardnumber).value);
-        std::cout << "GPS Servo: " << gps_servo_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_time: ", gps_time_str = clock->get_sensor("gps_time", boardnumber).value);
-        std::cout << "GPS Time: " << gps_time_str << std::endl;
-        TIMEIT_IF_TRUE_OR_DEBUG(true, "Time to get gps_locked: ", gps_lock_str = clock->get_sensor("gps_locked", boardnumber).value);
-        std::cout << "GPS locked: " << gps_lock_str << std::endl;
 	std::cout << std::endl;
         }
       sleep(update_period_in_s);
