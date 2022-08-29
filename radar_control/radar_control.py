@@ -778,7 +778,7 @@ def radar():
                                               sequence.slice_ids, experiment.slice_dict,
                                               rx_beam_phases, sequence.seqtime,
                                               sequence.first_rx_sample_start,
-                                              options.main_antenna_count, experiment.rxctrfreq,
+                                              experiment.rxctrfreq,
                                               sequence.output_encodings,
                                               decimation_scheme)
 
