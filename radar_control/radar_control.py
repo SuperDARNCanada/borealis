@@ -124,8 +124,8 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
             # Any unused channels will be sent zeros.
             # Protobuf expects types: int, long, or float, will reject numpy types and
             # throw a TypeError so we must convert the numpy arrays to lists
-            sample_add.real.extend(samples_array[ant_idx,:].real.tolist())
-            sample_add.imag.extend(samples_array[ant_idx,:].imag.tolist())
+            sample_add.real.extend(samples_array[ant_idx, :].real.tolist())
+            sample_add.imag.extend(samples_array[ant_idx, :].imag.tolist())
         driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
         driverpacket.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
         driverpacket.txrate = txrate
