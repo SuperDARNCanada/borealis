@@ -63,7 +63,6 @@ class ListeningNormalscan1(ExperimentPrototype):
             "intt": 3000,  # duration of an integration, in ms
             "beam_angle": [0.0],  #boresite
             "rx_beam_order": [0],
-            "tx_beam_order": [0],
             "scanbound" : [50.0],  #50th second of minute
             "freq" : scf.COMMON_MODE_FREQ_1, #kHz, same frequency but receive-only
             "acf": True,
