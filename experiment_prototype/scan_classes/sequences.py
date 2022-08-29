@@ -16,9 +16,7 @@
 
 import math
 import numpy as np
-from scipy.constants import speed_of_light
 import copy
-from operator import itemgetter
 import collections
 import sys
 import os
