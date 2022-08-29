@@ -59,7 +59,7 @@ def get_phase_shift(beam_angle, freq, num_antennas, antenna_spacing, centre_offs
     freq_hz = freq * 1000.0  # convert to Hz.
 
     # convert the beam angles to rads
-    beam_rads = (np.pi / 180) * np.array(beam_angle, dtype=np.float64)
+    beam_rads = (np.pi / 180) * np.array(beam_angle, dtype=np.float32)
 
     antennas = np.arange(num_antennas)
     x = ((num_antennas - 1) / 2.0 - antennas) * antenna_spacing + centre_offset
