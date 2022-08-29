@@ -226,7 +226,7 @@ tx_antennas *defaults*
 tx_antenna_pattern *defaults*
     experiment-defined function which returns a complex weighting factor of magnitude <= 1
     for each tx antenna used in the experiment. The return value of the function must be
-    an array of size [num_beams, num_tx_antennas] with all elements having magnitude <= 1.
+    an array of size [num_beams, main_antenna_count] with all elements having magnitude <= 1.
     This function is analogous to the beam_angle field in that it defines the transmission 
     pattern for the array, and the tx_beam_order field specifies which "beam" to use in a 
     given averaging period.
@@ -1945,7 +1945,7 @@ class ExperimentPrototype(object):
                                           "".format(exp_slice['slice_id'], antenna_pattern.shape))
                     elif antenna_pattern.shape[1] != options.main_antenna_count:
                         error_list.append("Slice {} tx antenna pattern return 2nd dimension ({}) must be equal to "
-                                          "number of tx antennas ({})"
+                                          "number of main antennas ({})"
                                           "".format(exp_slice['slice_id'], antenna_pattern.shape[1],
                                                     options.main_antenna_count))
                     antenna_pattern_mag = np.abs(antenna_pattern)
