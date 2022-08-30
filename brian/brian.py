@@ -13,27 +13,17 @@ from datetime import datetime
 import threading
 import argparse
 import zmq
+import pickle
 
 sys.path.append(os.environ["BOREALISPATH"])
+import utils.experiment_options.experimentoptions as options
+import utils.zmq_borealis_helpers.socket_operations as so
+import utils.shared_macros.shared_macros as sm
 
 if __debug__:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/debug/utils/protobuf')  # TODO need to get this from scons environment, 'release' may be 'debug'
+    from build.debug.utils.protobuf import rxsamplesmetadata_pb2
 else:
-    sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
-
-import driverpacket_pb2
-import sigprocpacket_pb2
-import rxsamplesmetadata_pb2
-import processeddata_pb2
-
-sys.path.append(os.environ["BOREALISPATH"] + '/utils/shared_macros')
-import shared_macros as sm
-
-sys.path.append(os.environ["BOREALISPATH"] + '/utils/experiment_options')
-import experimentoptions as options
-
-sys.path.append(os.environ["BOREALISPATH"] + '/utils/zmq_borealis_helpers')
-import socket_operations as so
+    from build.release.utils.protobuf import rxsamplesmetadata_pb2
 
 TIME_PROFILE = True
 
@@ -86,7 +76,7 @@ def router(opts):
 def sequence_timing(opts):
     """Thread function for sequence timing
 
-    This function simulates the flow of data between brian's sequence timing and other parts of the
+    This function controls the flow of data between brian's sequence timing and other parts of the
     radar system. This function serves to check whether the sequence timing is working as expected
     and to rate control the system to make sure the processing can handle data rates.
     :param context: zmq context, if None, then this method will get one
@@ -220,8 +210,7 @@ def sequence_timing(opts):
             #Get new sequence metadata from radar control
             reply = so.recv_obj(brian_to_radar_control, opts.radctrl_to_brian_identity, brian_print)
 
-            sigp = sigprocpacket_pb2.SigProcPacket()
-            sigp.ParseFromString(reply)
+            sigp = pickle.loads(reply)
 
             if __debug__:
                 reply_output = "Radar control sent -> sequence {} time {} ms"
@@ -238,18 +227,17 @@ def sequence_timing(opts):
             #Get acknowledgement that work began in processing.
             reply = so.recv_bytes_from_any_iden(brian_to_dsp_begin)
 
-            sig_p = sigprocpacket_pb2.SigProcPacket()
-            sig_p.ParseFromString(reply)
+            sig_p = pickle.loads(reply)
 
             if __debug__:
-                reply_output = "Dsp began -> sqnum {}".format(sig_p.sequence_num)
+                reply_output = "Dsp began -> sqnum {}".format(sig_p['sequence_num'])
                 brian_print(reply_output)
 
             #Requesting acknowledgement of work ends from DSP
 
             if __debug__:
                 brian_print("Requesting work end from DSP")
-            iden = opts.dspend_to_brian_identity + str(sig_p.sequence_num)
+            iden = opts.dspend_to_brian_identity + str(sig_p['sequence_num'])
             so.send_request(brian_to_dsp_end, iden, "Requesting work ends")
 
             #acknowledge we want to start something new.
@@ -261,20 +249,19 @@ def sequence_timing(opts):
             #Receive ack that work finished on previous sequence.
             reply = so.recv_bytes_from_any_iden(brian_to_dsp_end)
 
-            sig_p = sigprocpacket_pb2.SigProcPacket()
-            sig_p.ParseFromString(reply)
+            sig_p = pickle.loads(reply)
 
             if __debug__:
-                reply_output = "Dsp sent -> time {} ms, sqnum {}"
-                reply_output = reply_output.format(sig_p.kerneltime, sig_p.sequence_num)
+                reply_output = "Dsp sent -> time {}, sqnum {}"
+                reply_output = reply_output.format(sig_p['kerneltime'], sig_p['sequence_num'])
                 brian_print(reply_output)
 
-            if sig_p.sequence_num != 0:
-                if sig_p.kerneltime > last_processing_time:
+            if sig_p['sequence_num'] != 0:
+                if sig_p['kerneltime'] > last_processing_time:
                     late_counter += 1
                 else:
                     late_counter = 0
-            last_processing_time = sig_p.kerneltime
+            last_processing_time = sig_p['kerneltime']
 
             if __debug__:
                 brian_print("Late counter {}".format(late_counter))

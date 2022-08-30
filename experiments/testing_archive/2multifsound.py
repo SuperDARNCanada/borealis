@@ -38,13 +38,14 @@ class TwoMultifsound(ExperimentPrototype):
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
                            26.25],
-            "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+            "rx_beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+            "tx_beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
             #"scanboundflag": True,  # there is a scan boundary
             #"scanbound": 60000,  # ms
             #"clrfrqflag": True,  # search for clear frequency before transmitting
             #"clrfrqrange": [13100, 13400],  # frequency range for clear frequency search,
-            "txfreq" : 10500,
-            # kHz including a clrfrqrange overrides rxfreq and txfreq so these are no
+            "freq" : 10500,
+            # kHz including a clrfrqrange overrides freq so these are no
             # longer necessary as they will be set by the frequency chosen from the
             # range.
             "acf": True,
@@ -66,12 +67,13 @@ class TwoMultifsound(ExperimentPrototype):
             "beam_angle": [-26.25, -22.75, -19.25, -15.75, -12.25, -8.75,
                            -5.25, -1.75, 1.75, 5.25, 8.75, 12.25, 15.75, 19.25, 22.75,
                            26.25],
-            "beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+            "rx_beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+            "tx_beam_order": [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
             #"scanboundflag": True,  # there is a scan boundary
             #"scanbound": 60000,  # ms
             #"clrfrqflag": True,  # search for clear frequency before transmitting
             #"clrfrqrange": [10200, 10500],  # range for clear frequency search, kHz
-            "txfreq": 13000,
+            "freq": 13000,
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
@@ -80,7 +82,7 @@ class TwoMultifsound(ExperimentPrototype):
         list_of_slices = [slice_1, slice_2]
         sum_of_freq = 0
         for slice in list_of_slices:
-            sum_of_freq += slice['txfreq']# kHz, oscillator mixer frequency on the USRP for TX
+            sum_of_freq += slice['freq']# kHz, oscillator mixer frequency on the USRP for TX
         rxctrfreq = txctrfreq = int(sum_of_freq/len(list_of_slices))
         
         
@@ -93,7 +95,7 @@ class TwoMultifsound(ExperimentPrototype):
 
         self.add_slice(slice_1)
 
-        self.add_slice(slice_2, interfacing_dict={0: 'PULSE'})
+        self.add_slice(slice_2, interfacing_dict={0: 'CONCURRENT'})
 
         # Other things you can change if you wish. You may want to discuss with us about
         # it beforehand.

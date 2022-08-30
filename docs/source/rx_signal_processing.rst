@@ -28,7 +28,7 @@ Filtering convolutions involve many multiply and add operations over a set of da
 
 A bandpass filtering CUDA kernel is written to perform the convolutions and the GPU is configured with a two dimensional grid of two dimension blocks. In this case there is a single input data set, and one output data set for each frequency. The grid has a block for each decimated output sample by number of antennas. Each block is made up of set of threads and there is a thread for each filter coefficient by number of total filters. What this all means is that the GPU will attempt to process as many output samples that the device can run at once. Each output sample calculation will have all the multiplies and adds done concurrently for the filters for each frequency.
 
-A lowpass filtering CUDA kernel is similar in operation, however since there is now potentially one or more data sets that get individually reduced, the kernel dimensions get slightly changed. The grid now adds a third dimension for frequency data set and the block now only has one set of threads for a single lowpass filter.
+A lowpass filtering CUDA kernel is similar in operation, however since there is now potentially one or more data sets that get individually decimated, the kernel dimensions get slightly changed. The grid now adds a third dimension for frequency data set and the block now only has one set of threads for a single lowpass filter.
 
 .. figure:: img/dsp_data_flow.jpg
    :scale: 75 %
@@ -41,6 +41,7 @@ A lowpass filtering CUDA kernel is similar in operation, however since there is 
    :glob:
 
    frerking.rst
+   dsp_chain_in_detail.rst
    file/dsp_8cu.rst
    file/dsp_8hpp.rst
    file/decimate_8cu.rst

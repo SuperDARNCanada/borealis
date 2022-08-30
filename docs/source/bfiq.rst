@@ -1,12 +1,12 @@
 =========
-bfiq v0.5
+bfiq v0.6
 =========
 
-This is the most up to date version of this file format produced by Borealis version 0.5, the current version. 
+This is the most up to date version of this file format produced by Borealis version 0.6, the current version.
 
 For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
 
-The pydarn format class for this format is BorealisBfiq found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisBfiq found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 The bfiq format is intended to hold beamformed I and Q data for the main and interferometer arrays. The data is not averaged. 
 
@@ -37,6 +37,11 @@ The file fields in the bfiq array files are:
 | | *type*                          |                                             |
 | | [dimensions]                    |                                             |
 +===================================+=============================================+
+| | **agc_status_word**             | | AGC status word. Bit position             |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates an agc fault |
+| |                                 | | occurred at least once during integration |
++-----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**        | | States what order the data is in and      |
 | | *unicode*                       | | describes the data layout for the         |
 | | [num_antenna_arrays]            | | num_antenna_arrays data dimension         |
@@ -108,6 +113,15 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | in kHz. This is the frequency the data    |
 | |                                 | | has been filtered to.                     |
 +-----------------------------------+---------------------------------------------+
+| | **gps_locked**                  | | Designates if the local GPS had a lock    |
+| | *bool*                          | | during the entire integration period.     |
+| | [num_records]                   | | False if it unlocked at least once.       |
++-----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**     | | The max time difference between box_time  |
+| | *float32*                       | | GPS time) and system time (NTP) during the|
+| | [num_records]                   | | integration. Negative when GPS time is    |
+| |                                 | | ahead of system time.                     |
++-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           | 
 | | [num_records]                   | |                                           | 
@@ -119,6 +133,11 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | pulses array. Values have to be from      |
 | | [number of lags, 2]             | | pulses array. The lag number is lag[1] -  |
 | |                                 | | lag[0] for each lag pair.                 |
++-----------------------------------+---------------------------------------------+
+| | **lp_status_word**              | | Low power status word. Bit position       |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates low power    |
+| |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
 | | **main_antenna_count**          | | Number of main array antennas             |
 | | *uint32*                        | |                                           | 
@@ -167,7 +186,7 @@ The file fields in the bfiq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **pulse_phase_offset**          | | For pulse encoding phase, in degrees      |
 | | *float32*                       | | offset. Contains one phase offset per     | 
-| | [number of pulses]              | | pulse in pulses.                          |
+| | [] or [num pulses x 1]          | | pulse in pulses                           |
 +-----------------------------------+---------------------------------------------+
 | | **pulses**                      | | The pulse sequence in units of the        |
 | | *uint32*                        | | tau_spacing.                              |
@@ -211,8 +230,8 @@ The file fields in the bfiq array files are:
 | | max_num_sequences]              | | These timestamps come back from the USRP  | 
 | |                                 | | driver and the USRPs are GPS disciplined  |
 | |                                 | | and synchronized using the Octoclock.     |
-| |                                 | | Provided in milliseconds since epoch.     | 
-| |                                 | | Note that records that do not have        | 
+| |                                 | | Provided in seconds since epoch.          |
+| |                                 | | Note that records do not have             |
 | |                                 | | num_sequences = max_num_sequences will    | 
 | |                                 | | have padded zeros. The num_sequences      | 
 | |                                 | | array should be used to determine the     | 
@@ -251,7 +270,12 @@ The file fields under the record name in bfiq site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |  
 +==================================+=============================================+
-| | **antenna_arrays_order**       | | States what order the data is in and      | 
+| | **agc_status_word**            | | AGC status word. Bit position             |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates an agc fault |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
+| | **antenna_arrays_order**       | | States what order the data is in and      |
 | | *[unicode, ]*                  | | describes the data layout for the         |
 | |                                | | num_antenna_arrays data dimension         |
 +----------------------------------+---------------------------------------------+
@@ -310,6 +334,14 @@ The file fields under the record name in bfiq site files are:
 | | *uint32*                       | | in kHz. This is the frequency the data    | 
 | |                                | | has been filtered to.                     |
 +----------------------------------+---------------------------------------------+
+| | **gps_locked**                 | | Designates if the local GPS had a lock    |
+| | *bool*                         | | during the entire integration period.     |
++----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
+| | *float32*                      | | GPS time) and system time (NTP) during the|
+| |                                | | integration. Negative when GPS time is    |
+| |                                | | ahead of system time.                     |
++----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
@@ -321,6 +353,11 @@ The file fields under the record name in bfiq site files are:
 | |                                | | lags x 2. Values have to be from pulses   | 
 | |                                | | array. The lag number is lag[1] - lag[0]  | 
 | |                                | | for each lag pair.                        |
++----------------------------------+---------------------------------------------+
+| | **lp_status_word**             | | Low power status word. Bit position       |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates low power    |
+| |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
 | | **main_antenna_count**         | | Number of main array antennas             |
 | | *uint32*                       | |                                           | 
@@ -347,9 +384,9 @@ The file fields under the record name in bfiq site files are:
 | |                                | | than 1, data should exist in another file | 
 | |                                | | for this time period for the other slice. |
 +----------------------------------+---------------------------------------------+
-| | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      | 
-| | *[float32, ]*                  | | offset. Contains one phase offset per     | 
-| |                                | | pulse in pulses.                          |
+| | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      |
+| | *[float32, ]*                  | | offset. Contains one phase offset per     |
+| |                                | | pulse in pulses, or none.                 |
 +----------------------------------+---------------------------------------------+
 | | **pulses**                     | | The pulse sequence in units of the        | 
 | | *[uint32, ]*                   | | tau_spacing.                              |
@@ -389,7 +426,7 @@ The file fields under the record name in bfiq site files are:
 | |                                | | These timestamps come from the USRP       | 
 | |                                | | driver and the USRPs are GPS disciplined  | 
 | |                                | | and synchronized using the Octoclock.     | 
-| |                                | | Provided in milliseconds since epoch.     |
+| |                                | | Provided in seconds since epoch.          |
 +----------------------------------+---------------------------------------------+
 | | **station**                    | | Three-letter radar identifier.            |
 | | *unicode*                      | |                                           | 
@@ -408,7 +445,7 @@ Site/Array Restructuring
 
 File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring (and array to site restructuring) can be achieved by following the examples shown `here <https://pydarnio.readthedocs.io/en/latest/user/BorealisIO/>`_.
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 -------------------------------------
 bfiq to iqdat SDARN (DMap) Conversion

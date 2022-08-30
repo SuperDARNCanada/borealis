@@ -62,9 +62,10 @@ class TestExperiment(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
@@ -76,8 +77,8 @@ class TestExperiment(ExperimentPrototype):
 
         self.add_slice(slice_1)
         self.add_slice(copy.deepcopy(slice_1)) 
-        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'INTTIME'}) 
-        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'INTTIME'}) 
+        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'AVEPERIOD'})
+        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'AVEPERIOD'})
         self.add_slice(copy.deepcopy(slice_1),interfacing_dict={0: 'SCAN'}) 
         slices = []
         max_num_slices = int(eo().max_number_of_filter_taps_per_stage/longest_filter_num_taps)
@@ -85,11 +86,11 @@ class TestExperiment(ExperimentPrototype):
         #    max_num_slices))
         for i in range(max_num_slices):
             slices.append(copy.deepcopy(slice_1))
-            self.add_slice(slices[i], interfacing_dict={0: 'PULSE'})
+            self.add_slice(slices[i], interfacing_dict={0: 'CONCURRENT'})
 
-        # Just for fun, add a few INTTIME as well
-        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'INTTIME'}) 
-        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={0: 'INTTIME'}) 
+        # Just for fun, add a few AVEPERIOD as well
+        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={1: 'AVEPERIOD'})
+        self.add_slice(copy.deepcopy(slice_1),interfacing_dict={0: 'AVEPERIOD'})
         
         # Add a bunch of slices that are scan interfaced, shouldn't have an effect
         self.add_slice(copy.deepcopy(slice_1),interfacing_dict={0: 'SCAN'}) 

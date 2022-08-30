@@ -78,8 +78,6 @@ Minimum requirements:
 
 **NOTE**: Intel 82579LM controllers WILL NOT WORK
 
-**NOTE** Overclocking is required for reliable operations.
-
 **NOTE** A BIOS flash is required to use a RTX3000+ series NVidia GPU.
 
 ==========

@@ -10,7 +10,6 @@
     :author: Marci Detwiller
 """
 
-from __future__ import print_function
 import sys
 import copy
 import os
@@ -30,10 +29,9 @@ from experiment_prototype import list_tests
 
 from utils.experiment_options.experimentoptions import ExperimentOptions
 from experiment_prototype.scan_classes.scans import Scan, ScanClassBase
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, DecimationStage, \
-    create_default_scheme
+from experiment_prototype.decimation_scheme.decimation_scheme import create_default_scheme
 
-interface_types = tuple(['SCAN', 'INTTIME', 'INTEGRATION', 'PULSE'])
+interface_types = tuple(['SCAN', 'AVEPERIOD', 'SEQUENCE', 'CONCURRENT'])
 """ The types of interfacing available for slices in the experiment.
 
 Interfacing in this case refers to how two or more components are
@@ -47,31 +45,31 @@ to another slice.
 
 There are no requirements for slices interfaced in this manner.
 
-2. INTTIME.
-This type of interfacing allows for one slice to run its integration period
-(also known as integration time or averaging period), before switching to
-another slice's integration period. This type of interface effectively creates
+2. AVEPERIOD.
+This type of interfacing allows for one slice to run its averaging period
+(also known as integration time or integration period), before switching to
+another slice's averaging period. This type of interface effectively creates
 an interleaving scan where the scans for multiple slices are run 'at the same
-time', by interleaving the integration times.
+time', by interleaving the averaging periods.
 
 Slices which are interfaced in this manner must share:
     - the same SCANBOUND value.
 
-3. INTEGRATION.
-Integration interfacing allows for pulse sequences defined in the slices to
-alternate between each other within a single integration period. It's important
+3. SEQUENCE.
+Sequence interfacing allows for pulse sequences defined in the slices to
+alternate between each other within a single averaging period. It's important
 to note that data from a single slice is averaged only with other data from that
-slice. So in this case, the integration period is running two slices and can
-produce two averaged datasets, but the sequences (integrations) within the
-integration period are interleaved.
+slice. So in this case, the averaging period is running two slices and can
+produce two averaged datasets, but the sequences within the averaging period 
+are interleaved.
 
 Slices which are interfaced in this manner must share:
     - the same SCANBOUND value.
     - the same INTT or INTN value.
     - the same BEAM_ORDER length (scan length)
 
-4. PULSE.
-Pulse interfacing allows for pulse sequences to be run together concurrently.
+4. CONCURRENT.
+Concurrent interfacing allows for pulse sequences to be run together concurrently.
 Slices will have their pulse sequences summed together so that the
 data transmits at the same time. For example, slices of different frequencies
 can be mixed simultaneously, and slices of different pulse sequences can also
@@ -86,13 +84,11 @@ Slices which are interfaced in this manner must share:
 
 """
 
-slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas",
-                    "rx_int_antennas", "pulse_sequence", "pulse_phase_offset", "tau_spacing",
-                    "pulse_len", "num_ranges", "first_range", "intt", "intn", "beam_angle",
-                    "beam_order", "scanbound", "txfreq", "rxfreq",
-                    "clrfrqrange", "averaging_method", "acf", "xcf", "acfint",
-                    "wavetype", "seqoffset", "iwavetable", "qwavetable",
-                    "comment", "range_sep", "lag_table"])
+slice_key_set = frozenset(["slice_id", "cpid", "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_sequence",
+                           "pulse_phase_offset", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt",
+                           "intn", "beam_angle", "tx_beam_order", "rx_beam_order", "scanbound", "freq", "align_sequences",
+                           "clrfrqrange", "averaging_method", "acf", "xcf", "acfint", "wavetype", "seqoffset", "iwavetable",
+                           "qwavetable", "comment", "range_sep", "lag_table", "tx_antenna_pattern", "wait_for_first_scanbound"])
 
 """
 These are the keys that are set by the user when initializing a slice. Some
@@ -112,54 +108,52 @@ pulse_len *required*
     length of pulse in us. Range gate size is also determined by this.
 
 num_ranges *required*
-    Number of range gates.
+    Number of range gates to receive for. 
+    Range gate time is equal to pulse_len and range gate distance is 
+    the range_sep, calculated from pulse_len.
 
 first_range *required*
     first range gate, in km
 
 intt *required or intn required*
-    duration of an integration, in ms. (maximum)
+    duration of an averaging period (integration), in ms. (maximum)
 
 intn *required or intt required*
-    number of averages to make a single integration, only used if intt = None.
+    number of averages to make a single averaging period (integration), only used if intt = None.
 
 beam_angle *required*
     list of beam directions, in degrees off azimuth. Positive is E of N. The beam_angle list
     length = number of beams. Traditionally beams have been 3.24 degrees separated but we
     don't refer to them as beam -19.64 degrees, we refer as beam 1, beam 2. Beam 0 will
     be the 0th element in the list, beam 1 will be the 1st, etc. These beam numbers are
-    needed to write the beam_order list. This is like a mapping of beam number (list
+    needed to write the [rx|tx]_beam_order list. This is like a mapping of beam number (list
     index) to beam direction off boresight.
 
-beam_order *required*
+rx_beam_order *required*
     beam numbers written in order of preference, one element in this list corresponds to
-    one integration period. Can have lists within the list, resulting in multiple beams
+    one averaging period. Can have lists within the list, resulting in multiple beams
     running simultaneously in the averaging period, so imaging. A beam number of 0 in
     this list gives us the direction of the 0th element in the beam_angle list. It is
-    up to the writer to ensure their beam pattern makes sense. Typically beam_order is
+    up to the writer to ensure their beam pattern makes sense. Typically rx_beam_order is
     just in order (scanning W to E or E to W, ie. [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-    11, 12, 13, 14, 15]. You can list numbers multiple times in the beam_order list,
+    11, 12, 13, 14, 15]. You can list numbers multiple times in the rx_beam_order list,
     for example [0, 1, 1, 2, 1] or use multiple beam numbers in a single
-    integration time (example [[0, 1], [3, 4]], which would trigger an imaging
+    averaging period (example [[0, 1], [3, 4]], which would trigger an imaging
     integration. When we do imaging we will still have to quantize the directions we
-    are looking in to certain beam directions.
+    are looking in to certain beam directions. It is up to the user to ensure that this 
+    field works well with the specified tx_beam_order or tx_antenna_pattern.
 
-clrfrqrange *required or txfreq or rxfreq required*
+clrfrqrange *required or freq required*
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq]
     in kHz. **Not currently supported.**
 
-txfreq *required or clrfrqrange or rxfreq required*
-    transmit frequency, in kHz. Note if you specify clrfrqrange it won't be used.
-
-rxfreq *required or clrfrqrange or txfreq required*
-    receive frequency, in kHz. Note if you specify clrfrqrange or txfreq it won't be used. Only
-    necessary to specify if you want a receive-only slice.
-
+freq *required or clrfrqrange required*
+    transmit/receive frequency, in kHz. Note if you specify clrfrqrange it won't be used.
 
 **Defaultable Slice Keys**
 
 acf *defaults*
-    flag for rawacf and generation. The default is False. If True, the following fields are
+    flag for rawacf generation. The default is False. If True, the following fields are
     also used:
     - averaging_method (default 'mean')
     - xcf (default True if acf is True)
@@ -170,6 +164,9 @@ acf *defaults*
 acfint *defaults*
     flag for interferometer autocorrelation data. The default is True if acf is True, otherwise
     False.
+
+align_sequences *defaults*
+    flag for aligning the start of the first pulse in each sequence to tenths of a second. Default False.
 
 averaging_method *defaults*
     a string defining the type of averaging to be done. Current methods are 'mean' or 'median'.
@@ -186,41 +183,77 @@ lag_table *defaults*
     and last pulses used for lag-0.
 
 pulse_phase_offset *defaults*
-    Allows phase shifting of pulses, enabling encoding of pulses. Default all
-    zeros for all pulses in pulse_sequence. Pulses can be shifted with a single
-    phase shift for each pulse or with a phase shift specified for each sample
-    in the pulses of the slice.
+    a handle to a function that will be used to generate one phase per each pulse in the sequence. 
+    If a function is supplied, the beam iterator, sequence number, and number of pulses in the sequence 
+    are passed as arguments that can be used in this function. The default is None if no function 
+    handle is supplied.
+
+    encode_fn(beam_iter, sequence_num, num_pulses):
+        return np.ones(size=(num_pulses))
+
+    The return value must be numpy array of num_pulses in size.
+    The result is a single phase shift for each pulse, in degrees.
+
+    Result is expected to be real and in degrees and will be converted to complex radians.
 
 range_sep *defaults*
     a calculated value from pulse_len. If already set, it will be overwritten to be the correct
     value determined by the pulse_len. Used for acfs. This is the range gate separation,
-    in azimuthal direction, in km.
+    in the radial direction (away from the radar), in km.
 
 rx_int_antennas *defaults*
     The antennas to receive on in interferometer array, default is all
-    antennas given in config.
+    antennas given max number from config.
 
 rx_main_antennas *defaults*
     The antennas to receive on in main array, default is all antennas
-    given in config.
+    given max number from config.
 
 scanbound *defaults*
-    A list of seconds past the minute for integration times in a scan to align to. Defaults
+    A list of seconds past the minute for averaging periods in a scan to align to. Defaults
     to None, not required. If one slice in an experiment has a scanbound, they all 
     must.
 
 seqoffset *defaults*
     offset in us that this slice's sequence will begin at, after the start of the sequence.
-    This is intended for PULSE interfacing, when you want multiple slice's pulses in one sequence
+    This is intended for CONCURRENT interfacing, when you want multiple slice's pulses in one sequence
     you can offset one slice's sequence from the other by a certain time value so as to not run both
     frequencies in the same pulse, etc. Default is 0 offset.
 
 tx_antennas *defaults*
-    The antennas to transmit on, default is all main antennas given in config.
+    The antennas to transmit on, default is all main antennas given max number from config.
+
+tx_antenna_pattern *defaults*
+    experiment-defined function which returns a complex weighting factor of magnitude <= 1
+    for each tx antenna used in the experiment. The return value of the function must be
+    an array of size [num_beams, main_antenna_count] with all elements having magnitude <= 1.
+    This function is analogous to the beam_angle field in that it defines the transmission 
+    pattern for the array, and the tx_beam_order field specifies which "beam" to use in a 
+    given averaging period.
+    
+tx_beam_order *defaults, but required if tx_antenna_pattern given*
+    beam numbers written in order of preference, one element in this list corresponds to
+    one averaging period. A beam number of 0 in this list gives us the direction of the
+    0th element in the beam_angle list. It is up to the writer to ensure their beam pattern
+    makes sense. Typically tx_beam_order is just in order (scanning W to E or E to W, i.e.
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]. You can list numbers multiple
+    times in the tx_beam_order list, for example [0, 1, 1, 2, 1], but unlike rx_beam_order,
+    you CANNOT use multiple beam numbers in a single averaging period. In other words, this
+    field MUST be a list of integers, as opposed to rx_beam_order, which can be a list of
+    lists of integers. The length of this list must be equal to the length of the 
+    rx_beam_order list. If tx_antenna_pattern is given, the items in tx_beam_order specify
+    which row of the return from tx_antenna_pattern to use to beamform a given transmission.
+    Default is None, i.e. rx_only slice.
+
+wait_for_first_scanbound *defaults*
+    A boolean flag to determine when an experiment starts running. True (default) means an 
+    experiment will wait until the first averaging period in a scan to start transmitting. 
+    False means an experiment will not wait for the first averaging period, but will instead 
+    start transmitting at the nearest averaging period. Note: for multi-slice experiments, the 
+    first slice is the only one impacted by this parameter.
 
 xcf *defaults*
     flag for cross-correlation data. The default is True if acf is True, otherwise False.
-
 
 **Read-only Slice Keys**
 
@@ -276,6 +309,7 @@ default_rx_bandwidth = 5.0e6
 default_output_rx_rate = 10.0e3/3
 transition_bandwidth = 750.0e3
 
+
 class ExperimentPrototype(object):
     """
     The base class for all experiments.
@@ -310,10 +344,8 @@ class ExperimentPrototype(object):
     Other parameters are set in the init and cannot be modified after instantiation.
     """
 
-    def __init__(self, cpid, output_rx_rate=default_output_rx_rate,
-                 rx_bandwidth=default_rx_bandwidth, tx_bandwidth=5.0e6, txctrfreq=12000.0,
-                 rxctrfreq=12000.0,
-                 decimation_scheme=create_default_scheme(),
+    def __init__(self, cpid, output_rx_rate=default_output_rx_rate, rx_bandwidth=default_rx_bandwidth,
+                 tx_bandwidth=5.0e6, txctrfreq=12000.0, rxctrfreq=12000.0, decimation_scheme=create_default_scheme(),
                  comment_string=''):
         """
         Initialization for your experiment. Sets experiment-wide settings including cpid,
@@ -341,6 +373,9 @@ class ExperimentPrototype(object):
 
         if not isinstance(cpid, int):
             errmsg = 'CPID must be a unique int'
+            raise ExperimentException(errmsg)
+        if cpid > np.iinfo(np.int16).max:
+            errmsg = 'CPID must be representable by a 16-bit signed integer'
             raise ExperimentException(errmsg)
         # Quickly check for uniqueness with a search in the experiments directory first
         # taking care not to look for CPID in any experiments that are just tests (located in the
@@ -439,6 +474,10 @@ class ExperimentPrototype(object):
 
         # Load the config, hardware, and restricted frequency data
 
+        dm_rate = 1
+        for stage in decimation_scheme.stages:
+            dm_rate *= stage.dm_rate
+
         # This is experiment-wide transmit metadata necessary to build the pulses. This data
         # cannot change within the experiment and is used in the scan classes to pass information
         # to where the samples are built.
@@ -446,14 +485,18 @@ class ExperimentPrototype(object):
             'output_rx_rate': self.output_rx_rate,
             'main_antennas': self.options.main_antennas,
             'main_antenna_count': self.options.main_antenna_count,
+            'intf_antenna_count': self.options.interferometer_antenna_count,
             'tr_window_time': self.options.tr_window_time,
             'main_antenna_spacing': self.options.main_antenna_spacing,
+            'intf_antenna_spacing': self.options.interferometer_antenna_spacing,
             'pulse_ramp_time': self.options.pulse_ramp_time,
             'max_usrp_dac_amplitude': self.options.max_usrp_dac_amplitude,
             'rx_sample_rate': self.rxrate,
             'minimum_pulse_separation': self.options.minimum_pulse_separation,
             'txctrfreq': self.txctrfreq,
-            'txrate': self.txrate
+            'txrate': self.txrate,
+            'intf_offset' : self.options.intf_offset,
+            'dm_rate' : dm_rate
         }
 
         # The following are processing defaults. These can be set by the experiment using the setter
@@ -466,13 +509,12 @@ class ExperimentPrototype(object):
 
         self.__interface = {}
         # Dictionary of how each exp_slice interacts with the other slices.
-        # NOTE keys are as such: (0,1), (0,2), (1,2),
-        # NEVER includes (2,0) etc. The only interface options are those specified in
-        # interface_types.
+        # NOTE keys are as such: (0,1), (0,2), (1,2), NEVER includes (2,0) etc.
+        # The only interface options are those specified in interface_types.
 
         # The following are for internal use only, and should not be modified in the experimental
-        #  class, but will be modified by the class method build_scans. For this reason they
-        #  are private, with getters only, in case they are used for reference by the user.
+        # class, but will be modified by the class method build_scans. For this reason they
+        # are private, with getters only, in case they are used for reference by the user.
         # These are used internally to build iterable objects out of the slice using the
         # interfacing specified.
 
@@ -482,8 +524,6 @@ class ExperimentPrototype(object):
 
     __slice_keys = slice_key_set
     __hidden_slice_keys = hidden_key_set
-    __default_output_rx_rate = default_output_rx_rate
-    __default_rx_bandwidth = default_rx_bandwidth
 
     @property
     def cpid(self):
@@ -848,8 +888,7 @@ class ExperimentPrototype(object):
                 self.__cpid = -1 * self.__cpid
         else:
             errmsg = 'Scheduling mode {} set by experiment handler is not '\
-                     ' a valid mode: {}'.format(scheduling_mode,
-                            possible_scheduling_modes)
+                     ' a valid mode: {}'.format(scheduling_mode, possible_scheduling_modes)
             raise ExperimentException(errmsg)
 
     def printing(self, msg):
@@ -880,7 +919,7 @@ class ExperimentPrototype(object):
 
         The interfacing assumes that the interfacing_dict given by the user defines
         the closest interfacing of the new slice with a slice. For example,
-        if the slice is to be PULSE combined with slice 0, the interfacing dict
+        if the slice is to be 'CONCURRENT' combined with slice 0, the interfacing dict
         should provide this information. If only 'SCAN' interfacing with slice 1
         is provided, then that will be assumed to be the closest and therefore
         the interfacing with slice 0 will also be 'SCAN'.
@@ -942,18 +981,18 @@ class ExperimentPrototype(object):
                 if interface_types.index(siblings_interface_value) >= closest_interface_rank:
                     # in this case, the interfacing between the sibling
                     # and the closest sibling is closer than the closest interface for the new slice.
-                    # therefore interface with this sibling should be equal to the closest interface.
-                    # Or if they are all at the same rank, then the interfacing should equal that rank.
-                    # For example, slices 0 and 1 combined PULSE. New slice 2 is
-                    # added with closest interfacing INTEGRATION to slice 0. Slice
-                    # 2 will therefore also be interfaced with slice 1 as INTEGRATION
-                    # type, since both slices 0 and 1 are in a single INTEGRATION.
+                    # Therefore, interface with this sibling should be equal to the closest interface.
+                    # Or, if they are all at the same rank, then the interfacing should equal that rank.
+                    # For example, slices 0 and 1 combined CONCURRENT. New slice 2 is
+                    # added with closest interfacing SEQUENCE to slice 0. Slice
+                    # 2 will therefore also be interfaced with slice 1 as SEQUENCE
+                    # type, since both slices 0 and 1 are in a single SEQUENCE.
                     full_interfacing_dict[sibling_slice_id] = closest_interface_value
                 else:  # the rank is less than the closest rank.
                     # in this case, the interfacing to this sibling should be the same as the
                     # closest sibling interface to this sibling.
                     # For example, slices 0 and 1 are combined SCAN and
-                    # slice 2 is combined INTTIME with slice 0 (closest). Therefore slice 2
+                    # slice 2 is combined AVEPERIOD with slice 0 (closest). Therefore slice 2
                     # should be combined SCAN with slice 1 since 0 and 2 are now
                     # within the same scan.
                     full_interfacing_dict[sibling_slice_id] = siblings_interface_value
@@ -1110,7 +1149,6 @@ class ExperimentPrototype(object):
             # revert to old slice
             self.__slice_dict[edit_slice_id] = removed_slice
 
-            readd_keys = []
             for key1, key1_interface in interface_values.items():
                 if key1 < edit_slice_id:
                     self.__interface[(key1, edit_slice_id)] = key1_interface
@@ -1168,7 +1206,6 @@ class ExperimentPrototype(object):
                 errmsg = 'If one slice has a scanbound, they all must to avoid up to minute-long downtimes.'
                 raise ExperimentException(errmsg) from e
 
-        # check that the number of slices can be accommodated by the decimation scheme.
         max_num_concurrent_slices = 0
         for scan in self.__scan_objects:
             for aveperiod in scan.aveperiods:
@@ -1218,8 +1255,8 @@ class ExperimentPrototype(object):
 
         Check for the minimum requirements of the slice. The following keys are always required:
         "pulse_sequence", "tau_spacing", "pulse_len", "num_ranges", "first_range", (one of "intt" or "intn"),
-        "beam_angle", and "beam_order". This function may modify the values in this slice dictionary
-        to ensure that it is able to be run and that the values make sense.
+        and "rx_beam_order". This function may modify the values in this
+        slice dictionary to ensure that it is able to be run and that the values make sense.
 
         :param exp_slice: slice to check.
         """
@@ -1250,8 +1287,11 @@ class ExperimentPrototype(object):
             errmsg = "Slice must specify num_ranges that must be an integer"
             raise ExperimentException(errmsg, exp_slice)
 
-        if 'first_range' not in exp_slice.keys() or not isinstance(exp_slice['first_range'], int):
-            errmsg = "Slice must specify first_range in km that must be an integer"
+        if 'first_range' not in exp_slice.keys():
+            errmsg = "Slice must specify first_range in km that must be a number"
+            raise ExperimentException(errmsg, exp_slice)
+        if not isinstance(exp_slice['first_range'], float) and not isinstance(exp_slice['first_range'], int):
+            errmsg = "Slice must specify first_range in km that must be a number"
             raise ExperimentException(errmsg, exp_slice)
 
         if 'intt' not in exp_slice.keys():
@@ -1273,40 +1313,41 @@ class ExperimentPrototype(object):
                     exp_slice.pop('intn')
             exp_slice['intt'] = float(exp_slice['intt'])
 
-        if 'beam_angle' not in exp_slice.keys(): # "beam_angle" is a required key
-            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
-                " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+        # Check the validity of 'beam_angle' specified
+        if 'beam_angle' not in exp_slice.keys():
+            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or floats) which are angles " \
+                     "of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
             raise ExperimentException(errmsg)
         if not isinstance(exp_slice['beam_angle'], list):
-            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
-                " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+            errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or floats) which are angles " \
+                     "of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
             raise ExperimentException(errmsg)
         for element in exp_slice['beam_angle']:
             if not isinstance(element, float) and not isinstance(element, int):
-                errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or" \
-                    " floats) which are angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
+                errmsg = "Slice must specify beam_angle that must be a list of numbers (ints or floats) which are " \
+                         "angles of degrees off boresight (positive E of N). Slice: {}".format(exp_slice)
                 raise ExperimentException(errmsg)
-            if isinstance(element, int):
-                element = float(element)
 
-        if 'beam_order' not in exp_slice.keys():
-            errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+        # Check the validity of 'rx_beam_order' specified
+        if 'rx_beam_order' not in exp_slice.keys():
+            errmsg = "Slice must specify rx_beam_order that must be a list of ints or lists (of ints)" \
                      " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
             raise ExperimentException(errmsg)
-        if not isinstance(exp_slice['beam_order'], list):
-            errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+        if not isinstance(exp_slice['rx_beam_order'], list):
+            errmsg = "Slice must specify rx_beam_order that must be a list of ints or lists (of ints)" \
                      " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
             raise ExperimentException(errmsg)
-        for element in exp_slice['beam_order']:
+        for element in exp_slice['rx_beam_order']:
             if not isinstance(element, int) and not isinstance(element, list):
-                errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
+                errmsg = "Slice must specify rx_beam_order that must be a list of ints or lists (of ints)" \
                          " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
                 raise ExperimentException(errmsg)
             if isinstance(element, list):
                 for beamnum in element:
                     if not isinstance(beamnum, int):
-                        errmsg = "Slice must specify beam_order that must be a list of ints or lists (of ints)" \
-                                 " corresponding to the order of the angles in the beam_angle list. Slice: {}".format(exp_slice)
+                        errmsg = "Slice must specify rx_beam_order that must be a list of ints or lists (of ints)" \
+                                 " corresponding to the order of the angles in the beam_angle list. Slice: {}" \
+                                 "".format(exp_slice)
                         raise ExperimentException(errmsg)
                     if beamnum >= len(exp_slice['beam_angle']):
                         errmsg = "Beam number {} could not index in beam_angle list of length {}." \
@@ -1317,6 +1358,30 @@ class ExperimentPrototype(object):
                     errmsg = "Beam number {} could not index in beam_angle list of length {}." \
                              " Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
                     raise ExperimentException(errmsg)
+
+        if 'tx_beam_order' in exp_slice.keys():
+            if not isinstance(exp_slice['tx_beam_order'], list):
+                errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in " \
+                         "the beam_angle list or an array of phases in the tx_antenna_pattern return. " \
+                         "Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
+            if len(exp_slice['tx_beam_order']) != len(exp_slice['rx_beam_order']):
+                errmsg = "tx_beam_order does not have same length as rx_beam_order. Slice: {}".format(exp_slice)
+                raise ExperimentException(errmsg)
+            for element in exp_slice['tx_beam_order']:
+                if not isinstance(element, int):
+                    errmsg = "tx_beam_order must be a list of ints corresponding to the order of the angles in " \
+                             "the beam_angle list or an array of phases in the tx_antenna_pattern return. " \
+                             "Slice: {}".format(exp_slice)
+                    raise ExperimentException(errmsg)
+                if element >= len(exp_slice['beam_angle']) and 'tx_antenna_pattern' not in exp_slice.keys():
+                    errmsg = "Beam number {} in tx_beam_order could not index in beam_angle list of length {}. " \
+                             "Slice: {}".format(element, len(exp_slice['beam_angle']), exp_slice)
+                    raise ExperimentException(errmsg)
+
+        if 'tx_antenna_pattern' in exp_slice.keys() and 'tx_beam_order' not in exp_slice.keys():
+            errmsg = "tx_beam_order must be specified if tx_antenna_pattern specified. Slice {}".format(exp_slice)
+            raise ExperimentException(errmsg)
 
     @staticmethod
     def set_slice_identifiers(exp_slice):
@@ -1332,36 +1397,23 @@ class ExperimentPrototype(object):
         """
 
         if 'clrfrqrange' in exp_slice.keys():
-
             exp_slice['clrfrqflag'] = True
             exp_slice['rxonly'] = False
 
-            txfreq = exp_slice.pop('txfreq', None)
-            if txfreq is not None and txfreq not in \
-                    range(exp_slice['clrfrqrange'][0],
-                          exp_slice['clrfrqrange'][1]):
-                pass  # TODO log a warning. Txfreq is removed as clrfrqrange takes precedence but
-                # we may not be doing as you intended.
+            freq = exp_slice.pop('freq', None)
+            if freq is not None and freq not in range(exp_slice['clrfrqrange'][0], exp_slice['clrfrqrange'][1]):
+                print("Slice parameter 'freq' removed as 'clrfrqrange' takes precedence. If this is not desired,"
+                      "remove 'clrfrqrange' parameter from experiment.")
 
-            rxfreq = exp_slice.pop('rxfreq', None)
-            if rxfreq is not None and rxfreq not in \
-                    range(exp_slice['clrfrqrange'][0],
-                          exp_slice['clrfrqrange'][1]):
-                pass  # TODO log a warning. Rxfreq is removed as clrfrqrange takes precedence
-                # but we may not be doing as you intended.
+        elif 'freq' in exp_slice.keys():
+            exp_slice['clrfrqflag'] = False
+            if 'tx_beam_order' not in exp_slice.keys():
+                exp_slice['rxonly'] = True
+            else:
+                exp_slice['rxonly'] = False
 
-        elif 'txfreq' in exp_slice.keys():
-            exp_slice['clrfrqflag'] = False
-            exp_slice['rxonly'] = False
-            rxfreq = exp_slice.pop('rxfreq', None)
-            if rxfreq is not None and rxfreq != exp_slice['txfreq']:
-                pass  # TODO log a warning. Rxfreq is removed as txfreq takes precedence but we may
-                # not be doing as you intended.
-        elif 'rxfreq' in exp_slice.keys():
-            exp_slice['rxonly'] = True
-            exp_slice['clrfrqflag'] = False
         else:
-            errmsg = 'An rxfreq, txfreq, or clrfrqrange must be specified in a slice'
+            errmsg = 'A freq or clrfrqrange must be specified in a slice'
             raise ExperimentException(errmsg, exp_slice)
 
     def check_slice_specific_requirements(self, exp_slice):
@@ -1370,7 +1422,7 @@ class ExperimentPrototype(object):
 
         Check the requirements for the specific slice type as identified by the
         identifiers rxonly and clrfrqflag. The keys that need to be checked depending
-        on these identifiers are "txfreq", "rxfreq", and "clrfrqrange". This function
+        on these identifiers are "freq" and "clrfrqrange". This function
         may modify these keys.
 
         :param exp_slice: the slice to check, before adding to the experiment.
@@ -1460,17 +1512,16 @@ class ExperimentPrototype(object):
                     still_checking = False
 
         elif exp_slice['rxonly']:  # RX only mode.
-            # In this mode, rxfreq is required.
+            # In this mode, freq is required.
             freq_error = False
-            if not isinstance(exp_slice['rxfreq'], int) and not isinstance(exp_slice['rxfreq'],
-                                                                      float):
+            if not isinstance(exp_slice['freq'], int) and not isinstance(exp_slice['freq'], float):
                 freq_error = True
-            elif (exp_slice['rxfreq'] * 1000) >= self.rx_maxfreq or (exp_slice['rxfreq'] *
+            elif (exp_slice['freq'] * 1000) >= self.rx_maxfreq or (exp_slice['freq'] *
                                                                    1000) <= self.rx_minfreq:
                 freq_error = True
 
             if freq_error:
-                errmsg = "rxfreq must be a number (kHz) between rx min and max frequencies {} for"\
+                errmsg = "freq must be a number (kHz) between rx min and max frequencies {} for"\
                          " the radar license and be within range given center frequency {} kHz, " \
                          "sampling rate {} kHz, and transition band {} kHz."
                 errmsg = errmsg.format((self.rx_minfreq/1.0e3, self.rx_maxfreq/1.0e3),
@@ -1479,20 +1530,19 @@ class ExperimentPrototype(object):
                 raise ExperimentException(errmsg)
 
         else:  # TX-specific mode , without a clear frequency search.
-            # In this mode, txfreq is required along with the other requirements.
+            # In this mode, freq is required along with the other requirements.
             freq_error = False
-            if not isinstance(exp_slice['txfreq'], int) and not isinstance(exp_slice['txfreq'],
-                                                                          float):
+            if not isinstance(exp_slice['freq'], int) and not isinstance(exp_slice['freq'], float):
                 freq_error = True
-            elif (exp_slice['txfreq'] * 1000) >= self.tx_maxfreq or (exp_slice['txfreq'] * 1000) >= \
+            elif (exp_slice['freq'] * 1000) >= self.tx_maxfreq or (exp_slice['freq'] * 1000) >= \
                     self.rx_maxfreq:
                 freq_error = True
-            elif (exp_slice['txfreq'] * 1000) <= self.tx_minfreq or (exp_slice['txfreq'] * 1000) <= \
+            elif (exp_slice['freq'] * 1000) <= self.tx_minfreq or (exp_slice['freq'] * 1000) <= \
                     self.rx_minfreq:
                 freq_error = True
             
             if freq_error:
-                errmsg = "txfreq must be a number (kHz) between tx min and max frequencies {} and"\
+                errmsg = "freq must be a number (kHz) between tx min and max frequencies {} and"\
                          " rx min and max frequencies {} for the radar license and be within range"\
                          " given center frequencies (tx: {} kHz, rx: {} kHz), sampling rates (tx: "\
                          "{} kHz, rx: {} kHz), and transition band ({} kHz)."
@@ -1503,9 +1553,9 @@ class ExperimentPrototype(object):
                 raise ExperimentException(errmsg)
 
             for freq_range in self.options.restricted_ranges:
-                if ((exp_slice['txfreq'] >= freq_range[0]) and
-                                                (exp_slice['txfreq'] <= freq_range[1])):
-                    errmsg = "txfreq is within a restricted frequency range {}".format(freq_range)
+                if ((exp_slice['freq'] >= freq_range[0]) and
+                                                (exp_slice['freq'] <= freq_range[1])):
+                    errmsg = "freq is within a restricted frequency range {}".format(freq_range)
                     raise ExperimentException(errmsg)
 
     def set_slice_defaults(self, exp_slice):
@@ -1528,10 +1578,13 @@ class ExperimentPrototype(object):
             slice_with_defaults['rx_int_antennas'] = \
                 [i for i in self.options.interferometer_antennas]
         if 'pulse_phase_offset' not in exp_slice:
-            slice_with_defaults['pulse_phase_offset'] = [0.0 for i in range(0, len(
-                slice_with_defaults['pulse_sequence']))]
+            slice_with_defaults['pulse_phase_offset'] = None
         if 'scanbound' not in exp_slice:
             slice_with_defaults['scanbound'] = None
+        if 'tx_antenna_pattern' not in exp_slice:
+            slice_with_defaults['tx_antenna_pattern'] = None
+        if 'tx_beam_order' not in exp_slice:
+            slice_with_defaults['tx_beam_order'] = None
 
         # we only have one of intn or intt because of slice checks already completed in
         # check_slice_minimum_requirements.
@@ -1626,6 +1679,12 @@ class ExperimentPrototype(object):
         if 'comment' not in exp_slice:
             slice_with_defaults['comment'] = ''
 
+        if 'wait_for_first_scanbound' not in exp_slice:
+            slice_with_defaults['wait_for_first_scanbound'] = True
+
+        if 'align_sequences' not in exp_slice:
+            slice_with_defaults['align_sequences'] = False
+
         return slice_with_defaults
 
     def setup_slice(self, exp_slice):
@@ -1637,15 +1696,16 @@ class ExperimentPrototype(object):
 
         The following are always able to be defaulted, so are optional:
         "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_phase_offset", "scanboundflag",
-        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset", "averaging_method"
+        "scanbound", "acf", "xcf", "acfint", "wavetype", "seqoffset", "averaging_method", "align_sequences",
+        and "wait_for_first_scanbound".
 
         The following are always required for processing acf, xcf, and acfint which we will assume
         we are always doing:
         "pulse_sequence", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt", "intn", "beam_angle",
-        "beam_order"
+        "rx_beam_order"
 
         The following are required depending on slice type:
-        "txfreq", "rxfreq", "clrfrqrange"
+        "freq", "clrfrqrange"
 
         :param: exp_slice: a slice to setup
         :return: complete_slice : a checked slice with all defaults
@@ -1719,7 +1779,7 @@ class ExperimentPrototype(object):
         Check the slice for errors.
 
         This is the first test of the dictionary in the experiment done to ensure values in this
-        slice make sense. This is a self-check to ensure the parameters (for example, txfreq,
+        slice make sense. This is a self-check to ensure the parameters (for example, freq,
         antennas) are appropriate. All fields should be full at this time (whether filled by the
         user or given default values in set_slice_defaults). This was built to be useable at
         any time after setup.
@@ -1733,9 +1793,7 @@ class ExperimentPrototype(object):
 
         for param in self.slice_keys:
             if param not in exp_slice.keys():
-                if param == 'txfreq' and (exp_slice['clrfrqflag'] or exp_slice['rxonly']):
-                    pass
-                elif param == 'rxfreq' and not exp_slice['rxonly']:
+                if param == 'freq' and (exp_slice['clrfrqflag'] or exp_slice['rxonly']):
                     pass
                 elif param == 'clrfrqrange' and not exp_slice['clrfrqflag']:
                     pass
@@ -1844,35 +1902,92 @@ class ExperimentPrototype(object):
                                                           # (ms) by 1000 to compare in us
                     error_list.append("Slice {} : pulse sequence is too long for integration "
                                       "time given".format(exp_slice['slice_id']))
-
-        if not exp_slice['pulse_sequence']:
-            if exp_slice['txfreq']:
-                error_list.append("Slice {} has transmission frequency but no"
+        else:
+            if exp_slice['tx_beam_order']:
+                error_list.append("Slice {} has transmission defined but no"
                                   "pulse sequence defined".format(exp_slice['slice_id']))
 
-        if list_tests.has_duplicates(exp_slice['beam_angle']):
-            error_list.append("Slice {} beam angles has duplicate directions".format(
-                exp_slice['slice_id']))
+        if exp_slice['pulse_phase_offset']:
+            num_pulses = len(exp_slice['pulse_sequence'])
 
-        if not list_tests.is_increasing(exp_slice['beam_angle']):
-            error_list.append("Slice {} beam_angle not increasing clockwise (E of N "
-                              "is positive)".format(exp_slice['slice_id']))
+            # Test the encoding fn with beam iterator of 0 and sequence num of 0.
+            # test the user's phase encoding function on first beam (beam_iterator = 0)
+            # and first sequence (sequence_number = 0)
+            phase_encoding = exp_slice['pulse_phase_offset'](0, 0, num_pulses)
+
+            if not isinstance(phase_encoding, np.ndarray):
+                error_list.append("Slice {} Phase encoding return is not numpy array".format(
+                    exp_slice['slice_id']))
+            else:
+                if len(phase_encoding.shape) > 1:
+                    error_list.append("Slice {} Phase encoding return must be 1 dimensional".format(
+                                                                            exp_slice['slice_id']))
+                else:
+                    if phase_encoding.shape[0] != num_pulses:
+                        error_list.append("Slice {} Phase encoding return dimension must be "
+                                          "equal to number of pulses".format(exp_slice['slice_id']))
+
+        if exp_slice['tx_antenna_pattern']:
+            if not callable(exp_slice['tx_antenna_pattern']):
+                error_list.append("Slice {} tx antenna pattern must be a function".format(exp_slice['slice_id']))
+            else:
+                tx_freq_khz = exp_slice['freq']
+                antenna_spacing = options.main_antenna_spacing
+                antenna_pattern = exp_slice['tx_antenna_pattern'](tx_freq_khz, exp_slice['tx_antennas'],
+                                                                  antenna_spacing)
+
+                if not isinstance(antenna_pattern, np.ndarray):
+                    error_list.append("Slice {} tx antenna pattern return is not a numpy array"
+                                      "".format(exp_slice['slice_id']))
+                else:
+                    if len(antenna_pattern.shape) != 2:
+                        error_list.append("Slice {} tx antenna pattern return shape {} must be 2-dimensional"
+                                          "".format(exp_slice['slice_id'], antenna_pattern.shape))
+                    elif antenna_pattern.shape[1] != options.main_antenna_count:
+                        error_list.append("Slice {} tx antenna pattern return 2nd dimension ({}) must be equal to "
+                                          "number of main antennas ({})"
+                                          "".format(exp_slice['slice_id'], antenna_pattern.shape[1],
+                                                    options.main_antenna_count))
+                    antenna_pattern_mag = np.abs(antenna_pattern)
+                    if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
+                        error_list.append("Slice {} tx antenna pattern return must not have any values with a "
+                                          "magnitude greater than 1".format(exp_slice['slice_id']))
+
+        if exp_slice['beam_angle']:
+            if list_tests.has_duplicates(exp_slice['beam_angle']):
+                error_list.append("Slice {} beam angles has duplicate directions".format(
+                    exp_slice['slice_id']))
+
+            if not list_tests.is_increasing(exp_slice['beam_angle']):
+                error_list.append("Slice {} beam_angle not increasing clockwise (E of N "
+                                  "is positive)".format(exp_slice['slice_id']))
 
         # Check if the list of beams to transmit on is empty
-        if not exp_slice['beam_order']:
-            error_list.append("Slice {} beam order scan empty".format(
+        if exp_slice['beam_angle'] and not exp_slice['rx_beam_order']:
+            error_list.append("Slice {} rx beam order scan empty".format(
                 exp_slice['slice_id']))
 
-        # Check that the beam numbers in the beam_order exist
-        for bmnum in exp_slice['beam_order']:
+        # Check that the beam numbers in the tx_beam_order exist
+        if exp_slice['tx_beam_order']:
+            if exp_slice['tx_antenna_pattern']:
+                num_beams = antenna_pattern.shape[0]
+            else:
+                num_beams = len(exp_slice['beam_angle'])
+            for bmnum in exp_slice['tx_beam_order']:
+                if bmnum >= num_beams:
+                    error_list.append("Slice {} scan tx beam number {} DNE".format(
+                        exp_slice['slice_id'], bmnum))
+
+        # Check that the beam numbers in the rx_beam_order exist
+        for bmnum in exp_slice['rx_beam_order']:
             if isinstance(bmnum, int):
                 if bmnum >= len(exp_slice['beam_angle']):
-                    error_list.append("Slice {} scan beam number {} DNE".format(
+                    error_list.append("Slice {} scan rx beam number {} DNE".format(
                         exp_slice['slice_id'], bmnum))
             elif isinstance(bmnum, list):
                 for imaging_bmnum in bmnum:
                     if imaging_bmnum >= len(exp_slice['beam_angle']):
-                        error_list.append("Slice {} scan beam number {} DNE".format(
+                        error_list.append("Slice {} scan rx beam number {} DNE".format(
                             exp_slice['slice_id'], bmnum))
 
         # check scan boundary not less than minimum required scan time.
@@ -1889,20 +2004,27 @@ class ExperimentPrototype(object):
                         exp_slice['slice_id']))
             else:
                 # Check if any scanbound times are shorter than the intt.
+                tolerance = 1e-9
                 if len(exp_slice['scanbound']) == 1:
-                    if exp_slice['scanbound'][0] * 1000 < exp_slice['intt']:
+                    if exp_slice['intt'] > (exp_slice['scanbound'][0] * 1000 + tolerance):
                         error_list.append("Slice {} intt {}ms longer than "
                                           "scanbound time {}s".format(exp_slice['slice_id'],
                                                                       exp_slice['intt'],
                                                                       exp_slice['scanbound'][0]))
                 else:
                     for i in range(len(exp_slice['scanbound']) - 1):
-                        if ((exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000 <
-                                exp_slice['intt']):
+                        beam_time = (exp_slice['scanbound'][i+1] - exp_slice['scanbound'][i]) * 1000
+                        if exp_slice['intt'] > beam_time + tolerance:
                             error_list.append("Slice {} intt {}ms longer than one of the "
                                               "scanbound times".format(exp_slice['slice_id'],
                                                                        exp_slice['intt']))
                             break
+
+        # Check wait_for_first_scanbound
+        if type(exp_slice['wait_for_first_scanbound']) is not bool:
+            error_list.append("Slice {} wait_for_first_scanbound must be True or False, got {} "
+                                                "instead".format(exp_slice['slice_id'],
+                                                                 exp_slice['wait_for_first_scanbound']))
 
         # TODO other checks
 

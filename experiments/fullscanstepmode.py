@@ -19,7 +19,6 @@ class FullScanStepMode(ExperimentPrototype):
     """
 
     def __init__(self):
-        description = ""
         cpid = 3561
 
         top = 15000
@@ -84,9 +83,10 @@ class FullScanStepMode(ExperimentPrototype):
                 "first_range": scf.STD_FIRST_RANGE,
                 "intt": 3500,  # duration of an integration, in ms
                 "beam_angle": scf.STD_16_BEAM_ANGLE,
-                "beam_order": beams_to_use,
+                "rx_beam_order": beams_to_use,
+                "tx_beam_order": beams_to_use,
                 "scanbound" : [i * (3.5 * len(all_steps)) for i in range(len(beams_to_use))],
-                "txfreq" : step, #kHz
+                "freq" : step, #kHz
                 "acf": True,
                 "xcf": True,  # cross-correlation processing
                 "acfint" : True,  # interferometer acfs
@@ -105,5 +105,5 @@ class FullScanStepMode(ExperimentPrototype):
         self.add_slice(slices[0])
         interfacing_dict = {}
         for i in range(1, len(slices)):
-            interfacing_dict[i-1] = 'INTTIME'
+            interfacing_dict[i-1] = 'AVEPERIOD'
             self.add_slice(slices[i], interfacing_dict=interfacing_dict)

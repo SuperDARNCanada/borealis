@@ -4,7 +4,6 @@
 
 import os
 import sys
-import copy
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
@@ -48,10 +47,11 @@ class InterleaveSound(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": common_intt_ms,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
             # this scanbound will be aligned because len(beam_order) = len(scanbound)
-            "scanbound": [i * common_scanbound_spacing for i in range(len(beams_to_use))],
-            "txfreq": scf.COMMON_MODE_FREQ_1, # kHz
+            "scanbound" : [i * common_scanbound_spacing for i in range(len(beams_to_use))],
+            "freq" : scf.COMMON_MODE_FREQ_1, # kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
@@ -62,7 +62,7 @@ class InterleaveSound(ExperimentPrototype):
         sounding_intt_ms = sounding_scanbound_spacing * 1.0e3 - 250
 
         sounding_scanbound = [48 + i * sounding_scanbound_spacing for i in range(8)]
-        for num, freq in enumerate(scf.SOUNDING_FREQS):
+        for freq in scf.SOUNDING_FREQS:
             slices.append({
                 "pulse_sequence": scf.SEQUENCE_8P,
                 "tau_spacing": scf.TAU_SPACING_8P,
@@ -71,9 +71,10 @@ class InterleaveSound(ExperimentPrototype):
                 "first_range": scf.STD_FIRST_RANGE,
                 "intt": sounding_intt_ms,  # duration of an integration, in ms
                 "beam_angle": scf.STD_16_BEAM_ANGLE,
-                "beam_order": sounding_beams,
-                "scanbound": sounding_scanbound,
-                "txfreq": freq,
+                "rx_beam_order": sounding_beams,
+                "tx_beam_order": sounding_beams,
+                "scanbound" : sounding_scanbound,
+                "freq": freq,
                 "acf": True,
                 "xcf": True,  # cross-correlation processing
                 "acfint": True,  # interferometer acfs
@@ -82,7 +83,7 @@ class InterleaveSound(ExperimentPrototype):
 
         sum_of_freq = 0
         for slice in slices:
-            sum_of_freq += slice['txfreq']  # kHz, oscillator mixer frequency on the USRP for TX
+            sum_of_freq += slice['freq']  # kHz, oscillator mixer frequency on the USRP for TX
         rxctrfreq = txctrfreq = int(sum_of_freq / len(slices))
 
         super(InterleaveSound, self).__init__(cpid, txctrfreq=txctrfreq, rxctrfreq=rxctrfreq,
@@ -91,5 +92,5 @@ class InterleaveSound(ExperimentPrototype):
         self.add_slice(slices[0])
         self.add_slice(slices[1], {0: 'SCAN'})
         for slice_num in range(2, len(slices)):
-            self.add_slice(slices[slice_num], {1: 'INTTIME'})
+            self.add_slice(slices[slice_num], {1: 'AVEPERIOD'})
 

@@ -41,7 +41,22 @@ class SetAffinityOptions(object):
         self._mainaffinity_to_driver_identity = raw_config["mainaffinity_to_driver_identity"]
         self._txaffinity_to_driver_identity = raw_config["txaffinity_to_driver_identity"]
         self._rxaffinity_to_driver_identity = raw_config["rxaffinity_to_driver_identity"]
-        self._device_str = raw_config["devices"]
+        self._device_str = raw_config["device_options"]
+
+        # Parse N200 array and construct devices string
+        devices_map = {}
+        for n200 in raw_config["n200s"]:
+            rx = bool(n200["rx"])
+            tx = bool(n200["tx"])
+            rx_int = bool(n200["rx_int"])
+
+            if rx or tx or rx_int:
+                device_num = int(n200["main_antenna"])
+                devices_map[device_num] = n200["addr"]
+
+        for addr_idx, device_num in enumerate(sorted(devices_map.keys())):
+            self._device_str = self._device_str + ",addr" + str(addr_idx) + "=" + devices_map[device_num]
+
 
     @property
     def device_str(self):

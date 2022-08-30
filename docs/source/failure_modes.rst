@@ -182,14 +182,34 @@ The root cause is unknown, but symptoms are:
 To fix this issue and restart the radar:
     - Power cycle the machine
 
+Protobuf library is not working
+-------------------------------
+Symptoms: The following error in one or more screens when attempting to run the radar.
+
+`Traceback (most recent call last):
+  File "brian/brian.py", line 24, in <module>
+    import driverpacket_pb2
+  File "/home/radar/borealis//build/release/utils/protobuf/driverpacket_pb2.py", line 5, in <module>
+    from google.protobuf.internal import builder as _builder
+ImportError: cannot import name 'builder'`
+
+Reason:
+There are two components to the protobuf installation - the package and the protoc compiler.
+Starting with version 3.20.0, the builder.py file was made for consolidation with this library, 'Protobuf python generated codes are simplified. Descriptors and message classes' definitions are now dynamic created in internal/builder.py.'
+See https://github.com/protocolbuffers/protobuf/releases?page=2
+We have had troubles installing versions newer than this, so we recommend using previous versions.
+
+Solution:
+Either upgrade your protobuf version or install an older version of the protoc compiler.
+
 Number of sequences per integration time decreasing over time
 -------------------------------------------------------------
 This behaviour has been seen when setting up Borealis on new computers. Typically the radar starts
 and records 30-32 sequences per integration, but over the span of a half hour or more may decrease
-down to 10-20 sequences per integration. 
+down to 10-20 sequences per integration.
 
 This is caused by a communication error between the brian and realtime modules, likely due to the
-value of `realtime_address` in config.ini. Make sure that the realtime_address uses a configure 
+value of `realtime_address` in config.ini. Make sure that the realtime_address uses a configure
 interface that is "UP". See Software Setup for instructions.
 
 Borealis only takes runs one integration time then stops
@@ -238,13 +258,13 @@ screen is indicative of this error::
         import deepdish as dd
     ModuleNotFoundError: No module named 'deepdish'
 
-The Software Setup page has been updated with instructions on how to set up the borealisrt_env 
-virtual environment without encountering this error. 
+The Software Setup page has been updated with instructions on how to set up the borealisrt_env
+virtual environment without encountering this error.
 
 Error while loading shared library libncurses.so.5
 --------------------------------------------------
-This behaviour is seen when running borealis in `debug` or `engineeringdebug` modes.
-Libncurses5 is a dependency of cuda-gdb. By default, the newest version of 
+This behaviour is seen when running borealis in `debug` mode.
+Libncurses5 is a dependency of cuda-gdb. By default, the newest version of
 libncurses is installed with cuda-gdb; however, libncurses6 doesn't seem to work
 with the version of cuda-gdb used.
 

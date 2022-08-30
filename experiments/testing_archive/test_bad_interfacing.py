@@ -37,19 +37,20 @@ class TestExperiment(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "beam_order": beams_to_use,
+            "rx_beam_order": beams_to_use,
+            "tx_beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
-            "txfreq" : scf.COMMON_MODE_FREQ_1, #kHz
+            "freq" : scf.COMMON_MODE_FREQ_1, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing
             "acfint": True,  # interferometer acfs
         }
         self.add_slice(slice_1)
         # Interfacing between slices is not internally consistent. Here we add slice_2 and slice_3,
-        # with PULSE interfacing to slice_1, but then try to interface 2 and 3 together as SCAN.
+        # with CONCURRENT interfacing to slice_1, but then try to interface 2 and 3 together as SCAN.
         slice_2 = copy.deepcopy(slice_1)
         slice_3 = copy.deepcopy(slice_1)
-        slice_3['txfreq'] = scf.COMMON_MODE_FREQ_2 + 1
-        self.add_slice(slice_2, interfacing_dict={0:'PULSE'})
-        self.add_slice(slice_3, interfacing_dict={0:'PULSE', 1:'SCAN'})
+        slice_3['freq'] = scf.COMMON_MODE_FREQ_2 + 1
+        self.add_slice(slice_2, interfacing_dict={0:'CONCURRENT'})
+        self.add_slice(slice_3, interfacing_dict={0:'CONCURRENT', 1:'SCAN'})
 

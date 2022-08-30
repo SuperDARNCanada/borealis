@@ -17,6 +17,7 @@ config_file = borealis_path + '/config.ini'
 hdw_dat_file = borealis_path + '/hdw.dat.'
 restricted_freq_file = borealis_path + '/restrict.dat.'
 
+
 class ExperimentOptions:
     # TODO long init file, consider using multiple functions
     def __init__(self):
@@ -30,10 +31,25 @@ class ExperimentOptions:
             errmsg = 'Cannot open config file at {}'.format(config_file)
             raise ExperimentException(errmsg)
         try:
-            self._main_antennas = [int(i) for i in config['main_antennas'].split(',')]
-            self._main_antenna_count = int(config['main_antenna_count'])
-            self._interferometer_antennas = [int(i) for i in config['interferometer_antennas'].split(',')]
-            self._interferometer_antenna_count = int(config['interferometer_antenna_count'])
+            self._main_antenna_count = int(config["main_antenna_count"])
+            self._interferometer_antenna_count = int(config["interferometer_antenna_count"])
+
+            # Parse N200 array and calculate main and intf antennas operating
+            self._main_antennas = []
+            self._interferometer_antennas = []
+            for n200 in config["n200s"]:
+                rx = bool(n200["rx"])
+                tx = bool(n200["tx"])
+                rx_int = bool(n200["rx_int"])
+                if rx or tx:
+                    main_antenna_num = int(n200["main_antenna"])
+                    self._main_antennas.append(main_antenna_num)
+                if rx_int:
+                    intf_antenna_num = int(n200["interferometer_antenna"])
+                    self._interferometer_antennas.append(intf_antenna_num)
+            self._main_antennas.sort()
+            self._interferometer_antennas.sort()
+
             self._main_antenna_spacing = float(config['main_antenna_spacing'])
             self._interferometer_antenna_spacing = float(config['interferometer_antenna_spacing'])
             self._max_tx_sample_rate = float(config['max_tx_sample_rate'])
@@ -128,10 +144,10 @@ class ExperimentOptions:
         self._boresight = params[7]  # degrees from geographic north, CCW = negative.
         self._boresight_shift = params[8]  # degrees from physical boresight. nominal 0.0 degrees
         self._beam_sep = params[9]  # degrees, nominal 3.24 degrees
-        self._velocity_sign = params[8]  # +1.0 or -1.0
+        self._velocity_sign = params[10]  # +1.0 or -1.0
         self._phase_sign = params[11]  # +1 indicates correct interferometry phase, -1 indicates 180
-        self._tdiff_a = params[12]  # ns for channel A.
-        self._tdiff_b = params[13]  # ns for channel B.
+        self._tdiff_a = params[12]  # us for channel A.
+        self._tdiff_b = params[13]  # us for channel B.
 
         self._intf_offset = [float(params[14]), float(params[15]), float(params[16])]
         # interferometer offset from
@@ -199,8 +215,8 @@ class ExperimentOptions:
                     \n    boresight_shift = {} degrees. \
                     \n    beam_sep = {} degrees\
                     \n    velocity_sign = {} \
-                    \n    tdiff_a = {} ns \
-                    \n    tdiff_b = {} ns \
+                    \n    tdiff_a = {} us \
+                    \n    tdiff_b = {} us \
                     \n    phase_sign = {} \
                     \n    intf_offset = {} \
                     \n    analog_rx_rise = {} us \
@@ -443,11 +459,15 @@ class ExperimentOptions:
 
     @property
     def tdiff_a(self):
-        return self._tdiff_a  # ns
+        return self._tdiff_a  # us
 
     @property
     def tdiff_b(self):
-        return self._tdiff_b  # ns
+        return self._tdiff_b  # us
+
+    @property
+    def analog_rx_attenuator(self):
+        return self._analog_rx_attenuator  # dB
 
     @property
     def phase_sign(self):
@@ -462,10 +482,6 @@ class ExperimentOptions:
     @property
     def analog_rx_rise(self):
         return self._analog_rx_rise  # us
-
-    @property
-    def analog_rx_attenuator(self):
-        return self._analog_rx_attenuator  # dB
 
     @property
     def analog_atten_stages(self):

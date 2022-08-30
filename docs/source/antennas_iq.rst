@@ -1,12 +1,12 @@
 ================
-antennas_iq v0.5
+antennas_iq v0.6
 ================
 
-This is the most up to date version of this file format produced by Borealis version 0.5, the current version. 
+This is the most up to date version of this file format produced by Borealis version 0.6, the current version.
 
 For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
 
-The pydarn format class for this format is BorealisAntennasIq found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisAntennasIq found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 The antennas_iq format is intended to hold individual antennas I and Q data. The data is filtered, but is not averaged. 
 
@@ -37,6 +37,11 @@ The file fields in the antennas_iq array files are:
 | | *type*                          |                                             |
 | | [dimensions]                    |                                             |
 +===================================+=============================================+
+| | **agc_status_word**             | | AGC status word. Bit position             |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates an agc fault |
+| |                                 | | occurred at least once during integration |
++-----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**        | | States what order the data is in and      |
 | | *unicode*                       | | describes the data layout for the         |
 | | [num_antennas]                  | | num_antennas data dimension               |
@@ -103,12 +108,27 @@ The file fields in the antennas_iq array files are:
 | | *uint32*                        | | in kHz. This is the frequency the data    |
 | |                                 | | has been filtered to.                     |
 +-----------------------------------+---------------------------------------------+
+| | **gps_locked**                  | | Designates if the local GPS had a lock    |
+| | *bool*                          | | during the entire integration period.     |
+| | [num_records]                   | | False if it unlocked at least once.       |
++-----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**     | | The max time difference between box_time  |
+| | *float32*                       | | (GPS time) and system time (NTP) during the|
+
+| | [num_records]                   | | integration. Negative when GPS time is    |
+| |                                 | | ahead of system time.                     |
++-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           | 
 | | [num_records]                   | |                                           | 
 +-----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**          | | Number of interferometer array antennas   |
 | | *uint32*                        | |                                           | 
++-----------------------------------+---------------------------------------------+
+| | **lp_status_word**              | | Low power status word. Bit position       |
+| | *uint32*                        | | corresponds to the USRP motherboard/      |
+| | [num_records]                   | | transmitter. A '1' indicates low power    |
+| |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
 | | **main_antenna_count**          | | Number of main array antennas             |
 | | *uint32*                        | |                                           | 
@@ -152,11 +172,11 @@ The file fields in the antennas_iq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **pulse_phase_offset**          | | For pulse encoding phase, in degrees      |
 | | *float32*                       | | offset. Contains one phase offset per     | 
-| | [number of pulses]              | | pulse in pulses.                          |
+| | [] or [num pulses x 1]          | | pulse in pulses                           |
 +-----------------------------------+---------------------------------------------+
 | | **pulses**                      | | The pulse sequence in units of the        |
 | | *uint32*                        | | tau_spacing.                              |
-| | [number of pulses]              | |                                           | 
+| | [number of pulses]              | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **rx_sample_rate**              | | Sampling rate of the samples in this      |
 | | *float64*                       | | file's data in Hz.                        |
@@ -192,7 +212,7 @@ The file fields in the antennas_iq array files are:
 | | max_num_sequences]              | | These timestamps come back from the USRP  | 
 | |                                 | | driver and the USRPs are GPS disciplined  |
 | |                                 | | and synchronized using the Octoclock.     |
-| |                                 | | Provided in milliseconds since epoch.     | 
+| |                                 | | Provided in seconds since epoch.          |
 | |                                 | | Note that records that do not have        | 
 | |                                 | | num_sequences = max_num_sequences will    | 
 | |                                 | | have padded zeros. The num_sequences      | 
@@ -232,6 +252,11 @@ The file fields under the record name in antennas_iq site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |  
 +==================================+=============================================+
+| | **agc_status_word**            | | AGC status word. Bit position             |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates an agc fault |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**       | | States what order the data is in and      | 
 | | *[unicode, ]*                  | | describes the data layout for the         |
 | |                                | | num_antennas data dimension. Antennas are |
@@ -287,11 +312,24 @@ The file fields under the record name in antennas_iq site files are:
 | | *uint32*                       | | in kHz. This is the frequency the data    | 
 | |                                | | has been filtered to.                     |
 +----------------------------------+---------------------------------------------+
+| | **gps_locked**                 | | Designates if the local GPS had a lock    |
+| | *bool*                         | | during the entire integration period.     |
++----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
+| | *float32*                      | | GPS time) and system time (NTP) during the|
+| |                                | | integration. Negative when GPS time is    |
+| |                                | | ahead of system time.                     |
++----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**         | | Number of interferometer array antennas   |
 | | *uint32*                       | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **lp_status_word**             | | Low power status word. Bit position       |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates low power    |
+| |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
 | | **main_antenna_count**         | | Number of main array antennas             |
 | | *uint32*                       | |                                           | 
@@ -310,29 +348,29 @@ The file fields under the record name in antennas_iq site files are:
 | | *int64*                        | | number sequences transmitted) in the      | 
 | |                                | | integration time.                         |
 +----------------------------------+---------------------------------------------+
-| | **num_slices**                 | | Number of slices used simultaneously in   | 
-| | *int64*                        | | this record by the experiment. If more    | 
-| |                                | | than 1, data should exist in another file | 
+| | **num_slices**                 | | Number of slices used simultaneously in   |
+| | *int64*                        | | this record by the experiment. If more    |
+| |                                | | than 1, data should exist in another file |
 | |                                | | for this time period for the other slice. |
 +----------------------------------+---------------------------------------------+
-| | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      | 
-| | *[float32, ]*                  | | offset. Contains one phase offset per     | 
-| |                                | | pulse in pulses.                          |
+| | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      |
+| | *[float32, ]*                  | | offset. Contains one phase offset per     |
+| |                                | | pulse in pulses, or none.                 |
 +----------------------------------+---------------------------------------------+
-| | **pulses**                     | | The pulse sequence in units of the        | 
+| | **pulses**                     | | The pulse sequence in units of the        |
 | | *[uint32, ]*                   | | tau_spacing.                              |
 +----------------------------------+---------------------------------------------+
-| | **rx_sample_rate**             | | Sampling rate of the samples in this      | 
+| | **rx_sample_rate**             | | Sampling rate of the samples in this      |
 | | *float64*                      | | file's data in Hz.                        |
 +----------------------------------+---------------------------------------------+
-| | **samples_data_type**          | | C data type of the samples, provided for  | 
+| | **samples_data_type**          | | C data type of the samples, provided for  |
 | | *unicode*                      | | user friendliness. = 'complex float'      |
 +----------------------------------+---------------------------------------------+
-| | **scan_start_marker**          | | Designates if the record is the first in  | 
-| | *bool*                         | | a scan (scan is defined by the            | 
+| | **scan_start_marker**          | | Designates if the record is the first in  |
+| | *bool*                         | | a scan (scan is defined by the            |
 | |                                | | experiment).                              |
 +----------------------------------+---------------------------------------------+
-| | **scheduling_mode**            | | The mode being run during this time       | 
+| | **scheduling_mode**            | | The mode being run during this time       |
 | | *unicode*                      | | period (ex. 'common', 'special',          |
 | |                                | | 'discretionary').                         |
 +----------------------------------+---------------------------------------------+
@@ -353,7 +391,7 @@ The file fields under the record name in antennas_iq site files are:
 | |                                | | These timestamps come from the USRP       | 
 | |                                | | driver and the USRPs are GPS disciplined  | 
 | |                                | | and synchronized using the Octoclock.     | 
-| |                                | | Provided in milliseconds since epoch.     |
+| |                                | | Provided in seconds since epoch.          |
 +----------------------------------+---------------------------------------------+
 | | **station**                    | | Three-letter radar identifier.            |
 | | *unicode*                      | |                                           | 
@@ -370,6 +408,6 @@ The file fields under the record name in antennas_iq site files are:
 Site/Array Restructuring
 ------------------------
 
-File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARN <https://github.com/SuperDARN/pydarn>`_. It is expected that this code will be separated to its own IO code package in the near future.
+File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_. 
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.

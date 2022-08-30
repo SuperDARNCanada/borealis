@@ -17,7 +17,6 @@ References
 
 """
 import argparse
-import logging
 import os
 import sys
 import json
@@ -32,9 +31,9 @@ def get_args():
     Supports the command-line arguments listed below.
     """
     parser = argparse.ArgumentParser(description="Borealis Check")
-    parser.add_argument('-r', '--restart-after-seconds', type=int, default=900,
+    parser.add_argument('-r', '--restart-after-seconds', type=int, default=300,
                         help='How many seconds can the data file be out of date before attempting '
-                             'to restart the radar? Default 900 seconds (15 minutes)')
+                             'to restart the radar? Default 300 seconds (5 minutes)')
     parser.add_argument('-p', '--borealis-path', required=False, help='Path to Borealis directory',
                         dest='borealis_path', default='/home/radar/borealis/')
     args = parser.parse_args()
@@ -78,8 +77,10 @@ if __name__ == "__main__":
 
     # How many seconds ago was the last write to a data file?
     last_data_write = now_utc_seconds - new_file_write_time
-    print('Write: {}, Now: {}, Diff: {} s'.format(new_file_write_time, now_utc_seconds,
-                                                  last_data_write))
+    print('Write: {}, Now: {}, Diff: {} s' 
+          ''.format(dt.utcfromtimestamp(new_file_write_time).strftime('%Y%m%d.%H%M:%S'), 
+                    dt.utcfromtimestamp(now_utc_seconds).strftime('%Y%m%d.%H%M:%S'),
+                    last_data_write))
 
     # if under the threshold it is OK, if not then there's a problem
     print("{} seconds since last write".format(last_data_write))

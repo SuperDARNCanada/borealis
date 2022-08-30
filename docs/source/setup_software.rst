@@ -100,13 +100,22 @@ The current latest version of OpenSuSe (15.3) is known to work. **Commands that 
     - chmod +x install_radar_deps.py
     - su
     - python3 install_radar_deps.py [radar abbreviation] $BOREALISPATH > install_log.txt 2>&1
-    - exit
 
-#. Install the necessary software to convert and move/copy data:
+#. Install pyDARNio for realtime data support as well as testing and data conversion support:
+
+    - cd $HOME
+    - git clone https://github.com/SuperDARN/pydarnio.git
+
+#. Install the necessary software to convert and test data:
 
     - cd $HOME
     - git clone https://github.com/SuperDARNCanada/borealis-data-utils.git
     - git clone https://github.com/SuperDARNCanada/data_flow.git
+    - mkdir $HOME/pydarnio-env
+    - virtualenv $HOME/pydarnio-env
+    - source $HOME/pydarnio-env/bin/activate
+    - pip install pydarn    # Installs pydarnio as well, as it is a dependency.
+    - deactivate
 
 #. Set up NTP. The `install_radar_deps.py` script already downloads and configures a version of `ntpd` that works with incoming PPS signals on the serial port DCD line. An example configuration of ntp is shown below for `/etc/ntp.conf`. These settings use `tick.usask.ca` as a time server, and PPS (via the `127.127.22.0` lines). It also sets up logging daily for all stats types.
 
@@ -159,21 +168,13 @@ The current latest version of OpenSuSe (15.3) is known to work. **Commands that 
     - crontab -e
     - Add the line `@reboot /home/radar/borealis/start_radar.sh >> /home/radar/start_radar.log 2>&1`
 
-#. Create necessary directories. Here is an example for a user named `radar` and the standard configuration in the 'config.ini' file:
-
-    - sudo mkdir -p /data/borealis_logs
-    - sudo mkdir -p /data/borealis_data
-    - sudo chown radar:users /data/borealis_logs
-    - sudo chown radar:users /data/borealis_data
-    - mkdir $HOME/logs
-
 #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0, especially if you have a PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do this, search the system log for 'tty' (either dmesg or the syslog). An example output with a PCIe expansion card is below. The output shows the first two ttyS0 and 1 are builtin to the motherboard chipset and are not accessible on this x299 PRO from MSI. The next two ttyS4 and S5 are located on the XR17V35X chip which is located on the rosewill card:
 
     .. code-block::
 
-        [ 1.624103] serial8250: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A 
-        [ 1.644875] serial8250: ttyS1 at I/O 0x2f8 (irq = 3, base_baud = 115200) is a 16550A 
-        [ 1.645850] 0000:b4:00.0: ttyS4 at MMIO 0xfbd00000 (irq = 37, base_baud = 7812500) is a XR17V35X 
+        [ 1.624103] serial8250: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A
+        [ 1.644875] serial8250: ttyS1 at I/O 0x2f8 (irq = 3, base_baud = 115200) is a 16550A
+        [ 1.645850] 0000:b4:00.0: ttyS4 at MMIO 0xfbd00000 (irq = 37, base_baud = 7812500) is a XR17V35X
         [ 1.645964] 0000:b4:00.0: ttyS5 at MMIO 0xfbd00400 (irq = 37, base_baud = 7812500) is a XR17V35X
 
 #. Try attaching the ttySx line to a PPS line discipline using ldattach:
@@ -196,14 +197,14 @@ The current latest version of OpenSuSe (15.3) is known to work. **Commands that 
 
    .. code-block::
 
-        [ 0.573439] pps_core: LinuxPPS API ver. 1 registered 
-        [ 0.573439] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it> 
-        [ 8.792473] pps pps0: new PPS source ptp1 
-        [ 9.040732] pps pps1: new PPS source ptp2 
-        [ 10.044514] pps_ldisc: PPS line discipline registered 
-        [ 10.045957] pps pps2: new PPS source serial0 
-        [ 10.045960] pps pps2: source "/dev/ttyS0" added 
-        [ 227.629896] pps pps3: new PPS source serial5 
+        [ 0.573439] pps_core: LinuxPPS API ver. 1 registered
+        [ 0.573439] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+        [ 8.792473] pps pps0: new PPS source ptp1
+        [ 9.040732] pps pps1: new PPS source ptp2
+        [ 10.044514] pps_ldisc: PPS line discipline registered
+        [ 10.045957] pps pps2: new PPS source serial0
+        [ 10.045960] pps pps2: source "/dev/ttyS0" added
+        [ 227.629896] pps pps3: new PPS source serial5
         [ 227.629899] pps pps3: source "/dev/ttyS5" added
 
 #. Now add the GPS disciplined NTP lines to the root startup script using the tty you have your PPS connected to.

@@ -43,7 +43,7 @@ def MODULE_PRINT(module_name, color):
     colored_name = COLOR(color, module_name_upper + ": ")
 
     def pprint(msg):
-        print("{} - ".format(datetime.utcnow().strftime("%H%M%S.%f"))+colored_name+msg)
+        print('{} - '.format(datetime.utcnow().strftime("%Y%m%d.%H%M%S.%f"))+colored_name+msg)
 
     return pprint
 

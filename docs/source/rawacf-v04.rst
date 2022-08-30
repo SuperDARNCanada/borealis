@@ -2,7 +2,7 @@
 rawacf v0.4
 ===========
 
-The pydarn format class for this format is BorealisRawacfv0_4 found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisRawacfv0_4 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 Borealis software version 0.4 is out of date, see the current format of the rawacf files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_. 
 
@@ -178,7 +178,7 @@ The file fields in the rawacf array files are:
 | | max_num_sequences]              | | These timestamps come back from the USRP  | 
 | |                                 | | driver and the USRPs are GPS disciplined  |
 | |                                 | | and synchronized using the Octoclock.     |
-| |                                 | | Provided in milliseconds since epoch.     | 
+| |                                 | | Provided in seconds since epoch.          |
 | |                                 | | Note that records that do not have        | 
 | |                                 | | num_sequences = max_num_sequences will    | 
 | |                                 | | have padded zeros. The num_sequences      | 
@@ -337,7 +337,7 @@ The file fields under the record name in rawacf site files are:
 | |                                | | These timestamps come from the USRP       | 
 | |                                | | driver and the USRPs are GPS disciplined  | 
 | |                                | | and synchronized using the Octoclock.     | 
-| |                                | | Provided in milliseconds since epoch.     |
+| |                                | | Provided in seconds since epoch.          |
 +----------------------------------+---------------------------------------------+
 | | **station**                    | | Three-letter radar identifier.            |
 | | *unicode*                      | |                                           | 
@@ -357,9 +357,9 @@ The file fields under the record name in rawacf site files are:
 Site/Array Restructuring
 ------------------------
 
-File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARN <https://github.com/SuperDARN/pydarn>`_. It is expected that this code will be separated to its own IO code package in the near future.
+File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_. 
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 ----------------------------------------
 rawacf to rawacf SDARN (DMap) Conversion

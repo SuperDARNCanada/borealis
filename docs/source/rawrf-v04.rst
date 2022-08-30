@@ -2,7 +2,7 @@
 rawrf v0.4
 ==========
 
-The pydarn format class for this format is BorealisRawrfv0_4 found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisRawrfv0_4 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 Borealis software version 0.4 is out of date, see the current format of the rawrf files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_. 
 
@@ -105,7 +105,7 @@ The file fields under the record name in rawrf site files are:
 | |                                | | These timestamps come from the USRP       | 
 | |                                | | driver and the USRPs are GPS disciplined  | 
 | |                                | | and synchronized using the Octoclock.     | 
-| |                                | | Provided in milliseconds since epoch.     |
+| |                                | | Provided in seconds since epoch.          |
 +----------------------------------+---------------------------------------------+
 | | **station**                    | | Three-letter radar identifier.            |
 | | *unicode*                      | |                                           | 

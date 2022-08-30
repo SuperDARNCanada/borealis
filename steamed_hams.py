@@ -17,6 +17,9 @@ import os
 import time
 import json
 
+PYTHON_VERSION = os.environ['PYTHON_VERSION']
+
+
 def usage_msg():
     """
     Return the usage message for this process.
@@ -75,7 +78,6 @@ bindkey ^[[1;5B focus down
 
 #Realtime produces no real useful output at this time so we have it in a hidden window. It can
 #still be switched to within screen if needed.
-#screen -t "Realtime" bash -c "{START_RT}"
 screen -t "Brian" bash -c "{START_BRIAN}"
 split
 
@@ -163,7 +165,7 @@ elif args.run_mode == "filterdata":
     # run all modules in debug with rawrf, antennas_iq, and filter stage data. 
     python_opts = "-u"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
-    mode = "engineeringdebug"
+    mode = "debug"
     data_write_args = "--file-type=hdf5 --enable-raw-rf --enable-antenna-iq"
 else:
     print("Mode {} is unknown. Exiting without running Borealis".format(args.run_mode))
@@ -172,13 +174,14 @@ else:
 #Configure python first
 modules= {"brian" : "", "experiment_handler" : "",
                 "radar_control" : "", "data_write" : "",
-                "realtime" : ""}
+                "realtime" : "", "rx_signal_processing" : ""}
 
 for mod in modules:
     opts = python_opts.format(module=mod)
-    modules[mod] = "python3 {opts} {module}/{module}.py".format(opts=opts, module=mod)
+    modules[mod] = "python{version} {opts} {module}/{module}.py".format(version=PYTHON_VERSION, opts=opts, module=mod)
 
-modules['realtime'] = "source borealisrt_env/bin/activate;" + modules['realtime']
+modules['realtime'] = "source borealisrt_env{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['realtime']
+modules['rx_signal_processing'] = "source dspenv{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['rx_signal_processing']
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
 if args.kwargs_string:
@@ -187,7 +190,7 @@ else:
     modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type
     
 #Configure C progs
-c_progs = ['usrp_driver', 'signal_processing']
+c_progs = ['usrp_driver']
 for cprg in c_progs:
     modules[cprg] = "source mode {}; {} {}".format(mode, c_debug_opts, cprg)
 
@@ -214,7 +217,7 @@ screenrc = BOREALISSCREENRC.format(
     START_RT=modules['realtime'],
     START_BRIAN=modules['brian'],
     START_USRP_DRIVER=modules['usrp_driver'],
-    START_DSP=modules['signal_processing'],
+    START_DSP=modules['rx_signal_processing'],
     START_DATAWRITE=modules['data_write'],
     START_EXPHAN=modules['experiment_handler'],
     START_RADCTRL=modules['radar_control'],

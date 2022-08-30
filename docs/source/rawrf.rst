@@ -1,12 +1,12 @@
 ==========
-rawrf v0.5
+rawrf v0.6
 ==========
 
-This is the most up to date version of this file format produced by Borealis version 0.5, the current version. 
+This is the most up to date version of this file format produced by Borealis version 0.6, the current version.
 
 For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
 
-The pydarn format class for this format is BorealisRawrf found in the `borealis_formats <https://github.com/SuperDARN/pydarn/blob/master/pydarn/io/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisRawrf found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 The rawrf format is intended to hold high bandwidth, non-filtered raw data from every antenna.
 
@@ -38,6 +38,11 @@ The file fields under the record name in rawrf site files are:
 | | **Field name**                 | **description**                             |
 | | *type*                         |                                             |  
 +==================================+=============================================+
+| | **agc_status_word**            | | AGC status word. Bit position             |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates an agc fault |
+| |                                | | occurred at least once during integration |
++----------------------------------+---------------------------------------------+
 | | **blanked_samples**            | | Samples that should be blanked because    |
 | | *uint32*                       | | they occurred during transmission times,  |
 | | [number of blanked             | | given by sample number (index into        |
@@ -73,11 +78,24 @@ The file fields under the record name in rawrf site files are:
 | | **experiment_name**            | | Name of the experiment file.              |
 | | *unicode*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
+| | **gps_locked**                 | | Designates if the local GPS had a lock    |
+| | *bool*                         | | during the entire integration period.     |
++----------------------------------+---------------------------------------------+
+| | **gps_to_system_time_diff**    | | The max time difference between box_time  |
+| | *float32*                      | | GPS time) and system time (NTP) during the|
+| |                                | | integration. Negative when GPS time is    |
+| |                                | | ahead of system time.                     |
++----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
 | | *float32*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**         | | Number of interferometer array antennas   |
 | | *uint32*                       | |                                           | 
++----------------------------------+---------------------------------------------+
+| | **lp_status_word**             | | Low power status word. Bit position       |
+| | *uint32*                       | | corresponds to the USRP motherboard/      |
+| |                                | | transmitter. A '1' indicates low power    |
+| |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
 | | **main_antenna_count**         | | Number of main array antennas             |
 | | *uint32*                       | |                                           | 
@@ -119,7 +137,7 @@ The file fields under the record name in rawrf site files are:
 | |                                | | These timestamps come from the USRP       | 
 | |                                | | driver and the USRPs are GPS disciplined  | 
 | |                                | | and synchronized using the Octoclock.     | 
-| |                                | | Provided in milliseconds since epoch.     |
+| |                                | | Provided in seconds since epoch.          |
 +----------------------------------+---------------------------------------------+
 | | **station**                    | | Three-letter radar identifier.            |
 | | *unicode*                      | |                                           | 

@@ -12,6 +12,10 @@
     :author: Marci Detwiller
 """
 
+from experiment_prototype.scan_classes.sequences import Sequence
+from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.experiment_exception import ExperimentException
+
 """ Scans are made up of AveragingPeriods, these are typically a 3sec time of
 the same pulse sequence pointing in one direction.  AveragingPeriods are made
 up of Sequences, typically the same sequence run ave. 20-30 times after a clear
@@ -19,13 +23,6 @@ frequency search.  Sequences are made up of pulse_time lists, which give
 timing, slice, and pulsenumber. CPObject provides channels, pulseshift (if
 any), freq, pulse length, beamdir, and wavetype.
 """
-
-import sys
-import operator
-
-from experiment_prototype.scan_classes.sequences import Sequence
-from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
-from experiment_prototype.experiment_exception import ExperimentException
 
 
 class AveragingPeriod(ScanClassBase):
@@ -93,27 +90,28 @@ class AveragingPeriod(ScanClassBase):
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intt'] != self.intt:
-                    errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced and do not have the" \
+                    errmsg = "Slices {} and {} are SEQUENCE or CONCURRENT interfaced and do not have the" \
                              " same Averaging Period duration intt".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
         elif self.intn is not None:
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intn'] != self.intn:
-                    errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced and do not have the" \
+                    errmsg = "Slices {} and {} are SEQUENCE or CONCURRENT interfaced and do not have the" \
                              " same NAVE goal intn".format(self.slice_ids[0], slice_id)
                     raise ExperimentException(errmsg)
 
         for slice_id in self.slice_ids: 
-            if len(self.slice_dict[slice_id]['beam_order']) != len(self.slice_dict[self.slice_ids[0]]['beam_order']):
-                errmsg = "Slices {} and {} are INTEGRATION or PULSE interfaced but do not have the" \
-                         " same number of integrations in their beam order" \
+            if len(self.slice_dict[slice_id]['rx_beam_order']) != \
+               len(self.slice_dict[self.slice_ids[0]]['rx_beam_order']):
+                errmsg = "Slices {} and {} are SEQUENCE or CONCURRENT interfaced but do not have the" \
+                         " same number of averaging periods in their beam order" \
                          .format(self.slice_ids[0], slice_id)
                 raise ExperimentException(errmsg)
-        self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]]['beam_order'])
+        self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]]['rx_beam_order'])
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 
-        # Determine how this averaging period is made by separating out the INTEGRATION interfaced.
+        # Determine how this averaging period is made by separating out the SEQUENCE interfaced.
         self.nested_slice_list = self.get_sequence_slice_ids()
         self.sequences = []
 
@@ -123,7 +121,6 @@ class AveragingPeriod(ScanClassBase):
         self.one_pulse_only = False
 
         self.beam_iter = 0 # used to keep track of place in beam order.
-
 
     def get_sequence_slice_ids(self):
         """
@@ -140,14 +137,14 @@ class AveragingPeriod(ScanClassBase):
          this averagingperiod.
         """
 
-        integ_combos = []
+        sequence_combos = []
 
-        # Remove INTEGRATION combos as we are trying to separate those.
+        # Remove SEQUENCE combos as we are trying to separate those.
         for k, interface_type in self.interface.items():  # TODO make example
-            if interface_type == "PULSE":
-                integ_combos.append(list(k))
+            if interface_type == "CONCURRENT":
+                sequence_combos.append(list(k))
 
-        combos = self.slice_combos_sorter(integ_combos, self.slice_ids)
+        combos = self.slice_combos_sorter(sequence_combos, self.slice_ids)
 
         if __debug__:
             print("sequences slice id combos: {}".format(combos))
@@ -183,42 +180,3 @@ class AveragingPeriod(ScanClassBase):
             raise ExperimentException(errmsg)
 
         return slice_to_beamdir_dict
-
-    def build_sequences(self, slice_to_beamdir_dict):
-        """
-        Build a list of sequences to iterate through when transmitting.
-
-        This includes building all pulses within the sequences, so it then contains all
-        pulse samples data to iterate through when transmitting. If there is only one
-        sequence type in the averaging period, this list will be of length 1. That
-        would mean that that one sequence gets repeated throughout the averagingperiod
-        (intn and intt still apply).
-
-        :returns: sequence_dict_list, list of lists of pulse dictionaries.
-        """
-
-        # Create a pulse dictionary before running through the
-        #   averaging period.
-        sequence_dict_list = []
-        # a list of sequence data.
-        # a sequence data is a list of pulses in the sequence in order.
-        # a pulse data is a dictionary of the required data for the pulse.
-        for sequence in self.sequences:
-            # create pulse dictionary.
-            sequence_dict = sequence.build_pulse_transmit_data(slice_to_beamdir_dict)
-
-            # Just alternating sequences
-
-            sequence_dict_list.append(sequence_dict)
-
-        if len(sequence_dict_list) == 1:
-            # only one sequence in the averaging period
-            for pulse_num, pulse_dict in enumerate(sequence_dict_list[0]):
-                if pulse_num == 0:
-                    continue
-                elif pulse_dict['isarepeat'] == False:
-                    break  # there is another unique pulse in the sequence.
-            else:  # no break
-                self.one_pulse_only = True  # there is only one unique pulse in the sequence.
-
-        return sequence_dict_list
