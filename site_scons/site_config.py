@@ -76,9 +76,6 @@ ENV_OVERRIDES = {
     'debug': dict(
         BUILDROOT = os.path.join(_BUILD_BASE, 'debug'),
     ),
-    'engineeringdebug': dict(
-        BUILDROOT = os.path.join(_BUILD_BASE, 'engineeringdebug'),
-    ),
     'release': dict(
         BUILDROOT = os.path.join(_BUILD_BASE, 'release'),
     ),
@@ -121,11 +118,6 @@ ENV_EXTENSIONS = {
         # Extra flags for debug C++ builds
         CCFLAGS = ['-g', '-DDEBUG',],
         NVCCFLAGS = ['-G', '-g', '-DDEBUG'],
-    ),
-    'engineeringdebug' : dict(
-        # Extra flags for engineering level debug c++ builds
-        CCFLAGS = ['-g', '-DDEBUG', '-DENGINEERING_DEBUG'],
-        NVCCFLAGS = ['-G', '-g', '-DDEBUG', '-DENGINEERING_DEBUG'],
     ),
     'release': dict(
         # Extra flags for release C++ builds
