@@ -97,14 +97,16 @@ class ExperimentOptions:
             self._brian_to_dspbegin_identity = str(config["brian_to_dspbegin_identity"])
             self._brian_to_dspend_identity = str(config["brian_to_dspend_identity"])
 
-            if min(self.main_antennas) < 0 or max(self.main_antennas) >= self.main_antenna_count:
-                errmsg = 'main_antennas and main_antenna_count have incompatible values in {}'.format(config_file)
-                raise ExperimentException(errmsg)
-            if min(self.interferometer_antennas) < 0 or \
-                    max(self.interferometer_antennas) >= self.interferometer_antenna_count:
-                errmsg = 'interferometer_antennas and interferometer_antenna_count have incompatible values in {}' \
-                         ''.format(config_file)
-                raise ExperimentException(errmsg)
+            if len(self.main_antennas) > 0:
+                if min(self.main_antennas) < 0 or max(self.main_antennas) >= self.main_antenna_count:
+                    errmsg = 'main_antennas and main_antenna_count have incompatible values in {}'.format(config_file)
+                    raise ExperimentException(errmsg)
+            if len(self.interferometer_antennas) > 0:
+                if min(self.interferometer_antennas) < 0 or \
+                        max(self.interferometer_antennas) >= self.interferometer_antenna_count:
+                    errmsg = 'interferometer_antennas and interferometer_antenna_count have incompatible values in {}' \
+                            ''.format(config_file)
+                    raise ExperimentException(errmsg)
 
             # TODO add appropriate signal process maximum time here after timing is changed - can
             # use to check for pulse spacing minimums, pace the driver
