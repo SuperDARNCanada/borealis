@@ -151,6 +151,7 @@ def install_packages():
 
                 "python39",
                 "python39-devel",
+                "python39-pip",
 
                 "boost-devel",
                 "liboost-all-dev",
@@ -190,10 +191,10 @@ def install_packages():
         print(install_cmd)
         execute_cmd(install_cmd)
 
-    update_pip = "sudo -u radar pip{version} install --upgrade pip".format(version=args.python_version)
+    update_pip = "sudo -u {normal_user} pip{version} install --upgrade pip".format(normal_user=args.user, version=args.python_version)
     execute_cmd(update_pip)
 
-    pip_cmd = "sudo -u radar pip{version} install ".format(version=args.python_version) + " ".join(pip)
+    pip_cmd = "sudo -u {normal_user} pip{version} install ".format(normal_user=args.user, version=args.python_version) + " ".join(pip)
     execute_cmd(pip_cmd)
 
 
@@ -375,11 +376,13 @@ def install_realtime():
 
 
     execute_cmd("mkdir -p $BOREALISPATH/borealisrt_env")
-    execute_cmd("virtualenv -p python{version} $BOREALISPATH/borealisrt_env;".format(version=args.python_version))
+    execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/borealisrt_env".format(
+        normal_user=args.user, normal_group=args.group))
+    execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/borealisrt_env;".format(normal_user=args.user, version=args.python_version))
     pip_cmd = "source $BOREALISPATH/borealisrt_env/bin/activate;" \
-              "sudo -u radar pip install zmq pydarnio;" \
-              "sudo -u radar pip install git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
-              "deactivate;"
+              "sudo -u {normal_user} pip{version} install zmq pydarnio;" \
+              "sudo -u {normal_user} pip{version} install git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
+              "deactivate;".format(normal_user=args.user, version=args.python_version)
 
     execute_cmd(pip_cmd)
 
@@ -390,10 +393,12 @@ def install_dspenv():
     """
 
     execute_cmd("bash -c \"mkdir -p $BOREALISPATH/dspenv;\"")
-    execute_cmd("virtualenv -p python{version} $BOREALISPATH/dspenv;".format(version=args.python_version))
+    execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/dspenv".format(
+        normal_user=args.user, normal_group=args.group))
+    execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/dspenv;".format(normal_user=args.user, version=args.python_version))
     pip_cmd = "source $BOREALISPATH/dspenv/bin/activate;" \
-              "sudo -u radar pip install zmq numpy scipy matplotlib cupy protobuf posix_ipc;" \
-              "deactivate;"
+              "sudo -u {normal_user} pip{version} install zmq numpy scipy matplotlib cupy protobuf posix_ipc;" \
+              "deactivate;".format(normal_user=args.user, version=args.python_version)
 
     execute_cmd(pip_cmd)
 
@@ -401,7 +406,7 @@ def install_dspenv():
 def install_directories():
     mkdirs_cmd = "mkdir -p /data/borealis_logs;" \
                  "mkdir -p /data/borealis_data;" \
-                 "mkdir -p ${HOME}/logs;" \
+                 "mkdir -p $HOME/logs;" \
                  "chown {normal_user}:{normal_group} /data/borealis_*;"
 
     mkdirs_cmd = mkdirs_cmd.format(normal_user=args.user, normal_group=args.group)
