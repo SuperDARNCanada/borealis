@@ -226,8 +226,9 @@ class ParseData(object):
         main_shm.unlink()
 
         intf_available = False
-        if self.processed_data.bfiq_intf_shm != '':
+        if self.processed_data.bfiq_intf_shm != '' and self.processed_data.bfiq_intf_shm is not None:
             intf_available = True
+            print(self.processed_data.bfiq_intf_shm)
             intf_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_intf_shm)
             temp_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=intf_shm.buf)
             intf_data = temp_data.copy()

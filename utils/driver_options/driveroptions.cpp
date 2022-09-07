@@ -8,6 +8,7 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include "utils/shared_macros/shared_macros.hpp"
 #include "utils/options/options.hpp"
 #include "utils/driver_options/driveroptions.hpp"
 
@@ -35,6 +36,7 @@ DriverOptions::DriverOptions() {
     // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
     {
+	DEBUG_MSG("n200:");
         std::string addr = "";
         bool rx = false;
         bool tx = false;
@@ -85,6 +87,7 @@ DriverOptions::DriverOptions() {
                 int_antenna_map[int_antenna_num] = device_num;
             }
         }
+	DEBUG_MSG(addr);
     }
 
     // To ensure device numbers follow UHD conventions (0 to N in steps of 1),
@@ -109,9 +112,11 @@ DriverOptions::DriverOptions() {
         }
         if (rx_map[device_num] || tx_map[device_num]) {
             ma_channel_str = ma_channel_str + std::to_string(device_num) + ",";
-        }
-        addr_idx++;
+        }    
+	addr_idx++;
     }
+    
+    DEBUG_MSG(devices_);
 
     // Interferometer antenna
     std::string ia_recv_str = "";       // Interferometer receive channel string
@@ -125,13 +130,23 @@ DriverOptions::DriverOptions() {
     }
 
     // Remove trailing comma from channel strings
-    ma_recv_str.pop_back();
-    ma_tx_str.pop_back();
-    ma_channel_str.pop_back();
-    ia_recv_str.pop_back();
-    ia_channel_str.pop_back();
+    if (!ma_recv_str.empty()) ma_recv_str.pop_back();
+    if (!ma_tx_str.empty()) ma_tx_str.pop_back();
+    if (!ma_channel_str.empty()) ma_channel_str.pop_back();
+    DEBUG_MSG("Removing trailing comma from int recv string");
+    DEBUG_MSG(ia_recv_str);
+    if (!ia_recv_str.empty()) ia_recv_str.pop_back();
+    DEBUG_MSG(ia_recv_str);
+    DEBUG_MSG("Removing trailing comma from int channel string");
+    DEBUG_MSG(ia_channel_str);
+    if (!ia_channel_str.empty()) ia_channel_str.pop_back();
 
-    auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
+    DEBUG_MSG("Done, now outputting entire recv channel str");
+
+    auto total_recv_chs_str = ma_recv_str;
+    if (!ia_recv_str.empty()) total_recv_chs_str += "," + ia_recv_str;
+    DEBUG_MSG("Total recv chs str:");
+    DEBUG_MSG(total_recv_chs_str);
 
     clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
 
@@ -181,22 +196,29 @@ DriverOptions::DriverOptions() {
                                 config_pt.get<std::string>("agc_signal_read_delay"));
 
     auto make_channels = [&](std::string chs){
-
+	DEBUG_MSG(chs);
         std::stringstream ss(chs);
 
         std::vector<size_t> channels;
+	if (chs.empty()) return channels;
+
         while (ss.good()) {
             std::string s;
             std::getline(ss, s, ',');
+	    DEBUG_MSG(s);
             channels.push_back(boost::lexical_cast<size_t>(s));
         }
 
         return channels;
     };
 
+    DEBUG_MSG("total_recv_chs_str");
     receive_channels_ = make_channels(total_recv_chs_str);
+    DEBUG_MSG("ma_tx_str");
     transmit_channels_ = make_channels(ma_tx_str);
+    DEBUG_MSG("ma_channel_str");
     main_antennas_ = make_channels(ma_channel_str);
+    DEBUG_MSG("ia_channel_str");
     interferometer_antennas_ = make_channels(ia_channel_str);
 
     router_address_ = config_pt.get<std::string>("router_address");
@@ -209,6 +231,7 @@ DriverOptions::DriverOptions() {
     ringbuffer_name_ = config_pt.get<std::string>("ringbuffer_name");
     ringbuffer_size_bytes_ = boost::lexical_cast<double>(
                                     config_pt.get<std::string>("ringbuffer_size_bytes"));
+    DEBUG_MSG("Done with driver options");
 }
 
 /**

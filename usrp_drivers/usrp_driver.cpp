@@ -607,6 +607,7 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   GOOGLE_PROTOBUF_VERIFY_VERSION;
 
+  DEBUG_MSG("Getting Driver options");
   DriverOptions driver_options;
 
   DEBUG_MSG(driver_options.get_device_args());

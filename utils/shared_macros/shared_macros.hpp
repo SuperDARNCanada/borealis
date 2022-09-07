@@ -19,7 +19,7 @@
 
 
 #ifdef DEBUG
-#define DEBUG_MSG(x) do {std::cout << x << std::endl;} while (0)
+#define DEBUG_MSG(x) do {std::cout << x << std::endl << std::flush;} while (0)
 #define TIMEIT_IF_TRUE_OR_DEBUG(truth, msg, x) do {                                                                          \
       auto time_start = std::chrono::steady_clock::now();                      \
       x;                                                                       \
