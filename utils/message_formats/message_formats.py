@@ -60,17 +60,9 @@ class ProcessedSequenceMessage:
     debug_data: list[DebugDataStage] = field(default_factory=list)
     output_datasets: list[OutputDataset] = field(default_factory=list)
 
-    def remove_all_debug_data(self):
-        """Remove all debug_data entries so the list can be refilled for the next sequence"""
-        self.debug_data = []
-
     def add_debug_data(self, stage: DebugDataStage):
         """Add a stage of debug data to the message"""
         self.debug_data.append(stage)
-
-    def remove_all_output_datasets(self):
-        """Remove all output_dataset entries so the list can be refilled for the next sequence"""
-        self.output_datasets = []
 
     def add_output_dataset(self, data_set: OutputDataset):
         """Add an output dataset to the message"""
@@ -109,10 +101,6 @@ class RxChannel:
     beam_phases: np.ndarray = None
     lags: list[Lag] = field(default_factory=list)
 
-    def remove_all_lags(self):
-        """Remove all lag entries so the list can be refilled for the next sequence"""
-        self.lags = []
-
     def add_lag(self, lag: Lag):
         """Add a Lag dataclass to the message."""
         self.lags.append(lag)
@@ -137,14 +125,6 @@ class SequenceMetadataMessage:
     def add_decimation_stage(self, stage: DecimationStageMessage):
         """Add a decimation stage to the message."""
         self.decimation_stages.append(stage)
-
-    def remove_all_decimation_stages(self):
-        """Remove all decimation_stage entries so the list can be refilled for the next sequence"""
-        self.decimation_stages = []
-
-    def remove_all_rx_channels(self):
-        """Remove all rx_channel entries so the list can be refilled for the next sequence"""
-        self.rx_channels = []
 
     def add_rx_channel(self, channel: RxChannel):
         """Add an rx_channel dataclass to the message."""
@@ -189,25 +169,13 @@ class RxChannelMetadata:
     ltabs: list[LagTable] = field(default_factory=list)
     averaging_method: str = None
 
-    def remove_all_sqn_encodings(self):
-        """Remove all sequence_encoding entries so the list can be refilled for the next sequence"""
-        self.sequence_encodings = []
-
     def add_sqn_encodings(self, encodings: list):
         """Add a sequence_encodings list to the message."""
         self.sequence_encodings.append(encodings)
 
-    def remove_all_beams(self):
-        """Remove all beam entries so the list can be refilled for the next sequence"""
-        self.beams = []
-
     def add_beam(self, beam: Beam):
         """Add a Beam dataclass to the message."""
         self.beams.append(beam)
-
-    def remove_all_ltabs(self):
-        """Remove all beam entries so the list can be refilled for the next sequence"""
-        self.ltabs = []
 
     def add_ltab(self, ltab: LagTable):
         """Add a LagTable dataclass to the message."""
@@ -233,10 +201,6 @@ class Sequence:
     tx_data: TxData = None
     rx_channels: list[RxChannelMetadata] = field(default_factory=list)
 
-    def remove_all_rx_channels(self):
-        """Remove all rx_channel entries so the list can be refilled for the next sequence"""
-        self.rx_channels = []
-
     def add_rx_channel(self, channel: RxChannelMetadata):
         """Add an rx channel metadata dataclass to the message."""
         self.rx_channels.append(channel)
@@ -261,10 +225,6 @@ class AveperiodMetadataMessage:
     data_normalization_factor: float = None
     scheduling_mode: str = None
     sequences: list = field(default_factory=list)
-
-    def remove_all_sequences(self):
-        """Remove all sequence entries so the list can be refilled for the next averaging period."""
-        self.sequences = []
 
     def add_sequence(self, sequence: dict):
         """Add a sequence dict to the message."""
