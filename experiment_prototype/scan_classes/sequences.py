@@ -473,9 +473,8 @@ class Sequence(ScanClassBase):
 
             pulse_data.append(new_pulse_info)
 
-        debug_dict = copy.deepcopy(self.debug_dict)
-
         if __debug__:
+            debug_dict = copy.deepcopy(self.debug_dict)
             debug_dict['sequence_samples'] = sequence
             debug_dict['decimated_samples'] = sequence[main_antennas, ::debug_dict['dmrate']]
         else:
