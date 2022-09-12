@@ -91,7 +91,6 @@ def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array,
         in the sequence, in which case we will save the time and not send the samples list and other
         params that will be the same.
     """
-
     driverpacket = DriverPacket()
     driverpacket.timetosendsamples = timing
     driverpacket.SOB = SOB
@@ -130,8 +129,6 @@ def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array,
 
     socket_operations.send_pulse(radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString())
 
-    del driverpacket.channel_samples[:]  # TODO find out - Is this necessary in conjunction with .Clear()?
-
 
 def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                       brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
@@ -162,11 +159,9 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
              filtering data.
 
     """
-
     # TODO: does the for loop below need to happen every time. Could be only updated
     #  as necessary to make it more efficient.
 
-    # These get re-used, so we empty the lists first
     message = messages.SequenceMetadataMessage()
     message.sequence_time = sequence_time
     message.sequence_num = seqnum
@@ -263,7 +258,6 @@ def search_for_experiment(radar_control_to_exp_handler,
     :returns new_experiment_received: boolean (True for new experiment received)
     :returns experiment: experiment instance (or None if there is no new experiment)
     """
-
     try:
         socket_operations.send_request(radar_control_to_exp_handler, exphan_to_radctrl_iden, status)
     except zmq.ZMQBaseError as e:
@@ -334,7 +328,6 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden,
     The 'sequence_samples' and 'decimated_samples' values are themselves dictionaries, where the
     keys are the antenna numbers (there is a sample set for each transmit antenna).
     """
-
     message = messages.AveperiodMetadataMessage()
     message.experiment_id = experiment_id
     message.experiment_name = experiment_name
@@ -451,7 +444,6 @@ def radar():
     opportunity to change the experiment (not currently implemented). If a new
     experiment is sent, radar will halt the old one and begin with the new experiment.
     """
-
     # Get config options.
     options = ExperimentOptions()
 
