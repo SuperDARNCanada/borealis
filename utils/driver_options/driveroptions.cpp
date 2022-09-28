@@ -133,7 +133,8 @@ DriverOptions::DriverOptions() {
 
     auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
-    clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
+    clk_type_ = config_pt.get<std::string>("gpsdo_type");
+    clk_addr_ = config_pt.get<std::string>("gpsdo_addr");
 
     tx_subdev_ = config_pt.get<std::string>("tx_subdev");
     main_rx_subdev_ = config_pt.get<std::string>("main_rx_subdev");
@@ -219,6 +220,16 @@ DriverOptions::DriverOptions() {
 std::string DriverOptions::get_device_args() const
 {
     return devices_;
+}
+
+/**
+ * @brief      Gets the clock type.
+ *
+ * @return     The clock type (i.e. 'fury', 'octoclock', ...).
+ */
+std::string DriverOptions::get_clk_type() const
+{
+    return clk_type_;
 }
 
 /**

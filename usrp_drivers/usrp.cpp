@@ -315,8 +315,9 @@ double USRP::get_rx_center_freq(uint32_t channel)
 /**
  * @brief      Sets the USRP time source.
  *
- * @param[in]  source    A string with the time source the USRP will use.
- * @param[in]  clk_addr  IP address of the octoclock for gps timing.
+ * @param[in]  source    A string with the time source the USRP will use ('internal', 'external').
+ * @param[in]  clk_addr  IP address of the octoclock or serial port for the FURY for gps timing.
+ * @param[in]  clk_type  The type of clock, i.e. 'fury', 'octoclock', etc...
  *
  * Uses the method Ettus suggests for setting time on the x300.
  * https://files.ettus.com/manual/page_gpsdo_x3x0.html
@@ -324,7 +325,7 @@ double USRP::get_rx_center_freq(uint32_t channel)
  * time is in a stable place past the second if no gps is available.
  * The USRP is then set to this time.
  */
-void USRP::set_time_source(std::string source, std::string clk_addr)
+void USRP::set_time_source(std::string source, std::string clk_addr, std::string clk_type)
 {
   auto tt =  std::chrono::high_resolution_clock::now();
   auto tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(tt.time_since_epoch());
@@ -336,23 +337,43 @@ void USRP::set_time_source(std::string source, std::string clk_addr)
     usleep(10000);
   }
   if (source == "external"){
-    gps_clock_ = uhd::usrp_clock::multi_usrp_clock::make(uhd::device_addr_t(clk_addr));
+    // Check the clock type here and handle accordingly
+    if(clk_type == "fury") {
+        // serial port - ask it for the status using SCPI commands
+        gps_clock_ = clocks::Fury(clk_addr);
 
-    //Make sure Clock configuration is correct
-    if(gps_clock_->get_sensor("gps_detected").value == "false"){
-      throw uhd::runtime_error("No GPSDO detected on Clock.");
-    }
-    if(gps_clock_->get_sensor("using_ref").value != "internal"){
-      std::ostringstream msg;
-      msg << "Clock must be using an internal reference. Using "
-          << gps_clock_->get_sensor("using_ref").value;
-      throw uhd::runtime_error(msg.str());
-    }
+        // Make sure clock configuration is correct
+        if(gps_clock_->get_status() == false) {
+          throw uhd::runtime_error("Fury GPSDO not configured correctly");
+        }
 
-    while(! (gps_clock_->get_sensor("gps_locked").to_bool())) {
-      std::this_thread::sleep_for(std::chrono::seconds(2));
-      RUNTIME_MSG("Waiting for gps lock...");
-    }
+        // Wait for GPS lock
+        while(! (gps_clock_->is_locked())) {
+          std::this_thread::sleep_for(std::chrono::seconds(2));
+          RUNTIME_MSG("Waiting for Fury GPSDO lock...");
+        }
+    } else if clk_type == "octoclock") {
+      gps_clock_ = uhd::usrp_clock::multi_usrp_clock::make(uhd::device_addr_t(clk_addr));
+
+      //Make sure clock configuration is correct
+      if(gps_clock_->get_sensor("gps_detected").value == "false"){
+        throw uhd::runtime_error("No GPSDO detected on octoclock.");
+      }
+      if(gps_clock_->get_sensor("using_ref").value != "internal"){
+        std::ostringstream msg;
+        msg << "Octoclock must be using an internal reference. Using "
+            << gps_clock_->get_sensor("using_ref").value;
+        throw uhd::runtime_error(msg.str());
+      }
+
+      while(! (gps_clock_->get_sensor("gps_locked").to_bool())) {
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+        RUNTIME_MSG("Waiting for Octoclock GPSDO lock...");
+      }
+    } else {
+      throw uhd::runtime_error("Unknown clock type configured.");
+    } /* clk_type */
+
     usrp_->set_time_source(source);
 
     auto wait_for_update = [&]() {
@@ -383,7 +404,7 @@ void USRP::set_time_source(std::string source, std::string clk_addr)
     }
 
   }
-  else {
+  else { // Source isn't 'external'
     //TODO(keith): throw error
     usrp_->set_time_now(uhd::time_spec_t(std::ceil(tt_sc.count())));
   }
@@ -573,8 +594,12 @@ bool USRP::gps_locked()
   if (gps_clock_ == nullptr){
     return false;
   }
-  else {
+  else if (driver_options.get_clk_type() == "fury") {
+    return gps_clock_->is_locked();
+  } else if (driver_options.get_clk_type() == "octoclock") {
     return gps_clock_->get_sensor("gps_locked").to_bool();
+  } else {
+    return false;
   }
 }
 
