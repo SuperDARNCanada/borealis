@@ -184,8 +184,8 @@ for mod in modules:
     opts = python_opts.format(module=mod)
     modules[mod] = "python{version} {opts} {module}/{module}.py".format(version=PYTHON_VERSION, opts=opts, module=mod)
 
-modules['realtime'] = "source borealisrt_env/bin/activate;".format(version=PYTHON_VERSION) + modules['realtime']
-modules['rx_signal_processing'] = "source dspenv/bin/activate;".format(version=PYTHON_VERSION) + modules['rx_signal_processing']
+modules['realtime'] = "source borealisrt_env{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['realtime']
+modules['rx_signal_processing'] = "source dspenv{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['rx_signal_processing']
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
 if args.kwargs_string:
