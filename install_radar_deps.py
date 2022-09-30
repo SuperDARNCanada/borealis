@@ -374,12 +374,12 @@ def install_realtime():
     Create virtual environment and install utilities needed for RT capabilities.
     """
 
-
-    execute_cmd("mkdir -p $BOREALISPATH/borealisrt_env")
-    execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/borealisrt_env".format(
-        normal_user=args.user, normal_group=args.group))
-    execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/borealisrt_env;".format(normal_user=args.user, version=args.python_version))
-    pip_cmd = "source $BOREALISPATH/borealisrt_env/bin/activate;" \
+    execute_cmd("mkdir -p $BOREALISPATH/borealisrt_env{version}".format(version=args.python_version))
+    execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/borealisrt_env{version}"
+                "".format(normal_user=args.user, normal_group=args.group, version=args.python_version))
+    execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/borealisrt_env{version};"
+                "".format(normal_user=args.user, version=args.python_version))
+    pip_cmd = "source $BOREALISPATH/borealisrt_env{version}/bin/activate;" \
               "sudo -u {normal_user} pip{version} install zmq pydarnio;" \
               "sudo -u {normal_user} pip{version} install git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
               "deactivate;".format(normal_user=args.user, version=args.python_version)
@@ -392,11 +392,12 @@ def install_dspenv():
     Create virtual environment and install utilities needed for python DSP.
     """
 
-    execute_cmd("bash -c \"mkdir -p $BOREALISPATH/dspenv;\"")
-    execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/dspenv".format(
-        normal_user=args.user, normal_group=args.group))
-    execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/dspenv;".format(normal_user=args.user, version=args.python_version))
-    pip_cmd = "source $BOREALISPATH/dspenv/bin/activate;" \
+    execute_cmd("bash -c \"mkdir -p $BOREALISPATH/dspenv{version};\"".format(version=args.python_version))
+    execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/dspenv{version}"
+                "".format(normal_user=args.user, normal_group=args.group, version=args.python_version))
+    execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/dspenv{version};"
+                "".format(normal_user=args.user, version=args.python_version))
+    pip_cmd = "source $BOREALISPATH/dspenv{version}/bin/activate;" \
               "sudo -u {normal_user} pip{version} install zmq numpy scipy matplotlib cupy protobuf posix_ipc;" \
               "deactivate;".format(normal_user=args.user, version=args.python_version)
 
