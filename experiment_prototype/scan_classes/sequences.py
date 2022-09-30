@@ -269,7 +269,6 @@ class Sequence(ScanClassBase):
         # Normalize all combined pulses to the max USRP DAC amplitude
         all_antennas = []
         for slice_id in self.slice_ids:
-            print("basic_slice_pulses[{}]: {}".format(slice_id, self.basic_slice_pulses[slice_id]))
             if not exp_slice['rxonly']:
                 self.basic_slice_pulses[slice_id] *= max_usrp_dac_amplitude / power_divider[slice_id]
 
@@ -473,9 +472,8 @@ class Sequence(ScanClassBase):
 
             pulse_data.append(new_pulse_info)
 
-        debug_dict = copy.deepcopy(self.debug_dict)
-
         if __debug__:
+            debug_dict = copy.deepcopy(self.debug_dict)
             debug_dict['sequence_samples'] = sequence
             debug_dict['decimated_samples'] = sequence[main_antennas, ::debug_dict['dmrate']]
         else:

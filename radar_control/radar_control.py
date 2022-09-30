@@ -41,10 +41,9 @@ TIME_PROFILE = False
 rad_ctrl_print = sm.MODULE_PRINT("radar control", "green")
 
 
-def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq,
+def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq,
                  txrate, rxrate):
     """ First packet sent to driver for setup.
-        :param driverpacket: the protobuf packet to fill and pass over zmq
         :param radctrl_to_driver: the sender socket for sending the driverpacket
         :param driver_to_radctrl_iden: the receiver socket identity on the driver side
         :param txctrfreq: the transmit center frequency to tune to, kHz.
@@ -53,8 +52,7 @@ def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrf
         :param txrate: the tx sampling rate (Hz).
         :param rxrate: the rx sampling rate (Hz).
     """
-
-    driverpacket.Clear()
+    driverpacket = DriverPacket()
     driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
     driverpacket.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
     driverpacket.txrate = txrate
@@ -65,11 +63,10 @@ def setup_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, txctrf
     socket_operations.recv_data(radctrl_to_driver, driver_to_radctrl_iden, rad_ctrl_print)
 
 
-def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samples_array,
+def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array,
                    txctrfreq, rxctrfreq, txrate, rxrate, numberofreceivesamples, seqtime, SOB, EOB, timing,
                    seqnum, align_sequences, repeat=False):
     """ Place data in the driver packet and send it via zeromq to the driver.
-        :param driverpacket: the protobuf packet to fill and pass over zmq
         :param radctrl_to_driver: the sender socket for sending the driverpacket
         :param driver_to_radctrl_iden: the reciever socket identity on the driver side
         :param samples_array: this is a list of length main_antenna_count from the config file. It contains one
@@ -94,8 +91,7 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
         in the sequence, in which case we will save the time and not send the samples list and other
         params that will be the same.
     """
-
-    driverpacket.Clear()
+    driverpacket = DriverPacket()
     driverpacket.timetosendsamples = timing
     driverpacket.SOB = SOB
     driverpacket.EOB = EOB
@@ -133,16 +129,13 @@ def data_to_driver(driverpacket, radctrl_to_driver, driver_to_radctrl_iden, samp
 
     socket_operations.send_pulse(radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString())
 
-    del driverpacket.channel_samples[:]  # TODO find out - Is this necessary in conjunction with .Clear()?
 
-
-def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
+def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                       brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
                       slice_dict, beam_dict, sequence_time, first_rx_sample_start,
                       rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
     """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
         Happens every sequence.
-        :param message: the SequenceMetadataMessage object
         :param radctrl_to_dsp: The sender socket for sending data to dsp
         :param dsp_radctrl_iden: The receiver socket identity on the dsp side
         :param rxrate: The receive sampling rate (Hz).
@@ -166,14 +159,10 @@ def send_dsp_metadata(message, radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_bria
              filtering data.
 
     """
-
     # TODO: does the for loop below need to happen every time. Could be only updated
     #  as necessary to make it more efficient.
 
-    # These get re-used, so we empty the lists first
-    message.remove_all_rx_channels()
-    message.remove_all_decimation_stages()
-
+    message = messages.SequenceMetadataMessage()
     message.sequence_time = sequence_time
     message.sequence_num = seqnum
     message.offset_to_first_rx_sample = first_rx_sample_start
@@ -269,7 +258,6 @@ def search_for_experiment(radar_control_to_exp_handler,
     :returns new_experiment_received: boolean (True for new experiment received)
     :returns experiment: experiment instance (or None if there is no new experiment)
     """
-
     try:
         socket_operations.send_request(radar_control_to_exp_handler, exphan_to_radctrl_iden, status)
     except zmq.ZMQBaseError as e:
@@ -306,14 +294,13 @@ def search_for_experiment(radar_control_to_exp_handler,
     return new_experiment_received, experiment
 
 
-def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_iden,
+def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden,
                             seqnum, num_sequences, scan_flag, inttime, sequences, beam_iter,
                             experiment_id, experiment_name, scheduling_mode, output_sample_rate,
                             experiment_comment, filter_scaling_factors, rx_center_freq,
                             debug_samples=None):
     """
     Send the metadata about this averaging period to datawrite so that it can be recorded.
-    :param message: The AveperiodMetadataMessage
     :param radctrl_to_datawrite: The socket to send the packet on.
     :param datawrite_radctrl_iden: Identity of datawrite on the socket.
     :param seqnum: The last sequence number (identifier) that is valid for this averaging
@@ -341,8 +328,7 @@ def send_datawrite_metadata(message, radctrl_to_datawrite, datawrite_radctrl_ide
     The 'sequence_samples' and 'decimated_samples' values are themselves dictionaries, where the
     keys are the antenna numbers (there is a sample set for each transmit antenna).
     """
-
-    message.remove_all_sequences()
+    message = messages.AveperiodMetadataMessage()
     message.experiment_id = experiment_id
     message.experiment_name = experiment_name
     message.experiment_comment = experiment_comment
@@ -458,12 +444,6 @@ def radar():
     opportunity to change the experiment (not currently implemented). If a new
     experiment is sent, radar will halt the old one and begin with the new experiment.
     """
-
-    # Initialize driverpacket.
-    driverpacket = DriverPacket()
-    sigprocpacket = messages.SequenceMetadataMessage()
-    aveperiod_packet = messages.AveperiodMetadataMessage()
-
     # Get config options.
     options = ExperimentOptions()
 
@@ -509,7 +489,7 @@ def radar():
 
     # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
-    setup_driver(driverpacket, radar_control_to_driver, options.driver_to_radctrl_identity,
+    setup_driver(radar_control_to_driver, options.driver_to_radctrl_identity,
                  experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
                  experiment.rxrate)
 
@@ -736,7 +716,7 @@ def radar():
 
                         def send_pulses():
                             for pulse_transmit_data in pulse_transmit_data_tracker[sequence_index][num_sequences]:
-                                data_to_driver(driverpacket, radar_control_to_driver,
+                                data_to_driver(radar_control_to_driver,
                                                options.driver_to_radctrl_identity,
                                                pulse_transmit_data['samples_array'],
                                                experiment.txctrfreq,
@@ -759,8 +739,7 @@ def radar():
 
                         def send_dsp_meta():
                             rx_beam_phases = sequence.get_rx_phases(aveperiod.beam_iter)
-                            send_dsp_metadata(sigprocpacket,
-                                              radar_control_to_dsp,
+                            send_dsp_metadata(radar_control_to_dsp,
                                               options.dsp_to_radctrl_identity,
                                               radar_control_to_brian,
                                               options.brian_to_radctrl_identity,
@@ -832,7 +811,7 @@ def radar():
                 last_sequence_num = seqnum_start + num_sequences - 1
 
                 def send_dw():
-                    send_datawrite_metadata(aveperiod_packet, radar_control_to_dw,
+                    send_datawrite_metadata(radar_control_to_dw,
                                             options.dw_to_radctrl_identity, last_sequence_num,
                                             num_sequences, scan_flag, averaging_period_time,
                                             aveperiod.sequences, aveperiod.beam_iter,
@@ -862,6 +841,7 @@ def radar():
                 scan.aveperiod_iter += 1
                 if scan.aveperiod_iter == len(scan.aveperiods):
                     scan.aveperiod_iter = 0
+
 
 if __name__ == "__main__":
     radar()
