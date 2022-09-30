@@ -86,10 +86,12 @@ class BistaticTest(ExperimentPrototype):
             slice_0['rx_beam_order'] = rx_beam_order    # Must have same first dimension as tx_beam_order
 
         elif listen_to == scf.opts.site_id:
+            slice_0['rx_beam_order'] = [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]]
             print('Defaulting to rx_only mode, "listen_to" set to this radar')
             comment_str = 'Widebeam listening mode'
 
         else:
+            slice_0['rx_beam_order'] = [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]]
             comment_str = 'Bistatic widebeam mode - listening to {}'.format(listen_to)
 
         super().__init__(cpid, comment_string=comment_str)
