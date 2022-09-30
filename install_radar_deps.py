@@ -398,7 +398,7 @@ def install_dspenv():
     execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/dspenv{version};"
                 "".format(normal_user=args.user, version=args.python_version))
     pip_cmd = "source $BOREALISPATH/dspenv{version}/bin/activate;" \
-              "sudo -u {normal_user} pip{version} install zmq numpy scipy matplotlib cupy protobuf==3.19.4 posix_ipc;" \
+              "sudo -u {normal_user} pip{version} install zmq numpy scipy cupy protobuf==3.19.4 posix_ipc;" \
               "deactivate;".format(normal_user=args.user, version=args.python_version)
 
     execute_cmd(pip_cmd)
