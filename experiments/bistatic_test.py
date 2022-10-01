@@ -60,6 +60,8 @@ class BistaticTest(ExperimentPrototype):
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "freq": freq,  # kHz
+            "scanbound": [i * 3.7 for i in range(16)],  # align each aveperiod to 3.7s boundaries
+            "wait_for_first_scanbound": False,
             "align_sequences": True     # align start of sequence to tenths of a second
         }
 
