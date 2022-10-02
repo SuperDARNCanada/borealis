@@ -55,5 +55,6 @@ class Widebeam_2tx(ExperimentPrototype):
             "tx_beam_order": [0],
             "freq": freq,  # kHz
             "tx_antennas": [7, 8],  # Using two tx antennas from the middle of array
+            "align_sequences": True,
         })
 

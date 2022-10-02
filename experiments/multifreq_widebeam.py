@@ -59,6 +59,7 @@ class MultifreqWidebeam(ExperimentPrototype):
             "tx_beam_order": [0],
             "freq": tx_freq_1,  # kHz
             "tx_antennas": [6, 7],  # Using two tx antennas from the middle of array
+            "align_sequences": True,
         }
 
         slice_2 = copy.deepcopy(slice_1)    # slice_id = 1, the second slice
