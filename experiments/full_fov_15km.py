@@ -91,6 +91,5 @@ class FullFOV15Km(ExperimentPrototype):
             "tx_beam_order": [0],   # only one pattern
             "tx_antenna_pattern": scf.easy_widebeam,
             "freq": freq,  # kHz
-            "align_sequences": True     # align start of sequence to tenths of a second
         })
 
