@@ -2,6 +2,14 @@ Common Failure Modes
 ====================
 
 Certain failures of the Borealis system can be generally attributed to a short list of common issues.
+If your system fails and you are unsure why, it is a good idea to check the computer system logs for any
+clues. The log can be found at /var/log/messages on openSUSE, or /var/log/syslog on Ubuntu. Often there
+will be some indication within 10 seconds of when the radar stopped as to why it stopped.
+
+It is also possible to have the radar stop for no discernible reason, with nothing noteworthy in the system log files
+or the Borealis log files. This is not uncommon for SuperDARN Canada radars, and very rarely is a cause for concern.
+In our experience, once the radar is restarted the system usually performs as expected, and the total downtime for
+random system failures is typically quite low.
 
 N200 Power loss
 ---------------
@@ -209,7 +217,7 @@ and records 30-32 sequences per integration, but over the span of a half hour or
 down to 10-20 sequences per integration.
 
 This is caused by a communication error between the brian and realtime modules, likely due to the
-value of `realtime_address` in config.ini. Make sure that the realtime_address uses a configure
+value of `realtime_address` in config.ini. Make sure that the realtime_address uses a configured
 interface that is "UP". See Software Setup for instructions.
 
 Borealis only takes runs one integration time then stops
@@ -284,3 +292,16 @@ for your current CUDA version by running:
 
 and checking the versions listed under the option --gpu-code. Updating your CUDA version
 should resolve this issue.
+
+Error codes in usrp_driver logs
+-------------------------------
+UHD throws several error codes depending on the performance of the system:
+
+    U - underflow, the host computer is not sending data fast enough. Generally harmless.
+    O - overflow, the host computer can't consume data fast enough. Generally harmless.
+    L - late packet on transmit
+    S - sequence error, typically packets dropped on the network.
+    OOS - out of sequence, packets received out of order.
+
+These error codes are generally not a cause for concern, unless they are accumulating quickly, i.e. filling the screen
+faster than you can track, which generally will crash the system with a more descriptive error message.
