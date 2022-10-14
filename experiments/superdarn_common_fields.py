@@ -163,7 +163,7 @@ def easy_widebeam(frequency_khz, tx_antennas, antenna_spacing_m):
         13200: [0., 43.42908842, 84.21675093, 174.68458927, 174.68458927, 84.21675093, 43.42908842, 0.]
     }
     num_antennas = opts.main_antenna_count
-    phases = np.zeros(num_antennas)
+    phases = np.zeros(num_antennas, dtype=np.complex64)
     if len(tx_antennas) == 16:
         if frequency_khz in cached_values_16_antennas.keys():
             phases[tx_antennas] = np.exp(1j * np.pi/180. * np.array(cached_values_16_antennas[frequency_khz]))

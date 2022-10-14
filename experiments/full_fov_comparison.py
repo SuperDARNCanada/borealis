@@ -9,12 +9,21 @@ The first pulse in each sequence starts on the 0.1 second boundaries, to enable 
 import sys
 import os
 import copy
+import numpy as np
 
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
 import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
+
+
+def widebeam_2antenna(frequency_khz, tx_antennas, antenna_spacing_m):
+    """tx_antenna_pattern function for widebeam transmission with 2 antennas."""
+    num_antennas = scf.opts.main_antenna_count
+    pattern = np.zeros((1, num_antennas), dtype=np.complex64)
+    pattern[0, tx_antennas] = 1.0 + 0.0j
+    return pattern
 
 
 class FullFOVComparison(ExperimentPrototype):
@@ -51,15 +60,23 @@ class FullFOVComparison(ExperimentPrototype):
             "first_range": scf.STD_FIRST_RANGE,
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "rx_beam_order": [[i for i in range(num_antennas)]],
+            "rx_beam_order": [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]],
             "tx_beam_order": [0],   # only one pattern
             "tx_antenna_pattern": scf.easy_widebeam,
             "freq": freq,  # kHz
-            "align_sequences": True     # align start of sequence to tenths of a second
+            "align_sequences": True,     # align start of sequence to tenths of a second
+            "scanbound": scf.easy_scanbound(scf.INTT_7P, scf.STD_16_BEAM_ANGLE),
+            "wait_for_first_scanbound": False
         }
 
         slice_1 = copy.deepcopy(slice_0)
         slice_1['tx_antennas'] = [i for i in range(num_antennas // 2)]  # Only use left half of array
+        
+        slice_2 = copy.deepcopy(slice_0)
+        slice_2['tx_antennas'] = [7, 8]     # 2-antenna widebeam
+        slice_2['tx_antenna_pattern'] = widebeam_2antenna
 
         self.add_slice(slice_0)
         self.add_slice(slice_1, interfacing_dict={0: 'AVEPERIOD'})
+        self.add_slice(slice_2, interfacing_dict={0: 'AVEPERIOD'})
+
