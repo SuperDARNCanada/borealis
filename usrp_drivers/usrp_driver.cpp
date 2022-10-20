@@ -39,8 +39,8 @@
 #define TUNING_DELAY 300e-3 // seconds
 
 
-// struct containing clocks: one for usrp_time (from the N200s, supplied by Octoclock-G)
-// as well as one for the operating system time (by NTP). Updated upon recv of RX packet.
+// struct containing clocks: one for usrp_time (from the N200s, supplied by GPSDO (octoclock-g
+// Fury, etc) as well as one for the operating system time (by NTP). Updated upon recv of RX packet.
 typedef struct {
   uhd::time_spec_t usrp_time;            // GPS clock variable.
   std::chrono::time_point<std::chrono::system_clock> system_time;  // Operating system clock variable.

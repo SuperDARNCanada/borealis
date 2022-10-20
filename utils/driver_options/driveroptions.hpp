@@ -11,6 +11,7 @@ class DriverOptions: public Options {
  public:
         explicit DriverOptions();
         std::string get_device_args() const;
+        std::string get_clk_type() const;
         std::string get_clk_addr() const;
         std::string get_tx_subdev() const;
         std::string get_main_rx_subdev() const;
@@ -48,6 +49,7 @@ class DriverOptions: public Options {
  private:
 
         std::string devices_;
+        std::string clk_type_;
         std::string clk_addr_;
         std::string tx_subdev_;
         std::vector<size_t> receive_channels_;

@@ -54,7 +54,7 @@ class USRP{
     void invert_test_mode(uint32_t mboard=0);
     void set_test_mode(uint32_t mboard=0);
     void clear_test_mode(uint32_t mboard=0);
-    bool gps_locked(void);
+    bool gps_locked();
 
   private:
     //! A shared pointer to a new multi-USRP device.
