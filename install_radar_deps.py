@@ -383,7 +383,9 @@ def install_borealis_env(python_version: str, user: str, group: str):
     execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/borealis_env{version};"
                 "".format(normal_user=user, version=python_version))
     pip_cmd = "source $BOREALISPATH/borealis_env{version}/bin/activate; " \
-              "sudo -u {normal_user} pip{version} install zmq pydarnio numpy scipy protobuf==3.19.4 posix_ipc; " \
+              "sudo -u {normal_user} pip{version} install zmq numpy scipy protobuf==3.19.4 posix_ipc; " \
+              "sudo -u {normal_user} pip{version} install " \
+              "git+https://github.com/SuperDARN/pyDARNio.git@develop; " \
               "sudo -u {normal_user} pip{version} install " \
               "git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter; " \
               "deactivate;".format(normal_user=user, version=python_version)
