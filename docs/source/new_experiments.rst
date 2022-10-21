@@ -70,7 +70,10 @@ being parsed to include all numbers in between and both endpoints.
 
 The arguments `beam_order` and `listen_to` are mutually exclusive, with `listen_to` taking precedence.
 
-You can define your own bistatic experiment, with very few restrictions. It is highly recommended that you add
+You can define your own bistatic experiment, with very few restrictions. It is highly recommended that
 the field `align_sequences` is set to `True` in your experiment slice dictionary, which will send out the first
 pulse in each sequence within 1us of each 0.1 second boundary. Without this field set in the experiments of both radars
 in the bistatic link, there is no guarantee of timing synchronicity and the data will likely be useless.
+Additionally, it is recommended that the experiments running at both the transmit and receive radars are
+both using the same scanbound. This will make it much easier to compare data from the transmit and recieve
+sites as the averaging periods should line up exactly.
