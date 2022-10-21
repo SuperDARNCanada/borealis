@@ -15,6 +15,7 @@ import sys
 import os
 import multiprocessing as mp
 import argparse as ap
+from utils.shared_macros.shared_macros import COLOR
 
 
 def usage_msg():
@@ -86,7 +87,7 @@ def install_packages(distro: str, user: str, python_version: str):
     Install the needed packages used by Borealis. Multiple options are listed for distributions that
     use different names.
     """
-
+    print(COLOR('yellow', '\n### Installing system packages ###'))
     packages = ["wget",
                 "gcc",
                 "gcc-c++",
@@ -204,7 +205,7 @@ def install_protobuf():
     """
     Install protobuf.
     """
-
+    print(COLOR('yellow', '\n### Installing protocol buffers ###'))
     proto_cmd = "cd ${IDIR};" \
                 "git clone https://github.com/protocolbuffers/protobuf.git;" \
                 "cd protobuf || exit;" \
@@ -224,6 +225,7 @@ def install_zmq():
     """
     Install ZMQ and C++ bindings.
     """
+    print(COLOR('yellow', '\n### Installing ZeroMQ ###'))
     libsodium_cmd = "cd ${IDIR};" \
                     "wget https://download.libsodium.org/libsodium/releases/LATEST.tar.gz;" \
                     "tar xzf LATEST.tar.gz;" \
@@ -254,7 +256,7 @@ def install_ntp():
     """
     Install NTP with PPS support.
     """
-
+    print(COLOR('yellow', '\n### Installing NTP ###'))
     ntp_cmd = "cd ${IDIR};" \
               "cp -v /usr/include/sys/timepps.h /usr/include/ || exit;" \
               "wget -N http://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-4.2.8p13.tar.gz;" \
@@ -271,6 +273,7 @@ def install_uhd(distro: str):
     """
     Install UHD. UHD is particular about which version of boost it uses, so check that.
     """
+    print(COLOR('yellow', '\n### Installing UHD ###'))
 
     def fix_boost_links():
         import glob
@@ -342,6 +345,8 @@ def install_cuda(distro: str):
     """
     Install CUDA.
     """
+    print(COLOR('yellow', '\n### Installing CUDA ###'))
+
     if "openSUSE" in distro:
         pre_cuda_setup_cmd = "groupadd video;" \
                              "usermod -a -G video $USER;" \
@@ -377,6 +382,8 @@ def install_borealis_env(python_version: str, user: str, group: str):
     """
     Create virtual environment and install utilities needed for Borealis operation.
     """
+    print(COLOR('yellow', '\n### Creating Borealis virtual environment ###'))
+
     execute_cmd("mkdir -p $BOREALISPATH/borealis_env{version}".format(version=python_version))
     execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/borealis_env{version}"
                 "".format(normal_user=user, normal_group=group, version=python_version))
@@ -399,6 +406,7 @@ def install_borealis_env(python_version: str, user: str, group: str):
 
 
 def install_directories(user: str, group: str):
+    print(COLOR('yellow', '\n### Creating Borealis directories ###'))
     mkdirs_cmd = "mkdir -p /data/borealis_logs;" \
                  "mkdir -p /data/borealis_data;" \
                  "mkdir -p $HOME/logs;" \
@@ -410,6 +418,7 @@ def install_directories(user: str, group: str):
 
 
 def install_hdw_dat(radar: str):
+    print(COLOR('yellow', '\n### Installing SuperDARN hdw repo ###'))
     execute_cmd("git clone https://github.com/SuperDARN/hdw.git /usr/local/hdw")
     install_hdw_cmd = "cp -v /usr/local/hdw/hdw.dat.{radar_abbreviation} $BOREALISPATH" \
                       "".format(radar_abbreviation=radar)
@@ -417,6 +426,7 @@ def install_hdw_dat(radar: str):
 
 
 def install_config(user: str, group: str):
+    print(COLOR('yellow', '\n### Installing Borealis config files ###'))
     install_config_cmd = "bash -c 'cd $BOREALISPATH';" \
                          "git submodule update --init;" \
                          "chown -R {normal_user}:{normal_group} borealis_config_files;"
@@ -439,18 +449,18 @@ def main():
     args = parser.parse_args()
 
     if os.geteuid() != 0:
-        print("You must run this script as root.")
+        print(COLOR('red', 'ERROR: ') + "You must run this script as root.")
         sys.exit(1)
 
     if not os.path.isdir(args.install_dir):
-        print("Install directory does not exist: {}".format(args.install_dir))
+        print(COLOR('red', 'ERROR: ') + "Install directory does not exist: {}".format(args.install_dir))
         sys.exit(1)
 
     if args.borealis_dir == "":
         try:
             borealispath = os.environ['BOREALISPATH']
         except KeyError:
-            print("You must have an environment variable set for BOREALISPATH.")
+            print(COLOR('red', 'ERROR: ') + "You must have an environment variable set for BOREALISPATH.")
             sys.exit(1)
     else:
         os.environ['BOREALISPATH'] = args.borealis_dir
@@ -461,16 +471,26 @@ def main():
     os.environ['IDIR'] = args.install_dir
     os.environ['CORES'] = str(mp.cpu_count())
 
+    specify_python = False
     try:
         python_version = os.environ['PYTHON_VERSION']
+        if python_version != args.python_version:
+            print(COLOR('red', 'WARNING: ') + 'PYTHON_VERSION already defined as {version} - Behaviour could be '
+                  'affected unless this is removed.')
+            specify_python = True
     except KeyError:
+        specify_python = True
+
+    if specify_python:
+        print(COLOR('yellow', '\n### Specifying PYTHON_VERSION in /home/{user}/.bashrc ###'))
         execute_cmd('echo "export PYTHON_VERSION={version}" >> /home/{user}/.bashrc'
                     ''.format(version=args.python_version, user=args.user))
 
     if args.upgrade_to_v06:     # Only need to update hdw repo and make new virtualenv for Borealis.
+        print(COLOR('yellow', '\n### Upgrading to Borealis v0.6 configuration ###'))
         install_hdw_dat(args.radar)
         install_borealis_env(args.python_version, args.user, args.group)
-        print('\n### REMINDER: Verify that your config.ini file conforms to the new format! ###')
+        print(COLOR('yellow', '\n### REMINDER: Verify that your config.ini file conforms to the new format! ###'))
 
     else:   # Installing fresh, do it all!
         install_packages(distro, args.user, args.python_version)
