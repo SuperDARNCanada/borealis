@@ -18,8 +18,8 @@ import experiments.superdarn_common_fields as scf
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
-def widebeam_2antenna(frequency_khz, tx_antennas, antenna_spacing_m):
-    """tx_antenna_pattern function for widebeam transmission with 2 antennas."""
+def widebeam_no_phase(frequency_khz, tx_antennas, antenna_spacing_m):
+    """tx_antenna_pattern function for widebeam transmission without phasing across antennas."""
     num_antennas = scf.opts.main_antenna_count
     pattern = np.zeros((1, num_antennas), dtype=np.complex64)
     pattern[0, tx_antennas] = 1.0 + 0.0j
@@ -73,8 +73,8 @@ class FullFOVComparison(ExperimentPrototype):
         slice_1['tx_antennas'] = [i for i in range(num_antennas // 2)]  # Only use left half of array
         
         slice_2 = copy.deepcopy(slice_0)
-        slice_2['tx_antennas'] = [7, 8]     # 2-antenna widebeam
-        slice_2['tx_antenna_pattern'] = widebeam_2antenna
+        slice_2['tx_antennas'] = [7, 8]     # 2-antenna transmit, generates broad beam pattern
+        slice_2['tx_antenna_pattern'] = widebeam_no_phase
 
         self.add_slice(slice_0)
         self.add_slice(slice_1, interfacing_dict={0: 'AVEPERIOD'})
