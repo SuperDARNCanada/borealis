@@ -110,7 +110,8 @@ class Sequence(ScanClassBase):
         # For each slice calculate beamformed samples and place into the basic_slice_pulses dictionary.
         # Also populate the pulse timing metadata and place into single_pulse_timing
         for slice_id in self.slice_ids:
-
+            print()     # Separate the slice information in the logs
+            sequence_print('Slice {}'.format(slice_id))
             exp_slice = self.slice_dict[slice_id]
             freq_khz = float(exp_slice['freq'])
             wave_freq = freq_khz - txctrfreq
@@ -136,6 +137,9 @@ class Sequence(ScanClassBase):
                 # main_phase_shift: [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
+                sequence_print('Main tx antenna complex phases: {}'.format(tx_main_phase_shift))
+                sequence_print('Main tx antenna magnitudes: {}'.format(np.abs(tx_main_phase_shift)))
+                sequence_print('Main tx antenna angles: {}'.format(np.rad2deg(np.angle(tx_main_phase_shift))))
                 phased_samps_for_beams = np.einsum('ij,k->ijk', tx_main_phase_shift, basic_samples)
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
