@@ -475,8 +475,8 @@ def main():
         specify_python = True
 
     if specify_python:
-        print(COLOR('yellow', '\n### Specifying PYTHON_VERSION in /home/{user}/.bashrc ###'.format(user=args.user)))
-        execute_cmd('echo "export PYTHON_VERSION={version}" >> /home/{user}/.bashrc'
+        print(COLOR('yellow', '\n### Specifying PYTHON_VERSION in /home/{user}/.profile ###'.format(user=args.user)))
+        execute_cmd('echo "export PYTHON_VERSION={version}" >> /home/{user}/.profile'
                     ''.format(version=args.python_version, user=args.user))
 
     if args.upgrade_to_v06:     # Only need to update hdw repo and make new virtualenv for Borealis.
