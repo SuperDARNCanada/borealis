@@ -56,7 +56,8 @@ def execute_cmd(cmd):
         output = err.output
 
     output = output.decode('utf-8')
-    print(output)  # catches echo statements
+    if len(output) > 0:     # Don't print new lines if there was no output
+        print(output)  # catches echo statements
     return output
 
 
@@ -389,20 +390,12 @@ def install_borealis_env(python_version: str, user: str, group: str):
                 "".format(normal_user=user, normal_group=group, version=python_version))
     execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/borealis_env{version};"
                 "".format(normal_user=user, version=python_version))
-    pip_cmd = "source $BOREALISPATH/borealis_env{version}/bin/activate; " \
-              "sudo -u {normal_user} pip{version} install zmq numpy scipy protobuf==3.19.4 posix_ipc; " \
-              "sudo -u {normal_user} pip{version} install " \
-              "git+https://github.com/SuperDARN/pyDARNio.git@develop; " \
-              "sudo -u {normal_user} pip{version} install " \
-              "git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter; " \
-              "deactivate;".format(normal_user=user, version=python_version)
 
+    pip_cmd = "sudo -u {normal_user} $BOREALISPATH/borealis_env{version}/bin/python3 -m pip install zmq numpy scipy " \
+              "protobuf==3.19.4 posix_ipc git+https://github.com/SuperDARN/pyDARNio.git@develop " \
+              "git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter cupy; " \
+              "".format(normal_user=user, version=python_version)
     execute_cmd(pip_cmd)
-
-    cupy_cmd = "source $BOREALISPATH/borealis_env{version}/bin/activate; " \
-               "sudo -u {normal_user} pip{version} install cupy; " \
-               "deactivate;".format(normal_user=user, version=python_version)
-    execute_cmd(cupy_cmd)
 
 
 def install_directories(user: str, group: str):
@@ -482,7 +475,7 @@ def main():
         specify_python = True
 
     if specify_python:
-        print(COLOR('yellow', '\n### Specifying PYTHON_VERSION in /home/{user}/.bashrc ###'))
+        print(COLOR('yellow', '\n### Specifying PYTHON_VERSION in /home/{user}/.bashrc ###'.format(user=args.user)))
         execute_cmd('echo "export PYTHON_VERSION={version}" >> /home/{user}/.bashrc'
                     ''.format(version=args.python_version, user=args.user))
 
@@ -490,7 +483,7 @@ def main():
         print(COLOR('yellow', '\n### Upgrading to Borealis v0.6 configuration ###'))
         install_hdw_dat(args.radar)
         install_borealis_env(args.python_version, args.user, args.group)
-        print(COLOR('yellow', '\n### REMINDER: Verify that your config.ini file conforms to the new format! ###'))
+        print(COLOR('yellow', '\n### REMINDER: Verify that your config.ini file conforms to the new format ###'))
 
     else:   # Installing fresh, do it all!
         install_packages(distro, args.user, args.python_version)
