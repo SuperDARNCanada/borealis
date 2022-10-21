@@ -347,9 +347,11 @@ def install_cuda(distro: str):
                              "usermod -a -G video $USER;" \
                              "rpm --erase gpg-pubkey-7fa2af80*"
         execute_cmd(pre_cuda_setup_cmd)
-        cuda_zypper_cmd = "zypper removerepo cuda-opensuse15-x86_64;" \
-                          "zypper addrepo https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo;" \
-                          "echo a | zypper refresh;"
+        cuda_zypper_cmd = \
+            "zypper removerepo cuda-opensuse15-x86_64;" \
+            "zypper addrepo " \
+            "https://developer.download.nvidia.com/compute/cuda/repos/opensuse15/x86_64/cuda-opensuse15.repo;" \
+            "echo a | zypper refresh;"
         execute_cmd(cuda_zypper_cmd)
         cuda_cmd = "zypper install -y cuda"
     elif 'Ubuntu' in distro:
@@ -371,39 +373,27 @@ def install_cuda(distro: str):
     execute_cmd(cuda_cmd)
 
 
-def install_realtime(python_version: str, user: str, group: str):
+def install_borealis_env(python_version: str, user: str, group: str):
     """
-    Create virtual environment and install utilities needed for RT capabilities.
+    Create virtual environment and install utilities needed for Borealis operation.
     """
-
-    execute_cmd("mkdir -p $BOREALISPATH/borealisrt_env{version}".format(version=python_version))
-    execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/borealisrt_env{version}"
+    execute_cmd("mkdir -p $BOREALISPATH/borealis_env{version}".format(version=python_version))
+    execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/borealis_env{version}"
                 "".format(normal_user=user, normal_group=group, version=python_version))
-    execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/borealisrt_env{version};"
+    execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/borealis_env{version};"
                 "".format(normal_user=user, version=python_version))
-    pip_cmd = "source $BOREALISPATH/borealisrt_env{version}/bin/activate;" \
-              "sudo -u {normal_user} pip{version} install zmq pydarnio;" \
-              "sudo -u {normal_user} pip{version} install git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter;" \
+    pip_cmd = "source $BOREALISPATH/borealis_env{version}/bin/activate; " \
+              "sudo -u {normal_user} pip{version} install zmq pydarnio numpy scipy protobuf==3.19.4 posix_ipc; " \
+              "sudo -u {normal_user} pip{version} install " \
+              "git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter; " \
               "deactivate;".format(normal_user=user, version=python_version)
 
     execute_cmd(pip_cmd)
 
-
-def install_dspenv(python_version: str, user: str, group: str):
-    """
-    Create virtual environment and install utilities needed for python DSP.
-    """
-
-    execute_cmd("mkdir -p $BOREALISPATH/dspenv{version};".format(version=python_version))
-    execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/dspenv{version}"
-                "".format(normal_user=user, normal_group=group, version=python_version))
-    execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/dspenv{version};"
-                "".format(normal_user=user, version=python_version))
-    pip_cmd = "source $BOREALISPATH/dspenv{version}/bin/activate;" \
-              "sudo -u {normal_user} pip{version} install zmq numpy scipy cupy protobuf==3.19.4 posix_ipc;" \
-              "deactivate;".format(normal_user=user, version=python_version)
-
-    execute_cmd(pip_cmd)
+    cupy_cmd = "source $BOREALISPATH/borealis_env{version}/bin/activate; " \
+               "sudo -u {normal_user} pip{version} install cupy; " \
+               "deactivate;".format(normal_user=user, version=python_version)
+    execute_cmd(cupy_cmd)
 
 
 def install_directories(user: str, group: str):
@@ -469,13 +459,16 @@ def main():
     os.environ['IDIR'] = args.install_dir
     os.environ['CORES'] = str(mp.cpu_count())
 
-    execute_cmd('echo "export PYTHON_VERSION={version}" >> /home/{user}/.bashrc'.format(version=args.python_version,
-                                                                                        user=args.user))
+    try:
+        python_version = os.environ['PYTHON_VERSION']
+    except KeyError:
+        execute_cmd('echo "export PYTHON_VERSION={version}" >> /home/{user}/.bashrc'
+                    ''.format(version=args.python_version, user=args.user))
 
-    if args.upgrade_to_v06:     #
+    if args.upgrade_to_v06:     # Only need to update hdw repo and make new virtualenv for Borealis.
         install_hdw_dat(args.radar)
-        install_realtime(args.python_version, args.user, args.group)
-        install_dspenv(args.python_version, args.user, args.group)
+        install_borealis_env(args.python_version, args.user, args.group)
+        print('\n### REMINDER: Verify that your config.ini file conforms to the new format! ###')
 
     else:   # Installing fresh, do it all!
         install_packages(distro, args.user, args.python_version)
@@ -485,8 +478,7 @@ def main():
         install_uhd(distro)
         install_cuda(distro)
         install_hdw_dat(args.radar)
-        install_realtime(args.python_version, args.user, args.group)
-        install_dspenv(args.python_version, args.user, args.group)
+        install_borealis_env(args.python_version, args.user, args.group)
         install_directories(args.user, args.group)
         install_config(args.user, args.group)
 
