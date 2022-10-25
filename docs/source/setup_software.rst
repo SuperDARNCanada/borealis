@@ -202,7 +202,7 @@ schedule. As an example on openSUSE for the `radar` user:
 
 #. Find out which tty device is physically connected to your PPS signal. It may not be ttyS0, especially if you have a
 PCIe expansion card. It may be ttyS1, ttyS2, ttyS3 or higher. To do this, search the system log for 'tty' (either dmesg
-or the syslog). An example output with a PCIe expansion card is below. The output shows the first two ttyS0 and 1 are
+or the syslog). An example output with a PCIe expansion card is below. The output shows the first two ttyS0 and S1 are
 builtin to the motherboard chipset and are not accessible on this x299 PRO from MSI. The next two ttyS4 and S5 are
 located on the XR17V35X chip which is located on the rosewill card:
 
