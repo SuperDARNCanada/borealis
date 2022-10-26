@@ -6,6 +6,8 @@
 Welcome to Borealis's documentation!
 ====================================
 
+Several new experimental capabilities have been added to Borealis! Read more at :ref:`new-experiments`
+
 ..  toctree::
     :maxdepth: 2
     :glob:

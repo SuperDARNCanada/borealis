@@ -60,8 +60,13 @@ class BistaticTest(ExperimentPrototype):
             "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "freq": freq,  # kHz
+            "scanbound": [i * 3.7 for i in range(len(scf.STD_16_BEAM_ANGLE))],  # align each aveperiod to 3.7s boundary
+            "wait_for_first_scanbound": False,
             "align_sequences": True     # align start of sequence to tenths of a second
         }
+
+        if 'listen_to' in kwargs.keys() and 'beam_order' in kwargs.keys():  # Mutually exclusive arguments
+            raise ValueError('ERROR: Cannot specify both "listen_to" and "beam_order".')
 
         if 'listen_to' not in kwargs.keys():  # Not listening to another radar, so must specify tx characteristics
             # beam_order set here
@@ -86,10 +91,12 @@ class BistaticTest(ExperimentPrototype):
             slice_0['rx_beam_order'] = rx_beam_order    # Must have same first dimension as tx_beam_order
 
         elif listen_to == scf.opts.site_id:
+            slice_0['rx_beam_order'] = [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]]
             print('Defaulting to rx_only mode, "listen_to" set to this radar')
             comment_str = 'Widebeam listening mode'
 
         else:
+            slice_0['rx_beam_order'] = [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]]
             comment_str = 'Bistatic widebeam mode - listening to {}'.format(listen_to)
 
         super().__init__(cpid, comment_string=comment_str)

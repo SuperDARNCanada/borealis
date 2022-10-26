@@ -1268,7 +1268,7 @@ class DataWrite(object):
             write_tx_data()
 
         end = time.time()
-        dw_print("Time to write to {}: {} ms".format(dataset_name, (end - start) * 1000))
+        dw_print("Time to write to {}: {:.6f} ms".format(dataset_name, (end - start) * 1000))
 
 
 def main():
@@ -1386,7 +1386,7 @@ def main():
                 start = time.time()
                 data_parsing.update(pd)
                 end = time.time()
-                dw_print("Time to parse: {} ms".format((end - start) * 1000))
+                dw_print("Time to parse: {:.6f} ms".format((end - start) * 1000))
 
             queued_sqns = []
 

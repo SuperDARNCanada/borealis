@@ -180,18 +180,19 @@ modules = {"brian": "",
            "realtime": "",
            "rx_signal_processing": ""}
 
-for mod in modules:
+for mod in modules.keys():
     opts = python_opts.format(module=mod)
-    modules[mod] = "python{version} {opts} {module}/{module}.py".format(version=PYTHON_VERSION, opts=opts, module=mod)
+    modules[mod] = "source borealis_env{version}/bin/activate; python{version} {opts} {module}/{module}.py" \
+                   "".format(version=PYTHON_VERSION, opts=opts, module=mod)
 
-modules['realtime'] = "source borealisrt_env{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['realtime']
-modules['rx_signal_processing'] = "source dspenv{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['rx_signal_processing']
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
 if args.kwargs_string:
-    modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type + " --kwargs_string " + args.kwargs_string
+    modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
+                                    args.scheduling_mode_type + " --kwargs_string " + args.kwargs_string
 else:
-    modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type
+    modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
+                                    args.scheduling_mode_type
     
 # Configure C progs
 c_progs = ['usrp_driver']
@@ -213,9 +214,9 @@ except IOError:
 
 log_dir = raw_config['log_directory']
 sp.call("mkdir -p " + log_dir, shell=True)
-for mod in modules:
+for mod in modules.keys():
     basic_screen_cmd = modules[mod] + " 2>&1 | tee {path}/{timestamp}-{module}; bash"
-    modules[mod] = basic_screen_cmd.format(path=log_dir,timestamp=logfile_timestamp, module=mod)
+    modules[mod] = basic_screen_cmd.format(path=log_dir, timestamp=logfile_timestamp, module=mod)
 
 screenrc = BOREALISSCREENRC.format(
     START_RT=modules['realtime'],
@@ -227,7 +228,7 @@ screenrc = BOREALISSCREENRC.format(
     START_RADCTRL=modules['radar_control'],
 )
 
-screenrc_file = os.environ['BOREALISPATH']+"/borealisscreenrc"
+screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"
 with open(screenrc_file, 'w') as f:
     f.write(screenrc)
 
