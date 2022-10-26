@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "borealis"
+version = "0.6.1"
+description = "SuperDARN Digital Radar System"
+readme = "README.md"
+authors = [{name = "SuperDARN Canada"}]
+license = {file = "LICENSE"}
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "posix_ipc",
+    "zmq",
+    "pydarnio",
+    "backscatter",
+    "protobuf",
+    "scipy",
+]
+
+[project.optional-dependencies]
+gpu = ["cupy"]
+
+[project.urls]
+Homepage = "https://borealis.readthedocs.io"
+
+# TODO: Call install_radar_deps.py somehow with proper parameters
