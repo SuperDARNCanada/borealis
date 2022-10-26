@@ -64,9 +64,7 @@ class FullFOV15Km(ExperimentPrototype):
         super().__init__(cpid, output_rx_rate=decimation_scheme.output_sample_rate, decimation_scheme=decimation_scheme,
                          comment_string='Full FOV 15km Resolution Experiment')
 
-        num_ranges = scf.STD_NUM_RANGES
-        if scf.opts.site_id in ["cly", "rkn", "inv"]:
-            num_ranges = scf.POLARDARN_NUM_RANGES
+        num_ranges = scf.STD_NUM_RANGES * 3     # Each range is a third of the usual size, want same spatial extent
 
         # default frequency set here
         freq = scf.COMMON_MODE_FREQ_1
