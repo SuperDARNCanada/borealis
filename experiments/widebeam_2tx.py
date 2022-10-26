@@ -49,11 +49,13 @@ class Widebeam_2tx(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": 3500,  # duration of an integration, in ms
+            "intt": scf.INTT_7P,  # duration of an integration, in ms
             "beam_angle": [0],
             "rx_beam_order": [0],
             "tx_beam_order": [0],
             "freq": freq,  # kHz
             "tx_antennas": [7, 8],  # Using two tx antennas from the middle of array
+            "align_sequences": True,
+            "scanbound": [i * scf.INTT_7P * 1e-3 for i in range(len(scf.STD_16_BEAM_ANGLE))],
         })
 

@@ -107,6 +107,7 @@ screen -t "Realtime" bash -c "{START_RT}"
 detach
 """
 
+
 def steamed_hams_parser():
     """
     Creates the parser.
@@ -136,25 +137,25 @@ if args.run_mode == "release":
     python_opts = "-O -u"
     c_debug_opts = ""
     mode = "release"
-    data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq"
+    data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-antenna-iq"
 elif args.run_mode == "debug":
     # run all modules in debug with regular operations data outputs, for testing modules
     python_opts = "-u"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
-    data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq"
+    data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-antenna-iq"
 elif args.run_mode == "pythonprofiling":
     # run all modules in debug with python profiling, for optimizing python modules
     python_opts = "-O -u -m cProfile -o testing/python_testing/{module}.cprof"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
-    data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-bfiq --enable-antenna-iq"
+    data_write_args = "--file-type=hdf5 --enable-raw-acfs --enable-antenna-iq"
 elif args.run_mode == "testdata":
-    # run in scons release with python debug for tx data and print raw rf and bfiq, for verifying data
+    # run in scons release with python debug for tx data and print raw rf, for verifying data
     python_opts = "-u"
     c_debug_opts = ""
     mode = "release"
-    data_write_args = "--file-type=hdf5 --enable-tx --enable-bfiq --enable-raw-rf"
+    data_write_args = "--file-type=hdf5 --enable-tx --enable-raw-rf"
 elif args.run_mode == "engineeringdebug":
     # run all modules in debug with tx and rawrf data - this mode is very slow
     python_opts = "-u"
@@ -171,30 +172,34 @@ else:
     print("Mode {} is unknown. Exiting without running Borealis".format(args.run_mode))
     sys.exit(-1)
 
-#Configure python first
-modules= {"brian" : "", "experiment_handler" : "",
-                "radar_control" : "", "data_write" : "",
-                "realtime" : "", "rx_signal_processing" : ""}
+# Configure python first
+modules = {"brian": "",
+           "experiment_handler": "",
+           "radar_control": "",
+           "data_write": "",
+           "realtime": "",
+           "rx_signal_processing": ""}
 
-for mod in modules:
+for mod in modules.keys():
     opts = python_opts.format(module=mod)
-    modules[mod] = "python{version} {opts} {module}/{module}.py".format(version=PYTHON_VERSION, opts=opts, module=mod)
+    modules[mod] = "source borealis_env{version}/bin/activate; python{version} {opts} {module}/{module}.py" \
+                   "".format(version=PYTHON_VERSION, opts=opts, module=mod)
 
-modules['realtime'] = "source borealisrt_env{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['realtime']
-modules['rx_signal_processing'] = "source dspenv{version}/bin/activate;".format(version=PYTHON_VERSION) + modules['rx_signal_processing']
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
 if args.kwargs_string:
-    modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type + " --kwargs_string " + args.kwargs_string
+    modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
+                                    args.scheduling_mode_type + " --kwargs_string " + args.kwargs_string
 else:
-    modules['experiment_handler'] = modules['experiment_handler'] + " " +  args.experiment_module + " " + args.scheduling_mode_type
+    modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
+                                    args.scheduling_mode_type
     
-#Configure C progs
+# Configure C progs
 c_progs = ['usrp_driver']
 for cprg in c_progs:
     modules[cprg] = "source mode {}; {} {}".format(mode, c_debug_opts, cprg)
 
-#Configure terminal output to also go to file.
+# Configure terminal output to also go to file.
 now = datetime.datetime.utcnow()
 day_dir = now.strftime("%Y%m%d")
 logfile_timestamp = now.strftime("%Y.%m.%d.%H:%M")
@@ -209,9 +214,9 @@ except IOError:
 
 log_dir = raw_config['log_directory']
 sp.call("mkdir -p " + log_dir, shell=True)
-for mod in modules:
+for mod in modules.keys():
     basic_screen_cmd = modules[mod] + " 2>&1 | tee {path}/{timestamp}-{module}; bash"
-    modules[mod] = basic_screen_cmd.format(path=log_dir,timestamp=logfile_timestamp, module=mod)
+    modules[mod] = basic_screen_cmd.format(path=log_dir, timestamp=logfile_timestamp, module=mod)
 
 screenrc = BOREALISSCREENRC.format(
     START_RT=modules['realtime'],
@@ -223,7 +228,7 @@ screenrc = BOREALISSCREENRC.format(
     START_RADCTRL=modules['radar_control'],
 )
 
-screenrc_file = os.environ['BOREALISPATH']+"/borealisscreenrc"
+screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"
 with open(screenrc_file, 'w') as f:
     f.write(screenrc)
 

@@ -110,7 +110,8 @@ class Sequence(ScanClassBase):
         # For each slice calculate beamformed samples and place into the basic_slice_pulses dictionary.
         # Also populate the pulse timing metadata and place into single_pulse_timing
         for slice_id in self.slice_ids:
-
+            print()     # Separate the slice information in the logs
+            sequence_print('Slice {}'.format(slice_id))
             exp_slice = self.slice_dict[slice_id]
             freq_khz = float(exp_slice['freq'])
             wave_freq = freq_khz - txctrfreq
@@ -136,6 +137,9 @@ class Sequence(ScanClassBase):
                 # main_phase_shift: [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
+                sequence_print('Main tx antenna complex phases: {}'.format(tx_main_phase_shift))
+                sequence_print('Main tx antenna magnitudes: {}'.format(np.abs(tx_main_phase_shift)))
+                sequence_print('Main tx antenna angles: {}'.format(np.rad2deg(np.angle(tx_main_phase_shift))))
                 phased_samps_for_beams = np.einsum('ij,k->ijk', tx_main_phase_shift, basic_samples)
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
@@ -269,7 +273,6 @@ class Sequence(ScanClassBase):
         # Normalize all combined pulses to the max USRP DAC amplitude
         all_antennas = []
         for slice_id in self.slice_ids:
-            print("basic_slice_pulses[{}]: {}".format(slice_id, self.basic_slice_pulses[slice_id]))
             if not exp_slice['rxonly']:
                 self.basic_slice_pulses[slice_id] *= max_usrp_dac_amplitude / power_divider[slice_id]
 
@@ -473,9 +476,8 @@ class Sequence(ScanClassBase):
 
             pulse_data.append(new_pulse_info)
 
-        debug_dict = copy.deepcopy(self.debug_dict)
-
         if __debug__:
+            debug_dict = copy.deepcopy(self.debug_dict)
             debug_dict['sequence_samples'] = sequence
             debug_dict['decimated_samples'] = sequence[main_antennas, ::debug_dict['dmrate']]
         else:
