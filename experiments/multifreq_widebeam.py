@@ -60,7 +60,7 @@ class MultifreqWidebeam(ExperimentPrototype):
             "freq": tx_freq_1,  # kHz
             "tx_antennas": [6, 7],  # Using two tx antennas from the middle of array
             "align_sequences": True,
-            "scanbound": [i * scf.INTT_7P * 1e-3 for i in range(16)],
+            "scanbound": [i * scf.INTT_7P * 1e-3 for i in range(len(scf.STD_16_BEAM_ANGLE))],
         }
 
         slice_2 = copy.deepcopy(slice_1)    # slice_id = 1, the second slice

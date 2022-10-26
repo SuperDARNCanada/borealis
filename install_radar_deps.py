@@ -402,7 +402,7 @@ def install_directories(user: str, group: str):
     print(COLOR('yellow', '\n### Creating Borealis directories ###'))
     mkdirs_cmd = "mkdir -p /data/borealis_logs;" \
                  "mkdir -p /data/borealis_data;" \
-                 "mkdir -p $HOME/logs;" \
+                 "mkdir -p /home/{normal_user}/logs;" \
                  "chown {normal_user}:{normal_group} /data/borealis_*;"
 
     mkdirs_cmd = mkdirs_cmd.format(normal_user=user, normal_group=group)

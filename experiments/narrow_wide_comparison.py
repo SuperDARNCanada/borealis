@@ -31,7 +31,7 @@ class FullFOVComparison(ExperimentPrototype):
         """
         kwargs:
 
-        freq: int
+        freq: int, kHz
 
         """
         cpid = 3812

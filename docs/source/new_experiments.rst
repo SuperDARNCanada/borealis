@@ -60,15 +60,16 @@ to the experiment handler via `steamed_hams.py`. This will look something like t
 
 This invocation will trigger the radar to receive only, tuning to common-mode frequency 1 for RKN defined in
 `superdarn_common_fields.py`. Additionally, it will trigger an imaging mode, receiving signals on all 16 beams
-simultaneously. If the listening radar specified is the same as the radar specified in the config file, the experiment
-will default to a listening-only mode on its common-mode frequency 1.
+simultaneously. If the listening radar specified is the same as the radar that you are running the experiment on,
+the experiment will default to a listening-only mode on the radar's common-mode frequency 1.
 
 For further control over the transmitting characteristics, an additional keyword argument `beam_order` is supported.
 This controls the `tx_beam_order` field of the slice dictionary, and allows for traditional beams to be used.
 The `beam_order` value must be formatted as a list of numbers, such as `0,1,2,3-5,2,9`, with ranges
-being parsed to include all numbers in between and both endpoints. Therefore, for this example, beams used would be 0, 1, 2, 3, 4, 5, 2 and finally 9. Repeated beams are valid.
+being parsed to include all numbers in between and both endpoints. Therefore, for this example, beams used would be
+0, 1, 2, 3, 4, 5, 2 and finally 9. Repeated beams are valid.
 
-The arguments `beam_order` and `listen_to` are mutually exclusive, with `listen_to` taking precedence.
+The arguments `beam_order` and `listen_to` are mutually exclusive.
 
 You can define your own bistatic experiment, with very few restrictions. It is highly recommended that
 the field `align_sequences` is set to `True` in your experiment slice dictionary, which will send out the first
@@ -76,4 +77,6 @@ pulse in each sequence within 1us of each 0.1 second boundary. Without this fiel
 in the bistatic link, there is no guarantee of timing synchronicity and the data will likely be useless.
 Additionally, it is recommended that the experiments running at both the transmit and receive radars are
 both using the same scanbound. This will make it much easier to compare data from the transmit and recieve
-sites as the averaging periods should line up exactly.
+sites as the averaging periods should line up exactly. Lastly, it is recommended that you check the data files
+for both radars afterwards and ensure that the `gps_locked` flag is True for all times. If not, the clock may have
+drifted, and the `sqn_timestamps` field may be inaccurate.

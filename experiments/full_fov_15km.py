@@ -55,7 +55,7 @@ class FullFOV15Km(ExperimentPrototype):
         """
         kwargs:
 
-        freq: int
+        freq: int, kHz
 
         """
         cpid = 3801
