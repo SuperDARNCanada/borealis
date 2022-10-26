@@ -66,7 +66,7 @@ will default to a listening-only mode on its common-mode frequency 1.
 For further control over the transmitting characteristics, an additional keyword argument `beam_order` is supported.
 This controls the `tx_beam_order` field of the slice dictionary, and allows for traditional beams to be used.
 The `beam_order` value must be formatted as a list of numbers, such as `0,1,2,3-5,2,9`, with ranges
-being parsed to include all numbers in between and both endpoints.
+being parsed to include all numbers in between and both endpoints. Therefore, for this example, beams used would be 0, 1, 2, 3, 4, 5, 2 and finally 9. Repeated beams are valid.
 
 The arguments `beam_order` and `listen_to` are mutually exclusive, with `listen_to` taking precedence.
 
