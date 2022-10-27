@@ -1927,6 +1927,8 @@ class ExperimentPrototype(object):
                         error_list.append("Slice {} Phase encoding return dimension must be "
                                           "equal to number of pulses".format(exp_slice['slice_id']))
 
+        # Initialize to None for tests below
+        antenna_pattern = None
         if exp_slice['tx_antenna_pattern']:
             if not callable(exp_slice['tx_antenna_pattern']):
                 error_list.append("Slice {} tx antenna pattern must be a function".format(exp_slice['slice_id']))
@@ -1969,7 +1971,7 @@ class ExperimentPrototype(object):
 
         # Check that the beam numbers in the tx_beam_order exist
         if exp_slice['tx_beam_order']:
-            if exp_slice['tx_antenna_pattern']:
+            if exp_slice['tx_antenna_pattern'] and isinstance(antenna_pattern, np.ndarray):
                 num_beams = antenna_pattern.shape[0]
             else:
                 num_beams = len(exp_slice['beam_angle'])

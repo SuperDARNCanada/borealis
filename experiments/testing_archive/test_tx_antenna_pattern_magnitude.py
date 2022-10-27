@@ -17,7 +17,7 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 # of ExperimentPrototype
 def tx_antenna_pattern(tx_freq_khz, tx_antenna_count, antenna_spacing):
     """Sets the amplitude and phase weighting for each tx antenna"""
-    pattern = np.array([1.0 for _ in range(tx_antenna_count)]).reshape((1, tx_antenna_count))
+    pattern = np.array([1.0 for _ in range(len(tx_antenna_count))]).reshape((1, len(tx_antenna_count)))
     pattern[0, 0] = 1.01
     return pattern
 
