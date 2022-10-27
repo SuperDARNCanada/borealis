@@ -25,13 +25,13 @@
 #include <cmath>
 #include <tuple>
 #include <sys/mman.h>
-#include "usrp_drivers/utils/driveroptions.hpp"
-#include "usrp_drivers/usrp.hpp"
-#include "utils/protobuf/driverpacket.pb.h"
-#include "utils/protobuf/rxsamplesmetadata.pb.h"
-#include "usrp_drivers/utils/shared_memory.hpp"
-#include "usrp_drivers/utils/shared_macros.hpp"
-#include "usrp_drivers/utils/zmq_borealis_helpers.hpp"
+#include "utils/driveroptions.hpp"
+#include "usrp.hpp"
+#include "borealis/utils/protobuf/driverpacket.pb.h"
+#include "borealis/utils/protobuf/rxsamplesmetadata.pb.h"
+#include "utils/shared_memory.hpp"
+#include "utils/shared_macros.hpp"
+#include "utils/zmq_borealis_helpers.hpp"
 
 
 //Delay needed for before any set_time_commands will work.

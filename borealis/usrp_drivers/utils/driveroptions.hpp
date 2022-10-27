@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
-#include "utils/options.hpp"
+#include "options.hpp"
 
 class DriverOptions: public Options {
  public:

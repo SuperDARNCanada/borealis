@@ -8,8 +8,8 @@
 #include <sstream>
 #include <vector>
 #include <map>
-#include "utils/options.hpp"
-#include "utils/driveroptions.hpp"
+#include "options.hpp"
+#include "driveroptions.hpp"
 
 /**
  * @brief      Extracts the relevant driver options from the config into class variables.

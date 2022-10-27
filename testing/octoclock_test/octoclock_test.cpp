@@ -17,7 +17,7 @@
 #include <uhd/utils/safe_main.hpp>
 #include <uhd/utils/thread_priority.hpp>
 #include <uhd/usrp_clock/multi_usrp_clock.hpp>
-#include "utils/shared_macros/shared_macros.hpp"
+#include "borealis/usrp_drivers/utils/shared_macros.hpp"
 
 // Test program for Ettus Octoclocks
 // .130 and .132 are regular octoclocks, externally referenced off of .131, which is an octoclock-g (GPS unit built-in)

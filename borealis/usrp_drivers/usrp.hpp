@@ -12,8 +12,8 @@ See LICENSE for details.
 
 #include <uhd/usrp/multi_usrp.hpp>
 #include <uhd/usrp_clock/multi_usrp_clock.hpp>
-#include "usrp_drivers/utils/driveroptions.hpp"
-#include "usrp_drivers/utils/shared_macros.hpp"
+#include "utils/driveroptions.hpp"
+#include "utils/shared_macros.hpp"
 
 /**
  * @brief      Contains an abstract wrapper for the USRP object.

@@ -28,6 +28,7 @@
 Import('*')
 import os
 
-RadarProtos = ['driverpacket.proto','rxsamplesmetadata.proto']
+RadarProtos = ['driverpacket','rxsamplesmetadata']
 Proto(RadarProtos)
+Lib('messages', protos=RadarProtos)
 

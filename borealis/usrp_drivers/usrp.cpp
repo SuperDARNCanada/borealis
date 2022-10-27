@@ -15,8 +15,8 @@ See LICENSE for details.
 #include <cmath>
 #include <thread>
 #include <sstream>
-#include "usrp_drivers/usrp.hpp"
-#include "usrp_drivers/utils/driveroptions.hpp"
+#include "usrp.hpp"
+#include "utils/driveroptions.hpp"
 
 
 /**
