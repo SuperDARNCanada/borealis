@@ -11,7 +11,7 @@ BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
 import experiments.superdarn_common_fields as scf
-from experiment_prototype.experiment_prototype import ExperimentPrototype
+from src import ExperimentPrototype
 
 
 # Either of these functions can be used for testing purposes.

@@ -5,7 +5,7 @@ import numpy as np
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
-from utils.experiment_options.experimentoptions import ExperimentOptions
+from src import ExperimentOptions
 opts = ExperimentOptions()
 
 # TODO: We should protect these values from changing, I noticed during testing that I used a

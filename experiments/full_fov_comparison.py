@@ -15,7 +15,7 @@ BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
 import experiments.superdarn_common_fields as scf
-from experiment_prototype.experiment_prototype import ExperimentPrototype
+from src import ExperimentPrototype
 
 
 def widebeam_no_phase(frequency_khz, tx_antennas, antenna_spacing_m):

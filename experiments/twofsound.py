@@ -8,7 +8,7 @@ import copy
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(BOREALISPATH)
 
-from experiment_prototype.experiment_prototype import ExperimentPrototype
+from src import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
 

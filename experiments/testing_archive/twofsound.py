@@ -8,8 +8,8 @@ BOREALISPATH = os.environ['BOREALISPATH']
 #sys.path.append(BOREALISPATH + "/experiment_prototype")
 
 #import test
-from experiment_prototype.experiment_prototype import ExperimentPrototype
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
+from src import ExperimentPrototype
+from src import DecimationStage, DecimationScheme
 from experiments.test_decimation_schemes import *
 
 class Twofsound(ExperimentPrototype):
