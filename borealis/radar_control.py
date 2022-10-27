@@ -13,22 +13,20 @@
     :author: Marci Detwiller
 """
 
-import sys
 import time
 from datetime import datetime, timedelta
-import os
 import zmq
 import pickle
 import threading
 import numpy as np
 from functools import reduce
 
-from borealis.experiment_prototype.experiment_exception import ExperimentException
-from borealis.experiment_prototype.experiment_prototype import ExperimentPrototype
-from borealis.utils.options.experimentoptions import ExperimentOptions
-import borealis.utils.message_formats as messages
-import borealis.utils.shared_macros as sm
-from borealis.utils import socket_operations
+from experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.experiment_prototype import ExperimentPrototype
+from utils.options.experimentoptions import ExperimentOptions
+import utils.message_formats as messages
+import utils.shared_macros as sm
+from utils import socket_operations
 
 if __debug__:
     from build.debug.borealis.utils.protobuf.driverpacket_pb2 import DriverPacket

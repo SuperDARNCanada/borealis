@@ -88,7 +88,7 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         # Now we attempt to restart Borealis
-        stop_borealis = subprocess.Popen("{}/stop_radar.sh".format(borealis_path),
+        stop_borealis = subprocess.Popen("{}/scripts/stop_radar.sh".format(borealis_path),
                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = stop_borealis.communicate()
         # Check out the output to make sure it's all good (empty output means it's all good)
@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
         # Now call the start radar script, reads will block, so no need to communicate with
         # this process.
-        start_borealis = subprocess.Popen("{}/start_radar.sh".format(borealis_path),
+        start_borealis = subprocess.Popen("{}/scripts/start_radar.sh".format(borealis_path),
                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print('Borealis stop_radar.sh and start_radar.sh called')
         sys.exit(0)

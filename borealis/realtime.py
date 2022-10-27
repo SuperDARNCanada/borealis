@@ -9,7 +9,6 @@
 import zmq
 import threading
 import os
-import sys
 import queue
 import json
 import zlib
@@ -17,9 +16,9 @@ import pydarnio
 import numpy as np
 from backscatter import fitacf
 
-import borealis.utils.options.realtime_options as rto
-from borealis.utils import socket_operations as so
-import borealis.utils.shared_macros as sm
+import utils.options.realtime_options as rto
+from utils import socket_operations as so
+import utils.shared_macros as sm
 
 rt_print = sm.MODULE_PRINT("Realtime", "green")
 

@@ -7,7 +7,6 @@
 # Communicate with all processes to administrate the borealis software
 
 import sys
-import os
 import time
 from datetime import datetime
 import threading
@@ -15,8 +14,8 @@ import argparse
 import zmq
 import pickle
 
-from borealis.utils import socket_operations as so
-from borealis.utils import shared_macros as sm
+from utils import socket_operations as so
+from utils import shared_macros as sm
 
 if __debug__:
     from build.debug.borealis.utils.protobuf import rxsamplesmetadata_pb2

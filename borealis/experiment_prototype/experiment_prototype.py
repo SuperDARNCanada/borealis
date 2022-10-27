@@ -20,14 +20,14 @@ from scipy.constants import speed_of_light
 import re
 from pathlib import Path
 
-from borealis.experiment_prototype.experiment_exception import ExperimentException
-from borealis.sample_building.sample_building import get_wavetables
-from borealis.experiment_prototype import list_tests
-
 from borealis.utils.options.experimentoptions import ExperimentOptions
-from borealis.experiment_prototype.scan_classes.scans import Scan
-from borealis.experiment_prototype.scan_classes.scan_class_base import ScanClassBase
-from borealis.experiment_prototype.decimation_scheme.decimation_scheme import create_default_scheme
+from borealis.sample_building.sample_building import get_wavetables
+
+from experiment_exception import ExperimentException
+from scan_classes.scans import Scan
+from scan_classes.scan_class_base import ScanClassBase
+from decimation_scheme.decimation_scheme import create_default_scheme
+import list_tests
 
 interface_types = tuple(['SCAN', 'AVEPERIOD', 'SEQUENCE', 'CONCURRENT'])
 """ The types of interfacing available for slices in the experiment.

@@ -28,9 +28,9 @@ from scipy.constants import speed_of_light
 import copy
 import pickle
 
-import borealis.utils.shared_macros as sm
-import borealis.utils.options.data_write_options as dwo
-from borealis.utils import socket_operations as so
+import utils.shared_macros as sm
+import utils.options.data_write_options as dwo
+from utils import socket_operations as so
 
 dw_print = sm.MODULE_PRINT("Data Write", "cyan")
 

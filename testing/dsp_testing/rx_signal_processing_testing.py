@@ -3,8 +3,6 @@ Copyright SuperDARN Canada 2022
 Authors: Keith Kotyk (rx_signal_processing.py)
          Remington Rohel (Ferkensteined rx_signal_processing.py into this file)
 """
-import sys
-import os
 import time
 import threading
 import numpy as np
@@ -21,7 +19,7 @@ else:
 
 import borealis.utils.options.signal_processing_options as spo
 import borealis.utils.shared_macros as sm
-from borealis.rx_signal_processing import dsp
+from borealis.dsp import dsp
 from borealis.experiment_prototype.decimation_scheme.decimation_scheme import create_default_scheme
 
 pprint = sm.MODULE_PRINT("rx signal processing", "magenta")

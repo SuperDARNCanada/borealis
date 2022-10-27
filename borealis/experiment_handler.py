@@ -16,7 +16,6 @@
 """
 
 import zmq
-import os
 import sys
 import argparse
 import inspect
@@ -24,10 +23,10 @@ import importlib
 import threading
 import pickle
 
-from borealis.utils.options.experimentoptions import ExperimentOptions
-from borealis.utils import socket_operations
-from borealis.experiment_prototype.experiment_exception import ExperimentException
-from borealis.experiment_prototype.experiment_prototype import ExperimentPrototype
+from utils.options.experimentoptions import ExperimentOptions
+from utils import socket_operations
+from experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
 def printing(msg):

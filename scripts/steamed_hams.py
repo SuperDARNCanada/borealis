@@ -182,7 +182,7 @@ modules = {"brian": "",
 
 for mod in modules.keys():
     opts = python_opts.format(module=mod)
-    modules[mod] = "source borealis_env{version}/bin/activate; python{version} {opts} {module}/{module}.py" \
+    modules[mod] = "source borealis_env{version}/bin/activate; python{version} {opts} borealis/{module}.py" \
                    "".format(version=PYTHON_VERSION, opts=opts, module=mod)
 
 modules['data_write'] = modules['data_write'] + " " + data_write_args

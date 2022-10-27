@@ -3,14 +3,12 @@ Copyright SuperDARN Canada 2020
 Original Auth: Keith Kotyk
 """
 import sys
-import os
 import time
 import threading
 import numpy as np
 import posix_ipc as ipc
 from multiprocessing import shared_memory
 import mmap
-import dsp
 import math
 import copy
 import pickle
@@ -27,10 +25,11 @@ if __debug__:
 else:
     from build.release.borealis.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 
-from borealis.utils.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
-import borealis.utils.options.signal_processing_options as spo
-from borealis.utils import socket_operations as so
-import borealis.utils.shared_macros as sm
+from dsp import dsp
+from utils.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
+import utils.options.signal_processing_options as spo
+from utils import socket_operations as so
+import utils.shared_macros as sm
 
 pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
 

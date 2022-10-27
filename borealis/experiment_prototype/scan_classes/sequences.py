@@ -23,7 +23,7 @@ import os
 from functools import reduce
 
 from borealis.sample_building.sample_building import get_samples, get_phase_shift
-from borealis.experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from scan_class_base import ScanClassBase
 from borealis.experiment_prototype.experiment_exception import ExperimentException
 import borealis.utils.shared_macros as sm
 

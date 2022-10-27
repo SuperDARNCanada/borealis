@@ -12,8 +12,8 @@
     :author: Marci Detwiller
 """
 
-from borealis.experiment_prototype.scan_classes.sequences import Sequence
-from borealis.experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from sequences import Sequence
+from scan_class_base import ScanClassBase
 from borealis.experiment_prototype.experiment_exception import ExperimentException
 
 """ Scans are made up of AveragingPeriods, these are typically a 3sec time of
