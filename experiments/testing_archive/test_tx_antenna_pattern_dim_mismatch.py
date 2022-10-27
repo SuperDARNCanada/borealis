@@ -30,7 +30,7 @@ class TxAntennaPatternTest(ExperimentPrototype):
         freq: int
 
         """
-        cpid = 12345601
+        cpid = 1
         super().__init__(cpid)
 
         beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
