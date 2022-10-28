@@ -5,7 +5,7 @@ import sys
 
 sys.path.append(os.environ['BOREALISPATH'])
 # write an experiment that creates a new control program.
-from src import ExperimentPrototype
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
 class OneBox(ExperimentPrototype):

@@ -5,11 +5,9 @@
 import os
 import sys
 
-BOREALISPATH = os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
-
-from src import ExperimentPrototype
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
+
 
 class InterleavedScan(ExperimentPrototype):
     """Interleavedscan was requested in 2016 by Tomo Hori to support the ERG mission.

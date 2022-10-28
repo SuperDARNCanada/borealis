@@ -7,7 +7,7 @@ BOREALISPATH = os.environ['BOREALISPATH']
 #sys.path.append(BOREALISPATH + "/experiment_prototype")
 
 #import test
-from src import ExperimentPrototype
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 from experiments.test_decimation_schemes import *
 
 class TwoMultifsound(ExperimentPrototype):

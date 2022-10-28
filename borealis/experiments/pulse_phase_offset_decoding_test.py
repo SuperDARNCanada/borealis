@@ -4,15 +4,10 @@ import os
 import sys
 import numpy as np
 
-
-BOREALISPATH = os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
-
 # write an experiment that creates a new control program.
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import experiments.superdarn_common_fields as scf
 
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationStage, DecimationScheme
 
 def phase_encode(beam_iter, sequence_num, num_pulses, num_samples):
     return np.random.uniform(-180.0, 180.0, num_pulses)

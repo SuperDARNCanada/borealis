@@ -4,7 +4,7 @@
 # Marci Detwiller Jan 7/2019
 # Adapted from ROS politescan (Dieter Andre, Kevin Krieger)
 
-from src import ExperimentPrototype
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
 class Politescan(ExperimentPrototype):
