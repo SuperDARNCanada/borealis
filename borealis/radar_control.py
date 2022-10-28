@@ -29,9 +29,9 @@ import utils.shared_macros as sm
 from utils import socket_operations
 
 if __debug__:
-    from build.debug.borealis.utils.protobuf.driverpacket_pb2 import DriverPacket
+    from debug.borealis.utils.protobuf.driverpacket_pb2 import DriverPacket
 else:
-    from build.release.borealis.utils.protobuf.driverpacket_pb2 import DriverPacket
+    from release.borealis.utils.protobuf.driverpacket_pb2 import DriverPacket
 
 TIME_PROFILE = False
 

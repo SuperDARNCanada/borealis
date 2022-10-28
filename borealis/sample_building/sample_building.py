@@ -10,7 +10,7 @@
 from scipy.constants import speed_of_light
 import numpy as np
 import math
-from borealis.experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 
 
 def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):   # TODO: Delete this? Unused

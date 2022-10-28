@@ -13,9 +13,9 @@
     :author: Marci Detwiller
 """
 
-from averaging_periods import AveragingPeriod
-from scan_class_base import ScanClassBase
-from borealis.experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.scan_classes.averaging_periods import AveragingPeriod
+from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.experiment_exception import ExperimentException
 
 
 class Scan(ScanClassBase):

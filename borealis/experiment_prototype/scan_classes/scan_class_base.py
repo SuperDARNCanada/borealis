@@ -11,7 +11,7 @@
     :author: Marci Detwiller
 """
 
-from borealis.experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 import itertools
 
 

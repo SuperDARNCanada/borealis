@@ -12,9 +12,9 @@
     :author: Marci Detwiller
 """
 
-from sequences import Sequence
-from scan_class_base import ScanClassBase
-from borealis.experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.scan_classes.sequences import Sequence
+from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.experiment_exception import ExperimentException
 
 """ Scans are made up of AveragingPeriods, these are typically a 3sec time of
 the same pulse sequence pointing in one direction.  AveragingPeriods are made

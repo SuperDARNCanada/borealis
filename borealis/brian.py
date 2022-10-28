@@ -16,11 +16,12 @@ import pickle
 
 from utils import socket_operations as so
 from utils import shared_macros as sm
+from utils.options import experimentoptions as options
 
 if __debug__:
-    from build.debug.borealis.utils.protobuf import rxsamplesmetadata_pb2
+    from debug.borealis.utils.protobuf import rxsamplesmetadata_pb2
 else:
-    from build.release.borealis.utils.protobuf import rxsamplesmetadata_pb2
+    from release.borealis.utils.protobuf import rxsamplesmetadata_pb2
 
 TIME_PROFILE = True
 

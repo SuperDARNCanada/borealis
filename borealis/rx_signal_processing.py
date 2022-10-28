@@ -21,9 +21,9 @@ else:
     cupy_available = True
 
 if __debug__:
-    from build.debug.borealis.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
+    from debug.borealis.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 else:
-    from build.release.borealis.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
+    from release.borealis.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 
 from dsp import dsp
 from utils.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset

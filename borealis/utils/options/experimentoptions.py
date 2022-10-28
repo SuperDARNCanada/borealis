@@ -10,7 +10,7 @@ Config data comes from the config.ini file, the hdw.dat file, and the restrict.d
 import json
 import os
 
-from borealis.experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 
 borealis_path = os.environ['BOREALISPATH']
 config_file = borealis_path + '/config.ini'

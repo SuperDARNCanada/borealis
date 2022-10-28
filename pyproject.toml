@@ -27,7 +27,7 @@ gpu = ["cupy"]
 Homepage = "https://borealis.readthedocs.io"
 
 [tool.setuptools.packages.find]
-where = ["borealis"]
-exclude = ["usrp_drivers"]
+where = ["borealis", "build"]
+exclude = ["usrp_drivers", "experiments.testing_archive*"]
 
 # TODO: Call install_radar_deps.py somehow with proper parameters

@@ -4,8 +4,8 @@ import sys
 import math
 from scipy.signal import firwin, remez, kaiserord
 
-from borealis.utils.options.experimentoptions import ExperimentOptions
-from borealis.experiment_prototype.experiment_exception import ExperimentException
+from utils.options.experimentoptions import ExperimentOptions
+from experiment_prototype.experiment_exception import ExperimentException
 
 
 class DecimationStage(object):
