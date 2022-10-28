@@ -40,7 +40,7 @@ def get_args():
     return args
 
 
-if __name__ == "__main__":
+def main():
     # Handling arguments
     args = get_args()
     restart_after_seconds = args.restart_after_seconds
@@ -67,7 +67,7 @@ if __name__ == "__main__":
     today = dt.utcnow().strftime("%Y%m%d")
     today_data_files = glob.glob("{}/{}/*".format(data_directory, today))
     # If there are no files yet today, then just use the start of the day as the newest file write time
-    if len(today_data_files) is 0:
+    if len(today_data_files) == 0:
         new_file_write_time = dt.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         new_file_write_time = float(new_file_write_time.strftime("%s"))
     else:
@@ -88,7 +88,7 @@ if __name__ == "__main__":
         sys.exit(0)
     else:
         # Now we attempt to restart Borealis
-        stop_borealis = subprocess.Popen("{}/scripts/stop_radar.sh".format(borealis_path),
+        stop_borealis = subprocess.Popen("{}/borealis/scripts/stop_radar.sh".format(borealis_path),
                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = stop_borealis.communicate()
         # Check out the output to make sure it's all good (empty output means it's all good)
@@ -99,7 +99,12 @@ if __name__ == "__main__":
 
         # Now call the start radar script, reads will block, so no need to communicate with
         # this process.
-        start_borealis = subprocess.Popen("{}/scripts/start_radar.sh".format(borealis_path),
+        start_borealis = subprocess.Popen("{}/borealis/scripts/start_radar.sh".format(borealis_path),
                                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print('Borealis stop_radar.sh and start_radar.sh called')
         sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
+

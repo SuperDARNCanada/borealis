@@ -26,6 +26,10 @@ gpu = ["cupy"]
 [project.urls]
 Homepage = "https://borealis.readthedocs.io"
 
+[project.scripts]
+steamed_hams = "scripts.steamed_hams:main"
+restart_borealis = "scripts.restart_borealis:main"
+
 [tool.setuptools.packages.find]
 where = ["borealis", "build"]
 exclude = ["usrp_drivers", "experiments.testing_archive*"]
