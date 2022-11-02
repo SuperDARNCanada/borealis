@@ -13,9 +13,11 @@ import os
 from experiment_prototype.experiment_exception import ExperimentException
 
 borealis_path = os.environ['BOREALISPATH']
-config_file = borealis_path + '/config.ini'
-hdw_dat_file = borealis_path + '/hdw.dat.'
-restricted_freq_file = borealis_path + '/restrict.dat.'
+site_id = os.environ['RADAR_CODE']
+
+config_file = borealis_path + f'/config/{site_id}/{site_id}_config.ini'
+hdw_dat_file = f'/usr/local/hdw/hdw.dat.{site_id}'
+restricted_freq_file = borealis_path + f'/config/{site_id}/restrict.dat.{site_id}'
 
 
 class ExperimentOptions:
@@ -116,10 +118,10 @@ class ExperimentOptions:
             raise e
 
         try:
-            with open(hdw_dat_file + self.site_id) as hdwdata:
+            with open(hdw_dat_file) as hdwdata:
                 lines = hdwdata.readlines()
         except IOError:
-            errmsg = 'Cannot open hdw.dat.{} file at {}'.format(self.site_id, (hdw_dat_file + self.site_id))
+            errmsg = 'Cannot open hdw.dat.{} file at {}'.format(site_id, hdw_dat_file)
             raise ExperimentException(errmsg)
 
         lines[:] = [line for line in lines if line[0] != "#"]  # remove comments
@@ -130,7 +132,7 @@ class ExperimentOptions:
             hdw = lines[-1]
         except IndexError:
             errmsg = 'Cannot find any valid lines in the hardware file: ' \
-                     '{}'.format((hdw_dat_file + self.site_id))
+                     '{}'.format(hdw_dat_file)
             raise ExperimentException(errmsg)
         # we now have the correct line of data.
 
@@ -162,11 +164,10 @@ class ExperimentOptions:
         self._max_beams = params[21]  # so a beam number always points in a certain direction
 
         try:
-            with open(restricted_freq_file + self.site_id) as restricted_freq_data:
+            with open(restricted_freq_file) as restricted_freq_data:
                 restricted = restricted_freq_data.readlines()
         except IOError:
-            errmsg = 'Cannot open restrict.dat.{} file at {}'.format(self.site_id,
-                                                                (restricted_freq_file + self.site_id))
+            errmsg = 'Cannot open restrict.dat.{} file at {}'.format(site_id, restricted_freq_file)
             raise ExperimentException(errmsg)
 
         restricted[:] = [line for line in restricted if line[0] != "#"]  # remove comments
