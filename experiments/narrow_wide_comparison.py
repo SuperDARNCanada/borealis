@@ -56,19 +56,18 @@ class FullFOVComparison(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": scf.INTT_7P,  # duration of an integration, in ms
+            "intt": 3500,  # duration of an integration, in ms
             "beam_angle": scf.STD_16_BEAM_ANGLE,
             "rx_beam_order": [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]],
             "tx_beam_order": [0],  # only one pattern
             "tx_antenna_pattern": scf.easy_widebeam,
             "freq": freq,  # kHz
             "align_sequences": True,  # align start of sequence to tenths of a second
-            "scanbound": scf.easy_scanbound(scf.INTT_7P, scf.STD_16_BEAM_ANGLE),
-            "wait_for_first_scanbound": False
         }
 
         slice_1 = copy.deepcopy(slice_0)
         slice_1['tx_antenna_pattern'] = boresight
+        slice_1['intt'] = 2500   # milliseconds, different so that slices are easily distinguishable
 
         self.add_slice(slice_0)
         self.add_slice(slice_1, interfacing_dict={0: 'AVEPERIOD'})
