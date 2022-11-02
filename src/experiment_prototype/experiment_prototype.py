@@ -21,7 +21,7 @@ import re
 from pathlib import Path
 
 from utils.options.experimentoptions import ExperimentOptions
-from sample_building.sample_building import get_wavetables
+from experiment_prototype.sample_building.sample_building import get_wavetables
 
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.scan_classes.scans import Scan
