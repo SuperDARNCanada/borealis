@@ -95,7 +95,7 @@ def retrieve_experiment(experiment_module_name):
 
     if __debug__:
         printing("Running the experiment: " + experiment_module_name)
-    experiment_mod = importlib.import_module("experiments." + experiment_module_name)
+    experiment_mod = importlib.import_module("borealis_experiments." + experiment_module_name)
 
     # find the class or classes *defined* in this module.
     # returns list of class name and object

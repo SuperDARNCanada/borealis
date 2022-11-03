@@ -1,0 +1,3 @@
+[submodule "src/borealis_experiments"]
+	path = src/borealis_experiments
+	url = git@github.com:SuperDARNCanada/borealis_experiments.git
