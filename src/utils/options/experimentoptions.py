@@ -16,7 +16,6 @@ borealis_path = os.environ['BOREALISPATH']
 site_id = os.environ['RADAR_CODE']
 
 config_file = borealis_path + f'/config/{site_id}/{site_id}_config.ini'
-hdw_dat_file = f'/usr/local/hdw/hdw.dat.{site_id}'
 restricted_freq_file = borealis_path + f'/config/{site_id}/restrict.dat.{site_id}'
 
 
@@ -110,12 +109,16 @@ class ExperimentOptions:
                             ''.format(config_file)
                     raise ExperimentException(errmsg)
 
+            hdw_path = str(config["hdw_path"])
+
             # TODO add appropriate signal process maximum time here after timing is changed - can
             # use to check for pulse spacing minimums, pace the driver
 
         except ValueError as e:
             # TODO: error
             raise e
+
+        hdw_dat_file = f'{hdw_path}/hdw.dat.{site_id}'
 
         try:
             with open(hdw_dat_file) as hdwdata:
