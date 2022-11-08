@@ -42,9 +42,9 @@ if on_rtd:
 
   call(['ln', '-s', BOREALISPATH + '/borealis_config_files/sas_config.ini', BOREALISPATH + '/config.ini'])
 
-  call(['git', 'clone', 'https://github.com/vtsuperdarn/hdw.dat', BOREALISPATH + '/hdw.dat'])
+  call(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
 
-  call(['ln', '-s', BOREALISPATH + '/hdw.dat/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
+  call(['ln', '-s', BOREALISPATH + '/hdw/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
 
 
 # -- General configuration ------------------------------------------------
