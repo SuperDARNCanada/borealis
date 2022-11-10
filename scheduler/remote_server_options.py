@@ -11,8 +11,7 @@ import os
 
 
 def ascii_encode_dict(data):
-    ascii_encode = lambda x: x.encode('ascii')
-    return dict(map(ascii_encode, pair) for pair in data.items())
+    return dict(map(lambda x: x.encode('ascii'), pair) for pair in data.items())
 
 
 class RemoteServerOptions(object):

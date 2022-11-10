@@ -38,8 +38,8 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     Returns:
         str: Formatted atq str.
     """
-
-    start_cmd = f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/steamed_hams.py {experiment} release {scheduling_mode}'"
+    steamed_hams = f"{os.environ['BOREALISPATH']}/steamed_hams.py"
+    start_cmd = f"echo 'screen -d -m -S starter {steamed_hams} {experiment} release {scheduling_mode}'"
     if kwargs_string:
         start_cmd += f" --kwargs_string {kwargs_string}'"
 
@@ -99,7 +99,7 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
 
     first_date, last_date = None, None
 
-    timeline_list = [0] * len(timeline)
+    timeline_list = [{}] * len(timeline)
 
     def get_cmap(n, name='hsv'):
         """Returns a function that maps each index in 0, 1, ..., n-1 to a distinct
@@ -107,34 +107,34 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         """
         return plt.cm.get_cmap(name, n)
 
-    def split_event(event):
+    def split_event(long_event):
         """
-        Recursively splits an event that runs during two or more days into two events
+        Recursively splits a long event that runs during two or more days into two events
         in order to handle plotting.
         """
-        if event['start'].day == event['end'].day:
-            return [event]
+        if long_event['start'].day == long_event['end'].day:
+            return [long_event]
         else:
             new_event = dict()
-            new_event['color'] = event['color']
-            new_event['label'] = event['label']
+            new_event['color'] = long_event['color']
+            new_event['label'] = long_event['label']
 
-            td = datetime.timedelta(days=1)
-            midnight = datetime.datetime.combine(event['start'] + td, datetime.datetime.min.time())
+            one_day = datetime.timedelta(days=1)
+            midnight = datetime.datetime.combine(long_event['start'] + one_day, datetime.datetime.min.time())
 
-            first_dur = midnight - event['start']
-            second_dur = event['end'] - midnight
+            first_dur = midnight - long_event['start']
+            second_dur = long_event['end'] - midnight
 
             # handle the new event first
             new_event['start'] = midnight
             new_event['duration'] = second_dur
-            new_event['end'] = event['end']
+            new_event['end'] = long_event['end']
 
-            # now handle the old event
-            event['duration'] = first_dur
-            event['end'] = midnight
+            # now handle the old long_event
+            long_event['duration'] = first_dur
+            long_event['end'] = midnight
 
-            return [event] + split_event(new_event)
+            return [long_event] + split_event(new_event)
 
     # make random colors
     timeline_dict = timeline_to_dict(timeline)
@@ -148,6 +148,7 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         for event in events:
             event['color'] = colors[i]
 
+    plot_last = None
     for i, event in enumerate(timeline):
         event_item = dict()
 
@@ -271,12 +272,13 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         when the last line is of set duration, find its finish time so that
         the infinite duration line can be set to run again at that point.
         """
-        last_queued_line = queued_lines[-1]
-        queued_dur_td = datetime.timedelta(minutes=int(last_queued_line['duration']))
-        queued_finish = last_queued_line['time'] + queued_dur_td
-        return last_queued_line, queued_finish
+        last_queued = queued_lines[-1]
+        queued_dur_td = datetime.timedelta(minutes=int(last_queued['duration']))
+        queued_finish_time = last_queued['time'] + queued_dur_td
+        return last_queued, queued_finish_time
 
     warnings = []
+    last_queued_line = {}
     for idx, scd_line in enumerate(scd_lines):
         # if we have lines queued up, grab the last one to compare to.
         if queued_lines:
@@ -545,7 +547,7 @@ def _main():
             relevant_lines = get_relevant_lines(scd_util, time_of_interest)
         except (IndexError, ValueError) as e:
             logtime = time_of_interest.strftime("%c")
-            error_msg = (f"{logtime}: Unable to make schedule\n\t Exception thrown:\n\t\t {str(e)}\n")
+            error_msg = f"{logtime}: Unable to make schedule\n\t Exception thrown:\n\t\t {str(e)}\n"
             with open(log_file, 'w') as f:
                 f.write(log_msg_header)
                 f.write(error_msg)
@@ -573,6 +575,7 @@ def _main():
     # Make the schedule on restart of application
     make_schedule()
     new_notify = False
+    path = ""
     while True:
         # "IN_IGNORED" was removing watch points and wouldn't monitor the path. This regens it.
         if new_notify:

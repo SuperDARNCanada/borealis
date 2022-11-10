@@ -162,6 +162,8 @@ class SWG(object):
 
         skip_line = False
         parsed_params = []
+        mode_to_use = None
+        mode_type = None
         for idx, line in enumerate(swg_lines):
 
             # Skip line is used for special time radar lines
@@ -180,8 +182,6 @@ class SWG(object):
             # Lines starting with '#' are comments
             if line[0] == "#":
                 continue
-
-            items = line.split()
 
             # First line is month and year
             if idx == 0:
@@ -272,10 +272,10 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        print(f"add_line date: {ex['yyyymmdd']}, with experiment: {ex['experiment']}, mode: {ex['scheduling_mode']}")
+                        print(f"Add: date: {ex['yyyymmdd']}, exp: {ex['experiment']}, mode: {ex['scheduling_mode']}")
                         site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
                     except ValueError as e:
-                        error_msg = f"{today.strftime('%c')} {site_scd.scd_filename}: Unable to add line with params:\n" \
+                        error_msg = f"{today.strftime('%c')} {site_scd.scd_filename}: Unable to add line:\n" \
                                     f"\t {ex['yyyymmdd']} {ex['hhmm']} {ex['experiment']} {ex['scheduling_mode']}\n" \
                                     f"\t Exception thrown:\n" \
                                     f"\t\t {str(e)}\n"
