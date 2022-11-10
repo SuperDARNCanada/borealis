@@ -29,8 +29,8 @@ class Emailer(object):
             file_of_emails (str): a file containing a list of emails.
         """
         super(Emailer, self).__init__()
-        self.smtp = None
-        self.sender = None
+        self.smtp = smtplib.SMTP('localhost')
+        self.sender = "borealis"
 
         try:
             with open(file_of_emails, 'r') as f:
@@ -65,12 +65,9 @@ class Emailer(object):
         except Exception as e:
             body = f"Unable to open log file {log_file} with error:\n{str(e)}"
 
-        self.smtp = smtplib.SMTP('localhost')
-        self.sender = "borealis"
-        
         em = email.mime.multipart.MIMEMultipart()
 
-        em['subject'] = subject
+        em['subject'] = str(subject)
         em['From'] = self.sender
         em['To'] = ", ".join(self.emails)
 

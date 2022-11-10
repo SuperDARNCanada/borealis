@@ -119,11 +119,24 @@ class TestSchedulerEmailer(unittest.TestCase):
     def test_no_logfile(self):
         """
         Test calling the scheduler emailer with a non-existent log file
+        Should send email with body of email containing error message
         """
         with open(self.email_file) as f:
             e = email_utils.Emailer(f.name)
-            subject = 'Unittest scheduler emailer'
-            e.email_log(subject, self.logfile.name)
+            subject = 'Unittest scheduler emailer, no log file'
+            with self.assertRaises(SystemExit):
+                e.email_log(subject, 'albj;ljkas;ldj;oij_nonexistentlogfilename')
+
+    def test_bad_logfile(self):
+        """
+        Test calling the scheduler emailer with a log file that can't be opened
+        Should send email with body of email containing error message
+        """
+        with open(self.email_file) as f:
+            e = email_utils.Emailer(f.name)
+            subject = 'Unittest scheduler emailer, bad log file'
+            with self.assertRaises(SystemExit):
+                e.email_log(subject, self.no_perms_file)
 
     def test_email_works(self):
         """
@@ -132,7 +145,8 @@ class TestSchedulerEmailer(unittest.TestCase):
         with open(self.email_file) as f:
             e = email_utils.Emailer(f.name)
             subject = 'Unittest scheduler emailer'
-            e.email_log(subject, self.logfile.name)
+            with self.assertRaises(SystemExit):
+                e.email_log(subject, self.logfile.name)
 
     def test_email_attachments_work(self):
         """
@@ -142,7 +156,8 @@ class TestSchedulerEmailer(unittest.TestCase):
             f.write(self.emails)
             e = email_utils.Emailer(f.name)
             subject = 'Unittest scheduler emailer'
-            e.email_log(subject, self.logfile.name, attachments=self.attachments)
+            with self.assertRaises(SystemExit):
+                e.email_log(subject, self.logfile.name, attachments=self.attachments)
 
 
 if __name__ == "__main__":
