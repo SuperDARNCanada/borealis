@@ -29,6 +29,8 @@ class Emailer(object):
             file_of_emails (str): a file containing a list of emails.
         """
         super(Emailer, self).__init__()
+        self.smtp = None
+        self.sender = None
 
         try:
             with open(file_of_emails, 'r') as f:
@@ -46,8 +48,8 @@ class Emailer(object):
             self.emails = []
             print(f"Error opening emails text file: {err}")
 
-        self.smtp = None
-        self.sender = None
+        if not self.emails:
+            raise ValueError("No email addresses to send to")
 
     def email_log(self, subject, log_file, attachments=None):
         """Send a log to the emails.
