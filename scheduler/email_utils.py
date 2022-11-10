@@ -4,13 +4,14 @@
 #
 # email_utils.py
 # 2019-04-18
-# Utilites for sending emails via scripts.
+# Utilities for sending emails via scripts.
 #
 import email
 import smtplib
 import email.mime.text
 import email.mime.multipart
 import email.mime.base
+
 
 class Emailer(object):
     """Utilities used to send logs during scheduling.
@@ -22,7 +23,7 @@ class Emailer(object):
         email client.
     """
     def __init__(self, file_of_emails):
-        """Inits the Emailer object.
+        """Initializes the Emailer object.
 
         Args:
             file_of_emails (str): a file containing a list of emails.
@@ -32,25 +33,35 @@ class Emailer(object):
         try:
             with open(file_of_emails, 'r') as f:
                 self.emails = f.readlines()
-        except:
+        except OSError as err:
+            # File can't be opened
             self.emails = []
+            print(f"OSError opening emails text file: {err}")
+        except ValueError as err:
+            # Encoding error
+            self.emails = []
+            print(f"ValueError opening emails text file: {err}")
+        except Exception as err:
+            # Unknown error
+            self.emails = []
+            print(f"Error opening emails text file: {err}")
 
+        self.smtp = None
+        self.sender = None
 
-
-    def email_log(self, subject, log_file, attachments=[]):
+    def email_log(self, subject, log_file, attachments=None):
         """Send a log to the emails.
 
         Args:
             subject (str): Subject line for the log email.
             log_file (str): File name of the log.
-            attachments(list) : List of paths to email attachments.
+            attachments(list) : List of paths to email attachments. Default None
         """
         try:
             with open(log_file, 'r') as f:
                 body = f.read()
         except Exception as e:
             body = "Unable to open log file {} with error:\n{}".format(log_file, str(e))
-
 
         self.smtp = smtplib.SMTP('localhost')
         self.sender = "borealis"
@@ -73,7 +84,6 @@ class Emailer(object):
                     attachment_header = "attachment; filename={}".format(attachment)
                     payload.add_header('Content-Disposition', attachment_header)
                     em.attach(payload)
-
 
         self.smtp.sendmail(self.sender, self.emails, em.as_string())
         self.smtp.quit()
