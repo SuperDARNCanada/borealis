@@ -9,6 +9,7 @@
 import json
 import os
 
+
 def ascii_encode_dict(data):
     ascii_encode = lambda x: x.encode('ascii')
     return dict(map(ascii_encode, pair) for pair in data.items())
@@ -29,7 +30,7 @@ class RemoteServerOptions(object):
             with open(config_path, 'r') as config_data:
                 raw_config = json.load(config_data)
         except IOError:
-            errmsg = 'Cannot open config file at {0}'.format(config_path)
+            errmsg = f"Cannot open config file at {config_path}"
             raise IOError(errmsg)
 
         self._site_id = raw_config["site_id"]
@@ -43,5 +44,3 @@ class RemoteServerOptions(object):
         :rtype:     str
         """
         return self._site_id
-
-

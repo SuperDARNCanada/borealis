@@ -61,7 +61,7 @@ class Emailer(object):
             with open(log_file, 'r') as f:
                 body = f.read()
         except Exception as e:
-            body = "Unable to open log file {} with error:\n{}".format(log_file, str(e))
+            body = f"Unable to open log file {log_file} with error:\n{str(e)}"
 
         self.smtp = smtplib.SMTP('localhost')
         self.sender = "borealis"
@@ -81,7 +81,7 @@ class Emailer(object):
                     payload.set_payload(f.read())
                     email.encoders.encode_base64(payload)
 
-                    attachment_header = "attachment; filename={}".format(attachment)
+                    attachment_header = f"attachment; filename={attachment}"
                     payload.add_header('Content-Disposition', attachment_header)
                     em.attach(payload)
 

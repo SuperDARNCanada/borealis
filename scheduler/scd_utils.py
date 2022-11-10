@@ -4,13 +4,12 @@
 #
 # scd_utils.py
 # 2019-04-18
-# Utilites for working with scd files.
+# Utilities for working with scd files.
 
 import datetime as dt
-import collections
 import shutil
-import locale
 import sys
+
 
 class SCDUtils(object):
     """Contains utilities for working with SCD files. SCD files are schedule files for Borealis.
@@ -49,42 +48,32 @@ class SCDUtils(object):
             ValueError: If line parameters are invalid or if line is a duplicate.
         """
 
-        try:
-            # create datetime from args to see if valid
-            time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
-        except:
-            raise ValueError("Can not create datetime from supplied formats")
-        try:
-            int(prio)
-        except ValueError as e:
-            raise ValueError("Unable to cast priority {} as int.".format(prio))
+        # create datetime from args to see if valid
+        time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
+
+        if not isinstance(prio, int):
+            raise ValueError("Priority must be an integer. 0 <= prio <= 20.")
 
         if not (0 <= int(prio) <= 20):
             raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
 
-
         if duration != "-":
-            try:
-                int(duration)
-            except ValueError as e:
-                raise ValueError("Unable to cast duration {} as int".format(duration))
+            int(duration)
 
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
 
         possible_scheduling_modes = ['common', 'special', 'discretionary']
         if scheduling_mode not in possible_scheduling_modes:
-            raise ValueError("Unknown scheduling mode type {} not in {}"
-                .format(scheduling_mode, possible_scheduling_modes))
+            raise ValueError(f"Unknown scheduling mode type {scheduling_mode} not in {possible_scheduling_modes}")
 
-        return {"timestamp" : epoch_milliseconds,
-                "time" : time,
-                "duration" : str(duration),
-                "prio" : str(prio),
-                "experiment" : experiment,
-                "scheduling_mode" : scheduling_mode,
+        return {"timestamp": epoch_milliseconds,
+                "time": time,
+                "duration": str(duration),
+                "prio": str(prio),
+                "experiment": experiment,
+                "scheduling_mode": scheduling_mode,
                 "kwargs_string": kwargs_string}
-
 
     def read_scd(self):
         """Read and parse the Borealis schedule file.
@@ -105,8 +94,7 @@ class SCDUtils(object):
 
         for num, line in enumerate(raw_scd):
             if len(line) not in [6, 7]:
-                raise ValueError("Line {} has incorrect number of arguments; requires 6 or 7."
-                                 " Line: {}".format(num, line))
+                raise ValueError(f"Line {num} has incorrect number of arguments; requires 6 or 7. Line: {line}")
             # date time experiment mode priority duration (kwargs if any)
             if len(line) == 6:
                 scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
@@ -150,8 +138,7 @@ class SCDUtils(object):
 
         with open(self.scd_filename, 'w') as f:
             for line in text_lines:
-                f.write("{}\n".format(line))
-
+                f.write(f"{line}\n")
 
     def add_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
                  duration='-', kwargs_string=''):
@@ -177,7 +164,7 @@ class SCDUtils(object):
             raise ValueError("Line is a duplicate of an existing line")
 
         if any([(new_line['timestamp'] == line['timestamp'] and
-                    new_line['prio'] == line['prio']) for line in scd_lines]):
+                 new_line['prio'] == line['prio']) for line in scd_lines]):
             raise ValueError("Priority already exists at this time")
 
         scd_lines.append(new_line)
@@ -211,7 +198,7 @@ class SCDUtils(object):
         scd_lines = self.read_scd()
         try:
             scd_lines.remove(line_to_rm)
-        except:
+        except ValueError:
             raise ValueError("Line does not exist in SCD")
 
         self.write_scd(scd_lines)
@@ -238,7 +225,7 @@ class SCDUtils(object):
         try:
             # create datetime from args to see if valid
             time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
-        except:
+        except ValueError:
             raise ValueError("Can not create datetime from supplied formats")
 
         scd_lines = self.read_scd()
@@ -275,7 +262,6 @@ class SCDUtils(object):
         return relevant_lines
 
 
-
 if __name__ == "__main__":
     filename = sys.argv[1]
 
@@ -292,9 +278,6 @@ if __name__ == "__main__":
     # scd_util.add_line("20190414", "00:43", "twofsound", "common")
     # scd_util.add_line("20190408", "15:43", "twofsound", , "common", duration=57)
 
-
     # scd_util.remove_line("20190414", "10:43", "twofsound", "special")
 
-
     # print(scd_util.get_relevant_lines("20190414", "10:44"))
-

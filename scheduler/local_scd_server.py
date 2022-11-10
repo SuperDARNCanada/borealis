@@ -76,6 +76,23 @@ EXPERIMENTS = {
 }
 
 
+def get_next_month():
+    """Finds the datetime of the next month.
+
+    Returns:
+        TYPE: datetime object.
+    """
+    today = datetime.datetime.utcnow()
+
+    counter = 1
+    new_date = today + datetime.timedelta(days=counter)
+    while new_date.month == today.month:
+        counter += 1
+        new_date = today + datetime.timedelta(days=counter)
+
+    return new_date
+
+
 class SWG(object):
     """Holds the data needed for processing a SWG file.
 
@@ -88,10 +105,10 @@ class SWG(object):
         self.scd_dir = scd_dir
 
         try:
-            cmd = "git -C {}/{} rev-parse".format(self.scd_dir, SWG_GIT_REPO_DIR)
+            cmd = f"git -C {self.scd_dir}/{SWG_GIT_REPO_DIR} rev-parse"
             sp.check_output(cmd, shell=True)
-        except sp.CalledProcessError as e:
-            cmd = 'cd {}; git clone {}'.format(self.scd_dir, SWG_GIT_REPO)
+        except sp.CalledProcessError:
+            cmd = f"cd {self.scd_dir}; git clone {SWG_GIT_REPO}"
             sp.call(cmd, shell=True)
 
     def new_swg_file_available(self):
@@ -104,8 +121,7 @@ class SWG(object):
         # This command will return the number of new commits available in main. This signals that
         # there are new SWG files available.
 
-        cmd = "cd {}/{}; git fetch; git log ..origin/main --oneline | wc -l".format(self.scd_dir,
-                                                                        SWG_GIT_REPO_DIR)
+        cmd = f"cd {self.scd_dir}/{SWG_GIT_REPO_DIR}; git fetch; git log ..origin/main --oneline | wc -l"
         shell_output = sp.check_output(cmd, shell=True)
 
         return bool(int(shell_output))
@@ -114,24 +130,8 @@ class SWG(object):
         """Uses git to grab the new scd updates.
 
         """
-        cmd = "cd {}/{}; git pull origin main".format(self.scd_dir, SWG_GIT_REPO_DIR)
+        cmd = f"cd {self.scd_dir}/{SWG_GIT_REPO_DIR}; git pull origin main"
         sp.call(cmd, shell=True)
-
-    def get_next_month(self):
-        """Finds the datetime of the next month.
-
-        Returns:
-            TYPE: datetime object.
-        """
-        today = datetime.datetime.utcnow()
-
-        counter = 1
-        new_date = today + datetime.timedelta(days=counter)
-        while new_date.month == today.month:
-            counter += 1
-            new_date = today + datetime.timedelta(days=counter)
-
-        return new_date
 
     def parse_swg_to_scd(self, modes, radar, first_run):
 
@@ -150,15 +150,12 @@ class SWG(object):
         if first_run:
             month_to_use = datetime.datetime.utcnow()
         else:
-            month_to_use = self.get_next_month()
+            month_to_use = get_next_month()
 
         year = month_to_use.strftime("%Y")
         month = month_to_use.strftime("%m")
-
-        swg_file = "{scd_dir}/{swg_dir}/{yyyy}/{yyyymm}.swg".format(scd_dir=self.scd_dir,
-                                                                    swg_dir=SWG_GIT_REPO_DIR,
-                                                                    yyyy=year,
-                                                                    yyyymm=year + month)
+        yearmonth = year + month
+        swg_file = f"{self.scd_dir}/{SWG_GIT_REPO_DIR}/{year}/{yearmonth}.swg"
 
         with open(swg_file, 'r') as f:
             swg_lines = f.readlines()
@@ -190,9 +187,6 @@ class SWG(object):
             if idx == 0:
                 continue
 
-            start_day = items[0][0:2]
-            start_hr = items[0][3:]
-
             if "Common Time" in line:
                 mode_type = "common"
                 # 2018 11 23 no longer scheduling twofsound as common time during 'no switching'
@@ -222,8 +216,8 @@ class SWG(object):
                 mode_type = "discretionary"
                 mode_to_use = modes["discretionary_time"]
 
-            param = {"yyyymmdd": "{}{}{}".format(year, month, start_day),
-                     "hhmm": "{}:00".format(start_hr),
+            param = {f"yyyymmdd": "{year}{month}{start_day}",
+                     f"hhmm": "{start_hr}:00",
                      "experiment": mode_to_use,
                      "scheduling_mode": mode_type}
             parsed_params.append(param)
@@ -235,8 +229,7 @@ def main():
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
     parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
-    parser.add_argument('--force', action="store_true", help='Force an update to the schedules '
-                                                             'for the next month')
+    parser.add_argument('--force', action="store_true", help='Force an update to the schedules for the next month')
     parser.add_argument('--first-run', action="store_true", help='This will generate the first set'
                                                                  ' of schedule files if running on'
                                                                  ' a fresh directory. If the next'
@@ -260,7 +253,7 @@ def main():
         os.makedirs(scd_logs)
 
     sites = list(EXPERIMENTS.keys())
-    site_scds = [scd_utils.SCDUtils("{}/{}.scd".format(scd_dir, s)) for s in sites]
+    site_scds = [scd_utils.SCDUtils(f"{scd_dir}/{s}.scd") for s in sites]
     swg = SWG(scd_dir)
 
     force_next_month = args.force
@@ -279,30 +272,21 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        print("add_line date: {}, with experiment: {}, mode: {}".format(ex['yyyymmdd'],
-                                                                                        ex['experiment'],
-                                                                                        ex['scheduling_mode']))
+                        print(f"add_line date: {ex['yyyymmdd']}, with experiment: {ex['experiment']}, mode: {ex['scheduling_mode']}")
                         site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
                     except ValueError as e:
-                        error_msg = ("{logtime} {sitescd}: Unable to add line with parameters:\n"
-                                     "\t {date} {time} {experiment} {mode}\n"
-                                     "\t Exception thrown:\n"
-                                     "\t\t {exception}\n")
-                        error_msg = error_msg.format(logtime=today.strftime("%c"),
-                                                     sitescd=site_scd.scd_filename,
-                                                     date=ex['yyyymmdd'],
-                                                     time=ex['hhmm'],
-                                                     experiment=ex['experiment'],
-                                                     mode=ex['scheduling_mode'],
-                                                     exception=str(e))
+                        error_msg = f"{today.strftime('%c')} {site_scd.scd_filename}: Unable to add line with params:\n" \
+                                    f"\t {ex['yyyymmdd']} {ex['hhmm']} {ex['experiment']} {ex['scheduling_mode']}\n" \
+                                    f"\t Exception thrown:\n" \
+                                    f"\t\t {str(e)}\n"
 
                         with open(scd_logs + scd_error_log, 'a') as f:
                             f.write(error_msg)
 
                         errors = True
                         break
-                    except FileNotFoundError as e:
-                        error_msg = "SCD filename: {} is missing!!!\n".format(site_scd.scd_filename)
+                    except FileNotFoundError:
+                        error_msg = f"SCD filename: {site_scd.scd_filename} is missing!!!\n"
 
                         with open(scd_logs + scd_error_log, 'a') as f:
                             f.write(error_msg)
@@ -321,14 +305,12 @@ def main():
 
                     text_lines = [site_scd.fmt_line(x) for x in new_lines]
 
-                    success_msg += "\t{}\n".format(site)
+                    success_msg += f"\t{site}\n"
                     for line in text_lines:
-                        success_msg += "\t\t{}\n".format(line)
+                        success_msg += f"\t\t{line}\n"
 
                 with open(scd_logs + scd_error_log, 'a') as f:
                     f.write(success_msg)
-            else:
-                errors = False
 
             emailer.email_log(subject, scd_logs + scd_error_log)
 
