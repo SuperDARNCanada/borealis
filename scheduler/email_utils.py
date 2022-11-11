@@ -28,7 +28,7 @@ class Emailer(object):
         Args:
             file_of_emails (str): a file containing a list of emails.
         """
-        super(Emailer, self).__init__()
+        super().__init__()
         self.smtp = smtplib.SMTP('localhost')
         self.sender = "borealis"
 

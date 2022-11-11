@@ -43,50 +43,97 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test giving a non-existent scd file to the module
         """
-        scdu = scd_utils.SCDUtils('thisfilelikelydoesntexist90758hjna;ksjn')
+        scdfile = 'thisfilelikelydoesntexist90758hjna;ksjn'
+        scdu = scd_utils.SCDUtils(scdfile)
+        # TODO:
 
 # check_line tests # TODO
     def test_invalid_yyyymmdd(self):
         """
         Test an invalid start date
         """
+        yyyymmdd = 0   # TypeError
+        yyyymmdd = '20211'  # ValueError
+        yyyymmdd = None
+        # Invalid type for yyyymmdd should raise a TypeError in strptime.
+        # it will also raise ValueError if the date_string and format can't be parsed by time.strptime()
 
     def test_invalid_hhmm(self):
         """
-        Test an invalid start hour and minute
+        Test an invalid start hour and minute. required format: "HH:MM"
         """
+        hhmm = 0  # TypeError
+        hhmm = '2011'  # ValueError
+        hhmm = None
+        # Invalid type for hhmm should raise a TypeError in strptime.
+        # it will also raise ValueError if the date_string and format can't be parsed by time.strptime()
 
     def test_invalid_experiment(self):
         """
         Test an invalid experiment name - Must be an experiment named in the repo
         """
+        exp = 'non-existent_Experiment'
+        exp = None
+        exp = 5
+
+        # TODO
+
     def test_invalid_mode(self):
         """
         Test an invalid mode (possible: ['common', 'special', 'discretionary'])
         """
+        mode = 'notamode'
+        mode = 0
+        mode = None
+
+        # TODO
+
     def test_invalid_prio(self):
         """
         Test an invalid priority (integer from 0 to 20 inclusive)
         """
-    def test_invalid_duration(self):
-        """
-        Test an invalid duration (optional: needs to be an integer minutes)
-        """
-    def test_invalid_kwargs_string(self):
-        """
-        Test an invalid kwargs string (optional arguments that may be passed to an experiment's kwargs)
-        """
+        prio = -1
+        prio = 21
 
+        # TODO
     def test_non_int_prio(self):
         """
         Test an invalid priority type
         """
+        prio = ""
+        prio = None
+        prio = '5'
+        # TODO:
+
+    def test_invalid_duration(self):
+        """
+        Test an invalid duration (optional: needs to be an integer minutes)
+        """
+        dur = 0
+        dur = -1
+        dur = -50
+        dur = 53.09
+        dur = ''
+        dur = None
+        dur = '60'
+        # TODO:
+
+    def test_invalid_kwargs_string(self):
+        """
+        Test an invalid kwargs string (optional arguments that may be passed to an experiment's kwargs)
+        """
+        kwarg_str = 'this doesnt mean anything to the experiment'
+        kwarg_str = 0
+        kwarg_str = -1
+        kwarg_str = 56.9
+        # TODO:
 
 # read_scd tests # TODO
     def test_invalid_num_args(self):
         """
         Test an invalid number of arguments, requires 6 or 7 args
         """
+
 
 # fmt_line tests
 # TODO

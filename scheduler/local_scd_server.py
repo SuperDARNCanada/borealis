@@ -101,7 +101,7 @@ class SWG(object):
     """
 
     def __init__(self, scd_dir):
-        super(SWG, self).__init__()
+        super().__init__()
         self.scd_dir = scd_dir
 
         try:

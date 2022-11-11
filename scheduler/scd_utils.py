@@ -15,14 +15,14 @@ class SCDUtils(object):
     """Contains utilities for working with SCD files. SCD files are schedule files for Borealis.
 
     Attributes:
+        scd_filename (str): The filename of schedule to use.
+        scd_dt_fmt (str): String format for parsing/writing datetimes.
         line_fmt (str): String format for scd line.
         scd_default (dict): Default event to run if no other infinite duration line is scheduled.
-        scd_dt_fmt (str): String format for parsing/writing datetimes.
-        scd_filename (str): The filename of schedule to use.
     """
 
     def __init__(self, scd_filename):
-        super(SCDUtils, self).__init__()
+        super().__init__()
         self.scd_filename = scd_filename
         self.scd_dt_fmt = "%Y%m%d %H:%M"
         self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {kwargs_string}"
@@ -266,18 +266,3 @@ if __name__ == "__main__":
     filename = sys.argv[1]
 
     scd_util = SCDUtils(filename)
-
-    # scd_util.add_line("20190404", "10:43", "twofsound", "common")
-    # #scd_util.add_line("04/04/2019", "10:43", "twofsound", "common")
-    # scd_util.add_line("20190407", "10:43", "twofsound", "discretionary")
-    # scd_util.add_line("20190414", "10:43", "twofsound", "special")
-    # scd_util.add_line("20190414", "10:43", "twofsound", "special", prio=2)
-    # scd_util.add_line("20190414", "10:43", "twofsound", "discretionary", prio=1, duration=89)
-    # #scd_util.add_line("20190414", "10:43", "twofsound", "common", prio=1, duration=24)
-    # scd_util.add_line("20190414", "11:43", "twofsound", "common", duration=46)
-    # scd_util.add_line("20190414", "00:43", "twofsound", "common")
-    # scd_util.add_line("20190408", "15:43", "twofsound", , "common", duration=57)
-
-    # scd_util.remove_line("20190414", "10:43", "twofsound", "special")
-
-    # print(scd_util.get_relevant_lines("20190414", "10:44"))

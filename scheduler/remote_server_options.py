@@ -20,7 +20,7 @@ class RemoteServerOptions(object):
 
     """
     def __init__(self):
-        super(RemoteServerOptions, self).__init__()
+        super().__init__()
 
         if not os.environ["BOREALISPATH"]:
             raise ValueError("BOREALISPATH env variable not set")
