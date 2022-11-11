@@ -27,16 +27,87 @@ class TestSchedulerUtils(unittest.TestCase):
     """
     unittest class to test the scheduler utilities module. All test methods must begin with the word 'test' to be run
     """
+
+    def __init__(self):
+        super().__init__()
+
+
     def setUp(self):
         """
         Called before every test_* method
         """
         print("Method: ", self._testMethodName)
 
+# __init__ tests # TODO
+    def test_bad_scd_file(self):
+        """
+        Test giving a non-existent scd file to the module
+        """
+        scdu = scd_utils.SCDUtils('thisfilelikelydoesntexist90758hjna;ksjn')
 
-class TestRemoteScheduler(unittest.TestCase):
+# check_line tests # TODO
+    def test_invalid_yyyymmdd(self):
+        """
+        Test an invalid start date
+        """
+
+    def test_invalid_hhmm(self):
+        """
+        Test an invalid start hour and minute
+        """
+
+    def test_invalid_experiment(self):
+        """
+        Test an invalid experiment name - Must be an experiment named in the repo
+        """
+    def test_invalid_mode(self):
+        """
+        Test an invalid mode (possible: ['common', 'special', 'discretionary'])
+        """
+    def test_invalid_prio(self):
+        """
+        Test an invalid priority (integer from 0 to 20 inclusive)
+        """
+    def test_invalid_duration(self):
+        """
+        Test an invalid duration (optional: needs to be an integer minutes)
+        """
+    def test_invalid_kwargs_string(self):
+        """
+        Test an invalid kwargs string (optional arguments that may be passed to an experiment's kwargs)
+        """
+
+    def test_non_int_prio(self):
+        """
+        Test an invalid priority type
+        """
+
+# read_scd tests # TODO
+    def test_invalid_num_args(self):
+        """
+        Test an invalid number of arguments, requires 6 or 7 args
+        """
+
+# fmt_line tests
+# TODO
+
+# write_scd tests
+# TODO
+
+# add_line tests
+# TODO
+
+# remove_line tests
+# TODO
+
+# get_relevant_lines tests
+# TODO
+
+
+class TestRemoteServer(unittest.TestCase):
     """
-    unittest class to test the remote scheduler module. All test methods must begin with the word 'test' to be run
+    unittest class to test the remote server and remote server options modules.
+    All test methods must begin with the word 'test' to be run
     """
     def setUp(self):
         """
@@ -44,10 +115,30 @@ class TestRemoteScheduler(unittest.TestCase):
         """
         print("Method: ", self._testMethodName)
 
+# remote server options tests # TODO
 
-class TestLocalScheduler(unittest.TestCase):
+# format_to_atq tests # TODO
+
+# get_next_month_from_data tests # TODO
+
+# timeline_to_dict tests # TODO
+
+# plot_timeline tests # TODO
+    # get_cmap
+    # split_event
+
+# convert_scd_to_timeline tests # TODO
+    # calculate_new_last_line_params
+
+# timeline_to_atq tests # TODO
+
+# get_relevant_lines tests # TODO
+
+# _main(): make_schedule tests # TODO
+
+class TestLocalServer(unittest.TestCase):
     """
-    unittest class to test the local scheduler module. All test methods must begin with the word 'test' to be run
+    unittest class to test the local server module. All test methods must begin with the word 'test' to be run
     """
     def setUp(self):
         """
@@ -55,6 +146,15 @@ class TestLocalScheduler(unittest.TestCase):
         """
         print("Method: ", self._testMethodName)
 
+# get_next_month tests # TODO
+
+# SWG tests: # TODO
+    # init tests
+    # new_swg_file_available
+    # pull_new_swg_file
+    # parse_swg_to_scd
+
+# main() tests # TODO
 
 class TestSchedulerEmailer(unittest.TestCase):
     """
