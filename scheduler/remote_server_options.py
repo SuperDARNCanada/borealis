@@ -19,12 +19,22 @@ class RemoteServerOptions(object):
     Parses the options from the config file that are relevant to data writing.
 
     """
-    def __init__(self):
+    def __init__(self, config_path=None):
+        """
+        Initialize and get configuration options
+
+        Args:
+            config_path (str): path to config file for. Default BOREALISPATH/config/[rad]/[rad]_config.ini
+        """
         super().__init__()
 
         if not os.environ["BOREALISPATH"]:
             raise ValueError("BOREALISPATH env variable not set")
-        config_path = os.environ["BOREALISPATH"] + "/config.ini"
+
+        if config_path is None:
+            radar_id = os.environ["RADAR_ID"]
+            config_path = f"{os.environ['BOREALISPATH']}/{radar_id}/{radar_id}_config.ini"
+
         try:
             with open(config_path, 'r') as config_data:
                 raw_config = json.load(config_data)

@@ -464,6 +464,9 @@ def main():
     os.environ['IDIR'] = args.install_dir
     os.environ['CORES'] = str(mp.cpu_count())
 
+    # Set up bash .profile RADAR_ID export
+    execute_cmd(f'echo "export RADAR_ID={args.radar}" >> /home/{args.user}/.profile')
+
     specify_python = False
     try:
         python_version = os.environ['PYTHON_VERSION']

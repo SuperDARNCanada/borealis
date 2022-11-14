@@ -10,6 +10,8 @@ import unittest
 import os
 import sys
 import tempfile
+import json
+import datetime
 
 if not os.environ['BOREALISPATH']:
     BOREALISPATH = f"{os.environ['HOME']}/PycharmProjects/borealis/"
@@ -574,6 +576,14 @@ class TestRemoteServer(unittest.TestCase):
         print("Method: ", self._testMethodName)
 
 # remote server options tests
+    def test_remote_server_options(self):
+        """
+        Test creating an options object
+        """
+        config = f"{os.environ['BOREALISPATH']}/tests/scheduler/good_config_file.ini"
+        ops = rso.RemoteServerOptions(config)
+        self.assertEqual(ops.site_id(), 'tst')
+
     def test_no_borealispath(self):
         """
         Test creating an options object without a BOREALISPATH set up, raises ValueError
@@ -593,23 +603,67 @@ class TestRemoteServer(unittest.TestCase):
         """
         Test creating an options object without a good config file. Raises IOError
         """
-        bad_config = tempfile.NamedTemporaryFile()
+        bad_config = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_config.ini"
+        with self.assertRaises(json.JSONDecodeError):
+            rso.RemoteServerOptions(config_path=bad_config)
 
-    # TODO:
+    def test_empty_config_file(self):
+        """
+        Test creating an options object an empty config file. Raises IOError
+        """
+        bad_config = f"{os.environ['BOREALISPATH']}/tests/scheduler/empty_config.ini"
+        with self.assertRaises(IOError):
+            rso.RemoteServerOptions(config_path=bad_config)
+
+    def test_config_file_dne(self):
+        """
+        Test creating an options object with a config file that DNE
+        """
+        bad_config = "/not/config/file/location"
+        with self.assertRaises(IOError):
+            rso.RemoteServerOptions(config_path=bad_config)
 
 # format_to_atq tests
     def test_make_atq_commands(self):
         """
         Test creating atq commands from scd lines
         """
-# TODO:
+        # Atq commands are: [command to run] | at [now+ x minute | -t %Y%m%d%H%M]
+        atq_str = remote_server.format_to_atq("20220908 12:34", "some weird experiment with options", "some mode")
+        self.assertEqual(atq_str, "echo 'screen -d -m -S starter /home/radar/borealis/scripts/steamed_hams.py "
+                                  "some weird experiment with options release some mode | "
+                                  "at -t 202209081234")
+        atq_str = remote_server.format_to_atq("20220908 12:34", "exp", "md", first_event_flag=True)
+        self.assertEqual(atq_str, "echo 'screen -d -m -S starter /home/radar/borealis/scripts/steamed_hams.py "
+                                  "exp release md | "
+                                  "at now + 1 minute")
+        atq_str = remote_server.format_to_atq("20190403 09:56", "exp", "md", kwargs_string="this is the kwargs")
+        self.assertEqual(atq_str, "echo 'screen -d -m -S starter /home/radar/borealis/scripts/steamed_hams.py "
+                                  "exp release md --kwargs_string this is the kwargs | "
+                                  "at -t 201904030956")
 
 # get_next_month_from_data tests
-    def test_get_next_month(self):
+    def test_wrong_type(self):
+        """
+        Test getting the next month from a given date with wrong type
+        """
+        date = 20221114
+        with self.assertRaises(AttributeError):
+            remote_server.get_next_month_from_date(date)
+
+    def test_next_month(self):
         """
         Test getting the next month from a given date
         """
-# TODO
+        date = datetime.datetime(2022, 1, 2)
+        date2 = datetime.datetime(2022, 2, 1)
+        self.assertEqual(remote_server.get_next_month_from_date(date), date2)
+        date = datetime.datetime(2022, 12, 13)
+        date2 = datetime.datetime(2023, 1, 1)
+        self.assertEqual(remote_server.get_next_month_from_date(date), date2)
+        date = datetime.datetime(2022, 12, 5)
+        date2 = datetime.datetime(2023, 1, 1)
+        self.assertEqual(remote_server.get_next_month_from_date(date), date2)
 
 # timeline_to_dict tests
     def test_timeline_to_dict(self):
