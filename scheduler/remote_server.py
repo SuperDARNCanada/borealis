@@ -67,28 +67,12 @@ def get_next_month_from_date(date):
     return new_date
 
 
-def timeline_to_dict(timeline):
-    """
-    Converts the timeline list to an ordered dict for scheduling and
-    colour mapping
-    Returns:
-        OrderedDict: an ordered dict containing the timeline
-    """
-    timeline_dict = collections.OrderedDict()
-    for line in timeline:
-        if not line['order'] in timeline_dict:
-            timeline_dict[line['order']] = []
-
-        timeline_dict[line['order']].append(line)
-    return timeline_dict
-
-
 def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
     """Plots the timeline to better visualize runtime.
 
     Args:
         timeline (list): A list of entries ordered chronologically as scheduled
-        scd_dir (str): The scd directory path.
+        scd_dir (str): The scd directory path. (example:
         time_of_interest (datetime): The datetime holding the time of scheduling.
         site_id (str): Site identifier for logs.
 
@@ -100,6 +84,21 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
     first_date, last_date = None, None
 
     timeline_list = [{}] * len(timeline)
+
+    def timeline_to_dict(t_list):
+        """
+        Converts the timeline list to an ordered dict for scheduling and
+        colour mapping
+        Returns:
+            OrderedDict: an ordered dict containing the timeline
+        """
+        t_dict = collections.OrderedDict()
+        for line in t_list:
+            if not line['order'] in t_dict:
+                t_dict[line['order']] = []
+
+            t_dict[line['order']].append(line)
+        return t_dict
 
     def get_cmap(n, name='hsv'):
         """Returns a function that maps each index in 0, 1, ..., n-1 to a distinct
@@ -425,9 +424,9 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
 
     Args:
         timeline (List): A list holding all timeline events.
-        scd_dir (str): The directory with SCD files.
+        scd_dir (str): The directory with SCD files. (typically /home/radar/borealis_schedules)
         time_of_interest (datetime): The datetime holding the time of scheduling.
-        site_id (str): Site identifier for logs.
+        site_id (str): 3 letter site identifier for logs. (example: 'sas')
 
     Log and backup the existing atq, remove old events and then schedule everything recent. The
     first entry should be the currently running event, so it gets scheduled immediately. This
@@ -435,6 +434,9 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     """
 
     # This command is basically: for j in atq job number, print job num, time and command
+    # More detail: sort the atq first by year, then month name ('-M flag), then day of month
+    # Then hour, minute and second. Finally, just get the atq index (job #) in first column
+    # then, iterate through all jobs in the atq, list them to standard output, get the last 2 lines
     get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1); ' \
                   'do atq |grep -P "^$j\t"; at -c "$j" | tail -n 2; done'
 
@@ -476,7 +478,7 @@ def get_relevant_lines(scd_util, time_of_interest):
     @brief      Gets the relevant lines.
 
     @param      scd_util  The scd utility object that holds the scd lines.
-    @param      time_of_interest    A datetime to get current and future lines for
+    @param      time_of_interest    A datetime to get current and future lines for, type is datetime.datetime
 
     @return     The relevant lines.
 

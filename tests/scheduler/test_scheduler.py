@@ -51,7 +51,7 @@ class TestSchedulerUtils(unittest.TestCase):
         os.chmod(self.no_perms_file, 0o000)
         self.no_perms.close()
         self.linedict = {"time": '20000101 06:30', "prio": 0, "experiment": 'normalscan', "scheduling_mode": 'common',
-                    "duration": 60, "kwargs_string": '-'}
+                         "duration": 60, "kwargs_string": '-'}
         self.linestr = "20000101 06:30 60 0 normalscan common -"
         self.linedict2 = {"time": '20220405 16:56', "prio": 15, "experiment": 'twofsound',
                           "scheduling_mode": 'discretionary', "duration": 360,
@@ -308,7 +308,6 @@ class TestSchedulerUtils(unittest.TestCase):
         scdu = scd_utils.SCDUtils(scd_file.name)
         scd_file.close()
         scdu.add_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
-        lines = []
         with open(scd_file.name, 'r') as f:
             lines = f.readlines()
         self.assertEqual(len(lines), 1)
@@ -332,8 +331,8 @@ class TestSchedulerUtils(unittest.TestCase):
         for yyyymmdd in range(20221001, 1, 20221031):
             for hhmm in range(59, -1, 0):
                 counter += 1
-                scdu.add_line(str(f"{yyyymmdd:0>8}"), hmstr, self.exp, self.mode, self.prio, self.dur, self.kwargs)
                 hmstr = f"{hhmm:0<4}"[:2] + ':' + f"{hhmm:0<4}"[2:]
+                scdu.add_line(str(f"{yyyymmdd:0>8}"), hmstr, self.exp, self.mode, self.prio, self.dur, self.kwargs)
                 if hhmm % 2 == 0:
                     prio = 4
                 else:
@@ -372,7 +371,7 @@ class TestSchedulerUtils(unittest.TestCase):
 # remove_line tests
     def test_remove_lines(self):
         """
-        Test trying to remove lines from an scd file
+        Test trying to remove lines from an SCD file
         """
         scd_file = tempfile.NamedTemporaryFile()
         scdu = scd_utils.SCDUtils(scd_file.name)
@@ -449,7 +448,7 @@ class TestSchedulerUtils(unittest.TestCase):
 
     def test_remove_line_dne(self):
         """
-        Test trying to remove lines from an scd file that don't exist. Should raise ValueError
+        Test trying to remove lines from an SCD file that don't exist. Should raise ValueError
         """
         scd_file = tempfile.NamedTemporaryFile()
         scdu = scd_utils.SCDUtils(scd_file.name)
@@ -515,7 +514,8 @@ class TestSchedulerUtils(unittest.TestCase):
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 normalscan common freq=10500\n", "20200926 00:00 - 0 normalscan common\n"]
-        scd_file.write(test_scd_lines)
+        for test_line in test_scd_lines:
+            scd_file.write(test_line)
         scd_file.close()
         lines = scdu.get_relevant_lines("20200917", "00:01")
         self.assertEqual(len(lines), 3)
@@ -531,7 +531,8 @@ class TestSchedulerUtils(unittest.TestCase):
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 normalscan common freq=10500\n", "20200926 00:00 - 0 normalscan common\n"]
-        scd_file.write(test_scd_lines)
+        for test_line in test_scd_lines:
+            scd_file.write(test_line)
         scd_file.close()
         lines = scdu.get_relevant_lines("20200917", "00:00")
         self.assertEqual(len(lines), 4)
@@ -548,7 +549,8 @@ class TestSchedulerUtils(unittest.TestCase):
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 normalscan common freq=10500\n", "20200926 00:00 - 0 normalscan common\n"]
-        scd_file.write(test_scd_lines)
+        for test_line in test_scd_lines:
+            scd_file.write(test_line)
         scd_file.close()
         lines = scdu.get_relevant_lines("20200916", "00:00")
         self.assertEqual(len(lines), 4)
@@ -567,6 +569,7 @@ class TestRemoteServer(unittest.TestCase):
         """
         Init some reused variables
         """
+        super().__init__()
         self.good_config = f"{os.environ['BOREALISPATH']}/config/sas/sas_config.ini"
 
     def setUp(self):
@@ -582,7 +585,7 @@ class TestRemoteServer(unittest.TestCase):
         """
         config = f"{os.environ['BOREALISPATH']}/tests/scheduler/good_config_file.ini"
         ops = rso.RemoteServerOptions(config)
-        self.assertEqual(ops.site_id(), 'tst')
+        self.assertEqual(ops.site_id, 'tst')
 
     def test_no_borealispath(self):
         """
@@ -595,7 +598,7 @@ class TestRemoteServer(unittest.TestCase):
         os.unsetenv('BOREALISPATH')
         with self.assertRaisesRegex(ValueError, "BOREALISPATH"):
             ops = rso.RemoteServerOptions()
-            self.assertEqual(ops.site_id(), 'sas')
+            self.assertEqual(ops.site_id, 'sas')
         os.environ['BOREALISPATH'] = BOREALISPATH
         sys.path.append(BOREALISPATH)
 
@@ -665,37 +668,200 @@ class TestRemoteServer(unittest.TestCase):
         date2 = datetime.datetime(2023, 1, 1)
         self.assertEqual(remote_server.get_next_month_from_date(date), date2)
 
-# timeline_to_dict tests
-    def test_timeline_to_dict(self):
-        """
-        Test getting an ordered dict back given timeline
-        """
-        # TODO
+#
+# plot_timeline tests
+    # timeline_to_dict -> nested method so no unittesting
+#    def test_timeline_to_dict(self):
+#        """
+#        Test getting an ordered dict back given timeline list
+#        """
+#        random_list = [{'order': 10}, {'order': 0}, {'order': 1}, {'order': 1}, {'order': 17}, {'order': 5}]
 
-# plot_timeline tests # TODO This is a huge function, could probably be broken up into multiple
-    # get_cmap
-    def test_get_cmap(self):
-        """
-        Test the simple cmap function
-        """
-        # TODO:
+    # get_cmap -> nested method so no unittesting
+#    def test_get_cmap(self):
+#        """
+#       Test the simple cmap function
+#       """
+#
+#
+    # split_event -> nested method so no unittesting
+#    def test_split_event(self):
+#        """
+#        Test splitting an event recursively (long event over two or more days)
+#        """
 
-    # split_event
-    def test_split_event(self):
+    def test_plot_timeline(self):
         """
-        Test splitting an event recursively (long event over two or more days)
+        After this test runs, there should be saved plots
         """
-        # TODO:
 
 
 # convert_scd_to_timeline tests # TODO This is a huge function, could probably be broken up into multiple
-    # calculate_new_last_line_params
+#    def test_scd_to_timeline_inf_duration(self):
+#        """
+#        Test scd to timeline. Last one should be infinite duration.
+#        """
+#        remote_server.convert_scd_to_timeline(scd_lines, )
+
+# calculate_new_last_line_params -> Nested method so no unittesting
 
 # timeline_to_atq tests # TODO
+#    def test_timeline_to_atq(self):
+#        """
+#        Test converting a timeline to atq command string
+#        The atq looks like this:
+#        1183    Wed Nov 16 00:00:00 2022 a radar
+#        1184    Fri Nov 18 00:00:00 2022 a radar
+#        1185    Mon Nov 21 00:00:00 2022 a radar
+#        1186    Mon Nov 21 12:00:00 2022 a radar
 
-# get_relevant_lines tests # TODO
+#        And the details look like this:
+ #       1214    Fri Dec 30 00:00:00 2022 a radar
+ #       screen -d -m -S starter /home/radar/borealis//steamed_hams.py interleavedscan release special
+ #       """
+#        timeline_list =
+ #       time_of_interest = datetime(2022, 11, 14, 3, 30)
+ #       atq_command = remote_server.timeline_to_atq(timeline_list, scd_dir, time_of_interest, site_id)
+ #       self.assertEqual(atq_command, "")
+
+# get_relevant_lines tests
+    def test_inc_datetime(self):
+        """
+        Test trying to input an incorrect datetime type, should raise AttributeError
+        """
+        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        with self.assertRaises(AttributeError):
+            remote_server.get_relevant_lines(scdu, "blah")
+        with self.assertRaises(AttributeError):
+            remote_server.get_relevant_lines(scdu, None)
+        with self.assertRaises(AttributeError):
+            remote_server.get_relevant_lines(scdu, 5890)
+
+    def test_one_relevant_lines(self):
+        """
+        Use a time-of-interest that is far in the future so there is only one relevant line (should be last line)
+        """
+        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
+        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        with self.assertRaises(SystemExit):
+            lines = remote_server.get_relevant_lines(scdu, time_of_interest)
+            self.assertEqual(lines, ["20220929 12:00 - 0 normalscan common"])
+
+    def test_no_relevant_lines(self):
+        """
+        Use a time-of-interest that is far in the future with an SCD file without any inf duration lines
+        """
+        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
+        scdfile = tempfile.NamedTemporaryFile()
+        scdfile.write("20220929 12:00 360 0 normalscan common")  # A 360 minute duration line
+        scdfile.close()
+        scdu = scd_utils.SCDUtils(scdfile.name)
+        with self.assertRaises(SystemExit):
+            lines = remote_server.get_relevant_lines(scdu, time_of_interest)
+            self.assertEqual(lines, [])
+
+    def test_one_prev_relevant_line(self):
+        """
+        Use a time-of-interest that is far in the future with an SCD file with one inf duration line in the past
+        """
+        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
+        scdfile = tempfile.NamedTemporaryFile()
+        scdfile.write("20210903 00:00 - 0 twofsound common")  # An infinite duration line
+        scdfile.write("20220929 12:00 60 0 normalscan common")  # A 60 minute duration line
+        scdfile.write("20220929 13:00 60 0 normalscan common")  # A 60 minute duration line
+        scdfile.close()
+        scdu = scd_utils.SCDUtils(scdfile.name)
+        with self.assertRaises(SystemExit):
+            lines = remote_server.get_relevant_lines(scdu, time_of_interest)
+            self.assertEqual(lines, ["20210903 00:00 - 0 twofsound common"])
+
+    def test_empty_scdu_file(self):
+        """
+        Test trying to get relevant lines from an empty file, should raise IndexError
+        """
+        scd_file = tempfile.NamedTemporaryFile()
+        scdu = scd_utils.SCDUtils(scd_file.name)
+        with self.assertRaises(IndexError):
+            remote_server.get_relevant_lines(scdu, "20221114 00:00")
+
+    def test_no_scdu_lines_relevant(self):
+        """
+        Test trying to get relevant lines from a file
+        """
+        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        lines = remote_server.get_relevant_lines(scdu, "00:00")
+        self.assertEqual(len(lines), 0)
+
+    def test_one_line_relevant(self):
+        """
+        Test trying to get relevant lines from a file with one line in the future
+        """
+        time_of_interest = datetime.datetime(2022, 11, 14, 0, 1)
+        scd_file = tempfile.NamedTemporaryFile()
+        scdu = scd_utils.SCDUtils(scd_file.name)
+        test_exp_line = "20221115 03:00 - 0 normalscan common\n"
+        scd_file.write(test_exp_line)
+        scd_file.close()
+        lines = remote_server.get_relevant_lines(scdu, time_of_interest)
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines[0], test_exp_line)
+
+    def test_no_inf_dur_relevant(self):
+        """
+        Test trying to get relevant lines from a file with one line in the future but no infinite duration lines
+        """
+        time_of_interest = datetime.datetime(2020, 9, 25, 0, 1)
+        scd_file = tempfile.NamedTemporaryFile()
+        scdu = scd_utils.SCDUtils(scd_file.name)
+        test_scd_lines = ["20200917 00:00 60 0 normalscan common\n", "20200921 00:00 1440 0 normalscan discretionary\n",
+                          "20200924 00:00 360 0 normalscan common freq=10500\n",
+                          "20200926 00:00 120 0 normalscan common\n"]
+        scd_file.write(test_scd_lines)
+        scd_file.close()
+        lines = remote_server.get_relevant_lines(scdu, time_of_interest)
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines[0], test_scd_lines)
+
+    def test_some_lines_relevant(self):
+        """
+        Test trying to get relevant lines from a file with some lines in the future
+        """
+        time_of_interest = datetime.datetime(2020, 9, 23, 0, 1)
+        scd_file = tempfile.NamedTemporaryFile()
+        scdu = scd_utils.SCDUtils(scd_file.name)
+        test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
+                          "20200924 00:00 - 0 normalscan common freq=10500\n",
+                          "20200926 00:00 - 0 normalscan common\n"]
+        for test_line in test_scd_lines:
+            scd_file.write(test_line)
+        scd_file.close()
+        lines = remote_server.get_relevant_lines(scdu, time_of_interest)
+        self.assertEqual(len(lines), 2)
+        self.assertEqual(lines[0], test_scd_lines[2])
+        self.assertEqual(lines[1], test_scd_lines[3])
+
+    def test_all_lines_relevant_matched(self):
+        """
+        Test trying to get relevant lines from a file with all lines in the future or present
+        """
+        time_of_interest = datetime.datetime(2020, 9, 17, 0, 0)
+        scd_file = tempfile.NamedTemporaryFile()
+        scdu = scd_utils.SCDUtils(scd_file.name)
+        test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
+                          "20200924 00:00 - 0 normalscan common freq=10500\n",
+                          "20200926 00:00 - 0 normalscan common\n"]
+        for test_line in test_scd_lines:
+            scd_file.write(test_line)
+        scd_file.close()
+        lines = scdu.get_relevant_lines(scdu, time_of_interest)
+        self.assertEqual(len(lines), 4)
+        self.assertEqual(lines[0], test_scd_lines[0])
+        self.assertEqual(lines[1], test_scd_lines[1])
+        self.assertEqual(lines[2], test_scd_lines[2])
+        self.assertEqual(lines[3], test_scd_lines[3])
 
 # _main(): make_schedule tests # TODO
+
 
 class TestLocalServer(unittest.TestCase):
     """
@@ -716,6 +882,7 @@ class TestLocalServer(unittest.TestCase):
     # parse_swg_to_scd
 
 # main() tests # TODO
+
 
 class TestSchedulerEmailer(unittest.TestCase):
     """
