@@ -5,13 +5,14 @@ Run via: 'python3 test_scheduler.py'
 :copyright: 2022 SuperDARN Canada
 :author: Kevin Krieger
 """
-
+import shutil
 import unittest
 import os
 import sys
 import tempfile
 import json
 import datetime
+import subprocess as sp
 
 if not os.environ['BOREALISPATH']:
     BOREALISPATH = f"{os.environ['HOME']}/PycharmProjects/borealis/"
@@ -571,6 +572,7 @@ class TestRemoteServer(unittest.TestCase):
         """
         super().__init__()
         self.good_config = f"{os.environ['BOREALISPATH']}/config/sas/sas_config.ini"
+        self.good_scd_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/good_scd_file.scd"
 
     def setUp(self):
         """
@@ -632,15 +634,17 @@ class TestRemoteServer(unittest.TestCase):
         Test creating atq commands from scd lines
         """
         # Atq commands are: [command to run] | at [now+ x minute | -t %Y%m%d%H%M]
-        atq_str = remote_server.format_to_atq("20220908 12:34", "some weird experiment with options", "some mode")
+        time_of_interest = datetime.datetime(2022, 9, 8, 12, 34)
+        atq_str = remote_server.format_to_atq(time_of_interest, "some weird experiment with options", "some mode")
         self.assertEqual(atq_str, "echo 'screen -d -m -S starter /home/radar/borealis/scripts/steamed_hams.py "
                                   "some weird experiment with options release some mode | "
                                   "at -t 202209081234")
-        atq_str = remote_server.format_to_atq("20220908 12:34", "exp", "md", first_event_flag=True)
+        atq_str = remote_server.format_to_atq(time_of_interest, "exp", "md", first_event_flag=True)
         self.assertEqual(atq_str, "echo 'screen -d -m -S starter /home/radar/borealis/scripts/steamed_hams.py "
                                   "exp release md | "
                                   "at now + 1 minute")
-        atq_str = remote_server.format_to_atq("20190403 09:56", "exp", "md", kwargs_string="this is the kwargs")
+        time_of_interest = datetime.datetime(2019, 4, 3, 9, 56)
+        atq_str = remote_server.format_to_atq(time_of_interest, "exp", "md", kwargs_string="this is the kwargs")
         self.assertEqual(atq_str, "echo 'screen -d -m -S starter /home/radar/borealis/scripts/steamed_hams.py "
                                   "exp release md --kwargs_string this is the kwargs | "
                                   "at -t 201904030956")
@@ -705,24 +709,89 @@ class TestRemoteServer(unittest.TestCase):
 
 # calculate_new_last_line_params -> Nested method so no unittesting
 
-# timeline_to_atq tests # TODO
-#    def test_timeline_to_atq(self):
-#        """
-#        Test converting a timeline to atq command string
-#        The atq looks like this:
-#        1183    Wed Nov 16 00:00:00 2022 a radar
-#        1184    Fri Nov 18 00:00:00 2022 a radar
-#        1185    Mon Nov 21 00:00:00 2022 a radar
-#        1186    Mon Nov 21 12:00:00 2022 a radar
+# timeline_to_atq tests
+    def test_empty_timeline_to_atq(self):
+        """
+        Test converting a timeline to atq command string
+        The atq looks like this:
+        1183    Wed Nov 16 00:00:00 2022 a radar
+        1184    Fri Nov 18 00:00:00 2022 a radar
+        1185    Mon Nov 21 00:00:00 2022 a radar
+        1186    Mon Nov 21 12:00:00 2022 a radar
 
-#        And the details look like this:
- #       1214    Fri Dec 30 00:00:00 2022 a radar
- #       screen -d -m -S starter /home/radar/borealis//steamed_hams.py interleavedscan release special
- #       """
-#        timeline_list =
- #       time_of_interest = datetime(2022, 11, 14, 3, 30)
- #       atq_command = remote_server.timeline_to_atq(timeline_list, scd_dir, time_of_interest, site_id)
- #       self.assertEqual(atq_command, "")
+        And the details look like this:
+        1214    Fri Dec 30 00:00:00 2022 a radar
+        screen -d -m -S starter /home/radar/borealis//steamed_hams.py interleavedscan release special
+
+        The timeline being an empty list should still work as expected with no change to the atq
+        The function should create a backup atq file with all current and future jobs
+        timeline is a list of events, which are dicts with 'time', 'experiment', 'scheduling_mode', 'kwargs_string'
+        """
+        # Get the current atq, as it should be unchanged from previously
+        get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1); ' \
+                      'do atq |grep -P "^$j\t"; at -c "$j" | tail -n 2; done'
+        current_atq = sp.check_output(get_atq_cmd, shell=True)
+
+        # Remove any existing atq backups directory
+        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        atq_dir = f"{scd_dir}/atq_backups/"
+        shutil.rmtree(atq_dir)
+
+        timeline_list = []
+        site_id = os.environ['RADAR_ID']
+        time_of_interest = datetime(2022, 11, 14, 3, 30)
+        backup_time = time_of_interest.strftime("%Y.%m.%d.%H.%M")
+        atq_command = remote_server.timeline_to_atq(timeline_list, scd_dir, time_of_interest, site_id)
+        self.assertEqual(atq_command, current_atq)
+        self.assertTrue(os.path.exists(atq_dir))
+        self.assertTrue(os.path.exists(f"{atq_dir}/{backup_time}.{site_id}.atq"))
+        shutil.rmtree(atq_dir)
+
+    def test_timeline_to_atq(self):
+        """
+        Test converting a timeline to atq command string
+        The atq looks like this:
+        1183    Wed Nov 16 00:00:00 2022 a radar
+        1184    Fri Nov 18 00:00:00 2022 a radar
+        1185    Mon Nov 21 00:00:00 2022 a radar
+        1186    Mon Nov 21 12:00:00 2022 a radar
+
+        And the details look like this:
+        1214    Fri Dec 30 00:00:00 2022 a radar
+        screen -d -m -S starter /home/radar/borealis//steamed_hams.py interleavedscan release special
+
+        The function should create a backup atq file with all current and future jobs
+        timeline is a list of events, which are dicts with 'time', 'experiment', 'scheduling_mode', 'kwargs_string'
+        """
+        # Get the current atq, as it should be unchanged from previously
+        get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1); ' \
+                      'do atq |grep -P "^$j\t"; at -c "$j" | tail -n 2; done'
+        current_atq = sp.check_output(get_atq_cmd, shell=True)
+
+        # Remove any existing atq backups directory
+        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        atq_dir = f"{scd_dir}/atq_backups/"
+        shutil.rmtree(atq_dir)
+
+        t1 = datetime.datetime(2022, 10, 9, 5, 30)
+        t2 = datetime.datetime(2022, 10, 10, 0, 30)
+        t3 = datetime.datetime(2022, 10, 11, 8, 0)
+
+        # Of the three timeline events, the first will be considered the 'first event' in format_to_atq,
+        # which means it gets scheduled NOW
+        events = [{'time': t1, 'experiment': "politescan", "scheduling_mode": "discretionary", "kwargs_string": "-"},
+                  {'time': t2, 'experiment': "normalscan", "scheduling_mode": "special", "kwargs_string": "hi=96"},
+                  {'time': t3, 'experiment': "twofsound", "scheduling_mode": "common", "kwargs_string": "-"}]
+        site_id = os.environ['RADAR_ID']
+        time_of_interest = datetime(2022, 11, 14, 3, 30)
+        backup_time = time_of_interest.strftime("%Y.%m.%d.%H.%M")
+        atq_command = remote_server.timeline_to_atq(events, scd_dir, time_of_interest, site_id)
+
+        # The atq should be the same as the events added were all in the past
+        self.assertEqual(atq_command, current_atq)
+        self.assertTrue(os.path.exists(atq_dir))
+        self.assertTrue(os.path.exists(f"{atq_dir}/{backup_time}.{site_id}.atq"))
+        shutil.rmtree(atq_dir)
 
 # get_relevant_lines tests
     def test_inc_datetime(self):
@@ -816,7 +885,8 @@ class TestRemoteServer(unittest.TestCase):
         test_scd_lines = ["20200917 00:00 60 0 normalscan common\n", "20200921 00:00 1440 0 normalscan discretionary\n",
                           "20200924 00:00 360 0 normalscan common freq=10500\n",
                           "20200926 00:00 120 0 normalscan common\n"]
-        scd_file.write(test_scd_lines)
+        for test_line in test_scd_lines:
+            scd_file.write(test_line)
         scd_file.close()
         lines = remote_server.get_relevant_lines(scdu, time_of_interest)
         self.assertEqual(len(lines), 1)
@@ -853,7 +923,7 @@ class TestRemoteServer(unittest.TestCase):
         for test_line in test_scd_lines:
             scd_file.write(test_line)
         scd_file.close()
-        lines = scdu.get_relevant_lines(scdu, time_of_interest)
+        lines = remote_server.get_relevant_lines(scdu, time_of_interest)
         self.assertEqual(len(lines), 4)
         self.assertEqual(lines[0], test_scd_lines[0])
         self.assertEqual(lines[1], test_scd_lines[1])
