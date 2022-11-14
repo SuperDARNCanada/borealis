@@ -51,14 +51,11 @@ class SCDUtils(object):
         # create datetime from args to see if valid
         time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
 
-        if not isinstance(prio, int):
-            raise ValueError("Priority must be an integer. 0 <= prio <= 20.")
-
         if not (0 <= int(prio) <= 20):
             raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
 
         if duration != "-":
-            int(duration)
+            duration = int(duration)
 
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
@@ -130,7 +127,12 @@ class SCDUtils(object):
         writing.
 
         Args:
-            scd_lines (list): A list dicts that contain the line info.
+            scd_lines (list): A list of dicts that contain the line info.
+
+        Raises:
+            PermissionError - When there are not sufficient permissions with the scd file
+            FileNotFoundError - When the scd file doesn't exist
+            IsADirectoryError - When the scd file given is a directory
         """
         text_lines = [self.fmt_line(x) for x in scd_lines]
 
