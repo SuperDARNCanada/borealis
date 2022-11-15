@@ -51,28 +51,12 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     return cmd_str
 
 
-def get_next_month_from_date(date):
-    """Finds the datetime of the next month.
-
-    Returns:
-        datetime: datetime object of the next month.
-    """
-
-    counter = 1
-    new_date = date + datetime.timedelta(days=counter)
-    while new_date.month == date.month:
-        counter += 1
-        new_date = date + datetime.timedelta(days=counter)
-
-    return new_date
-
-
 def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
     """Plots the timeline to better visualize runtime.
 
     Args:
         timeline (list): A list of entries ordered chronologically as scheduled
-        scd_dir (str): The scd directory path. (example:
+        scd_dir (str): The scd directory path. (example: /home/radar/borealis_schedules)
         time_of_interest (datetime): The datetime holding the time of scheduling.
         site_id (str): Site identifier for logs.
 
@@ -157,7 +141,7 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         event_item['start'] = event['time']
 
         if event['duration'] == '-':
-            td = get_next_month_from_date(event['time']) - event['time']
+            td = scd_utils.get_next_month_from_date(event['time']) - event['time']
         else:
             td = datetime.timedelta(minutes=int(event['duration']))
 

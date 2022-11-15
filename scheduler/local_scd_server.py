@@ -76,23 +76,6 @@ EXPERIMENTS = {
 }
 
 
-def get_next_month():
-    """Finds the datetime of the next month.
-
-    Returns:
-        TYPE: datetime object.
-    """
-    today = datetime.datetime.utcnow()
-
-    counter = 1
-    new_date = today + datetime.timedelta(days=counter)
-    while new_date.month == today.month:
-        counter += 1
-        new_date = today + datetime.timedelta(days=counter)
-
-    return new_date
-
-
 class SWG(object):
     """Holds the data needed for processing a SWG file.
 
@@ -104,6 +87,7 @@ class SWG(object):
         super().__init__()
         self.scd_dir = scd_dir
 
+        # Determine if the git repo for schedules exists, and clone it if it doesn't
         try:
             cmd = f"git -C {self.scd_dir}/{SWG_GIT_REPO_DIR} rev-parse"
             sp.check_output(cmd, shell=True)
@@ -141,16 +125,16 @@ class SWG(object):
         Args:
             modes (Dict): Holds the modes that correspond to the SWG requests.
             radar (String): Radar acronym.
-            first_run (bool): Is this the first run? If so - start with current month
+            first_run (bool): Is this the first run? If so - start with current month, otherwise next month.
 
         Returns:
-            TYPE: List of all the parsed parameters.
+            parsed_params: List of all the parsed parameters.
         """
 
         if first_run:
             month_to_use = datetime.datetime.utcnow()
         else:
-            month_to_use = get_next_month()
+            month_to_use = scd_utils.get_next_month_from_date()
 
         year = month_to_use.strftime("%Y")
         month = month_to_use.strftime("%m")

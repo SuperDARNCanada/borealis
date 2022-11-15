@@ -65,7 +65,31 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         print("Method: ", self._testMethodName)
 
+    # get_next_month_from_date tests
+    def test_wrong_type(self):
+        """
+        Test getting the next month from a given date with wrong type
+        """
+        date = 20221114
+        with self.assertRaises(AttributeError):
+            scd_utils.get_next_month_from_date(date)
+
+    def test_next_month(self):
+        """
+        Test getting the next month from a given date
+        """
+        date = datetime.datetime(2022, 1, 2)
+        date2 = datetime.datetime(2022, 2, 1)
+        self.assertEqual(scd_utils.get_next_month_from_date(date), date2)
+        date = datetime.datetime(2022, 12, 13)
+        date2 = datetime.datetime(2023, 1, 1)
+        self.assertEqual(scd_utils.get_next_month_from_date(date), date2)
+        date = datetime.datetime(2022, 12, 5)
+        date2 = datetime.datetime(2023, 1, 1)
+        self.assertEqual(scd_utils.get_next_month_from_date(date), date2)
+
 # check_line tests
+
     def test_invalid_yyyymmdd(self):
         """
         Test an invalid start date
@@ -649,30 +673,6 @@ class TestRemoteServer(unittest.TestCase):
                                   "exp release md --kwargs_string this is the kwargs | "
                                   "at -t 201904030956")
 
-# get_next_month_from_data tests
-    def test_wrong_type(self):
-        """
-        Test getting the next month from a given date with wrong type
-        """
-        date = 20221114
-        with self.assertRaises(AttributeError):
-            remote_server.get_next_month_from_date(date)
-
-    def test_next_month(self):
-        """
-        Test getting the next month from a given date
-        """
-        date = datetime.datetime(2022, 1, 2)
-        date2 = datetime.datetime(2022, 2, 1)
-        self.assertEqual(remote_server.get_next_month_from_date(date), date2)
-        date = datetime.datetime(2022, 12, 13)
-        date2 = datetime.datetime(2023, 1, 1)
-        self.assertEqual(remote_server.get_next_month_from_date(date), date2)
-        date = datetime.datetime(2022, 12, 5)
-        date2 = datetime.datetime(2023, 1, 1)
-        self.assertEqual(remote_server.get_next_month_from_date(date), date2)
-
-#
 # plot_timeline tests
     # timeline_to_dict -> nested method so no unittesting
 #    def test_timeline_to_dict(self):
@@ -694,18 +694,22 @@ class TestRemoteServer(unittest.TestCase):
 #        Test splitting an event recursively (long event over two or more days)
 #        """
 
-    def test_plot_timeline(self):
-        """
-        After this test runs, there should be saved plots
-        """
+#    def test_plot_timeline(self): # TODO
+#        """
+#        After this test runs, there should be saved plots and a pickle file of the plot
+#        """
+#        timeline = []
+#        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+#        timeline_of_interest = datetime.datetime()
+#        site_id = os.environ['RADAR_ID']
 
-
-# convert_scd_to_timeline tests # TODO This is a huge function, could probably be broken up into multiple
+# convert_scd_to_timeline tests # TODO
 #    def test_scd_to_timeline_inf_duration(self):
 #        """
 #        Test scd to timeline. Last one should be infinite duration.
 #        """
-#        remote_server.convert_scd_to_timeline(scd_lines, )
+#        scd_lines = []
+#        remote_server.convert_scd_to_timeline(scd_lines, time_of_interest)
 
 # calculate_new_last_line_params -> Nested method so no unittesting
 
@@ -739,7 +743,7 @@ class TestRemoteServer(unittest.TestCase):
 
         timeline_list = []
         site_id = os.environ['RADAR_ID']
-        time_of_interest = datetime(2022, 11, 14, 3, 30)
+        time_of_interest = datetime.datetime(2022, 11, 14, 3, 30)
         backup_time = time_of_interest.strftime("%Y.%m.%d.%H.%M")
         atq_command = remote_server.timeline_to_atq(timeline_list, scd_dir, time_of_interest, site_id)
         self.assertEqual(atq_command, current_atq)
@@ -783,7 +787,7 @@ class TestRemoteServer(unittest.TestCase):
                   {'time': t2, 'experiment': "normalscan", "scheduling_mode": "special", "kwargs_string": "hi=96"},
                   {'time': t3, 'experiment': "twofsound", "scheduling_mode": "common", "kwargs_string": "-"}]
         site_id = os.environ['RADAR_ID']
-        time_of_interest = datetime(2022, 11, 14, 3, 30)
+        time_of_interest = datetime.datetime(2022, 11, 14, 3, 30)
         backup_time = time_of_interest.strftime("%Y.%m.%d.%H.%M")
         atq_command = remote_server.timeline_to_atq(events, scd_dir, time_of_interest, site_id)
 
@@ -937,19 +941,164 @@ class TestLocalServer(unittest.TestCase):
     """
     unittest class to test the local server module. All test methods must begin with the word 'test' to be run
     """
+
+    def __init__(self):
+        """
+        Set up variables and data used for unit testing
+        """
+        super().__init__()
+
     def setUp(self):
         """
         Called before every test_* method
         """
         print("Method: ", self._testMethodName)
 
-# get_next_month tests # TODO
-
-# SWG tests: # TODO
+# SWG tests:
     # init tests
+    def test_swg_init(self):
+        """
+        Test initializing the SWG class
+        """
+        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        # Ensure the scd dir and therefore the git repo for schedules doesn't exist before
+        shutil.rmtree(scd_dir)
+        self.assertFalse(os.path.exists(scd_dir))
+        local_scd_server.SWG(scd_dir)
+        self.assertTrue(os.path.exists(scd_dir))
+        self.assertTrue(os.path.exists(scd_dir+"schedules/"))
+
     # new_swg_file_available
+    def test_swg_new_file(self):
+        """
+        Test new file exists method, which checks for new swg file uploads via git and returns True or False
+        """
+        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        swg = local_scd_server.SWG(scd_dir)
+        self.assertTrue(os.path.exists(scd_dir))
+        new = swg.new_swg_file_available()
+        self.assertFalse(new)  # Assume that the repo is up-to-date always, not sure how else to test this
+
     # pull_new_swg_file
+    # def test_swg_pull(self):  # Nothing to really test here
+        # """
+        # Test pulling new git files
+        # """
+        # scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        # swg = local_scd_server.SWG(scd_dir)
+        # self.assertTrue(os.path.exists(scd_dir))
+
     # parse_swg_to_scd
+    def test_bad_hours(self):
+        """
+        Test parsing the SWG file. Should fail due to bad hour parameter on one of the lines (25th hour of a day)
+        """
+        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        site_id = os.environ['RADAR_ID']
+        swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_hours.swg"
+
+        # Need to ensure we put in the current month to the schedule file and set first run to True
+        mm_yyyy = datetime.datetime.today().strftime("%B %Y")
+        with open(swg_file, 'r') as f:
+            swg_data = f.read()
+        with open(swg_file, 'w') as f:
+            f.write(mm_yyyy + swg_data)
+
+        modes = local_scd_server.EXPERIMENTS[site_id]
+        swg = local_scd_server.SWG(scd_dir)
+        self.assertTrue(os.path.exists(scd_dir))
+        with self.assertRaises(BaseException):  # TODO: What exception?
+            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+            self.assertEqual(params, None)
+
+    def test_bad_dates(self):
+        """
+        Test parsing the SWG file. Should fail due to bad date parameter on one of the lines (32nd day)
+        """
+        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        site_id = os.environ['RADAR_ID']
+        swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_dates.swg"
+
+        # Need to ensure we put in the current month to the schedule file and set first run to True
+        mm_yyyy = datetime.datetime.today().strftime("%B %Y")
+        with open(swg_file, 'r') as f:
+            swg_data = f.read()
+        with open(swg_file, 'w') as f:
+            f.write(mm_yyyy + swg_data)
+
+        modes = local_scd_server.EXPERIMENTS[site_id]
+        swg = local_scd_server.SWG(scd_dir)
+        self.assertTrue(os.path.exists(scd_dir))
+        with self.assertRaises(BaseException):  # TODO: What exception?
+            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+            self.assertEqual(params, None)
+
+    def test_missing_hours(self):
+        """
+        Test parsing the SWG file. Should fail due to a gap in the schedule of several hours.
+        """
+        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        site_id = os.environ['RADAR_ID']
+        swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/missing_hours.swg"
+
+        # Need to ensure we put in the current month to the schedule file and set first run to True
+        mm_yyyy = datetime.datetime.today().strftime("%B %Y")
+        with open(swg_file, 'r') as f:
+            swg_data = f.read()
+        with open(swg_file, 'w') as f:
+            f.write(mm_yyyy + swg_data)
+
+        modes = local_scd_server.EXPERIMENTS[site_id]
+        swg = local_scd_server.SWG(scd_dir)
+        self.assertTrue(os.path.exists(scd_dir))
+        with self.assertRaises(BaseException):  # TODO: What exception?
+            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+            self.assertEqual(params, None)
+
+    def test_bad_experiment(self):
+        """
+        Test parsing the SWG file. Should fail when it encounters a line with a non-existent experiment
+        """
+        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        site_id = os.environ['RADAR_ID']
+        swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_experiment.swg"
+
+        # Need to ensure we put in the current month to the schedule file and set first run to True
+        mm_yyyy = datetime.datetime.today().strftime("%B %Y")
+        with open(swg_file, 'r') as f:
+            swg_data = f.read()
+        with open(swg_file, 'w') as f:
+            f.write(mm_yyyy + swg_data)
+
+        modes = local_scd_server.EXPERIMENTS[site_id]
+        swg = local_scd_server.SWG(scd_dir)
+        self.assertTrue(os.path.exists(scd_dir))
+        with self.assertRaises(BaseException):  # TODO: What exception?
+            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+            self.assertEqual(params, None)
+
+    def test_swg_parse(self):
+        """
+        Test parsing the SWG file. Should work properly and return a list of parsed parameters corresponding to
+        the swg file input
+        """
+        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        site_id = os.environ['RADAR_ID']
+        swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/complicated_schedule.swg"
+
+        # Need to ensure we put in the current month to the schedule file and set first run to True
+        mm_yyyy = datetime.datetime.today().strftime("%B %Y")
+        with open(swg_file, 'r') as f:
+            swg_data = f.read()
+        with open(swg_file, 'w') as f:
+            f.write(mm_yyyy + swg_data)
+
+        modes = local_scd_server.EXPERIMENTS[site_id]
+        swg = local_scd_server.SWG(scd_dir)
+        self.assertTrue(os.path.exists(scd_dir))
+        parsed_params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+        self.assertTrue(isinstance(parsed_params, list))
+        # TODO: Check params
 
 # main() tests # TODO
 

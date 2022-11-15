@@ -11,6 +11,27 @@ import shutil
 import sys
 
 
+def get_next_month_from_date(date=None):
+    """Finds the datetime of the next month.
+
+    Args
+        date - Default today. Datetime to get next month from
+
+    Returns:
+        TYPE: datetime object.
+    """
+    if date is None:
+        date = dt.datetime.utcnow()
+
+    counter = 1
+    new_date = date + dt.timedelta(days=counter)
+    while new_date.month == date.month:
+        counter += 1
+        new_date = date + dt.timedelta(days=counter)
+
+    return new_date
+
+
 class SCDUtils(object):
     """Contains utilities for working with SCD files. SCD files are schedule files for Borealis.
 
