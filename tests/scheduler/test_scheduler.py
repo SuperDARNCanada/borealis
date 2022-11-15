@@ -106,6 +106,12 @@ class TestSchedulerUtils(unittest.TestCase):
         yyyymmdd = '20211'  # ValueError
         with self.assertRaises(ValueError):
             scdu.check_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+        yyyymmdd = '20221512'  # ValueError, 15th month
+        with self.assertRaises(ValueError):
+            scdu.check_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+        yyyymmdd = '20220230'  # ValueError, 30th day in Feb
+        with self.assertRaises(ValueError):
+            scdu.check_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
 
     def test_invalid_hhmm(self):
         """
@@ -121,6 +127,9 @@ class TestSchedulerUtils(unittest.TestCase):
         with self.assertRaises(TypeError):
             scdu.check_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
         hhmm = '2011'  # ValueError
+        with self.assertRaises(ValueError):
+            scdu.check_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+        hhmm = '2500'  # ValueError, 25th hour
         with self.assertRaises(ValueError):
             scdu.check_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
 
@@ -934,8 +943,6 @@ class TestRemoteServer(unittest.TestCase):
         self.assertEqual(lines[2], test_scd_lines[2])
         self.assertEqual(lines[3], test_scd_lines[3])
 
-# _main(): make_schedule tests # TODO
-
 
 class TestLocalServer(unittest.TestCase):
     """
@@ -989,47 +996,17 @@ class TestLocalServer(unittest.TestCase):
         # self.assertTrue(os.path.exists(scd_dir))
 
     # parse_swg_to_scd
-    def test_bad_hours(self):
+    def test_swg_dne(self):
         """
-        Test parsing the SWG file. Should fail due to bad hour parameter on one of the lines (25th hour of a day)
+        Test parsing the SWG file that DNE. Should fail with FileNotFoundError
         """
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
         site_id = os.environ['RADAR_ID']
-        swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_hours.swg"
-
-        # Need to ensure we put in the current month to the schedule file and set first run to True
-        mm_yyyy = datetime.datetime.today().strftime("%B %Y")
-        with open(swg_file, 'r') as f:
-            swg_data = f.read()
-        with open(swg_file, 'w') as f:
-            f.write(mm_yyyy + swg_data)
 
         modes = local_scd_server.EXPERIMENTS[site_id]
         swg = local_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
-        with self.assertRaises(BaseException):  # TODO: What exception?
-            params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
-            self.assertEqual(params, None)
-
-    def test_bad_dates(self):
-        """
-        Test parsing the SWG file. Should fail due to bad date parameter on one of the lines (32nd day)
-        """
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
-        site_id = os.environ['RADAR_ID']
-        swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_dates.swg"
-
-        # Need to ensure we put in the current month to the schedule file and set first run to True
-        mm_yyyy = datetime.datetime.today().strftime("%B %Y")
-        with open(swg_file, 'r') as f:
-            swg_data = f.read()
-        with open(swg_file, 'w') as f:
-            f.write(mm_yyyy + swg_data)
-
-        modes = local_scd_server.EXPERIMENTS[site_id]
-        swg = local_scd_server.SWG(scd_dir)
-        self.assertTrue(os.path.exists(scd_dir))
-        with self.assertRaises(BaseException):  # TODO: What exception?
+        with self.assertRaises(FileNotFoundError):
             params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
             self.assertEqual(params, None)
 
@@ -1043,17 +1020,25 @@ class TestLocalServer(unittest.TestCase):
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
         mm_yyyy = datetime.datetime.today().strftime("%B %Y")
+        yyyy = datetime.datetime.today().strftime("%Y")
+        yyyymm = datetime.datetime.today().strftime("%Y%m")
+        new_swg_file = f"{swg_file}/schedules/{yyyy}/{yyyymm}"
         with open(swg_file, 'r') as f:
             swg_data = f.read()
-        with open(swg_file, 'w') as f:
+        with open(new_swg_file, 'w') as f:
             f.write(mm_yyyy + swg_data)
 
         modes = local_scd_server.EXPERIMENTS[site_id]
         swg = local_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
-        with self.assertRaises(BaseException):  # TODO: What exception?
+        self.assertTrue(os.path.exists(swg_file))
+        self.assertTrue(os.path.exists(new_swg_file))
+        with self.assertRaises(ValueError):
             params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
             self.assertEqual(params, None)
+
+        # Remove the file we wrote
+        shutil.rmtree(new_swg_file)
 
     def test_bad_experiment(self):
         """
@@ -1065,17 +1050,25 @@ class TestLocalServer(unittest.TestCase):
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
         mm_yyyy = datetime.datetime.today().strftime("%B %Y")
+        yyyy = datetime.datetime.today().strftime("%Y")
+        yyyymm = datetime.datetime.today().strftime("%Y%m")
+        new_swg_file = f"{swg_file}/schedules/{yyyy}/{yyyymm}"
         with open(swg_file, 'r') as f:
             swg_data = f.read()
-        with open(swg_file, 'w') as f:
+        with open(new_swg_file, 'w') as f:
             f.write(mm_yyyy + swg_data)
 
         modes = local_scd_server.EXPERIMENTS[site_id]
         swg = local_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
-        with self.assertRaises(BaseException):  # TODO: What exception?
+        self.assertTrue(os.path.exists(swg_file))
+        self.assertTrue(os.path.exists(new_swg_file))
+        with self.assertRaises(ValueError):
             params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
             self.assertEqual(params, None)
+
+        # Remove the file we wrote
+        shutil.rmtree(new_swg_file)
 
     def test_swg_parse(self):
         """
@@ -1088,19 +1081,21 @@ class TestLocalServer(unittest.TestCase):
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
         mm_yyyy = datetime.datetime.today().strftime("%B %Y")
+        yyyy = datetime.datetime.today().strftime("%Y")
+        yyyymm = datetime.datetime.today().strftime("%Y%m")
+        new_swg_file = f"{swg_file}/schedules/{yyyy}/{yyyymm}"
         with open(swg_file, 'r') as f:
             swg_data = f.read()
-        with open(swg_file, 'w') as f:
+        with open(new_swg_file, 'w') as f:
             f.write(mm_yyyy + swg_data)
 
         modes = local_scd_server.EXPERIMENTS[site_id]
         swg = local_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
+        self.assertTrue(os.path.exists(swg_file))
+        self.assertTrue(os.path.exists(new_swg_file))
         parsed_params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
         self.assertTrue(isinstance(parsed_params, list))
-        # TODO: Check params
-
-# main() tests # TODO
 
 
 class TestSchedulerEmailer(unittest.TestCase):

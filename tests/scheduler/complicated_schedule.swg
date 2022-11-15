@@ -12,7 +12,7 @@
 21:00    21:06    Common Time (1-min) (normalsound) (see Note C)
 
 # The following line should be skipped since it's all whitespace
-
+    # this should also be a comment and skipped
 21:06    21:07    Special Time (normalsound) [ALL] (see Note D)
 21:07    21:08    Special Time (THEMIS) [ALL] (see Note E)
 21:08    27:00    Special Time (RBSP) [ALL] (see Note F)

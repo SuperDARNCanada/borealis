@@ -146,10 +146,10 @@ class SWG(object):
 
         skip_line = False
         parsed_params = []
-        mode_to_use = None
-        mode_type = None
         for idx, line in enumerate(swg_lines):
-
+            # Init mode_to_use and mode_type to None every loop, so we can error check
+            mode_to_use = None
+            mode_type = None
             # Skip line is used for special time radar lines
             if skip_line:
                 skip_line = False
@@ -163,8 +163,8 @@ class SWG(object):
             if not line.strip():
                 continue
 
-            # Lines starting with '#' are comments
-            if line[0] == "#":
+            # Lines starting with '#' or whitespace and '#' are comments
+            if line.strip()[0] == "#":
                 continue
 
             # First line is month and year
@@ -199,6 +199,10 @@ class SWG(object):
             if "Discretionary Time" in line:
                 mode_type = "discretionary"
                 mode_to_use = modes["discretionary_time"]
+
+            if not mode_to_use or not mode_type:
+                print(f"SWG line couldn't be parsed, continuing: {line}")
+                continue
 
             param = {f"yyyymmdd": "{year}{month}{start_day}",
                      f"hhmm": "{start_hr}:00",

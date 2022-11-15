@@ -69,7 +69,7 @@ class SCDUtils(object):
             ValueError: If line parameters are invalid or if line is a duplicate.
         """
 
-        # create datetime from args to see if valid
+        # create datetime from args to see if valid. Value error for incorrect format
         time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
 
         if not (0 <= int(prio) <= 20):
