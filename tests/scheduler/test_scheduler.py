@@ -51,10 +51,12 @@ class TestSchedulerUtils(unittest.TestCase):
         self.no_perms_file = self.no_perms.name
         os.chmod(self.no_perms_file, 0o000)
         self.no_perms.close()
-        self.linedict = {"time": '20000101 06:30', "prio": 0, "experiment": 'normalscan', "scheduling_mode": 'common',
+        time_of_interest = datetime.datetime(2000, 1, 1, 6, 30)
+        time_of_interest2 = datetime.datetime(2022, 4, 5, 16, 56)
+        self.linedict = {"time": time_of_interest, "prio": 0, "experiment": 'normalscan', "scheduling_mode": 'common',
                          "duration": 60, "kwargs_string": '-'}
         self.linestr = "20000101 06:30 60 0 normalscan common -"
-        self.linedict2 = {"time": '20220405 16:56', "prio": 15, "experiment": 'twofsound',
+        self.linedict2 = {"time": time_of_interest2, "prio": 15, "experiment": 'twofsound',
                           "scheduling_mode": 'discretionary', "duration": 360,
                           "kwargs_string": 'freq1=10500 freq2=13100'}
         self.linestr2 = "20220405 16:56 360 15 twofsound discretionary freq1=10500 freq2=13100"
@@ -71,7 +73,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test getting the next month from a given date with wrong type
         """
         date = 20221114
-        with self.assertRaises(AttributeError):
+        with self.assertRaises(TypeError):
             scd_utils.get_next_month_from_date(date)
 
     def test_next_month(self):
@@ -157,7 +159,7 @@ class TestSchedulerUtils(unittest.TestCase):
         with self.assertRaises(ValueError):
             scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, mode, self.prio, self.dur, self.kwargs)
         mode = None
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, mode, self.prio, self.dur, self.kwargs)
         mode = 0
         with self.assertRaises(TypeError):
@@ -169,10 +171,10 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         prio = 'blah'
         scdu = scd_utils.SCDUtils(self.good_scd_file)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, prio, self.dur, self.kwargs)
         prio = None
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, prio, self.dur, self.kwargs)
         prio = -1
         with self.assertRaises(ValueError):
@@ -499,13 +501,13 @@ class TestSchedulerUtils(unittest.TestCase):
 # get_relevant_lines tests
     def test_incorrect_datetime_fmt(self):
         """
-        Test trying to input an incorrect datetime string, should raise ValueError
+        Test trying to input an incorrect datetime string, should raise ValueError or TypeError
         """
         scdu = scd_utils.SCDUtils(self.good_scd_file)
 
         with self.assertRaises(ValueError):
             scdu.get_relevant_lines("202", "blah")
-        with self.assertRaises(ValueError):
+        with self.assertRaises(TypeError):
             scdu.get_relevant_lines("20225555", None)
         with self.assertRaises(ValueError):
             scdu.get_relevant_lines(5, '5890')
@@ -628,10 +630,14 @@ class TestRemoteServer(unittest.TestCase):
         Test creating an options object without a BOREALISPATH set up, raises ValueError
         """
         # Need to remove the environment variable, reset for other tests
-        os.environ.pop('BOREALISPATH')
-        sys.path.remove(BOREALISPATH)
-        del os.environ['BOREALISPATH']
-        os.unsetenv('BOREALISPATH')
+        try:
+            os.environ.pop('BOREALISPATH')
+            sys.path.remove(BOREALISPATH)
+            del os.environ['BOREALISPATH']
+            os.unsetenv('BOREALISPATH')
+        except KeyError:
+            pass
+
         with self.assertRaisesRegex(ValueError, "BOREALISPATH"):
             ops = rso.RemoteServerOptions()
             self.assertEqual(ops.site_id, 'sas')
@@ -642,7 +648,7 @@ class TestRemoteServer(unittest.TestCase):
         """
         Test creating an options object without a good config file. Raises IOError
         """
-        bad_config = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_config.ini"
+        bad_config = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_config_file.ini"
         with self.assertRaises(json.JSONDecodeError):
             rso.RemoteServerOptions(config_path=bad_config)
 
@@ -650,7 +656,7 @@ class TestRemoteServer(unittest.TestCase):
         """
         Test creating an options object an empty config file. Raises IOError
         """
-        bad_config = f"{os.environ['BOREALISPATH']}/tests/scheduler/empty_config.ini"
+        bad_config = f"{os.environ['BOREALISPATH']}/tests/scheduler/empty_config_file.ini"
         with self.assertRaises(IOError):
             rso.RemoteServerOptions(config_path=bad_config)
 
@@ -749,7 +755,10 @@ class TestRemoteServer(unittest.TestCase):
         # Remove any existing atq backups directory
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
         atq_dir = f"{scd_dir}/atq_backups/"
-        shutil.rmtree(atq_dir)
+        try:
+            shutil.rmtree(atq_dir)
+        except FileNotFoundError:
+            pass
 
         timeline_list = []
         site_id = os.environ['RADAR_ID']
@@ -820,7 +829,7 @@ class TestRemoteServer(unittest.TestCase):
         with self.assertRaises(AttributeError):
             remote_server.get_relevant_lines(scdu, 5890)
 
-    def test_one_relevant_lines(self):
+    def test_one_relevant_line(self):
         """
         Use a time-of-interest that is far in the future so there is only one relevant line (should be last line)
         """
@@ -849,9 +858,9 @@ class TestRemoteServer(unittest.TestCase):
         """
         time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
         scdfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdfile.write("20210903 00:00 - 0 twofsound common")  # An infinite duration line
-        scdfile.write("20220929 12:00 60 0 normalscan common")  # A 60 minute duration line
-        scdfile.write("20220929 13:00 60 0 normalscan common")  # A 60 minute duration line
+        scdfile.write("20210903 00:00 - 0 twofsound common\n")  # An infinite duration line
+        scdfile.write("20220929 12:00 60 0 normalscan common\n")  # A 60 minute duration line
+        scdfile.write("20220929 13:00 60 0 normalscan common\n")  # A 60 minute duration line
         scdfile.close()
         scdu = scd_utils.SCDUtils(scdfile.name)
         with self.assertRaises(SystemExit):
@@ -864,15 +873,17 @@ class TestRemoteServer(unittest.TestCase):
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
+        time_of_interest = datetime.datetime(2022, 11, 14, 0, 0)
         with self.assertRaises(IndexError):
-            remote_server.get_relevant_lines(scdu, "20221114 00:00")
+            remote_server.get_relevant_lines(scdu, time_of_interest)
 
     def test_no_scdu_lines_relevant(self):
         """
         Test trying to get relevant lines from a file
         """
         scdu = scd_utils.SCDUtils(self.good_scd_file)
-        lines = remote_server.get_relevant_lines(scdu, "00:00")
+        time_of_interest = datetime.datetime(2022, 11, 14, 0, 0)
+        lines = remote_server.get_relevant_lines(scdu, time_of_interest)
         self.assertEqual(len(lines), 0)
 
     def test_one_line_relevant(self):
@@ -1151,7 +1162,7 @@ class TestSchedulerEmailer(unittest.TestCase):
         """
 
         with self.assertRaisesRegex(ValueError, "OSError opening emails text file: "):
-            email_utils.Emailer(self.no_perms_file)
+            email_utils.Emailer(self.no_perms_file.name)
 
     def test_not_owner(self):
         """
@@ -1165,7 +1176,7 @@ class TestSchedulerEmailer(unittest.TestCase):
         Test calling the scheduler emailer with a non-existent log file
         Should send email with body of email containing error message
         """
-        with open(self.email_file) as f:
+        with open(self.email_file.name) as f:
             e = email_utils.Emailer(f.name)
             subject = 'Unittest scheduler emailer, no log file'
             with self.assertRaises(SystemExit):
@@ -1176,17 +1187,17 @@ class TestSchedulerEmailer(unittest.TestCase):
         Test calling the scheduler emailer with a log file that can't be opened
         Should send email with body of email containing error message
         """
-        with open(self.email_file) as f:
+        with open(self.email_file.name) as f:
             e = email_utils.Emailer(f.name)
             subject = 'Unittest scheduler emailer, bad log file'
             with self.assertRaises(SystemExit):
-                e.email_log(subject, self.no_perms_file)
+                e.email_log(subject, self.no_perms_file.name)
 
     def test_email_works(self):
         """
         Test with everything working properly
         """
-        with open(self.email_file) as f:
+        with open(self.email_file.name) as f:
             e = email_utils.Emailer(f.name)
             subject = 'Unittest scheduler emailer'
             with self.assertRaises(SystemExit):

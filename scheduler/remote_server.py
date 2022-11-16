@@ -20,7 +20,7 @@ import subprocess as sp
 import pickle as pkl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import remote_server_options as rso
 
@@ -486,7 +486,7 @@ def get_relevant_lines(scd_util, time_of_interest):
                 found = True
 
         if not found:
-            time -= datetime.timedelta(minutes=1)
+            time -= timedelta(minutes=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
             hhmm = time.strftime("%H:%M")
