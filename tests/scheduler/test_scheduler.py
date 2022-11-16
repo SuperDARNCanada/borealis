@@ -1112,6 +1112,9 @@ class TestLocalServer(unittest.TestCase):
         local_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(swg_dir))
         self.assertTrue(os.path.exists(swg_dir))
+        # Remove the swg dir again
+        shutil.rmtree(swg_dir)
+        self.assertFalse(os.path.exists(swg_dir))
 
     # new_swg_file_available
     def test_swg_new_file(self):
