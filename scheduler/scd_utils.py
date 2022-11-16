@@ -76,6 +76,8 @@ class SCDUtils(object):
             raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
 
         if duration != "-":
+            if isinstance(duration, float) or int(duration) < 1:
+                raise ValueError("Duration should be an integer > 0, or '-'")
             duration = int(duration)
 
         epoch = dt.datetime.utcfromtimestamp(0)
