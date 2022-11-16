@@ -1024,7 +1024,7 @@ class TestLocalServer(unittest.TestCase):
         mm_yyyy = datetime.datetime.today().strftime("%B %Y")
         yyyy = datetime.datetime.today().strftime("%Y")
         yyyymm = datetime.datetime.today().strftime("%Y%m")
-        new_swg_file = f"{swg_file}/schedules/{yyyy}/{yyyymm}"
+        new_swg_file = f"{scd_dir}/schedules/{yyyy}/{yyyymm}"
         with open(swg_file, 'r') as f:
             swg_data = f.read()
         with open(new_swg_file, 'w') as f:
@@ -1054,7 +1054,7 @@ class TestLocalServer(unittest.TestCase):
         mm_yyyy = datetime.datetime.today().strftime("%B %Y")
         yyyy = datetime.datetime.today().strftime("%Y")
         yyyymm = datetime.datetime.today().strftime("%Y%m")
-        new_swg_file = f"{swg_file}/schedules/{yyyy}/{yyyymm}"
+        new_swg_file = f"{scd_dir}/schedules/{yyyy}/{yyyymm}"
         with open(swg_file, 'r') as f:
             swg_data = f.read()
         with open(new_swg_file, 'w') as f:
@@ -1085,7 +1085,7 @@ class TestLocalServer(unittest.TestCase):
         mm_yyyy = datetime.datetime.today().strftime("%B %Y")
         yyyy = datetime.datetime.today().strftime("%Y")
         yyyymm = datetime.datetime.today().strftime("%Y%m")
-        new_swg_file = f"{swg_file}/schedules/{yyyy}/{yyyymm}"
+        new_swg_file = f"{scd_dir}/schedules/{yyyy}/{yyyymm}"
         with open(swg_file, 'r') as f:
             swg_data = f.read()
         with open(new_swg_file, 'w') as f:
