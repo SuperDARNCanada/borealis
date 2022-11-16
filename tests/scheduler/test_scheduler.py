@@ -350,7 +350,7 @@ class TestSchedulerUtils(unittest.TestCase):
         with open(scd_file.name, 'r') as f:
             lines = f.readlines()
         self.assertEqual(len(lines)-1, 1)  # -1 to handle the extra default line that was added in read_scd()
-        line = lines[0].split()
+        line = lines[1].split()  # Get the second line, which is the one we added
         self.assertEqual(line[0], self.yyyymmdd)
         self.assertEqual(line[1], self.hhmm)
         self.assertEqual(line[2], self.dur)
@@ -625,16 +625,34 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
-                          "20200924 00:00 - 0 normalscan common freq=10500\n", "20200926 00:00 - 0 normalscan common\n"]
+                          "20200924 00:00 - 0 twofsound common freq=10500\n",
+                          "20200926 00:00 60 2 politescan special\n"]
         for test_line in test_scd_lines:
             scd_file.write(test_line)
         scd_file.close()
         lines = scdu.get_relevant_lines("20200916", "00:00")
         self.assertEqual(len(lines), 4)
-        self.assertEqual(lines[0], test_scd_lines[0])
-        self.assertEqual(lines[1], test_scd_lines[1])
-        self.assertEqual(lines[2], test_scd_lines[2])
-        self.assertEqual(lines[3], test_scd_lines[3])
+
+        self.assertEqual(lines[0]['duration'], '-')
+        self.assertEqual(lines[0]['prio'], '0')
+        self.assertEqual(lines[0]['experiment'], 'normalscan')
+        self.assertEqual(lines[0]['scheduling_mode'], 'common')
+
+        self.assertEqual(lines[1]['duration'], '-')
+        self.assertEqual(lines[1]['prio'], '0')
+        self.assertEqual(lines[1]['experiment'], 'normalscan')
+        self.assertEqual(lines[1]['scheduling_mode'], 'discretionary')
+
+        self.assertEqual(lines[2]['duration'], '-')
+        self.assertEqual(lines[2]['prio'], '0')
+        self.assertEqual(lines[2]['experiment'], 'twofsound')
+        self.assertEqual(lines[2]['scheduling_mode'], 'common')
+        self.assertEqual(lines[2]['kwargs_string'], 'freq=10500')
+
+        self.assertEqual(lines[3]['duration'], '60')
+        self.assertEqual(lines[3]['prio'], '2')
+        self.assertEqual(lines[3]['experiment'], 'politescan')
+        self.assertEqual(lines[3]['scheduling_mode'], 'special')
 
 
 class TestRemoteServer(unittest.TestCase):
@@ -972,7 +990,6 @@ class TestRemoteServer(unittest.TestCase):
         """
         Test trying to get relevant lines from a file with some lines in the future
         """
-        time_of_interest = datetime.datetime(2020, 9, 23, 0, 1)
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
@@ -981,10 +998,12 @@ class TestRemoteServer(unittest.TestCase):
         for test_line in test_scd_lines:
             scd_file.write(test_line)
         scd_file.close()
+        time_of_interest = datetime.datetime(2020, 9, 23, 0, 1)
         lines = remote_server.get_relevant_lines(scdu, time_of_interest)
-        self.assertEqual(len(lines), 2)
-        self.assertEqual(lines[0], test_scd_lines[2])
-        self.assertEqual(lines[1], test_scd_lines[3])
+        self.assertEqual(len(lines), 3)
+        self.assertEqual(lines[0], test_scd_lines[1])
+        self.assertEqual(lines[1], test_scd_lines[2])
+        self.assertEqual(lines[2], test_scd_lines[3])
 
     def test_all_lines_relevant_matched(self):
         """
@@ -1226,7 +1245,7 @@ class TestSchedulerEmailer(unittest.TestCase):
         """
         Test calling the scheduler emailer with a directory, it expects a filename
         """
-        with self.assertRaisesRegex(ValueError, "ONo email addresses to send to"):
+        with self.assertRaisesRegex(ValueError, "No email addresses to send to"):
             email_utils.Emailer(os.environ['HOME'])
 
     def test_no_permissions(self):

@@ -39,9 +39,11 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
         str: Formatted atq str.
     """
     steamed_hams = f"{os.environ['BOREALISPATH']}/scripts/steamed_hams.py"
-    start_cmd = f"echo 'screen -d -m -S starter {steamed_hams} {experiment} release {scheduling_mode}'"
+    start_cmd = f"echo 'screen -d -m -S starter {steamed_hams} {experiment} release {scheduling_mode}"
     if kwargs_string:
         start_cmd += f" --kwargs_string {kwargs_string}'"
+    else:
+        start_cmd += "'"
 
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
