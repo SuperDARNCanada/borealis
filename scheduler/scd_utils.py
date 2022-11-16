@@ -72,6 +72,9 @@ class SCDUtils(object):
         # create datetime from args to see if valid. Value error for incorrect format
         time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
 
+        if not isinstance(kwargs_string, str):
+            raise ValueError("kwargs_string should be a string")
+
         if not (0 <= int(prio) <= 20):
             raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
 
