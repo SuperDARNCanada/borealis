@@ -1122,10 +1122,14 @@ class TestLocalServer(unittest.TestCase):
         Test new file exists method, which checks for new swg file uploads via git and returns True or False
         """
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        swg_dir = scd_dir + "schedules/"
         swg = local_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
         new = swg.new_swg_file_available()
         self.assertFalse(new)  # Assume that the repo is up-to-date always, not sure how else to test this
+        # Remove the swg dir again
+        shutil.rmtree(swg_dir)
+        self.assertFalse(os.path.exists(swg_dir))
 
     # pull_new_swg_file
     # def test_swg_pull(self):  # Nothing to really test here
@@ -1165,6 +1169,7 @@ class TestLocalServer(unittest.TestCase):
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
         site_id = os.environ['RADAR_ID']
         swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/missing_hours.swg"
+        swg_dir = scd_dir + "schedules/"
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
         mm_yyyy = datetime.datetime.today().strftime("%B %Y")
@@ -1184,8 +1189,11 @@ class TestLocalServer(unittest.TestCase):
         with self.assertRaises(ValueError):
             params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
 
-        # Remove the file we wrote
+        # Remove the files we wrote
         shutil.rmtree(new_swg_file)
+        # Remove the swg dir again
+        shutil.rmtree(swg_dir)
+        self.assertFalse(os.path.exists(swg_dir))
 
     @unittest.skip
     def test_bad_experiment(self):
@@ -1195,6 +1203,7 @@ class TestLocalServer(unittest.TestCase):
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
         site_id = os.environ['RADAR_ID']
         swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_experiment.swg"
+        swg_dir = scd_dir + "schedules/"
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
         mm_yyyy = datetime.datetime.today().strftime("%B %Y")
@@ -1214,8 +1223,11 @@ class TestLocalServer(unittest.TestCase):
         with self.assertRaises(ValueError):
             params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
 
-        # Remove the file we wrote
+        # Remove the files we wrote
         shutil.rmtree(new_swg_file)
+        # Remove the swg dir again
+        shutil.rmtree(swg_dir)
+        self.assertFalse(os.path.exists(swg_dir))
 
     def test_swg_parse(self):
         """
@@ -1225,6 +1237,7 @@ class TestLocalServer(unittest.TestCase):
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
         site_id = os.environ['RADAR_ID']
         swg_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/complicated_schedule.swg"
+        swg_dir = scd_dir + "schedules/"
 
         # Need to ensure we put in the current month to the schedule file and set first run to True
         mm_yyyy = datetime.datetime.today().strftime("%B %Y")
@@ -1243,6 +1256,9 @@ class TestLocalServer(unittest.TestCase):
         self.assertTrue(os.path.exists(new_swg_file))
         parsed_params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
         self.assertTrue(isinstance(parsed_params, list))
+        # Remove the swg dir again
+        shutil.rmtree(swg_dir)
+        self.assertFalse(os.path.exists(swg_dir))
 
 
 class TestSchedulerEmailer(unittest.TestCase):
