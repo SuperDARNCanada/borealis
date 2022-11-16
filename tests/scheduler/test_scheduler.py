@@ -47,7 +47,7 @@ class TestSchedulerUtils(unittest.TestCase):
         self.exp = 'normalscan'
         self.mode = 'common'
         self.kwargs = '-'
-        self.no_perms = tempfile.NamedTemporaryFile()
+        self.no_perms = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         self.no_perms_file = self.no_perms.name
         os.chmod(self.no_perms_file, 0o000)
         self.no_perms.close()
@@ -249,7 +249,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test giving an empty scd file to the module, prints warning, returns and appends default
         line to the scd file
         """
-        scdfile = tempfile.NamedTemporaryFile()
+        scdfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scdfile.name)
         scdfile.close()
         self.assertEqual(scdu.read_scd(), scdu.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-'))
@@ -295,7 +295,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test write_scd with a good line, so that it creates a .bak of the scd file
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scd_file.close()
         scdu = scd_utils.SCDUtils(scd_file.name)
         lines = [self.linedict, self.linedict2]
@@ -316,7 +316,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to add duplicate line
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         scd_file.close()
         with self.assertRaisesRegex(ValueError, "Line is a duplicate of an existing line"):
@@ -327,7 +327,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to add line with the same time and priority as an existing line
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         scd_file.close()
         with self.assertRaisesRegex(ValueError, "Priority already exists at this time"):
@@ -338,7 +338,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to add a line to a file
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         scd_file.close()
         scdu.add_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
@@ -358,7 +358,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to add multiple lines to a file and have them properly sorted by time and priority
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         scd_file.close()
         counter = 0
@@ -407,7 +407,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to remove lines from an SCD file
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n", 
                      "20200924 00:00 - 0 normalscan common freq1=10500\n", "20200926 00:00 - 0 normalscan common\n"]
@@ -484,7 +484,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to remove lines from an SCD file that don't exist. Should raise ValueError
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                      "20200924 00:00 - 0 normalscan common freq=10500\n", "20200926 00:00 - 0 normalscan common\n"]
@@ -514,7 +514,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to get relevant lines from an empty file, should raise IndexError
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         with self.assertRaises(IndexError):
             scdu.get_relevant_lines("20061101", "00:00")
@@ -531,7 +531,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to get relevant lines from a file with one line in the future
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_exp_line = "20200917 00:00 - 0 normalscan common\n"
         scd_file.write(test_exp_line)
@@ -544,7 +544,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to get relevant lines from a file with some lines in the future
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 normalscan common freq=10500\n", "20200926 00:00 - 0 normalscan common\n"]
@@ -561,7 +561,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to get relevant lines from a file with all lines in the future or present
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 normalscan common freq=10500\n", "20200926 00:00 - 0 normalscan common\n"]
@@ -579,7 +579,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to get relevant lines from a file with all lines in the future
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 normalscan common freq=10500\n", "20200926 00:00 - 0 normalscan common\n"]
@@ -835,7 +835,7 @@ class TestRemoteServer(unittest.TestCase):
         Use a time-of-interest that is far in the future with an SCD file without any inf duration lines
         """
         time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
-        scdfile = tempfile.NamedTemporaryFile()
+        scdfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdfile.write("20220929 12:00 360 0 normalscan common")  # A 360 minute duration line
         scdfile.close()
         scdu = scd_utils.SCDUtils(scdfile.name)
@@ -848,7 +848,7 @@ class TestRemoteServer(unittest.TestCase):
         Use a time-of-interest that is far in the future with an SCD file with one inf duration line in the past
         """
         time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
-        scdfile = tempfile.NamedTemporaryFile()
+        scdfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdfile.write("20210903 00:00 - 0 twofsound common")  # An infinite duration line
         scdfile.write("20220929 12:00 60 0 normalscan common")  # A 60 minute duration line
         scdfile.write("20220929 13:00 60 0 normalscan common")  # A 60 minute duration line
@@ -862,7 +862,7 @@ class TestRemoteServer(unittest.TestCase):
         """
         Test trying to get relevant lines from an empty file, should raise IndexError
         """
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         with self.assertRaises(IndexError):
             remote_server.get_relevant_lines(scdu, "20221114 00:00")
@@ -880,7 +880,7 @@ class TestRemoteServer(unittest.TestCase):
         Test trying to get relevant lines from a file with one line in the future
         """
         time_of_interest = datetime.datetime(2022, 11, 14, 0, 1)
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_exp_line = "20221115 03:00 - 0 normalscan common\n"
         scd_file.write(test_exp_line)
@@ -894,7 +894,7 @@ class TestRemoteServer(unittest.TestCase):
         Test trying to get relevant lines from a file with one line in the future but no infinite duration lines
         """
         time_of_interest = datetime.datetime(2020, 9, 25, 0, 1)
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 60 0 normalscan common\n", "20200921 00:00 1440 0 normalscan discretionary\n",
                           "20200924 00:00 360 0 normalscan common freq=10500\n",
@@ -911,7 +911,7 @@ class TestRemoteServer(unittest.TestCase):
         Test trying to get relevant lines from a file with some lines in the future
         """
         time_of_interest = datetime.datetime(2020, 9, 23, 0, 1)
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 normalscan common freq=10500\n",
@@ -929,7 +929,7 @@ class TestRemoteServer(unittest.TestCase):
         Test trying to get relevant lines from a file with all lines in the future or present
         """
         time_of_interest = datetime.datetime(2020, 9, 17, 0, 0)
-        scd_file = tempfile.NamedTemporaryFile()
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 normalscan common freq=10500\n",
@@ -1107,15 +1107,15 @@ class TestSchedulerEmailer(unittest.TestCase):
         super().__init__(*args, **kwargs)
 
         self.emails = "kevin.krieger@usask.ca\nkevinjkrieger@gmail.com"
-        self.email_file = tempfile.NamedTemporaryFile()
+        self.email_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         self.email_file.write(self.emails)
         self.email_file.close()
 
-        self.logfile = tempfile.NamedTemporaryFile()
+        self.logfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         self.logfile.write('Not much of a logfile,\n but here we are')
         self.logfile.close()
 
-        self.no_perms = tempfile.NamedTemporaryFile()
+        self.no_perms = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         self.no_perms_file = self.no_perms.name
         os.chmod(self.no_perms_file, 0o000)
         self.no_perms.close()
@@ -1195,7 +1195,7 @@ class TestSchedulerEmailer(unittest.TestCase):
         """
         Test with everything working properly, including several attachments
         """
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as f:
             f.write(self.emails)
             e = email_utils.Emailer(f.name)
             subject = 'Unittest scheduler emailer'
