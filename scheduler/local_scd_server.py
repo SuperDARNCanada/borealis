@@ -7,8 +7,8 @@
 # Monitors for new SWG files and adds the SWG info to the scd if there is an update.
 #
 import subprocess as sp
-import scd_utils
-import email_utils
+from . import scd_utils
+from . import email_utils
 import os
 import datetime
 import time

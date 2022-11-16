@@ -8,8 +8,8 @@ if any issues occur.
 """
 
 import inotify.adapters
-import scd_utils
-import email_utils
+from . import scd_utils
+from . import email_utils
 import os
 import datetime
 import argparse
@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from datetime import datetime, timedelta
 
-import remote_server_options as rso
+from . import remote_server_options as rso
 
 
 def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string=''):
