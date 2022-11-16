@@ -1103,7 +1103,7 @@ class TestSchedulerEmailer(unittest.TestCase):
     """
     unittest class to test the scheduler emailing module. All test methods must begin with the word 'test' to be run
     """
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.emails = "kevin.krieger@usask.ca\nkevinjkrieger@gmail.com"
