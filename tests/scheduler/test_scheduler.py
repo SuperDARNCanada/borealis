@@ -968,7 +968,7 @@ class TestLocalServer(unittest.TestCase):
         """
         Test initializing the SWG class
         """
-        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
+        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/schedules/"
         # Ensure the scd dir and therefore the git repo for schedules doesn't exist before
         shutil.rmtree(scd_dir)
         self.assertFalse(os.path.exists(scd_dir))
