@@ -13,6 +13,7 @@ import tempfile
 import json
 import datetime
 import subprocess as sp
+import re
 
 if not os.environ['BOREALISPATH']:
     BOREALISPATH = f"{os.environ['HOME']}/PycharmProjects/borealis/"
@@ -536,7 +537,7 @@ class TestSchedulerUtils(unittest.TestCase):
         scd_file.close()
         scdu = scd_utils.SCDUtils(scd_file.name)
         self.assertEqual(scdu.get_relevant_lines("19991101", "00:00"),
-                         scdu.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-'))
+                         [scdu.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')])
 
     def test_no_lines_relevant(self):
         """
@@ -857,10 +858,6 @@ class TestRemoteServer(unittest.TestCase):
         The function should create a backup atq file with all current and future jobs
         timeline is a list of events, which are dicts with 'time', 'experiment', 'scheduling_mode', 'kwargs_string'
         """
-        #get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1); ' \
-         #             'do atq |grep -P "^$j\t"; at -c "$j" | tail -n 2; done'
-        #current_atq = sp.check_output(get_atq_cmd, shell=True)
-
         # Remove any existing atq backups directory
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
         atq_dir = f"{scd_dir}/atq_backups/"
@@ -891,7 +888,11 @@ class TestRemoteServer(unittest.TestCase):
                   '/home/radar/borealis/scripts/steamed_hams.py twofsound release common --kwargs_string -\n\n' \
                   f'11\t{now_plus_one_min} a radar\nscreen -d -m -S starter ' \
                   '/home/radar/borealis/scripts/steamed_hams.py politescan release discretionary --kwargs_string -\n\n'
-        self.assertEqual(atq_commands.decode('ascii'), new_atq)
+
+        # First remove the job numbers (matched by \d+), which are always before the tab character (\t)
+        new_commands = str(re.sub('\d+\t', '', new_atq))
+        prev_commands = str(re.sub('\d+\t', '', atq_commands.decode('ascii')))
+        self.assertEqual(prev_commands, new_commands)
         self.assertTrue(os.path.exists(atq_dir))
         self.assertTrue(os.path.exists(f"{atq_dir}/{backup_time}.{site_id}.atq"))
         shutil.rmtree(atq_dir)
