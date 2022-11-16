@@ -518,12 +518,24 @@ class TestSchedulerUtils(unittest.TestCase):
 
     def test_empty_file(self):
         """
-        Test trying to get relevant lines from an empty file, should give default experiment
+        Test trying to get relevant lines from an empty file, should be empty, as even though the
+        read_scd() call in get_relevant_lines returns the default scd, the for loop
+        doesn't ever add it to relevant lines if the time of interest is in the future
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scd_file.close()
         scdu = scd_utils.SCDUtils(scd_file.name)
-        self.assertEqual(scdu.get_relevant_lines("20061101", "00:00"),
+        self.assertEqual(scdu.get_relevant_lines("20061101", "00:00"), [])
+
+    def test_empty_file_w_default(self):
+        """
+        Test trying to get relevant lines from an empty file, should be the default scd as the time of interest
+        is in the past from the default line
+        """
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
+        scd_file.close()
+        scdu = scd_utils.SCDUtils(scd_file.name)
+        self.assertEqual(scdu.get_relevant_lines("19991101", "00:00"),
                          scdu.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-'))
 
     def test_no_lines_relevant(self):
@@ -845,10 +857,9 @@ class TestRemoteServer(unittest.TestCase):
         The function should create a backup atq file with all current and future jobs
         timeline is a list of events, which are dicts with 'time', 'experiment', 'scheduling_mode', 'kwargs_string'
         """
-        # Get the current atq, as it should be unchanged from previously
-        get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1); ' \
-                      'do atq |grep -P "^$j\t"; at -c "$j" | tail -n 2; done'
-        current_atq = sp.check_output(get_atq_cmd, shell=True)
+        #get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1); ' \
+         #             'do atq |grep -P "^$j\t"; at -c "$j" | tail -n 2; done'
+        #current_atq = sp.check_output(get_atq_cmd, shell=True)
 
         # Remove any existing atq backups directory
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
@@ -870,10 +881,17 @@ class TestRemoteServer(unittest.TestCase):
         site_id = os.environ['RADAR_ID']
         time_of_interest = datetime.datetime(2022, 11, 14, 3, 30)
         backup_time = time_of_interest.strftime("%Y.%m.%d.%H.%M")
-        atq_command = remote_server.timeline_to_atq(events, scd_dir, time_of_interest, site_id)
+        atq_commands = remote_server.timeline_to_atq(events, scd_dir, time_of_interest, site_id)
 
-        # The atq should be the same as the events added were all in the past
-        self.assertEqual(atq_command, current_atq)
+        # The atq should have the three events added, but the last one should have a date that is now + 1 minute
+        now_plus_one_min = (datetime.datetime.now() + datetime.timedelta(minutes=1)).strftime("%a %b %d %H:%M:00 %Y")
+        new_atq = '12\tMon Oct 10 00:30:00 2022 = radar\nscreen -d -m -S starter ' \
+                  '/home/radar/borealis/scripts/steamed_hams.py normalscan release special --kwargs_string hi=96\n\n' \
+                  '13\tTue Oct 11 08:00:00 2022 = radar\nscreen -d -m -S starter ' \
+                  '/home/radar/borealis/scripts/steamed_hams.py twofsound release common --kwargs_string -\n\n' \
+                  f'11\t{now_plus_one_min} a radar\nscreen -d -m -S starter ' \
+                  '/home/radar/borealis/scripts/steamed_hams.py politescan release discretionary --kwargs_string -\n\n'
+        self.assertEqual(atq_commands.decode('ascii'), new_atq)
         self.assertTrue(os.path.exists(atq_dir))
         self.assertTrue(os.path.exists(f"{atq_dir}/{backup_time}.{site_id}.atq"))
         shutil.rmtree(atq_dir)
@@ -1082,9 +1100,14 @@ class TestLocalServer(unittest.TestCase):
         """
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
         swg_dir = scd_dir + "schedules/"
+
         # Ensure the swg dir (the git repo for schedules) doesn't exist before
-        shutil.rmtree(swg_dir)
+        try:
+            shutil.rmtree(swg_dir)
+        except FileNotFoundError:
+            pass
         self.assertFalse(os.path.exists(swg_dir))
+
         local_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(swg_dir))
         self.assertTrue(os.path.exists(swg_dir))
