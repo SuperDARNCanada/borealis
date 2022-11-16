@@ -1244,13 +1244,15 @@ class TestLocalServer(unittest.TestCase):
         yyyy = datetime.datetime.today().strftime("%Y")
         yyyymm = datetime.datetime.today().strftime("%Y%m")
         new_swg_file = f"{swg_dir}/{yyyy}/{yyyymm}.swg"
+        modes = local_scd_server.EXPERIMENTS[site_id]
+        swg = local_scd_server.SWG(scd_dir)
+
         with open(swg_file, 'r') as f:
             swg_data = f.read()
+
         with open(new_swg_file, 'w') as f:
             f.write(mm_yyyy + swg_data)
 
-        modes = local_scd_server.EXPERIMENTS[site_id]
-        swg = local_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
         self.assertTrue(os.path.exists(swg_file))
         self.assertTrue(os.path.exists(new_swg_file))
