@@ -31,8 +31,8 @@ class TestSchedulerUtils(unittest.TestCase):
     unittest class to test the scheduler utilities module. All test methods must begin with the word 'test' to be run
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         # A file that has a bunch of lines in the scd file that should all pass all tests
         self.good_scd_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/good_scd_file.scd"
         # A file that has 5 arguments (missing the scheduling mode)
@@ -599,11 +599,12 @@ class TestRemoteServer(unittest.TestCase):
     unittest class to test the remote server and remote server options modules.
     All test methods must begin with the word 'test' to be run
     """
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """
         Init some reused variables
         """
-        super().__init__()
+        super().__init__(*args, **kwargs)
+
         self.good_config = f"{os.environ['BOREALISPATH']}/config/sas/sas_config.ini"
         self.good_scd_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/good_scd_file.scd"
 
@@ -949,11 +950,11 @@ class TestLocalServer(unittest.TestCase):
     unittest class to test the local server module. All test methods must begin with the word 'test' to be run
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """
         Set up variables and data used for unit testing
         """
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     def setUp(self):
         """
@@ -1103,7 +1104,7 @@ class TestSchedulerEmailer(unittest.TestCase):
     unittest class to test the scheduler emailing module. All test methods must begin with the word 'test' to be run
     """
     def __init__(self):
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
         self.emails = "kevin.krieger@usask.ca\nkevinjkrieger@gmail.com"
         self.email_file = tempfile.NamedTemporaryFile()
