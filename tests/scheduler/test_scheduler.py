@@ -353,8 +353,8 @@ class TestSchedulerUtils(unittest.TestCase):
         line = lines[1].split()  # Get the second line, which is the one we added
         self.assertEqual(line[0], self.yyyymmdd)
         self.assertEqual(line[1], self.hhmm)
-        self.assertEqual(line[2], self.dur)
-        self.assertEqual(line[3], self.prio)
+        self.assertEqual(line[2], str(self.dur))
+        self.assertEqual(line[3], str(self.prio))
         self.assertEqual(line[4], self.exp)
         self.assertEqual(line[5], self.mode)
         self.assertEqual(line[6], self.kwargs)
@@ -521,8 +521,8 @@ class TestSchedulerUtils(unittest.TestCase):
         Test trying to get relevant lines from an empty file, should give default experiment
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
         scd_file.close()
+        scdu = scd_utils.SCDUtils(scd_file.name)
         self.assertEqual(scdu.get_relevant_lines("20061101", "00:00"),
                          scdu.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-'))
 
@@ -993,17 +993,31 @@ class TestRemoteServer(unittest.TestCase):
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scdu = scd_utils.SCDUtils(scd_file.name)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
-                          "20200924 00:00 - 0 normalscan common freq=10500\n",
-                          "20200926 00:00 - 0 normalscan common\n"]
+                          "20200924 00:00 - 0 twofsound common freq=10500\n",
+                          "20200926 00:00 60 2 politescan special\n"]
         for test_line in test_scd_lines:
             scd_file.write(test_line)
         scd_file.close()
         time_of_interest = datetime.datetime(2020, 9, 23, 0, 1)
         lines = remote_server.get_relevant_lines(scdu, time_of_interest)
         self.assertEqual(len(lines), 3)
-        self.assertEqual(lines[0], test_scd_lines[1])
-        self.assertEqual(lines[1], test_scd_lines[2])
-        self.assertEqual(lines[2], test_scd_lines[3])
+
+        self.assertEqual(lines[0]['duration'], '-')
+        self.assertEqual(lines[0]['prio'], '0')
+        self.assertEqual(lines[0]['experiment'], 'normalscan')
+        self.assertEqual(lines[0]['scheduling_mode'], 'discretionary')
+
+        self.assertEqual(lines[1]['duration'], '-')
+        self.assertEqual(lines[1]['prio'], '0')
+        self.assertEqual(lines[1]['experiment'], 'twofsound')
+        self.assertEqual(lines[1]['scheduling_mode'], 'common')
+        self.assertEqual(lines[1]['kwargs_string'], 'freq=10500')
+
+        self.assertEqual(lines[2]['duration'], '60')
+        self.assertEqual(lines[2]['prio'], '2')
+        self.assertEqual(lines[2]['experiment'], 'politescan')
+        self.assertEqual(lines[2]['scheduling_mode'], 'special')
+
 
     def test_all_lines_relevant_matched(self):
         """
@@ -1103,14 +1117,15 @@ class TestLocalServer(unittest.TestCase):
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
         site_id = os.environ['RADAR_ID']
 
-        # Make sure to remove any existing test schedules dir
+        modes = local_scd_server.EXPERIMENTS[site_id]
+        swg = local_scd_server.SWG(scd_dir)
+
+        # Make sure to remove any existing test schedules dir that was just cloned
         try:
             shutil.rmtree(scd_dir+"schedules/")
         except FileNotFoundError:
             pass
 
-        modes = local_scd_server.EXPERIMENTS[site_id]
-        swg = local_scd_server.SWG(scd_dir)
         self.assertTrue(os.path.exists(scd_dir))
         with self.assertRaises(FileNotFoundError):
             params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
