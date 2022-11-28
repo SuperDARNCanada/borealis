@@ -4,7 +4,7 @@ bfiq v0.4
 
 The pyDARNio format class for this format is BorealisBfiqv0_4 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
-Borealis software version 0.4 is out of date, see the current format of the bfiq files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_. 
+Borealis software version 0.4 is out of date, see the current format of the bfiq files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`__. 
 
 The bfiq format is intended to hold beamformed I and Q data for the main and interferometer arrays. The data is not averaged. 
 
@@ -377,7 +377,7 @@ Site/Array Restructuring
 
 File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
 
 -------------------------------------
 bfiq to iqdat SDARN (DMap) Conversion

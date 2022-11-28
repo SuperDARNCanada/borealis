@@ -88,6 +88,7 @@ it is convenient and recommended to keep a backlog of lower level data products
 such as antennas_iq for a period of time. These files are useful for debugging 
 hardware issues and reproducing RAWACF files.
 
+-------------
 File Rotation
 -------------
 
