@@ -172,7 +172,7 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | *short*                         | |                                           |
 | | Number of lags in sequence      | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **nrang**                       | | *correlation_dimensions*[1]               |
+| | **nrang**                       | | *correlation_dimensions* [1]              |
 | | *short*                         | |                                           |
 | | Number of ranges                | |                                           | 
 +-----------------------------------+---------------------------------------------+

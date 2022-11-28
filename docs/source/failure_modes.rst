@@ -284,11 +284,11 @@ nvcc fatal: Unsupported gpu architecture 'compute_xx'
 This error code is seen when building Borealis with a GPU that isn't supported by your
 version of CUDA. The compute capability of the GPU can be found by running deviceQuery
 and checking the version number given by the line:
-    - CUDA Capability Major/Minor version number:    7.5
+  - CUDA Capability Major/Minor version number:    7.5
 
 In this case, the compute_xx number is 75. You can see the supported compute_xx numbers
 for your current CUDA version by running:
-    - nvcc --help
+  - nvcc --help
 
 and checking the versions listed under the option --gpu-code. Updating your CUDA version
 should resolve this issue.
