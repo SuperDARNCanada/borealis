@@ -6,6 +6,7 @@ protobuf
 sphinxcontrib-programoutput
 sphinxcontrib-autoprogram
 pyzmq
+myst_parser
 #cmake
 #pycparser
 #venvgit2
