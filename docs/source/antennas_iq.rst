@@ -113,10 +113,9 @@ The file fields in the antennas_iq array files are:
 | | [num_records]                   | | False if it unlocked at least once.       |
 +-----------------------------------+---------------------------------------------+
 | | **gps_to_system_time_diff**     | | The max time difference between box_time  |
-| | *float32*                       | | (GPS time) and system time (NTP) during the|
-
-| | [num_records]                   | | integration. Negative when GPS time is    |
-| |                                 | | ahead of system time.                     |
+| | *float32*                       | | (GPS time) and system time (NTP) during   |
+| | [num_records]                   | | the integration. Negative when GPS time   |
+| |                                 | | is ahead of system time.                  |
 +-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           | 
