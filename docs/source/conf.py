@@ -40,7 +40,7 @@ if on_rtd:
   cur_dir = os.path.abspath(os.path.dirname(__file__))
   call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
 
-  call(['ln', '-s', BOREALISPATH + '/borealis_config_files/sas_config.ini', BOREALISPATH + '/config.ini'])
+  # call(['ln', '-s', BOREALISPATH + '/borealis_config_files/sas_config.ini', BOREALISPATH + '/config.ini'])
 
   call(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
 
