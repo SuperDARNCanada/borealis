@@ -179,8 +179,10 @@ To fix this issue and restart the radar:
 --------------------------------------------------------
 This behaviour has been seen once at the Clyde River Borealis radar. The message shown is:
 
-`Message from syslogd@clyborealis at Jun 15 00:47:18 ... kernel:[9941421.042914] NMI watchdog: BUG:
-soft lockup - CPU#19 stuck for 22s! [kworker/u56:0:16764]`
+.. code-block:: text
+
+  Message from syslogd@clyborealis at Jun 15 00:47:18 ... kernel:[9941421.042914] NMI watchdog: BUG:
+  soft lockup - CPU#19 stuck for 22s! [kworker/u56:0:16764]
 
 The root cause is unknown, but symptoms are:
 
@@ -194,12 +196,14 @@ Protobuf library is not working
 -------------------------------
 Symptoms: The following error in one or more screens when attempting to run the radar.
 
-`Traceback (most recent call last):
-  File "brian/brian.py", line 24, in <module>
-    import driverpacket_pb2
-  File "/home/radar/borealis//build/release/utils/protobuf/driverpacket_pb2.py", line 5, in <module>
-    from google.protobuf.internal import builder as _builder
-ImportError: cannot import name 'builder'`
+.. code-block:: text
+
+  Traceback (most recent call last):
+    File "brian/brian.py", line 24, in <module>
+      import driverpacket_pb2
+    File "/home/radar/borealis//build/release/utils/protobuf/driverpacket_pb2.py", line 5, in <module>
+      from google.protobuf.internal import builder as _builder
+  ImportError: cannot import name 'builder'
 
 Reason:
 There are two components to the protobuf installation - the package and the protoc compiler.
@@ -284,10 +288,12 @@ nvcc fatal: Unsupported gpu architecture 'compute_xx'
 This error code is seen when building Borealis with a GPU that isn't supported by your
 version of CUDA. The compute capability of the GPU can be found by running deviceQuery
 and checking the version number given by the line:
+  
   - CUDA Capability Major/Minor version number:    7.5
 
 In this case, the compute_xx number is 75. You can see the supported compute_xx numbers
 for your current CUDA version by running:
+  
   - nvcc --help
 
 and checking the versions listed under the option --gpu-code. Updating your CUDA version
