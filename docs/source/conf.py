@@ -32,6 +32,9 @@ sys.path.insert(2, BOREALISPATH + '/src/experiment_prototype')
 sys.path.insert(3, BOREALISPATH + '/src/utils')
 sys.path.insert(4, os.environ['PATH'])
 
+RADAR_CODE = 'sas'
+os.environ['RADAR_CODE'] = RADAR_CODE
+
 # hack for readthedocs to cause it to run doxygen first
 # https://github.com/rtfd/readthedocs.org/issues/388
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
