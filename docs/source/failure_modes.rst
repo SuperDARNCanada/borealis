@@ -24,8 +24,8 @@ then the symptoms are typically:
 Restart the radar by:
 
     - Ensuring the power is securely connected to all N200s
-    - `/borealis/stop_radar.sh`
-    - `/borealis/start_radar.sh`
+    - ``/borealis/stop_radar.sh``
+    - ``/borealis/start_radar.sh``
 
 N200 10MHz reference loss
 -------------------------
@@ -33,15 +33,15 @@ If the 10MHz reference signal to any N200 device that Borealis is currently usin
 an extended time (beyond a few seconds) then the symptoms are:
 
     - Continual 'lates' from the driver ('L' printed out continuously)
-    - `REF locked` front panel LED will be off for the N200 that lost 10MHz reference
+    - ``REF locked`` front panel LED will be off for the N200 that lost 10MHz reference
     - Upon reconnection of the 10MHz signal, the lates continue
     - Radar continues
 
 Restart the radar by:
 
     - Ensuring the 10MHz reference is connected to all N200s
-    - `/borealis/stop_radar.sh`
-    - `/borealis/start_radar.sh`
+    - ``/borealis/stop_radar.sh``
+    - ``/borealis/start_radar.sh``
 
 N200 PPS reference loss
 -----------------------
@@ -62,8 +62,8 @@ a brief time, the symptoms are typically:
 Restart the radar by:
 
     - Reconnecting the Ethernet
-    - `/borealis/stop_radar.sh`
-    - `/borealis/start_radar.sh`
+    - ``/borealis/stop_radar.sh``
+    - ``/borealis/start_radar.sh``
 
 
 Borealis Startup with N200 PPS reference missing
@@ -84,15 +84,15 @@ Octoclock GPS Power loss
 If the master Octoclock (octoclock-g) unit loses power, then it no longer supplies 10MHz and PPS
 reference signals to the slave Octoclocks. The symptoms are:
 
-    - Octoclock slaves lose PPS and external 10MHz references (only the `power` LED is ON)
-    - All `ref lock` front panel LEDs on all N200s are OFF
+    - Octoclock slaves lose PPS and external 10MHz references (only the ``power`` LED is ON)
+    - All ``ref lock`` front panel LEDs on all N200s are OFF
     - Continual lates from the driver (may take a few minutes for this symptom to manifest)
 
 Start the radar by:
 
     - Ensure Octoclock-g has power connected, and GPS antenna is connected
-    - `/borealis/stop_radar.sh`
-    - `/borealis/start_radar.sh`
+    - ``/borealis/stop_radar.sh``
+    - ``/borealis/start_radar.sh``
     - The driver will wait for GPS lock before initializing the N200s and starting the radar.
 
 *NOTE* This may take a long time, and depends upon many factors including the antenna view of satellites, how long the
@@ -138,9 +138,9 @@ To fix this issue, ensure that all connectors are secured.
 
 Shared memory full/Borealis unable to delete shared memory
 ----------------------------------------------------------
-**NOTE** If you've just installed Borealis, this may be caused by a missing `h5copy` binary.
+**NOTE** If you've just installed Borealis, this may be caused by a missing ``h5copy`` binary.
 Make sure you have it installed for your operating system. For new versions of Ubuntu this means
-installing `hdf5-tools`. For OpenSuSe it means installing `hdf5`.
+installing ``hdf5-tools``. For OpenSuSe it means installing ``hdf5``.
 
 This may also be caused by the realtime/datawrite modules not deleting the individual
 record files. This is tied to issue [#203](https://github.com/SuperDARNCanada/borealis/issues/203),
@@ -157,10 +157,10 @@ to be deleted by Borealis, then some possible results are:
     - Data files, shared memory files and log files will cease being written
 
 To fix this issue and restart the radar:
-    - Make sure the `h5copy` binary is installed for your system
-    - remove all Borealis created files in the `/dev/shm` directory
-    - `/borealis/stop_radar.sh`
-    - `/borealis/start_radar.sh`
+    - Make sure the ``h5copy`` binary is installed for your system
+    - remove all Borealis created files in the ``/dev/shm`` directory
+    - ``/borealis/stop_radar.sh``
+    - ``/borealis/start_radar.sh``
 
 
 remote_server.py Segfaults, other programs segfault (core-dump)
@@ -177,10 +177,10 @@ To fix this issue and restart the radar:
 
 'CPU stuck' messages from kernel, not possible to reboot
 --------------------------------------------------------
-This behaviour has been seen once at the Clyde River Borealis radar. The message shown is:
+This behaviour has been seen once at the Clyde River Borealis radar. The message shown is:::
 
-`Message from syslogd@clyborealis at Jun 15 00:47:18 ... kernel:[9941421.042914] NMI watchdog: BUG:
-soft lockup - CPU#19 stuck for 22s! [kworker/u56:0:16764]`
+  Message from syslogd@clyborealis at Jun 15 00:47:18 ... kernel:[9941421.042914] NMI watchdog: BUG:
+  soft lockup - CPU#19 stuck for 22s! [kworker/u56:0:16764]
 
 The root cause is unknown, but symptoms are:
 
@@ -192,14 +192,14 @@ To fix this issue and restart the radar:
 
 Protobuf library is not working
 -------------------------------
-Symptoms: The following error in one or more screens when attempting to run the radar.
+Symptoms: The following error in one or more screens when attempting to run the radar.::
 
-`Traceback (most recent call last):
-  File "brian/brian.py", line 24, in <module>
-    import driverpacket_pb2
-  File "/home/radar/borealis//build/release/utils/protobuf/driverpacket_pb2.py", line 5, in <module>
-    from google.protobuf.internal import builder as _builder
-ImportError: cannot import name 'builder'`
+  Traceback (most recent call last):
+    File "brian/brian.py", line 24, in <module>
+      import driverpacket_pb2
+    File "/home/radar/borealis//build/release/utils/protobuf/driverpacket_pb2.py", line 5, in <module>
+      from google.protobuf.internal import builder as _builder
+  ImportError: cannot import name 'builder'
 
 Reason:
 There are two components to the protobuf installation - the package and the protoc compiler.
@@ -271,13 +271,13 @@ virtual environment without encountering this error.
 
 Error while loading shared library libncurses.so.5
 --------------------------------------------------
-This behaviour is seen when running borealis in `debug` mode.
+This behaviour is seen when running borealis in ``debug`` mode.
 Libncurses5 is a dependency of cuda-gdb. By default, the newest version of
 libncurses is installed with cuda-gdb; however, libncurses6 doesn't seem to work
 with the version of cuda-gdb used.
 
 To fix this problem, install libncurses5 on your borealis computer. On OpenSuSe, this
-can be done using `sudo zypper in libncurses5`.
+can be done using ``sudo zypper in libncurses5``.
 
 nvcc fatal: Unsupported gpu architecture 'compute_xx'
 -----------------------------------------------------
@@ -297,11 +297,11 @@ Error codes in usrp_driver logs
 -------------------------------
 UHD throws several error codes depending on the performance of the system:
 
-    U - underflow, the host computer is not sending data fast enough. Generally harmless.
-    O - overflow, the host computer can't consume data fast enough. Generally harmless.
-    L - late packet on transmit
-    S - sequence error, typically packets dropped on the network.
-    OOS - out of sequence, packets received out of order.
+  U     underflow, the host computer is not sending data fast enough. Generally harmless.
+  O     overflow, the host computer can't consume data fast enough. Generally harmless.
+  L     late packet on transmit
+  S     sequence error, typically packets dropped on the network.
+  OOS   out of sequence, packets received out of order.
 
 These error codes are generally not a cause for concern, unless they are accumulating quickly, i.e. filling the screen
 faster than you can track, which generally will crash the system with a more descriptive error message.
