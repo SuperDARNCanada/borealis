@@ -65,10 +65,10 @@ extensions = [
     'sphinx.ext.imgmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
-    'sphinx.ext.autosectionlabel',
     'sphinxcontrib.programoutput',
     'sphinxcontrib.autoprogram',
-    'breathe'
+    'breathe',
+    'myst_parser'
 ]
 
 breathe_projects = {"borealis" : "xml/"}
@@ -106,7 +106,7 @@ release = '1.0'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
