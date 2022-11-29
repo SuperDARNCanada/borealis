@@ -245,7 +245,7 @@ The reason for the error is due to improper configuration of the `realtime_addre
 Instructions for proper configuration can be found in the Software Setup section.
 
 No module named 'deepdish'
-__________________________
+--------------------------
 This behaviour has been seen when setting up Borealis on new computers. DeepDish is a library for
 reading/writing hdf5 files, which is used by the realtime module. Due to updates in the pyDARN
 library, deepdish is no longer a dependency of pyDARN. The following error message in the realtime
@@ -299,11 +299,11 @@ Error codes in usrp_driver logs
 -------------------------------
 UHD throws several error codes depending on the performance of the system:
 
-  U     underflow, the host computer is not sending data fast enough. Generally harmless.
-  O     overflow, the host computer can't consume data fast enough. Generally harmless.
-  L     late packet on transmit
-  S     sequence error, typically packets dropped on the network.
-  OOS   out of sequence, packets received out of order.
+:U: underflow, the host computer is not sending data fast enough. Generally harmless.
+:O: overflow, the host computer can't consume data fast enough. Generally harmless.
+:L: late packet on transmit
+:S: sequence error, typically packets dropped on the network.
+:OOS: out of sequence, packets received out of order.
 
 These error codes are generally not a cause for concern, unless they are accumulating quickly, i.e. filling the screen
 faster than you can track, which generally will crash the system with a more descriptive error message.

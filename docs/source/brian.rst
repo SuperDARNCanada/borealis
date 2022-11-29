@@ -29,7 +29,7 @@ This step is very important to make sure that the GPU processing isn't being ove
 that too many new requests enter the USRP driver.
 
 
-.. automodule:: src.brian.brian
+.. automodule:: src.brian
     :members:
     :undoc-members:
     :show-inheritance:

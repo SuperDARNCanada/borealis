@@ -8,6 +8,7 @@ sphinxcontrib-autoprogram
 pyzmq
 myst_parser
 deepdish
+docutils=0.16
 #cmake
 #pycparser
 #venvgit2
