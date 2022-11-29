@@ -3,7 +3,6 @@
 """
     radar_control process
     ~~~~~~~~~~~~~~~~~~~~~
-
     Radar_control is the process that runs the radar (sends pulses to the driver with
     timing information and sends processing information to the signal processing process).
     Experiment_handler provides the experiment for radar_control to run. It iterates
@@ -40,14 +39,16 @@ rad_ctrl_print = sm.MODULE_PRINT("radar control", "green")
 
 def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq,
                  txrate, rxrate):
-    """ First packet sent to driver for setup.
-        :param radctrl_to_driver: the sender socket for sending the driverpacket
-        :param driver_to_radctrl_iden: the receiver socket identity on the driver side
-        :param txctrfreq: the transmit center frequency to tune to, kHz.
-        :param rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
-            determines the received signal band, kHz.
-        :param txrate: the tx sampling rate (Hz).
-        :param rxrate: the rx sampling rate (Hz).
+    """ 
+    First packet sent to driver for setup.
+
+    :param radctrl_to_driver: the sender socket for sending the driverpacket
+    :param driver_to_radctrl_iden: the receiver socket identity on the driver side
+    :param txctrfreq: the transmit center frequency to tune to, kHz.
+    :param rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
+        determines the received signal band, kHz.
+    :param txrate: the tx sampling rate (Hz).
+    :param rxrate: the rx sampling rate (Hz).
     """
     driverpacket = DriverPacket()
     driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
@@ -63,28 +64,30 @@ def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq
 def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array,
                    txctrfreq, rxctrfreq, txrate, rxrate, numberofreceivesamples, seqtime, SOB, EOB, timing,
                    seqnum, align_sequences, repeat=False):
-    """ Place data in the driver packet and send it via zeromq to the driver.
-        :param radctrl_to_driver: the sender socket for sending the driverpacket
-        :param driver_to_radctrl_iden: the reciever socket identity on the driver side
-        :param samples_array: this is a list of length main_antenna_count from the config file. It contains one
-            numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
-            numpy array of zeros of the same length as the rest. All arrays will have the same length according to
-            the pulse length.
-        :param txctrfreq: the transmit center frequency to tune to.
-        :param rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
-            determines the received signal band.
-        :param txrate: the tx sampling rate (Hz).
-        :param rxrate: the rx sampling rate (Hz).
-        :param numberofreceivesamples: number of samples to receive at the rx_sample_rate from config.ini file. This
-            determines length of Scope Sync GPIO being high for this sequence.
-        :param SOB: start of burst boolean, true for first pulse in sequence.
-        :param EOB: end of burst boolean, true for last pulse in sequence.
-        :param timing: in us, the time past timezero to send this pulse. Timezero is the start of the sequence.
-        :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
-            with increasing sequences while radar_control is running. It is only reset when program restarts.
-        :param align_sequences: a boolean indicating whether to align the start of the sequence to a clean tenth
-            of a second.
-        :param repeat: a boolean indicating whether the pulse is the exact same as the last pulse
+    """ 
+    Place data in the driver packet and send it via zeromq to the driver.
+
+    :param radctrl_to_driver: the sender socket for sending the driverpacket
+    :param driver_to_radctrl_iden: the reciever socket identity on the driver side
+    :param samples_array: this is a list of length main_antenna_count from the config file. It contains one
+        numpy array of complex values per antenna. If the antenna will not be transmitted on, it contains a
+        numpy array of zeros of the same length as the rest. All arrays will have the same length according to
+        the pulse length.
+    :param txctrfreq: the transmit center frequency to tune to.
+    :param rxctrfreq: the receive center frequency to tune to. With rx_sample_rate from config.ini file, this
+        determines the received signal band.
+    :param txrate: the tx sampling rate (Hz).
+    :param rxrate: the rx sampling rate (Hz).
+    :param numberofreceivesamples: number of samples to receive at the rx_sample_rate from config.ini file. This
+        determines length of Scope Sync GPIO being high for this sequence.
+    :param SOB: start of burst boolean, true for first pulse in sequence.
+    :param EOB: end of burst boolean, true for last pulse in sequence.
+    :param timing: in us, the time past timezero to send this pulse. Timezero is the start of the sequence.
+    :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
+        with increasing sequences while radar_control is running. It is only reset when program restarts.
+    :param align_sequences: a boolean indicating whether to align the start of the sequence to a clean tenth
+        of a second.
+    :param repeat: a boolean indicating whether the pulse is the exact same as the last pulse
         in the sequence, in which case we will save the time and not send the samples list and other
         params that will be the same.
     """
@@ -131,30 +134,31 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
                       brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
                       slice_dict, beam_dict, sequence_time, first_rx_sample_start,
                       rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
-    """ Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
-        Happens every sequence.
-        :param radctrl_to_dsp: The sender socket for sending data to dsp
-        :param dsp_radctrl_iden: The receiver socket identity on the dsp side
-        :param rxrate: The receive sampling rate (Hz).
-        :param output_sample_rate: The output sample rate desired for the output data (Hz).
-        :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
-             with increasing sequences while radar_control is running. It is only reset when program restarts.
-        :param slice_ids: The identifiers of the slices that are combined in this sequence. These IDs tell us where to
-             look in the beam dictionary and slice dictionary for frequency information and beam direction information
-             about this sequence to give to the signal processing unit.
-        :param slice_dict: The slice dictionary, which contains information about all slices and will be referenced for
-             information about the slices in this sequence. Namely, we get the frequency we want to receive at, the
-             number of ranges and the first range information.
-        :param beam_dict: The dictionary containing beam directions for each slice.
-        :param sequence_time: entire duration of sequence, including receive time after all
-             transmissions.
-        :param first_rx_sample_start: The sample where the first rx sample will start relative to the
-             tx data.
-        :param rxctrfreq: the center frequency of receiving.
-        :param pulse_phase_offsets: Phase offsets (degrees) applied to each pulse in the sequence
-        :param decimation_scheme: object of type DecimationScheme that has all decimation and
-             filtering data.
+    """ 
+    Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
+    Happens every sequence.
 
+    :param radctrl_to_dsp: The sender socket for sending data to dsp
+    :param dsp_radctrl_iden: The receiver socket identity on the dsp side
+    :param rxrate: The receive sampling rate (Hz).
+    :param output_sample_rate: The output sample rate desired for the output data (Hz).
+    :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
+        with increasing sequences while radar_control is running. It is only reset when program restarts.
+    :param slice_ids: The identifiers of the slices that are combined in this sequence. These IDs tell us where to
+        look in the beam dictionary and slice dictionary for frequency information and beam direction information
+        about this sequence to give to the signal processing unit.
+    :param slice_dict: The slice dictionary, which contains information about all slices and will be referenced for
+        information about the slices in this sequence. Namely, we get the frequency we want to receive at, the
+        number of ranges and the first range information.
+    :param beam_dict: The dictionary containing beam directions for each slice.
+    :param sequence_time: entire duration of sequence, including receive time after all
+        transmissions.
+    :param first_rx_sample_start: The sample where the first rx sample will start relative to the
+        tx data.
+    :param rxctrfreq: the center frequency of receiving.
+    :param pulse_phase_offsets: Phase offsets (degrees) applied to each pulse in the sequence
+    :param decimation_scheme: object of type DecimationScheme that has all decimation and
+        filtering data.
     """
     # TODO: does the for loop below need to happen every time. Could be only updated
     #  as necessary to make it more efficient.
@@ -249,8 +253,9 @@ def search_for_experiment(radar_control_to_exp_handler,
                           status):
     """
     Check for new experiments from the experiment handler
-    :param radar_control_to_exp_handler:
-    :param radctrl_to_exphan_iden: The
+
+    :param radar_control_to_exp_handler: TODO
+    :param radctrl_to_exphan_iden: The TODO
     :param status: status string (EXP_NEEDED or NO_ERROR).
     :returns new_experiment_received: boolean (True for new experiment received)
     :returns experiment: experiment instance (or None if there is no new experiment)
@@ -298,12 +303,13 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden,
                             debug_samples=None):
     """
     Send the metadata about this averaging period to datawrite so that it can be recorded.
+
     :param radctrl_to_datawrite: The socket to send the packet on.
     :param datawrite_radctrl_iden: Identity of datawrite on the socket.
     :param seqnum: The last sequence number (identifier) that is valid for this averaging
-    period. Used to verify and synchronize driver, dsp, datawrite.
+        period. Used to verify and synchronize driver, dsp, datawrite.
     :param num_sequences: The number of sequences that were sent in this averaging period. (number of
-    sequences to average together).
+        sequences to average together).
     :param scan_flag: True if this averaging period is the first in a scan.
     :param inttime: The time that expired during this averaging period.
     :param sequences: The sequences of class Sequence for this averaging period (AveragingPeriod).
@@ -312,18 +318,18 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden,
     :param experiment_name: the experiment name to be placed in the data files.
     :param scheduling_mode: the type of scheduling mode running at this time, to write to file.
     :param output_sample_rate: The output sample rate of the output data, defined by the
-    experiment, in Hz.
+        experiment, in Hz.
     :param experiment_comment: The comment string for the experiment, user-defined.
     :param filter_scaling_factors: The decimation scheme scaling factors used for the experiment,
-    to get the scaling for the data for accurate power measurements between experiments.
+        to get the scaling for the data for accurate power measurements between experiments.
     :param rx_center_freq: The receive center frequency (kHz)
     :param debug_samples: the debug samples for this averaging period, to be written to the
-    file if debug is set. This is a list of dictionaries for each Sequence in the
-    AveragingPeriod. The dictionary is set up in the sample_building module function
-    create_debug_sequence_samples. The keys are 'txrate', 'txctrfreq', 'pulse_timing',
-    'pulse_sample_start', 'sequence_samples', 'decimated_sequence', and 'dmrate'.
-    The 'sequence_samples' and 'decimated_samples' values are themselves dictionaries, where the
-    keys are the antenna numbers (there is a sample set for each transmit antenna).
+        file if debug is set. This is a list of dictionaries for each Sequence in the
+        AveragingPeriod. The dictionary is set up in the sample_building module function
+        create_debug_sequence_samples. The keys are 'txrate', 'txctrfreq', 'pulse_timing',
+        'pulse_sample_start', 'sequence_samples', 'decimated_sequence', and 'dmrate'.
+        The 'sequence_samples' and 'decimated_samples' values are themselves dictionaries, where the
+        keys are the antenna numbers (there is a sample set for each transmit antenna).
     """
     message = messages.AveperiodMetadataMessage()
     message.experiment_id = experiment_id
@@ -405,11 +411,13 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden,
 
 
 def round_up_time(dt=None, round_to=60):
-    """Round a datetime object to any time lapse in seconds
-    dt : datetime.datetime object, default now.
-    roundTo : Closest number of seconds to round to, default 1 minute.
-    Author: Thierry Husson 2012 - Use it as you want but don't blame me.
-    Modified: K.Kotyk 2019
+    """
+    Round a datetime object to any time lapse in seconds
+    
+    :param dt: datetime.datetime object, default now.
+    :param roundTo: Closest number of seconds to round to, default 1 minute.
+    :author: Thierry Husson 2012 - Use it as you want but don't blame me.
+    :modified: K.Kotyk 2019
 
     Will round to the nearest minute mark. Adds one minute if rounded down.
     """
