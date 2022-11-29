@@ -7,10 +7,8 @@ Digital Radio Equipment
 
 - Note that ALL cables are phase matched unless specified otherwise
 - 17x Ettus USRP N200 (16 and 1 spare)
-
-  - 17x Ettus LFTX daughterboards
-  - 17x Ettus LFRX daughterboards
-
+ - 17x Ettus LFTX daughterboards
+ - 17x Ettus LFRX daughterboards
 - 1x Ettus Octoclock-g (includes GPSDO)
 - 2x Ettus Octoclock
 - 51x ~8 1/4" SMA bulkhead Female to Male RG-316 for daughterboards

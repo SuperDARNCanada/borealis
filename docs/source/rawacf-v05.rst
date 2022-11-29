@@ -4,7 +4,7 @@ rawacf v0.5
 
 The pyDARNio format class for this format is BorealisRawacfv0_5 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
-Borealis software version 0.5 is out of date, see the current format of the rawacf files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`__.
+Borealis software version 0.5 is out of date, see the current format of the rawacf files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_.
 
 This format is intended to hold beamformed, averaged, correlated data.
 
@@ -404,7 +404,7 @@ Site/Array Restructuring
 
 File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 ----------------------------------------
 rawacf to rawacf SDARN (DMap) Conversion

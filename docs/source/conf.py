@@ -40,10 +40,6 @@ if on_rtd:
   cur_dir = os.path.abspath(os.path.dirname(__file__))
   call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
 
-  call(['ls', '-la', BOREALISPATH])
-
-  call(['ls', '-la', BOREALISPATH + '/borealis_config_files/'])
-
   call(['git', 'clone', 'https://github.com/SuperDARNCanada/borealis_config_files.git', BOREALISPATH + '/config'])
 
   call(['ln', '-s', BOREALISPATH + '/config/sas_config.ini', BOREALISPATH + '/config.ini'])
@@ -52,7 +48,6 @@ if on_rtd:
 
   call(['ln', '-s', BOREALISPATH + '/hdw/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
 
-  call(['ls', '-la', BOREALISPATH])
 
 # -- General configuration ------------------------------------------------
 
@@ -71,10 +66,10 @@ extensions = [
     'sphinx.ext.imgmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'sphinx.ext.autosectionlabel',
     'sphinxcontrib.programoutput',
     'sphinxcontrib.autoprogram',
-    'breathe',
-    'myst_parser'
+    'breathe'
 ]
 
 breathe_projects = {"borealis" : "xml/"}
@@ -112,7 +107,7 @@ release = '1.0'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = 'en'
+language = None
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:

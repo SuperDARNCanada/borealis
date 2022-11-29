@@ -63,7 +63,7 @@ longer than :math:`h`, by three to four orders of magnitude.
    :alt: Sample and filter sequences
    :align: center
 
-   Figure 1: Graphical depiction of a data sequence and filter sequence
+    Figure 1: Graphical depiction of a data sequence and filter sequence
 
 
 Figure 2 shows the process of linear convolution of :math:`h` with :math:`x`. The sequence :math:`h` is flipped, then

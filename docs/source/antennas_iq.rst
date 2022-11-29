@@ -4,7 +4,7 @@ antennas_iq v0.6
 
 This is the most up to date version of this file format produced by Borealis version 0.6, the current version.
 
-For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`__.
+For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`_.
 
 The pyDARNio format class for this format is BorealisAntennasIq found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
@@ -113,9 +113,10 @@ The file fields in the antennas_iq array files are:
 | | [num_records]                   | | False if it unlocked at least once.       |
 +-----------------------------------+---------------------------------------------+
 | | **gps_to_system_time_diff**     | | The max time difference between box_time  |
-| | *float32*                       | | (GPS time) and system time (NTP) during   |
-| | [num_records]                   | | the integration. Negative when GPS time   |
-| |                                 | | is ahead of system time.                  |
+| | *float32*                       | | (GPS time) and system time (NTP) during the|
+
+| | [num_records]                   | | integration. Negative when GPS time is    |
+| |                                 | | ahead of system time.                     |
 +-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
 | | *float32*                       | |                                           | 
@@ -409,4 +410,4 @@ Site/Array Restructuring
 
 File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
