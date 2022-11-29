@@ -16,6 +16,7 @@
 import sys
 import os
 import shlex
+import json
 from subprocess import call
 import sphinx_rtd_theme
 
@@ -47,7 +48,15 @@ if on_rtd:
   # call(['ln', '-s', BOREALISPATH + '/config/sas/sas_config.ini', BOREALISPATH + '/config.ini'])
 
   # TODO: Get this path into config file somehow, as that's now how we specify hdw location
-  call(['git', 'clone', 'https://github.com/SuperDARN/hdw', '/usr/local/hdw'])
+  call(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
+
+  # Change config file HDW path to path accessible by ReadTheDocs
+  config_file = BOREALISPATH + f'/config/{RADAR_CODE}/{RADAR_CODE}_config.ini'
+  with open(config_file, 'r') as file:
+    data = json.load(file)
+  data['hdw_path'] = BOREALISPATH + '/hdw'
+  with open(config_file, 'w') as file:
+      json.dump(data, file)
 
   # call(['ln', '-s', BOREALISPATH + '/hdw/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
 
