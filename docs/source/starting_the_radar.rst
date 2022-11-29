@@ -31,7 +31,7 @@ Automated Start-up
 In order to start the radar automatically, the script `start_radar.sh` should be added to a startup script of the Borealis computer. It can also be called manually by the non-root user (typically `radar`).
 The scheduling Python script, `remote_server.py`, is responsible for automating the control of the radar to follow the schedule, and is started via the `start_radar.sh` script with the appropriate arguments
 
-..  literalinclude:: ../../start_radar.sh
+..  literalinclude:: ../../scripts/start_radar.sh
 
 This script should be added to the control computer boot-up scripts so that it generates a new set of scheduled commands.
 

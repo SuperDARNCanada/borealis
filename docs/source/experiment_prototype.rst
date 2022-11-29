@@ -9,17 +9,17 @@ ExperimentPrototype class.
 Submodules
 ----------
 
-.. automodule:: experiment_prototype.experiment_prototype
+.. automodule:: src.experiment_prototype.experiment_prototype
     :members:
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: experiment_prototype.experiment_exception
+.. automodule:: src.experiment_prototype.experiment_exception
     :members:
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: experiment_prototype.list_tests
+.. automodule:: src.experiment_prototype.list_tests
     :members:
     :undoc-members:
     :show-inheritance:
@@ -29,7 +29,7 @@ Subpackages
 
 .. toctree::
 
-    experiment_prototype.scan_classes
+    src.experiment_prototype.scan_classes
 
 
 
