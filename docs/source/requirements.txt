@@ -7,6 +7,7 @@ sphinxcontrib-programoutput
 sphinxcontrib-autoprogram
 pyzmq
 myst_parser
+deepdish
 #cmake
 #pycparser
 #venvgit2

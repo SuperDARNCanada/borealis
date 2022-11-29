@@ -47,7 +47,7 @@ if on_rtd:
 
   # call(['ln', '-s', BOREALISPATH + '/config/sas/sas_config.ini', BOREALISPATH + '/config.ini'])
 
-  call(['git', 'submodule', 'update', '--init', '--recursive'])
+  call(['git', 'submodule', 'update', '--init', '--recursive', '--remote', BOREALISPATH + '/src/borealis_experiments'])
 
   # TODO: Get this path into config file somehow, as that's now how we specify hdw location
   call(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
