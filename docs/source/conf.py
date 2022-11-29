@@ -27,9 +27,10 @@ import sphinx_rtd_theme
 BOREALISPATH = os.path.abspath('../..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
-sys.path.insert(1, BOREALISPATH + '/src/experiment_prototype')
-sys.path.insert(2, BOREALISPATH + '/src/utils')
-sys.path.insert(3, os.environ['PATH'])
+sys.path.insert(1, BOREALISPATH + '/src')
+sys.path.insert(2, BOREALISPATH + '/src/experiment_prototype')
+sys.path.insert(3, BOREALISPATH + '/src/utils')
+sys.path.insert(4, os.environ['PATH'])
 
 # hack for readthedocs to cause it to run doxygen first
 # https://github.com/rtfd/readthedocs.org/issues/388
