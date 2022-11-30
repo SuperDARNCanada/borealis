@@ -894,7 +894,7 @@ class ExperimentPrototype(object):
         """
         A mapping of the beam directions in the given slice id.
 
-        :param slice_id: id of the slice to get beam directions for.
+        :param int slice_id: id of the slice to get beam directions for.
         :return: enumeration mapping dictionary of beam number to beamdirection(s) in degrees off
             boresight.
         """
@@ -920,7 +920,7 @@ class ExperimentPrototype(object):
         If no interfacing_dict is provided for a slice, the default is to do 'SCAN' type interfacing
         for the new slice with all other slices.
 
-        :param interfacing_dict: the user-provided interfacing dict, which may be empty or
+        :param dict interfacing_dict: the user-provided interfacing dict, which may be empty or
             incomplete. If empty, all interfacing is assumed to be = 'SCAN' type. If it contains
             something, we ensure that the interfacing provided makes sense with the values already
             known for its closest sibling.
@@ -1020,9 +1020,9 @@ class ExperimentPrototype(object):
         """
         Add a slice to the experiment.
 
-        :param exp_slice: a slice (dictionary of slice_keys) to add to the experiment.
-        :param interfacing_dict: dictionary of type {slice_id : INTERFACING , ... } that defines how
-            this slice interacts with all the other slices currently in the experiment.
+        :param dict exp_slice: a slice (dictionary of slice_keys) to add to the experiment.
+        :param dict interfacing_dict: dictionary of type {slice_id : INTERFACING , ... } that
+            defines how this slice interacts with all the other slices currently in the experiment.
         :raises ExperimentException: if slice is not a dictionary or if there are errors in
             setup_slice.
         :return: the slice_id of the new slice that was just added.
@@ -1061,7 +1061,7 @@ class ExperimentPrototype(object):
         """
         Remove a slice from the experiment.
 
-        :param remove_slice_id: the id of the slice you'd like to remove.
+        :param int remove_slice_id: the id of the slice you'd like to remove.
         :raises ExperimentException: if remove_slice_id does not exist in the slice dictionary.
         :return: a copy of the removed slice.
         """
@@ -1094,8 +1094,8 @@ class ExperimentPrototype(object):
         that you are changing and will give it a new id. It will account for this in the interfacing
         dictionary.
 
-        :param edit_slice_id: the slice id of the slice to be edited.
-        :param kwargs: dictionary of slice parameter to slice value that you want to change.
+        :param int edit_slice_id: the slice id of the slice to be edited.
+        :param dict kwargs: dictionary of slice parameter to slice value that you want to change.
         :raises ExperimentException: if the edit_slice_id does not exist in slice dictionary or the
             params or values do not make sense.
         :return: the new slice id of the edited slice, or the edit_slice_id if no change has
@@ -1222,8 +1222,8 @@ class ExperimentPrototype(object):
         in this scan, len(nested_slice_list[0]) = # of slices in the first averagingperiod, etc.
 
         :return list of lists. The list has one element per scan. Each element is a list of
-        slice_ids signifying which slices are combined inside that scan. The list returned could be
-        of length 1, meaning only one scan is present in the experiment.
+            slice_ids signifying which slices are combined inside that scan. The list returned could
+            be of length 1, meaning only one scan is present in the experiment.
         """
         scan_combos = []
 
@@ -1244,7 +1244,8 @@ class ExperimentPrototype(object):
         "intn"), and "rx_beam_order". This function may modify the values in this slice dictionary
         to ensure that it is able to be run and that the values make sense.
 
-        :param exp_slice: slice to check.
+        :param dict exp_slice: slice to check.
+        :raises ExperimentException: if any slice keys are invalid or missing
         """
 
         # TODO: add checks for values that make sense, not just check for types
@@ -1379,7 +1380,8 @@ class ExperimentPrototype(object):
         specified and which are unnecessary. If these keys are ever written by the user, they will
         be rewritten here.
 
-        :param exp_slice: slice in which to set identifiers
+        :param dict exp_slice: slice in which to set identifiers
+        :raises ExperimentException: if clrfrqrange or freq not specified in slice
         """
 
         if 'clrfrqrange' in exp_slice.keys():
@@ -1410,7 +1412,8 @@ class ExperimentPrototype(object):
         and clrfrqflag. The keys that need to be checked depending on these identifiers are "freq"
         and "clrfrqrange". This function may modify these keys.
 
-        :param exp_slice: the slice to check, before adding to the experiment.
+        :param dict exp_slice: the slice to check, before adding to the experiment.
+        :raises ExperimentException: if slice's specified frequency is invalid
         """
         if exp_slice['clrfrqflag']:  # TX and RX mode with clear frequency search.
             # In this mode, clrfrqrange is required along with the other requirements.
@@ -1546,7 +1549,8 @@ class ExperimentPrototype(object):
         """
         Set up defaults in case of some parameters being left blank.
 
-        :param exp_slice: slice to set defaults of
+        :param dict exp_slice: slice to set defaults of
+        :raises ExperimentException: if any slice parameters are invalid
         :return: updated slice
         """
 
@@ -1691,7 +1695,8 @@ class ExperimentPrototype(object):
         The following are required depending on slice type:
         "freq", "clrfrqrange"
 
-        :param exp_slice: a slice to setup
+        :param dict exp_slice: a slice to setup
+        :raises ExperimentException: if there are any errors in the slice configuration
         :return: complete_slice : a checked slice with all defaults
         """
 
@@ -1768,7 +1773,7 @@ class ExperimentPrototype(object):
         user or given default values in set_slice_defaults). This was built to be useable at any
         time after setup.
 
-        :param: exp_slice: a slice to check
+        :param dict exp_slice: a slice to check
         :raises ExperimentException: When necessary parameters do not exist or equal None (would
             have to have been overridden by the user for this, as defaults all set when this runs).
         """
@@ -2022,7 +2027,7 @@ class ExperimentPrototype(object):
         Check the experiment's interfacing dictionary for all interfacing that pertains to a given
         slice, and return the interfacing information in a dictionary.
 
-        :param slice_id: Slice ID to search the interface dictionary for.
+        :param int slice_id: Slice ID to search the interface dictionary for.
         :return: interfacing dictionary for the slice.
         """
 
