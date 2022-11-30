@@ -39,7 +39,7 @@ os.environ['RADAR_CODE'] = RADAR_CODE
 # hack for readthedocs to cause it to run doxygen first
 # https://github.com/rtfd/readthedocs.org/issues/388
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd:
+if on_rtd or 1:
 	from subprocess import call
 	call('doxygen')
 	cur_dir = os.path.abspath(os.path.dirname(__file__))

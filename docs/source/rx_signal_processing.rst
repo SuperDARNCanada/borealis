@@ -37,6 +37,17 @@ A lowpass filtering CUDA kernel is similar in operation, however since there is 
 
    Diagram of Rx DSP data flow during decimation
 
+DSP Module
+----------
+
+.. automodule:: src.rx_signal_processing.DSP
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+See also
+--------
+
 .. toctree::
    :glob:
 

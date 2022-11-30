@@ -9,6 +9,7 @@ pyzmq
 myst_parser
 deepdish
 docutils==0.16
+posix_ipc
 #cmake
 #pycparser
 #venvgit2

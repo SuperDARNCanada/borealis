@@ -1,3 +1,5 @@
+.. _borealis processes:
+
 ******************
 Borealis Processes
 ******************
