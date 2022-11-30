@@ -29,7 +29,7 @@ Subpackages
 
 .. toctree::
 
-    src.experiment_prototype.scan_classes
+    experiment_prototype.scan_classes
 
 
 

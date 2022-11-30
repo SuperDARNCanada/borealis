@@ -16,9 +16,7 @@ import itertools
 
 
 class ScanClassBase(object):
-    """
-    The base class for the classes Scan, AveragingPeriod, and Sequence.
-
+    """The base class for the classes Scan, AveragingPeriod, and Sequence.
     Scans are made up of AveragingPeriods, these are typically a 3sec time of
     the same pulse sequence pointing in one direction.  AveragingPeriods are made
     up of Sequences, typically the same sequence run ave. 20-30 times after a clear
@@ -35,7 +33,7 @@ class ScanClassBase(object):
      (slice_id_1, slice_id_2) and values are of interface_types set up in
      experiment_prototype.
     :param transmit_metadata: a dictionary of the experiment-wide transmit metadata for building
-    pulse sequences. The keys of the transmit_metadata are:
+     pulse sequences. The keys of the transmit_metadata are:
         'output_rx_rate' [Hz],
         'main_antenna_count',
         'intf_antenna_count',

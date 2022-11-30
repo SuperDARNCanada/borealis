@@ -31,3 +31,18 @@ utils package
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. automodule:: docs.source.class.classOptions
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: docs.source.class.classDriverOptions
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: docs.source.class/classSharedMemoryHandler
+    :members:
+    :undoc-members:
+    :show-inheritance:

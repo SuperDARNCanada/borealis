@@ -71,6 +71,7 @@ class Sequence(ScanClassBase):
     output_encodings
         This dict will hold a list of all the encodings used during an aveperiod for each slice.
         These will be used for data write later.
+
     """
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):

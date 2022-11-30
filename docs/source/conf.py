@@ -40,27 +40,28 @@ os.environ['RADAR_CODE'] = RADAR_CODE
 # https://github.com/rtfd/readthedocs.org/issues/388
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
-  from subprocess import call
-  call('doxygen')
-  cur_dir = os.path.abspath(os.path.dirname(__file__))
-  call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
+	from subprocess import call
+	call('doxygen')
+	cur_dir = os.path.abspath(os.path.dirname(__file__))
+	call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
 
-  # call(['ln', '-s', BOREALISPATH + '/config/sas/sas_config.ini', BOREALISPATH + '/config.ini'])
+	# call(['ln', '-s', BOREALISPATH + '/config/sas/sas_config.ini', BOREALISPATH + '/config.ini'])
 
-  call(['git', 'submodule', 'update', '--init', '--recursive', '--remote', BOREALISPATH + '/src/borealis_experiments'])
+	# TODO: Figure out how to update the sub repo instead of cloning a new temp repo
+	call(['git', 'clone', 'https://github.com/SuperDARNCanada/borealis_experiments.git', BOREALISPATH + '/borealis_experiments'])
 
-  # TODO: Get this path into config file somehow, as that's now how we specify hdw location
-  call(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
+	# TODO: Get this path into config file somehow, as that's now how we specify hdw location
+	call(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
 
-  # Change config file HDW path to path accessible by ReadTheDocs
-  config_file = BOREALISPATH + f'/config/{RADAR_CODE}/{RADAR_CODE}_config.ini'
-  with open(config_file, 'r') as file:
-    data = json.load(file)
-  data['hdw_path'] = BOREALISPATH + '/hdw'
-  with open(config_file, 'w') as file:
-      json.dump(data, file)
+	# Change config file HDW path to path accessible by ReadTheDocs
+	config_file = BOREALISPATH + f'/config/{RADAR_CODE}/{RADAR_CODE}_config.ini'
+	with open(config_file, 'r') as file:
+		data = json.load(file)
+	data['hdw_path'] = BOREALISPATH + '/hdw'
+	with open(config_file, 'w') as file:
+		json.dump(data, file)
 
-  # call(['ln', '-s', BOREALISPATH + '/hdw/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
+	# call(['ln', '-s', BOREALISPATH + '/hdw/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
 
 
 # -- General configuration ------------------------------------------------

@@ -13,7 +13,7 @@ no `update()` method is necessary. It only has a single slice, as there is only 
 frequency, pulse_len, beam_order, etc. Since there is only one slice there is no need
 for an interface dictionary.
 
-..  literalinclude:: ../../src/borealis_experiments/normalscan.py
+..  literalinclude:: ../../borealis_experiments/normalscan.py
     :linenos:
 
 experiments.twofsound module
@@ -24,5 +24,5 @@ update itself, so no `update()` method is necessary. It has two frequencies so w
 require two slices. The frequencies switch after a full scan (full cycle through the
 beams), therefore the interfacing between slices 0 and 1 should be 'SCAN'.
 
-..  literalinclude:: ../../src/borealis_experiments/twofsound.py
+..  literalinclude:: ../../borealis_experiments/twofsound.py
     :linenos:
