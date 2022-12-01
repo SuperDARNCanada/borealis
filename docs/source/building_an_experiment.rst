@@ -7,6 +7,11 @@ Borealis has an extensive set of features and this means that experiments can be
 Each slice contains the information needed about a specific pulse sequence to run. The parameters of a slice contain features such as pulse sequence, frequency, fundamental time lag spacing, etc. These are the parameters that researchers will be familiar with. Each slice can be an experiment on its
 own, or can be just a piece of a larger experiment. 
 
+..  toctree::
+    :glob:
+
+    /new_experiments
+
 Introduction to Borealis Slices 
 -------------------------------
 

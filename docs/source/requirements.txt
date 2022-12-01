@@ -10,6 +10,7 @@ myst_parser
 deepdish
 docutils==0.16
 posix_ipc
+latex
 #cmake
 #pycparser
 #venvgit2

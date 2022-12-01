@@ -32,17 +32,26 @@ utils package
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: docs.source.class.classOptions
-    :members:
-    :undoc-members:
-    :show-inheritance:
+.. .. automodule:: docs.source.class.classOptions
+..     :members:
+..     :undoc-members:
+..     :show-inheritance:
 
-.. automodule:: docs.source.class.classDriverOptions
-    :members:
-    :undoc-members:
-    :show-inheritance:
+.. .. automodule:: docs.source.class.classDriverOptions
+..     :members:
+..     :undoc-members:
+..     :show-inheritance:
 
-.. automodule:: docs.source.class/classSharedMemoryHandler
-    :members:
-    :undoc-members:
-    :show-inheritance:
+.. .. automodule:: docs.source.class/classSharedMemoryHandler
+..     :members:
+..     :undoc-members:
+..     :show-inheritance:
+
+
+.. toctree::
+   :glob:
+
+   file/options_8cpp
+   file/driveroptions_8cpp
+   file/shared__memory_8cpp
+   file/zmq__borealis__helpers_8cpp

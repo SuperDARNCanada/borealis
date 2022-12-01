@@ -36,32 +36,35 @@ sys.path.insert(4, os.environ['PATH'])
 RADAR_CODE = 'sas'
 os.environ['RADAR_CODE'] = RADAR_CODE
 
-# hack for readthedocs to cause it to run doxygen first
-# https://github.com/rtfd/readthedocs.org/issues/388
+# hack for readthedocs to cause it to run doxygen first: https://github.com/rtfd/readthedocs.org/issues/388
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd or 1:
-	from subprocess import call
+if on_rtd or 1: # TODO: Fix after testing finished.
+    # Doxygen: Reads all c++ source and header files, and parses the documentation to xml files 
+    # for further reading. 
 	call('doxygen')
+    
+    # Breathe: parses xml files produced by doxygen and creates rst files for use by Sphinx
+    # Files are re-generated each call
+    # For more information, `breathe-apidoc --help`
 	cur_dir = os.path.abspath(os.path.dirname(__file__))
-	call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
+	call(['breathe-apidoc','--force','--generate','file','-o', cur_dir, f'{cur_dir}/xml/'])
 
-	# call(['ln', '-s', BOREALISPATH + '/config/sas/sas_config.ini', BOREALISPATH + '/config.ini'])
-
-	# TODO: Figure out how to update the sub repo instead of cloning a new temp repo
+    # Update the experiment subrepo so experiment files can be read into documentation
+	# TODO: Figure out how to update the subrepo instead of cloning a new temp repo
 	call(['git', 'clone', 'https://github.com/SuperDARNCanada/borealis_experiments.git', BOREALISPATH + '/borealis_experiments'])
 
+    # Clone in the HDW repo temporarily so modules reading them don't throw errors
 	# TODO: Get this path into config file somehow, as that's now how we specify hdw location
 	call(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
 
 	# Change config file HDW path to path accessible by ReadTheDocs
+    # TODO: Come up with a way that doesn't require modifying a version controlled config file
 	config_file = BOREALISPATH + f'/config/{RADAR_CODE}/{RADAR_CODE}_config.ini'
 	with open(config_file, 'r') as file:
 		data = json.load(file)
 	data['hdw_path'] = BOREALISPATH + '/hdw'
 	with open(config_file, 'w') as file:
 		json.dump(data, file)
-
-	# call(['ln', '-s', BOREALISPATH + '/hdw/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
 
 
 # -- General configuration ------------------------------------------------
