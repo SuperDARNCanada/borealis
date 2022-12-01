@@ -322,34 +322,39 @@ class ExperimentPrototype(object):
     * interface:    modifiable using the add_slice, edit_slice, and del_slice methods, or by \
                     updating the interface dict directly.
 
-    :param  int     cpid:               Unique id necessary for each control program (experiment).
-                                        Cannot be changed after instantiation.
-    :param  float   output_rx_rate:     The desired output rate for the data, to be decimated to, in
-                                        Hz. Cannot be changed after instantiation. Default 3.333
-                                        kHz.
-    :param  float   rx_bandwidth:       The desired bandwidth for the experiment. Directly
-                                        determines rx sampling rate of the USRPs. Cannot be changed
-                                        after instantiation. Default 5.0 MHz.
-    :param  float   tx_bandwidth:       The desired tx bandwidth for the experiment. Directly
-                                        determines tx sampling rate of the USRPs. Cannot be changed
-                                        after instantiation. Default 5.0 MHz.
-    :param  float   txctrfreq:          Center frequency, in kHz, for the USRP to mix the samples
-                                        with. Since this requires tuning time to set, it cannot be
-                                        modified after instantiation.
-    :param  float   rxctrfreq:          Center frequency, in kHz, used to mix to baseband. Since
-                                        this requires tuning time to set, it cannot be modified
-                                        after instantiation.
-    :param  DecimationScheme    decimation_scheme:  An object defining the decimation and filtering
-                                                    stages for the signal processing module. If you
-                                                    would like something other than the default, you
-                                                    will need to build an object of the
-                                                    DecimationScheme type before initiating your
-                                                    experiment. This cannot be changed after
-                                                    instantiation.
-    :param  str     comment_string:     Description of experiment for data files. This should be
-                                        used to describe your overall experiment design. Another
-                                        comment string exists for every slice added, to describe
-                                        information that is slice-specific.
+    :param  cpid:               Unique id necessary for each control program (experiment). Cannot be
+                                changed after instantiation.
+    :type   cpid:               int
+    :param  output_rx_rate:     The desired output rate for the data, to be decimated to, in Hz.
+                                Cannot be changed after instantiation. Default 3.333 kHz.
+    :type  output_rx_rate:      float
+    :param  rx_bandwidth:       The desired bandwidth for the experiment. Directly determines rx
+                                sampling rate of the USRPs. Cannot be changed after instantiation.
+                                Default 5.0 MHz.
+    :type   rx_bandwidth:       float
+    :param  tx_bandwidth:       The desired tx bandwidth for the experiment. Directly determines tx
+                                sampling rate of the USRPs. Cannot be changed after instantiation.
+                                Default 5.0 MHz.
+    :type  tx_bandwidth:        float
+    :param  txctrfreq:          Center frequency, in kHz, for the USRP to mix the samples with.
+                                Since this requires tuning time to set, it cannot be modified after
+                                instantiation.
+    :type   txctrfreq:          float
+    :param  rxctrfreq:          Center frequency, in kHz, used to mix to baseband. Since this
+                                requires tuning time to set, it cannot be modified after
+                                instantiation.
+    :type   rxctrfreq:          float  
+    :param  decimation_scheme:  An object defining the decimation and filtering stages for the
+                                signal processing module. If you would like something other than the
+                                default, you will need to build an object of the DecimationScheme
+                                type before initiating your experiment. This cannot be changed after
+                                instantiation.
+    :type   decimation_scheme:  DecimationScheme
+    :param  comment_string:     Description of experiment for data files. This should be used to
+                                describe your overall experiment design. Another comment string
+                                exists for every slice added, to describe information that is
+                                slice-specific.
+    :type   comment_string:     str
 
     :raises ExperimentException:    if cpid is not an integer, cannot be represented by a 16-bit
                                     signed integer, is not unique, or is not a positive value
@@ -699,7 +704,8 @@ class ExperimentPrototype(object):
         """
         Set the cross-correlation flag default for new slices.
 
-        :param bool value: cross-correlation processing flag.
+        :param  value:  cross-correlation processing flag.
+        :type   value:  bool
         """
 
         if isinstance(value, bool):
@@ -722,7 +728,8 @@ class ExperimentPrototype(object):
         """
         Set the auto-correlation flag default for new slices.
 
-        :param bool value: auto-correlation processing flag.
+        :param  value:  auto-correlation processing flag.
+        :type   value:  bool
         """
 
         if isinstance(value, bool):
@@ -745,7 +752,8 @@ class ExperimentPrototype(object):
         """
         Set the interferometer autocorrelation flag default for new slices.
 
-        :param bool value: interferometer autocorrelation processing flag.
+        :param  value:  interferometer autocorrelation processing flag.
+        :type   value:  bool
         """
 
         if isinstance(value, bool):
@@ -869,7 +877,9 @@ class ExperimentPrototype(object):
         Set the scheduling mode if the provided mode is valid. Should only be called by the
         experiment handler after initializing the user's class.
 
-        :param str scheduling_mode: scheduling mode to be set
+        :param  scheduling_mode:    scheduling mode to be set
+        :type   scheduling_mode:    str
+
         :raises ExperimentException: if scheduling mode not valid
         """
         if scheduling_mode in possible_scheduling_modes:
@@ -885,7 +895,8 @@ class ExperimentPrototype(object):
         """
         Print message to standard output
 
-        :param str msg: Message to be printed
+        :param  msg:    Message to be printed
+        :type   msg:    str
         """
         EXPERIMENT_P = "\033[34m" + self.__class__.__name__ + " : " + "\033[0m"
         sys.stdout.write(EXPERIMENT_P + msg + "\n")
@@ -894,9 +905,11 @@ class ExperimentPrototype(object):
         """
         A mapping of the beam directions in the given slice id.
 
-        :param int slice_id: id of the slice to get beam directions for.
-        :return: enumeration mapping dictionary of beam number to beamdirection(s) in degrees off
-            boresight.
+        :param      slice_id:   id of the slice to get beam directions for.
+        :type       slice_id:   int
+        :return:    enumeration mapping dictionary of beam number to beamdirection(s) in degrees off
+                    boresight.
+        :rtype:     dict
         """
         if slice_id not in self.slice_ids:
             return {}
@@ -920,14 +933,18 @@ class ExperimentPrototype(object):
         If no interfacing_dict is provided for a slice, the default is to do 'SCAN' type interfacing
         for the new slice with all other slices.
 
-        :param dict interfacing_dict: the user-provided interfacing dict, which may be empty or
-            incomplete. If empty, all interfacing is assumed to be = 'SCAN' type. If it contains
-            something, we ensure that the interfacing provided makes sense with the values already
-            known for its closest sibling.
-        :raises ExperimentException: if invalid interface types provided or if interfacing can not
-            be resolved.
-        :return: full interfacing dictionary.
+        :param      interfacing_dict:   the user-provided interfacing dict, which may be empty or
+                                        incomplete. If empty, all interfacing is assumed to be =
+                                        'SCAN' type. If it contains something, we ensure that the
+                                        interfacing provided makes sense with the values already
+                                        known for its closest sibling.
+        :type       interfacing_dict:   dict
 
+        :raises ExperimentException:    if invalid interface types provided or if interfacing can
+                                        not be resolved.
+
+        :return:    full interfacing dictionary.
+        :rtype:     dict
         """
 
         for sibling_slice_id, interface_value in interfacing_dict.items():
@@ -1020,12 +1037,18 @@ class ExperimentPrototype(object):
         """
         Add a slice to the experiment.
 
-        :param dict exp_slice: a slice (dictionary of slice_keys) to add to the experiment.
-        :param dict interfacing_dict: dictionary of type {slice_id : INTERFACING , ... } that
-            defines how this slice interacts with all the other slices currently in the experiment.
-        :raises ExperimentException: if slice is not a dictionary or if there are errors in
-            setup_slice.
-        :return: the slice_id of the new slice that was just added.
+        :param      exp_slice:          a slice (dictionary of slice_keys) to add to the experiment.
+        :type       exp_slice:          dict
+        :param      interfacing_dict:   dictionary of type {slice_id : INTERFACING , ... } that
+                                        defines how this slice interacts with all the other slices
+                                        currently in the experiment.
+        :type       interfacing_dict:   dict
+
+        :raises ExperimentException:    if slice is not a dictionary or if there are errors in
+                                        setup_slice.
+
+        :return:    the slice_id of the new slice that was just added.
+        :rtype:     int
         """
 
         if not isinstance(exp_slice, dict):
@@ -1061,9 +1084,13 @@ class ExperimentPrototype(object):
         """
         Remove a slice from the experiment.
 
-        :param int remove_slice_id: the id of the slice you'd like to remove.
-        :raises ExperimentException: if remove_slice_id does not exist in the slice dictionary.
-        :return: a copy of the removed slice.
+        :param      remove_slice_id:    the id of the slice you'd like to remove.
+        :type       remove_slice_id:    int
+
+        :raises ExperimentException:    if remove_slice_id does not exist in the slice dictionary.
+
+        :return:    a copy of the removed slice.
+        :rtype:     dict
         """
         try:
             removed_slice = copy.deepcopy(self.slice_dict[remove_slice_id])
@@ -1094,12 +1121,17 @@ class ExperimentPrototype(object):
         that you are changing and will give it a new id. It will account for this in the interfacing
         dictionary.
 
-        :param int edit_slice_id: the slice id of the slice to be edited.
-        :param dict kwargs: dictionary of slice parameter to slice value that you want to change.
-        :raises ExperimentException: if the edit_slice_id does not exist in slice dictionary or the
-            params or values do not make sense.
-        :return: the new slice id of the edited slice, or the edit_slice_id if no change has
-            occurred due to failure of new slice parameters to pass experiment checks.
+        :param      edit_slice_id:  the slice id of the slice to be edited.
+        :type       edit_slice_id:  int
+        :param      kwargs:         slice parameter to slice values that you want to change.
+        :type       kwargs:         dict
+
+        :raises ExperimentException:    if the edit_slice_id does not exist in slice dictionary or
+                                        the params or values do not make sense.
+
+        :return:    the new slice id of the edited slice, or the edit_slice_id if no change has
+                    occurred due to failure of new slice parameters to pass experiment checks.
+        :rtype:     int
         """
         slice_params_to_edit = dict(kwargs)
 
@@ -1211,8 +1243,8 @@ class ExperimentPrototype(object):
             print("Max concurrent slices: {}".format(max_num_concurrent_slices))
 
     def get_scan_slice_ids(self):
-        # TODO add this to ScanClassBase method by just passing in the current type (Experiment, Scan, AvePeriod)
-        # which would allow you to determine which interfacing to pull out.
+        # TODO add this to ScanClassBase method by just passing in the current type (Experiment,
+        # Scan, AvePeriod) which would allow you to determine which interfacing to pull out.
         """
         Organize the slice_ids by scan.
 
@@ -1221,9 +1253,10 @@ class ExperimentPrototype(object):
         averagingperiod that is inside this scan. ie. len(nested_slice_list) = # of averagingperiods
         in this scan, len(nested_slice_list[0]) = # of slices in the first averagingperiod, etc.
 
-        :return list of lists. The list has one element per scan. Each element is a list of
-            slice_ids signifying which slices are combined inside that scan. The list returned could
-            be of length 1, meaning only one scan is present in the experiment.
+        :return:    A list that has one element per scan. Each element is a list of slice_ids
+                    signifying which slices are combined inside that scan. The list returned could
+                    be of length 1, meaning only one scan is present in the experiment.
+        :rtype:     list of lists
         """
         scan_combos = []
 
@@ -1244,8 +1277,10 @@ class ExperimentPrototype(object):
         "intn"), and "rx_beam_order". This function may modify the values in this slice dictionary
         to ensure that it is able to be run and that the values make sense.
 
-        :param dict exp_slice: slice to check.
-        :raises ExperimentException: if any slice keys are invalid or missing
+        :param  exp_slice:  slice to check.
+        :type   exp_slice:  dict
+
+        :raises ExperimentException:    if any slice keys are invalid or missing
         """
 
         # TODO: add checks for values that make sense, not just check for types
@@ -1380,8 +1415,10 @@ class ExperimentPrototype(object):
         specified and which are unnecessary. If these keys are ever written by the user, they will
         be rewritten here.
 
-        :param dict exp_slice: slice in which to set identifiers
-        :raises ExperimentException: if clrfrqrange or freq not specified in slice
+        :param  exp_slice:  slice in which to set identifiers
+        :type:  exp_slice:  dict
+
+        :raises ExperimentException:    if clrfrqrange or freq not specified in slice
         """
 
         if 'clrfrqrange' in exp_slice.keys():
@@ -1412,8 +1449,10 @@ class ExperimentPrototype(object):
         and clrfrqflag. The keys that need to be checked depending on these identifiers are "freq"
         and "clrfrqrange". This function may modify these keys.
 
-        :param dict exp_slice: the slice to check, before adding to the experiment.
-        :raises ExperimentException: if slice's specified frequency is invalid
+        :param  exp_slice:  the slice to check, before adding to the experiment.
+        :type   exp_slice:  dict
+
+        :raises ExperimentException:    if slice's specified frequency is invalid
         """
         if exp_slice['clrfrqflag']:  # TX and RX mode with clear frequency search.
             # In this mode, clrfrqrange is required along with the other requirements.
@@ -1549,9 +1588,13 @@ class ExperimentPrototype(object):
         """
         Set up defaults in case of some parameters being left blank.
 
-        :param dict exp_slice: slice to set defaults of
-        :raises ExperimentException: if any slice parameters are invalid
-        :return: updated slice
+        :param      exp_slice:  slice to set defaults
+        :type       exp_slice:  dict
+
+        :raises ExperimentException:    if any slice parameters are invalid
+
+        :return:    updated slice
+        :rtype:     dict
         """
 
         slice_with_defaults = copy.deepcopy(exp_slice)
@@ -1695,9 +1738,13 @@ class ExperimentPrototype(object):
         The following are required depending on slice type:
         "freq", "clrfrqrange"
 
-        :param dict exp_slice: a slice to setup
-        :raises ExperimentException: if there are any errors in the slice configuration
-        :return: complete_slice : a checked slice with all defaults
+        :param      exp_slice:  a slice to setup
+        :type       exp_slice:  dict
+
+        :raises ExperimentException:    if there are any errors in the slice configuration
+
+        :return:    complete_slice - a checked slice with all defaults
+        :rtype:     dict
         """
 
         complete_slice = copy.deepcopy(exp_slice)
@@ -1734,7 +1781,7 @@ class ExperimentPrototype(object):
         """
         Check that the values in this experiment are valid. Checks all slices.
 
-        :raises ExperimentException: if any self check errors occur
+        :raises ExperimentException:    if any self check errors occur
         """
 
         if self.num_slices < 1:
@@ -1773,9 +1820,12 @@ class ExperimentPrototype(object):
         user or given default values in set_slice_defaults). This was built to be useable at any
         time after setup.
 
-        :param dict exp_slice: a slice to check
-        :raises ExperimentException: When necessary parameters do not exist or equal None (would
-            have to have been overridden by the user for this, as defaults all set when this runs).
+        :param  exp_slice:  a slice to check
+        :type   exp_slice:  dict
+
+        :raises ExperimentException:    When necessary parameters do not exist or equal None (would
+                                        have to have been overridden by the user for this, as
+                                        defaults all set when this runs).
         """
         error_list = []
 
@@ -2027,8 +2077,11 @@ class ExperimentPrototype(object):
         Check the experiment's interfacing dictionary for all interfacing that pertains to a given
         slice, and return the interfacing information in a dictionary.
 
-        :param int slice_id: Slice ID to search the interface dictionary for.
-        :return: interfacing dictionary for the slice.
+        :param      slice_id:   Slice ID to search the interface dictionary for.
+        :type       slice_id:   int
+
+        :return:    interfacing dictionary for the slice.
+        :rtype:     dict
         """
 
         slice_interface = {}
