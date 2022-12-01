@@ -22,6 +22,7 @@ import utils.shared_macros as sm
 
 rt_print = sm.MODULE_PRINT("Realtime", "green")
 
+
 def _main():
     opts = rto.RealtimeOptions()
 
@@ -40,12 +41,11 @@ def _main():
             filename = so.recv_data(data_write_to_realtime, opts.dw_to_rt_identity, rt_print)
 
             if "rawacf" in filename:
-                #Read and convert data
+                # Read and convert data
                 fields = filename.split(".")
                 file_time = fields[0] + fields[1] + fields[2] + fields[3]
 
-
-                # Make sure we only process the first slice for simulatenous multislice data for now
+                # Make sure we only process the first slice for simultaneous multislice data for now
                 if file_time == last_file_time:
                     os.remove(filename)
                     continue
@@ -55,8 +55,8 @@ def _main():
                 slice_num = int(fields[5])
                 try:
                     rt_print("Using pyDARNio to convert {}".format(filename))
-                    converted = pydarnio.BorealisConvert(filename, "rawacf", "/dev/null", slice_num,
-                                                    "site")
+                    converted = pydarnio.BorealisConvert(filename, "rawacf", "/dev/null",
+                                                         slice_num, "site")
                     os.remove(filename)
                 except pydarnio.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
                     rt_print("Error converting {}".format(filename))
@@ -68,8 +68,8 @@ def _main():
                 fit_data = fitacf._fit(data[0])
                 tmp = fit_data.copy()
 
-                # Can't jsonify numpy so we convert to native types for rt purposes.
-                for k,v in fit_data.items():
+                # Can't jsonify numpy, so we convert to native types for rt purposes.
+                for k, v in fit_data.items():
                     if hasattr(v, 'dtype'):
                         if isinstance(v, np.ndarray):
                             tmp[k] = v.tolist()
@@ -79,8 +79,6 @@ def _main():
                 q.put(tmp)
             else:
                 os.remove(filename)
-
-
 
     def handle_remote_connection():
         """
@@ -93,7 +91,7 @@ def _main():
             realtime_socket.send(compressed)
 
     threads = [threading.Thread(target=get_temp_file_from_datawrite),
-                threading.Thread(target=handle_remote_connection)]
+               threading.Thread(target=handle_remote_connection)]
 
     for thread in threads:
         thread.daemon = True
@@ -105,4 +103,3 @@ def _main():
 
 if __name__ == '__main__':
     _main()
-
