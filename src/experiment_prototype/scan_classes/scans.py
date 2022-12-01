@@ -40,8 +40,8 @@ class Scan(ScanClassBase):
         self.scanbound = self.slice_dict[self.slice_ids[0]]['scanbound']
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id]['scanbound'] != self.scanbound:
-                errmsg = "Scan boundary not the same between slices {} and {}" \
-                         " for AVEPERIOD or CONCURRENT interfaced slices".format(self.slice_ids[0], slice_id)
+                errmsg = f"Scan boundary not the same between slices {self.slice_ids[0]} and"\
+                         f" {slice_id} for AVEPERIOD or CONCURRENT interfaced slices"
                 raise ExperimentException(errmsg)
 
         # NOTE: for now we assume that when AVEPERIOD combined, the AveragingPeriods of the various
@@ -114,7 +114,7 @@ class Scan(ScanClassBase):
         combos = self.slice_combos_sorter(intt_combos, self.slice_ids)
 
         if __debug__:
-            print("AvePeriod slice id list: {}".format(combos))
+            print(f"AvePeriod slice id list: {combos}")
 
         return combos
 

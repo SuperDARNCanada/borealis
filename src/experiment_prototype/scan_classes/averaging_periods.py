@@ -86,22 +86,22 @@ class AveragingPeriod(ScanClassBase):
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intt'] != self.intt:
-                    errmsg = "Slices {} and {} are SEQUENCE or CONCURRENT interfaced and do not have the" \
-                             " same Averaging Period duration intt".format(self.slice_ids[0], slice_id)
+                    errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
+                            " interfaced and do not have the same Averaging Period duration intt"
                     raise ExperimentException(errmsg)
         elif self.intn is not None:
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id]['intn'] != self.intn:
-                    errmsg = "Slices {} and {} are SEQUENCE or CONCURRENT interfaced and do not have the" \
-                             " same NAVE goal intn".format(self.slice_ids[0], slice_id)
+                    errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
+                            " interfaced and do not have the same NAVE goal intn"
                     raise ExperimentException(errmsg)
 
         for slice_id in self.slice_ids: 
             if len(self.slice_dict[slice_id]['rx_beam_order']) != \
                len(self.slice_dict[self.slice_ids[0]]['rx_beam_order']):
-                errmsg = "Slices {} and {} are SEQUENCE or CONCURRENT interfaced but do not have the" \
-                         " same number of averaging periods in their beam order" \
-                         .format(self.slice_ids[0], slice_id)
+                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
+                        " interfaced but do not have the same number of averaging periods in"\
+                        " their beam order"
                 raise ExperimentException(errmsg)
         self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]]['rx_beam_order'])
 
@@ -142,7 +142,7 @@ class AveragingPeriod(ScanClassBase):
         combos = self.slice_combos_sorter(sequence_combos, self.slice_ids)
 
         if __debug__:
-            print("sequences slice id combos: {}".format(combos))
+            print(f"sequences slice id combos: {combos}")
 
         return combos
 
@@ -173,8 +173,7 @@ class AveragingPeriod(ScanClassBase):
                     beamdir = [self.slice_to_beamdir[slice_id][bmnum] for bmnum in beam_number]
                 slice_to_beamdir_dict[slice_id] = beamdir
         except IndexError:
-            errmsg = 'Looking for BeamNumber or Beamdir that does not Exist at BeamIter' \
-                     ' {}'.format(beamiter)
+            errmsg = f'Looking for BeamNumber or Beamdir that does not Exist at BeamIter {beamiter}'
             raise ExperimentException(errmsg)
 
         return slice_to_beamdir_dict

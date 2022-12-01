@@ -100,7 +100,7 @@ class ScanClassBase(object):
                 try:
                     slices_for_nested_class[slice_id] = self.slice_dict[slice_id]
                 except KeyError:
-                    errmsg = 'Error with slice list - slice id {} cannot be found.'.format(slice_id)
+                    errmsg = f'Error with slice list - slice id {slice_id} cannot be found.'
                     raise ExperimentException(errmsg)
 
             # now take a subset of the interface dictionary that applies to this nested object
@@ -175,11 +175,9 @@ class ScanClassBase(object):
                                 # the scan_combo y,z from the list because it was not added to
                                 # list_of_combos because it wasn't a scan type, so the interfacing
                                 # would not make sense (conflict).
-                                errmsg = 'Interfacing not Valid: exp_slice {} and exp_slice {} are combined in-scan and do not \
-                                    interface the same with exp_slice {}'.format(
-                                    list_of_combos[scan_i][m],
-                                    list_of_combos[scan_i][slice_id_k],
-                                    add_n_slice_id)
+                                errmsg = f"Interfacing not Valid: exp_slice {list_of_combos[scan_i][m]}"\
+                                    f" and exp_slice {list_of_combos[scan_i][slice_id_k]} are combined"\
+                                    f" in-scan and do not interface the same with exp_slice {add_n_slice_id}"
                                 raise ExperimentException(errmsg)
                         scan_j = scan_j - 1
                         # This means that the former list_of_combos[j] has been deleted and there

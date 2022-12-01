@@ -114,7 +114,7 @@ class Sequence(ScanClassBase):
         # dictionary. Also populate the pulse timing metadata and place into single_pulse_timing
         for slice_id in self.slice_ids:
             print()     # Separate the slice information in the logs
-            sequence_print('Slice {}'.format(slice_id))
+            sequence_print(f'Slice {slice_id}')
             exp_slice = self.slice_dict[slice_id]
             freq_khz = float(exp_slice['freq'])
             wave_freq = freq_khz - txctrfreq
@@ -125,8 +125,7 @@ class Sequence(ScanClassBase):
                                                        pulse_ramp_time, 1.0, exp_slice['iwavetable'],
                                                        exp_slice['qwavetable'])
                 if real_freq != wave_freq_hz:
-                    errmsg = 'Actual Frequency {} is Not Equal to Intended Wave Freq {}'.format(real_freq,
-                                                                                                wave_freq_hz)
+                    errmsg = f'Actual Frequency {real_freq} is Not Equal to Intended Wave Freq {wave_freq_hz}'
                     raise ExperimentException(errmsg)  # TODO change to warning? only happens on non-SINE
 
                 if exp_slice['tx_antenna_pattern'] is not None:
@@ -140,9 +139,9 @@ class Sequence(ScanClassBase):
                 # main_phase_shift: [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
-                sequence_print('Main tx antenna complex phases: {}'.format(tx_main_phase_shift))
-                sequence_print('Main tx antenna magnitudes: {}'.format(np.abs(tx_main_phase_shift)))
-                sequence_print('Main tx antenna angles: {}'.format(np.rad2deg(np.angle(tx_main_phase_shift))))
+                sequence_print(f'Main tx antenna complex phases: {tx_main_phase_shift}')
+                sequence_print(f'Main tx antenna magnitudes: {np.abs(tx_main_phase_shift)}')
+                sequence_print(f'Main tx antenna angles: {np.rad2deg(np.angle(tx_main_phase_shift))}')
                 phased_samps_for_beams = np.einsum('ij,k->ijk', tx_main_phase_shift, basic_samples)
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
@@ -302,12 +301,10 @@ class Sequence(ScanClassBase):
 
         # print out pulse information for logging.
         for i, cpm in enumerate(combined_pulses_metadata):
-            message = "Pulse {}: start time(us) {}  start sample {}".format(i, cpm['start_time_us'],
-                                                                            cpm['pulse_sample_start'])
+            message = f"Pulse {i}: start time(us) {cpm['start_time_us']}  start sample {cpm['pulse_sample_start']}"
             sequence_print(message)
 
-            message = "          pulse length(us) {}  pulse num samples {}".format(cpm['total_pulse_len'],
-                                                                                   cpm['total_num_samps'])
+            message = f"          pulse length(us) {cpm['total_pulse_len']}  pulse num samples {cpm['total_num_samps']}"
             sequence_print(message)
 
         self.combined_pulses_metadata = combined_pulses_metadata
