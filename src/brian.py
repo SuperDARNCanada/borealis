@@ -1,10 +1,12 @@
 #!/usr/bin/python
 
-# Copyright 2017 SuperDARN Canada
-#
-# brian.py
-# 2018-01-30
-# Communicate with all processes to administrate the borealis software
+"""
+    brian process
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    This program communicates with all processes to administrate the Borealis software
+
+    :copyright: 2017 SuperDARN Canada
+"""
 
 import sys
 import time
@@ -28,11 +30,12 @@ TIME_PROFILE = True
 brian_print = sm.MODULE_PRINT("sequence timing", "red")
 
 def router(opts):
-    """The router is responsible for moving traffic between modules by routing traffic using
+    """
+    The router is responsible for moving traffic between modules by routing traffic using
     named sockets.
 
-    Args:
-        opts (ExperimentOptions): Options parsed from config.
+    :param  opts: Options parsed from config file
+    :type   opts: ExperimentOptions class
     """
     context = zmq.Context().instance()
     router = context.socket(zmq.ROUTER)
@@ -72,13 +75,15 @@ def router(opts):
 
 
 def sequence_timing(opts):
-    """Thread function for sequence timing
+    """
+    Thread function for sequence timing
 
     This function controls the flow of data between brian's sequence timing and other parts of the
     radar system. This function serves to check whether the sequence timing is working as expected
     and to rate control the system to make sure the processing can handle data rates.
-    :param context: zmq context, if None, then this method will get one
-    :type context: zmq context, optional
+
+    :param  context: zmq context, if None, then this method will get one
+    :type   context: zmq context, optional
     """
 
     ids = [opts.brian_to_radctrl_identity,
@@ -105,7 +110,8 @@ def sequence_timing(opts):
     start_new_sock.bind("inproc://start_new")
 
     def start_new():
-        """ This function serves to rate control the system. If processing is faster than the
+        """ 
+        This function serves to rate control the system. If processing is faster than the
         sequence time than the speed of the driver is the limiting factor. If processing takes
         longer than sequence time, than the dsp unit limits the speed of the system.
         """

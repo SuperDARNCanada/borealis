@@ -25,7 +25,6 @@ Several new experimental capabilities have been added to Borealis! Read more at 
     /tools
     /failure_modes
     /glossary
-    /filelist
 
 Indices and tables
 ==================

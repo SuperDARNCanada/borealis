@@ -43,11 +43,11 @@ if on_rtd or 1: # TODO: Fix after testing finished.
     # for further reading. 
 	call('doxygen')
     
-    # Breathe: parses xml files produced by doxygen and creates rst files for use by Sphinx
-    # Files are re-generated each call
-    # For more information, `breathe-apidoc --help`
+    # Breathe: parses xml files produced by doxygen and creates rst files for use by Sphinx Files
+    # are re-generated each call, no table of contents file is created, and only rst files are
+    # created. For more information, `breathe-apidoc --help`
 	cur_dir = os.path.abspath(os.path.dirname(__file__))
-	call(['breathe-apidoc','--force','--generate','file','-o', cur_dir, f'{cur_dir}/xml/'])
+	call(['breathe-apidoc','--force','--no-toc','--generate','file','-o', cur_dir, f'{cur_dir}/xml/'])
 
     # Update the experiment subrepo so experiment files can be read into documentation
 	# TODO: Figure out how to update the subrepo instead of cloning a new temp repo

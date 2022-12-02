@@ -7,20 +7,10 @@ utils package
     :undoc-members:
     :show-inheritance:
 
-.. .. automodule:: src.usrp_drivers.utils.driver_options
-..     :members:
-..     :undoc-members:
-..     :show-inheritance:
-
 .. automodule:: src.utils.options.experimentoptions
     :members:
     :undoc-members:
     :show-inheritance:
-
-.. .. automodule:: src.usrp_drivers.utils.options
-..     :members:
-..     :undoc-members:
-..     :show-inheritance:
 
 .. automodule:: src.utils.options.realtime_options
     :members:
@@ -32,22 +22,6 @@ utils package
     :undoc-members:
     :show-inheritance:
 
-.. .. automodule:: docs.source.class.classOptions
-..     :members:
-..     :undoc-members:
-..     :show-inheritance:
-
-.. .. automodule:: docs.source.class.classDriverOptions
-..     :members:
-..     :undoc-members:
-..     :show-inheritance:
-
-.. .. automodule:: docs.source.class/classSharedMemoryHandler
-..     :members:
-..     :undoc-members:
-..     :show-inheritance:
-
-
 .. toctree::
    :glob:
 
@@ -55,3 +29,4 @@ utils package
    file/driveroptions_8hpp
    file/shared__memory_8hpp
    file/zmq__borealis__helpers_8hpp
+   file/shared__macros_8hpp
