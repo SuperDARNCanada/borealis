@@ -327,7 +327,7 @@ class ParseData(object):
 
                 # Loops over antenna data within stage
                 for ant_num in range(antennas_data.shape[0]):
-                    ant_str = "antenna_{}".format(ant_num)
+                    ant_str = f"antenna_{ant_num}"
 
                     if ant_str not in antenna_iq_stage:
                         antenna_iq_stage[ant_str] = {}
@@ -730,7 +730,7 @@ class DataWrite(object):
                 print("No space left on device. Exiting")
                 os._exit(-1)
             else:
-                print('Unknown error when saving to file: {}'.format(e))
+                print(f'Unknown error when saving to file: {e}')
                 os._exit(-1)
 
     def write_dmap_file(self, filename, data_dict):
@@ -783,11 +783,9 @@ class DataWrite(object):
         datetime_string = time_now.strftime("%Y%m%d.%H%M.%S.%f")
         epoch = datetime.datetime.utcfromtimestamp(0)
         epoch_milliseconds = str(int((time_now - epoch).total_seconds() * 1000))
-        dataset_directory = "{0}/{1}".format(self.options.data_directory, today_string)
-        dataset_name = "{dt}.{site}.{{sliceid}}.{{dformat}}.{fformat}".format(dt=datetime_string,
-                                                                              site=self.options.site_id,
-                                                                              fformat=file_ext)
-        dataset_location = "{dir}/{{name}}".format(dir=dataset_directory)
+        dataset_directory = f"{self.options.data_directory}/{today_string}"
+        dataset_name = f"{datetime_string}.{self.options.site_id}.{{sliceid}}.{{dformat}}.{file_ext}"
+        dataset_location = f"{dataset_directory}/{{name}}"
 
         def two_hr_ceiling(dt):
             """
@@ -859,7 +857,7 @@ class DataWrite(object):
                     os._exit(-1)
 
             if file_ext == 'hdf5':
-                full_two_hr_file = "{0}/{1}.hdf5.site".format(dataset_directory, two_hr_file_with_type)
+                full_two_hr_file = f"{dataset_directory}/{two_hr_file_with_type}.hdf5.site"
 
                 try:
                     fd = os.open(full_two_hr_file, os.O_CREAT)
@@ -953,7 +951,7 @@ class DataWrite(object):
                     array_expectation_value = np.median(np.real(array_2d), axis=0) +\
                                               1j * np.median(np.imag(array_2d), axis=0)
                 else:
-                    raise ValueError('Averaging Method could not be executed: {}'.format(averaging_method))
+                    raise ValueError(f'Averaging Method could not be executed: {averaging_method}')
 
                 # Reshape array to be 3d so we can replace lag0 far ranges that are cluttered with those
                 # from alternate lag0 which have no clutter.
@@ -1102,8 +1100,8 @@ class DataWrite(object):
             # Build strings from antennas used in the message. This will be used to know
             # what antennas were recorded on since we sample all available USRP channels
             # and some channels may not be transmitted on, or connected.
-            main_ant_str = lambda x: "antenna_{}".format(x)
-            intf_ant_str = lambda x: "antenna_{}".format(x + self.options.main_antenna_count)
+            main_ant_str = lambda x: f"antenna_{x}"
+            intf_ant_str = lambda x: f"antenna_{x + self.options.main_antenna_count}"
             for slice_id in rx_main_antennas:
                 rx_main_antennas[slice_id] = [main_ant_str(x) for x in rx_main_antennas[slice_id]]
                 rx_intf_antennas[slice_id] = [intf_ant_str(x) for x in rx_intf_antennas[slice_id]]
@@ -1145,10 +1143,10 @@ class DataWrite(object):
 
             for slice_id, slice_ in final_data_params.items():
                 for stage, params in slice_.items():
-                    name = dataset_name.format(sliceid=slice_id, dformat="{}_iq".format(stage))
+                    name = dataset_name.format(sliceid=slice_id, dformat=f"{stage}_iq")
                     output_file = dataset_location.format(name=name)
 
-                    ext = "{}_iq".format(stage)
+                    ext = f"{stage}_iq"
                     two_hr_file_with_type = self.slice_filenames[slice_id].format(ext=ext)
 
                     write_file(output_file, params, two_hr_file_with_type)
@@ -1348,7 +1346,7 @@ class DataWrite(object):
             write_tx_data()
 
         end = time.time()
-        dw_print("Time to write to {}: {:.6f} ms".format(dataset_name, (end - start) * 1000))
+        dw_print(f"Time to write to {dataset_name}: {(end - start) * 1000:.6f} ms")
 
 
 def main():
@@ -1430,7 +1428,7 @@ def main():
             if break_now:
                 if len(sorted_q) > 20:
                     # TODO error out correctly
-                    dw_print("Lost sequence #{}. Exiting.".format(expected_sqn_num))
+                    dw_print(f"Lost sequence #{expected_sqn_num}. Exiting.")
                     sys.exit()
                 continue
 
@@ -1466,7 +1464,7 @@ def main():
                 start = time.time()
                 data_parsing.update(pd)
                 end = time.time()
-                dw_print("Time to parse: {:.6f} ms".format((end - start) * 1000))
+                dw_print(f"Time to parse: {(end - start) * 1000:.6f} ms")
 
             queued_sqns = []
 
