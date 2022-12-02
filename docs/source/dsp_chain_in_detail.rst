@@ -211,7 +211,7 @@ determined by its distance from the wavefront :math:`d_n` as shown in the figure
 correction is the phase required to get from the antenna to the closest green line. The required phase shift can be
 calculated from the geometry of the diagram as
 
-.. math:: \phi_n = \frac{d_n}{\lambda}\ % 2\pi
+.. math:: \phi_n = \frac{d_n}{\lambda} 2\pi
 
 The filtered samples for a given antenna are multiplied by :math:`\phi_n` to correct their phase, then the samples for all
 antennas are summed together to yield one dataset for the linear array.
@@ -227,7 +227,7 @@ result is
 where :math:`n` is the antenna index, :math:`N` is the total number of antennas in the array, and :math:`L` is the uniform antenna
 spacing. Plugging this result into the previous formula yields a final formula of
 
-.. math:: \phi_n = \left(\frac{L}{\lambda}(n-\frac{N}{2})\sin(\theta)\right)\ % 2\pi
+.. math:: \phi_n = \left(\frac{L}{\lambda}(n-\frac{N}{2})\sin(\theta)\right) 2\pi
 
 .. figure:: img/beamforming.png
    :scale: 90 %

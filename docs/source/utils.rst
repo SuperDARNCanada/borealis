@@ -51,7 +51,7 @@ utils package
 .. toctree::
    :glob:
 
-   file/options_8cpp
-   file/driveroptions_8cpp
-   file/shared__memory_8cpp
-   file/zmq__borealis__helpers_8cpp
+   file/options_8hpp
+   file/driveroptions_8hpp
+   file/shared__memory_8hpp
+   file/zmq__borealis__helpers_8hpp

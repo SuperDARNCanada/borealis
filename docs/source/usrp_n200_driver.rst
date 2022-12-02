@@ -41,4 +41,4 @@ The receive thread configures the ringbuffer and shared memory sections. It then
    :glob:
 
    file/usrp__driver_8cpp
-   file/usrp_8cpp
+   file/usrp_8hpp
