@@ -40,7 +40,8 @@ def usage_msg():
 
     This is used if a -h flag or invalid arguments are provided.
 
-    :returns: the usage message
+    :return:    the usage message
+    :rtype:     str
     """
 
     usage_message = """ experiment_handler.py [-h] experiment_module scheduling_mode_type
@@ -66,7 +67,8 @@ def experiment_parser():
     """
     Creates the parser to retrieve the experiment module.
 
-    :returns: parser, the argument parser for the experiment_handler.
+    :return:    parser, the argument parser for the experiment_handler.
+    :rtype:     argparse.ArgumentParser
     """
 
     parser = argparse.ArgumentParser(usage=usage_msg())
@@ -85,12 +87,16 @@ def retrieve_experiment(experiment_module_name):
     """
     Retrieve the experiment class from the provided module given as an argument.
 
-    :param experiment_module_name: The name of the experiment module to run
-     from the Borealis project's experiments directory.
+    :param  experiment_module_name:     The name of the experiment module to run from the Borealis
+                                        project's experiments directory.
+    :type   experiment_module_name:     str
 
-    :raise ExperimentException: if the experiment module provided as an argument does not contain
-     a single class that inherits from ExperimentPrototype class.
-    :returns: Experiment, the experiment class, inherited from ExperimentPrototype.
+    :raise  ExperimentException:    if the experiment module provided as an argument does not
+                                    contain a single class that inherits from ExperimentPrototype
+                                    class.
+
+    :return:    The found experiment that inherits from ExperimentPrototype
+    :rtype:     ExperimentPrototype
     """
 
     if __debug__:
@@ -110,8 +116,8 @@ def retrieve_experiment(experiment_module_name):
             # other utility classes might be in the file but we will ignore them.
             experiment_classes.remove((class_name, class_obj))
 
-    # experiment_classes should now only have classes *defined* in the module,
-    # that have ExperimentPrototype as parent.
+    # experiment_classes should now only have classes *defined* in the module, that have
+    # ExperimentPrototype as parent.
     if len(experiment_classes) == 0:
         errmsg = "No experiment classes are present that are built from"\
                  " parent class ExperimentPrototype - exiting"
@@ -124,8 +130,7 @@ def retrieve_experiment(experiment_module_name):
     # this is the experiment class that we need to run.
     Experiment = experiment_classes[0][1]
 
-    printing('Retrieving experiment: {} from module {}'.format(
-             experiment_classes[0][0], experiment_mod))
+    printing(f'Retrieving experiment: {experiment_classes[0][0]} from module {experiment_mod}')
 
     return Experiment
 
@@ -134,9 +139,12 @@ def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
     """
     Send the experiment to radar_control module.
 
-    :param exp_handler_to_radar_control: socket to send the experiment on
-    :param iden: ZMQ identity
-    :param serialized_exp: Either a pickled experiment or a None.
+    :param  exp_handler_to_radar_control:   socket to send the experiment on
+    :type   exp_handler_to_radar_control:   ZMQ socket
+    :param  iden:                           ZMQ identity
+    :type   iden:                           str
+    :param  serialized_exp:                 Either a pickled experiment or a None.
+    :type   serialized_exp:                 bytes
     """
     try:
         socket_operations.send_exp(exp_handler_to_radar_control, iden, serialized_exp)
@@ -160,6 +168,11 @@ def experiment_handler(semaphore, args):
 
     In the future, the update method will be implemented where the experiment can be modified by
     the incoming data.
+
+    :param  semaphore:  Semaphore to protect operations on the experiment
+    :type   semaphore:  threading.Semaphore
+    :param  args:       Command line provided arguments
+    :type   args:       argparse.Namespace
     """
 
     options = ExperimentOptions()
@@ -213,8 +226,7 @@ def experiment_handler(semaphore, args):
             if __debug__:
                 printing("Building an updated experiment.")
             exp.build_scans()
-            printing("Experiment {exp} with CPID {cp} successfully updated"
-                     .format(exp=exp.__class__.__name__, cp=exp.cpid))
+            printing(f"Experiment {exp.__class__.__name__} with CPID {exp.cpid} successfully updated")
         semaphore.release()
 
     update_thread = threading.Thread(target=update_experiment)
@@ -225,8 +237,7 @@ def experiment_handler(semaphore, args):
             serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             exp.build_scans()
-            printing("Successful experiment {exp} built with CPID {cp}".format(
-                     exp=exp.__class__.__name__, cp=exp.cpid))
+            printing(f"Successful experiment {exp.__class__.__name__} built with CPID {exp.cpid}")
             serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
             # use the newest, fastest protocol (currently version 4 in python 3.4+)
             change_flag = False
@@ -236,7 +247,7 @@ def experiment_handler(semaphore, args):
                                                  options.radctrl_to_exphan_identity,
                                                  printing)
         if __debug__:
-            request_msg = "Radar control made request -> {}.".format(message)
+            request_msg = f"Radar control made request -> {message}."
             printing(request_msg)
 
         semaphore.acquire()
