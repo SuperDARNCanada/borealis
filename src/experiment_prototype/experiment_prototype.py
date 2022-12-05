@@ -80,11 +80,15 @@ Slices which are interfaced in this manner must share:
 """
 
 slice_key_set = frozenset([
-    "slice_id", "cpid", "tx_antennas", "rx_main_antennas", "rx_int_antennas", "pulse_sequence",
-    "pulse_phase_offset", "tau_spacing", "pulse_len", "num_ranges", "first_range", "intt",
-    "intn", "beam_angle", "tx_beam_order", "rx_beam_order", "scanbound", "freq", "align_sequences",
-    "clrfrqrange", "averaging_method", "acf", "xcf", "acfint", "wavetype", "seqoffset", "iwavetable",
-    "qwavetable", "comment", "range_sep", "lag_table", "tx_antenna_pattern", "wait_for_first_scanbound"
+    "slice_id",                 "cpid",             "tx_antennas",          "rx_main_antennas", 
+    "rx_int_antennas",          "pulse_sequence",   "pulse_phase_offset",   "tau_spacing", 
+    "pulse_len",                "num_ranges",       "first_range",          "intt",
+    "intn",                     "beam_angle",       "tx_beam_order",        "rx_beam_order", 
+    "scanbound",                "freq",             "align_sequences",      "clrfrqrange", 
+    "averaging_method",         "acf",              "xcf",                  "acfint", 
+    "wavetype",                 "seqoffset",        "iwavetable",           "qwavetable", 
+    "comment",                  "range_sep",        "lag_table",            "tx_antenna_pattern", 
+    "wait_for_first_scanbound"
     ])
 
 """
@@ -527,8 +531,9 @@ class ExperimentPrototype(object):
         """
         This experiment's CPID (control program ID, a term that comes from ROS).
 
-        The CPID is read-only once established in instantiation. It may be modified at runtime by
-        the set_scheduling_mode function, to set it to a negative value during discretionary time.
+        :returns:   cpid - read-only, only modified at runtime by set_scheduling_mode() to set to a
+                    negative value during discretionary time
+        :rtype:     int
         """
 
         return self.__cpid
@@ -537,6 +542,9 @@ class ExperimentPrototype(object):
     def experiment_name(self):
         """
         The experiment class name.
+
+        :returns:   experiment_name
+        :rtype:     str
         """
         return self.__experiment_name
 
@@ -545,7 +553,8 @@ class ExperimentPrototype(object):
         """
         The output receive rate of the data, Hz.
 
-        This is read-only once established in instantiation.
+        :returns:   output_rx_rate - read-only
+        :rtype:     float
         """
 
         return self.__output_rx_rate
@@ -555,7 +564,8 @@ class ExperimentPrototype(object):
         """
         The transmission sample rate to the DAC (Hz), and the transmit bandwidth.
 
-        This is read-only once established in instantiation.
+        :returns:   tx_bandwidth - read-only
+        :rtype:     float
         """
 
         return self.__txrate
@@ -565,7 +575,8 @@ class ExperimentPrototype(object):
         """
         The transmission sample rate to the DAC (Hz).
 
-        This is read-only once established in instantiation.
+        :returns:   txrate - read-only
+        :rtype:     float
         """
 
         return self.__txrate
@@ -575,7 +586,8 @@ class ExperimentPrototype(object):
         """
         The receive bandwidth for this experiment, in Hz.
 
-        This is read-only once established in instantiation.
+        :returns:   rx_bandwidth - read-only
+        :rtype:     float
         """
 
         return self.__rxrate
@@ -586,7 +598,8 @@ class ExperimentPrototype(object):
         The receive bandwidth for this experiment, or the receive sampling rate (of I and Q samples)
         In Hz.
 
-        This is read-only once established in instantiation.
+        :returns:   rxrate - read-only
+        :rtype:     float
         """
 
         return self.__rxrate
@@ -597,7 +610,8 @@ class ExperimentPrototype(object):
         The decimation scheme, of type DecimationScheme from the filtering module. Includes all
         filtering and decimating information for the signal processing module.
 
-        This is read-only once established in instantiation.
+        :returns:   decimation_scheme - read-only
+        :rtype:     DecimationScheme
         """
         return self.__decimation_scheme
 
@@ -606,7 +620,8 @@ class ExperimentPrototype(object):
         """
         A string related to the experiment, to be placed in the experiment's files.
 
-        This is read-only once established in instantiation.
+        :returns:   comment_string - read-only
+        :rtype:     str
         """
 
         return self.__comment_string
@@ -617,6 +632,9 @@ class ExperimentPrototype(object):
         The number of slices currently in the experiment.
 
         Will change after methods add_slice or del_slice are called.
+
+        :returns:   num_slices
+        :rtype:     int
         """
 
         return len(self.__slice_dict)
@@ -628,6 +646,9 @@ class ExperimentPrototype(object):
 
         This cannot be updated. These are the keys in the current ExperimentPrototype slice_keys
         dictionary (the parameters available for slices).
+
+        :returns:   slice_keys
+        :rtype:     frozenset
         """
 
         return self.__slice_keys
@@ -643,6 +664,9 @@ class ExperimentPrototype(object):
         { slice_id1 : {slice_key1 : x, slice_key2 : y, ...},
         slice_id2 : {slice_key1 : x, slice_key2 : y, ...},
         ...}
+
+        :returns:   slice_dict
+        :rtype:     dict
         """
 
         return self.__slice_dict
@@ -653,6 +677,9 @@ class ExperimentPrototype(object):
         The next unique slice id that is available to this instance of the experiment.
 
         This gets incremented each time it is called to ensure it returns a unique ID each time.
+
+        :returns:   new_slice_id
+        :rtype:     int
         """
 
         self.__new_slice_id += 1
@@ -664,6 +691,9 @@ class ExperimentPrototype(object):
         The list of slice ids that are currently available in this experiment.
 
         This can change when add_slice, edit_slice, and del_slice are called.
+
+        :returns:   slice_ids
+        :rtype:     list
         """
 
         return list(self.__slice_dict.keys())
@@ -675,6 +705,9 @@ class ExperimentPrototype(object):
 
         These cannot be set or removed, but are specified in the config.ini, hdw.dat, and
         restrict.dat files.
+
+        :returns:   options
+        :rtype:     :py:class:`ExperimentOptions`
         """
 
         return self.__options
@@ -684,6 +717,9 @@ class ExperimentPrototype(object):
         """
         A dictionary of config options and experiment-set values that cannot change in the
         experiment, that will be used to build pulse sequences.
+
+        :returns:   transmit_metadata
+        :rtype:     dict
         """
 
         return self.__transmit_metadata
@@ -695,6 +731,9 @@ class ExperimentPrototype(object):
         The default cross-correlation flag boolean.
 
         This provides the default for slices where this key isn't specified.
+
+        :returns:   xcf
+        :rtype:     bool
         """
 
         return self._xcf
@@ -719,6 +758,9 @@ class ExperimentPrototype(object):
         The default auto-correlation flag boolean.
 
         This provides the default for slices where this key isn't specified.
+
+        :returns:   acf
+        :rtype:     bool
         """
 
         return self._acf
@@ -743,6 +785,9 @@ class ExperimentPrototype(object):
         The default interferometer autocorrelation boolean.
 
         This provides the default for slices where this key isn't specified.
+
+        :returns:   acfint
+        :rtype:     bool
         """
 
         return self._acfint
@@ -766,6 +811,9 @@ class ExperimentPrototype(object):
     def txctrfreq(self):
         """
         The transmission center frequency that USRP is tuned to (kHz).
+
+        :returns:   txctrfreq
+        :rtype:     float
         """
         return self.__txctrfreq
 
@@ -778,6 +826,9 @@ class ExperimentPrototype(object):
         or maximum given by the center frequency, and sampling rate). The maximum is slightly less
         than that allowed by the center frequency and txrate, to stay away from the edges of the
         possible transmission band where the signal is distorted.
+
+        :returns:   tx_maxfreq
+        :rtype:     float
         """
         max_freq = self.txctrfreq * 1000 + (self.txrate/2.0) - transition_bandwidth
         if max_freq < self.options.max_freq:
@@ -795,6 +846,9 @@ class ExperimentPrototype(object):
         or minimum given by the center frequency and sampling rate). The minimum is slightly more
         than that allowed by the center frequency and txrate, to stay away from the edges of the
         possible transmission band where the signal is distorted.
+
+        :returns:   tx_minfreq
+        :rtype:     float
         """
         min_freq = self.txctrfreq * 1000 - (self.txrate/2.0) + transition_bandwidth
         if min_freq > self.options.min_freq:
@@ -807,6 +861,9 @@ class ExperimentPrototype(object):
     def rxctrfreq(self):
         """
         The receive center frequency that USRP is tuned to (kHz).
+
+        :returns:   rxctrfreq
+        :rtype:     float
         """
         return self.__rxctrfreq
 
@@ -819,6 +876,9 @@ class ExperimentPrototype(object):
         frequency and sampling rate), as license doesn't matter for receiving. The maximum is
         slightly less than that allowed by the center frequency and rxrate, to stay away from the
         edges of the possible receive band where the signal may be distorted.
+
+        :returns:   rx_maxfreq
+        :rtype:     float
         """
         max_freq = self.rxctrfreq * 1000 + (self.rxrate/2.0) - transition_bandwidth
         return max_freq
@@ -832,6 +892,9 @@ class ExperimentPrototype(object):
         frequency and sampling rate) - license doesn't restrict receiving. The minimum is
         slightly more than that allowed by the center frequency and rxrate, to stay away from the
         edges of the possible receive band where the signal may be distorted.
+
+        :returns:   rx_minfreq
+        :rtype:     float
         """
         min_freq = self.rxctrfreq * 1000 - (self.rxrate/2.0) + transition_bandwidth
         if min_freq > 1000: #Hz
@@ -846,12 +909,13 @@ class ExperimentPrototype(object):
 
         Interfacing should be set up for any slice when it gets added, ie. in add_slice,
         except for the first slice added. The dictionary of interfacing is setup as:
-
         [(slice_id1, slice_id2) : INTERFACING_TYPE,
         (slice_id1, slice_id3) : INTERFACING_TYPE,
         ...]
-
         for all current slice_ids.
+
+        :returns:   interface
+        :rtype:     dict
         """
         return self.__interface
 
@@ -861,6 +925,9 @@ class ExperimentPrototype(object):
         The list of instances of class Scan for use in radar_control.
 
         These cannot be modified by the user, but are created using the slice dictionary.
+
+        :returns:   scan_objects
+        :rtype:     list
         """
         return self.__scan_objects
 
@@ -869,6 +936,9 @@ class ExperimentPrototype(object):
         """
         Return the scheduling mode time type that this experiment is running in. Types are listed in
         possible_scheduling_modes. Initialized to 'unknown' until set by the experiment handler.
+
+        :returns:   scheduling_mode
+        :rtype:     str
         """
         return self.__scheduling_mode
 
@@ -907,7 +977,8 @@ class ExperimentPrototype(object):
 
         :param      slice_id:   id of the slice to get beam directions for.
         :type       slice_id:   int
-        :return:    enumeration mapping dictionary of beam number to beamdirection(s) in degrees off
+
+        :returns:   enumeration mapping dictionary of beam number to beamdirection(s) in degrees off
                     boresight.
         :rtype:     dict
         """
@@ -940,11 +1011,11 @@ class ExperimentPrototype(object):
                                         known for its closest sibling.
         :type       interfacing_dict:   dict
 
+        :returns:   full interfacing dictionary.
+        :rtype:     dict
+
         :raises ExperimentException:    if invalid interface types provided or if interfacing can
                                         not be resolved.
-
-        :return:    full interfacing dictionary.
-        :rtype:     dict
         """
 
         for sibling_slice_id, interface_value in interfacing_dict.items():
@@ -1040,11 +1111,11 @@ class ExperimentPrototype(object):
                                         currently in the experiment.
         :type       interfacing_dict:   dict
 
+        :returns:   the slice_id of the new slice that was just added.
+        :rtype:     int
+
         :raises ExperimentException:    if slice is not a dictionary or if there are errors in
                                         setup_slice.
-
-        :return:    the slice_id of the new slice that was just added.
-        :rtype:     int
         """
 
         if not isinstance(exp_slice, dict):
@@ -1083,10 +1154,10 @@ class ExperimentPrototype(object):
         :param      remove_slice_id:    the id of the slice you'd like to remove.
         :type       remove_slice_id:    int
 
-        :raises ExperimentException:    if remove_slice_id does not exist in the slice dictionary.
-
-        :return:    a copy of the removed slice.
+        :returns:   a copy of the removed slice.
         :rtype:     dict
+
+        :raises ExperimentException:    if remove_slice_id does not exist in the slice dictionary.
         """
         try:
             removed_slice = copy.deepcopy(self.slice_dict[remove_slice_id])
@@ -1120,15 +1191,15 @@ class ExperimentPrototype(object):
 
         :param      edit_slice_id:  the slice id of the slice to be edited.
         :type       edit_slice_id:  int
-        :param      kwargs:         slice parameter to slice values that you want to change.
-        :type       kwargs:         dict
+        :param      \**kwargs:      slice parameter to slice values that you want to change.
+        :type       \**kwargs:      dict
+
+        :returns:   the new slice id of the edited slice, or the edit_slice_id if no change has
+                    occurred due to failure of new slice parameters to pass experiment checks.
+        :rtype:     int
 
         :raises ExperimentException:    if the edit_slice_id does not exist in slice dictionary or
                                         the params or values do not make sense.
-
-        :return:    the new slice id of the edited slice, or the edit_slice_id if no change has
-                    occurred due to failure of new slice parameters to pass experiment checks.
-        :rtype:     int
         """
         slice_params_to_edit = dict(kwargs)
 
@@ -1244,8 +1315,6 @@ class ExperimentPrototype(object):
             print(f"Max concurrent slices: {max_num_concurrent_slices}")
 
     def get_scan_slice_ids(self):
-        # TODO add this to ScanClassBase method by just passing in the current type (Experiment,
-        # Scan, AvePeriod) which would allow you to determine which interfacing to pull out.
         """
         Organize the slice_ids by scan.
 
@@ -1254,11 +1323,13 @@ class ExperimentPrototype(object):
         averagingperiod that is inside this scan. ie. len(nested_slice_list) = # of averagingperiods
         in this scan, len(nested_slice_list[0]) = # of slices in the first averagingperiod, etc.
 
-        :return:    A list that has one element per scan. Each element is a list of slice_ids
+        :returns:   A list that has one element per scan. Each element is a list of slice_ids
                     signifying which slices are combined inside that scan. The list returned could
                     be of length 1, meaning only one scan is present in the experiment.
         :rtype:     list of lists
         """
+        # TODO add this to ScanClassBase method by just passing in the current type (Experiment,
+        # Scan, AvePeriod) which would allow you to determine which interfacing to pull out.
         scan_combos = []
 
         for k, interface_value in self.interface.items():
@@ -1581,10 +1652,10 @@ class ExperimentPrototype(object):
         :param      exp_slice:  slice to set defaults
         :type       exp_slice:  dict
 
-        :raises ExperimentException:    if any slice parameters are invalid
-
-        :return:    updated slice
+        :returns:   updated slice
         :rtype:     dict
+
+        :raises ExperimentException:    if any slice parameters are invalid
         """
 
         slice_with_defaults = copy.deepcopy(exp_slice)
@@ -1731,10 +1802,10 @@ class ExperimentPrototype(object):
         :param      exp_slice:  a slice to setup
         :type       exp_slice:  dict
 
-        :raises ExperimentException:    if there are any errors in the slice configuration
-
-        :return:    complete_slice - a checked slice with all defaults
+        :returns:   complete_slice - a checked slice with all defaults
         :rtype:     dict
+
+        :raises ExperimentException:    if there are any errors in the slice configuration
         """
 
         complete_slice = copy.deepcopy(exp_slice)
@@ -2041,7 +2112,7 @@ class ExperimentPrototype(object):
         :param      slice_id:   Slice ID to search the interface dictionary for.
         :type       slice_id:   int
 
-        :return:    interfacing dictionary for the slice.
+        :returns:   interfacing dictionary for the slice.
         :rtype:     dict
         """
 
