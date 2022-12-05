@@ -1,10 +1,15 @@
 #!/usr/bin/python
 
-# Copyright 2017 SuperDARN Canada
-#
-# data_write_options.py
-# 2018-05-14
-# options class for data write module
+"""
+    data_write options
+    ~~~~~~~~~~~~~~~~~~
+
+    To load the config options to be used by data_write
+    Config data comes from the config.ini file
+
+    :copyright: 2017 SuperDARN Canada
+"""
+
 # TODO: Get experiment details from somewhere to write metadata out to files (freq, cpid, etc..)
 
 import json

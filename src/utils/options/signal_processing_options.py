@@ -1,10 +1,16 @@
 #!/usr/bin/python
 
-# Copyright 2020 SuperDARN Canada
-#
-# signal_processing_options.py
-# 2020-09-28
-# options class for signal processing module
+
+"""
+    signal_processing options
+    ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    To load the config options to be used by signal processing.
+    Config data comes from the config.ini file.
+
+    :copyright: 2020 SuperDARN Canada
+"""
+
 
 import json
 import os

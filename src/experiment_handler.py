@@ -40,7 +40,7 @@ def usage_msg():
 
     This is used if a -h flag or invalid arguments are provided.
 
-    :return:    the usage message
+    :returns:   the usage message
     :rtype:     str
     """
 
@@ -67,7 +67,7 @@ def experiment_parser():
     """
     Creates the parser to retrieve the experiment module.
 
-    :return:    parser, the argument parser for the experiment_handler.
+    :returns:   parser, the argument parser for the experiment_handler.
     :rtype:     argparse.ArgumentParser
     """
 
@@ -95,7 +95,7 @@ def retrieve_experiment(experiment_module_name):
                                     contain a single class that inherits from ExperimentPrototype
                                     class.
 
-    :return:    The found experiment that inherits from ExperimentPrototype
+    :returns:   The found experiment that inherits from ExperimentPrototype
     :rtype:     ExperimentPrototype
     """
 

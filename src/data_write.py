@@ -416,7 +416,7 @@ class ParseData(object):
         """ 
         Gets the sequence num of the latest processeddata packet.
 
-        :return:    sequence number
+        :returns:   sequence number
         :rtype:     int
         """
         return self.processed_data.sequence_num
@@ -426,7 +426,7 @@ class ParseData(object):
         """ 
         Gets the bfiq available flag.
 
-        :return:    bfiq available flag
+        :returns:   bfiq available flag
         :rtype:     bool
         """
         return self._bfiq_available
@@ -436,7 +436,7 @@ class ParseData(object):
         """ 
         Gets the pre-bfiq available flag.
 
-        :return:    pre-bfiq available flag
+        :returns:   pre-bfiq available flag
         :rtype:     bool
         """
         return self._antenna_iq_available
@@ -446,7 +446,7 @@ class ParseData(object):
         """
         Gets the mainacfs available flag.
 
-        :return:    mainacfs available flag
+        :returns:   mainacfs available flag
         :rtype:     bool
         """
         return self._mainacfs_available
@@ -456,7 +456,7 @@ class ParseData(object):
         """
         Gets the xcfs available flag.
 
-        :return:    xcfs available flag
+        :returns:   xcfs available flag
         :rtype:     bool
         """
         return self._xcfs_available
@@ -466,7 +466,7 @@ class ParseData(object):
         """
         Gets the intfacfs available flag.
 
-        :return:    intfacfs available flag
+        :returns:   intfacfs available flag
         :rtype:     bool
         """
         return self._intfacfs_available
@@ -477,7 +477,7 @@ class ParseData(object):
         Returns the nested default dictionary with complex stage data for each antenna array as well
         as some metadata.
 
-        :return:    bfiq_accumulator containing beamform data for each slice
+        :returns:   bfiq_accumulator containing beamform data for each slice
         :rtype:     dict
         """
         return self._bfiq_accumulator
@@ -488,7 +488,7 @@ class ParseData(object):
         Returns the nested default dictionary with complex stage data for each antenna as well
         as some metadata for each slice.
 
-        :return:    antenna_iq_accumulator containing data for each antenna and slice
+        :returns:   antenna_iq_accumulator containing data for each antenna and slice
         :rtype:     dict
         """
         return self._antenna_iq_accumulator
@@ -499,7 +499,7 @@ class ParseData(object):
         Returns the default dict containing a list of main acf data for each slice. There is an
         array of data for each sampling period.
 
-        :return:    mainacfs_accumulator containing main acf data for each slice
+        :returns:   mainacfs_accumulator containing main acf data for each slice
         :rtype:     dict
         """
         return self._mainacfs_accumulator
@@ -510,7 +510,7 @@ class ParseData(object):
         Returns the default dict containing a list of xcf data for each slice. There is an
         array of data for each sampling period.
 
-        :return:    xcfs_accumulator containing xcf data for each slice
+        :returns:   xcfs_accumulator containing xcf data for each slice
         :rtype:     dict
         """
         return self._xcfs_accumulator
@@ -521,7 +521,7 @@ class ParseData(object):
         Returns the default dict containing a list of intf acf data for each slice. There is an
         array of data for each sampling period.
 
-        :return:    intfacfs_accumulator containing intf acf data for each slice
+        :returns:   intfacfs_accumulator containing intf acf data for each slice
         :rtype:     dict
         """
         return self._intfacfs_accumulator
@@ -532,7 +532,7 @@ class ParseData(object):
         Return the python list of sequence timestamps (when the sampling period begins)
         from the processsed data packets
 
-        :return:    sequence timestamps from the processed data packets
+        :returns:   sequence timestamps from the processed data packets
         :rtype:     list
         """
         return self._timestamps
@@ -542,7 +542,7 @@ class ParseData(object):
         """
         Return the rx_rate of the data in the data packet
 
-        :return:    sampling rate in Hz
+        :returns:   sampling rate in Hz
         :rtype:     float
         """
         return self._rx_rate
@@ -552,7 +552,7 @@ class ParseData(object):
         """
         Return the output rate of the filtered, decimated data in the data packet.
 
-        :return:    output sampling rate in Hz
+        :returns:   output sampling rate in Hz
         :rtype:     float
         """
         return self._output_sample_rate
@@ -562,7 +562,7 @@ class ParseData(object):
         """
         Return the slice ids in python set so they are guaranteed unique
 
-        :return:    slice id numbers
+        :returns:   slice id numbers
         :rtype:     set
         """
         return self._slice_ids
@@ -572,7 +572,7 @@ class ParseData(object):
         """
         Gets the raw_rf available flag.
 
-        :return:    raw_rf available flag
+        :returns:   raw_rf available flag
         :rtype:     bool
         """
         return self._raw_rf_available
@@ -582,7 +582,7 @@ class ParseData(object):
         """
         Gets the list of raw rf memory locations.
 
-        :return:    raw rf memory locations
+        :returns:   raw rf memory locations
         :rtype:     list of strings
         """
         return self._rawrf_locations
@@ -592,7 +592,7 @@ class ParseData(object):
         """ 
         Gets the number of rawrf samples per antenna.
 
-        :return:    number of rawrf samples per antenna
+        :returns:   number of rawrf samples per antenna
         :rtype:     int
         """
         return self._rawrf_num_samps
@@ -602,7 +602,7 @@ class ParseData(object):
         """ 
         Return the boolean value indicating if the GPS was locked during the entire int period
 
-        :return:    gps_locked flag
+        :returns:   gps_locked flag
         :rtype:     bool
         """
         return self._gps_locked
@@ -613,7 +613,7 @@ class ParseData(object):
         Gets the maximum time diff in seconds between the GPS (box_time) and system (NTP) during
         the integration period. Negative if GPS time is ahead of system/NTP time.
 
-        :return:    gps to system time diff
+        :returns:   gps to system time diff
         :rtype:     double
         """
         return self._gps_to_system_time_diff
@@ -623,7 +623,7 @@ class ParseData(object):
         """
         AGC Status, a '1' in bit position corresponds to an AGC fault on that transmitter
 
-        :return:    agc_status_word
+        :returns:   agc_status_word
         :rtype:     int
         """
         return self._agc_status_word
@@ -633,7 +633,7 @@ class ParseData(object):
         """
         Low Power, a '1' in bit position corresponds to a low power condition on that transmitter
 
-        :return:    lp_status_word
+        :returns:   lp_status_word
         :rtype:     int
         """
         return self._lp_status_word
@@ -794,7 +794,7 @@ class DataWrite(object):
             :param  dt: A datetime to find the next 2hr boundary.
             :type   dt: DateTime
 
-            :return:    2hr aligned datetime
+            :returns:   2hr aligned datetime
             :rtype:     DateTime
             """
 

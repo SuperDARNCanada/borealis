@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
-# Copyright 2017 SuperDARN Canada
-
 """
-To load the config options to be used by the experiment and radar_control blocks.
-Config data comes from the config.ini file, the hdw.dat file, and the restrict.dat file.
+    experiment options
+    ~~~~~~~~~~~~~~~~~~
+
+    To load the config options to be used by the experiment and radar_control blocks.
+    Config data comes from the config.ini file, the hdw.dat file, and the restrict.dat file.
+
+    :copyright: 2017 SuperDARN Canada
 """
 
 import json

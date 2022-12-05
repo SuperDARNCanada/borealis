@@ -1,9 +1,14 @@
 #!/usr/bin/python
 
-# Copyright 2019 SuperDARN Canada
-#
-# realtime_options.py
-# options class for realtime module
+"""
+    realtime options
+    ~~~~~~~~~~~~~~~~
+
+    To load the config options to be used by realtime
+    Config data comes from the config.ini file
+
+    :copyright: 2019 SuperDARN Canada
+"""
 
 import json
 import os
@@ -39,8 +44,8 @@ class RealtimeOptions(object):
         """
         Gets the identity used for the realtime to datawrite identity.
 
-        Returns:
-            String: The identity to use for realtime/datawrite socket.
+        :returns:   The identity to use for realtime/datawrite socket.
+        :rtype:     str
         """
         return self._rt_to_dw_identity
 
@@ -49,8 +54,8 @@ class RealtimeOptions(object):
         """
         Gets the identity used for the datawrite to realtime identity.
 
-        Returns:
-            String: The identity to use for the datawrite/realtime socket.
+        :returns:   The identity to use for the datawrite/realtime socket.
+        :rtype:     str
         """
         return self._dw_to_rt_identity
 
@@ -59,8 +64,8 @@ class RealtimeOptions(object):
         """
         Gets the address used to bind on for realtime applications.
 
-        Returns:
-            String: The address used to bind on.
+        :returns:   The address used to bind on.
+        :rtype:     str
         """
         return self._rt_address
 

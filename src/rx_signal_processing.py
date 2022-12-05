@@ -310,7 +310,7 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
 
             :param      ndarray: array to be created
             :type       ndarray: numpy.ndarray 
-            :return:    The shared memory name.
+            :returns:   The shared memory name.
             :rtype:     str
             """
             if ndarray.size != 0:
