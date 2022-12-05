@@ -370,8 +370,8 @@ class ExperimentPrototype(object):
     """
 
     def __init__(self, cpid, output_rx_rate=default_output_rx_rate, rx_bandwidth=default_rx_bandwidth,
-                 tx_bandwidth=5.0e6, txctrfreq=12000.0, rxctrfreq=12000.0, 
-                 decimation_scheme=create_default_scheme(), comment_string=''):
+                 tx_bandwidth=5.0e6, txctrfreq=12000.0, rxctrfreq=12000.0, decimation_scheme=None, 
+                 comment_string=''):
         if not isinstance(cpid, int):
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
@@ -453,7 +453,8 @@ class ExperimentPrototype(object):
                      f"integer divisor of USRP master clock rate {self.options.usrp_master_clock_rate}"
             raise ExperimentException(errmsg)
 
-        self.__decimation_scheme = decimation_scheme
+        if decimation_scheme is None:
+            self.__decimation_scheme = create_default_scheme()
 
         self.__comment_string = comment_string
 

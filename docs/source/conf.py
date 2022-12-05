@@ -92,8 +92,6 @@ extensions = [
 
 autodoc_mock_imports = ["debug", "release"]
 
-suppress_warnings = ["autosectionlabel.*"]
-
 breathe_projects = {"borealis" : "xml/"}
 breathe_default_project = "borealis"
 # Add any paths that contain templates here, relative to this directory.
