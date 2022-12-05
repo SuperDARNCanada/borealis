@@ -26,7 +26,7 @@ class SignalProcessingOptions(object):
             with open(config_path, 'r') as config_data:
                 raw_config = json.load(config_data)
         except IOError:
-            errmsg = 'Cannot open config file at {0}'.format(config_path)
+            errmsg = f'Cannot open config file at {config_path}'
             raise IOError(errmsg)
 
         self._router_address = raw_config["router_address"]

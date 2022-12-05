@@ -25,7 +25,7 @@ class RealtimeOptions(object):
             with open(config_path, 'r') as config_data:
                 raw_config = json.load(config_data)
         except IOError:
-            errmsg = 'Cannot open config file at {0}'.format(config_path)
+            errmsg = f'Cannot open config file at {config_path}'
             raise IOError(errmsg)
 
         self._rt_to_dw_identity = raw_config["rt_to_dw_identity"]

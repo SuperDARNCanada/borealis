@@ -27,7 +27,7 @@ class DataWriteOptions(object):
             with open(config_path, 'r') as config_data:
                 raw_config = json.load(config_data)
         except IOError:
-            errmsg = 'Cannot open config file at {0}'.format(config_path)
+            errmsg = f'Cannot open config file at {config_path}'
             raise IOError(errmsg)
 
         self._rt_to_dw_identity = raw_config["rt_to_dw_identity"]
@@ -66,8 +66,8 @@ class DataWriteOptions(object):
         """
         Gets the identity used for the realtime to datawrite identity.
 
-        Returns:
-            String: The identity to use for realtime/datawrite socket.
+        :returns: The identity to use for realtime/datawrite socket.
+        :rtype: str
         """
         return self._rt_to_dw_identity
 
@@ -76,8 +76,8 @@ class DataWriteOptions(object):
         """
         Gets the identity used for the datawrite to realtime identity.
 
-        Returns:
-            String: The identity to use for the datawrite/realtime socket.
+        :returns: The identity to use for datawrite/realtime socket.
+        :rtype: str
         """
         return self._dw_to_rt_identity
 
@@ -105,8 +105,8 @@ class DataWriteOptions(object):
     def radctrl_to_dw_identity(self):
         """Gets the identity used for the radar control to data write socket.
 
-        Returns: The identity used for radar control/data write socket.
-        TYPE: str
+        :returns: The identity used for radar control/data write socket.
+        :rtype: str
         """
         return self._radctrl_to_dw_identity
 
@@ -114,8 +114,8 @@ class DataWriteOptions(object):
     def dw_to_radctrl_identity(self):
         """Gets the identity used for the data write to radar control socket.
 
-        Returns: The identity used for data write/radar control socket.
-        TYPE: str
+        :returns: The identity used for data write/radar control socket.
+        :rtype: str
         """
         return self._dw_to_radctrl_identity
 

@@ -29,7 +29,7 @@ class ExperimentOptions:
             with open(config_file) as config_data:
                 config = json.load(config_data)
         except IOError:
-            errmsg = 'Cannot open config file at {}'.format(config_file)
+            errmsg = f'Cannot open config file at {config_file}'
             raise ExperimentException(errmsg)
         try:
             self._main_antenna_count = int(config["main_antenna_count"])
@@ -100,13 +100,14 @@ class ExperimentOptions:
 
             if len(self.main_antennas) > 0:
                 if min(self.main_antennas) < 0 or max(self.main_antennas) >= self.main_antenna_count:
-                    errmsg = 'main_antennas and main_antenna_count have incompatible values in {}'.format(config_file)
+                    errmsg = 'main_antennas and main_antenna_count have incompatible values in'\
+                            f' {config_file}'
                     raise ExperimentException(errmsg)
             if len(self.interferometer_antennas) > 0:
                 if min(self.interferometer_antennas) < 0 or \
                         max(self.interferometer_antennas) >= self.interferometer_antenna_count:
-                    errmsg = 'interferometer_antennas and interferometer_antenna_count have incompatible values in {}' \
-                            ''.format(config_file)
+                    errmsg = 'interferometer_antennas and interferometer_antenna_count have'\
+                            f' incompatible values in {config_file}'
                     raise ExperimentException(errmsg)
 
             hdw_path = str(config["hdw_path"])
@@ -124,7 +125,7 @@ class ExperimentOptions:
             with open(hdw_dat_file) as hdwdata:
                 lines = hdwdata.readlines()
         except IOError:
-            errmsg = 'Cannot open hdw.dat.{} file at {}'.format(site_id, hdw_dat_file)
+            errmsg = f'Cannot open hdw.dat.{site_id} file at {hdw_dat_file}'
             raise ExperimentException(errmsg)
 
         lines[:] = [line for line in lines if line[0] != "#"]  # remove comments
@@ -134,14 +135,13 @@ class ExperimentOptions:
         try:
             hdw = lines[-1]
         except IndexError:
-            errmsg = 'Cannot find any valid lines in the hardware file: ' \
-                     '{}'.format(hdw_dat_file)
+            errmsg = f'Cannot find any valid lines in the hardware file: {hdw_dat_file}'
             raise ExperimentException(errmsg)
         # we now have the correct line of data.
 
         params = hdw.split()
         if len(params) != 22:
-            errmsg = 'Found {} parameters in hardware file, expected 22'.format(len(params))
+            errmsg = f'Found {len(params)} parameters in hardware file, expected 22'
             raise ExperimentException(errmsg)
 
         self._status = params[1]  # 1 operational, -1 offline
@@ -170,7 +170,7 @@ class ExperimentOptions:
             with open(restricted_freq_file) as restricted_freq_data:
                 restricted = restricted_freq_data.readlines()
         except IOError:
-            errmsg = 'Cannot open restrict.dat.{} file at {}'.format(site_id, restricted_freq_file)
+            errmsg = f'Cannot open restrict.dat.{site_id} file at {restricted_freq_file}'
             raise ExperimentException(errmsg)
 
         restricted[:] = [line for line in restricted if line[0] != "#"]  # remove comments
@@ -199,60 +199,46 @@ class ExperimentOptions:
             self.__restricted_ranges.append(restricted_range)
 
     def __repr__(self):
-        return_str = """\n    main_antennas = {} \
-                    \n    main_antenna_count = {} \
-                    \n    interferometer_antennas = {} \
-                    \n    interferometer_antenna_count = {} \
-                    \n    main_antenna_spacing = {} metres \
-                    \n    interferometer_antenna_spacing = {} metres \
-                    \n    max_tx_sample_rate = {} Hz (samples/sec)\
-                    \n    max_rx_sample_rate = {} Hz (samples/sec)\
-                    \n    max_usrp_dac_amplitude = {} : 1\
-                    \n    pulse_ramp_time = {} s\
-                    \n    tr_window_time = {} s\
-                    \n    max_output_sample_rate = {} Hz\
-                    \n    max_number_of_filtering_stages = {} \
-                    \n    max_number_of_filter_taps_per_stage = {} \
-                    \n    site_id = {} \
-                    \n    geo_lat = {} degrees \
-                    \n    geo_long = {} degrees\
-                    \n    altitude = {} metres \
-                    \n    boresight = {} degrees from geographic north, CCW = negative. \
-                    \n    boresight_shift = {} degrees. \
-                    \n    beam_sep = {} degrees\
-                    \n    velocity_sign = {} \
-                    \n    tdiff_a = {} us \
-                    \n    tdiff_b = {} us \
-                    \n    phase_sign = {} \
-                    \n    intf_offset = {} \
-                    \n    analog_rx_rise = {} us \
-                    \n    analog_rx_attenuator = {} dB \
-                    \n    analog_atten_stages = {} \
-                    \n    max_range_gates = {} \
-                    \n    max_beams = {} \
-                    \n    max_freq = {} \
-                    \n    min_freq = {} \
-                    \n    minimum_pulse_length = {} \
-                    \n    minimum_tau_spacing_length = {} \
-                    \n    minimum_pulse_separation = {} \
-                    \n    tr_window_time = {} \
-                    \n    default_freq = {} \
-                    \n    restricted_ranges = {} \
-                     """.format(self.main_antennas, self.main_antenna_count, self.interferometer_antennas,
-                                self.interferometer_antenna_count, self.main_antenna_spacing,
-                                self.interferometer_antenna_spacing, self.max_tx_sample_rate, self.max_rx_sample_rate,
-                                self.max_usrp_dac_amplitude, self.pulse_ramp_time,
-                                self.tr_window_time, self.max_output_sample_rate,
-                                self.max_number_of_filtering_stages, self.max_number_of_filter_taps_per_stage,
-                                self.site_id, self.geo_lat, self.geo_long,
-                                self.altitude, self.boresight, self.boresight_shift, self.beam_sep,
-                                self.velocity_sign, self.tdiff_a, self.tdiff_b, self.phase_sign,
-                                self.intf_offset, self.analog_rx_rise, self.analog_rx_attenuator,
-                                self.analog_atten_stages,
-                                self.max_range_gates, self.max_beams, self.max_freq, self.min_freq,
-                                self. minimum_pulse_length, self.minimum_tau_spacing_length,
-                                self.minimum_pulse_separation, self.tr_window_time,
-                                self.default_freq, self.restricted_ranges)
+        return_str = f"""\n    main_antennas = {self.main_antennas} \
+                    \n    main_antenna_count = {self.main_antenna_count} \
+                    \n    interferometer_antennas = {self.interferometer_antennas} \
+                    \n    interferometer_antenna_count = {self.interferometer_antenna_count} \
+                    \n    main_antenna_spacing = {self.main_antenna_spacing} metres \
+                    \n    interferometer_antenna_spacing = {self.interferometer_antenna_spacing} metres \
+                    \n    max_tx_sample_rate = {self.max_tx_sample_rate} Hz (samples/sec)\
+                    \n    max_rx_sample_rate = {self.max_rx_sample_rate} Hz (samples/sec)\
+                    \n    max_usrp_dac_amplitude = {self.max_usrp_dac_amplitude} : 1\
+                    \n    pulse_ramp_time = {self.pulse_ramp_time} s\
+                    \n    tr_window_time = {self.tr_window_time} s\
+                    \n    max_output_sample_rate = {self.max_output_sample_rate} Hz\
+                    \n    max_number_of_filtering_stages = {self.max_number_of_filtering_stages} \
+                    \n    max_number_of_filter_taps_per_stage = {self.max_number_of_filter_taps_per_stage} \
+                    \n    site_id = {self.site_id} \
+                    \n    geo_lat = {self.geo_lat} degrees \
+                    \n    geo_long = {self.geo_long} degrees\
+                    \n    altitude = {self.altitude} metres \
+                    \n    boresight = {self.boresight} degrees from geographic north, CCW = negative. \
+                    \n    boresight_shift = {self.boresight_shift} degrees. \
+                    \n    beam_sep = {self.beam_sep} degrees\
+                    \n    velocity_sign = {self.velocity_sign} \
+                    \n    tdiff_a = {self.tdiff_a} us \
+                    \n    tdiff_b = {self.tdiff_b} us \
+                    \n    phase_sign = {self.phase_sign} \
+                    \n    intf_offset = {self.intf_offset} \
+                    \n    analog_rx_rise = {self.analog_rx_rise} us \
+                    \n    analog_rx_attenuator = {self.analog_rx_attenuator} dB \
+                    \n    analog_atten_stages = {self.analog_atten_stages} \
+                    \n    max_range_gates = {self.max_range_gates} \
+                    \n    max_beams = {self.max_beams} \
+                    \n    max_freq = {self.max_freq} \
+                    \n    min_freq = {self.min_freq} \
+                    \n    minimum_pulse_length = {self. minimum_pulse_length} \
+                    \n    minimum_tau_spacing_length = {self.minimum_tau_spacing_length} \
+                    \n    minimum_pulse_separation = {self.minimum_pulse_separation} \
+                    \n    tr_window_time = {self.tr_window_time} \
+                    \n    default_freq = {self.default_freq} \
+                    \n    restricted_ranges = {self.restricted_ranges} \
+                     """
         return return_str
 
     @property
