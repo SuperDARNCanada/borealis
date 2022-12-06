@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 
 """
-Copyright SuperDARN Canada 2020
-Keith Kotyk
+    install_radar_deps
+    ~~~~~~~~~~~~~~~~~~
+    Installation script for Borealis utilities.
+    NOTE: This script has been tested on:
+        OpenSuSe 15.1-15.3
+        Ubuntu 19.10
+        Ubuntu 20.04
 
-Installation script for Borealis utilities.
-NOTE: This script has been tested on:
-    OpenSuSe 15.1-15.3
-    Ubuntu 19.10
-    Ubuntu 20.04
+    :copyright: 2020 SuperDARN Canada
+    :author: Keith Kotyk
 """
 import subprocess as sp
 import sys
@@ -24,7 +26,8 @@ def usage_msg():
 
     This is used if a -h flag or invalid arguments are provided.
 
-    :returns: the usage message
+    :returns:   the usage message
+    :rtype:     str
     """
 
     usage_message = """ install_radar_deps.py [-h] radar install_dir
@@ -44,10 +47,10 @@ def execute_cmd(cmd):
     Execute a shell command and return the output
 
     :param      cmd:  The command
-    :type       cmd:  string
+    :type       cmd:  str
 
     :returns:   Decoded output of the command.
-    :rtype:     string
+    :rtype:     str
     """
     # try/except block lets install script continue even if something fails
     try:
@@ -87,6 +90,13 @@ def install_packages(distro: str, user: str, python_version: str):
     """
     Install the needed packages used by Borealis. Multiple options are listed for distributions that
     use different names.
+
+    :param  distro:         Distribution to install on
+    :type   distro:         str
+    :param  user:           User to install as
+    :type   user:           str
+    :param  python_version: Version of python to install
+    :type   python_version: str
     """
     print(COLOR('yellow', '\n### Installing system packages ###'))
     packages = ["wget",
@@ -193,12 +203,10 @@ def install_packages(distro: str, user: str, python_version: str):
         print(install_cmd)
         execute_cmd(install_cmd)
 
-    update_pip = "sudo -u {normal_user} pip{version} install --upgrade pip" \
-                 "".format(normal_user=user, version=python_version)
+    update_pip = f"sudo -u {user} pip{python_version} install --upgrade pip"
     execute_cmd(update_pip)
 
-    pip_cmd = "sudo -u {normal_user} pip{version} install " \
-              "".format(normal_user=user, version=python_version) + " ".join(pip)
+    pip_cmd = f"sudo -u {user} pip{python_version} install " + " ".join(pip)
     execute_cmd(pip_cmd)
 
 
@@ -273,6 +281,9 @@ def install_ntp():
 def install_uhd(distro: str):
     """
     Install UHD. UHD is particular about which version of boost it uses, so check that.
+
+    :param  distro: Distribution to install on
+    :type   distro: str
     """
     print(COLOR('yellow', '\n### Installing UHD ###'))
 
@@ -289,14 +300,14 @@ def install_uhd(distro: str):
             elif "19.10" in distro:
                 boost_version = "1.67"
             else:
-                print("Ubuntu version {} unrecognized; exiting".format(distro))
+                print(f"Ubuntu version {distro} unrecognized; exiting")
                 sys.exit(1)
             libpath = '/usr/lib/x86_64-linux-gnu'
         else:
-            print("Distro {} unrecognized; exiting".format(distro))
+            print(f"Distro {distro} unrecognized; exiting")
             sys.exit(1)
 
-        files = glob.glob('{}/libboost_*.so.{}*'.format(libpath, boost_version))
+        files = glob.glob(f'{libpath}/libboost_*.so.{boost_version}*')
         print(files)
 
         files_with_no_ext = []
@@ -310,15 +321,15 @@ def install_uhd(distro: str):
         print(files_with_no_ext)
 
         for (f, n) in zip(files, files_with_no_ext):
-            cmd = 'ln -s -f {} {}/{}.so'.format(f, libpath, n)
+            cmd = f'ln -s -f {f} {libpath}/{n}.so'
             execute_cmd(cmd)
 
         cmd = ""
         if "openSUSE" in distro:
-            cmd = 'ln -s -f {libpath}/libboost_python-py3.so {libpath}/libboost_python3.so'.format(libpath=libpath)
+            cmd = f'ln -s -f {libpath}/libboost_python-py3.so {libpath}/libboost_python3.so'
         elif "Ubuntu" in distro:
-            boost_python = glob.glob('{}/libboost_python3*.so.{}*'.format(libpath, boost_version))[0]
-            cmd = 'ln -s -f {} {}/libboost_python3.so'.format(boost_python, libpath)
+            boost_python = glob.glob(f'{libpath}/libboost_python3*.so.{boost_version}*')[0]
+            cmd = f'ln -s -f {boost_python} {libpath}/libboost_python3.so'
         execute_cmd(cmd)
 
     fix_boost_links()
@@ -345,6 +356,9 @@ def install_uhd(distro: str):
 def install_cuda(distro: str):
     """
     Install CUDA.
+    
+    :param  distro: Distribution to install on
+    :type   distro: str
     """
     print(COLOR('yellow', '\n### Installing CUDA ###'))
 
@@ -371,8 +385,8 @@ def install_cuda(distro: str):
         execute_cmd(pre_cuda_setup_cmd)
         cuda_file = '../cuda_11.4.3_470.82.01_linux.run'
         cuda_cmd = "cd ${{IDIR}};" \
-                   "wget -N http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};" \
-                   "sh {cuda_file} --silent --toolkit --samples;".format(cuda_file=cuda_file)
+                   f"wget -N http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};" \
+                   f"sh {cuda_file} --silent --toolkit --samples;"
     else:
         cuda_cmd = f'echo "Failed; No CUDA install script for Linux Distribution: {distro}"'
 
@@ -382,48 +396,72 @@ def install_cuda(distro: str):
 def install_borealis_env(python_version: str, user: str, group: str):
     """
     Create virtual environment and install utilities needed for Borealis operation.
+
+    :param  python_version: Python version to install venv as
+    :type   python_version: str
+    :param  user:           User to assign ownership permissions of the venv to
+    :type   user:           str
+    :param  group:          Group to assign ownership permissions of the venv to
+    :type   group:          str
     """
     print(COLOR('yellow', '\n### Creating Borealis virtual environment ###'))
 
-    execute_cmd("mkdir -p $BOREALISPATH/borealis_env{version}".format(version=python_version))
-    execute_cmd("chown -R {normal_user}:{normal_group} $BOREALISPATH/borealis_env{version}"
-                "".format(normal_user=user, normal_group=group, version=python_version))
-    execute_cmd("sudo -u {normal_user} python{version} -m venv $BOREALISPATH/borealis_env{version};"
-                "".format(normal_user=user, version=python_version))
+    execute_cmd(f"mkdir -p $BOREALISPATH/borealis_env{python_version}")
+    execute_cmd(f"chown -R {user}:{group} $BOREALISPATH/borealis_env{python_version}"
+    execute_cmd(f"sudo -u {user} python{python_version} -m venv $BOREALISPATH/borealis_env{python_version};"
 
-    pip_cmd = "sudo -u {normal_user} $BOREALISPATH/borealis_env{version}/bin/python3 -m pip install zmq numpy scipy " \
+    pip_cmd = f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install zmq numpy scipy " \
               "protobuf==3.19.4 posix_ipc git+https://github.com/SuperDARN/pyDARNio.git@develop " \
               "git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter cupy; " \
-              "".format(normal_user=user, version=python_version)
     execute_cmd(pip_cmd)
 
 
 def install_directories(user: str, group: str):
+    """
+    Install Borealis data and logging directories
+
+    :param  user:   User to have user ownership permissions over the directories
+    :type   user:   str
+    :param  group:  Group to have group ownership permissions over the directories
+    :type   group:  str
+    """
     print(COLOR('yellow', '\n### Creating Borealis directories ###'))
     mkdirs_cmd = "mkdir -p /data/borealis_logs;" \
                  "mkdir -p /data/borealis_data;" \
-                 "mkdir -p /home/{normal_user}/logs;" \
-                 "chown {normal_user}:{normal_group} /data/borealis_*;"
-
-    mkdirs_cmd = mkdirs_cmd.format(normal_user=user, normal_group=group)
+                 f"mkdir -p /home/{user}/logs;" \
+                 f"chown {user}:{group} /data/borealis_*;"
 
     execute_cmd(mkdirs_cmd)
 
 
 def install_hdw_dat(radar: str):
+    """
+    Install hdw git repo
+
+    :param  radar:  Radar ID of site hdw file to install
+    :type   radar:  str
+    """
     print(COLOR('yellow', '\n### Installing SuperDARN hdw repo ###'))
     execute_cmd("git clone https://github.com/SuperDARN/hdw.git /usr/local/hdw")
-    install_hdw_cmd = "cp -v /usr/local/hdw/hdw.dat.{radar_abbreviation} $BOREALISPATH" \
-                      "".format(radar_abbreviation=radar)
+    install_hdw_cmd = f"cp -v /usr/local/hdw/hdw.dat.{radar} $BOREALISPATH"
+
     execute_cmd(install_hdw_cmd)
 
 
 def install_config(user: str, group: str):
+    """
+    Install Borealis data and logging directories
+
+    :param  user:   User to have user ownership permissions
+    :type   user:   str
+    :param  group:  Group to have group ownership permissions
+    :type   group:  str
+    """
     print(COLOR('yellow', '\n### Installing Borealis config files ###'))
     install_config_cmd = "bash -c 'cd $BOREALISPATH';" \
                          "git submodule update --init;" \
-                         "chown -R {normal_user}:{normal_group} borealis_config_files;"
-    install_config_cmd = install_config_cmd.format(normal_user=user, normal_group=group)
+                         f"chown -R {user}:{group} borealis_config_files;"
+
     execute_cmd(install_config_cmd)
 
 
@@ -446,7 +484,7 @@ def main():
         sys.exit(1)
 
     if not os.path.isdir(args.install_dir):
-        print(COLOR('red', 'ERROR: ') + "Install directory does not exist: {}".format(args.install_dir))
+        print(COLOR('red', 'ERROR: ') + f"Install directory does not exist: {args.install_dir}")
         sys.exit(1)
 
     if args.borealis_dir == "":
@@ -475,9 +513,8 @@ def main():
         specify_python = True
 
     if specify_python:
-        print(COLOR('yellow', '\n### Specifying PYTHON_VERSION in /home/{user}/.profile ###'.format(user=args.user)))
-        execute_cmd('echo "export PYTHON_VERSION={version}" >> /home/{user}/.profile'
-                    ''.format(version=args.python_version, user=args.user))
+        print(COLOR('yellow', f'\n### Specifying PYTHON_VERSION in /home/{args.user}/.profile ###'))
+        execute_cmd(f'echo "export PYTHON_VERSION={args.python_version}" >> /home/{args.user}/.profile'
 
     if args.upgrade_to_v06:     # Only need to update hdw repo and make new virtualenv for Borealis.
         print(COLOR('yellow', '\n### Upgrading to Borealis v0.6 configuration ###'))
