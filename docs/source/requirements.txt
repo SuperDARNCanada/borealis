@@ -11,6 +11,8 @@ deepdish
 docutils==0.16
 posix_ipc
 latex
+inotify
+matplotlib
 #cmake
 #pycparser
 #venvgit2

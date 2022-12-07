@@ -59,20 +59,20 @@ Previous versions
 ..  toctree::
     :maxdepth: 2
 
-    rawacf-v05
-    bfiq-v05
-    antennas_iq-v05
-    rawrf-v05
+    archive/rawacf-v05
+    archive/bfiq-v05
+    archive/antennas_iq-v05
+    archive/rawrf-v05
 
 * v0.2, v0.3, and v0.4 follow the v0.4 format.
 
 ..  toctree::
     :maxdepth: 2
 
-    rawacf-v04
-    bfiq-v04
-    antennas_iq-v04
-    rawrf-v04
+    archive/rawacf-v04
+    archive/bfiq-v04
+    archive/antennas_iq-v04
+    archive/rawrf-v04
 
 ------------
 Reading Data

@@ -295,8 +295,10 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
     :param  time_of_interest:   The datetime holding the time of scheduling.
     :type   time_of_interest:   Datetime
 
-    :returns:   Tuple containing the following items: - queued_lines: Groups of entries belonging to
-        the same experiment. - warnings: List of warnings produced by the function
+    :returns:   Tuple containing the following items: 
+    
+            - queued_lines: Groups of entries belonging to the same experiment. 
+            - warnings: List of warnings produced by the function
     :rtype:     tuple(list, list)
     """
 

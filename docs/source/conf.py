@@ -31,7 +31,8 @@ sys.path.insert(0, BOREALISPATH)
 sys.path.insert(1, BOREALISPATH + '/src')
 sys.path.insert(2, BOREALISPATH + '/src/experiment_prototype')
 sys.path.insert(3, BOREALISPATH + '/src/utils')
-sys.path.insert(4, os.environ['PATH'])
+sys.path.insert(4, BOREALISPATH + '/scheduler')
+sys.path.insert(5, os.environ['PATH'])
 
 RADAR_CODE = 'sas'
 os.environ['RADAR_CODE'] = RADAR_CODE

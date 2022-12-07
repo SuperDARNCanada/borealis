@@ -1,4 +1,4 @@
-Rx Signal Processing
+RX Signal Processing
 ********************
 
 The Borealis radar receive side signal processing is mostly moved into software using the digital radar design. The RX DSP block is designed to utilize a GPU and threading in order to maximize parallelism to be able to process as much data as possible in real-time.
@@ -50,6 +50,7 @@ See also
 
 .. toctree::
    :glob:
+   :maxdepth: 1
 
    frerking.rst
    dsp_chain_in_detail.rst
