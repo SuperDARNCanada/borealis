@@ -86,7 +86,7 @@ class ScanClassBase(object):
         we will need to break down the parameters given to the Scan instance because there may be
         multiple AveragingPeriods within. For AveragingPeriod, the nested class is Sequence.
 
-        :return:    params for the nested class's instantiation.
+        :returns:   params for the nested class's instantiation.
         :rtype:     list
         """
 
@@ -133,7 +133,7 @@ class ScanClassBase(object):
                                     sequence).
         :type       all_keys:       list
 
-        :return:    list of combos that is sorted so that each key only appears once and the lists
+        :returns:   list of combos that is sorted so that each key only appears once and the lists
                     within the list are of however long necessary
         :rtype:     list
         """

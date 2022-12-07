@@ -94,7 +94,7 @@ class Scan(ScanClassBase):
         len(nested_slice_list) = # of averagingperiods in this scan, len(nested_slice_list[0]) = #
         of slices in the first averagingperiod, etc.
 
-        :return:    the nested_slice_list which is used when creating the AveragingPeriods for this
+        :returns:   the nested_slice_list which is used when creating the AveragingPeriods for this
                     scan. 
         :rtype:     list
         """
@@ -125,7 +125,7 @@ class Scan(ScanClassBase):
         Beam order and beamdir are required for instantiation of the nested class AveragingPeriod so
         we need to extract this information as well to fill self.aveperiods.
 
-        :return:    Parameters that can be directly passed into the nested ScanClassBase type,
+        :returns:   Parameters that can be directly passed into the nested ScanClassBase type,
                     AveragingPeriod. The params_list is of length = # of AveragingPeriods in this
                     scan.
         :rtype:     list of lists

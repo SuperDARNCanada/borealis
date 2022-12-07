@@ -1,3 +1,5 @@
+.. _config options:
+
 *****************
 Config Parameters
 *****************

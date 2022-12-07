@@ -11,7 +11,7 @@ def COLOR(color, msg):
     :param      msg:    The message to wrap
     :type       msg:    str
 
-    :return:    New colored text
+    :returns:   New colored text
     :rtype:     str
     """
     if color == "black":
@@ -42,7 +42,7 @@ def MODULE_PRINT(module_name, color):
     :param      color:          The color to wrap the module name with.
     :type       color:          str
 
-    :return:    New print function to use.
+    :returns:   New print function to use.
     :rtype:     function
     """
     module_name_upper = module_name.upper()

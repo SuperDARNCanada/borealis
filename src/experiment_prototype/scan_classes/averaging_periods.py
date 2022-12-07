@@ -127,7 +127,7 @@ class AveragingPeriod(ScanClassBase):
         ie. len(nested_slice_list) = # of sequences in this averagingperiod,
         len(nested_slice_list[0]) = # of slices in the first sequence, etc.
 
-        :return:    the nested_slice_list which is used when creating the sequences in this
+        :returns:   the nested_slice_list which is used when creating the sequences in this
                     averagingperiod.
         :rtype:     list
         """
@@ -157,7 +157,7 @@ class AveragingPeriod(ScanClassBase):
                                 period into the scan
         :type       beamiter:   int
         
-        :return:    dictionary of slice to beamdir where beamdir is always a list (may be of length
+        :returns:   dictionary of slice to beamdir where beamdir is always a list (may be of length
                     one though). Beamdir is azimuth angle.
         :rtype:     dict
         """

@@ -407,12 +407,12 @@ def install_borealis_env(python_version: str, user: str, group: str):
     print(COLOR('yellow', '\n### Creating Borealis virtual environment ###'))
 
     execute_cmd(f"mkdir -p $BOREALISPATH/borealis_env{python_version}")
-    execute_cmd(f"chown -R {user}:{group} $BOREALISPATH/borealis_env{python_version}"
-    execute_cmd(f"sudo -u {user} python{python_version} -m venv $BOREALISPATH/borealis_env{python_version};"
+    execute_cmd(f"chown -R {user}:{group} $BOREALISPATH/borealis_env{python_version}")
+    execute_cmd(f"sudo -u {user} python{python_version} -m venv $BOREALISPATH/borealis_env{python_version};")
 
     pip_cmd = f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install zmq numpy scipy " \
               "protobuf==3.19.4 posix_ipc git+https://github.com/SuperDARN/pyDARNio.git@develop " \
-              "git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter cupy; " \
+              "git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter cupy; " 
     execute_cmd(pip_cmd)
 
 
@@ -514,7 +514,7 @@ def main():
 
     if specify_python:
         print(COLOR('yellow', f'\n### Specifying PYTHON_VERSION in /home/{args.user}/.profile ###'))
-        execute_cmd(f'echo "export PYTHON_VERSION={args.python_version}" >> /home/{args.user}/.profile'
+        execute_cmd(f'echo "export PYTHON_VERSION={args.python_version}" >> /home/{args.user}/.profile')
 
     if args.upgrade_to_v06:     # Only need to update hdw repo and make new virtualenv for Borealis.
         print(COLOR('yellow', '\n### Upgrading to Borealis v0.6 configuration ###'))

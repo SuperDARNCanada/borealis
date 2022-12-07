@@ -396,10 +396,10 @@ class Sequence(ScanClassBase):
         :param      sequence_num:  The sequence number in the ave period
         :type       sequence_num:  int
 
-        :return:    Transmit data for each pulse where each pulse is a dict, including timing and
+        :returns:   Transmit data for each pulse where each pulse is a dict, including timing and
                     samples
         :rtype:     list
-        :return:    The transmit sequence and related data to use for debug.
+        :returns:   The transmit sequence and related data to use for debug.
         :rtype:     dict
         """
         main_antenna_count = self.transmit_metadata['main_antenna_count']

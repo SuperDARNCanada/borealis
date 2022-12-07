@@ -150,7 +150,7 @@ class DataWriteOptions(object):
         """
         Gets the 3 letter radar code of this radar.
 
-        :return:    3 letter radar code
+        :returns:   3 letter radar code
         :rtype:     str
         """
         return self._site_id
@@ -160,7 +160,7 @@ class DataWriteOptions(object):
         """
         Gets the maximum usrp dac amplitude, which is a value usually between -1 and 1
 
-        :return:    maximum dac amplitude of USRP units
+        :returns:   maximum dac amplitude of USRP units
         :rtype:     float
         """
         return self._max_usrp_dac_amplitude
@@ -170,7 +170,7 @@ class DataWriteOptions(object):
         """
         Gets the ramp-up and ramp-down time of the RF pulses in seconds
 
-        :return:    ramp-up/ramp-down time of the RF pulse in seconds.
+        :returns:   ramp-up/ramp-down time of the RF pulse in seconds.
         :rtype:     float
         """
         return self._pulse_ramp_time
@@ -180,7 +180,7 @@ class DataWriteOptions(object):
         """
         Gets the time before and after the RF pulse that the TR signal is active for in seconds.
 
-        :return:    time before and after the RF pulse that TR signal is active for in seconds
+        :returns:   time before and after the RF pulse that TR signal is active for in seconds
         :rtype:     float
         """
         return self._tr_window_time
@@ -190,7 +190,7 @@ class DataWriteOptions(object):
         """
         Gets the socket address of the router that routes interprocess messages.
 
-        :return:    socket address of the router that routes interprocess messages.
+        :returns:   socket address of the router that routes interprocess messages.
         :rtype:     str
         """
         return self._router_address
@@ -200,7 +200,7 @@ class DataWriteOptions(object):
         """
         Gets the number of main array antennas.
 
-        :return:    number of main antennas.
+        :returns:   number of main antennas.
         :rtype:     int
         """
 
@@ -211,7 +211,7 @@ class DataWriteOptions(object):
         """
         Gets the number of interferometer array antennas.
 
-        :return:    number of interferometer antennas.
+        :returns:   number of interferometer antennas.
         :rtype:     int
         """
 
@@ -222,7 +222,7 @@ class DataWriteOptions(object):
         """
         Gets the index of antennas in the main array corresponding to the transceiver channels.
 
-        :return:    indices of transceiver channels mapped to antennas in main array.
+        :returns:   indices of transceiver channels mapped to antennas in main array.
         :rtype:     list[int]
         """
 
@@ -233,7 +233,7 @@ class DataWriteOptions(object):
         """
         Gets the index of antennas in the interferometer array corresponding to the receiver channels.
 
-        :return:    indices of receiver channels mapped to antennas in interferometer array.
+        :returns:   indices of receiver channels mapped to antennas in interferometer array.
         :rtype:     list[int]
         """
 

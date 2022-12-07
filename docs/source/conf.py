@@ -84,6 +84,7 @@ extensions = [
     'sphinx.ext.imgmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    # 'sphinx.ext.autosectionlabel',
     'sphinxcontrib.programoutput',
     'sphinxcontrib.autoprogram',
     'breathe',

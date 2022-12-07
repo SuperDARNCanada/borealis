@@ -72,7 +72,7 @@ class SignalProcessingOptions(object):
         """
         Gets the socket address of the router that routes interprocess messages.
 
-        :return:    socket address of the router that routes interprocess messages.
+        :returns:   socket address of the router that routes interprocess messages.
         :rtype:     str
         """
         return self._router_address
