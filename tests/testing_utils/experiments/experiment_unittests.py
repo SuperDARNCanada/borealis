@@ -34,13 +34,13 @@ sys.path.append(BOREALISPATH)
 
 # Need to hardcode this, as unittest does weird things when you supply an argument on command line,
 # or if you use argparse. There is probably a better way
-input_test_file = BOREALISPATH + "/tools/testing_utils/experiments/experiment_tests.csv"
+input_test_file = BOREALISPATH + "/tests/testing_utils/experiments/experiment_tests.csv"
 
 # Call experiment handler main function like so: eh.main(['normalscan', 'discretionary'])
-from borealis import experiment_handler as eh
-from borealis.experiment_prototype.experiment_exception import ExperimentException
-import experiments.superdarn_common_fields as scf
-from borealis.experiment_prototype.experiment_prototype import ExperimentPrototype
+from src import experiment_handler as eh
+from src.experiment_prototype.experiment_exception import ExperimentException
+import src.borealis_experiments.superdarn_common_fields as scf
+from src.experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
 def ehmain(experiment='normalscan', scheduling_mode='discretionary'):
@@ -102,8 +102,8 @@ class TestExperimentEnvSetup(unittest.TestCase):
         """
         site_name = scf.opts.site_id
         # Rename the hdw.dat file temporarily
-        os.rename(BOREALISPATH + '/hdw.dat.{}'.format(site_name),
-                  BOREALISPATH + '/_hdw.dat.{}'.format(site_name))
+        os.rename(BOREALISPATH + f'/hdw.dat.{site_name}',
+                  BOREALISPATH + f'/_hdw.dat.{site_name}')
 
         with self.assertRaisesRegex(ExperimentException, "Cannot open hdw.dat.[a-z]{3} file at"):
              ehmain()
@@ -112,8 +112,8 @@ class TestExperimentEnvSetup(unittest.TestCase):
 
         # Now rename the hdw.dat file and move on
 
-        os.rename(BOREALISPATH + '/_hdw.dat.{}'.format(site_name),
-                  BOREALISPATH + '/hdw.dat.{}'.format(site_name))
+        os.rename(BOREALISPATH + f'/_hdw.dat.{site_name}',
+                  BOREALISPATH + f'/hdw.dat.{site_name}')
 
     def test_all_experiments(self):
         """
@@ -129,7 +129,7 @@ class TestExperimentEnvSetup(unittest.TestCase):
                 # If the attribute is the class, and it's a subclass of ExperimentPrototype,
                 # and it's not ExperimentPrototype, then run it
                 if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
-                    print("{}: {}".format(attribute, name))
+                    print(f"{attribute}: {name}")
                     if 'ExperimentPrototype' in str(attribute):
                         break
                     attribute()
