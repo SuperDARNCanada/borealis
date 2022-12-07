@@ -1,13 +1,13 @@
-experiment_prototype package
-============================
+Experiment Prototype
+====================
 
 The experiment_prototype package contains the building blocks of experiments, which includes the
 ExperimentPrototype base class, the scan_classes subpackage including the ScanClassBase classes,
 and the ExperimentException. There is also a list_tests module which is used by the
 ExperimentPrototype class.
 
-Submodules
-----------
+Experiment Prototype Package
+----------------------------
 
 .. automodule:: src.experiment_prototype.experiment_prototype
     :members:
@@ -24,13 +24,41 @@ Submodules
     :undoc-members:
     :show-inheritance:
 
-Subpackages
------------
+Scan Class Package
+------------------
 
-.. toctree::
+.. automodule:: src.experiment_prototype.scan_classes.scan_class_base
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
-    experiment_prototype.scan_classes
+.. automodule:: src.experiment_prototype.scan_classes.scans
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
+.. automodule:: src.experiment_prototype.scan_classes.averaging_periods
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
+.. automodule:: src.experiment_prototype.scan_classes.sequences
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
+Decimation Scheme
+-----------------
 
+.. automodule:: src.experiment_prototype.decimation_scheme.decimation_scheme
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Sample Building
+---------------
+
+.. automodule:: src.experiment_prototype.sample_building.sample_building
+    :members:
+    :undoc-members:
+    :show-inheritance:

@@ -1,5 +1,5 @@
-experiment_handler package
-==========================
+Experiment Handler
+==================
 
 The experiment_handler package contains a single module, experiment_handler, that is a
 standalone program.

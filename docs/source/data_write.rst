@@ -9,4 +9,3 @@ bfiq data, rawacf data, etc and write that data to HDF5 or JSON files.
     :members:
     :undoc-members:
     :show-inheritance:
-

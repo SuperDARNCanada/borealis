@@ -10,7 +10,7 @@ All of the runtime processes listed below are necessary for operation of the sys
 Runtime Processes
 =================
 ..  toctree::
-    :maxdepth: 4
+    :maxdepth: 1
 
     experiment_handler
     radar_control
@@ -25,7 +25,7 @@ Experiment Components
 =====================
 
 ..  toctree::
-    :maxdepth: 4
+    :maxdepth: 1
 
     experiment_prototype
     experiments
@@ -35,7 +35,7 @@ Utils
 =====
 
 ..  toctree::
-    :maxdepth: 4
+    :maxdepth: 1
 
     radar_status
     sample_building

@@ -23,8 +23,8 @@ correct order, and if not it is a helpful tool in debugging.
 
    Block diagram of ZMQ connections
 
-Brian is also responsible for rate controlling the system. Since all the traffic routes through this module,
-it is an ideal place to make sure that the pipeline isn't being overwhelmed by any modules.
+Brian is also responsible for rate controlling the system. Since all the traffic routes through this
+module, it is an ideal place to make sure that the pipeline isn't being overwhelmed by any modules.
 This step is very important to make sure that the GPU processing isn't being overloaded with work or
 that too many new requests enter the USRP driver.
 

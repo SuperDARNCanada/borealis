@@ -1,5 +1,5 @@
-utils package
-=============
+Borealis Utils
+==============
 
 
 .. automodule:: src.utils.options.data_write_options

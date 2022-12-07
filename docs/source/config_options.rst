@@ -225,67 +225,81 @@ Example configurations
 **********************
 There are several instances when you'll need to modify this file for correct operation.
 
-#. One of your main array antennas is not working properly (broken coax, blown lightning arrestor, etc)
+#. One of your main array antennas is not working properly (broken coax, blown lightning arrestor,
+   etc)
 
     The rx and tx flags for the associated N200 should be set to false. This will disable the
     receive and transmit channels, and stop the N200s from collecting samples from that antenna.
-    Note: If the N200 is also connected to an interferometer antenna, the interferometer antenna will
-    also have to be disconnected by setting rx_int to false, or moving it to a different N200.
+    Note: If the N200 is also connected to an interferometer antenna, the interferometer antenna
+    will also have to be disconnected by setting rx_int to false, or moving it to a different N200.
 
-#. One of your interferometer array antennas is not working properly (broken coax, blown lightning arrestor, etc)
+#. One of your interferometer array antennas is not working properly (broken coax, blown lightning
+   arrestor, etc)
 
-    The rx_int flag for the associated N200 should be set to false. This will disable the interferometer
-    receive channel for that antenna, and stop the N200s from collecting samples from that antenna.
+    The rx_int flag for the associated N200 should be set to false. This will disable the
+    interferometer receive channel for that antenna, and stop the N200s from collecting samples from
+    that antenna.
 
-#. One of your transmitter's transmit paths is not working, but the receive path is still working properly
+#. One of your transmitter's transmit paths is not working, but the receive path is still working
+   properly
 
-    The tx flag for the associated N200 should be set to false. This will disable the transmission channel
-    on the bad transmit path. **Note: This configuration does not work with the current iteration of Borealis**
+    The tx flag for the associated N200 should be set to false. This will disable the transmission
+    channel on the bad transmit path. **Note: This configuration does not work with the current
+    iteration of Borealis**
 
-#. One of your transmitter's receive paths is not working, but the transmit path is still working properly
+#. One of your transmitter's receive paths is not working, but the transmit path is still working
+   properly
 
-    The rx flag for the associated N200 should be set to false. This will disable the receive channel
-    on the bad receive path. **Note: This configuration does not work with the current iteration of Borealis**
+    The rx flag for the associated N200 should be set to false. This will disable the receive
+    channel on the bad receive path. **Note: This configuration does not work with the current
+    iteration of Borealis**
 
 #. One of your transmitters is not working at all
 
-    The rx and tx flags for the N200 connected to the non-working transmitter should both be set to false.
-    This will disable the transmit and receive channels for that transmitter.
+    The rx and tx flags for the N200 connected to the non-working transmitter should both be set to
+    false. This will disable the transmit and receive channels for that transmitter.
 
 #. One of your N200s is not working properly and you've inserted the spare N200
 
-    Add an entry for the replacement N200, and copy rx, tx, rx_int, main_antenna, and interferometer_antenna from the
-    broken N200. Set all the flags for the broken N200 to false, and set main_antenna and interferometer_antenna to
-    empty strings to deactivate the N200. The entry for the broken N200 can be left in the config file for future use,
-    as the code will ignore the broken N200 and replace it with the new one.
+    Add an entry for the replacement N200, and copy rx, tx, rx_int, main_antenna, and
+    interferometer_antenna from the broken N200. Set all the flags for the broken N200 to false, and
+    set main_antenna and interferometer_antenna to empty strings to deactivate the N200. The entry
+    for the broken N200 can be left in the config file for future use, as the code will ignore the
+    broken N200 and replace it with the new one.
 
-#. One of your N200s is not working properly but you're located remotely and cannot insert the spare N200
+#. One of your N200s is not working properly but you're located remotely and cannot insert the spare
+   N200
 
-    This particular N200 will have to be deactivated. To do this, set all flags to false (tx, rx, and rx_int).
+    This particular N200 will have to be deactivated. To do this, set all flags to false (tx, rx,
+    and rx_int).
 
 #. You have a non-standard array
 
-    One example of a non-standard array would be a different number of interferometer antennas than four. To implement
-    this, modify the individual N200 entries to specify which N200s are connected to interferometer antennas. Additionally,
-    set the main and interferometer antenna count parameters to the number of physical antennas in the array.
+    One example of a non-standard array would be a different number of interferometer antennas than
+    four. To implement this, modify the individual N200 entries to specify which N200s are connected
+    to interferometer antennas. Additionally, set the main and interferometer antenna count
+    parameters to the number of physical antennas in the array.
 
 #. You want to change the location of ATR signals on the daughterboards
 
-    This can be done by changing the values of the following config parameters:
-    atr_rx, atr_tx, atr_xx, atr_0x, tst_md, lo_pwr, agc_st.
-    The value `atr_rx = 0x0006` means that the ATR_RX signal will appear on the pins 1 and 2 (referenced from 0). I.e.
-    every bit that is a '1' in this hex value indicates which pin the signal will appear on.
+    This can be done by changing the values of the following config parameters: atr_rx, atr_tx,
+    atr_xx, atr_0x, tst_md, lo_pwr, agc_st. The value ``atr_rx = 0x0006`` means that the ATR_RX
+    signal will appear on the pins 1 and 2 (referenced from 0). I.e. every bit that is a '1' in this
+    hex value indicates which pin the signal will appear on.
 
 #. You want to change the polarity of the ATR signals on the daughterboards
 
-    This can be done by swapping the values of the two config parameters: `gpio_bank_high` and `gpio_bank_low`.
-    The default is for active-high signals to be on the LFRX daughterboard. This is done by setting `gpio_bank_high` to `RXA`.
-    The same signals, but active-low, are by default located on the LFTX daughterboard.
+    This can be done by swapping the values of the two config parameters: ``gpio_bank_high`` and
+    ``gpio_bank_low``. The default is for active-high signals to be on the LFRX daughterboard. This
+    is done by setting ``gpio_bank_high`` to ``RXA``. The same signals, but active-low, are by
+    default located on the LFTX daughterboard.
 
 #. You would like to make a test-system with only one N200 and don't have any Octoclocks
 
     This can be done by changing the following parameters:
 
-    #. `n200s` - Set tx, rx, and rx_int flags to true for only one N200, all other N200s should have their flags set to false.
+    #. ``n200s`` - Set tx, rx, and rx_int flags to true for only one N200, all other N200s should
+       have their flags set to false.
 
-    #. `pps` and `ref` - These should both be set to `internal`, as you don't have an Octoclock to provide a reference PPS or 10MHz reference signal.
+    #. ``pps`` and ``ref`` - These should both be set to ``internal``, as you don't have an
+       Octoclock to provide a reference PPS or 10MHz reference signal.

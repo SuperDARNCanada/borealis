@@ -491,7 +491,7 @@ run on by doing the following:
 #. Run the following, which will run the extensive set of tests in the ``experiment_unittests.py``
    file and tell you how many passed, how many failed and how many tests had errors: ::
    
-   python3 BOREALISPATH/tests/testing_utils/experiments/experiment_unittests.py
+        python3 BOREALISPATH/tests/testing_utils/experiments/experiment_unittests.py
 
 
 ..  toctree::
