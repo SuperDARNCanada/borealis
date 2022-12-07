@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
-# Copyright 2019 SuperDARN Canada
-#
-# email_utils.py
-# 2019-04-18
-# Utilites for sending emails via scripts.
-#
+"""
+    email_utils.py
+    ~~~~~~~~~~~~~~
+    Utilites for sending emails via scripts.
+
+    :copyright: 2019 SuperDARN Canada
+"""
+
 import email
 import smtplib
 import email.mime.text
@@ -13,19 +15,24 @@ import email.mime.multipart
 import email.mime.base
 
 class Emailer(object):
-    """Utilities used to send logs during scheduling.
+    """
+    Utilities used to send logs during scheduling.
 
-    Attributes:
-        emails (list): list of emails to send to.
-        sender (str): Name of the sender.
-        smtp (smtplib.SMTP): SMTP client to send emails from. Going through localhost instead of some known
-        email client.
+    :param  emails: list of emails to send to.
+    :type   emails: list
+    :param  sender: Name of the sender
+    :type   sender: str
+    :param  smtp:   SMTP client to send emails from. Going through localhost instead of some known
+                    email client.
+    :type   smtp:   smtplib.SMTP
+
     """
     def __init__(self, file_of_emails):
-        """Inits the Emailer object.
+        """
+        Initializes the Emailer object.
 
-        Args:
-            file_of_emails (str): a file containing a list of emails.
+        :param  file_of_emails: a file containing a list of emails.
+        :type   file_of_emails: str
         """
         super(Emailer, self).__init__()
 
@@ -38,12 +45,15 @@ class Emailer(object):
 
 
     def email_log(self, subject, log_file, attachments=[]):
-        """Send a log to the emails.
+        """
+        Send a log to the emails.
 
-        Args:
-            subject (str): Subject line for the log email.
-            log_file (str): File name of the log.
-            attachments(list) : List of paths to email attachments.
+        :param  subject: Subject line for the log email.
+        :type   subject: str
+        :param  log_file: File name of the log.
+        :type   log_file: str
+        :param  attachments: List of paths to email attachments. (Default value = [])
+        :type   attachments: list
         """
         try:
             with open(log_file, 'r') as f:

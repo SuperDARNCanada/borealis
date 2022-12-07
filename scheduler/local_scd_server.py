@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
-# Copyright 2022 SuperDARN Canada
-#
-# local_scd_server.py
-# 2019-04-18
-# Monitors for new SWG files and adds the SWG info to the scd if there is an update.
-#
+"""
+    local_scd_server.py
+    ~~~~~~~~~~~~~~~~~~~
+    Monitors for new SWG files and adds the SWG info to the scd if there is an update.
+
+    :copyright: 2022 SuperDARN Canada
+"""
+
 import subprocess as sp
 import scd_utils
 import email_utils
@@ -19,109 +21,103 @@ SWG_GIT_REPO = "https://github.com/SuperDARN/schedules.git"
 
 EXPERIMENTS = {
     "sas": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound"
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
     },
     "pgr": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound"
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
     },
     "rkn": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound"
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
     },
     "inv": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound"
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
     },
     "cly": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound"
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
     }
 }
 
 
 class SWG(object):
-    """Holds the data needed for processing a SWG file.
-
-    Attributes:
-        scd_dir (str): Path to the SCD files dir.
-    """
+    """Holds the data needed for processing a SWG file."""
 
     def __init__(self, scd_dir):
         super(SWG, self).__init__()
         self.scd_dir = scd_dir
 
         try:
-            cmd = "git -C {}/{} rev-parse".format(self.scd_dir, SWG_GIT_REPO_DIR)
+            cmd = f"git -C {self.scd_dir}/{SWG_GIT_REPO_DIR} rev-parse"
             sp.check_output(cmd, shell=True)
         except sp.CalledProcessError as e:
-            cmd = 'cd {}; git clone {}'.format(self.scd_dir, SWG_GIT_REPO)
+            cmd = f'cd {self.scd_dir}; git clone {SWG_GIT_REPO}'
             sp.call(cmd, shell=True)
 
     def new_swg_file_available(self):
-        """Checks if a new swg file is uploaded via git.
+        """
+        Checks if a new swg file is uploaded via git.
 
-        Returns:
-            TYPE: True, if new git update is available.
+        :returns:   True, if new git update is available.
+        :rtype:     bool
         """
 
         # This command will return the number of new commits available in main. This signals that
         # there are new SWG files available.
 
-        cmd = "cd {}/{}; git fetch; git log ..origin/main --oneline | wc -l".format(self.scd_dir,
-                                                                        SWG_GIT_REPO_DIR)
+        cmd = f"cd {self.scd_dir}/{SWG_GIT_REPO_DIR}; git fetch; git log ..origin/main --oneline | wc -l"
         shell_output = sp.check_output(cmd, shell=True)
 
         return bool(int(shell_output))
 
     def pull_new_swg_file(self):
-        """Uses git to grab the new scd updates.
-
-        """
-        cmd = "cd {}/{}; git pull origin main".format(self.scd_dir, SWG_GIT_REPO_DIR)
+        """Uses git to grab the new scd updates."""
+        cmd = f"cd {self.scd_dir}/{SWG_GIT_REPO_DIR}; git pull origin main"
         sp.call(cmd, shell=True)
 
     def get_next_month(self):
         """Finds the datetime of the next month.
 
-        Returns:
-            TYPE: datetime object.
+        :returns:   datetime of next month
+        :rtype:     Datetime
         """
         today = datetime.datetime.utcnow()
 
@@ -135,16 +131,19 @@ class SWG(object):
 
     def parse_swg_to_scd(self, modes, radar, first_run):
 
-        """Reads the new SWG file and parses into a set of parameters than can be used for borealis
+        """
+        Reads the new SWG file and parses into a set of parameters than can be used for borealis
         scheduling.
 
-        Args:
-            modes (Dict): Holds the modes that correspond to the SWG requests.
-            radar (String): Radar acronym.
-            first_run (bool): Is this the first run? If so - start with current month
+        :param  modes:      Holds the modes that correspond to the SWG requests.
+        :type   modes:      dict
+        :param  radar:      Radar acronym.
+        :type   radar:      str
+        :param  first_run:  Is this the first run? If so - start with current month
+        :type   first_run:  bool
 
-        Returns:
-            TYPE: List of all the parsed parameters.
+        :returns:   List of all the parsed parameters.
+        :rtype:     list
         """
 
         if first_run:
@@ -155,10 +154,7 @@ class SWG(object):
         year = month_to_use.strftime("%Y")
         month = month_to_use.strftime("%m")
 
-        swg_file = "{scd_dir}/{swg_dir}/{yyyy}/{yyyymm}.swg".format(scd_dir=self.scd_dir,
-                                                                    swg_dir=SWG_GIT_REPO_DIR,
-                                                                    yyyy=year,
-                                                                    yyyymm=year + month)
+        swg_file = f"{self.scd_dir}/{SWG_GIT_REPO_DIR}/{year}/{year + month}.swg"
 
         with open(swg_file, 'r') as f:
             swg_lines = f.readlines()
@@ -222,8 +218,8 @@ class SWG(object):
                 mode_type = "discretionary"
                 mode_to_use = modes["discretionary_time"]
 
-            param = {"yyyymmdd": "{}{}{}".format(year, month, start_day),
-                     "hhmm": "{}:00".format(start_hr),
+            param = {"yyyymmdd": f"{year}{month}{start_day}",
+                     "hhmm": f"{start_hr}:00",
                      "experiment": mode_to_use,
                      "scheduling_mode": mode_type}
             parsed_params.append(param)
@@ -232,19 +228,17 @@ class SWG(object):
 
 
 def main():
+    """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
     parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
     parser.add_argument('--force', action="store_true", help='Force an update to the schedules '
                                                              'for the next month')
-    parser.add_argument('--first-run', action="store_true", help='This will generate the first set'
-                                                                 ' of schedule files if running on'
-                                                                 ' a fresh directory. If the next'
-                                                                 ' month schedule is available,'
-                                                                 ' you will need to roll back the'
-                                                                 ' SWG schedule folder back to the'
-                                                                 ' last commit before running in'
-                                                                 ' continuous operation.')
+    parser.add_argument('--first-run', action="store_true", 
+                        help='This will generate the first set of schedule files if running on'
+                             ' a fresh directory. If the next month schedule is available,'
+                             ' you will need to roll back the SWG schedule folder back to the'
+                             ' last commit before running in continuous operation.')
 
     args = parser.parse_args()
 
@@ -260,7 +254,7 @@ def main():
         os.makedirs(scd_logs)
 
     sites = list(EXPERIMENTS.keys())
-    site_scds = [scd_utils.SCDUtils("{}/{}.scd".format(scd_dir, s)) for s in sites]
+    site_scds = [scd_utils.SCDUtils(f"{scd_dir}/{s}.scd") for s in sites]
     swg = SWG(scd_dir)
 
     force_next_month = args.force
@@ -279,9 +273,7 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        print("add_line date: {}, with experiment: {}, mode: {}".format(ex['yyyymmdd'],
-                                                                                        ex['experiment'],
-                                                                                        ex['scheduling_mode']))
+                        print(f"add_line date: {ex['yyyymmdd']}, with experiment: {ex['experiment']}, mode: {ex['scheduling_mode']}")
                         site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
                     except ValueError as e:
                         error_msg = ("{logtime} {sitescd}: Unable to add line with parameters:\n"
@@ -302,7 +294,7 @@ def main():
                         errors = True
                         break
                     except FileNotFoundError as e:
-                        error_msg = "SCD filename: {} is missing!!!\n".format(site_scd.scd_filename)
+                        error_msg = f"SCD filename: {site_scd.scd_filename} is missing!!!\n"
 
                         with open(scd_logs + scd_error_log, 'a') as f:
                             f.write(error_msg)
@@ -321,9 +313,9 @@ def main():
 
                     text_lines = [site_scd.fmt_line(x) for x in new_lines]
 
-                    success_msg += "\t{}\n".format(site)
+                    success_msg += f"\t{site}\n"
                     for line in text_lines:
-                        success_msg += "\t\t{}\n".format(line)
+                        success_msg += f"\t\t{line}\n"
 
                 with open(scd_logs + scd_error_log, 'a') as f:
                     f.write(success_msg)
