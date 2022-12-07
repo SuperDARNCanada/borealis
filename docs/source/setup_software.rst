@@ -157,38 +157,38 @@ name: radar) that will run Borealis
    as a time server, and PPS (via the ``127.127.22.0`` lines). It also sets up logging daily for all
    stats types.
 
-    .. code-block::
+.. code-block:: text
 
-        driftfile /var/log/ntp/ntp.drift
+    driftfile /var/log/ntp/ntp.drift
 
-        statsdir /var/log/ntp/ntpstats/
-        logfile /var/log/ntp/ntp_log
-        logconfig =all
-        statistics loopstats peerstats clockstats cryptostats protostats rawstats sysstats
-        filegen loopstats file loopstats type day enable
-        filegen peerstats file peerstats type day enable
-        filegen clockstats file clockstats type day enable
-        filegen cryptostats file cryptostats type day enable
-        filegen protostats file protostats type day enable
-        filegen rawstats file rawstats type day enable
-        filegen sysstats file sysstats type day enable
+    statsdir /var/log/ntp/ntpstats/
+    logfile /var/log/ntp/ntp_log
+    logconfig =all
+    statistics loopstats peerstats clockstats cryptostats protostats rawstats sysstats
+    filegen loopstats file loopstats type day enable
+    filegen peerstats file peerstats type day enable
+    filegen clockstats file clockstats type day enable
+    filegen cryptostats file cryptostats type day enable
+    filegen protostats file protostats type day enable
+    filegen rawstats file rawstats type day enable
+    filegen sysstats file sysstats type day enable
 
-        restrict -4 default kod notrap nomodify nopeer noquery limited
-        restrict -6 default kod notrap nomodify nopeer noquery limited
+    restrict -4 default kod notrap nomodify nopeer noquery limited
+    restrict -6 default kod notrap nomodify nopeer noquery limited
 
-        restrict 127.0.0.1
-        restrict ::1
+    restrict 127.0.0.1
+    restrict ::1
 
-        restrict source notrap nomodify noquery
+    restrict source notrap nomodify noquery
 
-        server tick.usask.ca prefer
-        server 127.127.22.0 minpoll 4 maxpoll 4
-        fudge 127.127.22.0 time1 0.2 flag2 1 flag3 0 flag4 1
+    server tick.usask.ca prefer
+    server 127.127.22.0 minpoll 4 maxpoll 4
+    fudge 127.127.22.0 time1 0.2 flag2 1 flag3 0 flag4 1
 
-        keys /etc/ntp.keys
-        trustedkey 1
-        requestkey 1
-        controlkey 1
+    keys /etc/ntp.keys
+    trustedkey 1
+    requestkey 1
+    controlkey 1
 
 #. Edit ``/etc/security/limits.conf`` (as root) to add the following line that allows UHD to set
    thread priority. UHD automatically tries to boost its thread scheduling priority, so it will fail
@@ -219,12 +219,12 @@ name: radar) that will run Borealis
    motherboard chipset and are not accessible on this x299 PRO from MSI. The next two ttyS4 and S5
    are located on the XR17V35X chip which is located on the rosewill card:
 
-    .. code-block::
+.. code-block:: text
 
-        [ 1.624103] serial8250: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A
-        [ 1.644875] serial8250: ttyS1 at I/O 0x2f8 (irq = 3, base_baud = 115200) is a 16550A
-        [ 1.645850] 0000:b4:00.0: ttyS4 at MMIO 0xfbd00000 (irq = 37, base_baud = 7812500) is a XR17V35X
-        [ 1.645964] 0000:b4:00.0: ttyS5 at MMIO 0xfbd00400 (irq = 37, base_baud = 7812500) is a XR17V35X
+    [ 1.624103] serial8250: ttyS0 at I/O 0x3f8 (irq = 4, base_baud = 115200) is a 16550A
+    [ 1.644875] serial8250: ttyS1 at I/O 0x2f8 (irq = 3, base_baud = 115200) is a 16550A
+    [ 1.645850] 0000:b4:00.0: ttyS4 at MMIO 0xfbd00000 (irq = 37, base_baud = 7812500) is a XR17V35X
+    [ 1.645964] 0000:b4:00.0: ttyS5 at MMIO 0xfbd00400 (irq = 37, base_baud = 7812500) is a XR17V35X
 
 #. Try attaching the ttySx line to a PPS line discipline using ldattach: ::
 
@@ -235,31 +235,31 @@ name: radar) that will run Borealis
    corresponding to an 'assert' and a 'clear' on the PPS line along with the time in seconds since
    the epoch. If it's the incorrect one, you'll only see a timeout.
 
-    .. code-block::
+.. code-block:: text
 
-        sudo ppstest /dev/pps0
-        [sudo] password for root:
-        trying PPS source "/dev/pps0"
-        found PPS source "/dev/pps0"
-        ok, found 1 source(s), now start fetching data...
-        source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755247.199734241, sequence: 249187
-        source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755248.199734605, sequence: 249188
+    sudo ppstest /dev/pps0
+    [sudo] password for root:
+    trying PPS source "/dev/pps0"
+    found PPS source "/dev/pps0"
+    ok, found 1 source(s), now start fetching data...
+    source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755247.199734241, sequence: 249187
+    source 0 - assert 1585755247.999730143, sequence: 200 - clear  1585755248.199734605, sequence: 249188
 
 #. If you're having trouble finding out which /dev/ppsx device to use, try grepping the output of
    dmesg to find out. Here's an example that shows how pps0 and 1 are connected to ptp1 and 2, pps2
    is connected to /dev/ttyS0 and pps3 is connected to /dev/ttyS5.:
 
-   .. code-block::
+.. code-block:: text
 
-        [ 0.573439] pps_core: LinuxPPS API ver. 1 registered
-        [ 0.573439] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
-        [ 8.792473] pps pps0: new PPS source ptp1
-        [ 9.040732] pps pps1: new PPS source ptp2
-        [ 10.044514] pps_ldisc: PPS line discipline registered
-        [ 10.045957] pps pps2: new PPS source serial0
-        [ 10.045960] pps pps2: source "/dev/ttyS0" added
-        [ 227.629896] pps pps3: new PPS source serial5
-        [ 227.629899] pps pps3: source "/dev/ttyS5" added
+    [ 0.573439] pps_core: LinuxPPS API ver. 1 registered
+    [ 0.573439] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+    [ 8.792473] pps pps0: new PPS source ptp1
+    [ 9.040732] pps pps1: new PPS source ptp2
+    [ 10.044514] pps_ldisc: PPS line discipline registered
+    [ 10.045957] pps pps2: new PPS source serial0
+    [ 10.045960] pps pps2: source "/dev/ttyS0" added
+    [ 227.629896] pps pps3: new PPS source serial5
+    [ 227.629899] pps pps3: source "/dev/ttyS5" added
 
 #. Now add the GPS disciplined NTP lines to the root startup script using the tty you have your PPS
    connected to. ::
