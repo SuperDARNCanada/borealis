@@ -13,6 +13,7 @@ posix_ipc
 latex
 inotify
 matplotlib
+readthedocs-sphinx-search
 #cmake
 #pycparser
 #venvgit2
