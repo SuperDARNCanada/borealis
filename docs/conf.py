@@ -15,7 +15,6 @@
 
 import sys
 import os
-import shlex
 import json
 from subprocess import call
 import sphinx_rtd_theme
@@ -25,7 +24,7 @@ import sphinx_rtd_theme
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
-BOREALISPATH = os.path.abspath('../..')
+BOREALISPATH = os.path.abspath('..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
 sys.path.insert(1, BOREALISPATH + '/src')
@@ -48,7 +47,7 @@ if on_rtd or 1: # TODO: Fix after testing finished.
     # are re-generated each call, no table of contents file is created, and only rst files are
     # created. For more information, `breathe-apidoc --help`
 	cur_dir = os.path.abspath(os.path.dirname(__file__))
-	call(['breathe-apidoc','--force','--no-toc','--generate','file','-o', cur_dir, f'{cur_dir}/xml/'])
+	call(['breathe-apidoc','--force','--no-toc','--generate','file','-o', f'{cur_dir}/source','--',f'{cur_dir}/source/xml'])
 
     # Update the experiment subrepo so experiment files can be read into documentation
 	# TODO: Figure out how to update the subrepo instead of cloning a new temp repo
@@ -94,7 +93,7 @@ extensions = [
 
 autodoc_mock_imports = ["debug", "release"]
 
-breathe_projects = {"borealis" : "xml/"}
+breathe_projects = {"borealis" : "source/xml/"}
 breathe_default_project = "borealis"
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -108,7 +107,7 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = 'source/index'
 
 # General information about the project.
 project = 'Borealis'

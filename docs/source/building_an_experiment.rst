@@ -16,7 +16,7 @@ own, or can be just a piece of a larger experiment.
 ..  toctree::
     :glob:
 
-    /new_experiments
+    new_experiments
 
 Introduction to Borealis Slices 
 -------------------------------
@@ -497,4 +497,4 @@ run on by doing the following:
 ..  toctree::
     :glob:
 
-    code_docs/experiment_unittests.rst
+    experiment_unittests.rst

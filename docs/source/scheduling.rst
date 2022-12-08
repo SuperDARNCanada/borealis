@@ -66,4 +66,4 @@ Here are the steps to configure scheduling:
    :glob:
    :maxdepth: 1
 
-   code_docs/scheduler_code.rst
+   scheduler_code.rst
