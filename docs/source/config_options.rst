@@ -1,8 +1,12 @@
 .. _config options:
 
-*****************
+=============
+Configuration
+=============
+
+-----------------
 Config Parameters
-*****************
+-----------------
 +--------------------------------+-------------------------------+---------------------------------------+
 | Config field                   | Example entry                 | Description                           |
 +================================+===============================+=======================================+
@@ -220,9 +224,9 @@ Config Parameters
 | log_directory                  | /data/borealis_logs           | Location of output log files          |
 +--------------------------------+-------------------------------+---------------------------------------+
 
-**********************
+----------------------
 Example configurations
-**********************
+----------------------
 There are several instances when you'll need to modify this file for correct operation.
 
 #. One of your main array antennas is not working properly (broken coax, blown lightning arrestor,

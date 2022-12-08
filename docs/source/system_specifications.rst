@@ -1,9 +1,10 @@
+======================================
 SuperDARN Canada System Specifications
-**************************************
+======================================
 
-=======================
+-----------------------
 Digital Radio Equipment
-=======================
+-----------------------
 
 - **NOTE:** ALL cables are phase matched unless specified otherwise
 - 17x Ettus USRP N200 (16 and 1 spare)
@@ -25,9 +26,9 @@ Digital Radio Equipment
 - 32x coax cables for to/from main array filters and pre-amps inside transmitter
 - 1x 15V, 0.5A power supply (INTF pre-amps)
 
-================
+----------------
 Control Computer
-================
+----------------
 
 Current control computer hardware (1 January 2022):
 
@@ -82,9 +83,9 @@ Minimum requirements:
 
 **NOTE:** A BIOS flash is required to use a RTX3000+ series NVidia GPU.
 
-==========
+----------
 Networking
-==========
+----------
 
 - 3x Netgear XS708E-200NES (North American model #) 10Gb switches (parent model name is XS708Ev2)
 - 1x 5-port network switch that can handle 10Mbps and 100Mbps connection speeds (10BASE-T and 100BASE-T)
@@ -106,9 +107,9 @@ reliably.
 - Cab-Cat7-6BL
 - Cab-Cat7-6WH
 
-================
+----------------
 Rack and Cabling
-================
+----------------
 
 - 4x 8 outlet rackmount PDU
 - 2x APC AP7900B rackmount PDU

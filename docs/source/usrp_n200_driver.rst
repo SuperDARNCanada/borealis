@@ -1,5 +1,6 @@
+================
 USRP N200 Driver
-****************
+================
 
 The N200 driver is a C++ application that controls the operation of the USRP N200 transceivers. The
 driver is responsible for using Ettus' UHD software to configure a `multi-USRP device
@@ -16,9 +17,9 @@ devices to use, the GPIO bank, the timing signal masks, the clock source, the su
 and the time source. These options are configured once at runtime and then not changed during
 operation. The main function then starts the transmit, and receive worker threads.
 
-===============
+---------------
 Transmit Thread
-===============
+---------------
 
 On a driver packet indicating the start of a new sequence (SOB is true), the transmit thread will
 configure some multi-USRP parameters such as what TX channels (antennas) to use, the TX center
@@ -46,9 +47,9 @@ well, to eventually be passed to data_write. The ringbuffer initialization time 
 start time are included so that the DSP unit can properly select where the sequence samples start in
 the ringbuffer.
 
-==============
+--------------
 Receive Thread
-==============
+--------------
 
 Under heavy load, the USRP does not seem to respond well to timed receive events. We use a
 continuous receive ringbuffer system to minimize dropped samples. Instead of using a time triggered

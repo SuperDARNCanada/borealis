@@ -1,9 +1,10 @@
-*******************
+===================
 Borealis Monitoring
-*******************
+===================
 
 The monitoring system implemented for Borealis is a custom configured installation of Nagios Core, working with NRPE. Nagios monitoring behaves according to objects defined in configuration files, all of which have copies in SuperDARN Canada's Nagios repository.
 
+------
 Nagios
 ------
 Nagios core runs as a service under apache2. It is easy to install, but a little tricky to configure
@@ -26,7 +27,7 @@ The last key difference between NRPE and Nagios Core is that commands to be exec
 host are defined in that host's nrpe.cfg file. Whereas commands executed by Nagios Core are defined
 in the commands.cfg by default.
 
-
+------------
 Installation
 ------------
 Detailed instructions for installing Nagios Core on several operating systems can be found on

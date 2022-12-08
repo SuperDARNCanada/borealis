@@ -1,10 +1,10 @@
-*******************************
+===============================
 Starting and Stopping the Radar
-*******************************
+===============================
 
-===============
+---------------
 Manual Start-up
-===============
+---------------
 
 To more easily start the radar, there is a script called ``steamed_hams.sh``. The name of this
 script is a goofy reference to a scene in an episode of The Simpsons in which Principal Skinner
@@ -33,9 +33,9 @@ to track any outputs if needed.
 If starting the radar in normal operation according to the schedule, there is a helper script called
 ``start_radar.sh``.
 
-==================
+------------------
 Automated Start-up
-==================
+------------------
 
 In order to start the radar automatically, the script ``start_radar.sh`` should be added to a
 startup script of the Borealis computer. It can also be called manually by the non-root user
@@ -48,9 +48,9 @@ radar to follow the schedule, and is started via the ``start_radar.sh`` script (
 This script should be added to the control computer boot-up scripts so that it generates a new set
 of scheduled commands.
 
-==================
+------------------
 Stopping the Radar
-==================
+------------------
 
 There are several ways to stop the Borealis radar. They are ranked here from most acceptable to
 last-resort:
@@ -67,9 +67,9 @@ last-resort:
 
 #. Shut down the Borealis computer.
 
-=======
+-------
 Scripts
-=======
+-------
 
 ..  literalinclude:: ../../scripts/start_radar.sh
     :language: bash

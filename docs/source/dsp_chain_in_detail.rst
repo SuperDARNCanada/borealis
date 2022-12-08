@@ -1,11 +1,12 @@
 .. _dsp-chain-label:
 
-############################################
+============================================
 Walkthrough of the Borealis Processing Chain
-############################################
+============================================
 
+---------
 Filtering
-=========
+---------
 
 Filtering Stages
 ----------------
@@ -208,9 +209,9 @@ MHz - 10.5 MHz) = -1.5 MHz. Figure 10 shows exactly this situation.
    Figure 10: Sample Sequence of raw data from 10.5 MHz transmitted signal
 
 
-===========
+-----------
 Beamforming
-===========
+-----------
 
 Beamforming in Borealis is relatively straightforward. Figure \ref{fig:beamforming} illustrates the
 physical process, with the red antennas signifying the main array, the thick black line being the
@@ -251,9 +252,9 @@ final formula of
    Figure 11: Geometry of 1-D phased array beamforming
 
 
-===========
+-----------
 Correlating
-===========
+-----------
 
 Once beamforming has been completed, the data is correlated to analyze the time evolution of signals
 scattered from the ionosphere. For each sequence, Borealis computes either one or three

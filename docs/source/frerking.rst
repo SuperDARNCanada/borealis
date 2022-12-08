@@ -1,5 +1,6 @@
 .. _frerking-label:
 
+-------------------------------------------
 Another representation of Frerking’s method
 -------------------------------------------
 

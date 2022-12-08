@@ -1,6 +1,6 @@
-*******************
+===================
 Borealis Data Files
-*******************
+===================
 
 ---------------
 Data Generation
@@ -93,7 +93,7 @@ antennas_iq and/or bfiq data types are being generated. However, it is convenien
 keep a backlog of lower level data products such as antennas_iq for a period of time. These files
 are useful for debugging hardware issues and reproducing RAWACF files.
 
--------------
+
 File Rotation
 -------------
 

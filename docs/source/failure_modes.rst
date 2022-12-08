@@ -14,6 +14,7 @@ very rarely is a cause for concern. In our experience, once the radar is restart
 usually performs as expected, and the total downtime for random system failures is typically quite
 low.
 
+-----------------
 Hardware Problems
 -----------------
 
@@ -145,6 +146,7 @@ has failed in some way, then some possible results are:
 
 To fix this issue, ensure that all connectors are secured.
 
+-----------------
 Software Problems
 -----------------
 

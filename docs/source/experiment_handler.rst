@@ -1,3 +1,4 @@
+==================
 Experiment Handler
 ==================
 
@@ -9,6 +10,7 @@ standalone program.
     :undoc-members:
     :show-inheritance:
 
+-----
 Usage
 -----
 

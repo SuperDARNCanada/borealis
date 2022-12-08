@@ -1,13 +1,14 @@
 .. _new-experiments:
 
-#############################
+=============================
 New Experimental Capabilities
-#############################
+=============================
 
 .. _full fov imaging:
 
+---------------------------------------
 Simultaneous Full Field-of-View Imaging
-=======================================
+---------------------------------------
 
 Simultaneous Full Field-of-View (FOV) Imaging is now possible with Borealis! The current
 implementation uses phase modulation across the transmitting antennas of the main array. Two
@@ -51,8 +52,11 @@ the first dimension of the returned array matches the first dimension of ``rx_be
 slice dictionary, and that ``num_main_antennas`` matches the number of main antennas in the config
 file.
 
+.. _bistatic experiments:
+
+--------------------
 Bistatic Experiments
-====================
+--------------------
 
 Bistatic experiments are now supported in Borealis. A multi-purpose bistatic experiment is defined
 in ``bistatic_test.py``, and can be used at both transmitting and receiving radar sites. This

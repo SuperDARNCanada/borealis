@@ -1,6 +1,6 @@
-**********
+==========
 Scheduling
-**********
+==========
 
 Borealis scheduling is made of several components to help automate and reduce overhead in
 scheduling. The idea here is to have a script that runs locally at the institution which generates

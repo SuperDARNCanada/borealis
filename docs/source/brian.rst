@@ -1,6 +1,6 @@
-*****
+=====
 Brian
-*****
+=====
 
 Brian is an administrator process for Borealis. It acts as a router for all messages in the system
 and it is responsible for controlling the flow of logic. This process was originally called Brain,

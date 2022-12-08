@@ -1,6 +1,6 @@
-**********************
+======================
 Building an Experiment
-**********************
+======================
 
 Borealis has an extensive set of features and this means that experiments can be designed to be very
 simple or very complex. To help organize writing of experiments, we've designed the system so that
@@ -18,6 +18,7 @@ own, or can be just a piece of a larger experiment.
 
     /new_experiments
 
+-------------------------------
 Introduction to Borealis Slices 
 -------------------------------
 
@@ -66,7 +67,7 @@ out and received in a single beam direction.
 A time where the averaging periods are repeated, traditionally to look in different beam directions
 with each averaging period. A scan is defined by the number of beams or integration times.
 
-
+--------------------------------
 Interfacing Types Between Slices
 --------------------------------
 
@@ -120,7 +121,7 @@ interfacing are possible, arranged from highest level to lowest level:
     - the same INTT or INTN value.
     - the same BEAM_ORDER length (scan length)
 
-
+--------------------------
 Slice Interfacing Examples
 --------------------------
 
@@ -171,9 +172,9 @@ interfaced. Slices 0 and 4 are SCAN interfaced.
    :alt: An example showing all types of slice interfacing 
    :align: center
 
-
+---------------------
 Writing an Experiment
-=====================
+---------------------
 
 All experiments must be written as their own class and must be built off of the built-in
 ExperimentPrototype class.
@@ -241,7 +242,7 @@ class, and how the slices interface. As mentioned above, slices are just python 
 preset list of keys available to define your experiment. The keys that can be used in the slice
 dictionary are described below.
 
-
+----------
 Slice Keys
 ----------
 
@@ -434,7 +435,7 @@ qwavetable *defaults*
     a list of numeric values to sample from. The default is None. Not currently supported but could
     be set up (with caution) for non-SINE. **Not currently supported.**
 
-
+------------------
 Experiment Example
 ------------------
 
@@ -479,6 +480,7 @@ slice to the experiment. To see the types of interfacing that can be used, see a
 This experiment is very similar to the twofsound experiment. To see examples of common experiments,
 look at :doc:`experiments`.
 
+-----------------------------------
 Checking Your Experiment for Errors
 -----------------------------------
 

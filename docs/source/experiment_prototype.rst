@@ -1,3 +1,4 @@
+====================
 Experiment Prototype
 ====================
 
@@ -6,6 +7,7 @@ ExperimentPrototype base class, the scan_classes subpackage including the ScanCl
 and the ExperimentException. There is also a list_tests module which is used by the
 ExperimentPrototype class.
 
+----------------------------
 Experiment Prototype Package
 ----------------------------
 
@@ -24,6 +26,7 @@ Experiment Prototype Package
     :undoc-members:
     :show-inheritance:
 
+------------------
 Scan Class Package
 ------------------
 
@@ -47,6 +50,7 @@ Scan Class Package
     :undoc-members:
     :show-inheritance:
 
+-----------------
 Decimation Scheme
 -----------------
 
