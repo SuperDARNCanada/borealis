@@ -12,19 +12,19 @@ Several new experimental capabilities have been added to Borealis! Read more at 
     :maxdepth: 2
     :glob:
 
-    system_specifications
-    system_setup
-    starting_the_radar
-    scheduling
-    building_an_experiment
-    config_options
-    borealis_processes
-    borealis_data
-    monitoring
-    lab_testing
-    tools
-    failure_modes
-    glossary
+    /system_specifications
+    /system_setup
+    /starting_the_radar
+    /scheduling
+    /building_an_experiment
+    /config_options
+    /borealis_processes
+    /borealis_data
+    /monitoring
+    /lab_testing
+    /tools
+    /failure_modes
+    /glossary
 
 Indices and tables
 ==================

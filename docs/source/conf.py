@@ -15,6 +15,7 @@
 
 import sys
 import os
+import shlex
 import json
 from subprocess import call
 import sphinx_rtd_theme
@@ -24,7 +25,7 @@ import sphinx_rtd_theme
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
-BOREALISPATH = os.path.abspath('..')
+BOREALISPATH = os.path.abspath('../..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
 sys.path.insert(1, BOREALISPATH + '/src')
@@ -47,7 +48,7 @@ if on_rtd or 1: # TODO: Fix after testing finished.
     # are re-generated each call, no table of contents file is created, and only rst files are
     # created. For more information, `breathe-apidoc --help`
 	cur_dir = os.path.abspath(os.path.dirname(__file__))
-	call(['breathe-apidoc','--force','--no-toc','--generate','file','-o', f'{cur_dir}/source','--',f'{cur_dir}/source/xml'])
+	call(['breathe-apidoc','--force','--no-toc','--generate','file','-o', cur_dir, f'{cur_dir}/xml/'])
 
     # Update the experiment subrepo so experiment files can be read into documentation
 	# TODO: Figure out how to update the subrepo instead of cloning a new temp repo
@@ -93,7 +94,7 @@ extensions = [
 
 autodoc_mock_imports = ["debug", "release"]
 
-breathe_projects = {"borealis" : "source/xml/"}
+breathe_projects = {"borealis" : "xml/"}
 breathe_default_project = "borealis"
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -268,7 +269,7 @@ html_static_path = ['_static']
 
 # The name of a javascript file (relative to the configuration directory) that
 # implements a search results scorer. If empty, the default will be used.
-# html_search_scorer = 'searchtools.js'
+#html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'Borealisdoc'
@@ -283,7 +284,7 @@ latex_elements = {
 'pointsize': '10pt',
 
 # Additional stuff for the LaTeX preamble.
-'preamble': r'\renewcommand{\hyperref}[2][]{#2}',
+'preamble': '',
 
 # Latex figure (float) alignment
 'figure_align': 'htbp',
