@@ -5,8 +5,8 @@ This is where you would create your experiment that you would like to run on the
 radar. The following are a couple of examples of current SuperDARN experiments, and a
 brief discussion of the ``update()`` method which will be implemented at a later date.
 
-experiments.normalscan module
------------------------------
+normalscan
+----------
 
 Normalscan is a very common experiment for SuperDARN. It does not update itself, so
 no ``update()`` method is necessary. It only has a single slice, as there is only one
@@ -18,8 +18,8 @@ for an interface dictionary.
     :language: python
     :caption: normalsound.py
 
-experiments.twofsound module
-----------------------------
+twofsound
+---------
 
 Twofsound is a common variant of the normalscan experiment for SuperDARN. It does not
 update itself, so no ``update()`` method is necessary. It has two frequencies so will
@@ -30,3 +30,23 @@ beams), therefore the interfacing between slices 0 and 1 should be 'SCAN'.
     :linenos:
     :language: python
     :caption: twofsound.py
+
+full_fov
+--------
+
+See :ref:`Full FOV Imaging<full fov imaging>` for more information. 
+
+..  literalinclude:: ../../borealis_experiments/full_fov.py
+    :linenos:
+    :language: python
+    :caption: full_fov.py
+
+bistatic_test
+-------------
+
+See :ref:`Bistatic Experiments<bistatic experiments>` for more information. 
+
+..  literalinclude:: ../../borealis_experiments/bistatic_test.py
+    :linenos:
+    :language: python
+    :caption: bistatic_test.py
