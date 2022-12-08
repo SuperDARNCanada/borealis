@@ -107,7 +107,7 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'source/index'
+master_doc = 'index'
 
 # General information about the project.
 project = 'Borealis'
@@ -268,7 +268,7 @@ html_static_path = ['_static']
 
 # The name of a javascript file (relative to the configuration directory) that
 # implements a search results scorer. If empty, the default will be used.
-#html_search_scorer = 'scorer.js'
+# html_search_scorer = 'searchtools.js'
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'Borealisdoc'
@@ -283,7 +283,7 @@ latex_elements = {
 'pointsize': '10pt',
 
 # Additional stuff for the LaTeX preamble.
-'preamble': '',
+'preamble': r'\renewcommand{\hyperref}[2][]{#2}',
 
 # Latex figure (float) alignment
 'figure_align': 'htbp',
