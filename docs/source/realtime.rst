@@ -11,8 +11,3 @@ integrity and serve the data.
 
 This module is required to operate the radar. Without it, the system will slow as the number of
 temporary files increases.
-
-.. automodule:: src.realtime
-    :members:
-    :undoc-members:
-    :show-inheritance:

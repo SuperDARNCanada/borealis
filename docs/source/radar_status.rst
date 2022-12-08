@@ -1,5 +1,5 @@
-radar_status package
-====================
+Radar Status
+============
 
 ** Note: This module is not currently implemented **
 

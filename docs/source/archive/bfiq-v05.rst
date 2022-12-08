@@ -232,14 +232,20 @@ The file fields in the bfiq array files are:
 bfiq site files
 ---------------
 
-Site files are produced by the Borealis code package and have the data in a record by record style format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past epoch of the first sequence or sampling period recorded in the record. 
+Site files are produced by the Borealis code package and have the data in a record by record style
+format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past
+epoch of the first sequence or sampling period recorded in the record. 
 
-The naming convention of the bfiq site-structured files are:
+The naming convention of the bfiq site-structured files are: ::
 
-[YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5.site
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5.site
 
-For example: 20191105.1400.02.sas.0.bfiq.hdf5.site
-This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data for slice 0 of the experiment that ran at that time. 
+For example: ::
+
+    20191105.1400.02.sas.0.bfiq.hdf5.site 
+    
+This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
+provides data for slice 0 of the experiment that ran at that time. 
 
 These files are often bzipped after they are produced.
 
@@ -404,17 +410,23 @@ The file fields under the record name in bfiq site files are:
 Site/Array Restructuring
 ------------------------
 
-File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
+File restructuring to array files is done using an additional code package. Currently, this code is
+housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method,
+and array to site restructuring is done in the same class _array_to_site method. Both can be found
+`here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
 
 -------------------------------------
 bfiq to iqdat SDARN (DMap) Conversion
 -------------------------------------
 
-Conversion to SDARN IO (DMap iqdat) is available but can fail based on experiment complexity. The conversion also reduces the precision of the data due to conversion from complex floats to int of all samples. Similar precision is lost in timestamps. 
+Conversion to SDARN IO (DMap iqdat) is available but can fail based on experiment complexity. The
+conversion also reduces the precision of the data due to conversion from complex floats to int of
+all samples. Similar precision is lost in timestamps. 
 
-HDF5 is a much more user-friendly format and we encourage the use of this data if possible. Please reach out if you have questions on how to use the Borealis bfiq files.
+HDF5 is a much more user-friendly format and we encourage the use of this data if possible. Please
+reach out if you have questions on how to use the Borealis bfiq files.
 
 The mapping from bfiq to iqdat dmap files is completed as follows:
 

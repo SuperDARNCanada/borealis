@@ -1,8 +1,5 @@
-sample_building package
-=======================
-
-sample_building.sample_building module
---------------------------------------
+Sample Building
+===============
 
 .. automodule:: src.experiment_prototype.sample_building.sample_building
     :members:

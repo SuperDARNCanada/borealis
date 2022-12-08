@@ -1,5 +1,5 @@
-experiments package
-===================
+Experiments
+===========
 
 This is where you would create your experiment that you would like to run on the
 radar. The following are a couple of examples of current SuperDARN experiments, and a

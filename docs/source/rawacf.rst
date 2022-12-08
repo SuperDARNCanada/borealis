@@ -2,11 +2,14 @@
 rawacf v0.6
 ===========
 
-This is the most up to date version of this file format produced by Borealis version 0.6, the current version.
+This is the most up to date version of this file format produced by Borealis version 0.6, the
+current version.
 
-For data files from previous Borealis software versions, see `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`__.
+For data files from previous Borealis software versions, see `here
+<https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`__.
 
-The pyDARNio format class for this format is BorealisRawacf found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisRawacf found in the `borealis_formats
+<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
 The rawacf format is intended to hold beamformed, averaged, correlated data. 
 
@@ -16,19 +19,29 @@ Both site files and array-restructured files exist for this file type. Both are 
 rawacf array files
 ------------------
 
-Array restructured files are produced after the radar has finished writing a file and contain record data in multi-dimensional arrays so as to avoid repeated values, shorten the read time, and improve human readability. Fields that are unique to the record are written as arrays where the first dimension is equal to the number of records recorded. Other fields that are unique to the slice or experiment (and are therefore repeated for all records) are written only once. 
+Array restructured files are produced after the radar has finished writing a file and contain record
+data in multi-dimensional arrays so as to avoid repeated values, shorten the read time, and improve
+human readability. Fields that are unique to the record are written as arrays where the first
+dimension is equal to the number of records recorded. Other fields that are unique to the slice or
+experiment (and are therefore repeated for all records) are written only once. 
 
-The group names in these files are the field names themselves, greatly reducing the number of group names in the file when compared to site files and making the file much more human readable.
+The group names in these files are the field names themselves, greatly reducing the number of group
+names in the file when compared to site files and making the file much more human readable.
 
-The naming convention of the rawacf array-structured files are:
+The naming convention of the rawacf array-structured files are: ::
 
-[YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].rawacf.hdf5
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].rawacf.hdf5
 
-For example: 20191105.1400.02.sas.0.rawacf.hdf5
+For example: ::
+    
+    20191105.1400.02.sas.0.rawacf.hdf5
 
-This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data for slice 0 of the experiment that ran at that time. It has been array restructured because it does not have a .site designation at the end of the filename.
+This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
+provides data for slice 0 of the experiment that ran at that time. It has been array restructured
+because it does not have a .site designation at the end of the filename.
 
-These files are zlib compressed which is native to hdf5 and no decompression is necessary before reading using your hdf5 library. 
+These files are zlib compressed which is native to hdf5 and no decompression is necessary before
+reading using your hdf5 library. 
 
 The file fields in the rawacf array files are:
 
@@ -255,14 +268,20 @@ The file fields in the rawacf array files are:
 rawacf site files
 -----------------
 
-Site files are produced by the Borealis code package and have the data in a record by record style format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past epoch of the first sequence or sampling period recorded in the record. 
+Site files are produced by the Borealis code package and have the data in a record by record style
+format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past
+epoch of the first sequence or sampling period recorded in the record. 
 
-The naming convention of the rawacf site-structured files are:
+The naming convention of the rawacf site-structured files are: ::
 
-[YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].rawacf.hdf5.site
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].rawacf.hdf5.site
 
-For example: 20191105.1400.02.sas.0.rawacf.hdf5.site
-This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data for slice 0 of the experiment that ran at that time. 
+For example: ::
+    
+    20191105.1400.02.sas.0.rawacf.hdf5.site 
+
+This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
+provides data for slice 0 of the experiment that ran at that time. 
 
 These files are often bzipped after they are produced.
 
@@ -441,17 +460,23 @@ The file fields under the record name in rawacf site files are:
 Site/Array Restructuring
 ------------------------
 
-File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
+File restructuring to array files is done using an additional code package. Currently, this code is
+housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method,
+and array to site restructuring is done in the same class _array_to_site method. Both can be found
+`here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
 
 ----------------------------------------
 rawacf to rawacf SDARN (DMap) Conversion
 ----------------------------------------
 
-Conversion to SDARN IO (DMap rawacf) is available but can fail based on experiment complexity. The conversion also reduces the precision of the data due to conversion from complex floats to int of all samples. Similar precision is lost in timestamps. 
+Conversion to SDARN IO (DMap rawacf) is available but can fail based on experiment complexity. The
+conversion also reduces the precision of the data due to conversion from complex floats to int of
+all samples. Similar precision is lost in timestamps. 
 
-HDF5 is a much more user-friendly format and we encourage the use of this data if possible. Please reach out if you have questions on how to use the Borealis rawacf files.
+HDF5 is a much more user-friendly format and we encourage the use of this data if possible. Please
+reach out if you have questions on how to use the Borealis rawacf files.
 
 The mapping to rawacf dmap files is completed as follows:
 

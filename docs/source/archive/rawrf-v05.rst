@@ -2,31 +2,40 @@
 rawrf v0.5
 ==========
 
-The pyDARNio format class for this format is BorealisRawrfv0_5 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisRawrfv0_5 found in the `borealis_formats
+<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
-Borealis software version 0.5 is out of date, see the current format of the rawrf files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_.
+Borealis software version 0.5 is out of date, see the current format of the rawrf files `here
+<https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_.
 
 This format is intended to hold high bandwidth, non-filtered raw data from every antenna.
 
-This format is only produced in a site-style, record by record format and is only available to be produced on request. Please note that this format
-can cause radar operating delays and may reduce number of averages in an integration, for example. 
+This format is only produced in a site-style, record by record format and is only available to be
+produced on request. Please note that this format can cause radar operating delays and may reduce
+number of averages in an integration, for example. 
 
 ----------------
 rawrf site files
 ----------------
 
-Site files are produced by the Borealis code package and have the data in a record by record style format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past epoch of the first sequence or sampling period recorded in the record. 
+Site files are produced by the Borealis code package and have the data in a record by record style
+format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past
+epoch of the first sequence or sampling period recorded in the record. 
 
-The naming convention of the rawrf site-structured files are:
+The naming convention of the rawrf site-structured files are: ::
 
-[YYYYmmDD].[HHMM].[SS].[station_id].rawrf.hdf5.site
+    [YYYYmmDD].[HHMM].[SS].[station_id].rawrf.hdf5.site
 
-For example: 20191105.1400.02.sas.rawrf.hdf5.site
+For example: ::
+    
+    20191105.1400.02.sas.rawrf.hdf5.site
 
-This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data the experiment that ran at that time.
-Since rawrf is not filtered, this data does not need a slice identifier because it contains all the samples being taken at that time. Some familiarity 
-with the experiment may be necessary to understand the data, or some access to the other file types produced concurrently. This is primarily a debug 
-format for engineering purposes and should only be produced for special cases.
+This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
+provides data the experiment that ran at that time. Since rawrf is not filtered, this data does not
+need a slice identifier because it contains all the samples being taken at that time. Some
+familiarity with the experiment may be necessary to understand the data, or some access to the other
+file types produced concurrently. This is primarily a debug format for engineering purposes and
+should only be produced for special cases.
 
 These files are often bzipped after they are produced.
 
