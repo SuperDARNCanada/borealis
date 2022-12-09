@@ -25,7 +25,7 @@ is present in ``superdarn_common_fields.py``. To use this function, set ::
 in your experiment slice dictionary.
 
 More generally, you can define your own power- and phase-modulation across the transmitting
-antennas. Define a function with the following signature::
+antennas. Define a function with the following signature
 
 .. code-block:: python
 
