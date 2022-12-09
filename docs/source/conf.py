@@ -182,7 +182,7 @@ html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom themes here, relative to this directory.
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-html_static_path = ['_static']
+html_static_path = []#['_static']
 
 html_context = {
     'css_files': [
@@ -269,7 +269,7 @@ html_static_path = ['_static']
 
 # The name of a javascript file (relative to the configuration directory) that
 # implements a search results scorer. If empty, the default will be used.
-html_search_scorer = 'searchtools.js'
+# html_search_scorer = 'searchtools.js'
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'Borealisdoc'
