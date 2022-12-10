@@ -24,7 +24,7 @@ import sphinx_rtd_theme
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
-BOREALISPATH = os.path.abspath('../..')
+BOREALISPATH = os.path.abspath('..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
 sys.path.insert(1, BOREALISPATH + '/src')
@@ -47,7 +47,7 @@ if on_rtd or 1: # TODO: Fix after testing finished.
     # are re-generated each call, no table of contents file is created, and only rst files are
     # created. For more information, `breathe-apidoc --help`
 	cur_dir = os.path.abspath(os.path.dirname(__file__))
-	call(['breathe-apidoc','--force','--no-toc','--generate','file','-o', cur_dir, f'{cur_dir}/xml/'])
+	call(['breathe-apidoc','--force','--no-toc','--generate','file','-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
 
     # Update the experiment subrepo so experiment files can be read into documentation
 	# TODO: Figure out how to update the subrepo instead of cloning a new temp repo
