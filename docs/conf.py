@@ -16,7 +16,7 @@
 import sys
 import os
 import json
-from subprocess import call
+from subprocess import run
 import sphinx_rtd_theme
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -41,21 +41,22 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd or 1: # TODO: Fix after testing finished.
     # Doxygen: Reads all c++ source and header files, and parses the documentation to xml files 
     # for further reading. 
-	call('doxygen')
+	run('doxygen')
     
     # Breathe: parses xml files produced by doxygen and creates rst files for use by Sphinx Files
     # are re-generated each call, no table of contents file is created, and only rst files are
     # created. For more information, `breathe-apidoc --help`
 	cur_dir = os.path.abspath(os.path.dirname(__file__))
-	call(['breathe-apidoc','--force','--no-toc','--generate','file','-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
+	run(['breathe-apidoc','--force','--no-toc','--generate','file','-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
 
     # Update the experiment subrepo so experiment files can be read into documentation
 	# TODO: Figure out how to update the subrepo instead of cloning a new temp repo
-	call(['git', 'clone', 'https://github.com/SuperDARNCanada/borealis_experiments.git', BOREALISPATH + '/borealis_experiments'])
+	# call(['git', 'clone', 'https://github.com/SuperDARNCanada/borealis_experiments.git', BOREALISPATH + '/borealis_experiments'])
+	run(['git', 'submodule', 'update', '--init'])
 
     # Clone in the HDW repo temporarily so modules reading them don't throw errors
-	# TODO: Get this path into config file somehow, as that's now how we specify hdw location
-	call(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
+	# TODO: Get this path into config file somehow, as that's now how we specify hdw location 
+	run(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
 
 	# Change config file HDW path to path accessible by ReadTheDocs
     # TODO: Come up with a way that doesn't require modifying a version controlled config file
@@ -86,7 +87,6 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinxcontrib.programoutput',
     'sphinxcontrib.autoprogram',
-    'sphinx_search.extension',
     'breathe',
     'myst_parser'
 ]
@@ -181,7 +181,7 @@ html_theme = 'sphinx_rtd_theme'
 
 # Add any paths that contain custom themes here, relative to this directory.
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-html_static_path = []#['_static']
+html_static_path = ['_static']
 
 html_context = {
     'css_files': [
@@ -208,7 +208,7 @@ html_context = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied

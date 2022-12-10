@@ -14,7 +14,7 @@ no ``update()`` method is necessary. It only has a single slice, as there is onl
 frequency, pulse_len, beam_order, etc. Since there is only one slice there is no need
 for an interface dictionary.
 
-..  literalinclude:: ../../borealis_experiments/normalscan.py
+..  literalinclude:: ../../src/borealis_experiments/normalscan.py
     :linenos:
     :language: python
     :caption: normalsound.py
@@ -27,7 +27,7 @@ update itself, so no ``update()`` method is necessary. It has two frequencies so
 require two slices. The frequencies switch after a full scan (full cycle through the
 beams), therefore the interfacing between slices 0 and 1 should be 'SCAN'.
 
-..  literalinclude:: ../../borealis_experiments/twofsound.py
+..  literalinclude:: ../../src/borealis_experiments/twofsound.py
     :linenos:
     :language: python
     :caption: twofsound.py
@@ -37,7 +37,7 @@ full_fov
 
 See :ref:`Full FOV Imaging<full fov imaging>` for more information. 
 
-..  literalinclude:: ../../borealis_experiments/full_fov.py
+..  literalinclude:: ../../src/borealis_experiments/full_fov.py
     :linenos:
     :language: python
     :caption: full_fov.py
@@ -47,7 +47,7 @@ bistatic_test
 
 See :ref:`Bistatic Experiments<bistatic experiments>` for more information. 
 
-..  literalinclude:: ../../borealis_experiments/bistatic_test.py
+..  literalinclude:: ../../src/borealis_experiments/bistatic_test.py
     :linenos:
     :language: python
     :caption: bistatic_test.py
