@@ -15,5 +15,5 @@ python:
   install:
   - requirements: docs/requirements.txt
 
-formats:
+# formats:
   # - pdf # Throws warnings when building on ReadTheDocs
