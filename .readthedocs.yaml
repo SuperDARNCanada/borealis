@@ -16,4 +16,4 @@ python:
   - requirements: docs/source/requirements.txt
 
 formats:
-  - pdf
+  # - pdf # Throws warnings when building on ReadTheDocs

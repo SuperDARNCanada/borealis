@@ -15,7 +15,6 @@
 
 import sys
 import os
-import shlex
 import json
 from subprocess import call
 import sphinx_rtd_theme
