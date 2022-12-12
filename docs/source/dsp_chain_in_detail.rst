@@ -50,7 +50,7 @@ are shown for each stage in the table below.
 For a typical sequence of *normalscan* data, the input data to the first filter stage contains
 451500 complex data samples for each antenna. After the first stage, this has been reduced to 45084
 samples per antenna, but if multiple frequencies are being selected, there will be one copy of
-(:math:`num_antennas`, 45084) for each frequency. After the second stage, the number of samples is
+(:math:`num\_antennas`, 45084) for each frequency. After the second stage, the number of samples is
 reduced from 45084 to 8992. The next stage reduces it again to 1495 samples. Lastly, the final stage
 reduces the data length to 299 samples. The number of samples in and out of each stage does not
 exactly correspond to the downsampling rate; this will be explained shortly, as a result of the

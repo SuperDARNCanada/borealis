@@ -96,6 +96,8 @@ breathe_default_project = "borealis"
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
+imgmath_embed = True    # To fix math images not loading
+
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 # source_suffix = ['.rst', '.md']
