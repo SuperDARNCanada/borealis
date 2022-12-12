@@ -463,12 +463,11 @@ The file fields under the record name in bfiq site files are:
 Site/Array Restructuring
 ------------------------
 
-File restructuring to array files is done using an additional code package. Currently, this code is
-housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
+File restructuring to and from array files is done using an additional code package. Currently, this
+code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring occurs in the Borealis BaseFormat _site_to_array class method,
-and array to site restructuring is done in the same class _array_to_site method. Both can be found
-`here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
+Restructuring between site and array formats occur within the BorealisRestructure class, found `here
+<https://github.com/SuperDARN/pyDARNio/blob/main/pydarnio/borealis/borealis_restructure.py>`__.
 
 -------------------------------------
 bfiq to iqdat SDARN (DMap) Conversion
