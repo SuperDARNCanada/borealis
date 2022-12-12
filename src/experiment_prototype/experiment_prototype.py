@@ -454,7 +454,8 @@ class ExperimentPrototype(object):
             raise ExperimentException(errmsg)
 
         if decimation_scheme is None:
-            self.__decimation_scheme = create_default_scheme()
+            decimation_scheme = create_default_scheme()
+            self.__decimation_scheme = decimation_scheme
 
         self.__comment_string = comment_string
 

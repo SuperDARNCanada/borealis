@@ -38,7 +38,7 @@ os.environ['RADAR_CODE'] = RADAR_CODE
 
 # hack for readthedocs to cause it to run doxygen first: https://github.com/rtfd/readthedocs.org/issues/388
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd or 1: # TODO: Fix after testing finished.
+if on_rtd:
     # Doxygen: Reads all c++ source and header files, and parses the documentation to xml files 
     # for further reading. 
 	run('doxygen')
@@ -50,8 +50,6 @@ if on_rtd or 1: # TODO: Fix after testing finished.
 	run(['breathe-apidoc','--force','--no-toc','--generate','file','-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
 
     # Update the experiment subrepo so experiment files can be read into documentation
-	# TODO: Figure out how to update the subrepo instead of cloning a new temp repo
-	# call(['git', 'clone', 'https://github.com/SuperDARNCanada/borealis_experiments.git', BOREALISPATH + '/borealis_experiments'])
 	run(['git', 'submodule', 'update', '--init'])
 
     # Clone in the HDW repo temporarily so modules reading them don't throw errors
