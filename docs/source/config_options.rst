@@ -66,7 +66,7 @@ Config Parameters
 |                                |                               | N200. N200s are sorted according to   |
 |                                |                               | this value.                           |
 +--------------------------------+-------------------------------+---------------------------------------+
-| int_antenna (n200s)            | 3                             | Physical interferometer antenna       |
+| interterometer_antenna (n200s) | 3                             | Physical interferometer antenna       |
 |                                |                               | connected to this N200. All antennas  |
 |                                |                               | not connected must be set to empty    |
 |                                |                               | string ("").                          |
@@ -144,6 +144,8 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | agc_st                         | 0x6000                        | The pin mask for the AGC signal.      |
 +--------------------------------+-------------------------------+---------------------------------------+
+| tst_md                         | 0x6000                        | The pin mask for the test mode signal |
++--------------------------------+-------------------------------+---------------------------------------+
 | max_usrp_dac_amplitude         | 0.99                          | The amplitude of highest allowed USRP |
 |                                |                               | TX sample (V).                        |
 +--------------------------------+-------------------------------+---------------------------------------+
@@ -170,6 +172,8 @@ Config Parameters
 | router_address                 | tcp://127.0.0.1:6969          | The protocol/IP/port used for the ZMQ |
 |                                |                               | router in Brian.                      |
 +--------------------------------+-------------------------------+---------------------------------------+
+| realtime_address               | tcp://eth0:9696               | The protocal/IP/port used for realtime|
++--------------------------------+-------------------------------+---------------------------------------+
 | radctrl_to_exphan_identity     | RADCTRL_EXPHAN_IDEN           | ZMQ named socket identity.            |
 +--------------------------------+-------------------------------+---------------------------------------+
 | radctrl_to_dsp_identity        | RADCTRL_DSP_IDEN              | ZMQ named socket identity.            |
@@ -185,6 +189,18 @@ Config Parameters
 | driver_to_dsp_identity         | DRIVER_DSP_IDEN               | ZMQ named socket identity.            |
 +--------------------------------+-------------------------------+---------------------------------------+
 | driver_to_brian_identity       | DRIVER_BRIAN_IDEN             | ZMQ named socket identity.            |
++--------------------------------+-------------------------------+---------------------------------------+
+| driver_to_mainaffinity_identity| DRIVER_MAINAFFINITY_IDEN      | ZMQ named socket identity.            |
++--------------------------------+-------------------------------+---------------------------------------+
+| driver_to_txaffinity_identity  | DRIVER_TXAFFINITY_IDEN        | ZMQ named socket identity.            |
++--------------------------------+-------------------------------+---------------------------------------+
+| driver_to_rxaffinity_identity  | DRIVER_RXAFFINITY_IDEN        | ZMQ named socket identity.            |
++--------------------------------+-------------------------------+---------------------------------------+
+| mainaffinity_to_driver_identity| MAINAFFINITY_DRIVER_IDEN      | ZMQ named socket identity.            |
++--------------------------------+-------------------------------+---------------------------------------+
+| txaffinity_to_driver_identity  | TXAFFINITY_DRIVER_IDEN        | ZMQ named socket identity.            |
++--------------------------------+-------------------------------+---------------------------------------+
+| rxaffinity_to_driver_identity  | RXAFFINITY_DRIVER_IDEN        | ZMQ named socket identity.            |
 +--------------------------------+-------------------------------+---------------------------------------+
 | exphan_to_radctrl_identity     | EXPHAN_RADCTRL_IDEN           | ZMQ named socket identity.            |
 +--------------------------------+-------------------------------+---------------------------------------+
@@ -206,6 +222,10 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | dw_to_radctrl_identity         | DW_RADCTRL_IDEN               | ZMQ named socket identity.            |
 +--------------------------------+-------------------------------+---------------------------------------+
+| dw_to_rt_identity              | DW_RT_IDEN                    | ZMQ named socket identity.            |
++--------------------------------+-------------------------------+---------------------------------------+
+| rt_to_dw_identity              | RT_DW_IDEN                    | ZMQ named socket identity.            |
++--------------------------------+-------------------------------+---------------------------------------+
 | brian_to_radctrl_identity      | BRIAN_RADCTRL_IDEN            | ZMQ named socket identity.            |
 +--------------------------------+-------------------------------+---------------------------------------+
 | brian_to_driver_identity       | BRIAN_DRIVER_IDEN             | ZMQ named socket identity.            |
@@ -222,6 +242,9 @@ Config Parameters
 | data_directory                 | /data/borealis_data           | Location of output data files.        |
 +--------------------------------+-------------------------------+---------------------------------------+
 | log_directory                  | /data/borealis_logs           | Location of output log files          |
++--------------------------------+-------------------------------+---------------------------------------+
+| hdw_path                       | /usr/local/hdw                | Path to locally cloned SuperDARN      |
+|                                |                               | hardware repository                   |
 +--------------------------------+-------------------------------+---------------------------------------+
 
 ----------------------
