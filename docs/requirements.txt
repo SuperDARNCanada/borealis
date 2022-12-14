@@ -13,8 +13,4 @@ posix_ipc
 latex
 inotify
 matplotlib
-readthedocs-sphinx-search
-#cmake
-#pycparser
-#venvgit2
-#couldn't get pygit2 to install properly on readthedocs
+sphinx-rtd-theme
