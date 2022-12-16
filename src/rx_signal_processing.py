@@ -252,11 +252,6 @@ class DSP(object):
         :rtype:     list
         """
 
-        # [num_slices, num_beams, num_samples]
-        # [num_slices, num_beams, num_samples]
-        correlated = np.einsum('ijk,ijl->ijkl', beamformed_samples_1,
-                               beamformed_samples_2.conj())
-
         values = []
         for s in slice_index_details:
             if s['lags'].size == 0:
@@ -279,7 +274,12 @@ class DSP(object):
             # [num_range_gates, num_lags, 2]
             column = samples_for_all_range_lags[..., 0].astype(np.int32)
 
-            values_for_slice = correlated[s['slice_num'], :, row, column]
+            # [num_beams, num_range_gates, num_lags]
+            values_for_slice = np.zeros((beamformed_samples_1.shape[1] + row.shape[:2]), dtype=np.complex64)
+
+            for lag in range(row.shape[1]):
+                values_for_slice = beamformed_samples_1[s, :, row[:, lag]] * \
+                                   beamformed_samples_2[s, :, column[:, lag]].conj()
 
             # [num_range_gates, num_lags, num_beams]
             values_for_slice = np.einsum('ijk,j->kij', values_for_slice, s['lag_phase_offsets'])
