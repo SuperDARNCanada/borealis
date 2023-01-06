@@ -880,8 +880,8 @@ class TestRemoteServer(unittest.TestCase):
         backup_time = time_of_interest.strftime("%Y.%m.%d.%H.%M")
         atq_commands = remote_server.timeline_to_atq(events, scd_dir, time_of_interest, site_id)
 
-        # The atq should have the three events added, but the last one should have a date that is now + 1 minute
-        now_plus_one_min = (datetime.datetime.now() + datetime.timedelta(minutes=1)).strftime("%a %b %d %H:%M:00 %Y")
+        # The atq should have the three events added, but the last one should have a date that is now + 1 minutes
+        now_plus_one_min = (datetime.datetime.now() + datetime.timedelta(minutes=1)).strftime("%a %b %-d %H:%M:00 %Y")
         new_atq = '12\tMon Oct 10 00:30:00 2022 = radar\nscreen -d -m -S starter ' \
                   '/home/radar/borealis/scripts/steamed_hams.py normalscan release special --kwargs_string hi=96\n\n' \
                   '13\tTue Oct 11 08:00:00 2022 = radar\nscreen -d -m -S starter ' \
@@ -890,8 +890,8 @@ class TestRemoteServer(unittest.TestCase):
                   '/home/radar/borealis/scripts/steamed_hams.py politescan release discretionary --kwargs_string -\n\n'
 
         # First remove the job numbers (matched by \d+), which are always before the tab character (\t)
-        new_commands = str(re.sub('\d+\t', '', new_atq))
-        prev_commands = str(re.sub('\d+\t', '', atq_commands.decode('ascii')))
+        new_commands = str(re.sub('\d+\t', '', new_atq)).split()
+        prev_commands = str(re.sub('\d+\t', '', atq_commands.decode('ascii'))).split()
         self.assertEqual(prev_commands, new_commands)
         self.assertTrue(os.path.exists(atq_dir))
         self.assertTrue(os.path.exists(f"{atq_dir}/{backup_time}.{site_id}.atq"))
