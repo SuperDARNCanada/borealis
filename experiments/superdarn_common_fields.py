@@ -70,17 +70,17 @@ if opts.site_id in ["cly", "pgr"]:
 
 # set common mode operating frequencies with a slight offset.
 if opts.site_id == "sas":
-    COMMON_MODE_FREQ_1 = 10500
-    COMMON_MODE_FREQ_2 = 12200
-elif opts.site_id == "pgr":
-    COMMON_MODE_FREQ_1 = 10600
-    COMMON_MODE_FREQ_2 = 12300
-elif opts.site_id == "rkn":
-    COMMON_MODE_FREQ_1 = 10900
-    COMMON_MODE_FREQ_2 = 13100
-elif opts.site_id == "inv":
     COMMON_MODE_FREQ_1 = 10800
     COMMON_MODE_FREQ_2 = 13000
+elif opts.site_id == "pgr":
+    COMMON_MODE_FREQ_1 = 10900
+    COMMON_MODE_FREQ_2 = 13100
+elif opts.site_id == "rkn":
+    COMMON_MODE_FREQ_1 = 10600
+    COMMON_MODE_FREQ_2 = 12300
+elif opts.site_id == "inv":
+    COMMON_MODE_FREQ_1 = 10500
+    COMMON_MODE_FREQ_2 = 12200
 elif opts.site_id == "cly":
     COMMON_MODE_FREQ_1 = 10700
     COMMON_MODE_FREQ_2 = 12500
