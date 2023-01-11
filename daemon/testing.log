@@ -1,0 +1,9 @@
+{"key": "value", "another_key": [1, 2, 3], "event": "hello", "logger": "__main__", "level": "info", "timestamp": "epoch", "filename": "sentinel.py", "func_name": "<module>", "lineno": 87}
+{"key": "value", "another_key": [1, 2, 3], "event": "hello", "logger": "__main__", "level": "warning", "timestamp": "epoch", "filename": "sentinel.py", "func_name": "<module>", "lineno": 88}
+{"key": "value", "another_key": [1, 2, 3], "event": "hello", "logger": "__main__", "level": "error", "timestamp": "epoch", "filename": "sentinel.py", "func_name": "<module>", "lineno": 89}
+{"key": "value", "another_key": [1, 2, 3], "event": "hello", "logger": "__main__", "level": "info", "timestamp": "2023-01-10T18:46:45.709166Z", "filename": "sentinel.py", "func_name": "<module>", "lineno": 87}
+{"key": "value", "another_key": [1, 2, 3], "event": "hello", "logger": "__main__", "level": "warning", "timestamp": "2023-01-10T18:46:45.731137Z", "filename": "sentinel.py", "func_name": "<module>", "lineno": 88}
+{"key": "value", "another_key": [1, 2, 3], "event": "hello", "logger": "__main__", "level": "error", "timestamp": "2023-01-10T18:46:45.731414Z", "filename": "sentinel.py", "func_name": "<module>", "lineno": 89}
+{"key": "value", "another_key": [1, 2, 3], "event": "hello", "logger": "__main__", "level": "info", "timestamp": 1673377235.6217053, "lineno": 87, "func_name": "<module>", "filename": "sentinel.py"}
+{"key": "value", "another_key": [1, 2, 3], "event": "hello", "logger": "__main__", "level": "warning", "timestamp": 1673377235.6429925, "lineno": 88, "func_name": "<module>", "filename": "sentinel.py"}
+{"key": "value", "another_key": [1, 2, 3], "event": "hello", "logger": "__main__", "level": "error", "timestamp": 1673377235.643255, "lineno": 89, "func_name": "<module>", "filename": "sentinel.py"}
