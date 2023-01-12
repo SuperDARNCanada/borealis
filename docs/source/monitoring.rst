@@ -2,7 +2,9 @@
 Borealis Monitoring
 ===================
 
-The monitoring system implemented for Borealis is a custom configured installation of Nagios Core, working with NRPE. Nagios monitoring behaves according to objects defined in configuration files, all of which have copies in SuperDARN Canada's Nagios repository.
+The monitoring system implemented for Borealis is a custom configured installation of Nagios Core,
+working with NRPE. Nagios monitoring behaves according to objects defined in configuration files,
+all of which have copies in SuperDARN Canada's Nagios repository.
 
 ------
 Nagios
@@ -37,5 +39,6 @@ Nagios' website_.
 
 After installing, simply replace the configuration files with those found in this repository.
 
-Installation of NRPE is similarly simple. Detailed instructions can be found in the NRPE.pdf file
-located in the monitoring folder along with our config files.
+Installation of NRPE is similarly simple. See our Nagios github page for detailed installation
+steps: https://github.com/SuperDARNCanada/Nagios/tree/develop. An example on how we use Nagios to
+monitor Borealis is shown here: https://github.com/SuperDARNCanada/Nagios/tree/develop
