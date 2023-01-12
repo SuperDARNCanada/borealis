@@ -3,12 +3,11 @@
 """
     sequences
     ~~~~~~~~~
-    This is the module containing the Sequence class. The Sequence class contains the
-    ScanClassBase members, as well as a list of pulse dictionaries,
-    the total_combined_pulses in the sequence, power_divider, last_pulse_len, ssdelay,
-    seqtime, which together give sstime (scope synce time, or time for receiving,
-    and numberofreceivesamples to sample during the receiving window (calculated using
-    the receive sampling rate).
+    This is the module containing the Sequence class. The Sequence class contains the ScanClassBase
+    members, as well as a list of pulse dictionaries, the total_combined_pulses in the sequence,
+    power_divider, last_pulse_len, ssdelay, seqtime, which together give sstime (scope synce time,
+    or time for receiving, and numberofreceivesamples to sample during the receiving window
+    (calculated using the receive sampling rate).
 
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
@@ -61,31 +60,37 @@ class Sequence(ScanClassBase):
     combined_pulses_metadata
         This list holds dictionary metadata for all pulses in the sequence. This metadata holds all
         the info needed to combine pulses if pulses are mixed.
-            start_time_us - start time of the pulse in us, relative to the first pulse in sqn.
-            total_pulse_len - total length of the pulse that includes len of all combined pulses.
-            pulse_sample_start - The tx sample number at which the pulse starts.
-            tr_window_num_samps - The number of tx samples of the tr window.
-            component_info - a list of all the pre-combined pulse components
-                        (incl their length and start time) that are in the combined pulseAlso in us.
-            pulse_transmit_data - dictionary hold the transmit metadata that will be sent to driver.
+
+        - start_time_us - start time of the pulse in us, relative to the first pulse in sqn.
+        - total_pulse_len - total length of the pulse that includes len of all combined pulses.
+        - pulse_sample_start - The tx sample number at which the pulse starts.
+        - tr_window_num_samps - The number of tx samples of the tr window.
+        - component_info - a list of all the pre-combined pulse components (incl their length and
+          start time) that are in the combined pulseAlso in us.
+        - pulse_transmit_data - dictionary hold the transmit metadata that will be sent to driver.
+
     output_encodings
         This dict will hold a list of all the encodings used during an aveperiod for each slice.
         These will be used for data write later.
+
+
+    :param  seqn_keys:              slice_ids that need to be included in this sequence.
+    :type   seqn_keys:              list
+    :param  sequence_slice_dict:    the slice dictionary that explains the parameters of each slice
+                                    that is included in this sequence. Keys are the slice_ids
+                                    included and values are dictionaries including all necessary
+                                    slice parameters as keys.
+    :type   sequence_slice_dict:    dict
+    :param  sequence_interface:     the interfacing dictionary that describes how to interface the
+                                    slices that are included in this sequence. Keys are tuples of
+                                    format (slice_id_1, slice_id_2) and values are of
+                                    interface_types set up in experiment_prototype.
+    :type   sequence_interface:     dict
+    :param  transmit_metadata:      metadata from the config file that is useful here.
+    :type   transmit_metadata:      dict
     """
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
-        """
-        :param seqn_keys: list of slice_ids that need to be included in this sequence.
-        :param sequence_slice_dict: the slice dictionary that explains the parameters of each
-         slice that is included in this sequence. Keys are the slice_ids included
-         and values are dictionaries including all necessary slice parameters as keys.
-        :param sequence_interface: the interfacing dictionary that describes how to interface the
-         slices that are included in this sequence. Keys are tuples of format
-         (slice_id_1, slice_id_2) and values are of interface_types set up in
-         experiment_prototype.
-        :param transmit_metadata: metadata from the config file that is useful here.
-        """
-
         ScanClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface,
                                transmit_metadata)
 
@@ -105,11 +110,11 @@ class Sequence(ScanClassBase):
         self.rx_beam_phases = {}
         single_pulse_timing = []
 
-        # For each slice calculate beamformed samples and place into the basic_slice_pulses dictionary.
-        # Also populate the pulse timing metadata and place into single_pulse_timing
+        # For each slice calculate beamformed samples and place into the basic_slice_pulses
+        # dictionary. Also populate the pulse timing metadata and place into single_pulse_timing
         for slice_id in self.slice_ids:
             print()     # Separate the slice information in the logs
-            sequence_print('Slice {}'.format(slice_id))
+            sequence_print(f'Slice {slice_id}')
             exp_slice = self.slice_dict[slice_id]
             freq_khz = float(exp_slice['freq'])
             wave_freq = freq_khz - txctrfreq
@@ -120,8 +125,7 @@ class Sequence(ScanClassBase):
                                                        pulse_ramp_time, 1.0, exp_slice['iwavetable'],
                                                        exp_slice['qwavetable'])
                 if real_freq != wave_freq_hz:
-                    errmsg = 'Actual Frequency {} is Not Equal to Intended Wave Freq {}'.format(real_freq,
-                                                                                                wave_freq_hz)
+                    errmsg = f'Actual Frequency {real_freq} is Not Equal to Intended Wave Freq {wave_freq_hz}'
                     raise ExperimentException(errmsg)  # TODO change to warning? only happens on non-SINE
 
                 if exp_slice['tx_antenna_pattern'] is not None:
@@ -135,9 +139,9 @@ class Sequence(ScanClassBase):
                 # main_phase_shift: [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
-                sequence_print('Main tx antenna complex phases: {}'.format(tx_main_phase_shift))
-                sequence_print('Main tx antenna magnitudes: {}'.format(np.abs(tx_main_phase_shift)))
-                sequence_print('Main tx antenna angles: {}'.format(np.rad2deg(np.angle(tx_main_phase_shift))))
+                sequence_print(f'Main tx antenna complex phases: {tx_main_phase_shift}')
+                sequence_print(f'Main tx antenna magnitudes: {np.abs(tx_main_phase_shift)}')
+                sequence_print(f'Main tx antenna angles: {np.rad2deg(np.angle(tx_main_phase_shift))}')
                 phased_samps_for_beams = np.einsum('ij,k->ijk', tx_main_phase_shift, basic_samples)
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
@@ -212,9 +216,9 @@ class Sequence(ScanClassBase):
 
         combined_pulses_metadata.append(pulse_data)
 
-        # Store the overlapping antennas between all pairs of slices in this sequence.
-        # This will be used to determine the power divider for each slice in the sequence,
-        # if any two slices have overlapping pulses and use the same antennas.
+        # Store the overlapping antennas between all pairs of slices in this sequence. This will be
+        # used to determine the power divider for each slice in the sequence, if any two slices have
+        # overlapping pulses and use the same antennas.
         slice_shared_antennas = dict()
         for i in range(len(self.slice_ids)):
             slice_1_id = self.slice_ids[i]
@@ -297,23 +301,21 @@ class Sequence(ScanClassBase):
 
         # print out pulse information for logging.
         for i, cpm in enumerate(combined_pulses_metadata):
-            message = "Pulse {}: start time(us) {}  start sample {}".format(i, cpm['start_time_us'],
-                                                                            cpm['pulse_sample_start'])
+            message = f"Pulse {i}: start time(us) {cpm['start_time_us']}  start sample {cpm['pulse_sample_start']}"
             sequence_print(message)
 
-            message = "          pulse length(us) {}  pulse num samples {}".format(cpm['total_pulse_len'],
-                                                                                   cpm['total_num_samps'])
+            message = f"          pulse length(us) {cpm['total_pulse_len']}  pulse num samples {cpm['total_num_samps']}"
             sequence_print(message)
 
         self.combined_pulses_metadata = combined_pulses_metadata
 
         # FIND the max scope sync time
-        # The gc214 receiver card in the old system required 19 us for sample delay and another 10 us
-        # as empirically discovered. in that case delay = (num_ranges + 19 + 10) * pulse_len.
-        # Now we will remove those values. In the old design scope sync was used directly to
-        # determine how long to sample. Now we will calculate the number of samples to receive
-        # (numberofreceivesamples) using scope sync and send that to the driver to sample at
-        # a specific rxrate (given by the config).
+        # The gc214 receiver card in the old system required 19 us for sample delay and another 10
+        # us as empirically discovered. in that case delay = (num_ranges + 19 + 10) * pulse_len. Now
+        # we will remove those values. In the old design scope sync was used directly to determine
+        # how long to sample. Now we will calculate the number of samples to receive
+        # (numberofreceivesamples) using scope sync and send that to the driver to sample at a
+        # specific rxrate (given by the config).
 
         # number ranges to the first range for all slice ids
 
@@ -342,10 +344,10 @@ class Sequence(ScanClassBase):
         self.sstime = self.seqtime + self.ssdelay
 
         # number of receive samples will round down
-        # This is the number of receive samples to receive for the entire duration of the
-        # sequence and afterwards. This starts before first pulse is sent and goes until the
-        # end of the scope sync delay which is there for the amount of time necessary to get
-        # the echoes from the specified number of ranges.
+        # This is the number of receive samples to receive for the entire duration of the sequence
+        # and afterwards. This starts before first pulse is sent and goes until the end of the scope
+        # sync delay which is there for the amount of time necessary to get the echoes from the
+        # specified number of ranges.
         self.numberofreceivesamples = int(self.transmit_metadata['rx_sample_rate'] * self.sstime *
                                           1e-6)
 
@@ -384,21 +386,21 @@ class Sequence(ScanClassBase):
 
     def make_sequence(self, beam_iter, sequence_num):
         """
-        Create the samples needed for each pulse in the sequence. This function is optimized to
-        be able to generate new samples every sequence if needed.
-        Modifies the samples_array and isarepeat fields of all pulse
-        dictionaries needed for this sequence for
-        radar_control to use in operation.
+        Create the samples needed for each pulse in the sequence. This function is optimized to be
+        able to generate new samples every sequence if needed. Modifies the samples_array and
+        isarepeat fields of all pulse dictionaries needed for this sequence for radar_control to use
+        in operation.
 
         :param      beam_iter:     The beam iterator
         :type       beam_iter:     int
         :param      sequence_num:  The sequence number in the ave period
         :type       sequence_num:  int
 
-        :returns:   Transmit data for each pulse where each pulse is a dict, including timing and samples
+        :returns:   Transmit data for each pulse where each pulse is a dict, including timing and
+                    samples
         :rtype:     list
         :returns:   The transmit sequence and related data to use for debug.
-        :rtype:     Dict
+        :rtype:     dict
         """
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         main_antennas = self.transmit_metadata['main_antennas']
@@ -509,8 +511,8 @@ class Sequence(ScanClassBase):
         :param      beam_iter:  The beam iter in a scan.
         :type       beam_iter:  int
 
-        :returns:   The receive phases.
-        :rtype:     Dict for both main and intf that contains an array of phases for each possible beam for each antenna.
+        :returns:   The receive phases for each possible beam for every main and intf antenna
+        :rtype:     dict for both main and intf
         """
 
         temp_dict = copy.deepcopy(self.rx_beam_phases)

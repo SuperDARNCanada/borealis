@@ -1,10 +1,16 @@
 #!/usr/bin/python
 
-# Copyright 2020 SuperDARN Canada
-#
-# signal_processing_options.py
-# 2020-09-28
-# options class for signal processing module
+
+"""
+    signal_processing options
+    ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    To load the config options to be used by signal processing.
+    Config data comes from the config.ini file.
+
+    :copyright: 2020 SuperDARN Canada
+"""
+
 
 import json
 import os
@@ -26,7 +32,7 @@ class SignalProcessingOptions(object):
             with open(config_path, 'r') as config_data:
                 raw_config = json.load(config_data)
         except IOError:
-            errmsg = 'Cannot open config file at {0}'.format(config_path)
+            errmsg = f'Cannot open config file at {config_path}'
             raise IOError(errmsg)
 
         self._router_address = raw_config["router_address"]
@@ -66,7 +72,7 @@ class SignalProcessingOptions(object):
         """
         Gets the socket address of the router that routes interprocess messages.
 
-        :return:    socket address of the router that routes interprocess messages.
+        :returns:   socket address of the router that routes interprocess messages.
         :rtype:     str
         """
         return self._router_address

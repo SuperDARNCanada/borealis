@@ -15,8 +15,8 @@
 
 import sys
 import os
-import shlex
-from subprocess import call
+import json
+from subprocess import run
 import sphinx_rtd_theme
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -24,28 +24,46 @@ import sphinx_rtd_theme
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 
-BOREALISPATH = os.path.abspath('../..')
+BOREALISPATH = os.path.abspath('..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
-sys.path.insert(1, BOREALISPATH + '/src/experiment_prototype')
-sys.path.insert(2, BOREALISPATH + '/src/utils')
-sys.path.insert(3, os.environ['PATH'])
+sys.path.insert(1, BOREALISPATH + '/src')
+sys.path.insert(2, BOREALISPATH + '/src/experiment_prototype')
+sys.path.insert(3, BOREALISPATH + '/src/utils')
+sys.path.insert(4, BOREALISPATH + '/scheduler')
+sys.path.insert(5, os.environ['PATH'])
 
-# hack for readthedocs to cause it to run doxygen first
-# https://github.com/rtfd/readthedocs.org/issues/388
+RADAR_CODE = 'sas'
+os.environ['RADAR_CODE'] = RADAR_CODE
+
+# hack for readthedocs to cause it to run doxygen first: https://github.com/rtfd/readthedocs.org/issues/388
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
-  from subprocess import call
-  call('doxygen')
-  cur_dir = os.path.abspath(os.path.dirname(__file__))
-  call(['breathe-apidoc','-f','-o',cur_dir, cur_dir+'/xml/']) #use apidoc to regen these files on update
+    # Doxygen: Reads all c++ source and header files, and parses the documentation to xml files 
+    # for further reading. 
+	run('doxygen')
+    
+    # Breathe: parses xml files produced by doxygen and creates rst files for use by Sphinx Files
+    # are re-generated each call, no table of contents file is created, and only rst files are
+    # created. For more information, `breathe-apidoc --help`
+	cur_dir = os.path.abspath(os.path.dirname(__file__))
+	run(['breathe-apidoc','--force','--no-toc','--generate','file','-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
 
-  # call(['ln', '-s', BOREALISPATH + '/config/sas/sas_config.ini', BOREALISPATH + '/config.ini'])
+    # Update the experiment subrepo so experiment files can be read into documentation
+	run(['git', 'submodule', 'update', '--init'])
 
-  # TODO: Get this path into config file somehow, as that's now how we specify hdw location
-  call(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
+    # Clone in the HDW repo temporarily so modules reading them don't throw errors
+	# TODO: Get this path into config file somehow, as that's now how we specify hdw location 
+	run(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
 
-  # call(['ln', '-s', BOREALISPATH + '/hdw/hdw.dat.sas', BOREALISPATH + '/hdw.dat.sas'])
+	# Change config file HDW path to path accessible by ReadTheDocs
+    # TODO: Come up with a way that doesn't require modifying a version controlled config file
+	config_file = BOREALISPATH + f'/config/{RADAR_CODE}/{RADAR_CODE}_config.ini'
+	with open(config_file, 'r') as file:
+		data = json.load(file)
+	data['hdw_path'] = BOREALISPATH + '/hdw'
+	with open(config_file, 'w') as file:
+		json.dump(data, file)
 
 
 # -- General configuration ------------------------------------------------
@@ -65,16 +83,20 @@ extensions = [
     'sphinx.ext.imgmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
-    'sphinx.ext.autosectionlabel',
     'sphinxcontrib.programoutput',
     'sphinxcontrib.autoprogram',
-    'breathe'
+    'breathe',
+    'myst_parser'
 ]
+
+autodoc_mock_imports = ["debug", "release"]
 
 breathe_projects = {"borealis" : "xml/"}
 breathe_default_project = "borealis"
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+
+imgmath_embed = True    # To fix math images not loading
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -106,7 +128,7 @@ release = '1.0'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
@@ -186,7 +208,7 @@ html_context = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -246,7 +268,7 @@ html_static_path = ['_static']
 
 # The name of a javascript file (relative to the configuration directory) that
 # implements a search results scorer. If empty, the default will be used.
-#html_search_scorer = 'scorer.js'
+# html_search_scorer = 'searchtools.js'
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'Borealisdoc'
@@ -255,16 +277,16 @@ htmlhelp_basename = 'Borealisdoc'
 
 latex_elements = {
 # The paper size ('letterpaper' or 'a4paper').
-#'papersize': 'letterpaper',
+'papersize': 'letterpaper',
 
 # The font size ('10pt', '11pt' or '12pt').
-#'pointsize': '10pt',
+'pointsize': '10pt',
 
 # Additional stuff for the LaTeX preamble.
-#'preamble': '',
+'preamble': '',
 
 # Latex figure (float) alignment
-#'figure_align': 'htbp',
+'figure_align': 'htbp',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples

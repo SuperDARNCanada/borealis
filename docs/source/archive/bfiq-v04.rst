@@ -1,12 +1,15 @@
 =========
-bfiq v0.5
+bfiq v0.4
 =========
 
-The pyDARNio format class for this format is BorealisBfiqv0_5 found in the `borealis_formats <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisBfiqv0_4 found in the `borealis_formats
+<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
-Borealis software version 0.5 is out of date, see the current format of the bfiq files `here <https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`_.
+Borealis software version 0.4 is out of date, see the current format of the bfiq files `here
+<https://borealis.readthedocs.io/en/latest/borealis_data.html#borealis-current-version>`__. 
 
-The bfiq format is intended to hold beamformed I and Q data for the main and interferometer arrays. The data is not averaged. 
+The bfiq format is intended to hold beamformed I and Q data for the main and interferometer arrays.
+The data is not averaged. 
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 
@@ -14,19 +17,29 @@ Both site files and array-restructured files exist for this file type. Both are 
 bfiq array files
 ----------------
 
-Array restructured files are produced after the radar has finished writing a file and contain record data in multi-dimensional arrays so as to avoid repeated values, shorten the read time, and improve human readability. Fields that are unique to the record are written as arrays where the first dimension is equal to the number of records recorded. Other fields that are unique to the slice or experiment (and are therefore repeated for all records) are written only once. 
+Array restructured files are produced after the radar has finished writing a file and contain record
+data in multi-dimensional arrays so as to avoid repeated values, shorten the read time, and improve
+human readability. Fields that are unique to the record are written as arrays where the first
+dimension is equal to the number of records recorded. Other fields that are unique to the slice or
+experiment (and are therefore repeated for all records) are written only once. 
 
-The group names in these files are the field names themselves, greatly reducing the number of group names in the file when compared to site files and making the file much more human readable.
+The group names in these files are the field names themselves, greatly reducing the number of group
+names in the file when compared to site files and making the file much more human readable.
 
-The naming convention of the bfiq array-structured files are:
+The naming convention of the bfiq array-structured files are: ::
 
-[YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5
 
-For example: 20191105.1400.02.sas.0.bfiq.hdf5
+For example: ::
+    
+    20191105.1400.02.sas.0.bfiq.hdf5
 
-This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data for slice 0 of the experiment that ran at that time. It has been array restructured because it does not have a .site designation at the end of the filename.
+This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
+provides data for slice 0 of the experiment that ran at that time. It has been array restructured
+because it does not have a .site designation at the end of the filename.
 
-These files are zlib compressed which is native to hdf5 and no decompression is necessary before reading using your hdf5 library. 
+These files are zlib compressed which is native to hdf5 and no decompression is necessary before
+reading using your hdf5 library. 
 
 The file fields in the bfiq array files are:
 
@@ -57,11 +70,11 @@ The file fields in the bfiq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **blanked_samples**             | | Samples that should be blanked because    |
 | | *uint32*                        | | they occurred during transmission times,  |
-| | [num_records x                  | | given by sample number (index into        |
-| | max_num_blanked_samples ]       | | decimated data). Can differ from the      |
+| | [number of blanked              | | given by sample number (index into        |
+| | samples]                        | | decimated data). Can differ from the      |
 | |                                 | | pulses array due to multiple slices in a  |
-| |                                 | | single sequence and can differ from       |
-| |                                 | | record to record if a new slice is added. |
+| |                                 | | single sequence. Assumed shared between   |
+| |                                 | | records which was a bug fixed in v0.5.    |
 +-----------------------------------+---------------------------------------------+
 | | **borealis_git_hash**           | | Identifies the version of Borealis that   |
 | | *unicode*                       | | made this data. Contains git commit hash  |
@@ -136,11 +149,7 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | record. Allows the user to correctly read |
 | | [num_records]                   | | the data up to the correct number and     |
 | |                                 | | remove the padded zeros in the data       |
-| |                                 | | array.                                    |
-+-----------------------------------+---------------------------------------------+
-| | **num_blanked_samples**         | | The number of blanked samples for each    |
-| | *uint32*                        | | record.                                   | 
-| | [num_records]                   | |                                           |  
+| |                                 | | array.                                    | 
 +-----------------------------------+---------------------------------------------+
 | | **num_ranges**                  | | Number of ranges to calculate             |
 | | *uint32*                        | | correlations for.                         |
@@ -185,23 +194,10 @@ The file fields in the bfiq array files are:
 | | *bool*                          | | a scan (scan is defined by the            |
 | | [num_records]                   | | experiment).                              |
 +-----------------------------------+---------------------------------------------+
-| | **scheduling_mode**             | | The mode being run during this time       | 
-| | *unicode*                       | | period (ex. 'common', 'special',          |
-| |                                 | | 'discretionary').                         |
-+-----------------------------------+---------------------------------------------+
 | | **slice_comment**               | | Additional text comment that describes    |
 | | *unicode*                       | | the slice written in this file. The slice |
 | |                                 | | number of this file is provided in the    |
 | |                                 | | filename.                                 | 
-+-----------------------------------+---------------------------------------------+
-| | **slice_id**                    | | The slice id of this file.                |
-| | *uint32*                        | |                                           |
-+-----------------------------------+---------------------------------------------+ 
-| | **slice_interfacing**           | | The interfacing of this slice to          | 
-| | *unicode*                       | | other slices for each record. String      |
-| | [num_records]                   | | representation of the python dictionary   | 
-| |                                 | | of {slice : interface_type, ... }. Can    | 
-| |                                 | | differ between records if slices updated. | 
 +-----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**              | | A list of GPS timestamps corresponding to |
 | | *float64*                       | | the beginning of transmission for each    | 
@@ -232,14 +228,20 @@ The file fields in the bfiq array files are:
 bfiq site files
 ---------------
 
-Site files are produced by the Borealis code package and have the data in a record by record style format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past epoch of the first sequence or sampling period recorded in the record. 
+Site files are produced by the Borealis code package and have the data in a record by record style
+format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past
+epoch of the first sequence or sampling period recorded in the record. 
 
-The naming convention of the bfiq site-structured files are:
+The naming convention of the bfiq site-structured files are: ::
 
-[YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5.site
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].bfiq.hdf5.site
 
-For example: 20191105.1400.02.sas.0.bfiq.hdf5.site
-This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it provides data for slice 0 of the experiment that ran at that time. 
+For example: ::
+    
+    20191105.1400.02.sas.0.bfiq.hdf5.site 
+    
+This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
+provides data for slice 0 of the experiment that ran at that time. 
 
 These files are often bzipped after they are produced.
 
@@ -259,11 +261,11 @@ The file fields under the record name in bfiq site files are:
 | | **beam_nums**                  | | A list of beam numbers used in this slice | 
 | | *[uint32, ]*                   | | in this record.                           |
 +----------------------------------+---------------------------------------------+
-| | **blanked_samples**            | | Samples that should be blanked because    |
-| | *[uint32, ]*                   | | they occurred during transmission times,  |
-| |                                | | given by sample number (index into        |
-| |                                | | decimated data). Can differ from the      |
-| |                                | | pulses array due to multiple slices in a  |
+| | **blanked_samples**            | | Samples that should be blanked because    | 
+| | *[uint32, ]*                   | | they occurred during transmission times,  | 
+| |                                | | given by sample number (index into        | 
+| |                                | | decimated data). Can differ from the      | 
+| |                                | | pulses array due to multiple slices in a  | 
 | |                                | | single sequence.                          |
 +----------------------------------+---------------------------------------------+
 | | **borealis_git_hash**          | | Identifies the version of Borealis that   | 
@@ -366,20 +368,8 @@ The file fields under the record name in bfiq site files are:
 | | *bool*                         | | a scan (scan is defined by the            | 
 | |                                | | experiment).                              |
 +----------------------------------+---------------------------------------------+
-| | **scheduling_mode**            | | The mode being run during this time       | 
-| | *unicode*                      | | period (ex. 'common', 'special',          |
-| |                                | | 'discretionary').                         |
-+----------------------------------+---------------------------------------------+
 | | **slice_comment**              | | Additional text comment that describes    |
 | | *unicode*                      | | the slice written in this file.           |
-+----------------------------------+---------------------------------------------+
-| | **slice_id**                   | | The slice id of this file.                |
-| | *uint32*                       | |                                           |
-+----------------------------------+---------------------------------------------+ 
-| | **slice_interfacing**          | | The interfacing of this slice to          | 
-| | *unicode*                      | | other slices. String representation of    |
-| |                                | | the python dictionary of                  | 
-| |                                | | {slice : interface_type, ... }            | 
 +----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**             | | A list of GPS timestamps corresponding to | 
 | | *[float64, ]*                  | | the beginning of transmission for each    | 
@@ -404,21 +394,27 @@ The file fields under the record name in bfiq site files are:
 Site/Array Restructuring
 ------------------------
 
-File restructuring to array files is done using an additional code package. Currently, this code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
+File restructuring to array files is done using an additional code package. Currently, this code is
+housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
-The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method, and array to site restructuring is done in the same class _array_to_site method. Both can be found `here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+The site to array file restructuring occurs in the borealis BaseFormat _site_to_array class method,
+and array to site restructuring is done in the same class _array_to_site method. Both can be found
+`here <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`__.
 
 -------------------------------------
 bfiq to iqdat SDARN (DMap) Conversion
 -------------------------------------
 
-Conversion to SDARN IO (DMap iqdat) is available but can fail based on experiment complexity. The conversion also reduces the precision of the data due to conversion from complex floats to int of all samples. Similar precision is lost in timestamps. 
+Conversion to SDARN IO (DMap iqdat) is available but can fail based on experiment complexity. The
+conversion also reduces the precision of the data due to conversion from complex floats to int of
+all samples. Similar precision is lost in timestamps. 
 
-HDF5 is a much more user-friendly format and we encourage the use of this data if possible. Please reach out if you have questions on how to use the Borealis bfiq files.
+HDF5 is a much more user-friendly format and we encourage the use of this data if possible. Please
+reach out if you have questions on how to use the Borealis bfiq files.
 
 The mapping from bfiq to iqdat dmap files is completed as follows:
 
 ..  toctree::
     :maxdepth: 2
 
-    iqdat_mapping
+    ./../iqdat_mapping
