@@ -316,7 +316,7 @@ UHD throws several error codes depending on the performance of the system:
 
 :U: underflow, the host computer is not sending data fast enough. Generally harmless.
 :O: overflow, the host computer can't consume data fast enough. Generally harmless.
-:L: late packet on transmit
+:L: late packet on transmit. Generally harmless in small quantities.
 :S: sequence error, typically packets dropped on the network.
 :OOS: out of sequence, packets received out of order.
 
