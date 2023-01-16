@@ -170,6 +170,11 @@ class SWG(object):
             # First line is month and year
             if idx == 0:
                 continue
+            
+            items = line.split()
+
+            start_day = items[0][0:2]
+            start_hr = items[0][3:]
 
             if "Common Time" in line:
                 mode_type = "common"
@@ -203,9 +208,9 @@ class SWG(object):
             if not mode_to_use or not mode_type:
                 print(f"SWG line couldn't be parsed, continuing: {line}")
                 continue
-
-            param = {f"yyyymmdd": "{year}{month}{start_day}",
-                     f"hhmm": "{start_hr}:00",
+            # start_day
+            param = {f"yyyymmdd": f"{year}{month}{start_day}",
+                     f"hhmm": f"{start_hr}:00",
                      "experiment": mode_to_use,
                      "scheduling_mode": mode_type}
             parsed_params.append(param)
@@ -262,11 +267,11 @@ def main():
                     try:
                         print(f"Add: date: {ex['yyyymmdd']}, exp: {ex['experiment']}, mode: {ex['scheduling_mode']}")
                         site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
-                    except ValueError as e:
+                    except ValueError as err:
                         error_msg = f"{today.strftime('%c')} {site_scd.scd_filename}: Unable to add line:\n" \
                                     f"\t {ex['yyyymmdd']} {ex['hhmm']} {ex['experiment']} {ex['scheduling_mode']}\n" \
                                     f"\t Exception thrown:\n" \
-                                    f"\t\t {str(e)}\n"
+                                    f"\t\t {str(err)}\n"
 
                         with open(scd_logs + scd_error_log, 'a') as f:
                             f.write(error_msg)

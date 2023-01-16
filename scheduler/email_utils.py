@@ -33,8 +33,8 @@ class Emailer(object):
         self.sender = "borealis"
 
         try:
-            with open(file_of_emails, 'r') as f:
-                self.emails = f.readlines()
+            with open(file_of_emails, 'r') as emails_file:
+                self.emails = emails_file.readlines()
         except OSError as err:
             # File can't be opened
             self.emails = []
@@ -51,19 +51,19 @@ class Emailer(object):
         if not self.emails:
             raise ValueError("No email addresses to send to")
 
-    def email_log(self, subject, log_file, attachments=None):
+    def email_log(self, subject, log_filename, attachments=None):
         """Send a log to the emails.
 
         Args:
             subject (str): Subject line for the log email.
-            log_file (str): File name of the log.
+            log_filename (str): File name of the log.
             attachments(list) : List of paths to email attachments. Default None
         """
         try:
-            with open(log_file, 'r') as f:
-                body = f.read()
-        except Exception as e:
-            body = f"Unable to open log file {log_file} with error:\n{str(e)}"
+            with open(log_filename, 'r') as log_file:
+                body = log_file.read()
+        except Exception as err:
+            body = f"Unable to open log file {log_filename} with error:\n{str(err)}"
 
         em = email.mime.multipart.MIMEMultipart()
 
