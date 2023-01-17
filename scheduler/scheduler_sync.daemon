@@ -3,14 +3,33 @@
 # Author: Theodore Kolkman
 #
 # This script continuously monitors the Borealis schedule files on SuperDARN-CSSDP using inotify
-# and rsync's the files to each site whenever a change is detected.
-
-# Inotify script to be run on Borealis computer. Executes rsync_to_nas
+# and rsync's the files to each site whenever a change is detected. 
+#
+# To sync files to all sites, even those hidden behind a firewall (PGR), Maxwell is used. Rsync
+# sync's via Maxwell to all remote sites, utilizing the autossh link between Maxwell and all site
+# computers.
+#
+# This script should be run via a systemd daemon with the following service file:
+#   scheduler_sync@.service:
+#       [Unit]
+#       Description=Scheduler synchronization daemon for %i
+#       
+#       [Service]
+#       User=mrcopy
+#       ExecStart=/home/mrcopy/borealis/scheduler/scheduler_sync.daemon %i
+#       Restart=always
+#       
+#       [Install]
+#       WantedBy=multi-user.target
+#
+# The site to sync to can be specified by calling the daemon with the following syntax:
+#       systemctl [command] scheduler_sync.service [RADARID]
 #
 # Dependencies:
 #	- inotifywait (installed by zypper in inotify-tools)
 #   - Maxwell is configured via autossh to each site Borealis computer with ports that correspod to
 #   the SITE_NUM association
+#   - ssh link between SuperDARN-CSSDP -> Maxwell (no password prompt for rsync)
 #
 # Parameter RADARID: [sas, pgr, rkn, inv, cly]
 
@@ -28,7 +47,8 @@ fi
 
 RADARID=$1
 
-readonly WATCH_DIR="/data/borealis_schedules"
+# readonly WATCH_DIR="/data/borealis_schedules"
+WATCH_DIR="/home/mrcopy/testing/"
 readonly SCD_FILE="${WATCH_DIR}/${RADARID}.scd"
 
 # Define logging directory
@@ -56,7 +76,7 @@ do
         printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Schedule modified for $RADARID\n"
 
         # Sync the .scd file to site via Maxwell
-        rsync --archive --rsh=ssh -e "ssh $MAXWELL ssh" "${SCD_FILE}" "${DEST}:${DEST_DIR}"
+        rsync -av --rsh="ssh $MAXWELL ssh -p $DEST_PORT" "${SCD_FILE}" "${DEST}:${DEST_DIR}"
         printf "Sent ${SCD_FILE} to ${DEST}:${DEST_DIR}\n"
 
         printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Finished syncing schedule\n\n"
