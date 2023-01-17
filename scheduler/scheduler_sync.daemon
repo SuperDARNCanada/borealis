@@ -37,8 +37,7 @@
 
 # Associate each RADARID with a SITE_NUM. SITE_NUM is used to get correct port connecting Maxwell
 # and the site borealis computer.
-declare -A SITE_NUM
-SITE_NUM=( ["sas"]="0" ["pgr"]="1" ["cly"]="2" ["rkn"]="3" ["inv"]="4" )
+declare -A SITE_NUM=( ["sas"]="0" ["pgr"]="1" ["cly"]="2" ["rkn"]="3" ["inv"]="4" )
 
 if [[ $# -ne 1 ]]; then
     printf "Usage: ./sync_schedules.daemon RADARID\n"
@@ -47,8 +46,7 @@ fi
 
 RADARID=$1
 
-# readonly WATCH_DIR="/data/borealis_schedules"
-WATCH_DIR="/home/mrcopy/testing/"
+readonly WATCH_DIR="/data/borealis_schedules"
 readonly SCD_FILE="${WATCH_DIR}/${RADARID}.scd"
 
 # Define logging directory
@@ -58,26 +56,28 @@ mkdir --parents $LOG_DIR
 readonly LOGFILE="${LOG_DIR}/${script_name}_${RADARID}.log"
 
 # Define destination and firewall computer
+readonly SITE_ID="${SITE_NUM[$RADARID]}"    # Get site id corresponding to correct Maxwell port
 readonly MAXWELL="dataman@maxwell.usask.ca"
 readonly DEST="radar@localhost"
 readonly DEST_PORT="5${SITE_ID}522"
-readonly DEST_DIR="/home/radar/borealis_schedules"
+# readonly DEST_DIR="/home/radar/borealis_schedules"
+DEST_DIR="/home/radar/test_scheduler_sync/"     # Testing
 
 ###################################################################################################
 
 exec &>> $LOGFILE # Redirect STDOUT and STDERR to $LOGFILE
 printf "Starting $0 $RADARID at $(date --utc "+%Y%m%d %H:%M:%S UTC")\n"
 
-inotifywait --recursive --monitor --syslog --timefmt '%Y%m%d.%H:%M:%S' --format '%T %w %e %f' $WATCH_DIR | \
+inotifywait --monitor --syslog --timefmt '%Y%m%d.%H:%M:%S' --format '%T %w %e %f' -e modify -e attrib $WATCH_DIR | \
 while read TIME DIRECTORY ACTION FILE # These must line up with format parameters
 do
     if [[ "$FILE" =~ .*$RADARID\.scd$ ]]   # Only interested in .scd files for the specified site
-        then
+    then
         printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Schedule modified for $RADARID\n"
 
         # Sync the .scd file to site via Maxwell
+        printf "Sending ${SCD_FILE} to ${DEST}:${DEST_DIR}\n"
         rsync -av --rsh="ssh $MAXWELL ssh -p $DEST_PORT" "${SCD_FILE}" "${DEST}:${DEST_DIR}"
-        printf "Sent ${SCD_FILE} to ${DEST}:${DEST_DIR}\n"
 
         printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Finished syncing schedule\n\n"
     fi
