@@ -1,0 +1,64 @@
+#!/bin/bash
+# Copyright 2022 SuperDARN Canada, University of Saskatchewan
+# Author: Theodore Kolkman
+#
+# This script continuously monitors the Borealis schedule files on SuperDARN-CSSDP using inotify
+# and rsync's the files to each site whenever a change is detected.
+
+# Inotify script to be run on Borealis computer. Executes rsync_to_nas
+#
+# Dependencies:
+#	- inotifywait (installed by zypper in inotify-tools)
+#   - Maxwell is configured via autossh to each site Borealis computer with ports that correspod to
+#   the SITE_NUM association
+#
+# Parameter RADARID: [sas, pgr, rkn, inv, cly]
+
+###################################################################################################
+
+# Associate each RADARID with a SITE_NUM. SITE_NUM is used to get correct port connecting Maxwell
+# and the site borealis computer.
+declare -A SITE_NUM
+SITE_NUM=( ["sas"]="0" ["pgr"]="1" ["cly"]="2" ["rkn"]="3" ["inv"]="4" )
+
+if [[ $# -ne 1 ]]; then
+    printf "Usage: ./sync_schedules.daemon RADARID\n"
+    exit 1
+fi
+
+RADARID=$1
+
+readonly WATCH_DIR="/data/borealis_schedules"
+readonly SCD_FILE="${WATCH_DIR}/${RADARID}.scd"
+
+# Define logging directory
+script_name=$(echo $(basename $0) | cut --fields 1 --delimiter '.')
+readonly LOG_DIR="${HOME}/logs/scheduler"
+mkdir --parents $LOG_DIR
+readonly LOGFILE="${LOG_DIR}/${script_name}_${RADARID}.log"
+
+# Define destination and firewall computer
+readonly MAXWELL="dataman@maxwell.usask.ca"
+readonly DEST="radar@localhost"
+readonly DEST_PORT="5${SITE_ID}522"
+readonly DEST_DIR="/home/radar/borealis_schedules"
+
+###################################################################################################
+
+exec &>> $LOGFILE # Redirect STDOUT and STDERR to $LOGFILE
+printf "Starting $0 $RADARID at $(date --utc "+%Y%m%d %H:%M:%S UTC")\n"
+
+inotifywait --recursive --monitor --syslog --timefmt '%Y%m%d.%H:%M:%S' --format '%T %w %e %f' $WATCH_DIR | \
+while read TIME DIRECTORY ACTION FILE # These must line up with format parameters
+do
+    if [[ "$FILE" =~ .*$RADARID\.scd$ ]]   # Only interested in .scd files for the specified site
+        then
+        printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Schedule modified for $RADARID\n"
+
+        # Sync the .scd file to site via Maxwell
+        rsync --archive --rsh=ssh -e "ssh $MAXWELL ssh" "${SCD_FILE}" "${DEST}:${DEST_DIR}"
+        printf "Sent ${SCD_FILE} to ${DEST}:${DEST_DIR}\n"
+
+        printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Finished syncing schedule\n\n"
+    fi
+done
