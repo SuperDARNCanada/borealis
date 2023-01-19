@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2022 SuperDARN Canada, University of Saskatchewan
+# Copyright 2023 SuperDARN Canada, University of Saskatchewan
 # Author: Theodore Kolkman
 #
 # This script continuously monitors the Borealis schedule files on SuperDARN-CSSDP using inotify
@@ -26,9 +26,9 @@
 #       systemctl [command] scheduler_sync.service [RADARID]
 #
 # Dependencies:
-#	- inotifywait (installed by zypper in inotify-tools)
-#   - Maxwell is configured via autossh to each site Borealis computer with ports that correspod to
-#   the SITE_NUM association
+#   - inotifywait (installed by zypper in inotify-tools)
+#   - Maxwell is configured via autossh to each site Borealis computer with ports that correspond 
+#   to the SITE_NUM association
 #   - ssh link between SuperDARN-CSSDP -> Maxwell (no password prompt for rsync)
 #
 # Parameter RADARID: [sas, pgr, rkn, inv, cly]
@@ -68,7 +68,10 @@ DEST_DIR="/home/radar/test_scheduler_sync/"     # Testing
 exec &>> $LOGFILE # Redirect STDOUT and STDERR to $LOGFILE
 printf "Starting $0 $RADARID at $(date --utc "+%Y%m%d %H:%M:%S UTC")\n"
 
-inotifywait --monitor --syslog --timefmt '%Y%m%d.%H:%M:%S' --format '%T %w %e %f' -e modify -e attrib $WATCH_DIR | \
+# Inotify will trigger on all modify (file content change) and attrib (file metadata change) events.
+# The conditional filters the inotify output to only trigger the syncronization when the .scd file
+# for the site specified by RADARID is modified.
+inotifywait --monitor --timefmt '%Y%m%d.%H:%M:%S' --format '%T %w %e %f' -e modify,attrib $WATCH_DIR | \
 while read TIME DIRECTORY ACTION FILE # These must line up with format parameters
 do
     if [[ "$FILE" =~ .*$RADARID\.scd$ ]]   # Only interested in .scd files for the specified site
