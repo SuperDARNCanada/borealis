@@ -8,6 +8,7 @@ import inspect
 from pathlib import Path
 import datetime
 import logging
+from logging.handlers import TimedRotatingFileHandler
 import sys
 import structlog
 import rich  # requires python 3.7+
@@ -37,6 +38,7 @@ def log(log_level='INFO'):
     # Determine to the log file and path to write logs to
     logfile_timestamp = datetime.datetime.utcnow().strftime("%Y.%m.%d")
     log_file = f"{raw_config['log_directory']}/{logfile_timestamp}-{module_name}.log"
+    log_file = f"{raw_config['log_directory']}/{module_name}"
 
     structlog.configure(
         processors=[
@@ -86,10 +88,18 @@ def log(log_level='INFO'):
     )
 
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(processor=structlog.dev.ConsoleRenderer(colors=True)))
+    console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
+        processor=structlog.dev.ConsoleRenderer(colors=True),
+        keep_exc_info=True,
+        keep_stack_info=True,
+    ))
 
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(structlog.stdlib.ProcessorFormatter(processor=structlog.processors.JSONRenderer()))
+    file_handler = TimedRotatingFileHandler(filename=log_file, when='midnight', utc=True)
+    file_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
+        processor=structlog.processors.JSONRenderer(),
+        keep_exc_info=True,
+        keep_stack_info=True,
+    ))
 
     root_logger = logging.getLogger()
     root_logger.addHandler(console_handler)
