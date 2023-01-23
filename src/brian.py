@@ -2,7 +2,7 @@
 
 """
     brian process
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~
     This program communicates with all processes to administrate the Borealis software
 
     :copyright: 2017 SuperDARN Canada
@@ -15,7 +15,6 @@ import threading
 import argparse
 import zmq
 import pickle
-
 from utils import socket_operations as so
 from utils import shared_macros as sm
 from utils.options import experimentoptions as options
@@ -29,44 +28,46 @@ TIME_PROFILE = True
 
 brian_print = sm.MODULE_PRINT("sequence timing", "red")
 
+
 def router(opts):
     """
-    The router is responsible for moving traffic between modules by routing traffic using
-    named sockets.
+    The router is responsible for moving traffic between modules by routing traffic using named sockets.
 
     :param  opts: Options parsed from config file
     :type   opts: ExperimentOptions class
     """
+
     context = zmq.Context().instance()
     router = context.socket(zmq.ROUTER)
     router.setsockopt(zmq.ROUTER_MANDATORY, 1)
     router.bind(opts.router_address)
 
-    sys.stdout.write("Starting router!\n")
+    log.info("booting router")
     frames_to_send = []
     while True:
         events = router.poll(timeout=1)
+
         if events:
             dd = router.recv_multipart()
-
             sender, receiver, empty, data = dd
-            if __debug__:
-                output = f"Router input/// Sender -> {sender}: Receiver -> {receiver}\n"
-                sys.stdout.write(output)
-            frames_received = [receiver,sender,empty,data]
+            log.debug(f"router input: sender={sender} -> receiver={receiver}", sender=sender, receiver=receiver)
+            frames_received = [receiver, sender, empty, data]
             frames_to_send.append(frames_received)
+            log.debug(f"router output: receiver={receiver} -> sender={sender}", sender=sender, receiver=receiver)
 
-            if __debug__:
-                output = f"Router output/// Receiver -> {receiver}: Sender -> {sender}\n"
-                sys.stdout.write(output)
         non_sent = []
+
         for frames in frames_to_send:
             try:
                 router.send_multipart(frames)
             except zmq.ZMQError as e:
-                if __debug__:
-                    output = f"Unable to send frame Receiver -> {frames[0]}: Sender -> {frames[1]}\n"
-                    sys.stdout.write(output)
+                log.debug(f"unable to send frame: receiver={frames[0]} -> sender={frames[1]}",
+                          sender_frame=frames[1],
+                          receiver_frame=frames[0])
+                log.exception(f"unable to send frame: receiver={receiver} -> sender={sender}",
+                              sender=sender,
+                              receiver=receiver,
+                              exception=e)
                 non_sent.append(frames)
         frames_to_send = non_sent
 
@@ -112,6 +113,7 @@ def sequence_timing(opts):
         sequence time than the speed of the driver is the limiting factor. If processing takes
         longer than sequence time, than the dsp unit limits the speed of the system.
         """
+
         start_new = context.socket(zmq.PAIR)
         start_new.connect("inproc://start_new")
 
@@ -135,13 +137,9 @@ def sequence_timing(opts):
             time_now = datetime.utcnow()
         while True:
             if want_to_start and good_to_start and dsp_finish_counter:
-                #Acknowledge new sequence can begin to Radar Control by requesting new sequence
-                #metadata
-                if __debug__:
-                    brian_print("Requesting metadata from Radar control")
-
-                so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity,
-                                "Requesting metadata")
+                # Acknowledge new sequence can begin to Radar Control by requesting new sequence metadata
+                log.debug("requesting 'metadata' from 'radar_control'")
+                so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity, "Requesting metadata")
                 want_to_start = good_to_start = False
                 dsp_finish_counter -= 1
 
@@ -267,6 +265,7 @@ def sequence_timing(opts):
             #acknowledge that we are good and able to start something new.
             start_new_sock.send_string("extra_good_to_start")
 
+
 def main():
     parser = argparse.ArgumentParser()
     help_msg = 'Run only the router. Do not run any of the other threads or functions.'
@@ -287,6 +286,13 @@ def main():
     while True:
         time.sleep(1)
 
+
 if __name__ == "__main__":
-    main()
+    from utils import log_config
+    log = log_config.log(log_level='INFO')
+    log.info(f"booted")
+    try:
+        main()
+    except Exception as main_exception:
+        log.exception("crashed", exception=main_exception)
 

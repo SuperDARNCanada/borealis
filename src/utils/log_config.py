@@ -1,32 +1,69 @@
 """
-I am structuring this config file so that it simply needs to be imported to any module
-where we want logging.
+    This config script sets up the `logging` and `structlog` modules for message logging to
+    console and file. It simply needs to be imported into any module where logging is needed.
+    In order to capture exceptions and crashes main() should be in a try/except block.
+    See example.
+
+    :copyright: 2023 SuperDARN Canada
+    :author: Adam Lozinsky
+
+    :Example:
+        if __name__ == '__main__':
+            from utils import log_config
+            log = log_config.log(log_level='INFO')
+            log.info(f"Example info text {[1, 2, 3]}", example_key=[1, 2, 3])
+            try:
+                main()
+            except Exception as exec:
+                log.exception("Example crashed", exception=exec)
+
+    :Notes:
+        Setting up structlog is very tricky, but after it is done it should just work
+        (or so they promise). Regardless, the comments herein should help explain how this
+        works should we ever need to update it.
+
+        See documentation.
+        https://docs.python.org/3/library/logging.handlers.html#timedrotatingfilehandler
+        https://www.structlog.org/en/stable/standard-library.html
+        https://www.structlog.org/en/stable/processors.html#chains
 """
+
 import os
 import json
 import inspect
 from pathlib import Path
-import datetime
-import logging
-from logging.handlers import TimedRotatingFileHandler
 import sys
+# We need these two handlers from logging to print to a file and stdout
+import logging
+from logging import StreamHandler
+from logging.handlers import TimedRotatingFileHandler
 import structlog
-import rich  # requires python 3.7+
+# We need rich to make the console look pretty (Requires Python 3.7+)
+import rich
 from rich import pretty
 rich.pretty.install()
 
 
 def log(log_level='INFO'):
     """
-    Logging Levels = [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
+    :param log_level: Logging threshold [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
+    :type log_level: str
+
+    :Notes:
+    There are three parts to logging; processors, renderers, and handlers.
+        processors - modify, add, or clean up the log message dict
+        renderers - make the log message a string, json, dict, etc. with fancy styling
+        handlers -  print the rendered data to stdout, file, etc.
+
+    :Todo:
+    - Add a processor to get the processID and threadID.
     """
 
     # Obtain the module name that imported this log_config
-    if __name__ != '__main__':
-        caller = Path(inspect.stack()[-1].filename)
-        module_name = caller.name.split('.')[0]
+    caller = Path(inspect.stack()[-1].filename)
+    module_name = caller.name.split('.')[0]
 
-    # Gather the configuration information.
+    # Gather the borealis configuration information to get path to log dir
     config_path = os.environ["BOREALISPATH"] + "/config.ini"
     try:
         with open(config_path, 'r') as config_data:
@@ -35,78 +72,55 @@ def log(log_level='INFO'):
         errmsg = f'Cannot open config file at {config_path}'
         raise IOError(errmsg)
 
-    # Determine to the log file and path to write logs to
-    logfile_timestamp = datetime.datetime.utcnow().strftime("%Y.%m.%d")
-    log_file = f"{raw_config['log_directory']}/{logfile_timestamp}-{module_name}.log"
+    # Set the log file and dir path. The time tag will be appended at the midnight
+    # roll over by the TimedRotatingLogHandler.
     log_file = f"{raw_config['log_directory']}/{module_name}"
 
+    # Configure structlog here once for everything so that every log is uniformly formatted
     structlog.configure(
+        # Processors are a list of functions that sequentially modify the event_dict (log message)
         processors=[
-            # If log level is too low, abort pipeline and throw away log entry.
-            structlog.stdlib.filter_by_level,
-            # Add the name of the logger to event dict.
-            structlog.stdlib.add_logger_name,
-            # Add log level to event dict.
-            structlog.stdlib.add_log_level,
-            # Perform %-style formatting.
-            # structlog.stdlib.PositionalArgumentsFormatter(),
-            # Add a timestamp in ISO 8601 format.
-            structlog.processors.TimeStamper(fmt='iso', utc=True),
-            structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),
-            # If the "stack_info" key in the event dict is true, remove it and
-            # render the current stack trace in the "stack" key.
-            structlog.processors.StackInfoRenderer(),
-            # If the "exc_info" key in the event dict is either true or a
-            # sys.exc_info() tuple, remove "exc_info" and render the exception
-            # with traceback into the "exception" key.
-            structlog.processors.format_exc_info,
-            # If some value is in bytes, decode it to a unicode str.
-            structlog.processors.UnicodeDecoder(),
-            # Add callsite parameters.
-            structlog.processors.CallsiteParameterAdder(
-                {
-                    structlog.processors.CallsiteParameter.FILENAME,
-                    structlog.processors.CallsiteParameter.FUNC_NAME,
-                    structlog.processors.CallsiteParameter.LINENO,
-                }
-            ),
-            # Render the final event dict as JSON.
-            # structlog.processors.JSONRenderer()
-            structlog.stdlib.ProcessorFormatter.wrap_for_formatter
-        ],
-        # `wrapper_class` is the bound logger that you get back from
-        # get_logger(). This one imitates the API of `logging.Logger`.
-        wrapper_class=structlog.stdlib.BoundLogger,
-        # `logger_factory` is used to create wrapped loggers that are used for
-        # OUTPUT. This one returns a `logging.Logger`. The final value (a JSON
-        # string) from the final processor (`JSONRenderer`) will be passed to
-        # the method of the same name as that you've called on the bound logger.
-        logger_factory=structlog.stdlib.LoggerFactory(),
-        # Effectively freeze configuration after creating the first bound
-        # logger.
-        cache_logger_on_first_use=True,
+            structlog.stdlib.filter_by_level,  # Abort pipeline on log levels lower than threshold
+            structlog.stdlib.add_logger_name,  # Add the name of the logger to event dict
+            structlog.stdlib.add_log_level,    # Add log level to event dict
+            structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add ISO-8601 timestamp
+            structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),  # Add Unix timestamp
+            structlog.processors.StackInfoRenderer(),  # Move "stack_info" in event_dict to "stack" and render
+            structlog.processors.UnicodeDecoder(),  # Decode byte strings to unicode strings
+            structlog.processors.CallsiteParameterAdder(  # Add file name, func name, and line number
+                {structlog.processors.CallsiteParameter.FILENAME,
+                 structlog.processors.CallsiteParameter.FUNC_NAME,
+                 structlog.processors.CallsiteParameter.LINENO}),
+            # The last processor has to be a renderer to render the log to file, stream, etc. in some style
+            # This wrapper lets us decide on the renderer later. This is needed to have two renderers.
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
+        wrapper_class=structlog.stdlib.BoundLogger,  # Structlog wrapper class to imitate 'logging.Logger`
+        logger_factory=structlog.stdlib.LoggerFactory(),  # Creates the wrapped loggers
+        cache_logger_on_first_use=True  # Freeze the configuration (no tampering!)
     )
 
-    console_handler = logging.StreamHandler(sys.stdout)
+    # Set up the first handler to pipe logs to stdout
+    console_handler = StreamHandler(sys.stdout)
     console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-        processor=structlog.dev.ConsoleRenderer(colors=True),
-        keep_exc_info=True,
-        keep_stack_info=True,
-    ))
+        processor=structlog.dev.ConsoleRenderer(colors=True)))
 
+    # Set up the second handler to pip logs to a JSON file that rotates at midnight
     file_handler = TimedRotatingFileHandler(filename=log_file, when='midnight', utc=True)
     file_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-        processor=structlog.processors.JSONRenderer(),
-        keep_exc_info=True,
-        keep_stack_info=True,
-    ))
+        processors=[structlog.processors.dict_tracebacks,  # Makes tracebacks dict rather than str
+                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes useless dunders
+                    structlog.processors.JSONRenderer()]))
+    # Note: the foreign_pre_chain= option can be used to add more processor to just on handler
 
+    # Get the logging logger object and attach both handlers
     root_logger = logging.getLogger()
     root_logger.addHandler(console_handler)
     root_logger.addHandler(file_handler)
 
+    # Set the logging level that was configured by the start options
     root_logger.setLevel(log_level)
 
+    # Apply the configuration
     structlog.configure()
 
     return structlog.getLogger(module_name)
