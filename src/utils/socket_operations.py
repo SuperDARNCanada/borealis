@@ -2,10 +2,12 @@
 
 """
     socket_operations.py
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~~~
     Socket operations utility file, recv, send, setup, etc...
 
     :copyright: 2017 SuperDARN Canada
+
+    :todo: log.debug all functions
 """
 
 import zmq
@@ -64,12 +66,12 @@ def send_data(socket, receiver_identity, msg):
     """
     Sends data to another identity.
 
-    :param  socket:     Socket to send from.
-    :type   socket:     ZMQ socket.
+    :param  socket:             Socket to send from.
+    :type   socket:             ZMQ socket.
     :param  receiver_identity:  The identity to send to.
     :type   receiver_identity:  str
-    :param  msg:        The data message to send.
-    :type   msg:        str
+    :param  msg:                The data message to send.
+    :type   msg:                str
     """
     frames = [receiver_identity.encode('utf-8'), b"", msg.encode('utf-8')]
     socket.send_multipart(frames)

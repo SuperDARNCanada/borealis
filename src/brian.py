@@ -14,7 +14,6 @@ import argparse
 import zmq
 import pickle
 from utils import socket_operations as so
-from utils import shared_macros as sm
 from utils.options import experimentoptions as options
 
 if __debug__:
@@ -23,8 +22,6 @@ else:
     from release.borealis.utils.protobuf import rxsamplesmetadata_pb2
 
 TIME_PROFILE = True
-
-brian_print = sm.MODULE_PRINT("sequence timing", "red")
 
 
 def router(opts):
@@ -294,5 +291,6 @@ if __name__ == "__main__":
         main()
         log.info(f"BRIAN EXITED")
     except Exception as main_exception:
+        log.critical("BRIAN CRASHED", error=main_exception)
         log.exception("BRIAN CRASHED", exception=main_exception)
 

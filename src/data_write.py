@@ -4,12 +4,11 @@
     data_write package
     ~~~~~~~~~~~~~~~~~~
     This package contains utilities to parse protobuf packets containing antennas_iq data, bfiq
-    data, rawacf data, etc and write that data to HDF5 or JSON files.
+    data, rawacf data, etc. and write that data to HDF5 or JSON files.
 
     :copyright: 2017 SuperDARN Canada
 """
 
-import sys
 import os
 import datetime
 import json
@@ -29,12 +28,9 @@ import faulthandler
 from scipy.constants import speed_of_light
 import copy
 import pickle
-
-import utils.shared_macros as sm
 import utils.options.data_write_options as dwo
 from utils import socket_operations as so
 
-dw_print = sm.MODULE_PRINT("Data Write", "cyan")
 
 DATA_TEMPLATE = {
     "borealis_git_hash"         : None, # Identifies the version of Borealis that made this data.
@@ -196,6 +192,7 @@ class ParseData(object):
                 :param  message_data:   unique message field for parsing
                 :type   message_data:   str
                 """
+
                 # Open the shared memory
                 shm = shared_memory.SharedMemory(name=message_data)
                 acf_data = np.ndarray(data_shape, dtype=np.complex64, buffer=shm.buf)
@@ -234,8 +231,9 @@ class ParseData(object):
         num_samps = self.processed_data.num_samps
 
         main_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_main_shm)
-        temp_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, 
-                                buffer=main_shm.buf)
+        temp_data = np.ndarray((num_slices, max_num_beams, num_samps),
+                               dtype=np.complex64,
+                               buffer=main_shm.buf)
         main_data = temp_data.copy()
         main_shm.close()
         main_shm.unlink()
@@ -244,8 +242,9 @@ class ParseData(object):
         if self.processed_data.bfiq_intf_shm != '':
             intf_available = True
             intf_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_intf_shm)
-            temp_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, 
-                                    buffer=intf_shm.buf)
+            temp_data = np.ndarray((num_slices, max_num_beams, num_samps),
+                                   dtype=np.complex64,
+                                   buffer=intf_shm.buf)
             intf_data = temp_data.copy()
             intf_shm.close()
             intf_shm.unlink()
@@ -273,8 +272,7 @@ class ParseData(object):
         (contains all sampling period data). All variables are captured from outer scope.
         """
 
-        self._antenna_iq_accumulator['data_descriptors'] = ['num_antennas', 'num_sequences',
-                                                            'num_samps']
+        self._antenna_iq_accumulator['data_descriptors'] = ['num_antennas', 'num_sequences', 'num_samps']
 
         # Get data dimensions for reading in the shared memory
         num_slices = len(self.processed_data.output_datasets)
@@ -286,15 +284,17 @@ class ParseData(object):
         for debug_stage in self.processed_data.debug_data:
             stage_samps = debug_stage.num_samps
             stage_main_shm = shared_memory.SharedMemory(name=debug_stage.main_shm)
-            stage_main_data = np.ndarray((num_slices, num_main_antennas, stage_samps), dtype=np.complex64,
+            stage_main_data = np.ndarray((num_slices, num_main_antennas, stage_samps),
+                                         dtype=np.complex64,
                                          buffer=stage_main_shm.buf)
-            stage_data = stage_main_data.copy()     # Move data out of shared memory so we can close it
+            stage_data = stage_main_data.copy()  # Move data out of shared memory so we can close it
             stage_main_shm.close()
             stage_main_shm.unlink()
 
             if debug_stage.intf_shm:
                 stage_intf_shm = shared_memory.SharedMemory(name=debug_stage.intf_shm)
-                stage_intf_data = np.ndarray((num_slices, num_intf_antennas, stage_samps), dtype=np.complex64,
+                stage_intf_data = np.ndarray((num_slices, num_intf_antennas, stage_samps),
+                                             dtype=np.complex64,
                                              buffer=stage_intf_shm.buf)
                 stage_data = np.hstack((stage_data, stage_intf_data.copy()))
                 stage_intf_shm.close()
@@ -344,14 +344,14 @@ class ParseData(object):
         This function converts these lists into numpy arrays.
         """
         for slice_id, slice_data in self._antenna_iq_accumulator.items():
-            if isinstance(slice_id, int):       # filtering out 'data_descriptors'
+            if isinstance(slice_id, int):  # filtering out 'data_descriptors'
                 for param_data in slice_data.values():
                     for array_name, array_data in param_data.items():
                         if array_name != 'num_samps':
                             array_data['data'] = np.array(array_data['data'], dtype=np.complex64)
 
         for slice_id, slice_data in self._bfiq_accumulator.items():
-            if isinstance(slice_id, int):       # filtering out 'data_descriptors'
+            if isinstance(slice_id, int):  # filtering out 'data_descriptors'
                 for param_name, param_data in slice_data.items():
                     slice_data[param_name] = np.array(param_data, dtype=np.complex64)
 
@@ -371,6 +371,7 @@ class ParseData(object):
         :param  data: Processed sequence metadata.
         :type   data: ProcessedSequenceMessage
         """
+
         self.processed_data = data
         self._timestamps.append(data.sequence_start_time)
 
@@ -419,6 +420,7 @@ class ParseData(object):
         :returns:   sequence number
         :rtype:     int
         """
+
         return self.processed_data.sequence_num
 
     @property
@@ -429,6 +431,7 @@ class ParseData(object):
         :returns:   bfiq available flag
         :rtype:     bool
         """
+
         return self._bfiq_available
 
     @property
@@ -439,6 +442,7 @@ class ParseData(object):
         :returns:   pre-bfiq available flag
         :rtype:     bool
         """
+
         return self._antenna_iq_available
 
     @property
@@ -449,6 +453,7 @@ class ParseData(object):
         :returns:   mainacfs available flag
         :rtype:     bool
         """
+
         return self._mainacfs_available
 
     @property
@@ -459,6 +464,7 @@ class ParseData(object):
         :returns:   xcfs available flag
         :rtype:     bool
         """
+
         return self._xcfs_available
 
     @property
@@ -469,6 +475,7 @@ class ParseData(object):
         :returns:   intfacfs available flag
         :rtype:     bool
         """
+
         return self._intfacfs_available
 
     @property
@@ -480,6 +487,7 @@ class ParseData(object):
         :returns:   bfiq_accumulator containing beamform data for each slice
         :rtype:     dict
         """
+
         return self._bfiq_accumulator
 
     @property
@@ -491,6 +499,7 @@ class ParseData(object):
         :returns:   antenna_iq_accumulator containing data for each antenna and slice
         :rtype:     dict
         """
+
         return self._antenna_iq_accumulator
 
     @property
@@ -502,6 +511,7 @@ class ParseData(object):
         :returns:   mainacfs_accumulator containing main acf data for each slice
         :rtype:     dict
         """
+
         return self._mainacfs_accumulator
 
     @property
@@ -513,6 +523,7 @@ class ParseData(object):
         :returns:   xcfs_accumulator containing xcf data for each slice
         :rtype:     dict
         """
+
         return self._xcfs_accumulator
 
     @property
@@ -524,6 +535,7 @@ class ParseData(object):
         :returns:   intfacfs_accumulator containing intf acf data for each slice
         :rtype:     dict
         """
+
         return self._intfacfs_accumulator
 
     @property
@@ -535,6 +547,7 @@ class ParseData(object):
         :returns:   sequence timestamps from the processed data packets
         :rtype:     list
         """
+
         return self._timestamps
 
     @property
@@ -545,6 +558,7 @@ class ParseData(object):
         :returns:   sampling rate in Hz
         :rtype:     float
         """
+
         return self._rx_rate
 
     @property
@@ -555,6 +569,7 @@ class ParseData(object):
         :returns:   output sampling rate in Hz
         :rtype:     float
         """
+
         return self._output_sample_rate
 
     @property
@@ -565,6 +580,7 @@ class ParseData(object):
         :returns:   slice id numbers
         :rtype:     set
         """
+
         return self._slice_ids
 
     @property
@@ -575,6 +591,7 @@ class ParseData(object):
         :returns:   raw_rf available flag
         :rtype:     bool
         """
+
         return self._raw_rf_available
 
     @property
@@ -585,6 +602,7 @@ class ParseData(object):
         :returns:   raw rf memory locations
         :rtype:     list of strings
         """
+
         return self._rawrf_locations
 
     @property
@@ -595,6 +613,7 @@ class ParseData(object):
         :returns:   number of rawrf samples per antenna
         :rtype:     int
         """
+
         return self._rawrf_num_samps
 
     @property
@@ -605,6 +624,7 @@ class ParseData(object):
         :returns:   gps_locked flag
         :rtype:     bool
         """
+
         return self._gps_locked
 
     @property
@@ -616,6 +636,7 @@ class ParseData(object):
         :returns:   gps to system time diff
         :rtype:     double
         """
+
         return self._gps_to_system_time_diff
 
     @property
@@ -626,6 +647,7 @@ class ParseData(object):
         :returns:   agc_status_word
         :rtype:     int
         """
+
         return self._agc_status_word
 
     @property
@@ -636,6 +658,7 @@ class ParseData(object):
         :returns:   lp_status_word
         :rtype:     int
         """
+
         return self._lp_status_word
 
 
@@ -670,7 +693,7 @@ class DataWrite(object):
         # The git hash used to identify what version of Borealis is running.
         self.git_hash = sp.check_output("git describe --always".split()).strip()
 
-        # The next two hour boundary for files.
+        # The next two-hour boundary for files.
         self.next_boundary = None
 
         # Default this to true so we know if we are running for the first time.
@@ -685,6 +708,7 @@ class DataWrite(object):
         :param  data_dict:  Python dictionary to write out to the JSON file.
         :type   data_dict:  dict
         """
+
         with open(filename, 'w+') as f:
             f.write(json.dumps(data_dict))
 
@@ -727,11 +751,13 @@ class DataWrite(object):
             dd.io.save(filename, time_stamped_dd, compression=None)
         except Exception as e:
             if "No space left on device" in str(e):
-                print("No space left on device. Exiting")
-                os._exit(-1)
+                log.critical("no space left on device", error=e)
+                log.exception("no space left on device", exception=e)
+                exit(-1)
             else:
-                print(f'Unknown error when saving to file: {e}')
-                os._exit(-1)
+                log.critical("unknown error when saving to file", error=e)
+                log.exception("unknown error when saving to file", exception=e)
+                exit(-1)
 
     def write_dmap_file(self, filename, data_dict):
         """
@@ -742,7 +768,9 @@ class DataWrite(object):
         :param  data_dict:  Python dictionary to write out to the dmap file.
         :type   data_dict:  dict
         """
+
         # TODO: Complete this by parsing through the dictionary and write out to proper dmap format
+
         raise NotImplementedError
 
     def output_data(self, write_bfiq, write_antenna_iq, write_raw_rf, write_tx, file_ext,
@@ -772,9 +800,13 @@ class DataWrite(object):
         :type   write_rawacf:       bool, optional
         """
 
-        start = time.time()
-        if file_ext not in ['hdf5', 'json', 'dmap']:
-            raise ValueError("File format selection required (hdf5, json, dmap), none given")
+        start = time.perf_counter()
+        try:
+            assert file_ext in ['hdf5', 'json', 'dmap']
+        except Exception as e:
+            log.error("wrong file format [hdf5, json, dmap]", error=e)
+            log.exception("wrong file format [hdf5, json, dmap]", exception=e)
+            exit(1)
 
         # Format the name and location for the dataset
         time_now = datetime.datetime.utcfromtimestamp(data_parsing.timestamps[0])
@@ -820,7 +852,8 @@ class DataWrite(object):
         for slice_id in data_parsing.slice_ids:
             if slice_id not in self.slice_filenames:
                 two_hr_str = self.two_hr_format.format(dt=time_now.strftime("%Y%m%d.%H%M.%S"),
-                                                       sliceid=slice_id, site=self.options.site_id)
+                                                       sliceid=slice_id,
+                                                       site=self.options.site_id)
                 self.slice_filenames[slice_id] = two_hr_str
 
         if time_now > self.next_boundary:
@@ -849,12 +882,18 @@ class DataWrite(object):
             :param  two_hr_file_with_type:  Name of the two hour file with data type added
             :type   two_hr_file_with_type:  str
             """
+
             try:
                 os.makedirs(dataset_directory, exist_ok=True)
             except OSError as e:
                 if e.args[0] == errno.ENOSPC:
-                    print("No space left on device. Exiting")
-                    os._exit(-1)
+                    log.critical("no space left on device", error=e)
+                    log.exception("no space left on device", exception=e)
+                    exit(-1)
+                else:
+                    log.critical("unknown error when making dirs", error=e)
+                    log.exception("unknown error when making dirs", exception=e)
+                    exit(-1)
 
             if file_ext == 'hdf5':
                 full_two_hr_file = f"{dataset_directory}/{two_hr_file_with_type}.hdf5.site"
@@ -864,22 +903,24 @@ class DataWrite(object):
                     os.close(fd)
                 except OSError as e:
                     if e.args[0] == errno.ENOSPC:
-                        print("No space left on device. Exiting")
-                        os._exit(-1)
+                        log.critical("no space left on device", error=e)
+                        log.exception("no space left on device", exception=e)
+                        exit(-1)
                     else:
-                        print("Unknown error when opening two hour file. Exiting")
-                        os._exit(-1)
+                        log.critical("unknown error when opening file", error=e)
+                        log.exception("unknown error when opening file", exception=e)
+                        exit(-1)
 
                 self.write_hdf5_file(tmp_file, final_data_dict, epoch_milliseconds)
 
-                # use external h5copy utility to move new record into 2hr file.
+                # Use external h5copy utility to move new record into 2hr file.
                 cmd = 'h5copy -i {newfile} -o {twohr} -s {dtstr} -d {dtstr}'
                 cmd = cmd.format(newfile=tmp_file, twohr=full_two_hr_file, dtstr=epoch_milliseconds)
 
                 # TODO(keith): improve call to subprocess.
                 sp.call(cmd.split())
                 so.send_data(rt_dw['socket'], rt_dw['iden'], tmp_file)
-                # temp file is removed in real time module.
+                # Temp file is removed in real time module.
 
             elif file_ext == 'json':
                 self.write_json_file(tmp_file, final_data_dict)
@@ -928,12 +969,14 @@ class DataWrite(object):
                 This is effectively 'averaging' all correlations over the integration time, using a
                 specified method for combining them.
                 """
+
                 # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
                 # so we get median of all sequences.
                 averaging_method = parameters['averaging_method']
                 array_2d = np.array(x, dtype=np.complex64)
                 num_beams, num_ranges, num_lags = np.array([len(parameters["beam_nums"]),
-                                                            parameters["num_ranges"], parameters["lags"].shape[0]],
+                                                            parameters["num_ranges"],
+                                                            parameters["lags"].shape[0]],
                                                            dtype=np.uint32)
 
                 # First range offset in samples
@@ -945,13 +988,18 @@ class DataWrite(object):
                 second_pulse_sample_num = np.uint32(tau_in_samples) * parameters['pulses'][1] - sample_off - 1
 
                 # Average the data
-                if averaging_method == 'mean':
-                    array_expectation_value = np.mean(array_2d, axis=0)
-                elif averaging_method == 'median':
-                    array_expectation_value = np.median(np.real(array_2d), axis=0) +\
-                                              1j * np.median(np.imag(array_2d), axis=0)
-                else:
-                    raise ValueError(f'Averaging Method could not be executed: {averaging_method}')
+                try:
+                    assert averaging_method in ['mean', 'median']
+                    if averaging_method == 'mean':
+                        array_expectation_value = np.mean(array_2d, axis=0)
+                    elif averaging_method == 'median':
+                        array_expectation_value = np.median(np.real(array_2d), axis=0) + \
+                                                  1j * np.median(np.imag(array_2d), axis=0)
+                except Exception as e:
+                    log.error("wrong averaging method [mean, median]", error=e)
+                    log.exception("wrong averaging method [mean, median]", exception=e)
+                    exit(1)
+
 
                 # Reshape array to be 3d so we can replace lag0 far ranges that are cluttered with those
                 # from alternate lag0 which have no clutter.
@@ -1345,8 +1393,11 @@ class DataWrite(object):
         if write_tx:
             write_tx_data()
 
-        end = time.time()
-        dw_print(f"Time to write to {dataset_name}: {(end - start) * 1000:.6f} ms")
+        write_time = time.perf_counter() - start
+        log.info("write to disc time",
+                 write_time=write_time * 1e3,
+                 write_time_units='ms',
+                 dataset_name=dataset_name)
 
 
 def main():
@@ -1367,7 +1418,8 @@ def main():
     args = parser.parse_args()
 
     options = dwo.DataWriteOptions()
-    sockets = so.create_sockets([options.dw_to_dsp_identity, options.dw_to_radctrl_identity,
+    sockets = so.create_sockets([options.dw_to_dsp_identity,
+                                 options.dw_to_radctrl_identity,
                                  options.dw_to_rt_identity],
                                 options.router_address)
 
@@ -1379,8 +1431,7 @@ def main():
     poller.register(dsp_to_data_write, zmq.POLLIN)
     poller.register(radctrl_to_data_write, zmq.POLLIN)
 
-    if __debug__:
-        dw_print("Socket connected")
+    log.debug("socket connected")
 
     data_parsing = ParseData(options)
 
@@ -1391,27 +1442,23 @@ def main():
     queued_sqns = []
     aveperiod_metadata_dict = dict()
     while True:
-
         try:
             socks = dict(poller.poll())
         except KeyboardInterrupt:
-            sys.exit()
+            log.info("keyboard interrupt exit")
+            exit(0)
 
         if radctrl_to_data_write in socks and socks[radctrl_to_data_write] == zmq.POLLIN:
-            data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, dw_print)
-
+            data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, log)
             aveperiod_meta = pickle.loads(data)
-
             aveperiod_metadata_dict[aveperiod_meta.last_sqn_num] = aveperiod_meta
 
         if dsp_to_data_write in socks and socks[dsp_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes_from_any_iden(dsp_to_data_write)
-
             processed_data = pickle.loads(data)
-
             queued_sqns.append(processed_data)
-            # Check if any data processing finished out of order.
 
+            # Check if any data processing finished out of order.
             if processed_data.sequence_num != expected_sqn_num:
                 continue
 
@@ -1426,10 +1473,12 @@ def main():
                     break_now = True
                     break
             if break_now:
-                if len(sorted_q) > 20:
-                    # TODO error out correctly
-                    dw_print(f"Lost sequence #{expected_sqn_num}. Exiting.")
-                    sys.exit()
+                try:
+                    assert len(sorted_q) <= 20
+                except Exception as e:
+                    log.error("lost sequences", sequence_num=expected_sqn_num, error=e)
+                    log.exception("lost sequences", exception=e)
+                    exit(1)
                 continue
 
             expected_sqn_num = sorted_q[-1].sequence_num + 1
@@ -1461,10 +1510,12 @@ def main():
 
                 first_time = False
 
-                start = time.time()
+                start = time.perf_counter()
                 data_parsing.update(pd)
-                end = time.time()
-                dw_print(f"Time to parse: {(end - start) * 1000:.6f} ms")
+                parse_time = time.perf_counter() - start
+                log.info("parse time",
+                         write_time=parse_time * 1e3,
+                         write_time_units='ms')
 
             queued_sqns = []
 
@@ -1477,4 +1528,5 @@ if __name__ == '__main__':
         main()
         log.info(f"DATA_WRITE EXITED")
     except Exception as main_exception:
+        log.critical("DATA_WRITE CRASHED", error=main_exception)
         log.exception("DATA_WRITE CRASHED", exception=main_exception)

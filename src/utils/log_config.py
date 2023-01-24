@@ -44,16 +44,6 @@ from rich import pretty
 rich.pretty.install()
 
 
-def add_func_name(logger, method_name, event_dict):
-    """
-    Add the logger name to the event dict.
-    """
-    record = event_dict.get("func_name")
-    record = "[" + "\033[31m" + "\033[1m" + record + "\033[0m" + "] "
-    event_dict["event"] = record + event_dict["event"]
-    return event_dict
-
-
 def swap_logger_name(_, __, event_dict):
     """
     Swaps the kw 'logger_name' value with the 'module_name' and 'func_name' values then removes them
