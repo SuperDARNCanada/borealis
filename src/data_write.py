@@ -2,7 +2,7 @@
 
 """
     data_write package
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~
     This package contains utilities to parse protobuf packets containing antennas_iq data, bfiq
     data, rawacf data, etc and write that data to HDF5 or JSON files.
 
@@ -1470,4 +1470,11 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    from utils import log_config
+    log = log_config.log(log_level='INFO')
+    log.info(f"DATA_WRITE BOOTED")
+    try:
+        main()
+        log.info(f"DATA_WRITE EXITED")
+    except Exception as main_exception:
+        log.exception("DATA_WRITE CRASHED", exception=main_exception)

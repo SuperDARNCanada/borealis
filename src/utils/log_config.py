@@ -44,6 +44,31 @@ from rich import pretty
 rich.pretty.install()
 
 
+def add_func_name(logger, method_name, event_dict):
+    """
+    Add the logger name to the event dict.
+    """
+    record = event_dict.get("func_name")
+    record = "[" + "\033[31m" + "\033[1m" + record + "\033[0m" + "] "
+    event_dict["event"] = record + event_dict["event"]
+    return event_dict
+
+
+def swap_logger_name(_, __, event_dict):
+    """
+    Swaps the kw 'logger_name' value with the 'module_name' and 'func_name' values then removes them
+    from the 'event_dict' for nicer representation. This is done to hack ConsoleRenderer to somewhat
+    match our past format. This is intended only to be used for console rendering and not
+    JSON rendering (prints nice but does not appear in file).
+    """
+
+    event_dict["logger"] = event_dict["module"] + " " + event_dict["func_name"]
+    del event_dict["module"]
+    del event_dict["func_name"]
+
+    return event_dict
+
+
 def log(log_level='INFO'):
     """
     :param log_level: Logging threshold [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
@@ -81,16 +106,21 @@ def log(log_level='INFO'):
         # Processors are a list of functions that sequentially modify the event_dict (log message)
         processors=[
             structlog.stdlib.filter_by_level,  # Abort pipeline on log levels lower than threshold
-            structlog.stdlib.add_logger_name,  # Add the name of the logger to event dict
+            # structlog.stdlib.add_logger_name,  # Add the name of the logger to event dict
             structlog.stdlib.add_log_level,    # Add log level to event dict
             structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add ISO-8601 timestamp
-            structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),  # Add Unix timestamp
             structlog.processors.StackInfoRenderer(),  # Move "stack_info" in event_dict to "stack" and render
             structlog.processors.UnicodeDecoder(),  # Decode byte strings to unicode strings
-            structlog.processors.CallsiteParameterAdder(  # Add file name, func name, and line number
-                {structlog.processors.CallsiteParameter.FILENAME,
-                 structlog.processors.CallsiteParameter.FUNC_NAME,
-                 structlog.processors.CallsiteParameter.LINENO}),
+            structlog.processors.CallsiteParameterAdder(  # Add items from the call enum
+                {
+                 structlog.processors.CallsiteParameter.FUNC_NAME,  # function name
+                 structlog.processors.CallsiteParameter.MODULE,  # module name
+                 structlog.processors.CallsiteParameter.PROCESS,  # process ID
+                 # structlog.processors.CallsiteParameter.THREAD,  # tread ID
+                 # structlog.processors.CallsiteParameter.FILENAME,  # file name
+                 # structlog.processors.CallsiteParameter.LINENO,  # line number
+
+                 }),
             # The last processor has to be a renderer to render the log to file, stream, etc. in some style
             # This wrapper lets us decide on the renderer later. This is needed to have two renderers.
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
@@ -102,14 +132,17 @@ def log(log_level='INFO'):
     # Set up the first handler to pipe logs to stdout
     console_handler = StreamHandler(sys.stdout)
     console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-        processor=structlog.dev.ConsoleRenderer(colors=True)))
+        processors=[swap_logger_name,
+                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                    structlog.dev.ConsoleRenderer(sort_keys=False, pad_event=40, colors=True)]))
 
     # Set up the second handler to pip logs to a JSON file that rotates at midnight
     file_handler = TimedRotatingFileHandler(filename=log_file, when='midnight', utc=True)
     file_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-        processors=[structlog.processors.dict_tracebacks,  # Makes tracebacks dict rather than str
-                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes useless dunders
-                    structlog.processors.JSONRenderer()]))
+        processors=[structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),  # Add Unix timestamp
+                    structlog.processors.dict_tracebacks,  # Makes tracebacks dict rather than str
+                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes _records
+                    structlog.processors.JSONRenderer(sort_keys=False)]))
     # Note: the foreign_pre_chain= option can be used to add more processor to just on handler
 
     # Get the logging logger object and attach both handlers
