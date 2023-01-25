@@ -208,7 +208,6 @@ class SWG(object):
             if not mode_to_use or not mode_type:
                 print(f"SWG line couldn't be parsed, continuing: {line}")
                 continue
-            # start_day
             param = {f"yyyymmdd": f"{year}{month}{start_day}",
                      f"hhmm": f"{start_hr}:00",
                      "experiment": mode_to_use,
