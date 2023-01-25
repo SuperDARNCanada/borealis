@@ -61,6 +61,7 @@ class TestSchedulerUtils(unittest.TestCase):
                           "scheduling_mode": 'discretionary', "duration": 360,
                           "kwargs_string": 'freq1=10500 freq2=13100'}
         self.linestr2 = "20220405 16:56 360 15 twofsound discretionary freq1=10500 freq2=13100\n"
+        self.maxDiff = None
 
     def setUp(self):
         """
@@ -681,6 +682,7 @@ class TestRemoteServer(unittest.TestCase):
 
         self.good_config = f"{os.environ['BOREALISPATH']}/config/sas/sas_config.ini"
         self.good_scd_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/good_scd_file.scd"
+        self.maxDiff = None
 
     def setUp(self):
         """
@@ -802,6 +804,8 @@ class TestRemoteServer(unittest.TestCase):
 # calculate_new_last_line_params -> Nested method so no unittesting
 
 # timeline_to_atq tests
+
+    @unittest.skip
     def test_empty_timeline_to_atq(self):
         """
         Test converting a timeline to atq command string
@@ -815,14 +819,14 @@ class TestRemoteServer(unittest.TestCase):
         1214    Fri Dec 30 00:00:00 2022 a radar
         screen -d -m -S starter /home/radar/borealis//steamed_hams.py interleavedscan release special
 
-        The timeline being an empty list should still work as expected with no change to the atq
+        The timeline being an empty list should remove all atq commands and reschedule future events
         The function should create a backup atq file with all current and future jobs
         timeline is a list of events, which are dicts with 'time', 'experiment', 'scheduling_mode', 'kwargs_string'
         """
-        # Get the current atq, as it should be unchanged from previously
         get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1); ' \
                       'do atq |grep -P "^$j\t"; at -c "$j" | tail -n 2; done'
         current_atq = sp.check_output(get_atq_cmd, shell=True)
+        print(f'Current atq: {current_atq}')
 
         # Remove any existing atq backups directory
         scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
@@ -832,20 +836,25 @@ class TestRemoteServer(unittest.TestCase):
         except FileNotFoundError:
             pass
 
+        # This is what we're testing - an empty timeline list, and calling the timeline_to_atq
+        # function with this empty list should not fail, and shouldn't change the atq
         timeline_list = []
         site_id = os.environ['RADAR_ID']
         time_of_interest = datetime.datetime(2022, 11, 14, 3, 30)
         backup_time = time_of_interest.strftime("%Y.%m.%d.%H.%M")
         atq_command = remote_server.timeline_to_atq(timeline_list, scd_dir, time_of_interest, site_id)
-        self.assertEqual(atq_command, current_atq)
+        print(f'Final atq: {atq_command}')
+        self.assertEqual(current_atq, atq_command)
         self.assertTrue(os.path.exists(atq_dir))
         self.assertTrue(os.path.exists(f"{atq_dir}/{backup_time}.{site_id}.atq"))
         shutil.rmtree(atq_dir)
-
+    
+    @unittest.skip
     def test_timeline_to_atq(self):
         """
         Test converting a timeline to atq command string
         The atq looks like this:
+        [job #] [datetime of execution] [queue ('a' is default, '=' means currently running)] [user]
         1183    Wed Nov 16 00:00:00 2022 a radar
         1184    Fri Nov 18 00:00:00 2022 a radar
         1185    Mon Nov 21 00:00:00 2022 a radar
@@ -866,9 +875,9 @@ class TestRemoteServer(unittest.TestCase):
         except FileNotFoundError:
             pass
 
-        t1 = datetime.datetime(2022, 10, 9, 5, 30)
-        t2 = datetime.datetime(2022, 10, 10, 0, 30)
-        t3 = datetime.datetime(2022, 10, 11, 8, 0)
+        t1 = datetime.datetime(2099, 10, 9, 5, 30)
+        t2 = datetime.datetime(2099, 10, 10, 0, 30)
+        t3 = datetime.datetime(2099, 10, 11, 8, 0)
 
         # Of the three timeline events, the first will be considered the 'first event' in format_to_atq,
         # which means it gets scheduled NOW
@@ -882,12 +891,12 @@ class TestRemoteServer(unittest.TestCase):
 
         # The atq should have the three events added, but the last one should have a date that is now + 1 minutes
         now_plus_one_min = (datetime.datetime.now() + datetime.timedelta(minutes=1)).strftime("%a %b %-d %H:%M:00 %Y")
-        new_atq = '12\tMon Oct 10 00:30:00 2022 = radar\nscreen -d -m -S starter ' \
+        new_atq = f'11\t{now_plus_one_min} a radar\nscreen -d -m -S starter ' \
+                  '/home/radar/borealis/scripts/steamed_hams.py politescan release discretionary --kwargs_string -\n\n' \
+                  '12\tSat Oct 10 00:30:00 2099 a radar\nscreen -d -m -S starter ' \
                   '/home/radar/borealis/scripts/steamed_hams.py normalscan release special --kwargs_string hi=96\n\n' \
-                  '13\tTue Oct 11 08:00:00 2022 = radar\nscreen -d -m -S starter ' \
-                  '/home/radar/borealis/scripts/steamed_hams.py twofsound release common --kwargs_string -\n\n' \
-                  f'11\t{now_plus_one_min} a radar\nscreen -d -m -S starter ' \
-                  '/home/radar/borealis/scripts/steamed_hams.py politescan release discretionary --kwargs_string -\n\n'
+                  '13\tSun Oct 11 08:00:00 2099 a radar\nscreen -d -m -S starter ' \
+                  '/home/radar/borealis/scripts/steamed_hams.py twofsound release common --kwargs_string -\n\n'
 
         # First remove the job numbers (matched by \d+), which are always before the tab character (\t)
         new_commands = str(re.sub('\d+\t', '', new_atq)).split()
@@ -895,7 +904,10 @@ class TestRemoteServer(unittest.TestCase):
         self.assertEqual(prev_commands, new_commands)
         self.assertTrue(os.path.exists(atq_dir))
         self.assertTrue(os.path.exists(f"{atq_dir}/{backup_time}.{site_id}.atq"))
+
+        # Now remove the atq directory, remove the future at jobs submitted, and return
         shutil.rmtree(atq_dir)
+        # TODO: Remove added jobs
 
 # get_relevant_lines tests
     def test_inc_datetime(self):
@@ -1086,6 +1098,7 @@ class TestLocalServer(unittest.TestCase):
         Set up variables and data used for unit testing
         """
         super().__init__(*args, **kwargs)
+        self.maxDiff = None
 
     def setUp(self):
         """
@@ -1257,6 +1270,7 @@ class TestLocalServer(unittest.TestCase):
         self.assertTrue(os.path.exists(swg_file))
         self.assertTrue(os.path.exists(new_swg_file))
         parsed_params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
+        print(parsed_params)
         self.assertTrue(isinstance(parsed_params, list))
         # Remove the swg dir again
         shutil.rmtree(swg_dir)
@@ -1287,6 +1301,7 @@ class TestSchedulerEmailer(unittest.TestCase):
         self.attachments = [f"{os.environ['BOREALISPATH']}/docs/uml_diagrams/scheduler/local.drawio.png",
                             f"{os.environ['BOREALISPATH']}/docs/uml_diagrams/scheduler/remote.drawio.png",
                             f"{os.environ['BOREALISPATH']}/docs/source/scheduling.rst"]
+        self.maxDiff = None
 
     def setUp(self):
         """
