@@ -9,6 +9,7 @@
     :copyright: 2017 SuperDARN Canada
 """
 
+import sys
 import os
 import datetime
 import json
@@ -753,11 +754,11 @@ class DataWrite(object):
             if "No space left on device" in str(e):
                 log.critical("no space left on device", error=e)
                 log.exception("no space left on device", exception=e)
-                exit(-1)
+                sys.exit(-1)
             else:
                 log.critical("unknown error when saving to file", error=e)
                 log.exception("unknown error when saving to file", exception=e)
-                exit(-1)
+                sys.exit(-1)
 
     def write_dmap_file(self, filename, data_dict):
         """
@@ -806,7 +807,7 @@ class DataWrite(object):
         except Exception as e:
             log.error("wrong file format [hdf5, json, dmap]", error=e)
             log.exception("wrong file format [hdf5, json, dmap]", exception=e)
-            exit(1)
+            sys.exit(1)
 
         # Format the name and location for the dataset
         time_now = datetime.datetime.utcfromtimestamp(data_parsing.timestamps[0])
@@ -889,11 +890,11 @@ class DataWrite(object):
                 if e.args[0] == errno.ENOSPC:
                     log.critical("no space left on device", error=e)
                     log.exception("no space left on device", exception=e)
-                    exit(-1)
+                    sys.exit(-1)
                 else:
                     log.critical("unknown error when making dirs", error=e)
                     log.exception("unknown error when making dirs", exception=e)
-                    exit(-1)
+                    sys.exit(-1)
 
             if file_ext == 'hdf5':
                 full_two_hr_file = f"{dataset_directory}/{two_hr_file_with_type}.hdf5.site"
@@ -905,11 +906,11 @@ class DataWrite(object):
                     if e.args[0] == errno.ENOSPC:
                         log.critical("no space left on device", error=e)
                         log.exception("no space left on device", exception=e)
-                        exit(-1)
+                        sys.exit(-1)
                     else:
                         log.critical("unknown error when opening file", error=e)
                         log.exception("unknown error when opening file", exception=e)
-                        exit(-1)
+                        sys.exit(-1)
 
                 self.write_hdf5_file(tmp_file, final_data_dict, epoch_milliseconds)
 
@@ -998,7 +999,7 @@ class DataWrite(object):
                 except Exception as e:
                     log.error("wrong averaging method [mean, median]", error=e)
                     log.exception("wrong averaging method [mean, median]", exception=e)
-                    exit(1)
+                    sys.exit(1)
 
 
                 # Reshape array to be 3d so we can replace lag0 far ranges that are cluttered with those
@@ -1446,7 +1447,7 @@ def main():
             socks = dict(poller.poll())
         except KeyboardInterrupt:
             log.info("keyboard interrupt exit")
-            exit(0)
+            sys.exit(0)
 
         if radctrl_to_data_write in socks and socks[radctrl_to_data_write] == zmq.POLLIN:
             data = so.recv_bytes(radctrl_to_data_write, options.radctrl_to_dw_identity, log)
@@ -1478,7 +1479,7 @@ def main():
                 except Exception as e:
                     log.error("lost sequences", sequence_num=expected_sqn_num, error=e)
                     log.exception("lost sequences", exception=e)
-                    exit(1)
+                    sys.exit(1)
                 continue
 
             expected_sqn_num = sorted_q[-1].sequence_num + 1

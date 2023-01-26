@@ -6,6 +6,7 @@
     :copyright: 2020 SuperDARN Canada
     :author: Keith Kotyk
 """
+
 import sys
 import time
 import threading
@@ -38,9 +39,6 @@ else:
 from utils.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
 import utils.options.signal_processing_options as spo
 from utils import socket_operations as so
-import utils.shared_macros as sm
-
-pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
 
 
 def windowed_view(ndarray, window_len, step):
@@ -444,16 +442,15 @@ def main():
         # Get meta from driver
         message = "Need data to process"
         so.send_data(dsp_to_driver, sig_options.driver_dsp_identity, message)
-        reply = so.recv_bytes(dsp_to_driver, sig_options.driver_dsp_identity, pprint)
+        reply = so.recv_bytes(dsp_to_driver, sig_options.driver_dsp_identity, log)
 
         rx_metadata = RxSamplesMetadata()
         rx_metadata.ParseFromString(reply)
 
         if sqn_meta_message.sequence_num != rx_metadata.sequence_num:
-            pprint(sm.COLOR('red', "ERROR: Packets from driver and radctrl don't match"))
-            err = f"sqn_meta_message seq num {sqn_meta_message.sequence_num}, rx_metadata seq num"\
-                  f" {rx_metadata.sequence_num}"
-            pprint(sm.COLOR('red', err))
+            log.error("driver packets != radctrl packets",
+                      sqn_meta_sqn_num=sqn_meta_message.sequence_num,
+                      rx_meta_sqn_num=rx_metadata.sequence_num)
             sys.exit(-1)
 
         # First time configuration
@@ -465,18 +462,13 @@ def main():
             if cupy_available:
                 cp.cuda.runtime.hostRegister(ringbuffer.ctypes.data, ringbuffer.size, 0)
 
-            dm_msg = "Decimation rates: "
-            taps_msg = "Number of filter taps per stage: "
             for stage in sqn_meta_message.decimation_stages:
                 dm_rates.append(stage.dm_rate)
                 dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
 
-                dm_msg += str(stage.dm_rate) + " "
-                taps_msg += str(len(stage.filter_taps)) + " "
-
+            log.info("decimation rates", decimation_rates=dm_rates)
+            log.info("number of filter taps per stage", filter_taps=dm_scheme_taps)
             dm_rates = np.array(dm_rates, dtype=np.uint32)
-            pprint(dm_msg)
-            pprint(taps_msg)
 
             for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
                 extra_samples = (extra_samples * dm) + len(taps) // 2
@@ -515,10 +507,13 @@ def main():
             end_sample = kwargs['end_sample']
             processed_data = kwargs['processed_data']
 
-            pprint(sm.COLOR('green', f"Processing #{sequence_num}"))
-            pprint(f"Mixing freqs for #{sequence_num}: {mixing_freqs}")
-            pprint(f"Main beams shape for #{sequence_num}: {main_beam_angles.shape}")
-            pprint(f"Intf beams shape for #{sequence_num}: {intf_beam_angles.shape}")
+            log.info("processing sequence",
+                     sequence_num=sequence_num,
+                     mixing_freqs=mixing_freqs,
+                     mixing_freqs_units='Hz',
+                     main_beam_angles=main_beam_angles.shape,
+                     intf_beam_angles=main_beam_angles.shape)
+
             if cupy_available:
                 cp.cuda.runtime.setDevice(0)
 
@@ -532,7 +527,7 @@ def main():
             dspend_to_brian = gpu_socks[1]
             dsp_to_dw = gpu_socks[2]
 
-            start = time.time()
+            start = time.perf_counter()
 
             indices = np.arange(start_sample, start_sample + samples_needed)
 
@@ -554,14 +549,14 @@ def main():
             else:
                 sequence_samples = ringbuffer.take(indices, axis=1, mode='wrap')
 
-            copy_end = time.time()
+            copy_end = time.perf_counter()
             time_diff = (copy_end - start) * 1000
             pprint(f"Time to copy samples for #{sequence_num}: {time_diff}ms")
             reply_packet = {}
             reply_packet['sequence_num'] = sequence_num
             msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
 
-            so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, pprint)
+            so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, log)
             so.send_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, msg)
 
             # Process main samples
@@ -728,4 +723,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    from utils import log_config
+    log = log_config.log(log_level='INFO')
+    log.info(f"RX_SIGNAL_PROCESSING BOOTED")
+    try:
+        main()
+        log.info(f"RX_SIGNAL_PROCESSING EXITED")
+    except Exception as main_exception:
+        log.critical("RX_SIGNAL_PROCESSING CRASHED", error=main_exception)
+        log.exception("RX_SIGNAL_PROCESSING CRASHED", exception=main_exception)

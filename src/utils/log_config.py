@@ -7,7 +7,7 @@
     :copyright: 2023 SuperDARN Canada
     :author: Adam Lozinsky
 
-    :Example:
+    :example:
         if __name__ == '__main__':
             from utils import log_config
             log = log_config.log(log_level='INFO')
@@ -17,7 +17,7 @@
             except Exception as exec:
                 log.exception("Example crashed", exception=exec)
 
-    :Notes:
+    :notes:
         Setting up structlog is very tricky, but after it is done it should just work
         (or so they promise). Regardless, the comments herein should help explain how this
         works should we ever need to update it.
@@ -64,14 +64,11 @@ def log(log_level='INFO'):
     :param log_level: Logging threshold [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
     :type log_level: str
 
-    :Notes:
+    :notes:
     There are three parts to logging; processors, renderers, and handlers.
         processors - modify, add, or clean up the log message dict
         renderers - make the log message a string, json, dict, etc. with fancy styling
         handlers -  print the rendered data to stdout, file, etc.
-
-    :Todo:
-    - Add a processor to get the processID and threadID.
     """
 
     # Obtain the module name that imported this log_config

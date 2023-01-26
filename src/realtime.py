@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 
-# Copyright 2019 SuperDARN Canada
-#
-# realtime.py
+"""
+    realtime package
+    ~~~~~~~~~~~~~~~~
+    Sends data to realtime applications.
 
-# Sends data to realtime applications
+    :copyright: 2019 SuperDARN Canada
+"""
 
 import zmq
 import threading
@@ -18,11 +20,9 @@ from backscatter import fitacf
 
 import utils.options.realtime_options as rto
 from utils import socket_operations as so
-import utils.shared_macros as sm
 
-rt_print = sm.MODULE_PRINT("Realtime", "green")
 
-def _main():
+def main():
     opts = rto.RealtimeOptions()
 
     borealis_sockets = so.create_sockets([opts.rt_to_dw_identity], opts.router_address)
@@ -37,15 +37,14 @@ def _main():
     def get_temp_file_from_datawrite():
         last_file_time = None
         while True:
-            filename = so.recv_data(data_write_to_realtime, opts.dw_to_rt_identity, rt_print)
+            filename = so.recv_data(data_write_to_realtime, opts.dw_to_rt_identity, log)
 
             if "rawacf" in filename:
-                #Read and convert data
+                # Read and convert data
                 fields = filename.split(".")
                 file_time = fields[0] + fields[1] + fields[2] + fields[3]
 
-
-                # Make sure we only process the first slice for simulatenous multislice data for now
+                # Make sure we only process the first slice for simultaneous multi-slice data for now
                 if file_time == last_file_time:
                     os.remove(filename)
                     continue
@@ -54,12 +53,11 @@ def _main():
 
                 slice_num = int(fields[5])
                 try:
-                    rt_print("Using pyDARNio to convert {}".format(filename))
-                    converted = pydarnio.BorealisConvert(filename, "rawacf", "/dev/null", slice_num,
-                                                    "site")
+                    log.info("using pydarnio to convert", filename=filename)
+                    converted = pydarnio.BorealisConvert(filename, "rawacf", "/dev/null", slice_num, "site")
                     os.remove(filename)
                 except pydarnio.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
-                    rt_print("Error converting {}".format(filename))
+                    log.info("error converting filename", filename=filename)
                     os.remove(filename)
                     continue
 
@@ -68,8 +66,8 @@ def _main():
                 fit_data = fitacf._fit(data[0])
                 tmp = fit_data.copy()
 
-                # Can't jsonify numpy so we convert to native types for rt purposes.
-                for k,v in fit_data.items():
+                # Can't jsonify numpy so we convert to native types for realtime purposes.
+                for k, v in fit_data.items():
                     if hasattr(v, 'dtype'):
                         if isinstance(v, np.ndarray):
                             tmp[k] = v.tolist()
@@ -80,12 +78,11 @@ def _main():
             else:
                 os.remove(filename)
 
-
-
     def handle_remote_connection():
         """
         Compresses and serializes the data to send to the server.
         """
+
         while True:
             data_dict = q.get()
             serialized = json.dumps(data_dict)
@@ -93,7 +90,7 @@ def _main():
             realtime_socket.send(compressed)
 
     threads = [threading.Thread(target=get_temp_file_from_datawrite),
-                threading.Thread(target=handle_remote_connection)]
+               threading.Thread(target=handle_remote_connection)]
 
     for thread in threads:
         thread.daemon = True
@@ -104,5 +101,13 @@ def _main():
 
 
 if __name__ == '__main__':
-    _main()
+    from utils import log_config
+    log = log_config.log(log_level='INFO')
+    log.info(f"REALTIME BOOTED")
+    try:
+        main()
+        log.info(f"REALTIME EXITED")
+    except Exception as main_exception:
+        log.critical("REALTIME CRASHED", error=main_exception)
+        log.exception("REALTIME CRASHED", exception=main_exception)
 

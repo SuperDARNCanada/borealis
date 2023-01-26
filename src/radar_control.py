@@ -12,6 +12,7 @@
     :author: Marci Detwiller
 """
 
+import sys
 import time
 from datetime import datetime, timedelta
 import zmq
@@ -20,11 +21,9 @@ import threading
 import numpy as np
 from functools import reduce
 
-from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 from utils.options.experimentoptions import ExperimentOptions
 import utils.message_formats as messages
-import utils.shared_macros as sm
 from utils import socket_operations
 
 if __debug__:
@@ -35,8 +34,7 @@ else:
 TIME_PROFILE = False
 
 
-def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq,
-                 txrate, rxrate):
+def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq, txrate, rxrate):
     """ 
     First packet sent to driver for setup.
 
@@ -60,9 +58,8 @@ def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq
     socket_operations.recv_data(radctrl_to_driver, driver_to_radctrl_iden, log)
 
 
-def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array,
-                   txctrfreq, rxctrfreq, txrate, rxrate, numberofreceivesamples, seqtime, SOB, EOB, timing,
-                   seqnum, align_sequences, repeat=False):
+def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array, txctrfreq, rxctrfreq, txrate, rxrate,
+                   numberofreceivesamples, seqtime, SOB, EOB, timing, seqnum, align_sequences, repeat=False):
     """ 
     Place data in the driver packet and send it via zeromq to the driver.
 
@@ -132,10 +129,9 @@ def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array,
     socket_operations.send_pulse(radctrl_to_driver, driver_to_radctrl_iden, driverpacket.SerializeToString())
 
 
-def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian,
-                      brian_radctrl_iden, rxrate, output_sample_rate, seqnum, slice_ids,
-                      slice_dict, beam_dict, sequence_time, first_rx_sample_start,
-                      rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
+def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_radctrl_iden, rxrate,
+                      output_sample_rate, seqnum, slice_ids, slice_dict, beam_dict, sequence_time,
+                      first_rx_sample_start, rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
     """ 
     Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
     Happens every sequence.
@@ -264,7 +260,7 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     except zmq.ZMQBaseError as e:
         log.error("zmq failed request", error=e)
         log.exception("zmq failed request", exception=e)
-        exit(1)
+        sys.exit(1)
 
     experiment = None
     new_experiment_received = False
@@ -274,7 +270,7 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     except zmq.ZMQBaseError as e:
         log.error("zmq failed receive", error=e)
         log.exception("zmq failed receive", exception=e)
-        exit(1)
+        sys.exit(1)
 
     new_exp = pickle.loads(serialized_exp)  # Protocol detected automatically
 
@@ -291,10 +287,9 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     return new_experiment_received, experiment
 
 
-def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden,
-                            seqnum, num_sequences, scan_flag, inttime, sequences, beam_iter,
-                            experiment_id, experiment_name, scheduling_mode, output_sample_rate,
-                            experiment_comment, filter_scaling_factors, rx_center_freq,
+def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden, seqnum, num_sequences, scan_flag,
+                            inttime, sequences, beam_iter, experiment_id, experiment_name, scheduling_mode,
+                            output_sample_rate, experiment_comment, filter_scaling_factors, rx_center_freq,
                             debug_samples=None):
     """
     Send the metadata about this averaging period to datawrite so that it can be recorded.
@@ -463,7 +458,7 @@ def main():
     except zmq.ZMQBaseError as e:
         log.error("zmq failed setting up sockets", error=e)
         log.exception("zmq failed setting up sockets", exception=e)
-        exit(1)
+        sys.exit(1)
 
     radar_control_to_exp_handler = sockets_list[0]
     radar_control_to_dsp = sockets_list[1]
@@ -512,7 +507,7 @@ def main():
                 # there is a new experiment.
                 log.error("experiment could not be found", error=e)
                 log.exception("experiment could not be found", exception=e)
-                exit(1)
+                sys.exit(1)
 
             new_experiment_waiting = False
             new_experiment = None
@@ -630,7 +625,7 @@ def main():
                         else:
                             # TODO: This will be wrong if the start time is in the past.
                             # TODO: maybe use datetime.utcnow() like below instead of beam_scanbound
-                            # When the avg period should have started?
+                            #       when the avg period should have started?
                             log.debug("expected avg period start time",
                                        scan_iter=scan_iter,
                                        beam_scanbound=beam_scanbound)
@@ -649,11 +644,11 @@ def main():
                         if scan_iter < len(scan.scanbound) - 1:
                             scanbound_time = scan.scanbound[scan_iter + 1]
                             # TODO: scanbound_time could be in the past if system has taken
-                            # too long, perhaps calculate which 'beam' (scan_iter) instead by
-                            # rewriting this code for an experiment-wide scanbound attribute instead
-                            # of individual scanbounds inside the scan objects
+                            #       too long, perhaps calculate which 'beam' (scan_iter) instead by
+                            #       rewriting this code for an experiment-wide scanbound attribute instead
+                            #       of individual scanbounds inside the scan objects
                             # TODO: if scan_iter skips ahead, aveperiod.beam_iter may also need to
-                            # if scan.align_to_beamorder is True
+                            #       if scan.align_to_beamorder is True
                             bound_time_remaining = scanbound_time - time_elapsed.total_seconds()
                         else:
                             bound_time_remaining = next_scan_start - averaging_period_start_time
@@ -669,9 +664,8 @@ def main():
                         if bound_time_remaining < aveperiod.intt * 1e-3:
                             # Reduce the averaging period to only the time remaining until the next scan boundary
                             # TODO: Check for bound_time_remaining > 0
-                            # to be sure there is actually time to run this intt
-                            # (if bound_time_remaining < 0, we need a solution to
-                            # reset)
+                            #       to be sure there is actually time to run this intt
+                            #       (if bound_time_remaining < 0, we need a solution to reset)
                             averaging_period_done_time = averaging_period_start_time + \
                                             timedelta(milliseconds=bound_time_remaining * 1e3)
                         else:
@@ -702,20 +696,20 @@ def main():
                 while time_remains:
                     for sequence_index, sequence in enumerate(aveperiod.sequences):
 
-                        # Alternating sequences if there are multiple in the averaging_period.
+                        # Alternating sequences if there are multiple in the averaging_period
                         start_time = datetime.utcnow()
                         if intt_break:
                             if start_time >= averaging_period_done_time:
                                 time_remains = False
                                 averaging_period_time = (start_time - averaging_period_start_time)
                                 break
-                        else:  # break at a certain number of sequences
+                        else:  # Break at a certain number of sequences
                             if num_sequences == ending_number_of_sequences:
                                 time_remains = False
                                 averaging_period_time = start_time - averaging_period_start_time
                                 break
 
-                        # on first sequence, we make the first set of samples.
+                        # On first sequence, we make the first set of samples
                         if sequence_index not in pulse_transmit_data_tracker:
                             pulse_transmit_data_tracker[sequence_index] = {}
                             sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, num_sequences)
