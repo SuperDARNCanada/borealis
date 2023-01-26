@@ -159,7 +159,7 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
         filtering data.
     """
     # TODO: does the for loop below need to happen every time. Could be only updated
-    #  as necessary to make it more efficient.
+    #       as necessary to make it more efficient.
 
     message = messages.SequenceMetadataMessage()
     message.sequence_time = sequence_time

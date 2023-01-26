@@ -507,13 +507,6 @@ def main():
             end_sample = kwargs['end_sample']
             processed_data = kwargs['processed_data']
 
-            log.info("processing sequence",
-                     sequence_num=sequence_num,
-                     mixing_freqs=mixing_freqs,
-                     mixing_freqs_units='Hz',
-                     main_beam_angles=main_beam_angles.shape,
-                     intf_beam_angles=main_beam_angles.shape)
-
             if cupy_available:
                 cp.cuda.runtime.setDevice(0)
 
@@ -527,10 +520,12 @@ def main():
             dspend_to_brian = gpu_socks[1]
             dsp_to_dw = gpu_socks[2]
 
-            start = time.perf_counter()
+            # Generate a timer dict for a uniform log
+            log_dict = {"time_units": "ms"}
+            start_timer = time.perf_counter()
 
+            # Copy samples from ring buffer
             indices = np.arange(start_sample, start_sample + samples_needed)
-
             # x.take makes a copy of the array. We want to avoid making a copy using Cupy so that
             # data is moved directly from the ring buffer to the GPU. Simple indexing creates a view
             # of existing data without making a copy.
@@ -538,65 +533,74 @@ def main():
                 if end_sample > ringbuffer.shape[1]:
                     piece1 = ringbuffer[:, start_sample:]
                     piece2 = ringbuffer[:, :end_sample - ringbuffer.shape[1]]
-
                     tmp1 = cp.array(piece1)
                     tmp2 = cp.array(piece2)
-
                     sequence_samples = cp.concatenate((tmp1, tmp2), axis=1)
                 else:
                     sequence_samples = cp.array(ringbuffer[:, start_sample:end_sample])
-
             else:
                 sequence_samples = ringbuffer.take(indices, axis=1, mode='wrap')
+            log_dict["copy_samples_from_ringbuffer_time"] = (time.perf_counter() - start_timer) * 1e3
 
-            copy_end = time.perf_counter()
-            time_diff = (copy_end - start) * 1000
-            pprint(f"Time to copy samples for #{sequence_num}: {time_diff}ms")
-            reply_packet = {}
-            reply_packet['sequence_num'] = sequence_num
+            # Tell brain DSP is about to begin
+            mark_timer = time.perf_counter()
+            reply_packet = {"sequence_num": sequence_num}
             msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
-
             so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, log)
             so.send_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, msg)
+            log_dict["dsp_begin_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
 
             # Process main samples
+            mark_timer = time.perf_counter()
             main_sequence_samples = sequence_samples[:len(sig_options.main_antennas), :]
-            pprint(f"Main buffer shape: {main_sequence_samples.shape}")
+            main_sequence_samples_shape = main_sequence_samples.shape
             processed_main_samples = DSP(main_sequence_samples, rx_rate, dm_rates, dm_scheme_taps, mixing_freqs,
                                          main_beam_angles)
             main_corrs = DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
                                                        processed_main_samples.beamformed_samples,
                                                        output_sample_rate, slice_details)
+            log_dict["main_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
-            # If interferometer is used, process those samples too.
+            # Process intf samples if intf exists
+            mark_timer = time.perf_counter()
+            intf_sequence_samples_shape = None
             if sig_options.intf_antenna_count > 0:
                 intf_sequence_samples = sequence_samples[len(sig_options.main_antennas):, :]
-                pprint(f"Intf buffer shape: {intf_sequence_samples.shape}")
+                intf_sequence_samples_shape = intf_sequence_samples.shape
                 processed_intf_samples = DSP(intf_sequence_samples, rx_rate, dm_rates,
                                              dm_scheme_taps, mixing_freqs, intf_beam_angles)
-
                 intf_corrs = DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
                                                            processed_intf_samples.beamformed_samples,
                                                            output_sample_rate, slice_details)
                 cross_corrs = DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
                                                             processed_main_samples.beamformed_samples,
                                                             output_sample_rate, slice_details)
-            end = time.time()
+            log_dict["intf_dsp_time"] = (time.perf_counter() - mark_timer) * 1e3
 
-            time_diff = (end - copy_end) * 1000
-            reply_packet['kerneltime'] = time_diff
+            # Tell brian DSP how long it took
+            mark_timer = time.perf_counter()
+            reply_packet = {"kerneltime": log_dict["main_dsp_time"] + log_dict["intf_dsp_time"]}
             msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
-
-            pprint(f"Time to decimate, beamform and correlate for #{sequence_num}: {time_diff}ms")
-
-            time_diff = (end - start) * 1000
-            pprint(f"Total time for #{sequence_num}: {time_diff}ms")
-
-            so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, pprint)
+            so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, log)
             so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
+            log_dict["dsp_end_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
+
+            log_dict["total_sequence_process_time"] = (time.perf_counter() - start_timer) * 1e3
+            log.info("processing sequence",
+                     sequence_num=sequence_num,
+                     mixing_freqs=mixing_freqs,
+                     mixing_freqs_units='Hz',
+                     main_beam_angles=main_beam_angles.shape,
+                     intf_beam_angles=main_beam_angles.shape,
+                     main_buffer_shape=main_sequence_samples_shape,
+                     intf_buffer_shape=intf_sequence_samples_shape,
+                     **log_dict)
+
+            # Generate a new timer dict for a uniform log
+            log_dict = {"time_units": "ms"}
+            start_timer = time.perf_counter()
 
             # Extract outputs from processing into groups that will be put into message fields.
-            start = time.time()
             data_outputs = {}
 
             def debug_data_in_shm(holder, data_array, array_name):
@@ -611,23 +615,27 @@ def main():
                 :param  array_name: 'main' or 'intf'
                 :type   array_name: str
                 """
+
                 shm = shared_memory.SharedMemory(create=True, size=data_array.nbytes)
                 data = np.ndarray(data_array.shape, dtype=np.complex64, buffer=shm.buf)
                 if cupy_available:
                     data[...] = cp.asnumpy(data_array)
                 else:
                     data[...] = data_array
-
-                if array_name == 'main':
-                    holder.main_shm = shm.name
-                elif array_name == 'intf':
-                    holder.intf_shm = shm.name
-                else:
-                    raise RuntimeError(f"Error: unknown debug data array {array_name}")
+                try:
+                    assert array_name in ["main", "intf"]
+                    if array_name == 'main':
+                        holder.main_shm = shm.name
+                    elif array_name == 'intf':
+                        holder.intf_shm = shm.name
+                except Exception as e:
+                    log.error("unknown array name [main, intf]", error=e)
+                    log.exception("unknown array name [main, intf]", error=e)
+                    sys.exit(1)
 
                 holder.num_samps = data_array.shape[-1]
                 shm.close()
-            
+
             # Add the filter stage data if in debug mode
             if __debug__:
                 for i, main_data in enumerate(processed_main_samples.filter_outputs[:-1]):
@@ -652,10 +660,8 @@ def main():
                 stage.intf_shm = intf_shm.name
                 intf_shm.close()
             processed_data.add_debug_data(stage)
-
-            done_filling_debug = time.time()
-            time_filling_debug = (done_filling_debug - start) * 1000
-            pprint(f"Time to put antennas data in message for #{sequence_num}: {time_filling_debug}ms")
+            log_dict["add_antiq_to_stage_time"] = (time.perf_counter() - start_timer) * 1e3
+            mark_timer = time.perf_counter()
 
             # Add rawrf data
             if __debug__:
@@ -667,14 +673,11 @@ def main():
                 processed_data.rawrf_shm = rawrf_shm.name
                 processed_data.rawrf_num_samps = indices.shape[-1]
                 rawrf_shm.close()
-
-                done_filling_rawrf = time.time()
-                time_filling_rawrf = (done_filling_rawrf - done_filling_debug) * 1000
-                pprint(f"Time to put rawrf in shared memory for #{sequence_num}: {time_filling_rawrf}ms")
-
-            start_filling_bfiq_time = time.time()
+                log_dict["put_rawrf_in_shm_time"] = (time.perf_counter() - mark_timer) * 1e3
+                mark_timer = time.perf_counter()
 
             # Add bfiq and correlations data
+            mark_timer = time.perf_counter()
             beamformed_m = processed_main_samples.beamformed_samples
             processed_data.bfiq_main_shm = processed_main_samples.shared_mem['bfiq'].name
             processed_data.max_num_beams = beamformed_m.shape[1]    # [num_slices, num_beams, num_samps]
@@ -691,16 +694,15 @@ def main():
 
             # Fill message with the slice-specific fields
             fill_datawrite_message(processed_data, slice_details, data_outputs)
-
             sqn_message = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
+            log_dict["add_bfiq_and_acfs_to_stage_time"] = (time.perf_counter() - mark_timer) * 1e3
 
-            end = time.time()
-            time_for_bfiq_acf = (end - start_filling_bfiq_time) * 1000
-            pprint(f"Time to add bfiq and acfs to processeddata message for #{sequence_num}: {time_for_bfiq_acf}ms")
-
-            time_diff = (end - start) * 1000
-            pprint(f"Time to serialize and send processed data for #{sequence_num}: {time_diff}ms")
             so.send_bytes(dsp_to_dw, sig_options.dw_dsp_identity, sqn_message)
+
+            log_dict["total_serialize_send_time"] = (time.perf_counter() - start_timer) * 1e3
+            log.info("processing sequence",
+                     sequence_num=sequence_num,
+                     **log_dict)
 
         args = {"sequence_num": copy.deepcopy(sqn_meta_message.sequence_num),
                 "main_beam_angles": copy.deepcopy(main_beam_angles),
