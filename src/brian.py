@@ -61,11 +61,10 @@ def router(opts):
                 router.send_multipart(frames)
             except zmq.ZMQError as e:
                 log.debug(f"unable to send frame: receiver->sender",
-                          sender_frame=frames[1],
-                          receiver_frame=frames[0],
-                          sender=sender,
-                          receiver=receiver,
-                          exception=e)
+                          sender=frames[1],
+                          receiver=frames[0],
+                          error=str(e))
+
                 non_sent.append(frames)
 
         frames_to_send = non_sent
@@ -107,7 +106,7 @@ def sequence_timing(opts):
     start_new_sock.bind("inproc://start_new")
 
     def start_new():
-        """ 
+        """
         This function serves to rate control the system. If processing is faster than the
         sequence time than the speed of the driver is the limiting factor. If processing takes
         longer than sequence time, than the dsp unit limits the speed of the system.
@@ -175,7 +174,6 @@ def sequence_timing(opts):
     first_time = True
     late_counter = 0
     while True:
-
         if first_time:
             # Request new sequence metadata
             log.debug("requesting metadata from radar control")
@@ -244,11 +242,6 @@ def sequence_timing(opts):
 
             sig_p = pickle.loads(reply)
 
-            log.debug("dsp sent",
-                      kernel_time=sig_p['kerneltime'],
-                      sequence_time_unit="ms",
-                      sequence_num=sig_p['sequence_num'])
-
             if sig_p['sequence_num'] != 0:
                 if sig_p['kerneltime'] > last_processing_time:
                     late_counter += 1
@@ -256,7 +249,12 @@ def sequence_timing(opts):
                     late_counter = 0
             last_processing_time = sig_p['kerneltime']
 
-            log.debug("late counter", late_counter=late_counter)
+            print(sig_p)
+            log.debug("brian to dsp",
+                      kernel_time=sig_p['kerneltime'],
+                      sequence_time_unit="ms",
+                      sequence_num=sig_p['sequence_num'],
+                      late_counter=late_counter)
 
             # Acknowledge that we are good and able to start something new.
             start_new_sock.send_string("extra_good_to_start")
@@ -285,7 +283,7 @@ def main():
 
 if __name__ == "__main__":
     from utils import log_config
-    log = log_config.log(log_level='INFO')
+    log = log_config.log()
     log.info(f"BRIAN BOOTED")
     try:
         main()
@@ -293,4 +291,3 @@ if __name__ == "__main__":
     except Exception as main_exception:
         log.critical("BRIAN CRASHED", error=main_exception)
         log.exception("BRIAN CRASHED", exception=main_exception)
-

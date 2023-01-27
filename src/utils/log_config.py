@@ -59,7 +59,7 @@ def swap_logger_name(_, __, event_dict):
     return event_dict
 
 
-def log(log_level='INFO'):
+def log(log_level=None):
     """
     :param log_level: Logging threshold [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
     :type log_level: str
@@ -84,6 +84,9 @@ def log(log_level='INFO'):
         errmsg = f'Cannot open config file at {config_path}'
         raise IOError(errmsg)
 
+    # If no override log level is set load the config log level
+    if log_level is None:
+        log_level = str(raw_config["log_level"])
     # Set the log file and dir path. The time tag will be appended at the midnight
     # roll over by the TimedRotatingLogHandler.
     log_file = f"{raw_config['log_directory']}/{module_name}"

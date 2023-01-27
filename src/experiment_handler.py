@@ -72,7 +72,7 @@ def experiment_parser():
                                                   "e.g. normalscan")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. common, special, or discretionary.")
-    parser.add_argument("--kwargs_string", default='', 
+    parser.add_argument("--kwargs_string", default='',
                         help="String of keyword arguments for the experiment.")
 
     return parser
@@ -273,7 +273,7 @@ def main(sys_args):
 
 if __name__ == "__main__":
     from utils import log_config
-    log = log_config.log(log_level='INFO')
+    log = log_config.log()
     log.info(f"EXPERIMENT_HANDLER BOOTED")
     try:
         main(sys.argv[1:])
@@ -281,4 +281,3 @@ if __name__ == "__main__":
     except Exception as main_exception:
         log.critical("EXPERIMENT_HANDLER CRASHED", error=main_exception)
         log.exception("EXPERIMENT_HANDLER CRASHED", exception=main_exception)
-

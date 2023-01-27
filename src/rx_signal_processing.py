@@ -307,7 +307,7 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
             Creates shared memory and stores ndarray in it.
 
             :param      ndarray: array to be created
-            :type       ndarray: numpy.ndarray 
+            :type       ndarray: numpy.ndarray
             :returns:   The shared memory name.
             :rtype:     str
             """
@@ -361,7 +361,7 @@ def main():
     first_time = True
     while True:
 
-        reply = so.recv_bytes(dsp_to_radar_control, sig_options.radctrl_dsp_identity, pprint)
+        reply = so.recv_bytes(dsp_to_radar_control, sig_options.radctrl_dsp_identity, log)
 
         sqn_meta_message = pickle.loads(reply)
 
@@ -462,12 +462,15 @@ def main():
             if cupy_available:
                 cp.cuda.runtime.hostRegister(ringbuffer.ctypes.data, ringbuffer.size, 0)
 
+            taps_per_stage = []
             for stage in sqn_meta_message.decimation_stages:
                 dm_rates.append(stage.dm_rate)
                 dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
+                taps_per_stage.append(len(stage.filter_taps))
+            log.info("stage decimation and filter taps",
+                     decimation_rates=dm_rates,
+                     filter_taps_per_stage=taps_per_stage)
 
-            log.info("decimation rates", decimation_rates=dm_rates)
-            log.info("number of filter taps per stage", filter_taps=dm_scheme_taps)
             dm_rates = np.array(dm_rates, dtype=np.uint32)
 
             for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
@@ -579,7 +582,7 @@ def main():
 
             # Tell brian DSP how long it took
             mark_timer = time.perf_counter()
-            reply_packet = {"kerneltime": log_dict["main_dsp_time"] + log_dict["intf_dsp_time"]}
+            reply_packet["kerneltime"] = log_dict["main_dsp_time"] + log_dict["intf_dsp_time"]
             msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
             so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, log)
             so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
@@ -726,7 +729,7 @@ def main():
 
 if __name__ == "__main__":
     from utils import log_config
-    log = log_config.log(log_level='INFO')
+    log = log_config.log()
     log.info(f"RX_SIGNAL_PROCESSING BOOTED")
     try:
         main()

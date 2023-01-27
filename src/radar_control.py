@@ -35,7 +35,7 @@ TIME_PROFILE = False
 
 
 def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq, txrate, rxrate):
-    """ 
+    """
     First packet sent to driver for setup.
 
     :param radctrl_to_driver: the sender socket for sending the driverpacket
@@ -60,7 +60,7 @@ def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq
 
 def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array, txctrfreq, rxctrfreq, txrate, rxrate,
                    numberofreceivesamples, seqtime, SOB, EOB, timing, seqnum, align_sequences, repeat=False):
-    """ 
+    """
     Place data in the driver packet and send it via zeromq to the driver.
 
     :param radctrl_to_driver: the sender socket for sending the driverpacket
@@ -132,7 +132,7 @@ def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array, txc
 def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_radctrl_iden, rxrate,
                       output_sample_rate, seqnum, slice_ids, slice_dict, beam_dict, sequence_time,
                       first_rx_sample_start, rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
-    """ 
+    """
     Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
     Happens every sequence.
 
@@ -241,7 +241,8 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
 
     socket_operations.send_obj(radctrl_to_brian, brian_radctrl_iden, bytes_packet)
 
-    socket_operations.send_obj(radctrl_to_dsp, dsp_radctrl_iden, pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL))
+    socket_operations.send_obj(radctrl_to_dsp, dsp_radctrl_iden,
+                               pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL))
 
 
 def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, status):
@@ -403,7 +404,7 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden, seqnum
 def round_up_time(dt=None, round_to=60):
     """
     Round a datetime object to any time lapse in seconds
-    
+
     :param dt: datetime.datetime object, default now.
     :param roundTo: Closest number of seconds to round to, default 1 minute.
     :author: Thierry Husson 2012 - Use it as you want but don't blame me.
@@ -417,7 +418,7 @@ def round_up_time(dt=None, round_to=60):
     midnight = dt.replace(hour=0, minute=0, second=0)
     seconds = (dt.replace(tzinfo=None) - midnight).seconds
     rounding = (seconds + round_to / 2) // round_to * round_to
-    result = dt + timedelta(0, rounding-seconds, -dt.microsecond)
+    result = dt + timedelta(0, rounding - seconds, -dt.microsecond)
 
     if result < dt:
         result += timedelta(minutes=1)
@@ -521,7 +522,8 @@ def main():
                 # On first integration, determine current averaging period and set scan_iter to it
                 now = datetime.utcnow()
                 current_minute = now.replace(second=0, microsecond=0)
-                scan_iter = next((i for i, v in enumerate(scan.scanbound) if current_minute + timedelta(seconds=v) > now), 0)
+                scan_iter = next(
+                    (i for i, v in enumerate(scan.scanbound) if current_minute + timedelta(seconds=v) > now), 0)
             else:
                 # Otherwise start at first averaging period
                 scan_iter = 0
@@ -562,10 +564,12 @@ def main():
                 # Find the modulus of the number of aveperiod times to run in the scan and the number
                 # of AvePeriod classes. The classes will be alternated so we can determine which class
                 # will be running at the end of the scan.
-                index_of_last_aveperiod_in_scan = (scan.num_aveperiods_in_scan + scan.aveperiod_iter) % len(scan.aveperiods)
+                index_of_last_aveperiod_in_scan = (scan.num_aveperiods_in_scan + scan.aveperiod_iter) % len(
+                    scan.aveperiods)
                 last_aveperiod_intt = scan.aveperiods[index_of_last_aveperiod_in_scan].intt
                 # A scanbound necessitates intt
-                end_of_scan = start_minute + timedelta(seconds=scan.scanbound[-1]) + timedelta(seconds=last_aveperiod_intt * 1e-3)
+                end_of_scan = start_minute + timedelta(seconds=scan.scanbound[-1]) + timedelta(
+                    seconds=last_aveperiod_intt * 1e-3)
                 end_minute = end_of_scan.replace(second=0, microsecond=0)
 
                 if end_minute + timedelta(seconds=next_scanbound[0]) >= end_of_scan:
@@ -627,8 +631,8 @@ def main():
                             # TODO: maybe use datetime.utcnow() like below instead of beam_scanbound
                             #       when the avg period should have started?
                             log.debug("expected avg period start time",
-                                       scan_iter=scan_iter,
-                                       beam_scanbound=beam_scanbound)
+                                      scan_iter=scan_iter,
+                                      beam_scanbound=beam_scanbound)
 
                         averaging_period_start_time = datetime.utcnow()
                         log.info("avg period start time",
@@ -667,13 +671,13 @@ def main():
                             #       to be sure there is actually time to run this intt
                             #       (if bound_time_remaining < 0, we need a solution to reset)
                             averaging_period_done_time = averaging_period_start_time + \
-                                            timedelta(milliseconds=bound_time_remaining * 1e3)
+                                                         timedelta(milliseconds=bound_time_remaining * 1e3)
                         else:
                             averaging_period_done_time = averaging_period_start_time + \
-                                            timedelta(milliseconds=aveperiod.intt)
+                                                         timedelta(milliseconds=aveperiod.intt)
                     else:  # No scanbound for this scan
                         averaging_period_done_time = averaging_period_start_time + \
-                                            timedelta(milliseconds=aveperiod.intt)
+                                                     timedelta(milliseconds=aveperiod.intt)
                 else:  # intt does not exist, therefore using intn
                     intt_break = False
                     ending_number_of_sequences = aveperiod.intn  # this will exist
@@ -766,7 +770,7 @@ def main():
                             sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, num_sequences + 1)
                             if dbg:
                                 debug_samples.append(dbg)
-                            pulse_transmit_data_tracker[sequence_index][num_sequences+1] = sqn
+                            pulse_transmit_data_tracker[sequence_index][num_sequences + 1] = sqn
 
                             if TIME_PROFILE:
                                 new_sequence_time = datetime.utcnow() - start_time
@@ -850,7 +854,8 @@ def main():
 
 if __name__ == "__main__":
     from utils import log_config
-    log = log_config.log(log_level='INFO')
+
+    log = log_config.log()
     log.info(f"RADAR_CONTROL BOOTED")
     try:
         main()

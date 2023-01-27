@@ -11,7 +11,6 @@
 """
 
 import zmq
-import logging.Logger
 
 
 def create_sockets(identities, router_addr):

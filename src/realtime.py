@@ -102,7 +102,7 @@ def main():
 
 if __name__ == '__main__':
     from utils import log_config
-    log = log_config.log(log_level='INFO')
+    log = log_config.log()
     log.info(f"REALTIME BOOTED")
     try:
         main()
@@ -110,4 +110,3 @@ if __name__ == '__main__':
     except Exception as main_exception:
         log.critical("REALTIME CRASHED", error=main_exception)
         log.exception("REALTIME CRASHED", exception=main_exception)
-

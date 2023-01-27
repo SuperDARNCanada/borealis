@@ -41,12 +41,12 @@ DATA_TEMPLATE = {
     "slice_comment"             : None, # Additional text comment that describes the slice.
     "slice_id"                  : None, # the slice id of the file and dataset.
     "slice_interfacing"         : None, # the interfacing of this slice to other slices.
-    "num_slices"                : None, # Number of slices in the experiment at this integration 
+    "num_slices"                : None, # Number of slices in the experiment at this integration
                                         # time.
     "station"                   : None, # Three letter radar identifier.
     "num_sequences"             : None, # Number of sampling periods in the integration time.
     "num_ranges"                : None, # Number of ranges to calculate correlations for
-    "range_sep"                 : None, # range gate separation (equivalent distance between 
+    "range_sep"                 : None, # range gate separation (equivalent distance between
                                         # samples) in km.
     "first_range_rtt"           : None, # Round trip time of flight to first range in microseconds.
     "first_range"               : None, # Distance to first range in km.
@@ -67,7 +67,7 @@ DATA_TEMPLATE = {
                                         # Each encoding can either be a single value or one value
                                         # for each sample.
     "lags"                      : None, # The lags created from two pulses in the pulses array.
-    "blanked_samples"           : None, # Samples that have been blanked because they occurred 
+    "blanked_samples"           : None, # Samples that have been blanked because they occurred
                                         # during transmission times. Can differ from the pulses
                                         # array due to multiple slices in a single sequence.
     "sqn_timestamps"            : None, # A list of GPS timestamps of the beginning of transmission
@@ -76,24 +76,24 @@ DATA_TEMPLATE = {
     "beam_nums"                 : None, # A list of beam numbers used in this slice.
     "beam_azms"                 : None, # A list of the beams azimuths for each beam in degrees off
                                         # boresite.
-    "noise_at_freq"             : None, # Noise at the receive frequency, should be an array 
-                                        # (one value per sequence) (TODO units??) 
+    "noise_at_freq"             : None, # Noise at the receive frequency, should be an array
+                                        # (one value per sequence) (TODO units??)
     # (TODO document FFT resolution bandwidth for this value, should be = output_sample rate?)
     # "noise_in_raw_band"         : None, # Average noise in the sampling band (input sample rate) (TODO units??)
     # "rx_bandwidth"              : None, # if the noise_in_raw_band is provided, the rx_bandwidth should be provided!
     "num_samps"                 : None, # Number of samples in the sampling period.
-    "antenna_arrays_order"      : None, # States what order the data is in. Describes the data 
+    "antenna_arrays_order"      : None, # States what order the data is in. Describes the data
                                         # layout.
     "data_descriptors"          : None, # Denotes what each data dimension represents.
     "data_dimensions"           : None, # The dimensions in which to reshape the data.
-    "data_normalization_factor" : None, # The scale of all of the filters, multiplied, for a total 
+    "data_normalization_factor" : None, # The scale of all of the filters, multiplied, for a total
                                         # scaling factor to normalize by.
-    "data"                      : [],   # A contiguous set of samples (complex float) at given 
+    "data"                      : [],   # A contiguous set of samples (complex float) at given
                                         # sample rate
     "correlation_descriptors"   : None, # Denotes what each acf/xcf dimension represents.
     "correlation_dimensions"    : None, # The dimensions in which to reshape the acf/xcf data.
     "averaging_method"          : None, # A string describing the averaging method, ex. mean, median
-    "scheduling_mode"           : None, # A string describing the type of scheduling time at the 
+    "scheduling_mode"           : None, # A string describing the type of scheduling time at the
                                         # time of this dataset.
     "main_acfs"                 : [],   # Main array autocorrelations
     "intf_acfs"                 : [],   # Interferometer array autocorrelations
@@ -338,7 +338,7 @@ class ParseData(object):
                     antenna_iq_stage[ant_str]['data'].append(antennas_data[ant_num, :])
 
     def numpify_arrays(self):
-        """ 
+        """
         Consolidates data for each data type to one array.
 
         In parse_[type](), new data arrays are appended to a list for speed considerations.
@@ -366,7 +366,7 @@ class ParseData(object):
             slice_data['data'] = np.array(slice_data['data'], np.complex64)
 
     def update(self, data):
-        """ 
+        """
         Parses the message and updates the accumulator fields with the new data.
 
         :param  data: Processed sequence metadata.
@@ -415,7 +415,7 @@ class ParseData(object):
 
     @property
     def sequence_num(self):
-        """ 
+        """
         Gets the sequence num of the latest processeddata packet.
 
         :returns:   sequence number
@@ -426,7 +426,7 @@ class ParseData(object):
 
     @property
     def bfiq_available(self):
-        """ 
+        """
         Gets the bfiq available flag.
 
         :returns:   bfiq available flag
@@ -437,7 +437,7 @@ class ParseData(object):
 
     @property
     def antenna_iq_available(self):
-        """ 
+        """
         Gets the pre-bfiq available flag.
 
         :returns:   pre-bfiq available flag
@@ -481,7 +481,7 @@ class ParseData(object):
 
     @property
     def bfiq_accumulator(self):
-        """ 
+        """
         Returns the nested default dictionary with complex stage data for each antenna array as well
         as some metadata.
 
@@ -608,7 +608,7 @@ class ParseData(object):
 
     @property
     def rawrf_num_samps(self):
-        """ 
+        """
         Gets the number of rawrf samples per antenna.
 
         :returns:   number of rawrf samples per antenna
@@ -619,7 +619,7 @@ class ParseData(object):
 
     @property
     def gps_locked(self):
-        """ 
+        """
         Return the boolean value indicating if the GPS was locked during the entire int period
 
         :returns:   gps_locked flag
@@ -630,7 +630,7 @@ class ParseData(object):
 
     @property
     def gps_to_system_time_diff(self):
-        """ 
+        """
         Gets the maximum time diff in seconds between the GPS (box_time) and system (NTP) during
         the integration period. Negative if GPS time is ahead of system/NTP time.
 
@@ -942,18 +942,18 @@ class DataWrite(object):
             """
 
             needed_fields = [
-            "borealis_git_hash",        "experiment_id",        "experiment_name", 
-            "experiment_comment",       "num_slices",           "slice_comment", 
-            "station",                  "num_sequences",        "range_sep", 
+            "borealis_git_hash",        "experiment_id",        "experiment_name",
+            "experiment_comment",       "num_slices",           "slice_comment",
+            "station",                  "num_sequences",        "range_sep",
             "first_range_rtt",          "first_range",          "rx_sample_rate",
-            "scan_start_marker",        "int_time",             "tx_pulse_len", 
-            "tau_spacing",              "main_antenna_count",   "intf_antenna_count", 
-            "freq",                     "samples_data_type",    "pulses", 
-            "lags",                     "blanked_samples",      "sqn_timestamps", 
-            "beam_nums",                "beam_azms",            "correlation_descriptors", 
+            "scan_start_marker",        "int_time",             "tx_pulse_len",
+            "tau_spacing",              "main_antenna_count",   "intf_antenna_count",
+            "freq",                     "samples_data_type",    "pulses",
+            "lags",                     "blanked_samples",      "sqn_timestamps",
+            "beam_nums",                "beam_azms",            "correlation_descriptors",
             "correlation_dimensions",   "main_acfs",            "intf_acfs",
-            "xcfs",                     "noise_at_freq",        "data_normalization_factor", 
-            "slice_id",                 "slice_interfacing",    "averaging_method", 
+            "xcfs",                     "noise_at_freq",        "data_normalization_factor",
+            "slice_id",                 "slice_interfacing",    "averaging_method",
             "scheduling_mode",          "gps_locked",           "gps_to_system_time_diff",
             "agc_status_word",          "lp_status_word"
             ]
@@ -1048,19 +1048,19 @@ class DataWrite(object):
             """
 
             needed_fields = [
-            "borealis_git_hash",        "experiment_id",                "experiment_name", 
-            "experiment_comment",       "num_slices",                   "slice_comment", 
-            "station",                  "num_sequences",                "rx_sample_rate", 
-            "pulse_phase_offset",       "scan_start_marker",            "int_time", 
-            "tx_pulse_len",             "tau_spacing",                  "main_antenna_count", 
+            "borealis_git_hash",        "experiment_id",                "experiment_name",
+            "experiment_comment",       "num_slices",                   "slice_comment",
+            "station",                  "num_sequences",                "rx_sample_rate",
+            "pulse_phase_offset",       "scan_start_marker",            "int_time",
+            "tx_pulse_len",             "tau_spacing",                  "main_antenna_count",
             "intf_antenna_count",       "freq",                         "samples_data_type",
-            "pulses",                   "blanked_samples",              "sqn_timestamps", 
-            "beam_nums",                "beam_azms",                    "data_dimensions", 
+            "pulses",                   "blanked_samples",              "sqn_timestamps",
+            "beam_nums",                "beam_azms",                    "data_dimensions",
             "data_descriptors",         "antenna_arrays_order",         "data",
-            "num_samps",                "noise_at_freq",                "range_sep", 
-            "first_range_rtt",          "first_range",                  "lags", 
-            "num_ranges",               "data_normalization_factor",    "slice_id", 
-            "slice_interfacing",        "scheduling_mode",              "gps_locked", 
+            "num_samps",                "noise_at_freq",                "range_sep",
+            "first_range_rtt",          "first_range",                  "lags",
+            "num_ranges",               "data_normalization_factor",    "slice_id",
+            "slice_interfacing",        "scheduling_mode",              "gps_locked",
             "gps_to_system_time_diff",  "agc_status_word", "            lp_status_word"
             ]
 
@@ -1116,18 +1116,18 @@ class DataWrite(object):
             """
 
             needed_fields = [
-            "borealis_git_hash",    "experiment_id",                "experiment_name", 
-            "experiment_comment",   "num_slices",                   "slice_comment", 
-            "station",              "num_sequences",                "rx_sample_rate", 
-            "scan_start_marker",    "int_time",                     "tx_pulse_len", 
-            "tau_spacing",          "main_antenna_count",           "intf_antenna_count", 
-            "freq",                 "samples_data_type",            "pulses", 
-            "sqn_timestamps",       "beam_nums",                    "beam_azms", 
-            "data_dimensions",      "data_descriptors",             "antenna_arrays_order", 
-            "data",                 "num_samps",                    "pulse_phase_offset", 
-            "noise_at_freq",        "data_normalization_factor",    "blanked_samples", 
-            "slice_id",             "slice_interfacing",            "scheduling_mode", 
-            "gps_locked",           "gps_to_system_time_diff",      "agc_status_word", 
+            "borealis_git_hash",    "experiment_id",                "experiment_name",
+            "experiment_comment",   "num_slices",                   "slice_comment",
+            "station",              "num_sequences",                "rx_sample_rate",
+            "scan_start_marker",    "int_time",                     "tx_pulse_len",
+            "tau_spacing",          "main_antenna_count",           "intf_antenna_count",
+            "freq",                 "samples_data_type",            "pulses",
+            "sqn_timestamps",       "beam_nums",                    "beam_azms",
+            "data_dimensions",      "data_descriptors",             "antenna_arrays_order",
+            "data",                 "num_samps",                    "pulse_phase_offset",
+            "noise_at_freq",        "data_normalization_factor",    "blanked_samples",
+            "slice_id",             "slice_interfacing",            "scheduling_mode",
+            "gps_locked",           "gps_to_system_time_diff",      "agc_status_word",
             "lp_status_word"
             ]
 
@@ -1211,14 +1211,14 @@ class DataWrite(object):
             """
 
             needed_fields = [
-            "borealis_git_hash",    "experiment_id",            "experiment_name", 
+            "borealis_git_hash",    "experiment_id",            "experiment_name",
             "experiment_comment",   "num_slices",               "station",
-            "num_sequences",        "rx_sample_rate",           "scan_start_marker", 
-            "int_time",             "main_antenna_count",       "intf_antenna_count", 
-            "samples_data_type",    "sqn_timestamps",           "data_dimensions", 
+            "num_sequences",        "rx_sample_rate",           "scan_start_marker",
+            "int_time",             "main_antenna_count",       "intf_antenna_count",
+            "samples_data_type",    "sqn_timestamps",           "data_dimensions",
             "data_descriptors",     "data",                     "num_samps",
-            "rx_center_freq",       "blanked_samples",          "scheduling_mode", 
-            "gps_locked",           "gps_to_system_time_diff",  "agc_status_word", 
+            "rx_center_freq",       "blanked_samples",          "scheduling_mode",
+            "gps_locked",           "gps_to_system_time_diff",  "agc_status_word",
             "lp_status_word"
             ]
 
@@ -1395,7 +1395,7 @@ class DataWrite(object):
             write_tx_data()
 
         write_time = time.perf_counter() - start
-        log.info("write to disc time",
+        log.info("write time",
                  write_time=write_time * 1e3,
                  write_time_units='ms',
                  dataset_name=dataset_name)
@@ -1515,15 +1515,15 @@ def main():
                 data_parsing.update(pd)
                 parse_time = time.perf_counter() - start
                 log.info("parse time",
-                         write_time=parse_time * 1e3,
-                         write_time_units='ms')
+                         parse_time=parse_time * 1e3,
+                         parse_time_units='ms')
 
             queued_sqns = []
 
 
 if __name__ == '__main__':
     from utils import log_config
-    log = log_config.log(log_level='INFO')
+    log = log_config.log()
     log.info(f"DATA_WRITE BOOTED")
     try:
         main()
