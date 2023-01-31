@@ -38,10 +38,12 @@ import logging
 from logging import StreamHandler
 from logging.handlers import TimedRotatingFileHandler
 import structlog
+import graypy
 # We need rich to make the console look pretty (Requires Python 3.7+)
 import rich
 from rich import pretty
 rich.pretty.install()
+
 
 
 def swap_logger_name(_, __, event_dict):
@@ -126,7 +128,7 @@ def log(log_level=None):
                     structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                     structlog.dev.ConsoleRenderer(sort_keys=False, pad_event=40, colors=True)]))
 
-    # Set up the second handler to pip logs to a JSON file that rotates at midnight
+    # Set up the second handler to pipe logs to a JSON file that rotates at midnight
     file_handler = TimedRotatingFileHandler(filename=log_file, when='midnight', utc=True)
     file_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
         processors=[structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),  # Add Unix timestamp
@@ -135,10 +137,16 @@ def log(log_level=None):
                     structlog.processors.JSONRenderer(sort_keys=False)]))
     # Note: the foreign_pre_chain= option can be used to add more processor to just on handler
 
+    # Set up the third handler to pipe logs to the log aggregator (Graylogs)
+    gray_handler = graypy.GELFUDPHandler('0.0.0.0', 12201)
+    gray_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
+        processor=structlog.processors.JSONRenderer(sort_keys=False)))
+
     # Get the logging logger object and attach both handlers
     root_logger = logging.getLogger()
     root_logger.addHandler(console_handler)
     root_logger.addHandler(file_handler)
+    root_logger.addHandler(gray_handler)
 
     # Set the logging level that was configured by the start options
     root_logger.setLevel(log_level)
