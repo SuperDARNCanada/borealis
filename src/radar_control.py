@@ -27,9 +27,9 @@ import utils.message_formats as messages
 from utils import socket_operations
 
 if __debug__:
-    from debug.borealis.utils.protobuf.driverpacket_pb2 import DriverPacket
+    from debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
 else:
-    from release.borealis.utils.protobuf.driverpacket_pb2 import DriverPacket
+    from release.src.utils.protobuf.driverpacket_pb2 import DriverPacket
 
 TIME_PROFILE = False
 

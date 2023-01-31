@@ -17,9 +17,9 @@ from utils import socket_operations as so
 from utils.options import experimentoptions as options
 
 if __debug__:
-    from debug.borealis.utils.protobuf import rxsamplesmetadata_pb2
+    from debug.src.utils.protobuf import rxsamplesmetadata_pb2
 else:
-    from release.borealis.utils.protobuf import rxsamplesmetadata_pb2
+    from release.src.utils.protobuf import rxsamplesmetadata_pb2
 
 TIME_PROFILE = True
 

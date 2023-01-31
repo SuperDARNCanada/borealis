@@ -32,9 +32,9 @@ else:
     import numpy as xp
 
 if __debug__:
-    from debug.borealis.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
+    from debug.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 else:
-    from release.borealis.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
+    from release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 
 from utils.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
 import utils.options.signal_processing_options as spo
