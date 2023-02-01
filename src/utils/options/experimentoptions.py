@@ -12,14 +12,7 @@
 
 import json
 import os
-
 from experiment_prototype.experiment_exception import ExperimentException
-
-borealis_path = os.environ['BOREALISPATH']
-site_id = os.environ['RADAR_CODE']
-
-config_file = borealis_path + f'/config/{site_id}/{site_id}_config.ini'
-restricted_freq_file = borealis_path + f'/config/{site_id}/restrict.dat.{site_id}'
 
 
 class ExperimentOptions:
@@ -28,20 +21,40 @@ class ExperimentOptions:
         """
         Create an object of necessary hardware and site parameters for use in the experiment.
         """
-        try:
-            with open(config_file) as config_data:
-                config = json.load(config_data)
+
+        # Gather the borealis configuration information
+        if not os.environ["BOREALISPATH"]:
+            raise ValueError("BOREALISPATH env variable not set")
+        if not os.environ['RADAR_CODE']:
+            raise ValueError('RADAR_CODE env variable not set')
+        config_path = f'{os.environ["BOREALISPATH"]}/config/' \
+                      f'{os.environ["RADAR_CODE"]}/' \
+                      f'{os.environ["RADAR_CODE"]}_config.ini'
+        restricted_path = f'{os.environ["BOREALISPATH"]}/config/' \
+                          f'{os.environ["RADAR_CODE"]}/' \
+                          f'restrict.dat.{os.environ["RADAR_CODE"]}'
+        try:         # Try to open config file
+            with open(config_path, 'r') as config_data:
+                raw_config = json.load(config_data)
         except IOError:
-            errmsg = f'Cannot open config file at {config_file}'
+            errmsg = f'Cannot open config file at {config_path}'
+            raise IOError(errmsg)
+        try:         # Try to open restricted.dat file
+            with open(restricted_path) as restricted_freq_data:
+                restricted = restricted_freq_data.readlines()
+        except IOError:
+            errmsg = f'Cannot open restrict.dat file at {restricted_path}'
             raise ExperimentException(errmsg)
+
+
         try:
-            self._main_antenna_count = int(config["main_antenna_count"])
-            self._interferometer_antenna_count = int(config["interferometer_antenna_count"])
+            self._main_antenna_count = int(raw_config["main_antenna_count"])
+            self._interferometer_antenna_count = int(raw_config["interferometer_antenna_count"])
 
             # Parse N200 array and calculate main and intf antennas operating
             self._main_antennas = []
             self._interferometer_antennas = []
-            for n200 in config["n200s"]:
+            for n200 in raw_config["n200s"]:
                 rx = bool(n200["rx"])
                 tx = bool(n200["tx"])
                 rx_int = bool(n200["rx_int"])
@@ -54,52 +67,52 @@ class ExperimentOptions:
             self._main_antennas.sort()
             self._interferometer_antennas.sort()
 
-            self._main_antenna_spacing = float(config['main_antenna_spacing'])
-            self._interferometer_antenna_spacing = float(config['interferometer_antenna_spacing'])
-            self._max_tx_sample_rate = float(config['max_tx_sample_rate'])
-            self._max_rx_sample_rate = float(config['max_rx_sample_rate'])
-            self._max_usrp_dac_amplitude = float(config['max_usrp_dac_amplitude'])
-            self._pulse_ramp_time = float(config['pulse_ramp_time'])  # in seconds
-            self._tr_window_time = float(config['tr_window_time'])
+            self._main_antenna_spacing = float(raw_config['main_antenna_spacing'])
+            self._interferometer_antenna_spacing = float(raw_config['interferometer_antenna_spacing'])
+            self._max_tx_sample_rate = float(raw_config['max_tx_sample_rate'])
+            self._max_rx_sample_rate = float(raw_config['max_rx_sample_rate'])
+            self._max_usrp_dac_amplitude = float(raw_config['max_usrp_dac_amplitude'])
+            self._pulse_ramp_time = float(raw_config['pulse_ramp_time'])  # in seconds
+            self._tr_window_time = float(raw_config['tr_window_time'])
             self._max_output_sample_rate = float(
-                config['max_output_sample_rate'])  # should use to check iqdata samples
+                raw_config['max_output_sample_rate'])  # should use to check iqdata samples
             # when adjusting the experiment during operations.
-            self._max_number_of_filtering_stages = int(config['max_number_of_filtering_stages'])
-            self._max_number_of_filter_taps_per_stage = int(config['max_number_of_filter_taps_per_stage'])
-            self._site_id = config['site_id']
-            self._max_freq = float(config['max_freq'])  # Hz
-            self._min_freq = float(config['min_freq'])  # Hz
-            self._minimum_pulse_length = float(config['minimum_pulse_length'])  # us
-            self._minimum_tau_spacing_length = float(config['minimum_tau_spacing_length'])  # us
+            self._max_number_of_filtering_stages = int(raw_config['max_number_of_filtering_stages'])
+            self._max_number_of_filter_taps_per_stage = int(raw_config['max_number_of_filter_taps_per_stage'])
+            self._site_id = raw_config['site_id']
+            self._max_freq = float(raw_config['max_freq'])  # Hz
+            self._min_freq = float(raw_config['min_freq'])  # Hz
+            self._minimum_pulse_length = float(raw_config['minimum_pulse_length'])  # us
+            self._minimum_tau_spacing_length = float(raw_config['minimum_tau_spacing_length'])  # us
             # Minimum pulse separation is the minimum before the experiment treats it as a single
             # pulse (transmitting zeroes or no receiving between the pulses)
             # 125 us is approx two TX/RX times
 
-            self._minimum_pulse_separation = float(config['minimum_pulse_separation'])  # us
-            self._usrp_master_clock_rate = float(config['usrp_master_clock_rate']) # Hz
-            self._router_address = config['router_address']
-            self._radctrl_to_exphan_identity = str(config["radctrl_to_exphan_identity"])
-            self._radctrl_to_dsp_identity = str(config["radctrl_to_dsp_identity"])
-            self._radctrl_to_driver_identity = str(config["radctrl_to_driver_identity"])
-            self._radctrl_to_brian_identity = str(config["radctrl_to_brian_identity"])
-            self._radctrl_to_dw_identity = str(config["radctrl_to_dw_identity"])
-            self._driver_to_radctrl_identity = str(config["driver_to_radctrl_identity"])
-            self._driver_to_dsp_identity = str(config["driver_to_dsp_identity"])
-            self._driver_to_brian_identity = str(config["driver_to_brian_identity"])
-            self._exphan_to_radctrl_identity = str(config["exphan_to_radctrl_identity"])
-            self._exphan_to_dsp_identity = str(config["exphan_to_dsp_identity"])
-            self._dsp_to_radctrl_identity = str(config["dsp_to_radctrl_identity"])
-            self._dsp_to_driver_identity = str(config["dsp_to_driver_identity"])
-            self._dsp_to_exphan_identity = str(config["dsp_to_exphan_identity"])
-            self._dsp_to_dw_identity = str(config["dsp_to_dw_identity"])
-            self._dspbegin_to_brian_identity = str(config["dspbegin_to_brian_identity"])
-            self._dspend_to_brian_identity = str(config["dspend_to_brian_identity"])
-            self._dw_to_dsp_identity = str(config["dw_to_dsp_identity"])
-            self._dw_to_radctrl_identity = str(config["dw_to_radctrl_identity"])
-            self._brian_to_radctrl_identity = str(config["brian_to_radctrl_identity"])
-            self._brian_to_driver_identity = str(config["brian_to_driver_identity"])
-            self._brian_to_dspbegin_identity = str(config["brian_to_dspbegin_identity"])
-            self._brian_to_dspend_identity = str(config["brian_to_dspend_identity"])
+            self._minimum_pulse_separation = float(raw_config['minimum_pulse_separation'])  # us
+            self._usrp_master_clock_rate = float(raw_config['usrp_master_clock_rate']) # Hz
+            self._router_address = raw_config['router_address']
+            self._radctrl_to_exphan_identity = str(raw_config["radctrl_to_exphan_identity"])
+            self._radctrl_to_dsp_identity = str(raw_config["radctrl_to_dsp_identity"])
+            self._radctrl_to_driver_identity = str(raw_config["radctrl_to_driver_identity"])
+            self._radctrl_to_brian_identity = str(raw_config["radctrl_to_brian_identity"])
+            self._radctrl_to_dw_identity = str(raw_config["radctrl_to_dw_identity"])
+            self._driver_to_radctrl_identity = str(raw_config["driver_to_radctrl_identity"])
+            self._driver_to_dsp_identity = str(raw_config["driver_to_dsp_identity"])
+            self._driver_to_brian_identity = str(raw_config["driver_to_brian_identity"])
+            self._exphan_to_radctrl_identity = str(raw_config["exphan_to_radctrl_identity"])
+            self._exphan_to_dsp_identity = str(raw_config["exphan_to_dsp_identity"])
+            self._dsp_to_radctrl_identity = str(raw_config["dsp_to_radctrl_identity"])
+            self._dsp_to_driver_identity = str(raw_config["dsp_to_driver_identity"])
+            self._dsp_to_exphan_identity = str(raw_config["dsp_to_exphan_identity"])
+            self._dsp_to_dw_identity = str(raw_config["dsp_to_dw_identity"])
+            self._dspbegin_to_brian_identity = str(raw_config["dspbegin_to_brian_identity"])
+            self._dspend_to_brian_identity = str(raw_config["dspend_to_brian_identity"])
+            self._dw_to_dsp_identity = str(raw_config["dw_to_dsp_identity"])
+            self._dw_to_radctrl_identity = str(raw_config["dw_to_radctrl_identity"])
+            self._brian_to_radctrl_identity = str(raw_config["brian_to_radctrl_identity"])
+            self._brian_to_driver_identity = str(raw_config["brian_to_driver_identity"])
+            self._brian_to_dspbegin_identity = str(raw_config["brian_to_dspbegin_identity"])
+            self._brian_to_dspend_identity = str(raw_config["brian_to_dspend_identity"])
 
             if len(self.main_antennas) > 0:
                 if min(self.main_antennas) < 0 or max(self.main_antennas) >= self.main_antenna_count:
@@ -113,7 +126,7 @@ class ExperimentOptions:
                             f' incompatible values in {config_file}'
                     raise ExperimentException(errmsg)
 
-            hdw_path = str(config["hdw_path"])
+            hdw_path = str(raw_config["hdw_path"])
 
             # TODO add appropriate signal process maximum time here after timing is changed - can
             # use to check for pulse spacing minimums, pace the driver
@@ -122,7 +135,7 @@ class ExperimentOptions:
             # TODO: error
             raise e
 
-        hdw_dat_file = f'{hdw_path}/hdw.dat.{site_id}'
+        hdw_dat_file = f'{hdw_path}/hdw.dat.{os.environ["RADAR_CODE"]}'
 
         try:
             with open(hdw_dat_file) as hdwdata:
@@ -168,13 +181,6 @@ class ExperimentOptions:
         self._analog_atten_stages = params[19]  # number of stages
         self._max_range_gates = params[20]
         self._max_beams = params[21]  # so a beam number always points in a certain direction
-
-        try:
-            with open(restricted_freq_file) as restricted_freq_data:
-                restricted = restricted_freq_data.readlines()
-        except IOError:
-            errmsg = f'Cannot open restrict.dat.{site_id} file at {restricted_freq_file}'
-            raise ExperimentException(errmsg)
 
         restricted[:] = [line for line in restricted if line[0] != "#"]  # remove comments
         restricted[:] = [line for line in restricted if len(line.split()) != 0]  # remove blanks

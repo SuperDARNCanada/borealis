@@ -82,8 +82,14 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
     caller = Path(inspect.stack()[-1].filename)
     module_name = caller.name.split('.')[0]
 
-    # Gather the borealis configuration information to get path to log dir
-    config_path = os.environ["BOREALISPATH"] + "/config.ini"
+    # Gather the borealis configuration information
+    if not os.environ["BOREALISPATH"]:
+        raise ValueError("BOREALISPATH env variable not set")
+    if not os.environ['RADAR_CODE']:
+        raise ValueError('RADAR_CODE env variable not set')
+    config_path = f'{os.environ["BOREALISPATH"]}/config/' \
+                  f'{os.environ["RADAR_CODE"]}/'  \
+                  f'{os.environ["RADAR_CODE"]}_config.ini'
     try:
         with open(config_path, 'r') as config_data:
             raw_config = json.load(config_data)

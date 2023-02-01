@@ -15,6 +15,7 @@
 import json
 import os
 
+
 class SignalProcessingOptions(object):
     """
     Parses the options from the config file that are relevant to signal processing.
@@ -23,11 +24,14 @@ class SignalProcessingOptions(object):
     def __init__(self):
         super(SignalProcessingOptions, self).__init__()
 
+        # Gather the borealis configuration information
         if not os.environ["BOREALISPATH"]:
             raise ValueError("BOREALISPATH env variable not set")
         if not os.environ['RADAR_CODE']:
             raise ValueError('RADAR_CODE env variable not set')
-        config_path = f'{os.environ["BOREALISPATH"]}/config/{os.environ["RADAR_CODE"]}/{os.environ["RADAR_CODE"]}_config.ini'
+        config_path = f'{os.environ["BOREALISPATH"]}/config/' \
+                      f'{os.environ["RADAR_CODE"]}/' \
+                      f'{os.environ["RADAR_CODE"]}_config.ini'
         try:
             with open(config_path, 'r') as config_data:
                 raw_config = json.load(config_data)
