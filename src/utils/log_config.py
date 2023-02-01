@@ -45,7 +45,6 @@ from rich import pretty
 rich.pretty.install()
 
 
-
 def swap_logger_name(_, __, event_dict):
     """
     Swaps the kw 'logger_name' value with the 'module_name' and 'func_name' values then removes them
@@ -61,16 +60,22 @@ def swap_logger_name(_, __, event_dict):
     return event_dict
 
 
-def log(log_level=None):
+def log(log_level=None, console=None, logfile=None, aggregator=None):
     """
     :param log_level: Logging threshold [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
     :type log_level: str
+    :param console: Enable (True) or Disable (False) console logging override
+    :type console: bool
+    :param logfile: Enable (True) or Disable (False) JSON file logging override
+    :type logfile: bool
+    :param aggregator: Enable (True) or Disable (False) aggregator log forwarding override
+    :type aggregator: bool
 
     :notes:
     There are three parts to logging; processors, renderers, and handlers.
         processors - modify, add, or clean up the log message dict
         renderers - make the log message a string, json, dict, etc. with fancy styling
-        handlers -  print the rendered data to stdout, file, etc.
+        handlers -  print the rendered data to stdout, file, stream, etc.
     """
 
     # Obtain the module name that imported this log_config
@@ -89,6 +94,12 @@ def log(log_level=None):
     # If no override log level is set load the config log level
     if log_level is None:
         log_level = str(raw_config["log_level"])
+    if console is None:
+        console = raw_config["log_handlers"]["console"]
+    if logfile is None:
+        logfile = raw_config["log_handlers"]["logfile"]
+    if aggregator is None:
+        aggregator = raw_config["log_handlers"]["aggregator"]
     # Set the log file and dir path. The time tag will be appended at the midnight
     # roll over by the TimedRotatingLogHandler.
     log_file = f"{raw_config['log_directory']}/{module_name}"
@@ -121,35 +132,39 @@ def log(log_level=None):
         cache_logger_on_first_use=True  # Freeze the configuration (no tampering!)
     )
 
-    # Set up the first handler to pipe logs to stdout
-    console_handler = StreamHandler(sys.stdout)
-    console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-        processors=[swap_logger_name,
-                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                    structlog.dev.ConsoleRenderer(sort_keys=False, pad_event=40, colors=True)]))
-
-    # Set up the second handler to pipe logs to a JSON file that rotates at midnight
-    file_handler = TimedRotatingFileHandler(filename=log_file, when='midnight', utc=True)
-    file_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-        processors=[structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),  # Add Unix timestamp
-                    structlog.processors.dict_tracebacks,  # Makes tracebacks dict rather than str
-                    structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes _records
-                    structlog.processors.JSONRenderer(sort_keys=False)]))
-    # Note: the foreign_pre_chain= option can be used to add more processor to just on handler
-
-    # Set up the third handler to pipe logs to the log aggregator (Graylogs)
-    gray_handler = graypy.GELFUDPHandler('0.0.0.0', 12201)
-    gray_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-        processor=structlog.processors.JSONRenderer(sort_keys=False)))
-
     # Get the logging logger object and attach both handlers
     root_logger = logging.getLogger()
-    root_logger.addHandler(console_handler)
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(gray_handler)
-
     # Set the logging level that was configured by the start options
     root_logger.setLevel(log_level)
+
+    # Set up the first handler to pipe logs to stdout
+    if console:
+        console_handler = StreamHandler(sys.stdout)
+        console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
+            processors=[swap_logger_name,
+                        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                        structlog.dev.ConsoleRenderer(sort_keys=False, pad_event=40, colors=True)]))
+        root_logger.addHandler(console_handler)
+
+    # Set up the second handler to pipe logs to a JSON file that rotates at midnight
+    if logfile:
+        logfile_handler = TimedRotatingFileHandler(filename=log_file, when='midnight', utc=True)
+        logfile_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
+            processors=[structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),  # Add Unix timestamp
+                        structlog.processors.dict_tracebacks,  # Makes tracebacks dict rather than str
+                        structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes _records
+                        structlog.processors.JSONRenderer(sort_keys=False)]))
+        root_logger.addHandler(logfile_handler)
+        # Note: the foreign_pre_chain= option can be used to add more processor to just on handler
+
+    # Set up the third handler to pipe logs to the log aggregator (Graylogs). See further logging documentation
+    # to set up the log aggregator server and the extractors on the server.
+    if aggregator:
+        aggregator_handler = graypy.GELFUDPHandler(raw_config["log_aggregator_addr"],
+                                                   raw_config["log_aggregator_port"])
+        aggregator_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
+            processor=structlog.processors.JSONRenderer(sort_keys=False)))
+        root_logger.addHandler(aggregator_handler)
 
     # Apply the configuration
     structlog.configure()
