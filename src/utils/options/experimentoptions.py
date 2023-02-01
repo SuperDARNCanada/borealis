@@ -141,7 +141,7 @@ class ExperimentOptions:
             with open(hdw_dat_file) as hdwdata:
                 lines = hdwdata.readlines()
         except IOError:
-            errmsg = f'Cannot open hdw.dat.{site_id} file at {hdw_dat_file}'
+            errmsg = f'Cannot open hdw.dat file at {hdw_dat_file}'
             raise ExperimentException(errmsg)
 
         lines[:] = [line for line in lines if line[0] != "#"]  # remove comments
