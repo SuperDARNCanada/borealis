@@ -161,7 +161,7 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
     # to set up the log aggregator server and the extractors on the server.
     if aggregator:
         aggregator_handler = graypy.GELFUDPHandler(raw_config["log_aggregator_addr"],
-                                                   raw_config["log_aggregator_port"])
+                                                   int(raw_config["log_aggregator_port"]))
         aggregator_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             processor=structlog.processors.JSONRenderer(sort_keys=False)))
         root_logger.addHandler(aggregator_handler)
