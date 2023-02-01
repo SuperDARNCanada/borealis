@@ -46,7 +46,6 @@ class ExperimentOptions:
             errmsg = f'Cannot open restrict.dat file at {restricted_path}'
             raise ExperimentException(errmsg)
 
-
         try:
             self._main_antenna_count = int(raw_config["main_antenna_count"])
             self._interferometer_antenna_count = int(raw_config["interferometer_antenna_count"])
@@ -117,13 +116,13 @@ class ExperimentOptions:
             if len(self.main_antennas) > 0:
                 if min(self.main_antennas) < 0 or max(self.main_antennas) >= self.main_antenna_count:
                     errmsg = 'main_antennas and main_antenna_count have incompatible values in'\
-                            f' {config_file}'
+                            f' {config_path}'
                     raise ExperimentException(errmsg)
             if len(self.interferometer_antennas) > 0:
                 if min(self.interferometer_antennas) < 0 or \
                         max(self.interferometer_antennas) >= self.interferometer_antenna_count:
                     errmsg = 'interferometer_antennas and interferometer_antenna_count have'\
-                            f' incompatible values in {config_file}'
+                            f' incompatible values in {config_path}'
                     raise ExperimentException(errmsg)
 
             hdw_path = str(raw_config["hdw_path"])
