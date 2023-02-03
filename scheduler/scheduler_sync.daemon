@@ -9,7 +9,8 @@
 # sync's via Maxwell to all remote sites, utilizing the autossh link between Maxwell and all site
 # computers.
 #
-# This script should be run via a systemd daemon with the following service file:
+# This script should be run via a systemd daemon with the following service file placed in 
+# /usr/lib/systemd/system/:
 #   scheduler_sync@.service:
 #       [Unit]
 #       Description=Scheduler synchronization daemon for %i
@@ -23,7 +24,7 @@
 #       WantedBy=multi-user.target
 #
 # The site to sync to can be specified by calling the daemon with the following syntax:
-#       systemctl [command] scheduler_sync.service [RADARID]
+#       systemctl [command] scheduler_sync@[RADARID]
 #
 # Dependencies:
 #   - inotifywait (installed by zypper in inotify-tools)
@@ -35,8 +36,8 @@
 
 ###################################################################################################
 
-# Associate each RADARID with a SITE_NUM. SITE_NUM is used to get correct port connecting Maxwell
-# and the site borealis computer.
+# Create an associative array that associates each RADARID with a SITE_NUM. SITE_NUM is used to get
+# correct port connecting Maxwell and the site borealis computer. 
 declare -A SITE_NUM=( ["sas"]="0" ["pgr"]="1" ["cly"]="2" ["rkn"]="3" ["inv"]="4" )
 
 if [[ $# -ne 1 ]]; then
@@ -60,8 +61,7 @@ readonly SITE_ID="${SITE_NUM[$RADARID]}"    # Get site id corresponding to corre
 readonly MAXWELL="dataman@maxwell.usask.ca"
 readonly DEST="radar@localhost"
 readonly DEST_PORT="5${SITE_ID}522"
-# readonly DEST_DIR="/home/radar/borealis_schedules"
-DEST_DIR="/home/radar/test_scheduler_sync/"     # Testing
+readonly DEST_DIR="/home/radar/borealis_schedules"
 
 ###################################################################################################
 
@@ -69,19 +69,32 @@ exec &>> $LOGFILE # Redirect STDOUT and STDERR to $LOGFILE
 printf "Starting $0 $RADARID at $(date --utc "+%Y%m%d %H:%M:%S UTC")\n"
 
 # Inotify will trigger on all modify (file content change) and attrib (file metadata change) events.
-# The conditional filters the inotify output to only trigger the syncronization when the .scd file
-# for the site specified by RADARID is modified.
+# These events happen in close succession, leading to many triggers at once. To reduce the number of
+# times rsync is executed, a check is done to ensure its been at least $filter_time seconds since
+# the last time the schedule was synced. This will effectively filter out all the redundant inotify
+# triggers and ensure rsync only executes when there's actually changes to synchronize.
+filter_time=1
+endtime=0
+
 inotifywait --monitor --timefmt '%Y%m%d.%H:%M:%S' --format '%T %w %e %f' -e modify,attrib $WATCH_DIR | \
 while read TIME DIRECTORY ACTION FILE # These must line up with format parameters
 do
-    if [[ "$FILE" =~ .*$RADARID\.scd$ ]]   # Only interested in .scd files for the specified site
+    # The conditional filters the inotify output to only trigger the syncronization when the .scd
+    # file for the site specified by RADARID is modified.
+    if [[ "$FILE" =~ .*$RADARID\.scd$ ]]
     then
-        printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Schedule modified for $RADARID\n"
+        # Only execute the code once every $filter_time seconds
+        cur_time=$(date "+%s")
+        if [[ $(($endtime + $filter_time)) -lt $cur_time ]]; then
+            printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Schedule modified for $RADARID\n"
+            sleep 1     # Wait 1 s to ensure all changes to scd file are finished
 
-        # Sync the .scd file to site via Maxwell
-        printf "Sending ${SCD_FILE} to ${DEST}:${DEST_DIR}\n"
-        rsync -av --rsh="ssh $MAXWELL ssh -p $DEST_PORT" "${SCD_FILE}" "${DEST}:${DEST_DIR}"
+            # Sync the .scd file to site via Maxwell
+            printf "Sending ${SCD_FILE} to ${DEST}:${DEST_DIR}\n"
+            rsync -av --rsh="ssh $MAXWELL ssh -p $DEST_PORT" "${SCD_FILE}" "${DEST}:${DEST_DIR}"
 
-        printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Finished syncing schedule\n\n"
+            printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Finished syncing schedule\n\n"
+            endtime=$(date "+%s")
+        fi
     fi
 done
