@@ -6,11 +6,7 @@
 # 2018-03-26
 # socket operations utility file, recv, send, setup, etc...
 
-import sys
-import os
 import zmq
-import time
-from datetime import datetime, timedelta
 
 
 def create_sockets(identities, router_addr):
@@ -55,6 +51,7 @@ def recv_data(socket, sender_iden, pprint):
     else:
         return data.decode('utf-8')
 
+
 def send_data(socket, recv_iden, msg):
     """Sends data to another identity.
 
@@ -68,11 +65,13 @@ def send_data(socket, recv_iden, msg):
     frames = [recv_iden.encode('utf-8'), b"", msg.encode('utf-8')]
     socket.send_multipart(frames)
 
+
 # Aliases for sending to a socket
 send_reply = send_request = send_data
 
 # Aliases for receiving from a socket
 recv_reply = recv_request = recv_data
+
 
 def recv_bytes(socket, sender_iden, pprint):
     """Receives data from a socket and verifies it comes from the correct sender.
@@ -95,6 +94,7 @@ def recv_bytes(socket, sender_iden, pprint):
     else:
         return bytes_object
 
+
 def recv_bytes_from_any_iden(socket):
     """Receives data from a socket, returns just the data and strips off the identity
 
@@ -115,11 +115,12 @@ def send_bytes(socket, recv_iden, bytes_object):
     :type socket: Zmq socket.
     :param recv_iden: The identity to send to.
     :type recv_iden: String
-    :param pickled_exp: The experiment to send.
+    :param bytes_object: The experiment to send.
     :type msg: bytes object or object encoded using highest pickle protocol available.
     """
     frames = [recv_iden.encode('utf-8'), b"", bytes_object]
     socket.send_multipart(frames)
+
 
 send_pulse = send_obj = send_exp = send_bytes
 

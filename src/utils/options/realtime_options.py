@@ -8,6 +8,7 @@
 import json
 import os
 
+
 class RealtimeOptions(object):
     """
     Parses the options from the config file that are relevant to realtime.
@@ -20,7 +21,8 @@ class RealtimeOptions(object):
             raise ValueError("BOREALISPATH env variable not set")
         if not os.environ['RADAR_CODE']:
             raise ValueError('RADAR_CODE env variable not set')
-        config_path = f'{os.environ["BOREALISPATH"]}/config/{os.environ["RADAR_CODE"]}/{os.environ["RADAR_CODE"]}_config.ini'
+        config_path = f'{os.environ["BOREALISPATH"]}/config/{os.environ["RADAR_CODE"]}' \
+                      f'./{os.environ["RADAR_CODE"]}_config.ini'
         try:
             with open(config_path, 'r') as config_data:
                 raw_config = json.load(config_data)
@@ -32,7 +34,6 @@ class RealtimeOptions(object):
         self._dw_to_rt_identity = raw_config["dw_to_rt_identity"]
         self._rt_address = raw_config["realtime_address"]
         self._router_address = raw_config["router_address"]
-
 
     @property
     def rt_to_dw_identity(self):
