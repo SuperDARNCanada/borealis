@@ -46,3 +46,8 @@ sequence
 	A pulse sequence to be transmitted. Each sequence has a sampling period, which extends past the
 	length of the pulse sequence for some time dependent on the number of ranges to be sampled. 
 
+slice
+	A slice, in the context of experiments run by Borealis, refers to an individual component of an
+	experiment. An experiment can have one or many slices. See the documentation on Building an
+	Experiment for more information on slices, as they are an integral part of the Borealis system.
+
