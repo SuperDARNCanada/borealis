@@ -12,7 +12,7 @@ resulting data. Once this is complete, the realtime module deletes the temporary
 
 Additional data processing is done using a Python package called ``backscatter``, which is an implementation of the
 standard FITACF3 algorithm for analyzing SuperDARN data. More details about this package can be found at the
-`GitHub homepage https://github.com/SuperDARNCanada/backscatter`_.
+`GitHub homepage <https://github.com/SuperDARNCanada/backscatter>`_.
 
 This module is required to operate the radar. Without it, the system will slow as a backlog of temporary files grows
 and the data write module tries to send the file names over a socket but there is nothing on the other end of the
