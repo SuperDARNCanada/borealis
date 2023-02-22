@@ -26,7 +26,7 @@ routing. There is a lot of cabling involved at the front of the devices.
 The items installed in the rack at the Saskatoon site are listed below in order from top to bottom
 in the rack:
 
-- Netgear XS708E 10Gb switch
+- Netgear XS708E 10Gb switch **NOTE these are deprecated, new switches are in testing**
 - USRP rackmount shelf (in-house design) with 4 x N200s
 - Ettus Octoclock
 - USRP rackmount shelf (in-house design) with 4 x N200s
@@ -40,13 +40,14 @@ in the rack:
 - Netgear XS708E 10Gb switch
 - Synology Network Attached Storage device
 - APC Smart UPS
-- 15V Acopian power supply
+- 15V Acopian power supply **(For the pre-amplifiers on the interferometer)**
 
 In addition to these items, there are the following:
 
 - 3 x APC PDUs (AP7900B) are mounted at the back of the rack
 - 1x 5-port unmanaged network switch that can handle at minimum 10Mbps, 100Mbps link speeds
-  (10BASE-T and 100BASE-T) for Octoclock networking
+  (10BASE-T and 100BASE-T) for Octoclock networking **(This is only required if the network switches
+  in use for the N200s do not support 10BASE-T)**
 - The Borealis computer is not in a rackmount case, instead it is placed to the right of the rack.
 - 16 x Mini-Circuits SLP-21.4 low pass filters on the TX outputs of each N200
 
@@ -80,12 +81,14 @@ Initial Test of the Unit
 #. USRPs have a default IP address of ``192.168.10.2``. Assign a computer network interface an
    address that can communicate in this subnet. Connect the USRP to the computer's network interface
    either directly or through one of the switches from the system specifications. Connect the USRP
-   power supply.
+   power supply. **NOTE that if you have multiple N200s connected at once on the same subnet with
+   the same IP address, the behaviour is undefined, and weird problems will result**
 #. Verify the board powers on and is discoverable. The USRP should be discoverable by pinging
    ``192.168.10.2``. Ettus' USRP UHD library supplies a tool called ``uhd_usrp_probe`` which should
    also be able to detect the device. See software setup for notes on installing UHD. The USRP may
    require a firmware upgrade.
-#. Connect an SMA T connection (F-M-F) to the TX output from the front of the N200, connect another
+#. In order to do loopback testing, and see the transmit waveform on an oscilloscope with the N200:
+   Connect an SMA T connection (F-M-F) to the TX output from the front of the N200, connect another
    SMA T (F-M-F) to the first T. Connect one end of the second SMA T to RX1, and the other end to
    RX2 with phase matched SMA M-M cables. Connect the free SMA output of the first SMA T to the
    scope. Connect the Octoclock PPS and 10MHz reference signals to the USRP. Make sure that the
@@ -333,7 +336,9 @@ TXIO OUTPUT TESTS
         #. Then, proceed to the next test (CTRL+C, then enter "y").
 
     #. Insert the needle probe into the SMA output corresponding to TR, this should be the left-most
-       SMA output when facing the N200 from the back.
+       SMA output when facing the N200 from the back. **NOTE that you will not move on to the next
+       test until you verify the TR SMA, TR+ and TR- signals on the oscilloscope (three tests in
+       total).**
 
         #. Verify that the BLUE and GREEN LEDs are flashing together, and both others are unlit.
         #. Verify that the scope signal is the inverse of the pattern flashed by the BLUE and GREEN
@@ -412,7 +417,11 @@ Configuring the Unit for Borealis
 ---------------------------------
 
 1. Use UHD utility ``usrp_burn_mb_eeprom`` to assign a unique IP address for the unit. Label the unit
-   with the device IP address.::
+   with the device IP address. **NOTE Recommended IP addresses are 192.168.10.100 - 116 for the
+   N200s (116 is the spare), 192.168.10.130-132 for the octoclocks (.131 is for the GPS octoclock),
+   then 192.168.10.60 for the borealis computer’s 10G interface (or some other IP address in the
+   same 192.168.10 subnet that is above 192.168.10.3, which is the default for octoclocks from the
+   factory)**::
 
        cd <install path>/lib/uhd/utils
        ./usrp_burn_mb_eeprom --args="addr=<current ip> --values="ip_addr=<new ip>"
@@ -444,7 +453,8 @@ Computer and Networking
 
 To be able to run Borealis at high data rates, a powerful CPU with many cores and a high number of
 PCI lanes is needed. The team recommends an Intel i9 10 core CPU or better. Likewise a good NVIDIA
-GPU is needed for fast data processing. The team recommends a GeForce 1080TI/2080 or better. Just
+GPU is needed for fast data processing. The team recommends a GeForce 1080TI/2080TI or better (with
+the same or higher amount of CUDA cores, and the same or higher amount of VRAM). Just
 make sure the drivers are up to date on Linux for the model. A 10Gb (or multiple 1Gb interfaces) or
 better network interface is also required.
 
@@ -530,11 +540,11 @@ Octoclocks and Networking
 -------------------------
 
 One issue with the Octoclock units is that they contain a very basic Ethernet controller chip, the
-ENC28J60. This means that the Octoclock units will only operate at 10Mbps link speed. The 10Gb
-network switches specified above (NetGear XS708E-200NES) only operate at 100Mbps, 1000Mbps and
-10000Mbps. Therefore, a 5-port unmanaged switch is used to connect all three Octoclocks to one of
-the 10Gbps network switches. The 5-port switch must be capable of operating at both 10Mbps and
-100Mbps so it can connect to both the Octoclocks as well as the XS708E switch. The network cables
+ENC28J60. This means that the Octoclock units will only operate at 10Mbps link speed (10BASE-T). The
+10Gb network switches specified above (NetGear XS708E-200NES or XS708T) only operate at 100Mbps,
+1000Mbps and 10000Mbps. Therefore, a 5-port unmanaged switch is used to connect all three Octoclocks
+to one of the 10Gbps network switches. The 5-port switch must be capable of operating at both 10Mbps
+and 100Mbps so it can connect to both the Octoclocks as well as the XS708E switch. The network cables
 connecting the Octoclocks to the 5-port switch do not need to be dual shielded and any Cat5 cable
 (or better) should work.
 
