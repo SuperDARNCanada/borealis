@@ -259,7 +259,7 @@ dictionary are described below.
 Slice Keys
 ----------
 
-These are the dictoinary keys that are set by the user when initializing a slice. Some are required,
+These are the dictionary keys that are set by the user when initializing a slice. Some are required,
 some can be default, and some are set by the experiment and are read-only.
 
 **Slice Keys Required by the User**
