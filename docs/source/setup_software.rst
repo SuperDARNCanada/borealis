@@ -16,10 +16,11 @@ name: radar) that will run Borealis
    capability version of the GPU. Getting the OS to run stable with NVIDIA is the most important
    step, **so make sure you read this page carefully**.
 
-#. Use the BIOS to find a stable over-clock for the CPU. Usually the recommended turbo frequency is
-   a good place to start. This step is optional, but will help system performance when it comes to
-   streaming high rates from the USRP. Do not adjust higher over-clock settings without doing
-   research.
+#.  **NOTE: Overclocking is no longer suggested, as reliability is more important than
+    performance now**. Use the BIOS to find a stable over-clock for the CPU. Usually the recommended
+    turbo frequency is a good place to start. This step is optional, but will help system performance
+    when it comes to streaming high rates from the USRP. Do not adjust higher over-clock settings
+    without doing research.
 
 #. Use the BIOS to enable boot-on-power. The computer should come back online when power is restored
    after an outage. This setting is typically referred to as *Restore on AC/Power Loss*
@@ -48,7 +49,9 @@ name: radar) that will run Borealis
 
 #. Use the network manager or a line in the reboot script to change the MTU of the interface for the interface used to
    connect to the USRPs. A larger MTU will reduce the amount of network overhead. An MTU larger than 1500 bytes allows
-   what is known as Jumbo frames, which can use up to 9000 bytes of payload. ::
+   what is known as Jumbo frames, which can use up to 9000 bytes of payload. **NOTE this also needs
+   to be enabled on the network switch, and any other devices in the network chain. Setting this
+   to 1500 may be the best option, make sure you test.** ::
 
     sudo ip link set <10G_network_device> mtu 9000
 
@@ -96,7 +99,7 @@ name: radar) that will run Borealis
     sudo tuned-adm profile_info
 
 #. Add an environment variable called BOREALISPATH that points to the cloned git repository in
-   .bashrc or .profile and re-source the file. For example: ::
+   .bashrc or .profile and re-source the file. For example: **(NOTE the extra '/')** ::
 
     export BOREALISPATH=/home/radar/borealis/
     source .profile
@@ -140,7 +143,7 @@ name: radar) that will run Borealis
    your computer such as "eth0" or "wlan0". Running ``ip addr``, you should choose a device which is
    UP.
 
-#. Install the necessary software to convert and test data: ::
+#. Install the necessary software to transfer, convert, and test data: ::
 
     cd $HOME
     git clone https://github.com/SuperDARNCanada/borealis-data-utils.git
