@@ -5,17 +5,20 @@ Lab Testing
 It is important to verify that the system is operating nominally before deployment and regular operations.
 We recommend that you run at least the tests below.
 
+GPS and Reference signal tests
+------------------------------
+
 #. Test for GPS lock on the GPS Octoclock.
 
-    * Connect a GPS antenna to the Octoclock and place the antenna in a location where it can receive a good signal,
-      such as near a window.
-    * Plug in the power connector for the Octoclock.
-    * Ensure that the switch of the left side of the Octoclock face is switched to "internal" reference - this indicates
-      that the Octoclock is generating its own 10 MHz and 1 PPS signals, not being disciplined by external signals.
-    * Wait for a while until the green "GPS Lock" LED on the front face of the Octoclock is lit. This may take up to a
-      half hour. Alternatively, you can write a script using the UHD API to query the device for GPS lock. See
-      https://files.ettus.com/manual/classuhd_1_1usrp__clock_1_1multi__usrp__clock.html for more details on how to do
-      this.
+- Connect a GPS antenna to the Octoclock and place the antenna in a location where it can receive a
+  good signal, such as near a window.
+- Plug in the power connector for the Octoclock.
+- Ensure that the switch of the left side of the Octoclock face is switched to "internal" reference
+  this indicates that the Octoclock is generating its own 10 MHz and 1 PPS signals, not being disciplined by external signals.
+- Wait for a while until the green "GPS Lock" LED on the front face of the Octoclock is lit. This
+  may take up to a half hour. Alternatively, you can write a script using the UHD API to query the device for GPS lock. See
+  https://files.ettus.com/manual/classuhd_1_1usrp__clock_1_1multi__usrp__clock.html for more details on how to do
+  this.
 
 #. Test synchronicity of multiple Octoclock arrangement.
 
@@ -28,6 +31,8 @@ We recommend that you run at least the tests below.
       output channels on the same Octoclock. Ideally all channels should be no more than 10 nanoseconds different.
 
 #. Test that N200 REF and PPS LEDs are operating correctly.
+
+
 
 #. TXIO board testing - TODO: move to here from hardware
 

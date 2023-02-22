@@ -1,3 +1,5 @@
+.. _monitoring:
+
 ===================
 Borealis Monitoring
 ===================
