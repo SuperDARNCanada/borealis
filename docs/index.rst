@@ -12,7 +12,7 @@ Borealis is a newly developed digital radar system by the engineering team at Su
 It is a substantial upgrade to existing SuperDARN systems. Features of Borealis include:
 
 - Several new experimental capabilities (see :ref:`new-experiments`)
-- Improved diagnostics and telemetry (see :ref:`monitoring`)
+- Improved diagnostics and telemetry (see :ref:`monitoring` and the :ref:`Realtime Package`)
 - Flexible and easy-to-implement experiments (see :ref:`experiments`)
 - Direct sampling of each antenna receive path in the standard SuperDARN array, resulting in flexible
   post-processing of data if the samples from each antenna are stored (see :ref:`antennas_iq`)
