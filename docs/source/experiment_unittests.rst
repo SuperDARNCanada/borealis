@@ -13,7 +13,7 @@ Experiments must be listed in ``experiment_tests.csv`` in the following format: 
 
     [#][experiment file module import name]::[regex error message]
 
-An excerpt of ``experiment_tests.csv`` is shown below for referece.
+An excerpt of ``experiment_tests.csv`` is shown below for reference.
 
 
 ..  literalinclude:: ../../tests/testing_utils/experiments/experiment_tests.csv
