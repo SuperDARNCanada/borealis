@@ -18,7 +18,7 @@ It is a substantial upgrade to existing SuperDARN systems. Features of Borealis 
   post-processing of data if the samples from each antenna are stored (see :ref:`antennas_iq`)
 
 A paper has been published for the Borealis system and can be found
-`here <https://doi.org/10.1029/2022RS007591>`_
+`here <https://doi.org/10.1029/2022RS007591>`_.
 
 This documentation attempts to capture all information required for a new user to Borealis to start
 from nothing and eventually have a Borealis system running. The information includes:
@@ -35,7 +35,7 @@ from nothing and eventually have a Borealis system running. The information incl
 
 This documentation is always being updated and refined, so please check back regularly for updates.
 Any comments, questions, and/or suggestions can be sent to the
-`SuperDARN Canada team<https://superdarn.ca/contact>`_, we welcome any and all feedback, as that
+`SuperDARN Canada team <https://superdarn.ca/contact>`_, we welcome any and all feedback, as that
 has helped to make the Borealis system as successful as it is today!
 
 
@@ -62,6 +62,7 @@ In the near future, we plan to implement:
 
 ..  toctree::
     :maxdepth: 2
+    :hidden:
     :glob:
 
     /source/system_specifications
