@@ -19,9 +19,9 @@ Digital Radio Equipment
 - 51x ~8 1/4" SMA bulkhead Female to Male RG-316 for daughterboards (for 17x N200s, 3 cables each)
 - 18x 48" SMA Male to Male RG-316 for PPS signals (2x from octoclock-g to octoclocks, 16x for N200s)
 - 18x 48" SMA Male to Male RG-316 for 10MHz REF signals (2x from octoclock-g to octoclocks,
-16x for N200s)
+  16x for N200s)
 - 1x SMA Male to 0.1" pin header RG-316 for PPS signal input to motherboard (homemade by cutting up
-a coaxial cable and soldering to a 0.1" two-position pin header)
+  a coaxial cable and soldering to a 0.1" two-position pin header)
 - GPS Antenna (Male SMA connector)
 - 17x Custom TXIO Revision 5.0 board (for transmitter interfacing)
 - 22x Mini-Circuits ZFL-500LN pre-amps (20 and 2 spare)
@@ -94,13 +94,13 @@ Networking
 ----------
 
 - 3x Netgear XS708E-200NES (North American model #) 10Gb switches (parent model name is XS708Ev2)
-(NOTE: These network switches are discontinued as of 2021. See`this page
-https://community.netgear.com/t5/Plus-and-Smart-Switches-Forum/XS708T-and-XS716T-discontinued/m-p/2137635`_)
+  (NOTE: These network switches are discontinued as of 2021. See`this page
+  https://community.netgear.com/t5/Plus-and-Smart-Switches-Forum/XS708T-and-XS716T-discontinued/m-p/2137635`_)
 - A potential replacement with a fiber optic link (SFP+) is the FS S3900 48 Port 1GbE switch.
 - 1x 5-port network switch that can handle 10Mbps and 100Mbps connection speeds (10BASE-T and 100BASE-T)
-OR if using the FS S3900 48 port, it supports 10Mbps for the octoclocks.
+  OR if using the FS S3900 48 port, it supports 10Mbps for the octoclocks.
 - 27x SSTP CAT 6a 7ft cables or better* (16x for the N200s, 2x for daisy-chaining the switches, 3x
-for the octoclocks, 1x for connecting to the 1GbE network switch, and 5x spares).
+  for the octoclocks, 1x for connecting to the 1GbE network switch, and 5x spares).
 - 2x SSTP CAT 6a 15ft cables* (for connecting to the Borealis computer, and one spare)
 - Optional for Fiber: DAC/AOC cables such as the FS SFPP-AO05
 
