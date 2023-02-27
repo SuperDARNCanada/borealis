@@ -85,7 +85,7 @@ Minimum requirements:
 - 1x Intel X550-T2 10Gb PCIe network card (if the motherboard does not have 10G networking) OR
 optionally, a Fiber optic NIC such as the Mellanox MCX4121A-ACAT, or the Intel X710-BM2
 
-**NOTE:**: Intel 82579LM controllers WILL NOT WORK
+**NOTE:** Intel 82579LM controllers WILL NOT WORK
 
 **NOTE:** A BIOS flash is required to use a RTX3000+ series NVidia GPU.
 
@@ -94,8 +94,8 @@ Networking
 ----------
 
 - 3x Netgear XS708E-200NES (North American model #) 10Gb switches (parent model name is XS708Ev2)
-  (NOTE: These network switches are discontinued as of 2021. See`this page
-  https://community.netgear.com/t5/Plus-and-Smart-Switches-Forum/XS708T-and-XS716T-discontinued/m-p/2137635`_)
+  (NOTE: These network switches are discontinued as of 2021. See `this page
+  <https://community.netgear.com/t5/Plus-and-Smart-Switches-Forum/XS708T-and-XS716T-discontinued/m-p/2137635>`_)
 - A potential replacement with a fiber optic link (SFP+) is the FS S3900 48 Port 1GbE switch.
 - 1x 5-port network switch that can handle 10Mbps and 100Mbps connection speeds (10BASE-T and 100BASE-T)
   OR if using the FS S3900 48 port, it supports 10Mbps for the octoclocks.
