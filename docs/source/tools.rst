@@ -53,13 +53,13 @@ interferometer arrays. In the second image you can see a close-up of the main ar
 antennas, with the 21 reflector wires in the background. The blue rectangles are the loads and the
 pink circle on the antenna's is the current source modeled in NEC.
 
-.. image:: img/4nec2_ttfd_wideview.png
+.. image:: img/4nec2/4nec2_ttfd_wideview.png
    :width: 600px
    :alt: ttfd array, wide view, from 4nec2
    :align: center
 
 
-.. image:: img/4nec2_ttfd_closeup.png
+.. image:: img/4nec2/4nec2_ttfd_closeup.png
    :width: 600px
    :alt: ttfd array, closeup, from 4nec2
    :align: center
@@ -81,9 +81,9 @@ be? How about phase errors? All of these questions are possible to answer with t
 Here's a real example from Rankin Inlet, where transmitters #6 and #12 (indexed from 0) are both
 down:
 
-.. image:: img/pattern.png
+.. image:: img/4nec2/pattern.png
    :width: 49%
-.. image:: img/pattern_no_tx6_no_tx12_boresite.png
+.. image:: img/4nec2/pattern_no_tx6_no_tx12_boresite.png
    :width: 49%
 
 The above two images are generated for the radar at Rankin Inlet, the first image shows the standard
@@ -92,9 +92,9 @@ from transmitters #6 and #12 not contributing to the system. The effects are imm
 the higher power sidelobes. The main lobe gain is reduced from 17.47dB to 16.92dB. The main lobe
 remains the same shape and width in both azimuth and elevation angles.
 
-.. image:: img/pattern_bm1.png
+.. image:: img/4nec2/pattern_bm1.png
    :width: 49%
-.. image:: img/pattern_no_tx6_no_tx12_bm1.png
+.. image:: img/4nec2/pattern_no_tx6_no_tx12_bm1.png
    :width: 49%
 
 The above two images are generated for the radar at Rankin Inlet, the first image shows the standard
@@ -123,7 +123,7 @@ over the short term. Phase noise and Allan deviation are closely related.
 
 Here is an example of an Allan deviation plot:
 
-.. image:: img/ntp_adev_example.png
+.. image:: img/ntp/ntp_adev_example.png
    :width: 600px
    :alt: NTP stats Allan Deviation plot
    :align: center
@@ -142,12 +142,12 @@ If you have a ``loopstats`` input file then you can plot two quantities:
 
 Here are example plots of the ``loopstats`` offset and frequency offset:
 
-.. image:: img/ntp_loopstats_offset.png
+.. image:: img/ntp/ntp_loopstats_offset.png
    :width: 600px
    :alt: NTP stats loopstats offset
    :align: center
 
-.. image:: img/ntp_loopstats_freqoffset.png
+.. image:: img/ntp/ntp_loopstats_freqoffset.png
    :width: 600px
    :alt: NTP stats loopstats freq offset
    :align: center
@@ -162,24 +162,24 @@ If you have a peerstats input file then you can plot three quantities for each p
 
 Here are examples of the above three plots:
 
-.. image:: img/ntp_peerstats_offset.png
+.. image:: img/ntp/ntp_peerstats_offset.png
    :width: 600px
    :alt: NTP stats peerstats offset
    :align: center
 
-.. image:: img/ntp_peerstats_delay.png
+.. image:: img/ntp/ntp_peerstats_delay.png
    :width: 600px
    :alt: NTP stats peerstats delay
    :align: center
 
-.. image:: img/ntp_peerstats_dispersion.png
+.. image:: img/ntp/ntp_peerstats_dispersion.png
    :width: 600px
    :alt: NTP stats peerstats dispersion
    :align: center
 
 That dispersion plot looks like there are a few outliers, so lets zoom in on a smaller section:
 
-.. image:: img/ntp_peerstats_dispersion_zoom.png
+.. image:: img/ntp/ntp_peerstats_dispersion_zoom.png
    :width: 600px
    :alt: NTP stats peerstats dispersion zoom
    :align: center

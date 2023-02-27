@@ -19,6 +19,9 @@ The design is called the ``TXIO`` board and it consists of a custom PCB that use
 from one of the two daughtercards in the N200s (either the LFRX or LFTX) that are programmed as
 ATR (Automatic Transmit-Receive) and conditions those single-ended signals into differential signals
 that the SuperDARN Canada transmitters expect. See :ref:`TXIO board design` for details on the TXIO board.
+It also has two inputs from the transmitters for the :ref:`Low Power<Low power signal>` and
+:ref:`AGC Status<AGC status signal>` signals.
+
 
 AGC status signal
 -----------------
@@ -44,7 +47,7 @@ IC6, which is a dual differential line driver chip, the SN75183. This signal is 
 Power Monitor board via the 4 pin connector J5. See photo below of the Power Monitor board,
 showing IC6 and J5 at the bottom middle and bottom left:
 
-.. figure:: img/pwr_mon.jpg
+.. figure:: img/transmitter/pwr_mon.jpg
    :scale: 50 %
    :alt: Power Monitor board IC6 and J5
    :align: center
@@ -61,12 +64,12 @@ and a DE9 style connector on the old control card end carries 4 differential sig
 
 The pinouts for both ends of this cable are shown below:
 
-.. figure:: img/pinout_tx_end.jpg
+.. figure:: img/transmitter/pinout_tx_end.jpg
    :scale: 50 %
    :alt: Pinout, TX control cable, TX end
    :align: center
 
-.. figure:: img/de9_pinout.jpg
+.. figure:: img/transmitter/de9_pinout.jpg
    :scale: 50 %
    :alt: Pinout, TX control cable, card end
    :align: center
@@ -110,12 +113,13 @@ The pinouts for both ends of this cable are shown below:
 **NOTE that TEST_MODE- may be swapped with TEST_MODE+ in some Transmitters**
 
 Photos of both ends of the cable are shown below:
-.. figure:: img/control_cable_tx_end.jpg
+
+.. figure:: img/transmitter/control_cable_tx_end.jpg
    :scale: 50 %
    :alt: Control cable TX end
    :align: center
 
-.. figure:: img/control_cable_card_end.jpg
+.. figure:: img/transmitter/control_cable_card_end.jpg
    :scale: 50 %
    :alt: Control cable card end
    :align: center
@@ -131,7 +135,7 @@ and receives the Low Power and AGC Status differential signals, converting them 
 signals. J2 is an internal connector on the Control Card and does not reflect the pinout of the DSUB
 connector on the grey TX control cable. An excerpt from the schematic is shown below:
 
-.. figure:: img/control_card_interface.jpg
+.. figure:: img/transmitter/control_card_interface.jpg
    :scale: 50 %
    :alt: Control Card Interface circuitry - differential signals
    :align: center
@@ -155,4 +159,4 @@ MSI style transmitters
 These transmitters do not have an AGC board as the SuperDARN Canada style transmitters do,
 and thus the signals are different.
 
-[TODO - find information from Wallops design]
+[TODO]
