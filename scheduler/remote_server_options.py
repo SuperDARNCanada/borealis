@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 
-# Copyright 2019 SuperDARN Canada
-#
-# remote_server_options.py
-# 2019-04-25
-# options class for remote server module
+"""
+    remote_server_options.py
+    ~~~~~~~~~~~~~~~~~~~~~~~
+    options class for remote server module
+
+    :copyright: 2019 SuperDARN Canada
+"""
 
 import json
 import os

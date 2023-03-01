@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
-# Copyright 2022 SuperDARN Canada
-#
-# local_scd_server.py
-# 2019-04-18
-# Monitors for new SWG files and adds the SWG info to the scd if there is an update.
-#
+"""
+    local_scd_server.py
+    ~~~~~~~~~~~~~~~~~~~
+    Monitors for new SWG files and adds the SWG info to the scd if there is an update.
+
+    :copyright: 2022 SuperDARN Canada
+"""
+
 import subprocess as sp
 from . import scd_utils
 from . import email_utils
@@ -19,69 +21,65 @@ SWG_GIT_REPO = "https://github.com/SuperDARN/schedules.git"
 
 EXPERIMENTS = {
     "sas": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound"
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
     },
     "pgr": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound"
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
     },
     "rkn": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound"
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
     },
     "inv": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound"
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
     },
     "cly": {
-        "common_time": "twofsound",
-        "discretionary_time": "twofsound",
-        "htr_common_time": "twofsound",
-        "themis_time": "themisscan",
-        "special_time_normal": "twofsound",
-        "rbsp_time": "rbspscan",
-        "no_switching_time": "normalscan",
-        "interleaved_time": "interleavedscan",
-        "normalsound_time": "normalsound"
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
     }
 }
 
 
 class SWG(object):
-    """Holds the data needed for processing a SWG file.
-
-    Attributes:
-        scd_dir (str): Path to the SCD files dir.
-    """
+    """Holds the data needed for processing a SWG file."""
 
     def __init__(self, scd_dir):
         super().__init__()
@@ -91,15 +89,18 @@ class SWG(object):
         try:
             cmd = f"git -C {self.scd_dir}/{SWG_GIT_REPO_DIR} rev-parse"
             sp.check_output(cmd, shell=True)
-        except sp.CalledProcessError:
-            cmd = f"cd {self.scd_dir}; git clone {SWG_GIT_REPO}"
+
+        except sp.CalledProcessError as e:
+            cmd = f'cd {self.scd_dir}; git clone {SWG_GIT_REPO}'
+
             sp.call(cmd, shell=True)
 
     def new_swg_file_available(self):
-        """Checks if a new swg file is uploaded via git.
+        """
+        Checks if a new swg file is uploaded via git.
 
-        Returns:
-            TYPE: True, if new git update is available.
+        :returns:   True, if new git update is available.
+        :rtype:     bool
         """
 
         # This command will return the number of new commits available in main. This signals that
@@ -111,24 +112,25 @@ class SWG(object):
         return bool(int(shell_output))
 
     def pull_new_swg_file(self):
-        """Uses git to grab the new scd updates.
-
-        """
+        """Uses git to grab the new scd updates."""
         cmd = f"cd {self.scd_dir}/{SWG_GIT_REPO_DIR}; git pull origin main"
         sp.call(cmd, shell=True)
 
     def parse_swg_to_scd(self, modes, radar, first_run):
 
-        """Reads the new SWG file and parses into a set of parameters than can be used for borealis
+        """
+        Reads the new SWG file and parses into a set of parameters than can be used for borealis
         scheduling.
 
-        Args:
-            modes (Dict): Holds the modes that correspond to the SWG requests.
-            radar (String): Radar acronym.
-            first_run (bool): Is this the first run? If so - start with current month, otherwise next month.
+        :param  modes:      Holds the modes that correspond to the SWG requests.
+        :type   modes:      dict
+        :param  radar:      Radar acronym.
+        :type   radar:      str
+        :param  first_run:  Is this the first run? If so - start with current month, otherwise next month.
+        :type   first_run:  bool
 
-        Returns:
-            parsed_params: List of all the parsed parameters.
+        :returns:   List of all the parsed parameters.
+        :rtype:     list
         """
 
         if first_run:
@@ -218,18 +220,17 @@ class SWG(object):
 
 
 def main():
+    """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
     parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
-    parser.add_argument('--force', action="store_true", help='Force an update to the schedules for the next month')
-    parser.add_argument('--first-run', action="store_true", help='This will generate the first set'
-                                                                 ' of schedule files if running on'
-                                                                 ' a fresh directory. If the next'
-                                                                 ' month schedule is available,'
-                                                                 ' you will need to roll back the'
-                                                                 ' SWG schedule folder back to the'
-                                                                 ' last commit before running in'
-                                                                 ' continuous operation.')
+    parser.add_argument('--force', action="store_true", help='Force an update to the schedules '
+                                                             'for the next month')
+    parser.add_argument('--first-run', action="store_true", 
+                        help='This will generate the first set of schedule files if running on'
+                             ' a fresh directory. If the next month schedule is available,'
+                             ' you will need to roll back the SWG schedule folder back to the'
+                             ' last commit before running in continuous operation.')
 
     args = parser.parse_args()
 
@@ -264,7 +265,7 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        print(f"Add: date: {ex['yyyymmdd']}, exp: {ex['experiment']}, mode: {ex['scheduling_mode']}")
+                        print(f"add_line date: {ex['yyyymmdd']}, with experiment: {ex['experiment']}, mode: {ex['scheduling_mode']}")
                         site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
                     except ValueError as err:
                         error_msg = f"{today.strftime('%c')} {site_scd.scd_filename}: Unable to add line:\n" \
@@ -277,7 +278,7 @@ def main():
 
                         errors = True
                         break
-                    except FileNotFoundError:
+                    except FileNotFoundError as e:
                         error_msg = f"SCD filename: {site_scd.scd_filename} is missing!!!\n"
 
                         with open(scd_logs + scd_error_log, 'a') as f:

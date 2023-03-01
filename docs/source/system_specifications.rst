@@ -1,14 +1,17 @@
+======================================
 SuperDARN Canada System Specifications
-**************************************
+======================================
 
-=======================
+-----------------------
 Digital Radio Equipment
-=======================
+-----------------------
 
-- Note that ALL cables are phase matched unless specified otherwise
+- **NOTE:** ALL cables are phase matched unless specified otherwise
 - 17x Ettus USRP N200 (16 and 1 spare)
- - 17x Ettus LFTX daughterboards
- - 17x Ettus LFRX daughterboards
+
+  - 17x Ettus LFTX daughterboards
+  - 17x Ettus LFRX daughterboards
+
 - 1x Ettus Octoclock-g (includes GPSDO)
 - 2x Ettus Octoclock
 - 51x ~8 1/4" SMA bulkhead Female to Male RG-316 for daughterboards
@@ -23,9 +26,9 @@ Digital Radio Equipment
 - 32x coax cables for to/from main array filters and pre-amps inside transmitter
 - 1x 15V, 0.5A power supply (INTF pre-amps)
 
-================
+----------------
 Control Computer
-================
+----------------
 
 Current control computer hardware (1 January 2022):
 
@@ -38,30 +41,30 @@ Current control computer hardware (1 January 2022):
 - 1x Power Supply: SeaSonic PRIME Platinum 1300 W 80+ Platinum Certified Fully Modular ATX Power Supply
 - 1x PCIe Serial Card: Rosewill RC-301EU (modified to replace dsub with sma conn)
 
-**NOTE** Always update the BIOS before installing the computer in the field.
+**NOTE:** Always update the BIOS before installing the computer in the field.
 
-**NOTE** The motherboard has a 10G and 1G port, an additional network card is not required.
+**NOTE:** The motherboard has a 10G and 1G port, an additional network card is not required.
 
-**NOTE** XMP must be enabled in BIOS to utilize the full 6000 MHz RAM speed. RAM must also be socketed in
+**NOTE:** XMP must be enabled in BIOS to utilize the full 6000 MHz RAM speed. RAM must also be socketed in
 the optimal configuration DIMM_A2 and DIMM_B2 for two sticks.
 
-**NOTE** The M.2 drives should be slotted in sockets M.2_2 and M.2_3 as M.2_1 shares PCIe Gen5 lanes
+**NOTE:** The M.2 drives should be slotted in sockets M.2_2 and M.2_3 as M.2_1 shares PCIe Gen5 lanes
 with PCIex16(G5)_1 which the GPU is slotted into. The M.2 drives are setup in RAID1 (mirroring) including
 the operating system. The bootloader on the second drive must be named differently to operate. Should drive
 failure occur the second bootloader must be pointed to in the BIOS, a new drive can then be installed.
 
-**NOTE** It is critical during parts selection and installation that the PCIe lanes are dedicated and not
+**NOTE:** It is critical during parts selection and installation that the PCIe lanes are dedicated and not
 split between components. Seamless operation requires the maximization of bandwidth. For the Z690 motherboard
 this means the GPU is slotted in PCIex16(G5)_1 and the Serial Card is slotted in PCIex1(G3), PCIex18(G5)_2
 is not to be filled as it share bandwidth with PCIex16(G5)_1.
 
-**NOTE** A 1000W+ platinum or greater certified power supply is recommended.
+**NOTE:** A 1000W+ platinum or greater certified power supply is recommended.
 
-**NOTE** A 3x120mm (360mm radiator) All-in-one (AIO) liquid cooler heatsink is required. The i9 series CPUs
+**NOTE:** A 3x120mm (360mm radiator) All-in-one (AIO) liquid cooler heatsink is required. The i9 series CPUs
 generate considerable heat by default, but the Borealis computer setup will pin each core to its maximum
 output which will generate even more heat.
 
-**NOTE** This computer does not require overclocking for seamless operation which will allow for more
+**NOTE:** This computer does not require overclocking for seamless operation which will allow for more
 reliable operation than previous Borealis computer builds.
 
 Minimum requirements:
@@ -76,21 +79,21 @@ Minimum requirements:
 - 1x 1TB HDD (data partition)
 - 1x Intel X550-T2 10Gb PCIe network card (if the motherboard does not have 10G networking)
 
-**NOTE**: Intel 82579LM controllers WILL NOT WORK
+**NOTE:**: Intel 82579LM controllers WILL NOT WORK
 
-**NOTE** A BIOS flash is required to use a RTX3000+ series NVidia GPU.
+**NOTE:** A BIOS flash is required to use a RTX3000+ series NVidia GPU.
 
-==========
+----------
 Networking
-==========
+----------
 
 - 3x Netgear XS708E-200NES (North American model #) 10Gb switches (parent model name is XS708Ev2)
 - 1x 5-port network switch that can handle 10Mbps and 100Mbps connection speeds (10BASE-T and 100BASE-T)
 - 27x SSTP CAT 6a 7ft cables or better*
 - 2x SSTP CAT 6a 15ft cables*
 
-**Note** that the network cables need to be verified for the whole system
-as not all cables seem to work reliably.
+**NOTE:** network cables need to be verified for the whole system as not all cables seem to work
+reliably.
 
 *Models tested and known to work include:*
 
@@ -104,9 +107,9 @@ as not all cables seem to work reliably.
 - Cab-Cat7-6BL
 - Cab-Cat7-6WH
 
-================
+----------------
 Rack and Cabling
-================
+----------------
 
 - 4x 8 outlet rackmount PDU
 - 2x APC AP7900B rackmount PDU

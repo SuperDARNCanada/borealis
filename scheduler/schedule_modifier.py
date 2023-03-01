@@ -32,7 +32,6 @@ def main():
     site_id = args.site
 
     scd_file = f"{scd_dir}/{site_id}.scd"
-
     scd_util = scd_utils.SCDUtils(scd_file)
 
     if args.add:

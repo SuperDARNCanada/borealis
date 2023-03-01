@@ -1,6 +1,10 @@
 """
-Copyright SuperDARN Canada 2020
-Original Auth: Keith Kotyk
+    rx_signal_processing
+    ~~~~~~~~~~~~~~~~~~~~~
+    This process handles the digital signal processing side of Borealis
+
+    :copyright: 2020 SuperDARN Canada
+    :author: Keith Kotyk
 """
 import sys
 import time
@@ -42,9 +46,9 @@ pprint = sm.MODULE_PRINT("rx signal processing", "magenta")
 def windowed_view(ndarray, window_len, step):
     """
     Creates a strided and windowed view of the ndarray. This allows us to skip samples that will
-    otherwise be dropped without missing samples needed for the convolutions windows. The
-    strides will also not extend out of bounds meaning we do not need to pad extra samples and
-    then drop bad samples after the fact.
+    otherwise be dropped without missing samples needed for the convolutions windows. The strides
+    will also not extend out of bounds meaning we do not need to pad extra samples and then drop bad
+    samples after the fact.
 
     :param      ndarray:     The input ndarray
     :type       ndarray:     ndarray
@@ -69,18 +73,18 @@ class DSP(object):
     """
     This class performs the DSP functions of Borealis
 
-    :param      input_samples: The wideband samples to operate on.
-    :type       input_samples: ndarray
-    :param      rx_rate: The wideband rx rate.
-    :type       rx_rate: float
-    :param      dm_rates: The decimation rates at each stage.
-    :type       dm_rates: list
-    :param      filter_taps: The filter taps to use at each stage.
-    :type       filter_taps: ndarray
-    :param      mixing_freqs: The freqs used to mix to baseband.
-    :type       mixing_freqs: list
-    :param      beam_phases: The phases used to beamform the final decimated samples.
-    :type       beam_phases: list
+    :param      input_samples:  The wideband samples to operate on.
+    :type       input_samples:  ndarray
+    :param      rx_rate:        The wideband rx rate.
+    :type       rx_rate:        float
+    :param      dm_rates:       The decimation rates at each stage.
+    :type       dm_rates:       list
+    :param      filter_taps:    The filter taps to use at each stage.
+    :type       filter_taps:    ndarray
+    :param      mixing_freqs:   The freqs used to mix to baseband.
+    :type       mixing_freqs:   list
+    :param      beam_phases:    The phases used to beamform the final decimated samples.
+    :type       beam_phases:    list
     """
 
     def __init__(self, input_samples, rx_rate, dm_rates, filter_taps, mixing_freqs, beam_phases):
@@ -114,21 +118,20 @@ class DSP(object):
     def create_filters(self, filter_taps, mixing_freqs, rx_rate):
         """
         Creates and shapes the filters arrays using the original sets of filter taps. The first
-        stage filters are mixed to bandpass and the low pass filters are reshaped.
-        The filters coefficients are typically symmetric, with the exception of the first-stage bandpass
-        filters. As a result, the mixing frequency should be the negative of the frequency that is actually
-        being extracted. For example, with 12 MHz center frequency and a 10.5 MHz transmit frequency,
-        the mixing frequency should be 1.5 MHz.
+        stage filters are mixed to bandpass and the low pass filters are reshaped. The filters
+        coefficients are typically symmetric, with the exception of the first-stage bandpass
+        filters. As a result, the mixing frequency should be the negative of the frequency that is
+        actually being extracted. For example, with 12 MHz center frequency and a 10.5 MHz transmit
+        frequency, the mixing frequency should be 1.5 MHz.
 
         :param      filter_taps:   The filters taps from the experiment decimation scheme.
         :type       filter_taps:   list
-        :param      mixing_freqs:  The frequencies used to mix the first stage filter for bandpass. Calculated
-                                   as (center freq - rx freq), as filter coefficients are cross-correlated with
-                                   samples instead of convolved.
+        :param      mixing_freqs:  The frequencies used to mix the first stage filter for bandpass.
+                                   Calculated as (center freq - rx freq), as filter coefficients are
+                                   cross-correlated with samples instead of convolved.
         :type       mixing_freqs:  list
         :param      rx_rate:       The rf rx rate.
         :type       rx_rate:       float
-
         """
         filters = []
         n = len(mixing_freqs)
@@ -146,9 +149,9 @@ class DSP(object):
 
     def apply_bandpass_decimate(self, input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate):
         """
-        Apply a Frerking bandpass filter to the input samples. Several different frequencies can
-        be centered on simultaneously. Downsampling is done in parallel via a strided window
-        view of the input samples.
+        Apply a Frerking bandpass filter to the input samples. Several different frequencies can be
+        centered on simultaneously. Downsampling is done in parallel via a strided window view of
+        the input samples.
 
         :param      input_samples:  The input raw rf samples for each antenna.
         :type       input_samples:  ndarray [num_antennas, num_samples]
@@ -160,7 +163,6 @@ class DSP(object):
         :type       dm_rate:        int
         :param      rx_rate:        The rf rx rate.
         :type       rx_rate:        float
-
         """
         # We need to force the input into the GPU to be float16, float32, or complex64 so that the einsum result is
         # complex64 and NOT complex128. The GPU is significantly slower (10x++) working with complex128 numbers.
@@ -198,7 +200,6 @@ class DSP(object):
         :type       lp:             ndarray [1, num_taps]
         :param      dm_rate:        The decimation rate of this stage.
         :type       dm_rate:        int
-
         """
         # We need to force the input into the GPU to be float16, float32, or complex64 so that the einsum result is
         # complex64 and NOT complex128. The GPU is significantly slower (10x++) working with complex128 numbers.
@@ -221,7 +222,6 @@ class DSP(object):
         :param      beam_phases:       The beam phases used to phase each antenna's samples before
                                        combining.
         :type       beam_phases:       ndarray [num_slices, num_beams, num_antennas]
-
         """
         # [num_slices, num_beams, num_antennas]
         beam_phases = np.array(beam_phases)
@@ -238,8 +238,8 @@ class DSP(object):
     @staticmethod
     def correlations_from_samples(beamformed_samples_1, beamformed_samples_2, output_sample_rate, slice_index_details):
         """
-        Correlate two sets of beamformed samples together. Correlation matrices are used and
-        indices corresponding to lag pulse pairs are extracted.
+        Correlate two sets of beamformed samples together. Correlation matrices are used and indices
+        corresponding to lag pulse pairs are extracted.
 
         :param      beamformed_samples_1:  The first beamformed samples.
         :type       beamformed_samples_1:  ndarray [num_slices, num_beams, num_samples]
@@ -308,8 +308,10 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
             """
             Creates shared memory and stores ndarray in it.
 
-            :param ndarray: numpy.ndarray
-            :return name: String of the shared memory name.
+            :param      ndarray: array to be created
+            :type       ndarray: numpy.ndarray 
+            :returns:   The shared memory name.
+            :rtype:     str
             """
             if ndarray.size != 0:
                 shm = shared_memory.SharedMemory(create=True, size=ndarray.nbytes)
@@ -386,10 +388,10 @@ def main():
         for i, chan in enumerate(sqn_meta_message.rx_channels):
             detail = {}
 
-            # This is the negative of what you would normally expect (i.e. -1 * offset of rxfreq from center freq)
-            # because the filter taps do not get flipped when convolving. I.e. we do the cross-correlation instead of
-            # convolution, to save some computational complexity from flipping the filter sequence.
-            # It works out to the same result.
+            # This is the negative of what you would normally expect (i.e. -1 * offset of rxfreq
+            # from center freq) because the filter taps do not get flipped when convolving. I.e. we
+            # do the cross-correlation instead of convolution, to save some computational complexity
+            # from flipping the filter sequence. It works out to the same result.
             mixing_freqs.append(rx_center_freq - chan.rx_freq)
 
             detail['slice_id'] = chan.slice_id
@@ -449,8 +451,8 @@ def main():
 
         if sqn_meta_message.sequence_num != rx_metadata.sequence_num:
             pprint(sm.COLOR('red', "ERROR: Packets from driver and radctrl don't match"))
-            err = "sqn_meta_message seq num {}, rx_metadata seq num {}".format(sqn_meta_message.sequence_num,
-                                                                        rx_metadata.sequence_num)
+            err = f"sqn_meta_message seq num {sqn_meta_message.sequence_num}, rx_metadata seq num"\
+                  f" {rx_metadata.sequence_num}"
             pprint(sm.COLOR('red', err))
             sys.exit(-1)
 
@@ -513,10 +515,10 @@ def main():
             end_sample = kwargs['end_sample']
             processed_data = kwargs['processed_data']
 
-            pprint(sm.COLOR('green', "Processing #{}".format(sequence_num)))
-            pprint("Mixing freqs for #{}: {}".format(sequence_num, mixing_freqs))
-            pprint("Main beams shape for #{}: {}".format(sequence_num, main_beam_angles.shape))
-            pprint("Intf beams shape for #{}: {}".format(sequence_num, intf_beam_angles.shape))
+            pprint(sm.COLOR('green', f"Processing #{sequence_num}"))
+            pprint(f"Mixing freqs for #{sequence_num}: {mixing_freqs}")
+            pprint(f"Main beams shape for #{sequence_num}: {main_beam_angles.shape}")
+            pprint(f"Intf beams shape for #{sequence_num}: {intf_beam_angles.shape}")
             if cupy_available:
                 cp.cuda.runtime.setDevice(0)
 
@@ -554,7 +556,7 @@ def main():
 
             copy_end = time.time()
             time_diff = (copy_end - start) * 1000
-            pprint("Time to copy samples for #{}: {}ms".format(sequence_num, time_diff))
+            pprint(f"Time to copy samples for #{sequence_num}: {time_diff}ms")
             reply_packet = {}
             reply_packet['sequence_num'] = sequence_num
             msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
@@ -564,7 +566,7 @@ def main():
 
             # Process main samples
             main_sequence_samples = sequence_samples[:len(sig_options.main_antennas), :]
-            pprint("Main buffer shape: {}".format(main_sequence_samples.shape))
+            pprint(f"Main buffer shape: {main_sequence_samples.shape}")
             processed_main_samples = DSP(main_sequence_samples, rx_rate, dm_rates, dm_scheme_taps, mixing_freqs,
                                          main_beam_angles)
             main_corrs = DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
@@ -574,7 +576,7 @@ def main():
             # If interferometer is used, process those samples too.
             if sig_options.intf_antenna_count > 0:
                 intf_sequence_samples = sequence_samples[len(sig_options.main_antennas):, :]
-                pprint("Intf buffer shape: {}".format(intf_sequence_samples.shape))
+                pprint(f"Intf buffer shape: {intf_sequence_samples.shape}")
                 processed_intf_samples = DSP(intf_sequence_samples, rx_rate, dm_rates,
                                              dm_scheme_taps, mixing_freqs, intf_beam_angles)
 
@@ -590,11 +592,10 @@ def main():
             reply_packet['kerneltime'] = time_diff
             msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
 
-            pprint("Time to decimate, beamform and correlate for #{}: {}ms".format(sequence_num,
-                                                                                   time_diff))
+            pprint(f"Time to decimate, beamform and correlate for #{sequence_num}: {time_diff}ms")
 
             time_diff = (end - start) * 1000
-            pprint("Total time for #{}: {}ms".format(sequence_num, time_diff))
+            pprint(f"Total time for #{sequence_num}: {time_diff}ms")
 
             so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, pprint)
             so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
@@ -608,9 +609,12 @@ def main():
                 Adds an array of antennas data (filter outputs or antennas_iq) into a dictionary
                 for later entry in a processed data message.
 
-                :param holder: Dictionary to store the shared memory parameters.
-                :param data_array: cp.ndarray or np.ndarray of the data.
-                :param array_name: 'main' or 'intf'. String
+                :param  holder:     Dictionary to store the shared memory parameters.
+                :type   holder:     dict
+                :param  data_array: array to hold the data
+                :type   data_array: cp.ndarray or np.ndarray
+                :param  array_name: 'main' or 'intf'
+                :type   array_name: str
                 """
                 shm = shared_memory.SharedMemory(create=True, size=data_array.nbytes)
                 data = np.ndarray(data_array.shape, dtype=np.complex64, buffer=shm.buf)
@@ -624,7 +628,7 @@ def main():
                 elif array_name == 'intf':
                     holder.intf_shm = shm.name
                 else:
-                    raise RuntimeError("Error: unknown debug data array {}".format(array_name))
+                    raise RuntimeError(f"Error: unknown debug data array {array_name}")
 
                 holder.num_samps = data_array.shape[-1]
                 shm.close()
@@ -632,7 +636,7 @@ def main():
             # Add the filter stage data if in debug mode
             if __debug__:
                 for i, main_data in enumerate(processed_main_samples.filter_outputs[:-1]):
-                    stage = DebugDataStage('stage_{}'.format(i))
+                    stage = DebugDataStage(f'stage_{i}')
                     debug_data_in_shm(stage, main_data, 'main')
 
                     if sig_options.intf_antenna_count > 0:
@@ -656,7 +660,7 @@ def main():
 
             done_filling_debug = time.time()
             time_filling_debug = (done_filling_debug - start) * 1000
-            pprint("Time to put antennas data in message for #{}: {}ms".format(sequence_num, time_filling_debug))
+            pprint(f"Time to put antennas data in message for #{sequence_num}: {time_filling_debug}ms")
 
             # Add rawrf data
             if __debug__:
@@ -671,7 +675,7 @@ def main():
 
                 done_filling_rawrf = time.time()
                 time_filling_rawrf = (done_filling_rawrf - done_filling_debug) * 1000
-                pprint("Time to put rawrf in shared memory for #{}: {}ms".format(sequence_num, time_filling_rawrf))
+                pprint(f"Time to put rawrf in shared memory for #{sequence_num}: {time_filling_rawrf}ms")
 
             start_filling_bfiq_time = time.time()
 
@@ -697,11 +701,10 @@ def main():
 
             end = time.time()
             time_for_bfiq_acf = (end - start_filling_bfiq_time) * 1000
-            pprint("Time to add bfiq and acfs to processeddata message for #{}: {}ms".format(sequence_num, time_for_bfiq_acf))
+            pprint(f"Time to add bfiq and acfs to processeddata message for #{sequence_num}: {time_for_bfiq_acf}ms")
 
             time_diff = (end - start) * 1000
-            pprint("Time to serialize and send processed data for #{}: {}ms".format(sequence_num,
-                                                                                    time_diff))
+            pprint(f"Time to serialize and send processed data for #{sequence_num}: {time_diff}ms")
             so.send_bytes(dsp_to_dw, sig_options.dw_dsp_identity, sqn_message)
 
         args = {"sequence_num": copy.deepcopy(sqn_meta_message.sequence_num),

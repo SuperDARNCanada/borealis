@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
-# Copyright 2017 SuperDARN Canada
-#
-# data_write.py
-# 2018-05-14
-# Data writing functionality to write iq/raw and other files
+"""
+    data_write package
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    This package contains utilities to parse protobuf packets containing antennas_iq data, bfiq
+    data, rawacf data, etc and write that data to HDF5 or JSON files.
 
+    :copyright: 2017 SuperDARN Canada
+"""
 
 import sys
 import os
@@ -35,84 +37,99 @@ from utils import socket_operations as so
 dw_print = sm.MODULE_PRINT("Data Write", "cyan")
 
 DATA_TEMPLATE = {
-    "borealis_git_hash" : None, # Identifies the version of Borealis that made this data.
-    "experiment_id" : None, # Number used to identify experiment.
-    "experiment_name" : None, # Name of the experiment file.
-    "experiment_comment" : None,  # Comment about the whole experiment
-    "slice_comment" : None, # Additional text comment that describes the slice.
-    "slice_id" : None, # the slice id of the file and dataset.
-    "slice_interfacing" : None, # the interfacing of this slice to other slices.
-    "num_slices" : None, # Number of slices in the experiment at this integration time.
-    "station" : None, # Three letter radar identifier.
-    "num_sequences": None, # Number of sampling periods in the integration time.
-    "num_ranges": None, # Number of ranges to calculate correlations for
-    "range_sep": None, # range gate separation (equivalent distance between samples) in km.
-    "first_range_rtt" : None, # Round trip time of flight to first range in microseconds.
-    "first_range" : None, # Distance to first range in km.
-    "rx_sample_rate" : None, # Sampling rate of the samples being written to file in Hz.
-    "scan_start_marker" : None, # Designates if the record is the first in a scan.
-    "int_time" : None, # Integration time in seconds.
-    "tx_pulse_len" : None, # Length of the pulse in microseconds.
-    "tau_spacing" : None, # The minimum spacing between pulses in microseconds.
-    # Spacing between pulses is always a multiple of this.
-    "main_antenna_count" : None, # Number of main array antennas.
-    "intf_antenna_count" : None, # Number of interferometer array antennas.
-    "freq" : None, # The frequency used for this experiment slice in kHz.
-    #"filtered_3db_bandwidth" : None, # Bandwidth of the output iq data types? can add later
-    "rx_center_freq" : None, # the center frequency of this data (for rawrf), kHz
-    "samples_data_type" : None, # C data type of the samples such as complex float.
-    "pulses" : None, # The pulse sequence in units of the tau_spacing.
-    "pulse_phase_offset" : None, # For pulse encoding phase. Contains an encoding per pulse. Each
-                                 # encoding can either be a single value or one value for each
-                                 # sample.
-    "lags" : None, # The lags created from two pulses in the pulses array.
-    "blanked_samples" : None, # Samples that have been blanked because they occurred during transmission times.
-    # Can differ from the pulses array due to multiple slices in a single sequence.
-    "sqn_timestamps" : None, # A list of GPS timestamps of the beginning of transmission for each
-    # sampling period in the integration time. Seconds since epoch.
-    "beam_nums" : None, # A list of beam numbers used in this slice.
-    "beam_azms" : None, # A list of the beams azimuths for each beam in degrees off boresite.
-    "noise_at_freq" : None, 
-    # Noise at the receive frequency, should be an array (one value per sequence) (TODO units??) 
+    "borealis_git_hash"         : None, # Identifies the version of Borealis that made this data.
+    "experiment_id"             : None, # Number used to identify experiment.
+    "experiment_name"           : None, # Name of the experiment file.
+    "experiment_comment"        : None, # Comment about the whole experiment
+    "slice_comment"             : None, # Additional text comment that describes the slice.
+    "slice_id"                  : None, # the slice id of the file and dataset.
+    "slice_interfacing"         : None, # the interfacing of this slice to other slices.
+    "num_slices"                : None, # Number of slices in the experiment at this integration 
+                                        # time.
+    "station"                   : None, # Three letter radar identifier.
+    "num_sequences"             : None, # Number of sampling periods in the integration time.
+    "num_ranges"                : None, # Number of ranges to calculate correlations for
+    "range_sep"                 : None, # range gate separation (equivalent distance between 
+                                        # samples) in km.
+    "first_range_rtt"           : None, # Round trip time of flight to first range in microseconds.
+    "first_range"               : None, # Distance to first range in km.
+    "rx_sample_rate"            : None, # Sampling rate of the samples being written to file in Hz.
+    "scan_start_marker"         : None, # Designates if the record is the first in a scan.
+    "int_time"                  : None, # Integration time in seconds.
+    "tx_pulse_len"              : None, # Length of the pulse in microseconds.
+    "tau_spacing"               : None, # The minimum spacing between pulses in microseconds.
+                                        # Spacing between pulses is always a multiple of this.
+    "main_antenna_count"        : None, # Number of main array antennas.
+    "intf_antenna_count"        : None, # Number of interferometer array antennas.
+    "freq"                      : None, # The frequency used for this experiment slice in kHz.
+    # "filtered_3db_bandwidth"    : None, # Bandwidth of the output iq data types? can add later
+    "rx_center_freq"            : None, # the center frequency of this data (for rawrf), kHz
+    "samples_data_type"         : None, # C data type of the samples such as complex float.
+    "pulses"                    : None, # The pulse sequence in units of the tau_spacing.
+    "pulse_phase_offset"        : None, # For pulse encoding phase. Contains an encoding per pulse.
+                                        # Each encoding can either be a single value or one value
+                                        # for each sample.
+    "lags"                      : None, # The lags created from two pulses in the pulses array.
+    "blanked_samples"           : None, # Samples that have been blanked because they occurred 
+                                        # during transmission times. Can differ from the pulses
+                                        # array due to multiple slices in a single sequence.
+    "sqn_timestamps"            : None, # A list of GPS timestamps of the beginning of transmission
+                                        # for each sampling period in the integration time. Seconds
+                                        # since epoch.
+    "beam_nums"                 : None, # A list of beam numbers used in this slice.
+    "beam_azms"                 : None, # A list of the beams azimuths for each beam in degrees off
+                                        # boresite.
+    "noise_at_freq"             : None, # Noise at the receive frequency, should be an array 
+                                        # (one value per sequence) (TODO units??) 
     # (TODO document FFT resolution bandwidth for this value, should be = output_sample rate?)
-    #"noise_in_raw_band" : None, # Average noise in the sampling band (input sample rate) (TODO units??)
-    #"rx_bandwidth" : None, # if the noise_in_raw_band is provided, the rx_bandwidth should be provided!
-    "num_samps" : None, # Number of samples in the sampling period.
-    "antenna_arrays_order" : None, # States what order the data is in. Describes the data layout.
-    "data_descriptors" : None, # Denotes what each data dimension represents.
-    "data_dimensions" : None, # The dimensions in which to reshape the data.
-    "data_normalization_factor" : None, # The scale of all of the filters, multiplied, for a total scaling factor to normalize by.
-    "data" : [], # A contiguous set of samples (complex float) at given sample rate
-    "correlation_descriptors" : None, # Denotes what each acf/xcf dimension represents.
-    "correlation_dimensions" : None, # The dimensions in which to reshape the acf/xcf data.
-    "averaging_method" : None, # A string describing the averaging method, ex. mean, median
-    "scheduling_mode" : None, # A string describing the type of scheduling time at the time of this dataset.
-    "main_acfs" : [], # Main array autocorrelations
-    "intf_acfs" : [], # Interferometer array autocorrelations
-    "xcfs" : [], # Crosscorrelations between main and interferometer arrays
-    "gps_locked" : None, # Boolean True if the GPS was locked during the entire integration period
-    "gps_to_system_time_diff" : None, # Max time diff in seconds between GPS and system/NTP time during the integration period.
-    "agc_status_word" : None, # 32 bits, a '1' in bit position corresponds to an AGC fault on that transmitter
-    "lp_status_word" : None # 32 bits, a '1' in bit position corresponds to a low power condition on that transmitter
+    # "noise_in_raw_band"         : None, # Average noise in the sampling band (input sample rate) (TODO units??)
+    # "rx_bandwidth"              : None, # if the noise_in_raw_band is provided, the rx_bandwidth should be provided!
+    "num_samps"                 : None, # Number of samples in the sampling period.
+    "antenna_arrays_order"      : None, # States what order the data is in. Describes the data 
+                                        # layout.
+    "data_descriptors"          : None, # Denotes what each data dimension represents.
+    "data_dimensions"           : None, # The dimensions in which to reshape the data.
+    "data_normalization_factor" : None, # The scale of all of the filters, multiplied, for a total 
+                                        # scaling factor to normalize by.
+    "data"                      : [],   # A contiguous set of samples (complex float) at given 
+                                        # sample rate
+    "correlation_descriptors"   : None, # Denotes what each acf/xcf dimension represents.
+    "correlation_dimensions"    : None, # The dimensions in which to reshape the acf/xcf data.
+    "averaging_method"          : None, # A string describing the averaging method, ex. mean, median
+    "scheduling_mode"           : None, # A string describing the type of scheduling time at the 
+                                        # time of this dataset.
+    "main_acfs"                 : [],   # Main array autocorrelations
+    "intf_acfs"                 : [],   # Interferometer array autocorrelations
+    "xcfs"                      : [],   # Crosscorrelations between main and interferometer arrays
+    "gps_locked"                : None, # Boolean True if the GPS was locked during the entire
+                                        # integration period
+    "gps_to_system_time_diff"   : None, # Max time diff in seconds between GPS and system/NTP time
+                                        # during the integration period.
+    "agc_status_word"           : None, # 32 bits, a '1' in bit position corresponds to an AGC
+                                        # fault on that transmitter
+    "lp_status_word"            : None  # 32 bits, a '1' in bit position corresponds to a low power
+                                        # condition on that transmitter
 }
 
 TX_TEMPLATE = {
-    "tx_rate": [],
-    "tx_center_freq": [],
-    "pulse_timing_us": [],
-    "pulse_sample_start": [],
-    "tx_samples": [],
-    "dm_rate": [],
-    "decimated_tx_samples": [],
+    "tx_rate"               : [],
+    "tx_center_freq"        : [],
+    "pulse_timing_us"       : [],
+    "pulse_sample_start"    : [],
+    "tx_samples"            : [],
+    "dm_rate"               : [],
+    "decimated_tx_samples"  : [],
 }
 
 
 class ParseData(object):
-    """Parse message data from sockets into file writable types, such as hdf5, json, dmap, etc.
+    """
+    Parse message data from sockets into file writable types, such as hdf5, json, dmap, etc.
 
-    Attributes:
-        nested_dict (Python default nested dictionary): alias to a nested defaultdict
-        processed_data (ProcessedSequenceMessage): Contains a message from dsp socket.
+    :param  nested_dict:    alias to a nested defaultdict
+    :type   nested_dict:    dict
+    :param  processed_data: Contains a message from dsp socket.
+    :type   processed_data: ProcessedSequenceMessage
     """
 
     def __init__(self, data_write_options):
@@ -160,9 +177,9 @@ class ParseData(object):
 
     def parse_correlations(self):
         """
-        Parses out the possible correlation data from the message. Runs on every new ProcessedSequenceMessage
-        (contains all sampling period data). The expectation value is calculated at the end
-        of a sampling period by a different function.
+        Parses out the possible correlation data from the message. Runs on every new
+        ProcessedSequenceMessage (contains all sampling period data). The expectation value is
+        calculated at the end of a sampling period by a different function.
         """
 
         for data_set in self.processed_data.output_datasets:
@@ -174,8 +191,10 @@ class ParseData(object):
                 """
                 Opens a numpy array from shared memory into the 'holder' accumulator.
 
-                :param holder: dictionary
-                :param message_data: message field for parsing
+                :param  holder:         accumulator to hold data
+                :type   holder:         dict
+                :param  message_data:   unique message field for parsing
+                :type   message_data:   str
                 """
                 # Open the shared memory
                 shm = shared_memory.SharedMemory(name=message_data)
@@ -202,9 +221,9 @@ class ParseData(object):
 
     def parse_bfiq(self):
         """
-        Parses out any possible beamformed IQ data from the message. Runs on every ProcessedSequenceMessage
-        (contains all sampling period data). All variables are captured from outer scope.
-
+        Parses out any possible beamformed IQ data from the message. Runs on every
+        ProcessedSequenceMessage (contains all sampling period data). All variables are captured
+        from outer scope.
         """
 
         self._bfiq_accumulator['data_descriptors'] = ['num_antenna_arrays', 'num_sequences',
@@ -215,7 +234,8 @@ class ParseData(object):
         num_samps = self.processed_data.num_samps
 
         main_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_main_shm)
-        temp_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=main_shm.buf)
+        temp_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, 
+                                buffer=main_shm.buf)
         main_data = temp_data.copy()
         main_shm.close()
         main_shm.unlink()
@@ -224,7 +244,8 @@ class ParseData(object):
         if self.processed_data.bfiq_intf_shm != '':
             intf_available = True
             intf_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_intf_shm)
-            temp_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, buffer=intf_shm.buf)
+            temp_data = np.ndarray((num_slices, max_num_beams, num_samps), dtype=np.complex64, 
+                                    buffer=intf_shm.buf)
             intf_data = temp_data.copy()
             intf_shm.close()
             intf_shm.unlink()
@@ -306,7 +327,7 @@ class ParseData(object):
 
                 # Loops over antenna data within stage
                 for ant_num in range(antennas_data.shape[0]):
-                    ant_str = "antenna_{}".format(ant_num)
+                    ant_str = f"antenna_{ant_num}"
 
                     if ant_str not in antenna_iq_stage:
                         antenna_iq_stage[ant_str] = {}
@@ -316,7 +337,8 @@ class ParseData(object):
                     antenna_iq_stage[ant_str]['data'].append(antennas_data[ant_num, :])
 
     def numpify_arrays(self):
-        """ Consolidates data for each data type to one array.
+        """ 
+        Consolidates data for each data type to one array.
 
         In parse_[type](), new data arrays are appended to a list for speed considerations.
         This function converts these lists into numpy arrays.
@@ -343,10 +365,11 @@ class ParseData(object):
             slice_data['data'] = np.array(slice_data['data'], np.complex64)
 
     def update(self, data):
-        """ Parses the message and updates the accumulator fields with the new data.
+        """ 
+        Parses the message and updates the accumulator fields with the new data.
 
-        Args:
-            data (ProcessedSequenceMessage): Processed sequence metadata.
+        :param  data: Processed sequence metadata.
+        :type   data: ProcessedSequenceMessage
         """
         self.processed_data = data
         self._timestamps.append(data.sequence_start_time)
@@ -390,188 +413,208 @@ class ParseData(object):
 
     @property
     def sequence_num(self):
-        """ Gets the sequence num of the latest processeddata packet.
+        """ 
+        Gets the sequence num of the latest processeddata packet.
 
-        Returns:
-            TYPE: Int
+        :returns:   sequence number
+        :rtype:     int
         """
         return self.processed_data.sequence_num
 
     @property
     def bfiq_available(self):
-        """ Gets the bfiq available flag.
+        """ 
+        Gets the bfiq available flag.
 
-        Returns:
-            TYPE: Bool
+        :returns:   bfiq available flag
+        :rtype:     bool
         """
         return self._bfiq_available
 
     @property
     def antenna_iq_available(self):
-        """ Gets the pre-bfiq available flag.
+        """ 
+        Gets the pre-bfiq available flag.
 
-        Returns:
-            TYPE: Bool
+        :returns:   pre-bfiq available flag
+        :rtype:     bool
         """
         return self._antenna_iq_available
 
     @property
     def mainacfs_available(self):
-        """Gets the mainacfs available flag.
+        """
+        Gets the mainacfs available flag.
 
-        Returns:
-            TYPE: Bool
+        :returns:   mainacfs available flag
+        :rtype:     bool
         """
         return self._mainacfs_available
 
     @property
     def xcfs_available(self):
-        """Gets the xcfs available flag.
+        """
+        Gets the xcfs available flag.
 
-        Returns:
-            TYPE: Bool
+        :returns:   xcfs available flag
+        :rtype:     bool
         """
         return self._xcfs_available
 
     @property
     def intfacfs_available(self):
-        """Gets the intfacfs available flag.
+        """
+        Gets the intfacfs available flag.
 
-        Returns:
-            TYPE: Bool
+        :returns:   intfacfs available flag
+        :rtype:     bool
         """
         return self._intfacfs_available
 
     @property
     def bfiq_accumulator(self):
-        """ Returns the nested default dictionary with complex stage data for each antenna array as
-        well as some metadata.
+        """ 
+        Returns the nested default dictionary with complex stage data for each antenna array as well
+        as some metadata.
 
-        Returns:
-            TYPE: Nested default dict: Contains beamform data for each slice.
+        :returns:   bfiq_accumulator containing beamform data for each slice
+        :rtype:     dict
         """
         return self._bfiq_accumulator
 
     @property
     def antenna_iq_accumulator(self):
-        """Returns the nested default dictionary with complex stage data for each antenna as well
+        """
+        Returns the nested default dictionary with complex stage data for each antenna as well
         as some metadata for each slice.
 
-        Returns:
-            Nested default dict: Contains stage data for each antenna and slice.
+        :returns:   antenna_iq_accumulator containing data for each antenna and slice
+        :rtype:     dict
         """
         return self._antenna_iq_accumulator
 
     @property
     def mainacfs_accumulator(self):
-        """Returns the default dict containing a list of main acf data for each slice. There is an
+        """
+        Returns the default dict containing a list of main acf data for each slice. There is an
         array of data for each sampling period.
 
-        Returns:
-            TYPE: Default dict: Contains main acf data for each slice.
+        :returns:   mainacfs_accumulator containing main acf data for each slice
+        :rtype:     dict
         """
         return self._mainacfs_accumulator
 
     @property
     def xcfs_accumulator(self):
-        """Returns the default dict containing a list of xcf data for each slice. There is an
+        """
+        Returns the default dict containing a list of xcf data for each slice. There is an
         array of data for each sampling period.
 
-        Returns:
-            TYPE: Default dict: Contains xcf data for each slice.
+        :returns:   xcfs_accumulator containing xcf data for each slice
+        :rtype:     dict
         """
         return self._xcfs_accumulator
 
     @property
     def intfacfs_accumulator(self):
-        """Returns the default dict containing a list of intf acf data for each slice. There is an
+        """
+        Returns the default dict containing a list of intf acf data for each slice. There is an
         array of data for each sampling period.
 
-        Returns:
-            TYPE: Default dict: Contains intf acf data for each slice.
+        :returns:   intfacfs_accumulator containing intf acf data for each slice
+        :rtype:     dict
         """
         return self._intfacfs_accumulator
 
     @property
     def timestamps(self):
-        """Return the python list of sequence timestamps (when the sampling period begins)
+        """
+        Return the python list of sequence timestamps (when the sampling period begins)
         from the processsed data packets
 
-        Returns:
-            python list: A list of sequence timestamps from the processed data packets
+        :returns:   sequence timestamps from the processed data packets
+        :rtype:     list
         """
         return self._timestamps
 
     @property
     def rx_rate(self):
-        """Return the rx_rate of the data in the data packet
+        """
+        Return the rx_rate of the data in the data packet
 
-        Returns:
-            float: sampling rate in Hz.
+        :returns:   sampling rate in Hz
+        :rtype:     float
         """
         return self._rx_rate
 
     @property
     def output_sample_rate(self):
-        """Return the output rate of the filtered, decimated data in the data packet.
+        """
+        Return the output rate of the filtered, decimated data in the data packet.
 
-        Returns:
-            float: output sampling rate in Hz.
+        :returns:   output sampling rate in Hz
+        :rtype:     float
         """
         return self._output_sample_rate
 
     @property
     def slice_ids(self):
-        """Return the slice ids in python set so they are guaranteed unique
+        """
+        Return the slice ids in python set so they are guaranteed unique
 
-        Returns:
-            set: slice id numbers
+        :returns:   slice id numbers
+        :rtype:     set
         """
         return self._slice_ids
 
     @property
     def raw_rf_available(self):
-        """ Gets the raw_rf available flag.
+        """
+        Gets the raw_rf available flag.
 
-        Returns:
-            TYPE: Bool
+        :returns:   raw_rf available flag
+        :rtype:     bool
         """
         return self._raw_rf_available
 
     @property
     def rawrf_locations(self):
-        """ Gets the list of raw rf memory locations.
+        """
+        Gets the list of raw rf memory locations.
 
-        Returns:
-            TYPE: List of strings.
+        :returns:   raw rf memory locations
+        :rtype:     list of strings
         """
         return self._rawrf_locations
 
     @property
     def rawrf_num_samps(self):
-        """ Gets the number of rawrf samples per antenna.
+        """ 
+        Gets the number of rawrf samples per antenna.
 
-        Returns:
-            TYPE: int
+        :returns:   number of rawrf samples per antenna
+        :rtype:     int
         """
         return self._rawrf_num_samps
 
     @property
     def gps_locked(self):
-        """ Return the boolean value indicating if the GPS was locked during the entire int period
+        """ 
+        Return the boolean value indicating if the GPS was locked during the entire int period
 
-        Returns:
-            TYPE: Boolean.
+        :returns:   gps_locked flag
+        :rtype:     bool
         """
         return self._gps_locked
 
     @property
     def gps_to_system_time_diff(self):
-        """ Gets the maximum time diff in seconds between the GPS (box_time) and system (NTP) during
+        """ 
+        Gets the maximum time diff in seconds between the GPS (box_time) and system (NTP) during
         the integration period. Negative if GPS time is ahead of system/NTP time.
 
-        Returns:
-            TYPE: Double.
+        :returns:   gps to system time diff
+        :rtype:     double
         """
         return self._gps_to_system_time_diff
 
@@ -580,8 +623,8 @@ class ParseData(object):
         """
         AGC Status, a '1' in bit position corresponds to an AGC fault on that transmitter
 
-        Returns:
-             TYPE: Int
+        :returns:   agc_status_word
+        :rtype:     int
         """
         return self._agc_status_word
 
@@ -590,17 +633,18 @@ class ParseData(object):
         """
         Low Power, a '1' in bit position corresponds to a low power condition on that transmitter
 
-        Returns:
-             TYPE: Int
+        :returns:   lp_status_word
+        :rtype:     int
         """
         return self._lp_status_word
 
 
 class DataWrite(object):
-    """This class contains the functions used to write out processed data to files.
+    """
+    This class contains the functions used to write out processed data to files.
 
-    Args:
-        data_write_options (DataWriteOptions): The data write options from config.
+    :param  data_write_options: The data write options from config file
+    :type   data_write_options: DataWriteOptions
     """
 
     def __init__(self, data_write_options):
@@ -635,8 +679,11 @@ class DataWrite(object):
     def write_json_file(self, filename, data_dict):
         """
         Write out data to a json file. If the file already exists it will be overwritten.
-        :param filename: The path to the file to write out. String
-        :param data_dict: Python dictionary to write out to the JSON file.
+
+        :param  filename:   The path to the file to write out
+        :type   filename:   str
+        :param  data_dict:  Python dictionary to write out to the JSON file.
+        :type   data_dict:  dict
         """
         with open(filename, 'w+') as f:
             f.write(json.dumps(data_dict))
@@ -644,16 +691,21 @@ class DataWrite(object):
     def write_hdf5_file(self, filename, data_dict, dt_str):
         """
         Write out data to an HDF5 file. If the file already exists it will be overwritten.
-        :param filename: The path to the file to write out. String
-        :param data_dict: Python dictionary to write out to the HDF5 file.
-        :param dt_str: A datetime timestamp of the first transmission time in the record as string.
+
+        :param  filename:   The path to the file to write out
+        :type   filename:   str
+        :param  data_dict:  Python dictionary to write out to the HDF5 file.
+        :type   data_dict:  dict
+        :param  dt_str:     A datetime timestamp of the first transmission time in the record
+        :type   dt_str:     str
         """
 
         def convert_to_numpy(dd):
-            """Converts lists stored in dict into numpy array. Recursive.
+            """
+            Converts lists stored in dict into numpy array. Recursive.
 
-            Args:
-                dd (Python dictionary): Dictionary with lists to convert to numpy arrays.
+            :param  dd: Dictionary with lists to convert to numpy arrays.
+            :type   dd: dict
             """
             for k, v in dd.items():
                 if isinstance(v, dict):
@@ -678,14 +730,17 @@ class DataWrite(object):
                 print("No space left on device. Exiting")
                 os._exit(-1)
             else:
-                print('Unknown error when saving to file: {}'.format(e))
+                print(f'Unknown error when saving to file: {e}')
                 os._exit(-1)
 
     def write_dmap_file(self, filename, data_dict):
         """
         Write out data to a dmap file. If the file already exists it will be overwritten.
-        :param filename: The path to the file to write out. String
-        :param data_dict: Python dictionary to write out to the dmap file.
+
+        :param  filename:   The path to the file to write out
+        :type   filename:   str
+        :param  data_dict:  Python dictionary to write out to the dmap file.
+        :type   data_dict:  dict
         """
         # TODO: Complete this by parsing through the dictionary and write out to proper dmap format
         raise NotImplementedError
@@ -697,16 +752,24 @@ class DataWrite(object):
 
         A file will be created using the file extension for each requested data product.
 
-        :param write_bfiq:          Should beamformed IQ be written to file? Bool.
-        :param write_antenna_iq:    Should pre-beamformed IQ be written to file? Bool.
-        :param write_raw_rf:        Should raw rf samples be written to file? Bool.
-        :param write_tx:            Should the generated tx samples and metadata be written to file? Bool.
-        :param file_ext:            Type of file extention to use. String
-        :param aveperiod_meta:      Metadata from radar control about averaging period. AveperiodMetadataMessage
-        :param data_parsing:        All parsed and concatenated data from averaging period stored
-                                    in ParseData object.
-        :param rt_dw:               Pair of socket and iden for RT purposes.
-        :param write_rawacf:        Should rawacfs be written to file? Bool, default True.
+        :param  write_bfiq:         Should beamformed IQ be written to file?
+        :type   write_bfiq:         bool
+        :param  write_antenna_iq:   Should pre-beamformed IQ be written to file?
+        :type   write_antenna_iq:   bool
+        :param  write_raw_rf:       Should raw rf samples be written to file?
+        :type   write_raw_rf:       bool
+        :param  write_tx:           Should the generated tx samples and metadata be written to file?
+        :type   write_tx:           bool
+        :param  file_ext:           Type of file extention to use
+        :type   file_ext:           str
+        :param  aveperiod_meta:     Metadata from radar control about averaging period
+        :type   aveperiod_meta:     AveperiodMetadataMessage
+        :param  data_parsing:       All parsed and concatenated data from averaging period
+        :type   data_parsing:       ParseData
+        :param  rt_dw:              Pair of socket and iden for RT purposes.
+        :type   rt_dw:              dict
+        :param  write_rawacf:       Should rawacfs be written to file? Defaults to True.
+        :type   write_rawacf:       bool, optional
         """
 
         start = time.time()
@@ -720,20 +783,19 @@ class DataWrite(object):
         datetime_string = time_now.strftime("%Y%m%d.%H%M.%S.%f")
         epoch = datetime.datetime.utcfromtimestamp(0)
         epoch_milliseconds = str(int((time_now - epoch).total_seconds() * 1000))
-        dataset_directory = "{0}/{1}".format(self.options.data_directory, today_string)
-        dataset_name = "{dt}.{site}.{{sliceid}}.{{dformat}}.{fformat}".format(dt=datetime_string,
-                                                                              site=self.options.site_id,
-                                                                              fformat=file_ext)
-        dataset_location = "{dir}/{{name}}".format(dir=dataset_directory)
+        dataset_directory = f"{self.options.data_directory}/{today_string}"
+        dataset_name = f"{datetime_string}.{self.options.site_id}.{{sliceid}}.{{dformat}}.{file_ext}"
+        dataset_location = f"{dataset_directory}/{{name}}"
 
         def two_hr_ceiling(dt):
-            """Finds the next 2hr boundary starting from midnight
+            """
+            Finds the next 2hr boundary starting from midnight
 
-            Args:
-                dt (TYPE): A datetime to find the next 2hr boundary.
+            :param  dt: A datetime to find the next 2hr boundary.
+            :type   dt: DateTime
 
-            Returns:
-                TYPE: 2hr aligned datetime
+            :returns:   2hr aligned datetime
+            :rtype:     DateTime
             """
 
             midnight_today = dt.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -780,10 +842,12 @@ class DataWrite(object):
             """
             Writes the final data out to the location based on the type of file extension required
 
-            :param tmp_file:                File path and name to write single record. String
-            :param final_data_dict:         Data dict parsed out from message. Dict
-            :param two_hr_file_with_type:   Name of the two hour file with data type added. String
-
+            :param  tmp_file:               File path and name to write single record
+            :type   tmp_file:               str
+            :param  final_data_dict:        Data dict parsed out from message
+            :type   final_data_dict:        dict
+            :param  two_hr_file_with_type:  Name of the two hour file with data type added
+            :type   two_hr_file_with_type:  str
             """
             try:
                 os.makedirs(dataset_directory, exist_ok=True)
@@ -793,7 +857,7 @@ class DataWrite(object):
                     os._exit(-1)
 
             if file_ext == 'hdf5':
-                full_two_hr_file = "{0}/{1}.hdf5.site".format(dataset_directory, two_hr_file_with_type)
+                full_two_hr_file = f"{dataset_directory}/{two_hr_file_with_type}.hdf5.site"
 
                 try:
                     fd = os.open(full_two_hr_file, os.O_CREAT)
@@ -831,20 +895,26 @@ class DataWrite(object):
             individually. At this point, they will be combined into data for a single integration
             time via averaging.
 
-            Args:
-                parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
+            :param  parameters_holder:  A dict that hold dicts of parameters for each slice.
+            :type   parameters_holder:  dict
             """
 
-            needed_fields = ["borealis_git_hash", "experiment_id",
-            "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
-            "num_sequences", "range_sep", "first_range_rtt", "first_range", "rx_sample_rate",
-            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
-            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
-            "pulses", "lags", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
-            "correlation_descriptors", "correlation_dimensions", "main_acfs", "intf_acfs",
-            "xcfs", "noise_at_freq", "data_normalization_factor", "slice_id", "slice_interfacing",
-            "averaging_method", "scheduling_mode", "gps_locked", "gps_to_system_time_diff",
-            "agc_status_word", "lp_status_word"]
+            needed_fields = [
+            "borealis_git_hash",        "experiment_id",        "experiment_name", 
+            "experiment_comment",       "num_slices",           "slice_comment", 
+            "station",                  "num_sequences",        "range_sep", 
+            "first_range_rtt",          "first_range",          "rx_sample_rate",
+            "scan_start_marker",        "int_time",             "tx_pulse_len", 
+            "tau_spacing",              "main_antenna_count",   "intf_antenna_count", 
+            "freq",                     "samples_data_type",    "pulses", 
+            "lags",                     "blanked_samples",      "sqn_timestamps", 
+            "beam_nums",                "beam_azms",            "correlation_descriptors", 
+            "correlation_dimensions",   "main_acfs",            "intf_acfs",
+            "xcfs",                     "noise_at_freq",        "data_normalization_factor", 
+            "slice_id",                 "slice_interfacing",    "averaging_method", 
+            "scheduling_mode",          "gps_locked",           "gps_to_system_time_diff",
+            "agc_status_word",          "lp_status_word"
+            ]
             # Note: num_ranges not in needed_fields but is used to make correlation_dimensions
 
             main_acfs = data_parsing.mainacfs_accumulator
@@ -853,10 +923,10 @@ class DataWrite(object):
 
             def find_expectation_value(x, parameters, field_name):
                 """
-                Get the mean or median of all correlations from all sequences in the
-                integration period - only this will be recorded.
-                This is effectively 'averaging' all correlations over the integration
-                time, using a specified method for combining them.
+                Get the mean or median of all correlations from all sequences in the integration
+                period - only this will be recorded.
+                This is effectively 'averaging' all correlations over the integration time, using a
+                specified method for combining them.
                 """
                 # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
                 # so we get median of all sequences.
@@ -881,7 +951,7 @@ class DataWrite(object):
                     array_expectation_value = np.median(np.real(array_2d), axis=0) +\
                                               1j * np.median(np.imag(array_2d), axis=0)
                 else:
-                    raise ValueError('Averaging Method could not be executed: {}'.format(averaging_method))
+                    raise ValueError(f'Averaging Method could not be executed: {averaging_method}')
 
                 # Reshape array to be 3d so we can replace lag0 far ranges that are cluttered with those
                 # from alternate lag0 which have no clutter.
@@ -924,20 +994,26 @@ class DataWrite(object):
             write out any possible beamformed IQ data that has been parsed. Adds additional slice
             info to each parameter dict. Some variables are captured from outer scope.
 
-            Args:
-                parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
+            :param  parameters_holder:  A dict that hold dicts of parameters for each slice.
+            :type   parameters_holder:  dict
             """
-            needed_fields = ["borealis_git_hash", "experiment_id",
-            "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
-            "num_sequences", "rx_sample_rate", "pulse_phase_offset",
-            "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
-            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
-            "pulses", "blanked_samples", "sqn_timestamps", "beam_nums", "beam_azms",
-            "data_dimensions", "data_descriptors", "antenna_arrays_order", "data",
-            "num_samps", "noise_at_freq", "range_sep", "first_range_rtt", "first_range",
-            "lags", "num_ranges", "data_normalization_factor", "slice_id", "slice_interfacing",
-            "scheduling_mode", "gps_locked", "gps_to_system_time_diff",
-            "agc_status_word", "lp_status_word"]
+
+            needed_fields = [
+            "borealis_git_hash",        "experiment_id",                "experiment_name", 
+            "experiment_comment",       "num_slices",                   "slice_comment", 
+            "station",                  "num_sequences",                "rx_sample_rate", 
+            "pulse_phase_offset",       "scan_start_marker",            "int_time", 
+            "tx_pulse_len",             "tau_spacing",                  "main_antenna_count", 
+            "intf_antenna_count",       "freq",                         "samples_data_type",
+            "pulses",                   "blanked_samples",              "sqn_timestamps", 
+            "beam_nums",                "beam_azms",                    "data_dimensions", 
+            "data_descriptors",         "antenna_arrays_order",         "data",
+            "num_samps",                "noise_at_freq",                "range_sep", 
+            "first_range_rtt",          "first_range",                  "lags", 
+            "num_ranges",               "data_normalization_factor",    "slice_id", 
+            "slice_interfacing",        "scheduling_mode",              "gps_locked", 
+            "gps_to_system_time_diff",  "agc_status_word", "            lp_status_word"
+            ]
 
             bfiq = data_parsing.bfiq_accumulator
             slice_id_list = [x for x in bfiq.keys() if isinstance(x, int)]
@@ -986,19 +1062,25 @@ class DataWrite(object):
             to each paramater dict. Some variables are captured from outer scope. Pre-beamformed iq
             is the individual antenna received data. Antenna_arrays_order will list the antennas' order.
 
-            Args:
-                parameters_holder (Dict): A dict that hold dicts of parameters for each slice.
+            :param  parameters_holder:  A dict that hold dicts of parameters for each slice.
+            :type   parameters_holder:  dict
             """
 
-            needed_fields = ["borealis_git_hash", "experiment_id",
-            "experiment_name", "experiment_comment", "num_slices", "slice_comment", "station",
-            "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time", "tx_pulse_len", "tau_spacing",
-            "main_antenna_count", "intf_antenna_count", "freq", "samples_data_type",
-            "pulses", "sqn_timestamps", "beam_nums", "beam_azms", "data_dimensions", "data_descriptors",
-            "antenna_arrays_order", "data", "num_samps", "pulse_phase_offset", "noise_at_freq",
-            "data_normalization_factor", "blanked_samples", "slice_id", "slice_interfacing",
-            "scheduling_mode", "gps_locked", "gps_to_system_time_diff",
-            "agc_status_word", "lp_status_word"]
+            needed_fields = [
+            "borealis_git_hash",    "experiment_id",                "experiment_name", 
+            "experiment_comment",   "num_slices",                   "slice_comment", 
+            "station",              "num_sequences",                "rx_sample_rate", 
+            "scan_start_marker",    "int_time",                     "tx_pulse_len", 
+            "tau_spacing",          "main_antenna_count",           "intf_antenna_count", 
+            "freq",                 "samples_data_type",            "pulses", 
+            "sqn_timestamps",       "beam_nums",                    "beam_azms", 
+            "data_dimensions",      "data_descriptors",             "antenna_arrays_order", 
+            "data",                 "num_samps",                    "pulse_phase_offset", 
+            "noise_at_freq",        "data_normalization_factor",    "blanked_samples", 
+            "slice_id",             "slice_interfacing",            "scheduling_mode", 
+            "gps_locked",           "gps_to_system_time_diff",      "agc_status_word", 
+            "lp_status_word"
+            ]
 
             antenna_iq = data_parsing.antenna_iq_accumulator
             slice_id_list = [x for x in antenna_iq.keys() if isinstance(x, int)]
@@ -1018,8 +1100,8 @@ class DataWrite(object):
             # Build strings from antennas used in the message. This will be used to know
             # what antennas were recorded on since we sample all available USRP channels
             # and some channels may not be transmitted on, or connected.
-            main_ant_str = lambda x: "antenna_{}".format(x)
-            intf_ant_str = lambda x: "antenna_{}".format(x + self.options.main_antenna_count)
+            main_ant_str = lambda x: f"antenna_{x}"
+            intf_ant_str = lambda x: f"antenna_{x + self.options.main_antenna_count}"
             for slice_id in rx_main_antennas:
                 rx_main_antennas[slice_id] = [main_ant_str(x) for x in rx_main_antennas[slice_id]]
                 rx_intf_antennas[slice_id] = [intf_ant_str(x) for x in rx_intf_antennas[slice_id]]
@@ -1061,10 +1143,10 @@ class DataWrite(object):
 
             for slice_id, slice_ in final_data_params.items():
                 for stage, params in slice_.items():
-                    name = dataset_name.format(sliceid=slice_id, dformat="{}_iq".format(stage))
+                    name = dataset_name.format(sliceid=slice_id, dformat=f"{stage}_iq")
                     output_file = dataset_location.format(name=name)
 
-                    ext = "{}_iq".format(stage)
+                    ext = f"{stage}_iq"
                     two_hr_file_with_type = self.slice_filenames[slice_id].format(ext=ext)
 
                     write_file(output_file, params, two_hr_file_with_type)
@@ -1075,25 +1157,27 @@ class DataWrite(object):
             Write medium must be able to sustain high write bandwidth. Shared memory is destroyed
             after write. Some variables are captured in scope.
 
-            Args:
-                param (Dict): A dict of parameters to write. Some will be removed.
-
-
+            :param  param:  A dict of parameters to write. Some will be removed.
+            :type   param:  dict
             """
 
-            needed_fields = ["borealis_git_hash", "experiment_id",
-            "experiment_name", "experiment_comment", "num_slices", "station",
-            "num_sequences", "rx_sample_rate", "scan_start_marker", "int_time",
-            "main_antenna_count", "intf_antenna_count", "samples_data_type",
-            "sqn_timestamps", "data_dimensions", "data_descriptors", "data", "num_samps",
-            "rx_center_freq", "blanked_samples", "scheduling_mode", "gps_locked",
-            "gps_to_system_time_diff", "agc_status_word", "lp_status_word"]
+            needed_fields = [
+            "borealis_git_hash",    "experiment_id",            "experiment_name", 
+            "experiment_comment",   "num_slices",               "station",
+            "num_sequences",        "rx_sample_rate",           "scan_start_marker", 
+            "int_time",             "main_antenna_count",       "intf_antenna_count", 
+            "samples_data_type",    "sqn_timestamps",           "data_dimensions", 
+            "data_descriptors",     "data",                     "num_samps",
+            "rx_center_freq",       "blanked_samples",          "scheduling_mode", 
+            "gps_locked",           "gps_to_system_time_diff",  "agc_status_word", 
+            "lp_status_word"
+            ]
 
-            # Some fields don't make much sense when working with the raw rf. It's expected
-            # that the user will have knowledge of what they are looking for when working with
-            # this data. Note that because this data is not slice-specific a lot of slice-specific
-            # data (ex. pulses, beam_nums, beam_azms) is not included (user must look
-            # at the experiment they ran)
+            # Some fields don't make much sense when working with the raw rf. It's expected that the
+            # user will have knowledge of what they are looking for when working with this data.
+            # Note that because this data is not slice-specific a lot of slice-specific data (ex.
+            # pulses, beam_nums, beam_azms) is not included (user must look at the experiment they
+            # ran)
 
             raw_rf = data_parsing.rawrf_locations
             num_rawrf_samps = data_parsing.rawrf_num_samps
@@ -1142,7 +1226,6 @@ class DataWrite(object):
             """
             Writes out the tx samples and metadata for debugging purposes.
             Does not use same parameters of other writes.
-
             """
             tx_data = None
             for meta in aveperiod_meta.sequences:
@@ -1263,7 +1346,7 @@ class DataWrite(object):
             write_tx_data()
 
         end = time.time()
-        dw_print("Time to write to {}: {:.6f} ms".format(dataset_name, (end - start) * 1000))
+        dw_print(f"Time to write to {dataset_name}: {(end - start) * 1000:.6f} ms")
 
 
 def main():
@@ -1345,7 +1428,7 @@ def main():
             if break_now:
                 if len(sorted_q) > 20:
                     # TODO error out correctly
-                    dw_print("Lost sequence #{}. Exiting.".format(expected_sqn_num))
+                    dw_print(f"Lost sequence #{expected_sqn_num}. Exiting.")
                     sys.exit()
                 continue
 
@@ -1381,7 +1464,7 @@ def main():
                 start = time.time()
                 data_parsing.update(pd)
                 end = time.time()
-                dw_print("Time to parse: {:.6f} ms".format((end - start) * 1000))
+                dw_print(f"Time to parse: {(end - start) * 1000:.6f} ms")
 
             queued_sqns = []
 

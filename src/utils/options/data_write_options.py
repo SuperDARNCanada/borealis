@@ -1,10 +1,15 @@
 #!/usr/bin/python
 
-# Copyright 2017 SuperDARN Canada
-#
-# data_write_options.py
-# 2018-05-14
-# options class for data write module
+"""
+    data_write options
+    ~~~~~~~~~~~~~~~~~~
+
+    To load the config options to be used by data_write
+    Config data comes from the config.ini file
+
+    :copyright: 2017 SuperDARN Canada
+"""
+
 # TODO: Get experiment details from somewhere to write metadata out to files (freq, cpid, etc..)
 
 import json
@@ -27,7 +32,7 @@ class DataWriteOptions(object):
             with open(config_path, 'r') as config_data:
                 raw_config = json.load(config_data)
         except IOError:
-            errmsg = 'Cannot open config file at {0}'.format(config_path)
+            errmsg = f'Cannot open config file at {config_path}'
             raise IOError(errmsg)
 
         self._rt_to_dw_identity = raw_config["rt_to_dw_identity"]
@@ -66,8 +71,8 @@ class DataWriteOptions(object):
         """
         Gets the identity used for the realtime to datawrite identity.
 
-        Returns:
-            String: The identity to use for realtime/datawrite socket.
+        :returns: The identity to use for realtime/datawrite socket.
+        :rtype: str
         """
         return self._rt_to_dw_identity
 
@@ -76,8 +81,8 @@ class DataWriteOptions(object):
         """
         Gets the identity used for the datawrite to realtime identity.
 
-        Returns:
-            String: The identity to use for the datawrite/realtime socket.
+        :returns: The identity to use for datawrite/realtime socket.
+        :rtype: str
         """
         return self._dw_to_rt_identity
 
@@ -105,8 +110,8 @@ class DataWriteOptions(object):
     def radctrl_to_dw_identity(self):
         """Gets the identity used for the radar control to data write socket.
 
-        Returns: The identity used for radar control/data write socket.
-        TYPE: str
+        :returns: The identity used for radar control/data write socket.
+        :rtype: str
         """
         return self._radctrl_to_dw_identity
 
@@ -114,8 +119,8 @@ class DataWriteOptions(object):
     def dw_to_radctrl_identity(self):
         """Gets the identity used for the data write to radar control socket.
 
-        Returns: The identity used for data write/radar control socket.
-        TYPE: str
+        :returns: The identity used for data write/radar control socket.
+        :rtype: str
         """
         return self._dw_to_radctrl_identity
 
@@ -145,7 +150,7 @@ class DataWriteOptions(object):
         """
         Gets the 3 letter radar code of this radar.
 
-        :return:    3 letter radar code
+        :returns:   3 letter radar code
         :rtype:     str
         """
         return self._site_id
@@ -155,7 +160,7 @@ class DataWriteOptions(object):
         """
         Gets the maximum usrp dac amplitude, which is a value usually between -1 and 1
 
-        :return:    maximum dac amplitude of USRP units
+        :returns:   maximum dac amplitude of USRP units
         :rtype:     float
         """
         return self._max_usrp_dac_amplitude
@@ -165,7 +170,7 @@ class DataWriteOptions(object):
         """
         Gets the ramp-up and ramp-down time of the RF pulses in seconds
 
-        :return:    ramp-up/ramp-down time of the RF pulse in seconds.
+        :returns:   ramp-up/ramp-down time of the RF pulse in seconds.
         :rtype:     float
         """
         return self._pulse_ramp_time
@@ -175,7 +180,7 @@ class DataWriteOptions(object):
         """
         Gets the time before and after the RF pulse that the TR signal is active for in seconds.
 
-        :return:    time before and after the RF pulse that TR signal is active for in seconds
+        :returns:   time before and after the RF pulse that TR signal is active for in seconds
         :rtype:     float
         """
         return self._tr_window_time
@@ -185,7 +190,7 @@ class DataWriteOptions(object):
         """
         Gets the socket address of the router that routes interprocess messages.
 
-        :return:    socket address of the router that routes interprocess messages.
+        :returns:   socket address of the router that routes interprocess messages.
         :rtype:     str
         """
         return self._router_address
@@ -195,7 +200,7 @@ class DataWriteOptions(object):
         """
         Gets the number of main array antennas.
 
-        :return:    number of main antennas.
+        :returns:   number of main antennas.
         :rtype:     int
         """
 
@@ -206,7 +211,7 @@ class DataWriteOptions(object):
         """
         Gets the number of interferometer array antennas.
 
-        :return:    number of interferometer antennas.
+        :returns:   number of interferometer antennas.
         :rtype:     int
         """
 
@@ -217,7 +222,7 @@ class DataWriteOptions(object):
         """
         Gets the index of antennas in the main array corresponding to the transceiver channels.
 
-        :return:    indices of transceiver channels mapped to antennas in main array.
+        :returns:   indices of transceiver channels mapped to antennas in main array.
         :rtype:     list[int]
         """
 
@@ -228,7 +233,7 @@ class DataWriteOptions(object):
         """
         Gets the index of antennas in the interferometer array corresponding to the receiver channels.
 
-        :return:    indices of receiver channels mapped to antennas in interferometer array.
+        :returns:   indices of receiver channels mapped to antennas in interferometer array.
         :rtype:     list[int]
         """
 

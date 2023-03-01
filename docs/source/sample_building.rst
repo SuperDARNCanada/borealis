@@ -1,10 +1,8 @@
-sample_building package
-=======================
+===============
+Sample Building
+===============
 
-sample_building.sample_building module
---------------------------------------
-
-.. automodule:: sample_building.sample_building
+.. automodule:: src.experiment_prototype.sample_building.sample_building
     :members:
     :undoc-members:
     :show-inheritance:

@@ -26,7 +26,8 @@ def usage_msg():
 
     This is used if a -h flag or invalid arguments are provided.
 
-    :returns: the usage message
+    :returns:   the usage message
+    :rtype:     str
     """
 
     usage_message = """ steamed_hams.py [-h] experiment_module run_mode scheduling_mode_type
@@ -112,7 +113,8 @@ def steamed_hams_parser():
     """
     Creates the parser.
 
-    :returns: parser, the argument parser for steamed_hams.
+    :returns:   parser, the argument parser for steamed_hams.
+    :rtype:     argparse.ArgumentParser
     """
 
     parser = argparse.ArgumentParser(usage=usage_msg())
@@ -169,7 +171,7 @@ elif args.run_mode == "filterdata":
     mode = "debug"
     data_write_args = "--file-type=hdf5 --enable-raw-rf --enable-antenna-iq"
 else:
-    print("Mode {} is unknown. Exiting without running Borealis".format(args.run_mode))
+    print(f"Mode {args.run_mode} is unknown. Exiting without running Borealis")
     sys.exit(-1)
 
 # Configure python first
@@ -182,8 +184,7 @@ modules = {"brian": "",
 
 for mod in modules.keys():
     opts = python_opts.format(module=mod)
-    modules[mod] = "source borealis_env{version}/bin/activate; python{version} {opts} src/{module}.py" \
-                   "".format(version=PYTHON_VERSION, opts=opts, module=mod)
+    modules[mod] = f"source borealis_env{PYTHON_VERSION}/bin/activate; python{PYTHON_VERSION} {opts} src/{mod}.py" \
 
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 
@@ -197,7 +198,7 @@ else:
 # Configure C progs
 c_progs = ['usrp_driver']
 for cprg in c_progs:
-    modules[cprg] = "source mode {}; {} {}".format(mode, c_debug_opts, cprg)
+    modules[cprg] = f"source mode {mode}; {c_debug_opts} {cprg}"
 
 # Configure terminal output to also go to file.
 now = datetime.datetime.utcnow()
@@ -209,14 +210,13 @@ try:
     with open(config_path, 'r') as config_data:
         raw_config = json.load(config_data)
 except IOError:
-    errmsg = 'Cannot open config file at {0}'.format(config_path)
+    errmsg = f'Cannot open config file at {config_path}'
     raise IOError(errmsg)
 
 log_dir = raw_config['log_directory']
 sp.call("mkdir -p " + log_dir, shell=True)
 for mod in modules.keys():
-    basic_screen_cmd = modules[mod] + " 2>&1 | tee {path}/{timestamp}-{module}; bash"
-    modules[mod] = basic_screen_cmd.format(path=log_dir, timestamp=logfile_timestamp, module=mod)
+    modules[mod] = modules[mod] + f" 2>&1 | tee {log_dir}/{logfile_timestamp}-{mod}; bash"
 
 screenrc = BOREALISSCREENRC.format(
     START_RT=modules['realtime'],

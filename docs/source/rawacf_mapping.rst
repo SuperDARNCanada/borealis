@@ -4,7 +4,8 @@ rawacf_mapping
 
 RAWACF SDARN FIELDS
 
-This conversion is done in pyDARNio here in the __convert_rawacf_record method: `Link to Source <https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_convert.py>`_
+This conversion is done in pyDARNio here in the __convert_rawacf_record method: `Link to Source
+<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_convert.py>`_
 
 +-----------------------------------+---------------------------------------------+
 | | **SDARN DMAP FIELD NAME**       | **Borealis Conversion**                     |
@@ -172,7 +173,7 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | *short*                         | |                                           |
 | | Number of lags in sequence      | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **nrang**                       | | *correlation_dimensions*[1]               |
+| | **nrang**                       | | *correlation_dimensions* [1]              |
 | | *short*                         | |                                           |
 | | Number of ranges                | |                                           | 
 +-----------------------------------+---------------------------------------------+
@@ -248,4 +249,5 @@ This conversion is done in pyDARNio here in the __convert_rawacf_record method: 
 | | Calculated XCFs                 | |                                           |
 +-----------------------------------+---------------------------------------------+
 
-If blanked\_samples != ptab, or pulse\_phase\_offset contains non-zeroes, no conversion to dmap rawacf is possible.
+If blanked\_samples != ptab, or pulse\_phase\_offset contains non-zeroes, no conversion to dmap
+rawacf is possible.

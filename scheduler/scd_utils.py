@@ -1,10 +1,11 @@
 #!/usr/bin/python3
+"""
+    scd_utils.py
+    ~~~~~~~~~~~~
+    Utilities for working with scd files
 
-# Copyright 2019 SuperDARN Canada
-#
-# scd_utils.py
-# 2019-04-18
-# Utilities for working with scd files.
+    :copyright: 2019 SuperDARN Canada
+"""
 
 import datetime as dt
 import shutil
@@ -33,13 +34,17 @@ def get_next_month_from_date(date=None):
 
 
 class SCDUtils(object):
-    """Contains utilities for working with SCD files. SCD files are schedule files for Borealis.
-
-    Attributes:
-        scd_filename (str): The filename of schedule to use.
-        scd_dt_fmt (str): String format for parsing/writing datetimes.
-        line_fmt (str): String format for scd line.
-        scd_default (dict): Default event to run if no other infinite duration line is scheduled.
+    """
+    Contains utilities for working with SCD files. SCD files are schedule files for Borealis.
+    
+    :param  scd_filename:   Schedule file name
+    :type:  scd_filename:   str
+    :param  scd_dt_fmt:     String format for parsing/writing datetimes.
+    :type:  scd_dt_fmt:     str
+    :param  line_fmt:       String format for scd line.
+    :type:  line_fmt:       str
+    :param  scd_default:    Default event to run if no other infinite duration line is scheduled.
+    :type:  scd_default:    dict
     """
 
     def __init__(self, scd_filename):
@@ -49,24 +54,31 @@ class SCDUtils(object):
         self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {kwargs_string}"
         self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
+
     def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string=''):
-        """Checks the line parameters to see if they are valid and then returns a dict with all
-        the valid fields.
+        """
+        Checks the line parameters to see if they are valid and then returns a dict with all the
+        valid fields.
 
-        Args:
-            yyyymmdd (str): year/month/day string.
-            hhmm (str): hour/minute string.
-            experiment (str): The experiment to run.
-            scheduling_mode (str): The type of scheduling mode.
-            prio (str or int): priority value.
-            duration (str): an optional duration to run for.
-            kwargs_string (str, optional): kwargs for the experiment instantiation.
+        :param  yyyymmdd:           year/month/day string.
+        :type   yyyymmdd:           str
+        :param  hhmm:               hour/minute string.
+        :type   hhmm:               str
+        :param  experiment:         The experiment to run.
+        :type   experiment:         str
+        :param  scheduling_mode:    The type of scheduling mode.
+        :type   scheduling_mode:    str
+        :param  prio:               priority value.
+        :type   prio:               str or int
+        :param  duration:           an optional duration to run for.
+        :type   duration:           str
+        :param  kwargs_string:      kwargs for the experiment instantiation. (Default value = '')
+        :type   kwargs_string:      str
 
-        Returns:
-            TYPE: Dict of line params.
+        :returns:   Dict of line params.
+        :rtype:     dict
 
-        Raises:
-            ValueError: If line parameters are invalid or if line is a duplicate.
+        :raises     ValueError: If line parameters are invalid or if line is a duplicate.
         """
 
         # create datetime from args to see if valid. Value error for incorrect format
@@ -90,23 +102,23 @@ class SCDUtils(object):
         if scheduling_mode not in possible_scheduling_modes:
             raise ValueError(f"Unknown scheduling mode type {scheduling_mode} not in {possible_scheduling_modes}")
 
-        return {"timestamp": epoch_milliseconds,
-                "time": time,
-                "duration": str(duration),
-                "prio": str(prio),
-                "experiment": experiment,
-                "scheduling_mode": scheduling_mode,
-                "kwargs_string": kwargs_string}
+        return {"timestamp" : epoch_milliseconds,
+                "time" : time,
+                "duration" : str(duration),
+                "prio" : str(prio),
+                "experiment" : experiment,
+                "scheduling_mode" : scheduling_mode,
+                "kwargs_string" : kwargs_string}
 
     def read_scd(self):
-        """Read and parse the Borealis schedule file.
+        """
+        Read and parse the Borealis schedule file.
 
-        Returns:
-            TYPE: list of dicts.
+        :returns:   list of dicts containing schedule info
+        :rtype:     list(dict)
 
-        Raises:
-            ValueError: on lines with obvious errors in them.
-            Will also throw file errors if there are problems opening SCD file.
+        :raises ValueError: if any lines have obvious errors
+        :raises OSError:    if SCD file cannot be opened
         """
         with open(self.scd_filename, "r") as f:
             raw_scd = f.readlines()
@@ -131,14 +143,16 @@ class SCDUtils(object):
 
         return scd_lines
 
+
     def fmt_line(self, line_dict):
-        """Formats a dictionary with line info into a text line for file.
+        """
+        Formats a dictionary with line info into a text line for file.
 
-        Args:
-            line_dict (dict): A dict that holds all the line info.
+        :param  line_dict: A dict that holds all the line info.
+        :type   line_dict: dict
 
-        Returns:
-            TYPE: Formatted string.
+        :returns:   Formatted string.
+        :rtype:     str
         """
         line_str = self.line_fmt.format(datetime=line_dict["time"].strftime(self.scd_dt_fmt),
                                         prio=line_dict["prio"],
@@ -148,17 +162,19 @@ class SCDUtils(object):
                                         kwargs_string=line_dict["kwargs_string"])
         return line_str
 
-    def write_scd(self, scd_lines):
-        """Creates SCD text lines and writes to file. Creates a backup of the old file before
-        writing.
 
-        Args:
-            scd_lines (list): A list of dicts that contain the line info.
+    def write_scd(self, scd_lines):
+        """
+        Creates SCD text lines and writes to file. Creates a backup of the old file before
+        writing.
 
         Raises:
             PermissionError - When there are not sufficient permissions with the scd file
             FileNotFoundError - When the scd file doesn't exist
             IsADirectoryError - When the scd file given is a directory
+
+        :param  scd_lines: A list of dicts that contain the schedule line info.
+        :type   scd_lines: list(dict)
         """
         text_lines = [self.fmt_line(x) for x in scd_lines]
 
@@ -168,21 +184,28 @@ class SCDUtils(object):
             for line in text_lines:
                 f.write(f"{line}\n")
 
+
     def add_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
                  duration='-', kwargs_string=''):
-        """Adds a new line to the SCD.
+        """
+        Adds a new line to the schedule.
 
-        Args:
-            yyyymmdd (str): year/month/day string.
-            hhmm (str): hour/minute string.
-            experiment (str): The experiment to run.
-            scheduling_mode (str): The mode type running for this time period.
-            prio (int or str, optional): priority value.
-            duration (str, optional): an optional duration to run for.
-            kwargs_string (str, optional): kwargs for the experiment instantiation.
+        :param  yyyymmdd:           year/month/day string.
+        :type   yyyymmdd:           str
+        :param  hhmm:               hour/minute string.
+        :type   hhmm:               str
+        :param  experiment:         The experiment to run.
+        :type   experiment:         str
+        :param  scheduling_mode:    The mode type running for this time period.
+        :type   scheduling_mode:    str
+        :param  prio:               priority value. (Default value = 0)
+        :type   prio:               int or str
+        :param  duration:           duration to run for. (Default value = '-')
+        :type   duration:           str
+        :param  kwargs_string:      kwargs for the experiment instantiation. (Default value = '')
+        :type   kwargs_string:      str
 
-        Raises:
-            ValueError: If line parameters are invalid or if line is a duplicate.
+        :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
         new_line = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string)
 
@@ -204,21 +227,28 @@ class SCDUtils(object):
 
         self.write_scd(new_scd)
 
+
     def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
                     duration='-', kwargs_string=''):
-        """Summary
+        """
+        Removes a line from the schedule
 
-        Args:
-            yyyymmdd (str): year/month/day string.
-            hhmm (str): hour/minute string.
-            experiment (str): The experiment to run.
-            scheduling_mode (str): The mode type running for this time period.
-            prio (int or str, optional): priority value.
-            duration (str, optional): an optional duration to run for.
-            kwargs_string (str, optional): kwargs for the experiment instantiation.
+        :param  yyyymmdd:           year/month/day string.
+        :type   yyyymmdd:           str
+        :param  hhmm:               hour/minute string.
+        :type   hhmm:               str
+        :param  experiment:         The experiment to run.
+        :type   experiment:         str
+        :param  scheduling_mode:    The mode type running for this time period.
+        :type   scheduling_mode:    str
+        :param  prio:               priority value. (Default value = 0)
+        :type   prio:               int or str
+        :param  duration:           an optional duration to run for. (Default value = '-')
+        :type   duration:           str
+        :param  kwargs_string:      kwargs for the experiment instantiation. (Default value = '')
+        :type   kwargs_string:      str
 
-        Raises:
-            ValueError: If line parameters are invalid or if line does not exist.
+        :raises ValueError: If line parameters are invalid or if line does not exist.
         """
 
         line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string)
@@ -231,23 +261,25 @@ class SCDUtils(object):
 
         self.write_scd(scd_lines)
 
+
     def get_relevant_lines(self, yyyymmdd, hhmm):
-        """Gets the currently scheduled and future lines given a supplied time. If the provided time
-        is equal to a scheduled line time, it provides that line and all future lines. If the
-        provided time is between schedule line times, it provides any lines in the schedule with the
-        most recent timestamp and all future lines.  If the provided time is before any lines in the
+        """
+        Gets the currently scheduled and future lines given a supplied time. If the provided time is
+        equal to a scheduled line time, it provides that line and all future lines. If the provided
+        time is between schedule line times, it provides any lines in the schedule with the most
+        recent timestamp and all future lines.  If the provided time is before any lines in the
         schedule, it provides all schedule lines.
 
-        Args:
-            yyyymmdd (str): year/month/day string.
-            hhmm (str): hour/minute string.
+        :param  yyyymmdd:   year/month/day string.
+        :type   yyyymmdd:   str
+        :param  hhmm:       hour/minute string.
+        :type   hhmm:       str
 
-        Returns:
-            TYPE: List of relevant dicts of line info.
+        :returns:   List of relevant dicts of line info.
+        :rtype:     list(dict)
 
-        Raises:
-            ValueError: If datetime could not be created from supplied arguments.
-            IndexError: If schedule file is empty
+        :raises ValueError: If datetime could not be created from supplied arguments.
+        :raises IndexError: If schedule file is empty
         """
 
         try:

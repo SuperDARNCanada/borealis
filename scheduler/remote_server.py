@@ -1,10 +1,13 @@
-"""
-remote_server.py
-Copyright SuperDARN Canada 2019
+#!/usr/bin/python3
 
-Using inotify to determine if changes to the SCD file are made, this script will automatically
-parse new changes and update the schedule via Linux's atq. Plots and logs are produced to verify
-if any issues occur.
+"""
+    remote_server.py
+    ~~~~~~~~~~~~~~~~
+    Using inotify to determine if changes to the SCD file are made, this script will automatically
+    parse new changes and update the schedule via Linux's atq. Plots and logs are produced to verify
+    if any issues occur.
+
+    :copyright: 2019 SuperDARN Canada
 """
 
 import inotify.adapters
@@ -26,24 +29,30 @@ from . import remote_server_options as rso
 
 
 def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string=''):
-    """Turns an experiment line from the scd into a formatted atq command.
-
-    Args:
-        dt (datetime): Datetime of the experiment
-        experiment (str): The experiment to run
-        scheduling_mode (str): The scheduling mode to run
-        first_event_flag (bool, optional): Flag to signal whether the experiment is the first to run
-        kwargs_string: Default ''. Extra arguments to pass to the atq command (inserted at end of the command)
-
-    Returns:
-        str: Formatted atq str.
     """
-    steamed_hams = f"{os.environ['BOREALISPATH']}scripts/steamed_hams.py"
-    start_cmd = f"echo 'screen -d -m -S starter {steamed_hams} {experiment} release {scheduling_mode}"
+    Turns an experiment line from the scd into a formatted atq command.
+
+    :param  dt:                 Datetime of the experiment
+    :type   dt:                 datetime
+    :param  experiment:         The experiment to run
+    :type   experiment:         str
+    :param  scheduling_mode:    The scheduling mode to run
+    :type   scheduling_mode:    str
+    :param  first_event_flag:   Flag to signal whether the experiment is the first to run (Default
+                                value = False)
+    :type   first_event_flag:   bool
+    :param  kwargs_string:      String of keyword arguments to run steamed hams (Default value = '')
+    :type   kwargs_string:      str
+
+    :returns:   Formatted atq str.
+    :rtype:     str
+    """
+
+    borealis_path=os.environ['BOREALISPATH']
     if kwargs_string:
-        start_cmd += f" --kwargs_string {kwargs_string}'"
+        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode} --kwargs_string {kwargs_string}'"
     else:
-        start_cmd += "'"
+        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}'"
 
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
@@ -52,18 +61,20 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     cmd_str = dt.strftime(cmd_str)
     return cmd_str
 
-
 def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
     """Plots the timeline to better visualize runtime.
+    
+    :param  timeline:           A list of entries ordered chronologically as scheduled
+    :type   timeline:           list
+    :param  scd_dir:            The scd directory path. (example: /home/radar/borealis_schedules)
+    :type   scd_dir:            str
+    :param  time_of_interest:   The datetime holding the time of scheduling.
+    :type   time_of_interest:   Datetime
+    :param  site_id:            Site identifier for logs.
+    :type   site_id:            str
 
-    Args:
-        timeline (list): A list of entries ordered chronologically as scheduled
-        scd_dir (str): The scd directory path. (example: /home/radar/borealis_schedules)
-        time_of_interest (datetime): The datetime holding the time of scheduling.
-        site_id (str): Site identifier for logs.
-
-    Returns:
-        (str, str): Paths to the saved plots.
+    :returns:   Tuple of paths to the saved plots.
+    :rtype:     tuple(str, str)
     """
     fig, ax = plt.subplots()
 
@@ -87,8 +98,17 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         return t_dict
 
     def get_cmap(n, name='hsv'):
-        """Returns a function that maps each index in 0, 1, ..., n-1 to a distinct
+        """
+        Returns a function that maps each index in 0, 1, ..., n-1 to a distinct
         RGB color; the keyword argument name must be a standard mpl colormap name.
+
+        :param  n:      index to a RGB colour
+        :type   n:      int 
+        :param  name:   standard mpl colormap name (Default value = 'hsv')
+        :type   name:   str
+
+        :returns:   Colormap instance 
+        :rtype:     ColorMap
         """
         return plt.cm.get_cmap(name, n)
 
@@ -96,6 +116,9 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         """
         Recursively splits a long event that runs during two or more days into two events
         in order to handle plotting.
+
+        :param  event:  
+        :type   event:  dict
         """
         if long_event['start'].day == long_event['end'].day:
             return [long_event]
@@ -211,37 +234,44 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
 
 
 def convert_scd_to_timeline(scd_lines, time_of_interest):
-    """ Creates a true timeline from the scd lines, accounting for priority and duration of each
-    line. Will reorder and add breaks to lines to account for differing priorities and durations.
-    Keep the same line format.
-
+    """
+    Creates a true timeline from the scd lines, accounting for priority and duration of each line.
+    Will reorder and add breaks to lines to account for differing priorities and durations. Keep the
+    same line format.
+    
     Line dict keys are:
-        timestamp(ms since epoch)
-        time(datetime)
-        duration(minutes)
-        prio(priority)
-        experiment
-        scheduling_mode
-
+        - timestamp(ms since epoch)
+        - time(datetime)
+        - duration(minutes)
+        - prio(priority)
+        - experiment
+        - scheduling_mode
+    
     The true timeline queued_lines dictionary differs from the scd_lines list by the following:
-        - duration is parsed, adding in events so that all event durations are equal to the next event's
-        start time, subtract the current event's start time.
+    
+        - duration is parsed, adding in events so that all event durations are equal to the next
+          event's start time, subtract the current event's start time.
         - priority is parsed so that there is only ever one event at any time (no overlap)
         - therefore the only event in the true timeline with infinite duration is the last event.
-        - the keys of the true timeline dict are the original scd_lines order of the lines (integer). This allows
-        the preservation of which events in the true timeline were scheduled in the same original line.
-        This can be useful for plotting (same color = same scd scheduled line). The items in queued_lines
-        dict are lists of all the events corresponding to that original line's order. These events have the same
-        keys as the lines in scd_lines.
+        - the keys of the true timeline dict are the original scd_lines order of the lines
+          (integer). This allows the preservation of which events in the true timeline were
+          scheduled in the same original line. This can be useful for plotting (same color = same
+          scd scheduled line). The items in queued_lines dict are lists of all of the events
+          corresponding to that original line's order. These events have the same keys as the lines
+          in scd_lines.
 
-    Args:
-        scd_lines (list): List of sorted lines by timestamp and priority,
-                          scd lines to try convert to a timeline.
-        time_of_interest (datetime): The datetime holding the time of scheduling.
+    :param  scd_lines:          List of sorted lines by timestamp and priority, scd lines to try
+                                convert to a timeline.
+    :type   scd_lines:          list
+    :param  time_of_interest:   The datetime holding the time of scheduling.
+    :type   time_of_interest:   Datetime
 
-    Returns:
-        queued_lines (dict): Groups of entries belonging to the same experiment.
-        warnings (list):     Warning strings.
+    :returns:   Tuple containing the following items: 
+    
+            - queued_lines: Groups of entries belonging to the same experiment. 
+            - warnings: List of warnings produced by the function
+    :rtype:     tuple(list, list)
+
     """
 
     inf_dur_line = None
@@ -292,8 +322,8 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                             queued_lines.append(copy.deepcopy(inf_dur_line))
                     inf_dur_line = scd_line
                 else:
-                    warning_msg = f"Unable to schedule {scd_line['experiment']} at {scd_line['time']}. " \
-                                  "An infinite duration line with higher priority exists"
+                    warning_msg = f"Unable to schedule {scd_line['experiment']} at {scd_line['time']}."\
+                                   " An infinite duration line with higher priority exists"
                     warnings.append(warning_msg)
 
         else:  # line has a set duration
@@ -406,17 +436,24 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
 
 
 def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
-    """ Converts the created timeline to actual atq commands.
-
-    Args:
-        timeline (List): A list holding all timeline events.
-        scd_dir (str): The directory with SCD files. (typically /home/radar/borealis_schedules)
-        time_of_interest (datetime): The datetime holding the time of scheduling.
-        site_id (str): 3 letter site identifier for logs. (example: 'sas')
+    """
+    Converts the created timeline to actual atq commands.
 
     Log and backup the existing atq, remove old events and then schedule everything recent. The
     first entry should be the currently running event, so it gets scheduled immediately. This
     function only backs up the commands that have not run yet.
+
+    :param  timeline:           A list holding all timeline events.
+    :type   timeline:           list
+    :param  scd_dir:            The directory with SCD files.
+    :type   scd_dir:            str
+    :param  time_of_interest:   The datetime holding the time of scheduling.
+    :type   time_of_interest:   Datetime
+    :param  site_id:            Site identifier for logs.
+    :type   site_id:            str
+
+    :returns:   output of the executed atq command
+    :rtype:     bytes
     """
 
     # This command is basically: for j in atq job number, print job num, time and command
@@ -461,16 +498,19 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
 
 def get_relevant_lines(scd_util, time_of_interest):
     """
-    @brief      Gets the relevant lines.
-
-    @param      scd_util  The scd utility object that holds the scd lines.
-    @param      time_of_interest    A datetime to get current and future lines for, type is datetime.datetime
-
-    @return     The relevant lines.
+    Gets the relevant lines.
 
     Does a search for relevant lines. If the first line returned isn't an infinite duration, we need
     to look back until we find an infinite duration line, as that should be the last line to
     continue running if we need it.
+
+    :param  scd_util:           The scd utility object that holds the scd lines.
+    :type   scd_util:           SCDUtils
+    :param  time_of_interest:   Time to get relevant lines for
+    :type   time_of_interest:   Datetime
+
+    :returns:   The relevant lines.
+    :rtype:     list(dict)
     """
 
     found = False
@@ -499,6 +539,7 @@ def get_relevant_lines(scd_util, time_of_interest):
 
 
 def _main():
+    """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new SCD file entries")
     parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')

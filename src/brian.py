@@ -1,10 +1,12 @@
 #!/usr/bin/python
 
-# Copyright 2017 SuperDARN Canada
-#
-# brian.py
-# 2018-01-30
-# Communicate with all processes to administrate the borealis software
+"""
+    brian process
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+    This program communicates with all processes to administrate the Borealis software
+
+    :copyright: 2017 SuperDARN Canada
+"""
 
 import sys
 import time
@@ -28,11 +30,12 @@ TIME_PROFILE = True
 brian_print = sm.MODULE_PRINT("sequence timing", "red")
 
 def router(opts):
-    """The router is responsible for moving traffic between modules by routing traffic using
+    """
+    The router is responsible for moving traffic between modules by routing traffic using
     named sockets.
 
-    Args:
-        opts (ExperimentOptions): Options parsed from config.
+    :param  opts: Options parsed from config file
+    :type   opts: ExperimentOptions class
     """
     context = zmq.Context().instance()
     router = context.socket(zmq.ROUTER)
@@ -48,15 +51,13 @@ def router(opts):
 
             sender, receiver, empty, data = dd
             if __debug__:
-                output = "Router input/// Sender -> {}: Receiver -> {}\n"
-                output = output.format(sender, receiver)
+                output = f"Router input/// Sender -> {sender}: Receiver -> {receiver}\n"
                 sys.stdout.write(output)
             frames_received = [receiver,sender,empty,data]
             frames_to_send.append(frames_received)
 
             if __debug__:
-                output = "Router output/// Receiver -> {}: Sender -> {}\n"
-                output = output.format(receiver, sender)
+                output = f"Router output/// Receiver -> {receiver}: Sender -> {sender}\n"
                 sys.stdout.write(output)
         non_sent = []
         for frames in frames_to_send:
@@ -64,21 +65,22 @@ def router(opts):
                 router.send_multipart(frames)
             except zmq.ZMQError as e:
                 if __debug__:
-                    output = "Unable to send frame Receiver -> {}: Sender -> {}\n"
-                    output = output.format(frames[0], frames[1])
+                    output = f"Unable to send frame Receiver -> {frames[0]}: Sender -> {frames[1]}\n"
                     sys.stdout.write(output)
                 non_sent.append(frames)
         frames_to_send = non_sent
 
 
 def sequence_timing(opts):
-    """Thread function for sequence timing
+    """
+    Thread function for sequence timing
 
     This function controls the flow of data between brian's sequence timing and other parts of the
     radar system. This function serves to check whether the sequence timing is working as expected
     and to rate control the system to make sure the processing can handle data rates.
-    :param context: zmq context, if None, then this method will get one
-    :type context: zmq context, optional
+
+    :param  context: zmq context, if None, then this method will get one
+    :type   context: zmq context, optional
     """
 
     ids = [opts.brian_to_radctrl_identity,
@@ -105,7 +107,8 @@ def sequence_timing(opts):
     start_new_sock.bind("inproc://start_new")
 
     def start_new():
-        """ This function serves to rate control the system. If processing is faster than the
+        """ 
+        This function serves to rate control the system. If processing is faster than the
         sequence time than the speed of the driver is the limiting factor. If processing takes
         longer than sequence time, than the dsp unit limits the speed of the system.
         """
@@ -145,19 +148,19 @@ def sequence_timing(opts):
             message = start_new.recv_string()
             if message == "want_to_start":
                 if TIME_PROFILE:
-                    brian_print('Driver ready: {}'.format(datetime.utcnow() - time_now))
+                    brian_print(f'Driver ready: {datetime.utcnow() - time_now}')
                     time_now = datetime.utcnow()
                 want_to_start = True
 
             if message == "good_to_start":
                 if TIME_PROFILE:
-                    brian_print('Copied to GPU: {}'.format(datetime.utcnow() - time_now))
+                    brian_print(f'Copied to GPU: {datetime.utcnow() - time_now}')
                     time_now = datetime.utcnow()
                 good_to_start = True
 
             if message == "extra_good_to_start":
                 if TIME_PROFILE:
-                    brian_print('DSP finished w/ data: {}'.format(datetime.utcnow() - time_now))
+                    brian_print(f'DSP finished w/ data: {datetime.utcnow() - time_now}')
                     time_now = datetime.utcnow()
                 dsp_finish_counter = 1;
 
@@ -191,8 +194,7 @@ def sequence_timing(opts):
             meta.ParseFromString(reply)
 
             if __debug__:
-                reply_output = "Driver sent -> time {} ms, sqnum {}"
-                reply_output = reply_output.format(meta.sequence_time*1e3, meta.sequence_num)
+                reply_output = f"Driver sent -> time {meta.sequence_time*1e3} ms, sqnum {meta.sequence_num}"
                 brian_print(reply_output)
 
             #Requesting acknowledgement of work begins from DSP
@@ -211,8 +213,7 @@ def sequence_timing(opts):
             sigp = pickle.loads(reply)
 
             if __debug__:
-                reply_output = "Radar control sent -> sequence {} time {} ms"
-                reply_output = reply_output.format(sigp.sequence_num, sigp.sequence_time)
+                reply_output = f"Radar control sent -> sequence {sigp.sequence_num} time {sigp.sequence_time} ms"
                 brian_print(reply_output)
 
             #Request acknowledgement of sequence from driver
@@ -228,7 +229,7 @@ def sequence_timing(opts):
             sig_p = pickle.loads(reply)
 
             if __debug__:
-                reply_output = "Dsp began -> sqnum {}".format(sig_p['sequence_num'])
+                reply_output = f"Dsp began -> sqnum {sig_p['sequence_num']}"
                 brian_print(reply_output)
 
             #Requesting acknowledgement of work ends from DSP
@@ -250,8 +251,7 @@ def sequence_timing(opts):
             sig_p = pickle.loads(reply)
 
             if __debug__:
-                reply_output = "Dsp sent -> time {}, sqnum {}"
-                reply_output = reply_output.format(sig_p['kerneltime'], sig_p['sequence_num'])
+                reply_output = f"Dsp sent -> time {sig_p['kerneltime']}, sqnum {sig_p['sequence_num']}"
                 brian_print(reply_output)
 
             if sig_p['sequence_num'] != 0:
@@ -262,7 +262,7 @@ def sequence_timing(opts):
             last_processing_time = sig_p['kerneltime']
 
             if __debug__:
-                brian_print("Late counter {}".format(late_counter))
+                brian_print(f"Late counter {late_counter}")
 
             #acknowledge that we are good and able to start something new.
             start_new_sock.send_string("extra_good_to_start")

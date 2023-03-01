@@ -1,16 +1,18 @@
-experiment_handler package
-==========================
+==================
+Experiment Handler
+==================
 
 The experiment_handler package contains a single module, experiment_handler, that is a
 standalone program.
 
-.. automodule:: experiment_handler.experiment_handler
+.. automodule:: src.experiment_handler
     :members:
     :undoc-members:
     :show-inheritance:
 
+-----
 Usage
 -----
 
-.. autoprogram:: experiment_handler.experiment_handler:experiment_parser()
+.. autoprogram:: src.experiment_handler:experiment_parser()
     :prog: experiment_handler.py
