@@ -9,8 +9,8 @@
 """
 
 import subprocess as sp
-import scd_utils
-import email_utils
+from . import scd_utils
+from . import email_utils
 import os
 import datetime
 import time
@@ -82,14 +82,17 @@ class SWG(object):
     """Holds the data needed for processing a SWG file."""
 
     def __init__(self, scd_dir):
-        super(SWG, self).__init__()
+        super().__init__()
         self.scd_dir = scd_dir
 
+        # Determine if the git repo for schedules exists, and clone it if it doesn't
         try:
             cmd = f"git -C {self.scd_dir}/{SWG_GIT_REPO_DIR} rev-parse"
             sp.check_output(cmd, shell=True)
+
         except sp.CalledProcessError as e:
             cmd = f'cd {self.scd_dir}; git clone {SWG_GIT_REPO}'
+
             sp.call(cmd, shell=True)
 
     def new_swg_file_available(self):
@@ -113,22 +116,6 @@ class SWG(object):
         cmd = f"cd {self.scd_dir}/{SWG_GIT_REPO_DIR}; git pull origin main"
         sp.call(cmd, shell=True)
 
-    def get_next_month(self):
-        """Finds the datetime of the next month.
-
-        :returns:   datetime of next month
-        :rtype:     Datetime
-        """
-        today = datetime.datetime.utcnow()
-
-        counter = 1
-        new_date = today + datetime.timedelta(days=counter)
-        while new_date.month == today.month:
-            counter += 1
-            new_date = today + datetime.timedelta(days=counter)
-
-        return new_date
-
     def parse_swg_to_scd(self, modes, radar, first_run):
 
         """
@@ -139,7 +126,7 @@ class SWG(object):
         :type   modes:      dict
         :param  radar:      Radar acronym.
         :type   radar:      str
-        :param  first_run:  Is this the first run? If so - start with current month
+        :param  first_run:  Is this the first run? If so - start with current month, otherwise next month.
         :type   first_run:  bool
 
         :returns:   List of all the parsed parameters.
@@ -149,12 +136,12 @@ class SWG(object):
         if first_run:
             month_to_use = datetime.datetime.utcnow()
         else:
-            month_to_use = self.get_next_month()
+            month_to_use = scd_utils.get_next_month_from_date()
 
         year = month_to_use.strftime("%Y")
         month = month_to_use.strftime("%m")
-
-        swg_file = f"{self.scd_dir}/{SWG_GIT_REPO_DIR}/{year}/{year + month}.swg"
+        yearmonth = year + month
+        swg_file = f"{self.scd_dir}/{SWG_GIT_REPO_DIR}/{year}/{yearmonth}.swg"
 
         with open(swg_file, 'r') as f:
             swg_lines = f.readlines()
@@ -162,7 +149,9 @@ class SWG(object):
         skip_line = False
         parsed_params = []
         for idx, line in enumerate(swg_lines):
-
+            # Init mode_to_use and mode_type to None every loop, so we can error check
+            mode_to_use = None
+            mode_type = None
             # Skip line is used for special time radar lines
             if skip_line:
                 skip_line = False
@@ -176,15 +165,15 @@ class SWG(object):
             if not line.strip():
                 continue
 
-            # Lines starting with '#' are comments
-            if line[0] == "#":
+            # Lines starting with '#' or whitespace and '#' are comments
+            if line.strip()[0] == "#":
                 continue
-
-            items = line.split()
 
             # First line is month and year
             if idx == 0:
                 continue
+            
+            items = line.split()
 
             start_day = items[0][0:2]
             start_hr = items[0][3:]
@@ -218,8 +207,11 @@ class SWG(object):
                 mode_type = "discretionary"
                 mode_to_use = modes["discretionary_time"]
 
-            param = {"yyyymmdd": f"{year}{month}{start_day}",
-                     "hhmm": f"{start_hr}:00",
+            if not mode_to_use or not mode_type:
+                print(f"SWG line couldn't be parsed, continuing: {line}")
+                continue
+            param = {f"yyyymmdd": f"{year}{month}{start_day}",
+                     f"hhmm": f"{start_hr}:00",
                      "experiment": mode_to_use,
                      "scheduling_mode": mode_type}
             parsed_params.append(param)
@@ -275,18 +267,11 @@ def main():
                     try:
                         print(f"add_line date: {ex['yyyymmdd']}, with experiment: {ex['experiment']}, mode: {ex['scheduling_mode']}")
                         site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
-                    except ValueError as e:
-                        error_msg = ("{logtime} {sitescd}: Unable to add line with parameters:\n"
-                                     "\t {date} {time} {experiment} {mode}\n"
-                                     "\t Exception thrown:\n"
-                                     "\t\t {exception}\n")
-                        error_msg = error_msg.format(logtime=today.strftime("%c"),
-                                                     sitescd=site_scd.scd_filename,
-                                                     date=ex['yyyymmdd'],
-                                                     time=ex['hhmm'],
-                                                     experiment=ex['experiment'],
-                                                     mode=ex['scheduling_mode'],
-                                                     exception=str(e))
+                    except ValueError as err:
+                        error_msg = f"{today.strftime('%c')} {site_scd.scd_filename}: Unable to add line:\n" \
+                                    f"\t {ex['yyyymmdd']} {ex['hhmm']} {ex['experiment']} {ex['scheduling_mode']}\n" \
+                                    f"\t Exception thrown:\n" \
+                                    f"\t\t {str(err)}\n"
 
                         with open(scd_logs + scd_error_log, 'a') as f:
                             f.write(error_msg)
@@ -319,8 +304,6 @@ def main():
 
                 with open(scd_logs + scd_error_log, 'a') as f:
                     f.write(success_msg)
-            else:
-                errors = False
 
             emailer.email_log(subject, scd_logs + scd_error_log)
 

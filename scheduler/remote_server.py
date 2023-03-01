@@ -11,8 +11,8 @@
 """
 
 import inotify.adapters
-import scd_utils
-import email_utils
+from . import scd_utils
+from . import email_utils
 import os
 import datetime
 import argparse
@@ -23,8 +23,10 @@ import subprocess as sp
 import pickle as pkl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+from datetime import datetime, timedelta
 
-import remote_server_options as rso
+from . import remote_server_options as rso
+
 
 def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string=''):
     """
@@ -36,9 +38,6 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     :type   experiment:         str
     :param  scheduling_mode:    The scheduling mode to run
     :type   scheduling_mode:    str
-    :param  first_event_flag:   Flag to signal whether the experiment is the first to (Default value
-                                = False)
-    :type   first_event_flag:   bool
     :param  first_event_flag:   Flag to signal whether the experiment is the first to run (Default
                                 value = False)
     :type   first_event_flag:   bool
@@ -62,50 +61,12 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     cmd_str = dt.strftime(cmd_str)
     return cmd_str
 
-def get_next_month_from_date(date):
-    """
-    Finds the datetime of the next month.
-
-    :param      date:   Date to find next month from
-    :type       date:   Datetime
-
-    :returns:   datetime object of the next month.
-    :rtype:     Datetime
-    """
-
-    counter = 1
-    new_date = date + datetime.timedelta(days=counter)
-    while new_date.month == date.month:
-        counter += 1
-        new_date = date + datetime.timedelta(days=counter)
-
-    return new_date
-
-def timeline_to_dict(timeline):
-    """Converts the timeline list to an ordered dict for scheduling and
-    colour mapping
-
-    :param  timeline:   Timeline list
-    :type   timeline:   list
-
-    :returns:   an ordered dict containing the timeline
-    :rtype:     OrderedDict
-
-    """
-    timeline_dict = collections.OrderedDict()
-    for line in timeline:
-        if not line['order'] in timeline_dict:
-            timeline_dict[line['order']] = []
-
-        timeline_dict[line['order']].append(line)
-    return timeline_dict
-
 def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
     """Plots the timeline to better visualize runtime.
-
+    
     :param  timeline:           A list of entries ordered chronologically as scheduled
     :type   timeline:           list
-    :param  scd_dir:            The scd directory path.
+    :param  scd_dir:            The scd directory path. (example: /home/radar/borealis_schedules)
     :type   scd_dir:            str
     :param  time_of_interest:   The datetime holding the time of scheduling.
     :type   time_of_interest:   Datetime
@@ -119,7 +80,22 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
 
     first_date, last_date = None, None
 
-    timeline_list = [0] * len(timeline)
+    timeline_list = [{}] * len(timeline)
+
+    def timeline_to_dict(t_list):
+        """
+        Converts the timeline list to an ordered dict for scheduling and
+        colour mapping
+        Returns:
+            OrderedDict: an ordered dict containing the timeline
+        """
+        t_dict = collections.OrderedDict()
+        for line in t_list:
+            if not line['order'] in t_dict:
+                t_dict[line['order']] = []
+
+            t_dict[line['order']].append(line)
+        return t_dict
 
     def get_cmap(n, name='hsv'):
         """
@@ -136,38 +112,37 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         """
         return plt.cm.get_cmap(name, n)
 
-    def split_event(event):
+    def split_event(long_event):
         """
-        Recursively splits an event that runs during two or more days into two events
+        Recursively splits a long event that runs during two or more days into two events
         in order to handle plotting.
 
         :param  event:  
         :type   event:  dict
         """
-        if event['start'].day == event['end'].day:
-            return [event]
+        if long_event['start'].day == long_event['end'].day:
+            return [long_event]
         else:
             new_event = dict()
-            new_event['color'] = event['color']
-            new_event['label'] = event['label']
+            new_event['color'] = long_event['color']
+            new_event['label'] = long_event['label']
 
-            td = datetime.timedelta(days=1)
-            midnight = datetime.datetime.combine(event['start'] + td, datetime.datetime.min.time())
+            one_day = datetime.timedelta(days=1)
+            midnight = datetime.datetime.combine(long_event['start'] + one_day, datetime.datetime.min.time())
 
-            first_dur = midnight - event['start']
-            second_dur = event['end'] - midnight
+            first_dur = midnight - long_event['start']
+            second_dur = long_event['end'] - midnight
 
             # handle the new event first
             new_event['start'] = midnight
             new_event['duration'] = second_dur
-            new_event['end'] = event['end']
+            new_event['end'] = long_event['end']
 
-            # now handle the old event
-            event['duration'] = first_dur
-            event['end'] = midnight
+            # now handle the old long_event
+            long_event['duration'] = first_dur
+            long_event['end'] = midnight
 
-            return [event] + split_event(new_event)
-
+            return [long_event] + split_event(new_event)
 
     # make random colors
     timeline_dict = timeline_to_dict(timeline)
@@ -181,6 +156,7 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         for event in events:
             event['color'] = colors[i]
 
+    plot_last = None
     for i, event in enumerate(timeline):
         event_item = dict()
 
@@ -190,7 +166,7 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         event_item['start'] = event['time']
 
         if event['duration'] == '-':
-            td = get_next_month_from_date(event['time']) - event['time']
+            td = scd_utils.get_next_month_from_date(event['time']) - event['time']
         else:
             td = datetime.timedelta(minutes=int(event['duration']))
 
@@ -214,12 +190,11 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         day_offset = event['start'].date() - first_date
         start = event['start'] - day_offset
         ax.barh(event['start'].date(), event['duration'], 0.16, left=start, color=event['color'], align='edge')
-        ax.text(x=(start + (event['duration'] / 2)), y=event['start'].date(), s=event['label'], color='k', rotation=45, ha='right', va='top', fontsize=8)
+        ax.text(x=(start + (event['duration'] / 2)), y=event['start'].date(), s=event['label'], color='k', rotation=45,
+                ha='right', va='top', fontsize=8)
 
-
-    hours = mdates.HourLocator(byhour=[0,6,12,18,24])
+    hours = mdates.HourLocator(byhour=[0, 6, 12, 18, 24])
     days = mdates.DayLocator()
-    minutes = mdates.MinuteLocator()
     x_fmt = mdates.DateFormatter('%H:%M')
     y_fmt = mdates.DateFormatter('%m-%d')
 
@@ -234,14 +209,13 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
     ax.set_ylim(first_date, plot_last)
     ax.set_ylabel('Date, MM-DD', rotation='vertical', fontsize=12)
 
-    ax.set_title(f'Schedule from {first_date} to {last_date.date()}' )
-
+    ax.set_title(f"Schedule from {first_date} to {last_date.date()}")
 
     pretty_date_str = time_of_interest.strftime("%Y-%m-%d")
     pretty_time_str = time_of_interest.strftime("%H:%M")
 
-    ax.annotate(f'Generated on {pretty_date_str} at {pretty_time_str} UTC',
-                                                xy=(1,1), xycoords='axes fraction', fontsize=12, ha='right', va='top')
+    ax.annotate(f"Generated on {pretty_date_str} at {pretty_time_str} UTC", xy=(1, 1),
+                xycoords='axes fraction', fontsize=12, ha='right', va='top')
 
     plot_time_str = time_of_interest.strftime("%Y.%m.%d.%H.%M")
     plot_dir = f"{scd_dir}/timeline_plots"
@@ -250,16 +224,13 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         os.makedirs(plot_dir)
 
     plot_file = f"{plot_dir}/{site_id}.{plot_time_str}.png"
-    fig.set_size_inches(14,8)
+    fig.set_size_inches(14, 8)
     fig.savefig(plot_file, dpi=80)
 
     pkl_file = f"{plot_dir}/{site_id}.{plot_time_str}.pickle"
     pkl.dump(fig, open(pkl_file, 'wb'))
 
-    return (plot_file, pkl_file)
-
-
-
+    return plot_file, pkl_file
 
 
 def convert_scd_to_timeline(scd_lines, time_of_interest):
@@ -300,6 +271,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
             - queued_lines: Groups of entries belonging to the same experiment. 
             - warnings: List of warnings produced by the function
     :rtype:     tuple(list, list)
+
     """
 
     inf_dur_line = None
@@ -315,12 +287,13 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
         when the last line is of set duration, find its finish time so that
         the infinite duration line can be set to run again at that point.
         """
-        last_queued_line = queued_lines[-1]
-        queued_dur_td = datetime.timedelta(minutes=int(last_queued_line['duration']))
-        queued_finish = last_queued_line['time'] + queued_dur_td
-        return last_queued_line, queued_finish
+        last_queued = queued_lines[-1]
+        queued_dur_td = datetime.timedelta(minutes=int(last_queued['duration']))
+        queued_finish_time = last_queued['time'] + queued_dur_td
+        return last_queued, queued_finish_time
 
     warnings = []
+    last_queued_line = {}
     for idx, scd_line in enumerate(scd_lines):
         # if we have lines queued up, grab the last one to compare to.
         if queued_lines:
@@ -388,7 +361,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                 # Durations and priorities change when lines can run and sometimes lines get
                 # broken up. We continually loop to readjust the timeline to account for the
                 # priorities and durations of new lines added.
-                while holder:# or first_time:
+                while holder:  # or first_time:
 
                     item_to_add = holder.pop()
                     duration_td = datetime.timedelta(minutes=int(item_to_add['duration']))
@@ -406,7 +379,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
                     # to make adjustments.
                     elif item_to_add['time'] < queued_finish:
                         # if the line finishes before the last line and is a higher priority,
-                        # we split the last line up and insert the new line.
+                        # we split the last line and insert the new line.
                         if finish_time < queued_finish:
                             if int(item_to_add['prio']) > int(last_queued_line['prio']):
                                 queued_copy = copy.deepcopy(last_queued_line)
@@ -461,6 +434,7 @@ def convert_scd_to_timeline(scd_lines, time_of_interest):
 
     return queued_lines, warnings
 
+
 def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     """
     Converts the created timeline to actual atq commands.
@@ -483,8 +457,11 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     """
 
     # This command is basically: for j in atq job number, print job num, time and command
-    get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1);'\
-    'do atq |grep -P "^$j\t"; at -c "$j" | tail -n 2; done'
+    # More detail: sort the atq first by year, then month name ('-M flag), then day of month
+    # Then hour, minute and second. Finally, just get the atq index (job #) in first column
+    # then, iterate through all jobs in the atq, list them to standard output, get the last 2 lines
+    get_atq_cmd = 'for j in $(atq | sort -k6,6 -k3,3M -k4,4 -k5,5 |cut -f 1); ' \
+                  'do atq |grep -P "^$j\t"; at -c "$j" | tail -n 2; done'
 
     output = sp.check_output(get_atq_cmd, shell=True)
 
@@ -507,20 +484,23 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     first_event = True
     for event in timeline:
         if first_event:
-            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode'], True, event['kwargs_string']))
+            atq.append(format_to_atq(event['time'], event['experiment'],
+                                     event['scheduling_mode'], True, event['kwargs_string']))
             first_event = False
         else:
-            atq.append(format_to_atq(event['time'], event['experiment'], event['scheduling_mode'], False, event['kwargs_string']))
+            atq.append(format_to_atq(event['time'], event['experiment'],
+                                     event['scheduling_mode'], False, event['kwargs_string']))
     for cmd in atq:
         sp.call(cmd, shell=True)
 
     return sp.check_output(get_atq_cmd, shell=True)
 
+
 def get_relevant_lines(scd_util, time_of_interest):
     """
     Gets the relevant lines.
 
-    Does a search for relevant lines. If the first line returned isnt an infinite duration, we need
+    Does a search for relevant lines. If the first line returned isn't an infinite duration, we need
     to look back until we find an infinite duration line, as that should be the last line to
     continue running if we need it.
 
@@ -539,7 +519,6 @@ def get_relevant_lines(scd_util, time_of_interest):
     yyyymmdd = time_of_interest.strftime("%Y%m%d")
     hhmm = time_of_interest.strftime("%H:%M")
 
-
     relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
     while not found:
 
@@ -548,8 +527,8 @@ def get_relevant_lines(scd_util, time_of_interest):
             if line['duration'] == '-':
                 found = True
 
-        if found != True:
-            time -= datetime.timedelta(minutes=1)
+        if not found:
+            time -= timedelta(minutes=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
             hhmm = time.strftime("%H:%M")
@@ -562,7 +541,7 @@ def get_relevant_lines(scd_util, time_of_interest):
 def _main():
     """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new SCD file entries")
-    parser.add_argument('--emails-filepath',required=True, help='A list of emails to send logs to')
+    parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
 
     args = parser.parse_args()
@@ -576,7 +555,7 @@ def _main():
     options = rso.RemoteServerOptions()
     site_id = options.site_id
 
-    scd_file = f'{scd_dir}/{site_id}.scd'
+    scd_file = f"{scd_dir}/{site_id}.scd"
 
     inot.add_watch(scd_file)
     scd_util = scd_utils.SCDUtils(scd_file)
@@ -585,7 +564,6 @@ def _main():
 
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-
 
     def make_schedule():
         time_of_interest = datetime.datetime.utcnow()
@@ -596,10 +574,9 @@ def _main():
         log_msg_header = f"Updated at {time_of_interest}\n"
         try:
             relevant_lines = get_relevant_lines(scd_util, time_of_interest)
-        except (IndexError,ValueError) as e:
-            error_msg = (f"{time_of_interest.strftime('%c')}: Unable to make schedule\n"
-                         f"\t Exception thrown:\n"
-                         f"\t\t {e}\n")
+        except (IndexError, ValueError) as e:
+            logtime = time_of_interest.strftime("%c")
+            error_msg = f"{logtime}: Unable to make schedule\n\t Exception thrown:\n\t\t {str(e)}\n"
             with open(log_file, 'w') as f:
                 f.write(log_msg_header)
                 f.write(error_msg)
@@ -624,18 +601,16 @@ def _main():
             subject = f"Successfully scheduled commands at {site_id}"
             emailer.email_log(subject, log_file, [plot_path, pickle_path])
 
-
-
     # Make the schedule on restart of application
     make_schedule()
     new_notify = False
+    path = ""
     while True:
-        # "IN_IGNORED" was removing watch points and wouldnt monitor the path. This regens it.
+        # "IN_IGNORED" was removing watch points and wouldn't monitor the path. This regens it.
         if new_notify:
             inot = inotify.adapters.Inotify()
             inot.add_watch(scd_file)
             new_notify = False
-
 
         events = inot.event_gen(yield_nones=False, timeout_s=10)
         events = list(events)
