@@ -10,8 +10,8 @@
     :copyright: 2017 SuperDARN Canada
 """
 
-import json
 import os
+from ..general import load_config, load_restrict, load_hdw
 from experiment_prototype.experiment_exception import ExperimentException
 
 
@@ -23,28 +23,8 @@ class ExperimentOptions:
         """
 
         # Gather the borealis configuration information
-        if not os.environ["BOREALISPATH"]:
-            raise ValueError("BOREALISPATH env variable not set")
-        if not os.environ['RADAR_CODE']:
-            raise ValueError('RADAR_CODE env variable not set')
-        config_path = f'{os.environ["BOREALISPATH"]}/config/' \
-                      f'{os.environ["RADAR_CODE"]}/' \
-                      f'{os.environ["RADAR_CODE"]}_config.ini'
-        restricted_path = f'{os.environ["BOREALISPATH"]}/config/' \
-                          f'{os.environ["RADAR_CODE"]}/' \
-                          f'restrict.dat.{os.environ["RADAR_CODE"]}'
-        try:         # Try to open config file
-            with open(config_path, 'r') as config_data:
-                raw_config = json.load(config_data)
-        except IOError:
-            errmsg = f'Cannot open config file at {config_path}'
-            raise IOError(errmsg)
-        try:         # Try to open restricted.dat file
-            with open(restricted_path) as restricted_freq_data:
-                restricted = restricted_freq_data.readlines()
-        except IOError:
-            errmsg = f'Cannot open restrict.dat file at {restricted_path}'
-            raise ExperimentException(errmsg)
+        raw_config = load_config()
+        restricted = load_restrict()
 
         try:
             self._main_antenna_count = int(raw_config["main_antenna_count"])
@@ -115,14 +95,12 @@ class ExperimentOptions:
 
             if len(self.main_antennas) > 0:
                 if min(self.main_antennas) < 0 or max(self.main_antennas) >= self.main_antenna_count:
-                    errmsg = 'main_antennas and main_antenna_count have incompatible values in'\
-                            f' {config_path}'
+                    errmsg = 'main_antennas and main_antenna_count have incompatible values in'
                     raise ExperimentException(errmsg)
             if len(self.interferometer_antennas) > 0:
                 if min(self.interferometer_antennas) < 0 or \
                         max(self.interferometer_antennas) >= self.interferometer_antenna_count:
-                    errmsg = 'interferometer_antennas and interferometer_antenna_count have'\
-                            f' incompatible values in {config_path}'
+                    errmsg = 'interferometer_antennas and interferometer_antenna_count have incompatible values'
                     raise ExperimentException(errmsg)
 
             hdw_path = str(raw_config["hdw_path"])
@@ -134,7 +112,8 @@ class ExperimentOptions:
             # TODO: error
             raise e
 
-        hdw_dat_file = f'{hdw_path}/hdw.dat.{os.environ["RADAR_CODE"]}'
+        # Load information from the hardware files
+        hdw_dat_file = f'{hdw_path}/hdw.dat.{os.environ["RADAR_ID"]}'
 
         try:
             with open(hdw_dat_file) as hdwdata:

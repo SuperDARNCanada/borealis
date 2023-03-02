@@ -27,12 +27,10 @@
         https://www.structlog.org/en/stable/standard-library.html
         https://www.structlog.org/en/stable/processors.html#chains
 """
-
-import os
-import json
 import inspect
 from pathlib import Path
 import sys
+from general import load_config
 # We need these two handlers from logging to print to a file and stdout
 import logging
 from logging import StreamHandler
@@ -83,19 +81,7 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
     module_name = caller.name.split('.')[0]
 
     # Gather the borealis configuration information
-    if not os.environ["BOREALISPATH"]:
-        raise ValueError("BOREALISPATH env variable not set")
-    if not os.environ['RADAR_CODE']:
-        raise ValueError('RADAR_CODE env variable not set')
-    config_path = f'{os.environ["BOREALISPATH"]}/config/' \
-                  f'{os.environ["RADAR_CODE"]}/'  \
-                  f'{os.environ["RADAR_CODE"]}_config.ini'
-    try:
-        with open(config_path, 'r') as config_data:
-            raw_config = json.load(config_data)
-    except IOError:
-        errmsg = f'Cannot open config file at {config_path}'
-        raise IOError(errmsg)
+    raw_config = load_config()
 
     # If no override log level is set load the config log level
     if log_level is None:

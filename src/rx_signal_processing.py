@@ -545,7 +545,7 @@ def main():
                 sequence_samples = ringbuffer.take(indices, axis=1, mode='wrap')
             log_dict["copy_samples_from_ringbuffer_time"] = (time.perf_counter() - start_timer) * 1e3
 
-            # Tell brain DSP is about to begin
+            # Tell brian DSP is about to begin
             mark_timer = time.perf_counter()
             reply_packet = {"sequence_num": sequence_num}
             msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
@@ -632,8 +632,8 @@ def main():
                     elif array_name == 'intf':
                         holder.intf_shm = shm.name
                 except Exception as e:
-                    log.error("unknown array name [main, intf]", error=e)
-                    log.exception("unknown array name [main, intf]", error=e)
+                    log.error(f"unknown array name {array_name} not in [main, intf]", error=e)
+                    log.exception(f"unknown array name {array_name} [main, intf]", error=e)
                     sys.exit(1)
 
                 holder.num_samps = data_array.shape[-1]

@@ -15,7 +15,7 @@ import subprocess as sp
 import datetime
 import os
 import time
-import json
+from src.utils.general import load_config
 
 PYTHON_VERSION = os.environ['PYTHON_VERSION']
 
@@ -206,19 +206,7 @@ day_dir = now.strftime("%Y%m%d")
 logfile_timestamp = now.strftime("%Y.%m.%d.%H:%M")
 
 # Gather the borealis configuration information
-if not os.environ["BOREALISPATH"]:
-    raise ValueError("BOREALISPATH env variable not set")
-if not os.environ['RADAR_CODE']:
-    raise ValueError('RADAR_CODE env variable not set')
-config_path = f'{os.environ["BOREALISPATH"]}/config/' \
-              f'{os.environ["RADAR_CODE"]}/' \
-              f'{os.environ["RADAR_CODE"]}_config.ini'
-try:
-    with open(config_path, 'r') as config_data:
-        raw_config = json.load(config_data)
-except IOError:
-    errmsg = f'Cannot open config file at {config_path}'
-    raise IOError(errmsg)
+raw_config = load_config()
 
 log_dir = raw_config['log_directory']
 sp.call("mkdir -p " + log_dir, shell=True)

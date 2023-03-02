@@ -16,10 +16,11 @@ References
 
 
 """
+
 import argparse
 import os
 import sys
-import json
+from src.utils.general import load_config
 from datetime import datetime as dt
 import glob
 import subprocess
@@ -46,22 +47,10 @@ def main():
     restart_after_seconds = args.restart_after_seconds
     borealis_path = args.borealis_path
 
-    if not os.path.exists(borealis_path):
-        print(f"BOREALISPATH: {borealis_path} doesn't exist")
-        sys.exit(1)
+    # Gather the borealis configuration information
+    raw_config = load_config()
 
-    config_path = borealis_path + "/config.ini"
-    try:
-        with open(config_path) as config_data:
-            raw_config = json.load(config_data)
-            data_directory = raw_config["data_directory"]
-    except IOError:
-        print(f'Cannot open config file at {config_path}')
-        sys.exit(1)
-
-    #####################################
-    # Borealis data check               #
-    #####################################
+    data_directory = raw_config["data_directory"]
 
     # Get today's date and look for the current data file being written
     today = dt.utcnow().strftime("%Y%m%d")

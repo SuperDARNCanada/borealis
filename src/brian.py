@@ -108,8 +108,8 @@ def sequence_timing(opts):
     def start_new():
         """
         This function serves to rate control the system. If processing is faster than the
-        sequence time than the speed of the driver is the limiting factor. If processing takes
-        longer than sequence time, than the dsp unit limits the speed of the system.
+        sequence time then the speed of the driver is the limiting factor. If processing takes
+        longer than sequence time, then the dsp unit limits the speed of the system.
         """
 
         start_new = context.socket(zmq.PAIR)
@@ -249,7 +249,6 @@ def sequence_timing(opts):
                     late_counter = 0
             last_processing_time = sig_p['kerneltime']
 
-            print(sig_p)
             log.debug("brian to dsp",
                       kernel_time=sig_p['kerneltime'],
                       sequence_time_unit="ms",

@@ -805,8 +805,8 @@ class DataWrite(object):
         try:
             assert file_ext in ['hdf5', 'json', 'dmap']
         except Exception as e:
-            log.error("wrong file format [hdf5, json, dmap]", error=e)
-            log.exception("wrong file format [hdf5, json, dmap]", exception=e)
+            log.error(f"wrong file format {file_ext} not in [hdf5, json, dmap]", error=e)
+            log.exception(f"wrong file format {file_ext} not in [hdf5, json, dmap]", exception=e)
             sys.exit(1)
 
         # Format the name and location for the dataset

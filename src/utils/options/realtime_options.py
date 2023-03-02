@@ -10,8 +10,7 @@
     :copyright: 2019 SuperDARN Canada
 """
 
-import json
-import os
+from ..general import load_config
 
 
 class RealtimeOptions(object):
@@ -23,25 +22,12 @@ class RealtimeOptions(object):
         super(RealtimeOptions, self).__init__()
 
         # Gather the borealis configuration information
-        if not os.environ["BOREALISPATH"]:
-            raise ValueError("BOREALISPATH env variable not set")
-        if not os.environ['RADAR_CODE']:
-            raise ValueError('RADAR_CODE env variable not set')
-        config_path = f'{os.environ["BOREALISPATH"]}/config/' \
-                      f'{os.environ["RADAR_CODE"]}/' \
-                      f'{os.environ["RADAR_CODE"]}_config.ini'
-        try:
-            with open(config_path, 'r') as config_data:
-                raw_config = json.load(config_data)
-        except IOError:
-            errmsg = f'Cannot open config file at {config_path}'
-            raise IOError(errmsg)
+        raw_config = load_config()
 
         self._rt_to_dw_identity = raw_config["rt_to_dw_identity"]
         self._dw_to_rt_identity = raw_config["dw_to_rt_identity"]
         self._rt_address = raw_config["realtime_address"]
         self._router_address = raw_config["router_address"]
-
 
     @property
     def rt_to_dw_identity(self):

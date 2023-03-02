@@ -12,8 +12,7 @@
 
 # TODO: Get experiment details from somewhere to write metadata out to files (freq, cpid, etc..)
 
-import json
-import os
+from ..general import load_config
 
 
 class DataWriteOptions(object):
@@ -25,19 +24,7 @@ class DataWriteOptions(object):
         super(DataWriteOptions, self).__init__()
 
         # Gather the borealis configuration information
-        if not os.environ["BOREALISPATH"]:
-            raise ValueError("BOREALISPATH env variable not set")
-        if not os.environ['RADAR_CODE']:
-            raise ValueError('RADAR_CODE env variable not set')
-        config_path = f'{os.environ["BOREALISPATH"]}/config/' \
-                      f'{os.environ["RADAR_CODE"]}/' \
-                      f'{os.environ["RADAR_CODE"]}_config.ini'
-        try:
-            with open(config_path, 'r') as config_data:
-                raw_config = json.load(config_data)
-        except IOError:
-            errmsg = f'Cannot open config file at {config_path}'
-            raise IOError(errmsg)
+        raw_config = load_config()
 
         self._rt_to_dw_identity = raw_config["rt_to_dw_identity"]
         self._dw_to_rt_identity = raw_config["dw_to_rt_identity"]
@@ -242,6 +229,7 @@ class DataWriteOptions(object):
         """
 
         return self._intf_antennas
+
 
 if __name__ == '__main__':
     DataWriteOptions()

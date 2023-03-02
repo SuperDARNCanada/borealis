@@ -55,7 +55,7 @@ def recv_data(socket, sender_identity, log):
     if receiver_identity != sender_identity.encode('utf-8'):
         log.error("sender_identity != receiver_identity",
                   sender_identity=sender_identity,
-                  reciever_identity=receiver_identity)
+                  receiver_identity=receiver_identity)
         return None
     else:
         return data.decode('utf-8')
@@ -100,7 +100,7 @@ def recv_bytes(socket, sender_identity, log):
     if receiver_identity != sender_identity.encode('utf-8'):
         log.error("sender_identity != receiver_identity",
                   sender_identity=sender_identity,
-                  reciever_identity=receiver_identity)
+                  receiver_identity=receiver_identity)
         return None
     else:
         return bytes_object

@@ -57,7 +57,7 @@ def main():
                     converted = pydarnio.BorealisConvert(filename, "rawacf", "/dev/null", slice_num, "site")
                     os.remove(filename)
                 except pydarnio.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
-                    log.info("error converting filename", filename=filename)
+                    log.info("error converting", filename=filename)
                     os.remove(filename)
                     continue
 

@@ -188,7 +188,7 @@ def experiment_handler(semaphore, args):
     for method_name, obj in inspect.getmembers(Experiment, inspect.isfunction):
         if method_name == 'update':
             experiment_update = True
-            log.debug("experiment updated", experiment_name=Experiment.experiment_name)
+            log.debug("experiment contains an updated method", experiment_name=Experiment.experiment_name)
 
     if args.kwargs_string:
         # parse kwargs and pass to experiment
@@ -244,8 +244,10 @@ def experiment_handler(semaphore, args):
                                                  options.radctrl_to_exphan_identity,
                                                  log)
 
+        log.debug("radar control made a request", request=message)
+
         semaphore.acquire()
-        if message in ['EXPNEEDED', 'NOERROR']:
+        if message == 'EXPNEEDED':
             log.info("sending new experiment from beginning", message=message)
             # Starting anew
             send_experiment(exp_handler_to_radar_control,
