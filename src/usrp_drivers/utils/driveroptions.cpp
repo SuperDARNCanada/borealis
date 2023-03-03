@@ -29,8 +29,8 @@ DriverOptions::DriverOptions() {
     // Get number of physical antennas
     main_antenna_count_ = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("main_antenna_count"));
-    interferometer_antenna_count_ = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("interferometer_antenna_count"));
+    intf_antenna_count_ = boost::lexical_cast<uint32_t>(
+                                config_pt.get<std::string>("intf_antenna_count"));
 
     // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
@@ -40,7 +40,7 @@ DriverOptions::DriverOptions() {
         bool tx = false;
         bool rx_int = false;
         std::string main_antenna = "";
-        std::string interferometer_antenna = "";
+        std::string intf_antenna = "";
         // Iterate through all N200 parameters and store them in variables
         for (auto iter = n200->second.begin(); iter != n200->second.end(); iter++)
         {
@@ -60,8 +60,8 @@ DriverOptions::DriverOptions() {
             else if (param.compare("main_antenna") == 0) {
                 main_antenna = iter->second.data();
             }
-            else if (param.compare("interferometer_antenna") == 0) {
-                interferometer_antenna = iter->second.data();
+            else if (param.compare("intf_antenna") == 0) {
+                intf_antenna = iter->second.data();
             }
             else {
                 throw std::invalid_argument("Invalid N200 parameter in config file");
@@ -81,7 +81,7 @@ DriverOptions::DriverOptions() {
 
             // If N200 has interferometer, map device number to interferometer antenna number
             if (rx_int) {
-                auto int_antenna_num = boost::lexical_cast<uint32_t>(interferometer_antenna);
+                auto int_antenna_num = boost::lexical_cast<uint32_t>(intf_antenna);
                 int_antenna_map[int_antenna_num] = device_num;
             }
         }
@@ -137,7 +137,7 @@ DriverOptions::DriverOptions() {
 
     tx_subdev_ = config_pt.get<std::string>("tx_subdev");
     main_rx_subdev_ = config_pt.get<std::string>("main_rx_subdev");
-    interferometer_rx_subdev_ = config_pt.get<std::string>("interferometer_rx_subdev");
+    intf_rx_subdev_ = config_pt.get<std::string>("intf_rx_subdev");
     pps_ = config_pt.get<std::string>("pps");
     ref_ = config_pt.get<std::string>("ref");
     cpu_ = config_pt.get<std::string>("cpu");
@@ -197,19 +197,19 @@ DriverOptions::DriverOptions() {
     receive_channels_ = make_channels(total_recv_chs_str);
     transmit_channels_ = make_channels(ma_tx_str);
     main_antennas_ = make_channels(ma_channel_str);
-    interferometer_antennas_ = make_channels(ia_channel_str);
+    intf_antennas_ = make_channels(ia_channel_str);
 
     router_address_ = config_pt.get<std::string>("router_address");
     ringbuffer_name_ = config_pt.get<std::string>("ringbuffer_name");
     ringbuffer_size_bytes_ = boost::lexical_cast<double>(
                                     config_pt.get<std::string>("ringbuffer_size_bytes"));
 
-    std::string driver_to_radctrl_identity_ = "DRIVER_RADCTRL_IDEN";
-    std::string driver_to_dsp_identity_ = "DRIVER_DSP_IDEN";
-    std::string driver_to_brian_identity_ = "DRIVER_BRIAN_IDEN";
-    std::string radctrl_to_driver_identity_ = "RADCTRL_DRIVER_IDEN";
-    std::string dsp_to_driver_identity_ = "DSP_DRIVER_IDEN";
-    std::string brian_to_driver_identity_ = "BRIAN_DRIVER_IDEN";
+    driver_to_radctrl_identity_ = "DRIVER_RADCTRL_IDEN";
+    driver_to_dsp_identity_ = "DRIVER_DSP_IDEN";
+    driver_to_brian_identity_ = "DRIVER_BRIAN_IDEN";
+    radctrl_to_driver_identity_ = "RADCTRL_DRIVER_IDEN";
+    dsp_to_driver_identity_ = "DSP_DRIVER_IDEN";
+    brian_to_driver_identity_ = "BRIAN_DRIVER_IDEN";
 }
 
 /**
@@ -259,7 +259,7 @@ std::string DriverOptions::get_main_rx_subdev() const
  */
 std::string DriverOptions::get_interferometer_rx_subdev() const
 {
-    return interferometer_rx_subdev_;
+    return intf_rx_subdev_;
 }
 
 /**
@@ -441,7 +441,7 @@ uint32_t DriverOptions::get_main_antenna_count() const
  */
 std::vector<size_t> DriverOptions::get_interferometer_antennas() const
 {
-    return interferometer_antennas_;
+    return intf_antennas_;
 }
 
 /**
@@ -451,7 +451,7 @@ std::vector<size_t> DriverOptions::get_interferometer_antennas() const
  */
 uint32_t DriverOptions::get_interferometer_antenna_count() const
 {
-    return interferometer_antenna_count_;
+    return intf_antenna_count_;
 }
 
 /**
