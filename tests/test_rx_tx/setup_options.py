@@ -3,8 +3,8 @@ Class SetupOptions parses options from a configuration file and
 provideds methods for setting and retrieving options critical
 to txio board and USRP device configuration
 """
-import json
-import os
+
+from src.utils.general import load_config
 
 
 class SetupOptions(object):
@@ -16,12 +16,7 @@ class SetupOptions(object):
 		Constructor for option parser for board setup
 		:param filepath: Path to config file
 		"""
-		try:
-			with open(filepath, 'r') as config_data:
-				raw_config = json.load(config_data)
-		except IOError:
-			errmsg = 'Cannon open config file at {}'.format(config_path)
-			raise IOError(errmsg)
+		raw_config = load_config()
 
 		self._devices = raw_config['devices']
 		self._tx_subdev = raw_config['tx_subdev']

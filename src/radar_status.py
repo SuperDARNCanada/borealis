@@ -1,3 +1,17 @@
+"""
+Okay what is this for?
+
+read logs on control the radar when oopsies happen (daemon)
+
+gather misc system health information and log it (radar_status)
+
+mini aggregator of nice clean logs before sending to reduce volume (radar_status)
+
+console based viewer w/ plotext so we don't have to start 6 segments any more (radar_status)
+
+"""
+
+
 def statustype():
     errors = ('EXPNEEDED', 'NOERROR', 'WARNING', 'EXITERROR')
     return errors

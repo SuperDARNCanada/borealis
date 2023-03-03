@@ -8,8 +8,8 @@
     :copyright: 2019 SuperDARN Canada
 """
 
-import json
-import os
+from src.utils.general import load_config
+
 
 
 def ascii_encode_dict(data):
@@ -30,19 +30,8 @@ class RemoteServerOptions(object):
         """
         super().__init__()
 
-        if not os.environ["BOREALISPATH"]:
-            raise ValueError("BOREALISPATH env variable not set")
-
-        if config_path is None:
-            radar_id = os.environ["RADAR_ID"]
-            config_path = f"{os.environ['BOREALISPATH']}/{radar_id}/{radar_id}_config.ini"
-
-        try:
-            with open(config_path, 'r') as config_data:
-                raw_config = json.load(config_data)
-        except IOError:
-            errmsg = f"Cannot open config file at {config_path}"
-            raise IOError(errmsg)
+        # Gather the borealis configuration information
+        raw_config = load_config()
 
         self._site_id = raw_config["site_id"]
 

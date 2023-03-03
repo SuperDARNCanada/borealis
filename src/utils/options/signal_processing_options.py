@@ -11,9 +11,8 @@
     :copyright: 2020 SuperDARN Canada
 """
 
+from ..general import load_config
 
-import json
-import os
 
 class SignalProcessingOptions(object):
     """
@@ -23,17 +22,8 @@ class SignalProcessingOptions(object):
     def __init__(self):
         super(SignalProcessingOptions, self).__init__()
 
-        if not os.environ["BOREALISPATH"]:
-            raise ValueError("BOREALISPATH env variable not set")
-        if not os.environ['RADAR_CODE']:
-            raise ValueError('RADAR_CODE env variable not set')
-        config_path = f'{os.environ["BOREALISPATH"]}/config/{os.environ["RADAR_CODE"]}/{os.environ["RADAR_CODE"]}_config.ini'
-        try:
-            with open(config_path, 'r') as config_data:
-                raw_config = json.load(config_data)
-        except IOError:
-            errmsg = f'Cannot open config file at {config_path}'
-            raise IOError(errmsg)
+        # Gather the borealis configuration information
+        raw_config = load_config()
 
         self._router_address = raw_config["router_address"]
         self._dsp_radctrl_identity = raw_config["dsp_to_radctrl_identity"]

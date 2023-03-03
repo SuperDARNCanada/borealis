@@ -33,37 +33,37 @@ sys.path.insert(3, BOREALISPATH + '/src/utils')
 sys.path.insert(4, BOREALISPATH + '/scheduler')
 sys.path.insert(5, os.environ['PATH'])
 
-RADAR_CODE = 'sas'
-os.environ['RADAR_CODE'] = RADAR_CODE
+RADAR_ID = 'sas'
+os.environ['RADAR_ID'] = RADAR_ID
 
 # hack for readthedocs to cause it to run doxygen first: https://github.com/rtfd/readthedocs.org/issues/388
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
     # Doxygen: Reads all c++ source and header files, and parses the documentation to xml files 
     # for further reading. 
-	run('doxygen')
-    
+    run('doxygen')
+
     # Breathe: parses xml files produced by doxygen and creates rst files for use by Sphinx Files
     # are re-generated each call, no table of contents file is created, and only rst files are
     # created. For more information, `breathe-apidoc --help`
-	cur_dir = os.path.abspath(os.path.dirname(__file__))
-	run(['breathe-apidoc','--force','--no-toc','--generate','file','-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
+    cur_dir = os.path.abspath(os.path.dirname(__file__))
+    run(['breathe-apidoc', '--force', '--no-toc', '--generate', 'file', '-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
 
     # Update the experiment subrepo so experiment files can be read into documentation
-	run(['git', 'submodule', 'update', '--init'])
+    run(['git', 'submodule', 'update', '--init'])
 
     # Clone in the HDW repo temporarily so modules reading them don't throw errors
-	# TODO: Get this path into config file somehow, as that's now how we specify hdw location 
-	run(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
+    # TODO: Get this path into config file somehow, as that's now how we specify hdw location
+    run(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
 
-	# Change config file HDW path to path accessible by ReadTheDocs
+    # Change config file HDW path to path accessible by ReadTheDocs
     # TODO: Come up with a way that doesn't require modifying a version controlled config file
-	config_file = BOREALISPATH + f'/config/{RADAR_CODE}/{RADAR_CODE}_config.ini'
-	with open(config_file, 'r') as file:
-		data = json.load(file)
-	data['hdw_path'] = BOREALISPATH + '/hdw'
-	with open(config_file, 'w') as file:
-		json.dump(data, file)
+    config_file = BOREALISPATH + f'/config/{RADAR_ID}/{RADAR_ID}_config.ini'
+    with open(config_file, 'r') as file:
+        data = json.load(file)
+    data['hdw_path'] = BOREALISPATH + '/hdw'
+    with open(config_file, 'w') as file:
+        json.dump(data, file)
 
 
 # -- General configuration ------------------------------------------------

@@ -6,8 +6,7 @@
 # 2018-05-14
 # options class for set_affinity module
 
-import json
-import os
+from src.utils.general import load_config
 
 
 def ascii_encode_dict(data):
@@ -23,16 +22,8 @@ class SetAffinityOptions(object):
     def __init__(self):
         super(SetAffinityOptions, self).__init__()
 
-        if not os.environ["BOREALISPATH"]:
-            raise ValueError("BOREALISPATH env variable not set")
-        config_path = os.environ["BOREALISPATH"] + "/config.ini"
-        try:
-            with open(config_path, 'r') as config_data:
-                raw_config = json.load(config_data)
-        except IOError:
-            errmsg = 'Cannot open config file at {0}'.format(config_path)
-            raise IOError(errmsg)
-
+        # Gather the borealis configuration information
+        raw_config = load_config()
 
         self._router_address = raw_config["router_address"]
         self._driver_to_mainaffinity_identity = raw_config["driver_to_mainaffinity_identity"]

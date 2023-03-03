@@ -15,7 +15,7 @@ import subprocess as sp
 import datetime
 import os
 import time
-import json
+from src.utils.general import load_config
 
 PYTHON_VERSION = os.environ['PYTHON_VERSION']
 
@@ -205,13 +205,8 @@ now = datetime.datetime.utcnow()
 day_dir = now.strftime("%Y%m%d")
 logfile_timestamp = now.strftime("%Y.%m.%d.%H:%M")
 
-config_path = os.environ["BOREALISPATH"] + "/config.ini"
-try:
-    with open(config_path, 'r') as config_data:
-        raw_config = json.load(config_data)
-except IOError:
-    errmsg = f'Cannot open config file at {config_path}'
-    raise IOError(errmsg)
+# Gather the borealis configuration information
+raw_config = load_config()
 
 log_dir = raw_config['log_directory']
 sp.call("mkdir -p " + log_dir, shell=True)

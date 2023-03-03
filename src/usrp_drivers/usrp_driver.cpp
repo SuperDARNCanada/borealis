@@ -27,8 +27,8 @@
 #include <sys/mman.h>
 #include "utils/driveroptions.hpp"
 #include "usrp.hpp"
-#include "borealis/utils/protobuf/driverpacket.pb.h"
-#include "borealis/utils/protobuf/rxsamplesmetadata.pb.h"
+#include "src/utils/protobuf/driverpacket.pb.h"
+#include "src/utils/protobuf/rxsamplesmetadata.pb.h"
 #include "utils/shared_memory.hpp"
 #include "utils/shared_macros.hpp"
 #include "utils/zmq_borealis_helpers.hpp"

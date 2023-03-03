@@ -17,16 +17,19 @@ import math
 import numpy as np
 import copy
 import collections
-import sys
-import os
 from functools import reduce
 
 from experiment_prototype.sample_building.sample_building import get_samples, get_phase_shift
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 from experiment_prototype.experiment_exception import ExperimentException
-import utils.shared_macros as sm
 
-sequence_print = sm.MODULE_PRINT("sequence building", "magenta")
+# Obtain the module name that imported this log_config
+import inspect
+from pathlib import Path
+caller = Path(inspect.stack()[-1].filename)
+module_name = caller.name.split('.')[0]
+import structlog
+log = structlog.getLogger(module_name)
 
 
 class Sequence(ScanClassBase):
@@ -113,8 +116,6 @@ class Sequence(ScanClassBase):
         # For each slice calculate beamformed samples and place into the basic_slice_pulses
         # dictionary. Also populate the pulse timing metadata and place into single_pulse_timing
         for slice_id in self.slice_ids:
-            print()     # Separate the slice information in the logs
-            sequence_print(f'Slice {slice_id}')
             exp_slice = self.slice_dict[slice_id]
             freq_khz = float(exp_slice['freq'])
             wave_freq = freq_khz - txctrfreq
@@ -139,9 +140,11 @@ class Sequence(ScanClassBase):
                 # main_phase_shift: [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
-                sequence_print(f'Main tx antenna complex phases: {tx_main_phase_shift}')
-                sequence_print(f'Main tx antenna magnitudes: {np.abs(tx_main_phase_shift)}')
-                sequence_print(f'Main tx antenna angles: {np.rad2deg(np.angle(tx_main_phase_shift))}')
+                log.info("slice information",
+                         slice_id=slice_id,
+                         tx_main_phases=tx_main_phase_shift,
+                         tx_main_magnitudes=np.abs(tx_main_phase_shift),
+                         tx_main_angles=np.rad2deg(np.angle(tx_main_phase_shift)))
                 phased_samps_for_beams = np.einsum('ij,k->ijk', tx_main_phase_shift, basic_samples)
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
@@ -301,11 +304,9 @@ class Sequence(ScanClassBase):
 
         # print out pulse information for logging.
         for i, cpm in enumerate(combined_pulses_metadata):
-            message = f"Pulse {i}: start time(us) {cpm['start_time_us']}  start sample {cpm['pulse_sample_start']}"
-            sequence_print(message)
-
-            message = f"          pulse length(us) {cpm['total_pulse_len']}  pulse num samples {cpm['total_num_samps']}"
-            sequence_print(message)
+            # message = f"Pulse {i}: start time(us) {cpm['start_time_us']}  start sample {cpm['pulse_sample_start']}"
+            # message += f"          pulse length(us) {cpm['total_pulse_len']}  pulse num samples {cpm['total_num_samps']}"
+            log.info("pulse information", **cpm)
 
         self.combined_pulses_metadata = combined_pulses_metadata
 
@@ -382,7 +383,7 @@ class Sequence(ScanClassBase):
 
         self.align_sequences = reduce(lambda a, b: a or b, [s['align_sequences'] for s in self.slice_dict.values()])
         if self.align_sequences:
-            sequence_print("Aligning sequences to 0.1 second boundaries.")
+            log.info("aligning sequences to 0.1 s boundaries.")
 
     def make_sequence(self, beam_iter, sequence_num):
         """

@@ -29,11 +29,6 @@ from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
-def printing(msg):
-    EXPERIMENT_HANDLER = "\033[34m" + "EXPERIMENT HANDLER: " + "\033[0m"
-    sys.stdout.write(EXPERIMENT_HANDLER + msg + "\n")
-
-
 def usage_msg():
     """
     Return the usage message for this process.
@@ -77,7 +72,7 @@ def experiment_parser():
                                                   "e.g. normalscan")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. common, special, or discretionary.")
-    parser.add_argument("--kwargs_string", default='', 
+    parser.add_argument("--kwargs_string", default='',
                         help="String of keyword arguments for the experiment.")
 
     return parser
@@ -99,8 +94,7 @@ def retrieve_experiment(experiment_module_name):
     :rtype:     ExperimentPrototype
     """
 
-    if __debug__:
-        printing("Running the experiment: " + experiment_module_name)
+    log.debug("loading experiment", experiment_module_name=experiment_module_name)
     experiment_mod = importlib.import_module("borealis_experiments." + experiment_module_name)
 
     # find the class or classes *defined* in this module.
@@ -130,7 +124,9 @@ def retrieve_experiment(experiment_module_name):
     # this is the experiment class that we need to run.
     Experiment = experiment_classes[0][1]
 
-    printing(f'Retrieving experiment: {experiment_classes[0][0]} from module {experiment_mod}')
+    log.info("retrieving experiment from module",
+             experiment_class=experiment_classes[0][0],
+             experiment_module=experiment_mod)
 
     return Experiment
 
@@ -146,9 +142,11 @@ def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
     :param  serialized_exp:                 Either a pickled experiment or a None.
     :type   serialized_exp:                 bytes
     """
+
     try:
         socket_operations.send_exp(exp_handler_to_radar_control, iden, serialized_exp)
-    except zmq.ZMQError:  # the queue was full - radarcontrol not receiving.
+    except zmq.ZMQError as e:  # the queue was full - radar_control not receiving.
+        log.warning("zmq queue full not receiving", error=e)
         pass  # TODO handle this. Shutdown and restart all modules.
 
 
@@ -190,10 +188,7 @@ def experiment_handler(semaphore, args):
     for method_name, obj in inspect.getmembers(Experiment, inspect.isfunction):
         if method_name == 'update':
             experiment_update = True
-
-    if __debug__:
-        if experiment_update:
-            printing("Experiment has an updated method.")
+            log.debug("experiment contains an updated method", experiment_name=Experiment.experiment_name)
 
     if args.kwargs_string:
         # parse kwargs and pass to experiment
@@ -216,61 +211,56 @@ def experiment_handler(semaphore, args):
         #                               "Need completed data")
 
         #data = socket_operations.recv_data(exp_handler_to_dsp,
-        #                             options.dsp_to_exphan_identity, printing)
+        #                             options.dsp_to_exphan_identity, log)
 
         some_data = None  # TODO get the data from data socket and pass to update
 
         semaphore.acquire()
         change_flag = exp.update(some_data)
         if change_flag:
-            if __debug__:
-                printing("Building an updated experiment.")
+            log.debug("building an updated experiment")
             exp.build_scans()
-            printing(f"Experiment {exp.__class__.__name__} with CPID {exp.cpid} successfully updated")
+            log.info("experiment successfully updated",
+                     experiment_name=exp.__class__.__name__,
+                     cpid=exp.cpid)
         semaphore.release()
 
     update_thread = threading.Thread(target=update_experiment)
 
     while True:
-
         if not change_flag:
             serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             exp.build_scans()
-            printing(f"Successful experiment {exp.__class__.__name__} built with CPID {exp.cpid}")
+            log.info("experiment successfully built",
+                     experiment_name=exp.__class__.__name__,
+                     cpid=exp.cpid)
             serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
-            # use the newest, fastest protocol (currently version 4 in python 3.4+)
+            # Use the newest, fastest protocol (currently version 4 in python 3.4+)
             change_flag = False
 
-        # WAIT until radar_control is ready to receive a changed experiment
+        # Wait until radar_control is ready to receive a changed experiment
         message = socket_operations.recv_request(exp_handler_to_radar_control,
                                                  options.radctrl_to_exphan_identity,
-                                                 printing)
-        if __debug__:
-            request_msg = f"Radar control made request -> {message}."
-            printing(request_msg)
+                                                 log)
+
+        log.debug("radar control made a request", request=message)
 
         semaphore.acquire()
         if message == 'EXPNEEDED':
-            printing("Sending new experiment from beginning")
-            # starting anew
+            log.info("sending new experiment from beginning", message=message)
+            # Starting anew
             send_experiment(exp_handler_to_radar_control,
-                            options.radctrl_to_exphan_identity, serialized_exp)
+                            options.radctrl_to_exphan_identity,
+                            serialized_exp)
 
-        elif message == 'NOERROR':
-            # no errors
-            send_experiment(exp_handler_to_radar_control,
-                            options.radctrl_to_exphan_identity, serialized_exp)
-
-        # TODO: handle errors with revert back to original experiment. requires another
-        # message
+        # TODO: handle errors with revert back to original experiment. requires another message
         semaphore.release()
 
         if experiment_update:
-            # check if a thread is already running !!!
+            # Check if a thread is already running !!!
             if not update_thread.isAlive():
-                if __debug__:
-                    printing("Updating experiment")
+                log.debug("updating experiment thread")
                 update_thread = threading.Thread(target=update_experiment)
                 update_thread.daemon = True
                 update_thread.start()
@@ -284,4 +274,12 @@ def main(sys_args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    from utils import log_config
+    log = log_config.log()
+    log.info(f"EXPERIMENT_HANDLER BOOTED")
+    try:
+        main(sys.argv[1:])
+        log.info(f"EXPERIMENT_HANDLER EXITED")
+    except Exception as main_exception:
+        log.critical("EXPERIMENT_HANDLER CRASHED", error=main_exception)
+        log.exception("EXPERIMENT_HANDLER CRASHED", exception=main_exception)
