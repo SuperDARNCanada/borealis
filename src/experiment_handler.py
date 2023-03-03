@@ -23,7 +23,7 @@ import importlib
 import threading
 import pickle
 
-from utils.options.experimentoptions import ExperimentOptions
+from utils.options.options import Options
 from utils import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
@@ -173,7 +173,7 @@ def experiment_handler(semaphore, args):
     :type   args:       argparse.Namespace
     """
 
-    options = ExperimentOptions()
+    options = Options()
     ids = [options.exphan_to_radctrl_identity, options.exphan_to_dsp_identity]
     sockets_list = socket_operations.create_sockets(ids, options.router_address)
 

@@ -29,7 +29,7 @@ import faulthandler
 from scipy.constants import speed_of_light
 import copy
 import pickle
-import utils.options.data_write_options as dwo
+from utils.options.options import Options
 from utils import socket_operations as so
 
 
@@ -667,8 +667,8 @@ class DataWrite(object):
     """
     This class contains the functions used to write out processed data to files.
 
-    :param  data_write_options: The data write options from config file
-    :type   data_write_options: DataWriteOptions
+    :param  data_write_options: The options parsed from config file
+    :type   data_write_options: Options
     """
 
     def __init__(self, data_write_options):
@@ -1418,7 +1418,7 @@ def main():
                         action='store_true')
     args = parser.parse_args()
 
-    options = dwo.DataWriteOptions()
+    options = Options()
     sockets = so.create_sockets([options.dw_to_dsp_identity,
                                  options.dw_to_radctrl_identity,
                                  options.dw_to_rt_identity],

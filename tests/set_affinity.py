@@ -11,7 +11,7 @@ else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
 
 import borealis.utils.socket_operations as so
-import set_affinity_options as op
+from ..src.utils.options.options import Options
 
 def get_tids(process_name):
 
@@ -26,10 +26,10 @@ def get_tids(process_name):
 
     tids = []
     for line in stdout[0].splitlines()[2:]:
-    	split_line = line.split()
+        split_line = line.split()
 
-    	tid = split_line[1]
-    	tids.append(tid)
+        tid = split_line[1]
+        tids.append(tid)
 
     return tids
 
@@ -69,9 +69,9 @@ def printing(msg):
 
 if __name__ == "__main__":
     process_name = "n200_driver"
-    options = op.SetAffinityOptions()
+    options = Options()
 
-    num_boxes = options.device_str.count("addr")
+    num_boxes = options.num_n200s
     cpus = range(10)
 
     ids = [options.mainaffinity_to_driver_identity, options.txaffinity_to_driver_identity,

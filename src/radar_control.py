@@ -22,7 +22,7 @@ import numpy as np
 from functools import reduce
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
-from utils.options.experimentoptions import ExperimentOptions
+from utils.options.options import Options
 import utils.message_formats as messages
 from utils import socket_operations
 
@@ -443,7 +443,7 @@ def main():
     """
 
     # Get config options
-    options = ExperimentOptions()
+    options = Options()
 
     # The socket identities for radar_control, retrieved from options
     ids = [options.radctrl_to_exphan_identity, options.radctrl_to_dsp_identity,

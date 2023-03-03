@@ -10,13 +10,15 @@
     :author: Theodore Kolkman
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 import json
 
-@dataclass(frozen=True)
+@dataclass()
 class Options:
+    # test: str = field(init=False)
     def __post_init__(self):
+        self.test = "Within post init"
         self.parse_config()
         self.parse_hdw()
         self.parse_restrict()
@@ -70,12 +72,12 @@ class Options:
             raise
 
         # Initialize all options from config file
-
         self.site_id = raw_config['site_id']
         self.main_antenna_count = int(raw_config["main_antenna_count"])
         self.intf_antenna_count = int(raw_config["intf_antenna_count"])
 
-        # Parse N200 array and calculate main and intf antennas operating
+        # Parse N200 array and calculate which main and intf antennas operating
+        self.num_n200s = 0
         self.main_antennas = []
         self.intf_antennas = []
         for n200 in raw_config["n200s"]:
@@ -88,18 +90,19 @@ class Options:
             if rx_int:
                 intf_antenna_num = int(n200["intf_antenna"])
                 self.intf_antennas.append(intf_antenna_num)
+            if rx or tx or rx_int:
+                self.num_n200s += 1
         self.main_antennas.sort()
         self.intf_antennas.sort()
 
-        self.main_antenna_spacing = float(raw_config['main_antenna_spacing'])
-        self.intf_antenna_spacing = float(raw_config['intf_antenna_spacing'])
+        self.main_antenna_spacing = float(raw_config['main_antenna_spacing'])  # m
+        self.intf_antenna_spacing = float(raw_config['intf_antenna_spacing'])  # m
         self.min_freq = float(raw_config['min_freq'])  # Hz 
         self.max_freq = float(raw_config['max_freq'])  # Hz
         self.minimum_pulse_length = float(raw_config['minimum_pulse_length'])  # us
         self.minimum_tau_spacing_length = float(raw_config['minimum_tau_spacing_length'])  # us
-        # Minimum pulse separation is the minimum before the experiment treats it as a single
-        # pulse (transmitting zeroes or no receiving between the pulses)
-        # 125 us is approx two TX/RX times
+        # Minimum pulse separation is the minimum before the experiment treats it as a single pulse
+        # (transmitting zeroes or no receiving between the pulses) 125 us is approx two TX/RX times
         self.minimum_pulse_separation = float(raw_config['minimum_pulse_separation'])  # us
 
         self.max_tx_sample_rate = float(raw_config['max_tx_sample_rate'])
@@ -122,11 +125,11 @@ class Options:
         self.data_directory = raw_config["data_directory"]
         self.log_directory = raw_config["log_directory"]
         self.log_level = raw_config["log_level"]
-        self.log_console = raw_config["log_handlers"]["console"]
-        self.log_logfile = raw_config["log_handlers"]["logfile"]
-        self.log_aggregator = raw_config["log_handlers"]["aggregator"]
+        self.log_console_bool = raw_config["log_handlers"]["console"]
+        self.log_logfile_bool = raw_config["log_handlers"]["logfile"]
+        self.log_aggregator_bool = raw_config["log_handlers"]["aggregator"]
         self.log_aggregator_addr = raw_config["log_aggregator_addr"]
-        self.log_aggregator_port = raw_config["log_aggregator_port"]
+        self.log_aggregator_port = int(raw_config["log_aggregator_port"])
         self.hdw_path = raw_config['hdw_path']
 
         if len(self.main_antennas) > 0:
@@ -141,8 +144,7 @@ class Options:
 
 
     def parse_hdw(self):
-
-        # Load information from the hardware files
+        # Load information from the hardware file
         hdw_dat_file = f'{self.hdw_path}/hdw.dat.{os.environ["RADAR_ID"]}'
 
         try:
@@ -168,25 +170,23 @@ class Options:
             errmsg = f'Found {len(params)} parameters in hardware file, expected 22'
             raise ValueError(errmsg)
 
-        self.status = params[1]  # 1 operational, -1 offline
-        self.geo_lat = params[4]  # decimal degrees, S = negative
-        self.geo_long = params[5]  # decimal degrees, W = negative
-        self.altitude = params[6]  # metres
-        self.boresight = params[7]  # degrees from geographic north, CCW = negative.
+        self.status = params[1]         # 1 operational, -1 offline
+        self.geo_lat = params[4]        # decimal degrees, S = negative
+        self.geo_long = params[5]       # decimal degrees, W = negative
+        self.altitude = params[6]       # metres
+        self.boresight = params[7]      # degrees from geographic north, CCW = negative.
         self.boresight_shift = params[8]  # degrees from physical boresight. nominal 0.0 degrees
-        self.beam_sep = params[9]  # degrees, nominal 3.24 degrees
-        self.velocity_sign = params[10]  # +1.0 or -1.0
-        self.phase_sign = params[11]  # +1 indicates correct interferometry phase, -1 indicates 180
-        self.tdiff_a = params[12]  # us for channel A.
-        self.tdiff_b = params[13]  # us for channel B.
-
+        self.beam_sep = params[9]       # degrees, nominal 3.24 degrees
+        self.velocity_sign = params[10] # +1.0 or -1.0
+        self.phase_sign = params[11]    # +1 indicates correct interferometry phase, -1 indicates 180
+        self.tdiff_a = params[12]       # us for channel A.
+        self.tdiff_b = params[13]       # us for channel B.
+        # interferometer offset from midpoint of main, metres [x, y, z] where x is along line of
+        # antennas, y is along array normal and z is altitude difference, in m.
         self.intf_offset = [float(params[14]), float(params[15]), float(params[16])]
-        # interferometer offset from
-        # midpoint of main, metres [x, y, z] where x is along line of antennas, y is along array
-        # normal and z is altitude difference, in m.
-        self.analog_rx_rise = params[17]  # us
+        self.analog_rx_rise = params[17]        # us
         self.analog_rx_attenuator = params[18]  # dB
-        self.analog_atten_stages = params[19]  # number of stages
+        self.analog_atten_stages = params[19]   # number of stages
         self.max_range_gates = params[20]
         self.max_beams = params[21]  # so a beam number always points in a certain direction
 
@@ -213,7 +213,7 @@ class Options:
             splitup = line.split("=")
             if len(splitup) == 2:
                 if splitup[0] == 'default' or splitup[0] == 'default ':
-                    self.__default_freq = int(splitup[1])  # kHz
+                    self.default_freq = int(splitup[1])  # kHz
                     restricted.remove(line)
                     break
         else: #no break
@@ -230,3 +230,46 @@ class Options:
                 raise ValueError('Error parsing Restrict.Dat Frequency Ranges, Invalid Literal')
             restricted_range = tuple(splitup)
             self.restricted_ranges.append(restricted_range)
+
+    def __repr__(self):
+        return_str = f"""\n    main_antennas = {self.main_antennas} \
+                    \n    main_antenna_count = {self.main_antenna_count} \
+                    \n    intf_antennas = {self.intf_antennas} \
+                    \n    intf_antenna_count = {self.intf_antenna_count} \
+                    \n    main_antenna_spacing = {self.main_antenna_spacing} metres \
+                    \n    intf_antenna_spacing = {self.intf_antenna_spacing} metres \
+                    \n    max_tx_sample_rate = {self.max_tx_sample_rate} Hz (samples/sec)\
+                    \n    max_rx_sample_rate = {self.max_rx_sample_rate} Hz (samples/sec)\
+                    \n    max_usrp_dac_amplitude = {self.max_usrp_dac_amplitude} : 1\
+                    \n    pulse_ramp_time = {self.pulse_ramp_time} s\
+                    \n    tr_window_time = {self.tr_window_time} s\
+                    \n    max_output_sample_rate = {self.max_output_sample_rate} Hz\
+                    \n    max_filtering_stages = {self.max_filtering_stages} \
+                    \n    max_filter_taps_per_stage = {self.max_filter_taps_per_stage} \
+                    \n    site_id = {self.site_id} \
+                    \n    geo_lat = {self.geo_lat} degrees \
+                    \n    geo_long = {self.geo_long} degrees\
+                    \n    altitude = {self.altitude} metres \
+                    \n    boresight = {self.boresight} degrees from geographic north, CCW = negative. \
+                    \n    boresight_shift = {self.boresight_shift} degrees. \
+                    \n    beam_sep = {self.beam_sep} degrees\
+                    \n    velocity_sign = {self.velocity_sign} \
+                    \n    tdiff_a = {self.tdiff_a} us \
+                    \n    tdiff_b = {self.tdiff_b} us \
+                    \n    phase_sign = {self.phase_sign} \
+                    \n    intf_offset = {self.intf_offset} \
+                    \n    analog_rx_rise = {self.analog_rx_rise} us \
+                    \n    analog_rx_attenuator = {self.analog_rx_attenuator} dB \
+                    \n    analog_atten_stages = {self.analog_atten_stages} \
+                    \n    max_range_gates = {self.max_range_gates} \
+                    \n    max_beams = {self.max_beams} \
+                    \n    max_freq = {self.max_freq} \
+                    \n    min_freq = {self.min_freq} \
+                    \n    minimum_pulse_length = {self. minimum_pulse_length} \
+                    \n    minimum_tau_spacing_length = {self.minimum_tau_spacing_length} \
+                    \n    minimum_pulse_separation = {self.minimum_pulse_separation} \
+                    \n    tr_window_time = {self.tr_window_time} \
+                    \n    default_freq = {self.default_freq} \
+                    \n    restricted_ranges = {self.restricted_ranges} \
+                     """
+        return return_str

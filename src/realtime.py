@@ -18,26 +18,26 @@ import pydarnio
 import numpy as np
 from backscatter import fitacf
 
-import utils.options.realtime_options as rto
+from utils.options.options import Options
 from utils import socket_operations as so
 
 
 def main():
-    opts = rto.RealtimeOptions()
+    options = Options()
 
-    borealis_sockets = so.create_sockets([opts.rt_to_dw_identity], opts.router_address)
+    borealis_sockets = so.create_sockets([options.rt_to_dw_identity], options.router_address)
     data_write_to_realtime = borealis_sockets[0]
 
     context = zmq.Context().instance()
     realtime_socket = context.socket(zmq.PUB)
-    realtime_socket.bind(opts.rt_address)
+    realtime_socket.bind(options.realtime_address)
 
     q = queue.Queue()
 
     def get_temp_file_from_datawrite():
         last_file_time = None
         while True:
-            filename = so.recv_data(data_write_to_realtime, opts.dw_to_rt_identity, log)
+            filename = so.recv_data(data_write_to_realtime, options.dw_to_rt_identity, log)
 
             if "rawacf" in filename:
                 # Read and convert data
