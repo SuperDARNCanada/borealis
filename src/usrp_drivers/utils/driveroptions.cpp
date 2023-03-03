@@ -200,15 +200,16 @@ DriverOptions::DriverOptions() {
     interferometer_antennas_ = make_channels(ia_channel_str);
 
     router_address_ = config_pt.get<std::string>("router_address");
-    driver_to_radctrl_identity_ = config_pt.get<std::string>("driver_to_radctrl_identity");
-    driver_to_dsp_identity_ = config_pt.get<std::string>("driver_to_dsp_identity");
-    driver_to_brian_identity_ = config_pt.get<std::string>("driver_to_brian_identity");
-    radctrl_to_driver_identity_ = config_pt.get<std::string>("radctrl_to_driver_identity");
-    dsp_to_driver_identity_ = config_pt.get<std::string>("dsp_to_driver_identity");
-    brian_to_driver_identity_ = config_pt.get<std::string>("brian_to_driver_identity");
     ringbuffer_name_ = config_pt.get<std::string>("ringbuffer_name");
     ringbuffer_size_bytes_ = boost::lexical_cast<double>(
                                     config_pt.get<std::string>("ringbuffer_size_bytes"));
+
+    std::string driver_to_radctrl_identity_ = "DRIVER_RADCTRL_IDEN";
+    std::string driver_to_dsp_identity_ = "DRIVER_DSP_IDEN";
+    std::string driver_to_brian_identity_ = "DRIVER_BRIAN_IDEN";
+    std::string radctrl_to_driver_identity_ = "RADCTRL_DRIVER_IDEN";
+    std::string dsp_to_driver_identity_ = "DSP_DRIVER_IDEN";
+    std::string brian_to_driver_identity_ = "BRIAN_DRIVER_IDEN";
 }
 
 /**
