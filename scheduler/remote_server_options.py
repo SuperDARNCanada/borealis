@@ -11,9 +11,9 @@
 from src.utils.general import load_config
 
 
+
 def ascii_encode_dict(data):
-    ascii_encode = lambda x: x.encode('ascii')
-    return dict(map(ascii_encode, pair) for pair in data.items())
+    return dict(map(lambda x: x.encode('ascii'), pair) for pair in data.items())
 
 
 class RemoteServerOptions(object):
@@ -21,8 +21,14 @@ class RemoteServerOptions(object):
     Parses the options from the config file that are relevant to data writing.
 
     """
-    def __init__(self):
-        super(RemoteServerOptions, self).__init__()
+    def __init__(self, config_path=None):
+        """
+        Initialize and get configuration options
+
+        Args:
+            config_path (str): path to config file for. Default BOREALISPATH/config/[rad]/[rad]_config.ini
+        """
+        super().__init__()
 
         # Gather the borealis configuration information
         raw_config = load_config()
@@ -38,5 +44,3 @@ class RemoteServerOptions(object):
         :rtype:     str
         """
         return self._site_id
-
-
