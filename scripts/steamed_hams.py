@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 
 """
-Copyright SuperDARN Canada 2020
-Keith Kotyk
+    Borealis Start up script
+    ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Borealis Start up script
+    The Simpsons, Season 1 Episode 3 - Steamed Hams
 
-The Simpsons, Season 1 Episode 3 - Steamed Hams
-
+    :copyright: 2020 SuperDARN Canada
+    :author: Keith Kotyk
 """
 import argparse
 import sys
@@ -15,7 +15,7 @@ import subprocess as sp
 import datetime
 import os
 import time
-from src.utils.general import load_config
+from .general import load_config
 
 PYTHON_VERSION = os.environ['PYTHON_VERSION']
 

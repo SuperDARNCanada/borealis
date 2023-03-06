@@ -1,6 +1,4 @@
 #!/usr/bin/python
-# Copyright 2020 SuperDARN Canada, University of Saskatchewan
-# Author: Kevin Krieger
 """
 Python script to check data being written and restart Borealis in case it's not
 
@@ -14,13 +12,14 @@ Methods
 References
 ----------
 
-
+    :copyright: 2020 SuperDARN Canada
+    :author: Kevin Krieger
 """
 
 import argparse
 import os
 import sys
-from src.utils.general import load_config
+from .general import load_config
 from datetime import datetime as dt
 import glob
 import subprocess
