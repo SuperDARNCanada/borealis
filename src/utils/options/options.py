@@ -10,15 +10,13 @@
     :author: Theodore Kolkman
 """
 
-from dataclasses import dataclass, field
 import os
 import json
+from dataclasses import dataclass
 
-@dataclass()
+@dataclass
 class Options:
-    # test: str = field(init=False)
     def __post_init__(self):
-        self.test = "Within post init"
         self.parse_config()
         self.parse_hdw()
         self.parse_restrict()
@@ -91,13 +89,13 @@ class Options:
                 intf_antenna_num = int(n200["intf_antenna"])
                 self.intf_antennas.append(intf_antenna_num)
             if rx or tx or rx_int:
-                self.num_n200s += 1
+                self.num_n200s += 1 
         self.main_antennas.sort()
         self.intf_antennas.sort()
 
         self.main_antenna_spacing = float(raw_config['main_antenna_spacing'])  # m
         self.intf_antenna_spacing = float(raw_config['intf_antenna_spacing'])  # m
-        self.min_freq = float(raw_config['min_freq'])  # Hz 
+        self.min_freq = float(raw_config['min_freq'])  # Hz
         self.max_freq = float(raw_config['max_freq'])  # Hz
         self.minimum_pulse_length = float(raw_config['minimum_pulse_length'])  # us
         self.minimum_tau_spacing_length = float(raw_config['minimum_tau_spacing_length'])  # us
@@ -141,6 +139,10 @@ class Options:
                     max(self.intf_antennas) >= self.intf_antenna_count:
                 errmsg = 'intf_antennas and intf_antenna_count have incompatible values'
                 raise ValueError(errmsg)
+        if len(self.main_antennas) != len(set(self.main_antennas)):
+            errmsg = 'main_antennas cannot contain any duplicate values'
+        if len(self.intf_antennas) != len(set(self.intf_antennas)):
+            errmsg = 'intf_antennas cannot contain any duplicate values'
 
 
     def parse_hdw(self):

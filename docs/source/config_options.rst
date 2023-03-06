@@ -129,22 +129,22 @@ Config Parameters
 | gpio_bank_low                  | TXA                           | The daughterboard pin bank to use for |
 |                                |                               | active-low TR and I/O signals.        |
 +--------------------------------+-------------------------------+---------------------------------------+
-| atr_rx                         | 0x0006                        | The pin mask for the RX only signal.  |
+| atr_rx                         | 0x0006                        | The pin mask for the RX-only signal.  |
 +--------------------------------+-------------------------------+---------------------------------------+
-| atr_tx                         | 0x0018                        | The pin mask for the TX only signal.  |
+| atr_tx                         | 0x0018                        | The pin mask for the TX-only signal.  |
 +--------------------------------+-------------------------------+---------------------------------------+
-| atr_xx                         | 0x0060                        | The pin mask for the full duplex      |
+| atr_xx                         | 0x0060                        | The pin mask for the full-duplex      |
 |                                |                               | signal (TR).                          |
 +--------------------------------+-------------------------------+---------------------------------------+
 | atr_0x                         | 0x0180                        | The pin mask for the idle signal.     |
 +--------------------------------+-------------------------------+---------------------------------------+
-| lo_pwr                         | 0x1800                        | The pin mask for the low power signal.|
+| lo_pwr                         | 0x0600                        | The pin mask for the low-power signal.|
 +--------------------------------+-------------------------------+---------------------------------------+
-| agc_st                         | 0x6000                        | The pin mask for the AGC signal.      |
+| agc_st                         | 0x1800                        | The pin mask for the AGC signal.      |
 +--------------------------------+-------------------------------+---------------------------------------+
 | tst_md                         | 0x6000                        | The pin mask for the test mode signal.|
 +--------------------------------+-------------------------------+---------------------------------------+
-| max_usrp_dac_amplitude         | 0.99                          | The amplitude of highest allowed USRP |
+| max_usrp_dac_amplitude         | 0.99                          | Amplitude of the highest allowed USRP |
 |                                |                               | TX sample (V).                        |
 +--------------------------------+-------------------------------+---------------------------------------+
 | pulse_ramp_time                | 1.00E-05                      | The linear ramp time for the          |
@@ -173,7 +173,7 @@ Config Parameters
 | router_address                 | tcp://127.0.0.1:6969          | The protocol/IP/port used for the ZMQ |
 |                                |                               | router in Brian.                      |
 +--------------------------------+-------------------------------+---------------------------------------+
-| realtime_address               | tcp://eth0:9696               | The protocal/IP/port used for         |
+| realtime_address               | tcp://eth0:9696               | The protocol/IP/port used for         |
 |                                |                               | realtime.                             |
 +--------------------------------+-------------------------------+---------------------------------------+
 | ringbuffer_name                | data_ringbuffer               | Shared memory name for ringbuffer.    |
@@ -185,9 +185,9 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | log_directory                  | /data/borealis_logs           | Location of output log files.         |
 +--------------------------------+-------------------------------+---------------------------------------+
-| log_level                      | INFO                          | The verbosity level of logging, sets  |
+| log_level                      | INFO                          | The verbosity level of logging. Sets  |
 |                                |                               | the threshold for the detail of logs. |
-|                                |                               | Can be set to ope of the following:   |
+|                                |                               | Can be set to one of the following:   |
 |                                |                               | CRITICAL, ERROR, WARNING, INFO, DEBUG.|
 +--------------------------------+-------------------------------+---------------------------------------+
 | log_handlers                   | | {                           | Enable (true) or disable (false) the  |
