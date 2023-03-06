@@ -11,7 +11,7 @@
 """
 
 import os
-from ..general import load_config, load_restrict, load_hdw
+from ..general import load_config, load_restrict
 from experiment_prototype.experiment_exception import ExperimentException
 
 

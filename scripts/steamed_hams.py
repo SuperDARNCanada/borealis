@@ -15,7 +15,9 @@ import subprocess as sp
 import datetime
 import os
 import time
-from src.utils.general import load_config
+
+sys.path.append(f'{os.environ["BOREALISPATH"]}/src')
+from utils.general import load_config
 
 PYTHON_VERSION = os.environ['PYTHON_VERSION']
 

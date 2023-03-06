@@ -247,7 +247,7 @@ def experiment_handler(semaphore, args):
         log.debug("radar control made a request", request=message)
 
         semaphore.acquire()
-        if message == 'EXPNEEDED':
+        if message in ['EXPNEEDED', 'NOERROR']:
             log.info("sending new experiment from beginning", message=message)
             # Starting anew
             send_experiment(exp_handler_to_radar_control,
