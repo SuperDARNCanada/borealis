@@ -17,9 +17,11 @@ from dataclasses import dataclass
 @dataclass
 class Options:
     def __post_init__(self):
-        self.parse_config()
-        self.parse_hdw()
-        self.parse_restrict()
+        self.parse_config()     # Parse info from config file
+        self.parse_hdw()        # Parse info from hdw file
+        self.parse_restrict()   # Parse info from restrict.dat file
+        self.verify_options()   # Check that all parsed values are valid
+
 
     # ZMQ Identities
     radctrl_to_exphan_identity: str = "RADCTRL_EXPHAN_IDEN"
@@ -76,6 +78,7 @@ class Options:
 
         # Parse N200 array and calculate which main and intf antennas operating
         self.num_n200s = 0
+        self.n200_addrs = []
         self.main_antennas = []
         self.intf_antennas = []
         for n200 in raw_config["n200s"]:
@@ -89,7 +92,8 @@ class Options:
                 intf_antenna_num = int(n200["intf_antenna"])
                 self.intf_antennas.append(intf_antenna_num)
             if rx or tx or rx_int:
-                self.num_n200s += 1 
+                self.n200_addrs.append(n200["addr"])
+                self.num_n200s += 1
         self.main_antennas.sort()
         self.intf_antennas.sort()
 
@@ -129,20 +133,6 @@ class Options:
         self.log_aggregator_addr = raw_config["log_aggregator_addr"]
         self.log_aggregator_port = int(raw_config["log_aggregator_port"])
         self.hdw_path = raw_config['hdw_path']
-
-        if len(self.main_antennas) > 0:
-            if min(self.main_antennas) < 0 or max(self.main_antennas) >= self.main_antenna_count:
-                errmsg = 'main_antennas and main_antenna_count have incompatible values'
-                raise ValueError(errmsg)
-        if len(self.intf_antennas) > 0:
-            if min(self.intf_antennas) < 0 or \
-                    max(self.intf_antennas) >= self.intf_antenna_count:
-                errmsg = 'intf_antennas and intf_antenna_count have incompatible values'
-                raise ValueError(errmsg)
-        if len(self.main_antennas) != len(set(self.main_antennas)):
-            errmsg = 'main_antennas cannot contain any duplicate values'
-        if len(self.intf_antennas) != len(set(self.intf_antennas)):
-            errmsg = 'intf_antennas cannot contain any duplicate values'
 
 
     def parse_hdw(self):
@@ -192,6 +182,7 @@ class Options:
         self.max_range_gates = params[20]
         self.max_beams = params[21]  # so a beam number always points in a certain direction
 
+
     def parse_restrict(self):
         # Read in restrict.dat
         if not os.environ["BOREALISPATH"]:
@@ -232,6 +223,46 @@ class Options:
                 raise ValueError('Error parsing Restrict.Dat Frequency Ranges, Invalid Literal')
             restricted_range = tuple(splitup)
             self.restricted_ranges.append(restricted_range)
+
+
+    def verify_options(self):
+        if self.site_id != os.environ["RADAR_ID"]:
+            errmsg = f'site_id {self.site_id} is different from RADAR_ID {os.environ["RADAR_ID"]}'
+            raise ValueError(errmsg)
+
+        print(self.n200_addrs)
+        if len(self.n200_addrs) != len(set(self.n200_addrs)):
+            errmsg = 'Two or more n200s have identical IP addresses'
+            raise ValueError(errmsg)
+
+        if len(self.main_antennas) > 0:
+            if min(self.main_antennas) < 0 or max(self.main_antennas) >= self.main_antenna_count:
+                errmsg = 'main_antennas and main_antenna_count are not consistent'
+                raise ValueError(errmsg)
+        if len(self.intf_antennas) > 0:
+            if min(self.intf_antennas) < 0 or \
+                    max(self.intf_antennas) >= self.intf_antenna_count:
+                errmsg = 'intf_antennas and intf_antenna_count are not consistent'
+                raise ValueError(errmsg)
+        if len(self.main_antennas) != len(set(self.main_antennas)):
+            errmsg = 'main_antennas contains duplicate values'
+            raise ValueError(errmsg)
+        if len(self.intf_antennas) != len(set(self.intf_antennas)):
+            errmsg = 'intf_antennas contains duplicate values'
+            raise ValueError(errmsg)
+
+        # TODO: Test that realtime_address and router_address are valid addresses
+
+        if not os.path.exists(self.data_directory):
+            errmsg = f'data_directory {self.data_directory} does not exist'
+            raise ValueError(errmsg)
+        if not os.path.exists(self.log_directory):
+            errmsg = f'log_directory {self.log_directory} does not exist'
+            raise ValueError(errmsg)
+        if not os.path.exists(self.hdw_path):
+            errmsg = f'hdw_path directory {self.hdw_path} does not exist'
+            raise ValueError(errmsg)
+
 
     def __repr__(self):
         return_str = f"""\n    main_antennas = {self.main_antennas} \
