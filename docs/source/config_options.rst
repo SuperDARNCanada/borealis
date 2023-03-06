@@ -10,17 +10,17 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | Config field                   | Example entry                 | Description                           |
 +================================+===============================+=======================================+
-| site_id                        | sas                           | 3-letter standard ID of the radar     |
+| site_id                        | sas                           | 3-letter standard ID of the radar.    |
 +--------------------------------+-------------------------------+---------------------------------------+
-| gps_octoclock_addr             | addr=192.168.10.131           | IP address of the GPS Octoclock       |
+| gps_octoclock_addr             | addr=192.168.10.131           | IP address of the GPS Octoclock.      |
 +--------------------------------+-------------------------------+---------------------------------------+
 | device_options                 | recv_frame_size=4000          | UHD USRP device arguments.            |
 +--------------------------------+-------------------------------+---------------------------------------+
 | main_antenna_count             | 16                            | Number of physical main array         |
-|                                |                               | antennas, regardless of N200 status   |
+|                                |                               | antennas, regardless of N200 status.  |
 +--------------------------------+-------------------------------+---------------------------------------+
-| interferometer_antenna_count   | 4                             | Number of physical interferometer     |
-|                                |                               | antennas, regardless of N200 status   |
+| intf_antenna_count             | 4                             | Number of physical interferometer     |
+|                                |                               | antennas, regardless of N200 status.  |
 +--------------------------------+-------------------------------+---------------------------------------+
 | n200s                          | | {                           | List of all N200s, both active and    |
 |                                | | addr : "192.168.10.100"     | not. Order of N200s is specified by   |
@@ -28,19 +28,19 @@ Config Parameters
 |                                | | tx : true                   | out of order and more than the number |
 |                                | | rx_int : false              | of antennas can be stored here (extra |
 |                                | | main_antenna : "0"          | ones must have all flags set to       |
-|                                | | interferometer_antenna : "" | false.) rx, tx, and rx_int set the    |
+|                                | | intf_antenna : ""           | false.) rx, tx, and rx_int set the    |
 |                                | | }, {                        | receive, transmit, and interferometer |
 |                                | | addr : "192.168.10.101"     | receive channels, respectively. The   |
 |                                | | rx : true                   | antenna numbers refer to the physical |
 |                                | | tx : false                  | antennas that are connected to the    |
 |                                | | rx_int : true               | N200s. The number of main and         |
 |                                | | main_antenna : "1"          | interferometer antennas that are      |
-|                                | | interferometer_antenna : "0"| activated here must agree with the    |
+|                                | | intf_antenna : "0"          | activated here must agree with the    |
 |                                | | }, ...                      | count variables specified above.      |
 |                                |                               | The ordering of the N200 parameters   |
 |                                |                               | doesn't matter.                       |
 +--------------------------------+-------------------------------+---------------------------------------+
-| addr (n200s)                   | 192.168.10.100                | IP address of the specified N200      |
+| addr (n200s)                   | 192.168.10.100                | IP address of the specified N200.     |
 +--------------------------------+-------------------------------+---------------------------------------+
 | rx (n200s)                     | true                          | Receive channel flag for a given      |
 |                                |                               | N200. Set to true to activate receive |
@@ -66,14 +66,14 @@ Config Parameters
 |                                |                               | N200. N200s are sorted according to   |
 |                                |                               | this value.                           |
 +--------------------------------+-------------------------------+---------------------------------------+
-| interterometer_antenna (n200s) | 3                             | Physical interferometer antenna       |
+| intf_antenna (n200s)           | 3                             | Physical interferometer antenna       |
 |                                |                               | connected to this N200. All antennas  |
 |                                |                               | not connected must be set to empty    |
 |                                |                               | string ("").                          |
 +--------------------------------+-------------------------------+---------------------------------------+
 | main_antenna_spacing           | 15.24                         | Distance between antennas (m).        |
 +--------------------------------+-------------------------------+---------------------------------------+
-| interferometer_antenna_spacing | 15.24                         | Distance between antennas (m).        |
+| intf_antenna_spacing           | 15.24                         | Distance between antennas (m).        |
 +--------------------------------+-------------------------------+---------------------------------------+
 | min_freq                       | 8.00E+06                      | Minimum frequency we can run (Hz).    |
 +--------------------------------+-------------------------------+---------------------------------------+
@@ -82,32 +82,32 @@ Config Parameters
 | minimum_pulse_length           | 100                           | Minimum pulse length (us) dependent   |
 |                                |                               | upon AGC feedback sample and hold.    |
 +--------------------------------+-------------------------------+---------------------------------------+
-| minimum_mpinc_length           | 1                             | Minimum length of multi-pulse         |
+| minimum_tau_spacing_length     | 1                             | Minimum length of multi-pulse         |
 |                                |                               | increment (us).                       |
 +--------------------------------+-------------------------------+---------------------------------------+
 | minimum_pulse_separation       | 125                           | The minimum separation (us) before    |
 |                                |                               | experiment treats it as a single      |
 |                                |                               | pulse (transmitting zeroes and not    |
-|                                |                               | receiving between the pulses. 125 us  |
+|                                |                               | receiving between the pulses). 125 us |
 |                                |                               | is approx two TX/RX times.            |
++--------------------------------+-------------------------------+---------------------------------------+
+| max_tx_sample_rate             | 5.00E+06                      | Maximum wideband TX rate each device  |
+|                                |                               | can run in the system.                |
++--------------------------------+-------------------------------+---------------------------------------+
+| max_rx_sample_rate             | 5.00E+06                      | Maximum wideband RX rate each         |
+|                                |                               | device can run in the system.         |
 +--------------------------------+-------------------------------+---------------------------------------+
 | tx_subdev                      | A:A                           | UHD daughterboard string which        |
 |                                |                               | defines how to configure ports. Refer |
 |                                |                               | to UHD subdev docs.                   |
 +--------------------------------+-------------------------------+---------------------------------------+
-| max_tx_sample_rate             | 5.00E+06                      | Maximum wideband TX rate each device  |
-|                                |                               | can run in the system.                |
-+--------------------------------+-------------------------------+---------------------------------------+
 | main_rx_subdev                 | A:A A:B                       | UHD daughterboard string which        |
 |                                |                               | defines how to configure ports. Refer |
 |                                |                               | to UHD subdev docs.                   |
 +--------------------------------+-------------------------------+---------------------------------------+
-| interferometer_rx_subdev       | A:A A:B                       | UHD daughterboard string which        |
+| intf_rx_subdev                 | A:A A:B                       | UHD daughterboard string which        |
 |                                |                               | defines how to configure ports. Refer |
 |                                |                               | to UHD subdev docs.                   |
-+--------------------------------+-------------------------------+---------------------------------------+
-| max_rx_sample_rate             | 5.00E+06                      | Maximum wideband RX rate each         |
-|                                |                               | device can run in the system.         |
 +--------------------------------+-------------------------------+---------------------------------------+
 | pps                            | external                      | The PPS source for the system         |
 |                                |                               | (internal, external, none).           |
@@ -138,101 +138,43 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | atr_0x                         | 0x0180                        | The pin mask for the idle signal.     |
 +--------------------------------+-------------------------------+---------------------------------------+
-| tst_md                         | 0x0600                        | The pin mask for the test mode signal |
-+--------------------------------+-------------------------------+---------------------------------------+
-| lo_pwr                         | 0x1800                        | The pin mask for the low power signal |
+| lo_pwr                         | 0x1800                        | The pin mask for the low power signal.|
 +--------------------------------+-------------------------------+---------------------------------------+
 | agc_st                         | 0x6000                        | The pin mask for the AGC signal.      |
 +--------------------------------+-------------------------------+---------------------------------------+
-| tst_md                         | 0x6000                        | The pin mask for the test mode signal |
+| tst_md                         | 0x6000                        | The pin mask for the test mode signal.|
 +--------------------------------+-------------------------------+---------------------------------------+
 | max_usrp_dac_amplitude         | 0.99                          | The amplitude of highest allowed USRP |
 |                                |                               | TX sample (V).                        |
 +--------------------------------+-------------------------------+---------------------------------------+
 | pulse_ramp_time                | 1.00E-05                      | The linear ramp time for the          |
-|                                |                               | pulse (s)                             |
+|                                |                               | pulse (s).                            |
 +--------------------------------+-------------------------------+---------------------------------------+
 | tr_window_time                 | 6.00E-05                      | How much windowing on either side of  |
 |                                |                               | pulse is needed for TR signal (s).    |
 +--------------------------------+-------------------------------+---------------------------------------+
 | agc_signal_read_delay          | 0                             | Hardware dependent delay after seq    |
 |                                |                               | is finished for reading               |
-|                                |                               | of AGC and low power signals (s)      |
+|                                |                               | of AGC and low power signals (s).     |
 +--------------------------------+-------------------------------+---------------------------------------+
-| usrp_master_clock_rate         | 1.00E+08                      | Clock rate of the USRP master         |
+| usrp_master_clock_rate         | 1.00E+06                      | Clock rate of the USRP master         |
 |                                |                               | clock (Sps).                          |
 +--------------------------------+-------------------------------+---------------------------------------+
-| max_output_sample_rate         | 1.00E+05                      | Maximum rate allowed after            |
-|                                |                               | downsampling (Sps)                    |
+| max_output_sample_rate         | 1.00E+03                      | Maximum rate allowed after            |
+|                                |                               | downsampling (Sps).                   |
 +--------------------------------+-------------------------------+---------------------------------------+
-| max_number_of_filter_taps      | 2048                          | The maximum total number of filter    |
-| _per_stage                     |                               | taps for all frequencies combined.    |
+| max_filtering_stages           | 6                             | The maximum number of filtering       |
+|                                |                               | stages.                               |
++--------------------------------+-------------------------------+---------------------------------------+
+| max_filter_taps_per_stage      | 2048                          | The maximum total number of filter    |
+|                                |                               | taps for all frequencies combined.    |
 |                                |                               | This is a GPU limitation.             |
 +--------------------------------+-------------------------------+---------------------------------------+
 | router_address                 | tcp://127.0.0.1:6969          | The protocol/IP/port used for the ZMQ |
 |                                |                               | router in Brian.                      |
 +--------------------------------+-------------------------------+---------------------------------------+
-| realtime_address               | tcp://eth0:9696               | The protocal/IP/port used for realtime|
-+--------------------------------+-------------------------------+---------------------------------------+
-| radctrl_to_exphan_identity     | RADCTRL_EXPHAN_IDEN           | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| radctrl_to_dsp_identity        | RADCTRL_DSP_IDEN              | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| radctrl_to_driver_identity     | RADCTRL_DRIVER_IDEN           | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| radctrl_to_brian_identity      | RADCTRL_BRIAN_IDEN            | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| radctrl_to_dw_identity         | RADCTRL_DW_IDEN               | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| driver_to_radctrl_identity     | DRIVER_RADCTRL_IDEN           | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| driver_to_dsp_identity         | DRIVER_DSP_IDEN               | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| driver_to_brian_identity       | DRIVER_BRIAN_IDEN             | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| driver_to_mainaffinity_identity| DRIVER_MAINAFFINITY_IDEN      | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| driver_to_txaffinity_identity  | DRIVER_TXAFFINITY_IDEN        | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| driver_to_rxaffinity_identity  | DRIVER_RXAFFINITY_IDEN        | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| mainaffinity_to_driver_identity| MAINAFFINITY_DRIVER_IDEN      | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| txaffinity_to_driver_identity  | TXAFFINITY_DRIVER_IDEN        | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| rxaffinity_to_driver_identity  | RXAFFINITY_DRIVER_IDEN        | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| exphan_to_radctrl_identity     | EXPHAN_RADCTRL_IDEN           | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| exphan_to_dsp_identity         | EXPHAN_DSP_IDEN               | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| dsp_to_radctrl_identity        | DSP_RADCTRL_IDEN              | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| dsp_to_driver_identity         | DSP_DRIVER_IDEN               | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| dsp_to_exphan_identity         | DSP_EXPHAN_IDEN               | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| dsp_to_dw_identity             | DSP_DW_IDEN                   | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| dspbegin_to_brian_identity     | DSPBEGIN_BRIAN_IDEN           | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| dspend_to_brian_identity       | DSPEND_BRIAN_IDEN             | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| dw_to_dsp_identity             | DW_DSP_IDEN                   | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| dw_to_radctrl_identity         | DW_RADCTRL_IDEN               | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| dw_to_rt_identity              | DW_RT_IDEN                    | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| rt_to_dw_identity              | RT_DW_IDEN                    | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| brian_to_radctrl_identity      | BRIAN_RADCTRL_IDEN            | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| brian_to_driver_identity       | BRIAN_DRIVER_IDEN             | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| brian_to_dspbegin_identity     | BRIAN_DSPBEGIN_IDEN           | ZMQ named socket identity.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| brian_to_dspend_identity       | BRIAN_DSPEND_IDEN             | ZMQ named socket identity.            |
+| realtime_address               | tcp://eth0:9696               | The protocal/IP/port used for         |
+|                                |                               | realtime.                             |
 +--------------------------------+-------------------------------+---------------------------------------+
 | ringbuffer_name                | data_ringbuffer               | Shared memory name for ringbuffer.    |
 +--------------------------------+-------------------------------+---------------------------------------+
@@ -241,10 +183,25 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | data_directory                 | /data/borealis_data           | Location of output data files.        |
 +--------------------------------+-------------------------------+---------------------------------------+
-| log_directory                  | /data/borealis_logs           | Location of output log files          |
+| log_directory                  | /data/borealis_logs           | Location of output log files.         |
++--------------------------------+-------------------------------+---------------------------------------+
+| log_level                      | INFO                          | The verbosity level of logging, sets  |
+|                                |                               | the threshold for the detail of logs. |
+|                                |                               | Can be set to ope of the following:   |
+|                                |                               | CRITICAL, ERROR, WARNING, INFO, DEBUG.|
++--------------------------------+-------------------------------+---------------------------------------+
+| log_handlers                   | | {                           | Enable (true) or disable (false) the  |
+|                                | | "console" : true            | console logging, JSON file logging,   |
+|                                | | "logfile" : true            | and aggregator log forwarding         |
+|                                | | "aggregator" : true         | overrides.                            |
+|                                | | }                           |                                       |
++--------------------------------+-------------------------------+---------------------------------------+
+| log_aggregator_addr            | 0.0.0.0                       | Address of log aggregator.            |
++--------------------------------+-------------------------------+---------------------------------------+
+| log_aggregator_port            | 12201                         | Port of log aggregator.               |
 +--------------------------------+-------------------------------+---------------------------------------+
 | hdw_path                       | /usr/local/hdw                | Path to locally cloned SuperDARN      |
-|                                |                               | hardware repository                   |
+|                                |                               | hardware repository.                  |
 +--------------------------------+-------------------------------+---------------------------------------+
 
 ----------------------
