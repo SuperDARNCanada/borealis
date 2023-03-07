@@ -4,7 +4,7 @@
     Borealis Start up script
     ~~~~~~~~~~~~~~~~~~~~~~~~
 
-    The Simpsons, Season 1 Episode 3 - Steamed Hams
+    The Simpsons, Season 7 Episode 21
 
     :copyright: 2020 SuperDARN Canada
     :author: Keith Kotyk
@@ -15,7 +15,7 @@ import subprocess as sp
 import datetime
 import os
 import time
-from .general import load_config
+from general import load_config
 
 PYTHON_VERSION = os.environ['PYTHON_VERSION']
 

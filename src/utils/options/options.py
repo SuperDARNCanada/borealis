@@ -86,10 +86,18 @@ class Options:
             tx = bool(n200["tx"])
             rx_int = bool(n200["rx_int"])
             if rx or tx:
-                main_antenna_num = int(n200["main_antenna"])
+                try:
+                    main_antenna_num = int(n200["main_antenna"])
+                except ValueError:
+                    errmsg = "main_antenna must be an integer if rx or tx is true"
+                    raise ValueError(errmsg)
                 self.main_antennas.append(main_antenna_num)
             if rx_int:
-                intf_antenna_num = int(n200["intf_antenna"])
+                try:
+                    intf_antenna_num = int(n200["intf_antenna"])
+                except ValueError:
+                    errmsg = "main_antenna must be an integer if rx or tx is true"
+                    raise ValueError(errmsg)
                 self.intf_antennas.append(intf_antenna_num)
             if rx or tx or rx_int:
                 self.n200_addrs.append(n200["addr"])
@@ -230,7 +238,6 @@ class Options:
             errmsg = f'site_id {self.site_id} is different from RADAR_ID {os.environ["RADAR_ID"]}'
             raise ValueError(errmsg)
 
-        print(self.n200_addrs)
         if len(self.n200_addrs) != len(set(self.n200_addrs)):
             errmsg = 'Two or more n200s have identical IP addresses'
             raise ValueError(errmsg)
