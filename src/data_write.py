@@ -8,175 +8,203 @@
 
     :copyright: 2017 SuperDARN Canada
 """
-
-import sys
-import os
-import datetime
-import json
-import collections
-import warnings
-import time
-import threading
-import errno
-from multiprocessing import shared_memory
-import subprocess as sp
+# built-in
 import argparse as ap
+import collections
+import datetime
+from dataclasses import dataclass, field, fields
+import errno
+import faulthandler
+import json
+from multiprocessing import shared_memory
+import os
+import pickle
+import subprocess as sp
+import sys
+import threading
+import time
+from typing import List, Dict, Set
+import warnings
+
+# third-party
 import numpy as np
 import deepdish as dd
 import tables
 import zmq
-import faulthandler
 from scipy.constants import speed_of_light
-import copy
-import pickle
-import utils.options.data_write_options as dwo
+
+# local
 from utils import socket_operations as so
+from utils.message_formats import ProcessedSequenceMessage
+import utils.options.data_write_options as dwo
 
 
-DATA_TEMPLATE = {
-    "borealis_git_hash"         : None, # Identifies the version of Borealis that made this data.
-    "experiment_id"             : None, # Number used to identify experiment.
-    "experiment_name"           : None, # Name of the experiment file.
-    "experiment_comment"        : None, # Comment about the whole experiment
-    "slice_comment"             : None, # Additional text comment that describes the slice.
-    "slice_id"                  : None, # the slice id of the file and dataset.
-    "slice_interfacing"         : None, # the interfacing of this slice to other slices.
-    "num_slices"                : None, # Number of slices in the experiment at this integration
-                                        # time.
-    "station"                   : None, # Three letter radar identifier.
-    "num_sequences"             : None, # Number of sampling periods in the integration time.
-    "num_ranges"                : None, # Number of ranges to calculate correlations for
-    "range_sep"                 : None, # range gate separation (equivalent distance between
-                                        # samples) in km.
-    "first_range_rtt"           : None, # Round trip time of flight to first range in microseconds.
-    "first_range"               : None, # Distance to first range in km.
-    "rx_sample_rate"            : None, # Sampling rate of the samples being written to file in Hz.
-    "scan_start_marker"         : None, # Designates if the record is the first in a scan.
-    "int_time"                  : None, # Integration time in seconds.
-    "tx_pulse_len"              : None, # Length of the pulse in microseconds.
-    "tau_spacing"               : None, # The minimum spacing between pulses in microseconds.
-                                        # Spacing between pulses is always a multiple of this.
-    "main_antenna_count"        : None, # Number of main array antennas.
-    "intf_antenna_count"        : None, # Number of interferometer array antennas.
-    "freq"                      : None, # The frequency used for this experiment slice in kHz.
-    # "filtered_3db_bandwidth"    : None, # Bandwidth of the output iq data types? can add later
-    "rx_center_freq"            : None, # the center frequency of this data (for rawrf), kHz
-    "samples_data_type"         : None, # C data type of the samples such as complex float.
-    "pulses"                    : None, # The pulse sequence in units of the tau_spacing.
-    "pulse_phase_offset"        : None, # For pulse encoding phase. Contains an encoding per pulse.
-                                        # Each encoding can either be a single value or one value
-                                        # for each sample.
-    "lags"                      : None, # The lags created from two pulses in the pulses array.
-    "blanked_samples"           : None, # Samples that have been blanked because they occurred
-                                        # during transmission times. Can differ from the pulses
-                                        # array due to multiple slices in a single sequence.
-    "sqn_timestamps"            : None, # A list of GPS timestamps of the beginning of transmission
-                                        # for each sampling period in the integration time. Seconds
-                                        # since epoch.
-    "beam_nums"                 : None, # A list of beam numbers used in this slice.
-    "beam_azms"                 : None, # A list of the beams azimuths for each beam in degrees off
-                                        # boresite.
-    "noise_at_freq"             : None, # Noise at the receive frequency, should be an array
-                                        # (one value per sequence) (TODO units??)
-    # (TODO document FFT resolution bandwidth for this value, should be = output_sample rate?)
-    # "noise_in_raw_band"         : None, # Average noise in the sampling band (input sample rate) (TODO units??)
-    # "rx_bandwidth"              : None, # if the noise_in_raw_band is provided, the rx_bandwidth should be provided!
-    "num_samps"                 : None, # Number of samples in the sampling period.
-    "antenna_arrays_order"      : None, # States what order the data is in. Describes the data
-                                        # layout.
-    "data_descriptors"          : None, # Denotes what each data dimension represents.
-    "data_dimensions"           : None, # The dimensions in which to reshape the data.
-    "data_normalization_factor" : None, # The scale of all of the filters, multiplied, for a total
-                                        # scaling factor to normalize by.
-    "data"                      : [],   # A contiguous set of samples (complex float) at given
-                                        # sample rate
-    "correlation_descriptors"   : None, # Denotes what each acf/xcf dimension represents.
-    "correlation_dimensions"    : None, # The dimensions in which to reshape the acf/xcf data.
-    "averaging_method"          : None, # A string describing the averaging method, ex. mean, median
-    "scheduling_mode"           : None, # A string describing the type of scheduling time at the
-                                        # time of this dataset.
-    "main_acfs"                 : [],   # Main array autocorrelations
-    "intf_acfs"                 : [],   # Interferometer array autocorrelations
-    "xcfs"                      : [],   # Crosscorrelations between main and interferometer arrays
-    "gps_locked"                : None, # Boolean True if the GPS was locked during the entire
-                                        # integration period
-    "gps_to_system_time_diff"   : None, # Max time diff in seconds between GPS and system/NTP time
-                                        # during the integration period.
-    "agc_status_word"           : None, # 32 bits, a '1' in bit position corresponds to an AGC
-                                        # fault on that transmitter
-    "lp_status_word"            : None  # 32 bits, a '1' in bit position corresponds to a low power
-                                        # condition on that transmitter
-}
+@dataclass(init=False)
+class SequenceData:
+    """
+    This class defines all fields that need to be written by any type of data file. The 'groups' metadata lists
+    the applicable file types for each field.
+    """
+    agc_status_word: int = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    antenna_arrays_order: List[str] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq']})
+    averaging_method: str = field(
+        metadata={'groups': ['rawacf']})
+    beam_azms: List[float] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+    beam_nums: List[int] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+    blanked_samples: np.ndarray = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    borealis_git_hash: str = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    correlation_descriptors: List[str] = field(
+        metadata={'groups': ['rawacf']})
+    correlation_dimensions: np.ndarray = field(
+        metadata={'groups': ['rawacf']})
+    data: np.ndarray = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf']})
+    data_descriptors: List[str] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf']})
+    data_dimensions: np.ndarray = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf']})
+    data_normalization_factor: float = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+    decimated_tx_samples: List = field(
+        metadata={'groups': ['txdata']})
+    dm_rate: List[int] = field(
+        metadata={'groups': ['txdata']})
+    experiment_comment: str = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    experiment_id: int = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    experiment_name: str = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    first_range: int = field(
+        metadata={'groups': ['bfiq', 'rawacf']})
+    first_range_rtt: float = field(
+        metadata={'groups': ['bfiq', 'rawacf']})
+    freq: float = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+    gps_locked: bool = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    gps_to_system_time_diff: float = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    int_time: float = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    intf_acfs: np.ndarray = field(
+        metadata={'groups': ['rawacf']})
+    intf_antenna_count: int = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    lags: np.ndarray = field(
+        metadata={'groups': ['bfiq', 'rawacf']})        # TODO: Should this be in antennas_iq too? Or removed from bfiq?
+    lp_status_word: int = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    main_acfs: np.ndarray = field(
+        metadata={'groups': ['rawacf']})
+    main_antenna_count: int = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    noise_at_freq: np.ndarray = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+    num_ranges: int = field(
+        metadata={'groups': ['bfiq']})                              # TODO: Does this need to be in more file types?
+    num_samps: int = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf']})
+    num_sequences: int = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    num_slices: int = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    pulse_phase_offset: np.ndarray = field(
+        metadata={'groups': ['antennas_iq', 'bfiq']})
+    pulse_sample_start: List[float] = field(
+        metadata={'groups': ['txdata']})
+    pulse_timing_us: List[float] = field(
+        metadata={'groups': ['txdata']})
+    pulses: np.ndarray = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+    range_sep: int = field(
+        metadata={'groups': ['bfiq', 'rawacf']})                      # TODO: Does this need to be in antennas_iq?
+    rx_center_freq: float = field(
+        metadata={'groups': 'rawrf'})
+    rx_sample_rate: float = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    samples_data_type: str = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    scan_start_marker: bool = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    scheduling_mode: str = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    slice_comment: str = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    slice_id: int = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+    slice_interfacing: dict = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+    sqn_timestamps: List[float] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    station: str = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+    tau_spacing: float = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+    tx_center_freq: List[float] = field(
+        metadata={'groups': ['txdata']})
+    tx_pulse_len: float = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+    tx_rate: List[float] = field(
+        metadata={'groups': ['txdata']})
+    tx_samples: List = field(
+        metadata={'groups': ['txdata']})
+    xcfs: np.ndarray = field(
+        metadata={'groups': ['rawacf']})
 
-TX_TEMPLATE = {
-    "tx_rate"               : [],
-    "tx_center_freq"        : [],
-    "pulse_timing_us"       : [],
-    "pulse_sample_start"    : [],
-    "tx_samples"            : [],
-    "dm_rate"               : [],
-    "decimated_tx_samples"  : [],
-}
+    @classmethod
+    def type_fields(cls, file_type: str):
+        """
+        Returns a list of names for all fields which belong in 'file_type' files.
+        """
+        matching_fields = []
+        for f in fields(cls):
+            if file_type in f.metadata.get('groups'):
+                matching_fields.append(f.name)
+        return matching_fields
 
 
+@dataclass
 class ParseData(object):
     """
-    Parse message data from sockets into file writable types, such as hdf5, json, dmap, etc.
-
-    :param  nested_dict:    alias to a nested defaultdict
-    :type   nested_dict:    dict
-    :param  processed_data: Contains a message from dsp socket.
-    :type   processed_data: ProcessedSequenceMessage
+    This class is for aggregating data during an averaging period.
     """
-
-    def __init__(self, data_write_options):
-        super(ParseData, self).__init__()
-
-        self.options = data_write_options
-
-        # defaultdict will populate non-specified entries in the dictionary with the default
-        # value given as an argument, in this case a dictionary. Nesting it in a lambda lets you
-        # create arbitrarily deep dictionaries.
-        self.nested_dict = lambda: collections.defaultdict(self.nested_dict)
-
-        self.processed_data = None
-
-        self._rx_rate = 0.0
-        self._output_sample_rate = 0.0
-
-        self._bfiq_available = False
-        self._bfiq_accumulator = self.nested_dict()
-
-        self._antenna_iq_accumulator = self.nested_dict()
-        self._antenna_iq_available = False
-
-        self._mainacfs_available = False
-        self._mainacfs_accumulator = self.nested_dict()
-
-        self._xcfs_available = False
-        self._xcfs_accumulator = self.nested_dict()
-
-        self._intfacfs_available = False
-        self._intfacfs_accumulator = self.nested_dict()
-
-        self._slice_ids = set()
-        self._timestamps = []
-
-        self._gps_locked = True  # init True so that logical AND works properly in update() method
-        self._gps_to_system_time_diff = 0.0
-
-        self._agc_status_word = 0b0
-        self._lp_status_word = 0b0
-
-        self._rawrf_locations = []
-        self._rawrf_num_samps = 0
-        self._raw_rf_available = False
+    agc_status_word: int = 0b0
+    antenna_iq_accumulator: Dict = field(default_factory=dict)
+    antenna_iq_available: bool = False
+    bfiq_accumulator: Dict = field(default_factory=dict)
+    bfiq_available: bool = False
+    intfacfs_available: bool = False
+    gps_locked: bool = True     # init True so that logical AND works properly in update() method
+    gps_to_system_time_diff: float = 0.0
+    intfacfs_accumulator: Dict = field(default_factory=dict)
+    lp_status_word: int = 0b0
+    mainacfs_accumulator: Dict = field(default_factory=dict)
+    mainacfs_available: bool = False
+    options: dwo.DataWriteOptions = None
+    output_sample_rate: float = 0.0
+    processed_data: ProcessedSequenceMessage = field(init=False)
+    rawrf_available: bool = False
+    rawrf_locations: List[str] = field(default_factory=list)
+    rawrf_num_samps: int = 0
+    rx_rate: float = 0.0
+    sequence_num: int = field(init=False)
+    slice_ids: Set = field(default_factory=set)
+    timestamps: List[float] = field(default_factory=list)
+    xcfs_accumulator: Dict = field(default_factory=dict)
+    xcfs_available: bool = False
 
     def parse_correlations(self):
         """
-        Parses out the possible correlation data from the message. Runs on every new
+        Parses out the possible correlation (acf/xcf) data from the message. Runs on every new
         ProcessedSequenceMessage (contains all sampling period data). The expectation value is
-        calculated at the end of a sampling period by a different function.
+        calculated at the end of an averaging period by a different function.
         """
 
         for data_set in self.processed_data.output_datasets:
@@ -206,26 +234,24 @@ class ParseData(object):
                 shm.unlink()
 
             if data_set.main_acf_shm:
-                self._mainacfs_available = True
-                accumulate_data(self._mainacfs_accumulator, data_set.main_acf_shm)
+                self.mainacfs_available = True
+                accumulate_data(self.mainacfs_accumulator, data_set.main_acf_shm)
 
             if data_set.xcf_shm:
-                self._xcfs_available = True
-                accumulate_data(self._xcfs_accumulator, data_set.xcf_shm)
+                self.xcfs_available = True
+                accumulate_data(self.xcfs_accumulator, data_set.xcf_shm)
 
             if data_set.intf_acf_shm:
-                self._intfacfs_available = True
-                accumulate_data(self._intfacfs_accumulator, data_set.intf_acf_shm)
+                self.intfacfs_available = True
+                accumulate_data(self.intfacfs_accumulator, data_set.intf_acf_shm)
 
     def parse_bfiq(self):
         """
         Parses out any possible beamformed IQ data from the message. Runs on every
-        ProcessedSequenceMessage (contains all sampling period data). All variables are captured
-        from outer scope.
+        ProcessedSequenceMessage (contains all sampling period data).
         """
 
-        self._bfiq_accumulator['data_descriptors'] = ['num_antenna_arrays', 'num_sequences',
-                                                      'num_beams', 'num_samps']
+        self.bfiq_accumulator['data_descriptors'] = ['num_antenna_arrays', 'num_sequences', 'num_beams', 'num_samps']
 
         num_slices = len(self.processed_data.output_datasets)
         max_num_beams = self.processed_data.max_num_beams
@@ -250,30 +276,30 @@ class ParseData(object):
             intf_shm.close()
             intf_shm.unlink()
 
-        self._bfiq_available = True
+        self.bfiq_available = True
 
         for i, data_set in enumerate(self.processed_data.output_datasets):
             slice_id = data_set.slice_id
             num_beams = data_set.num_beams
 
-            self._bfiq_accumulator[slice_id]['num_samps'] = num_samps
+            self.bfiq_accumulator[slice_id]['num_samps'] = num_samps
 
-            if 'main_data' not in self._bfiq_accumulator[slice_id]:
-                self._bfiq_accumulator[slice_id]['main_data'] = []
-            self._bfiq_accumulator[slice_id]['main_data'].append(main_data[i, :num_beams, :])
+            if 'main_data' not in self.bfiq_accumulator[slice_id]:
+                self.bfiq_accumulator[slice_id]['main_data'] = []
+            self.bfiq_accumulator[slice_id]['main_data'].append(main_data[i, :num_beams, :])
 
             if intf_available:
-                if 'intf_data' not in self._bfiq_accumulator[slice_id]:
-                    self._bfiq_accumulator[slice_id]['intf_data'] = []
-                self._bfiq_accumulator[slice_id]['intf_data'].append(intf_data[i, :num_beams, :])
+                if 'intf_data' not in self.bfiq_accumulator[slice_id]:
+                    self.bfiq_accumulator[slice_id]['intf_data'] = []
+                self.bfiq_accumulator[slice_id]['intf_data'].append(intf_data[i, :num_beams, :])
 
     def parse_antenna_iq(self):
         """
         Parses out any pre-beamformed IQ if available. Runs on every ProcessedSequenceMessage
-        (contains all sampling period data). All variables are captured from outer scope.
+        (contains all sampling period data).
         """
 
-        self._antenna_iq_accumulator['data_descriptors'] = ['num_antennas', 'num_sequences', 'num_samps']
+        self.antenna_iq_accumulator['data_descriptors'] = ['num_antennas', 'num_sequences', 'num_samps']
 
         # Get data dimensions for reading in the shared memory
         num_slices = len(self.processed_data.output_datasets)
@@ -308,7 +334,7 @@ class ParseData(object):
                           'data': stage_data}
             stages.append(stage_dict)
 
-        self._antenna_iq_available = True
+        self.antenna_iq_available = True
 
         # Iterate over every data set, one data set per slice
         for i, data_set in enumerate(self.processed_data.output_datasets):
@@ -318,10 +344,10 @@ class ParseData(object):
             for debug_stage in stages:
                 stage_name = debug_stage['stage_name']
 
-                if stage_name not in self._antenna_iq_accumulator[slice_id]:
-                    self._antenna_iq_accumulator[slice_id][stage_name] = collections.OrderedDict()
+                if stage_name not in self.antenna_iq_accumulator[slice_id]:
+                    self.antenna_iq_accumulator[slice_id][stage_name] = collections.OrderedDict()
 
-                antenna_iq_stage = self._antenna_iq_accumulator[slice_id][stage_name]
+                antenna_iq_stage = self.antenna_iq_accumulator[slice_id][stage_name]
 
                 antennas_data = debug_stage['data'][i]
                 antenna_iq_stage["num_samps"] = antennas_data.shape[-1]
@@ -344,323 +370,63 @@ class ParseData(object):
         In parse_[type](), new data arrays are appended to a list for speed considerations.
         This function converts these lists into numpy arrays.
         """
-        for slice_id, slice_data in self._antenna_iq_accumulator.items():
+        for slice_id, slice_data in self.antenna_iq_accumulator.items():
             if isinstance(slice_id, int):  # filtering out 'data_descriptors'
                 for param_data in slice_data.values():
                     for array_name, array_data in param_data.items():
                         if array_name != 'num_samps':
                             array_data['data'] = np.array(array_data['data'], dtype=np.complex64)
 
-        for slice_id, slice_data in self._bfiq_accumulator.items():
+        for slice_id, slice_data in self.bfiq_accumulator.items():
             if isinstance(slice_id, int):  # filtering out 'data_descriptors'
                 for param_name, param_data in slice_data.items():
                     slice_data[param_name] = np.array(param_data, dtype=np.complex64)
 
-        for slice_data in self._mainacfs_accumulator.values():
+        for slice_data in self.mainacfs_accumulator.values():
             slice_data['data'] = np.array(slice_data['data'], np.complex64)
 
-        for slice_data in self._intfacfs_accumulator.values():
+        for slice_data in self.intfacfs_accumulator.values():
             slice_data['data'] = np.array(slice_data['data'], np.complex64)
 
-        for slice_data in self._xcfs_accumulator.values():
+        for slice_data in self.xcfs_accumulator.values():
             slice_data['data'] = np.array(slice_data['data'], np.complex64)
 
     def update(self, data):
         """
         Parses the message and updates the accumulator fields with the new data.
 
-        :param  data: Processed sequence metadata.
+        :param  data: Processed sequence from rx_signal_processing module.
         :type   data: ProcessedSequenceMessage
         """
-
         self.processed_data = data
-        self._timestamps.append(data.sequence_start_time)
-
-        self._rx_rate = data.rx_sample_rate
-        self._output_sample_rate = data.output_sample_rate
+        self.timestamps.append(data.sequence_start_time)
+        self.rx_rate = data.rx_sample_rate
+        self.output_sample_rate = data.output_sample_rate
 
         for data_set in data.output_datasets:
-            self._slice_ids.add(data_set.slice_id)
+            self.slice_ids.add(data_set.slice_id)
 
         if data.rawrf_shm != '':
-            self._raw_rf_available = True
-            self._rawrf_num_samps = data.rawrf_num_samps
-            self._rawrf_locations.append(data.rawrf_shm)
+            self.rawrf_available = True
+            self.rawrf_num_samps = data.rawrf_num_samps
+            self.rawrf_locations.append(data.rawrf_shm)
 
         # Logical AND to catch any time the GPS may have been unlocked during the integration period
-        self._gps_locked = self._gps_locked and data.gps_locked
+        self.gps_locked = self.gps_locked and data.gps_locked
 
         # Find the max time diff between GPS and system time to report for this integration period
-        if abs(self._gps_to_system_time_diff) < abs(data.gps_to_system_time_diff):
-            self._gps_to_system_time_diff = data.gps_to_system_time_diff
+        if abs(self.gps_to_system_time_diff) < abs(data.gps_to_system_time_diff):
+            self.gps_to_system_time_diff = data.gps_to_system_time_diff
 
         # Bitwise OR to catch any AGC faults during the integration period
-        self._agc_status_word = self._agc_status_word | data.agc_status_bank_h
+        self.agc_status_word = self.agc_status_word | data.agc_status_bank_h
 
         # Bitwise OR to catch any low power conditions during the integration period
-        self._lp_status_word = self._lp_status_word | data.lp_status_bank_h
-
-        # TODO(keith): Parallelize?
-        procs = []
+        self.lp_status_word = self.lp_status_word | data.lp_status_bank_h
 
         self.parse_correlations()
         self.parse_bfiq()
         self.parse_antenna_iq()
-
-        for proc in procs:
-            proc.start()
-
-        for proc in procs:
-            proc.join()
-
-    @property
-    def sequence_num(self):
-        """
-        Gets the sequence num of the latest processeddata packet.
-
-        :returns:   sequence number
-        :rtype:     int
-        """
-
-        return self.processed_data.sequence_num
-
-    @property
-    def bfiq_available(self):
-        """
-        Gets the bfiq available flag.
-
-        :returns:   bfiq available flag
-        :rtype:     bool
-        """
-
-        return self._bfiq_available
-
-    @property
-    def antenna_iq_available(self):
-        """
-        Gets the pre-bfiq available flag.
-
-        :returns:   pre-bfiq available flag
-        :rtype:     bool
-        """
-
-        return self._antenna_iq_available
-
-    @property
-    def mainacfs_available(self):
-        """
-        Gets the mainacfs available flag.
-
-        :returns:   mainacfs available flag
-        :rtype:     bool
-        """
-
-        return self._mainacfs_available
-
-    @property
-    def xcfs_available(self):
-        """
-        Gets the xcfs available flag.
-
-        :returns:   xcfs available flag
-        :rtype:     bool
-        """
-
-        return self._xcfs_available
-
-    @property
-    def intfacfs_available(self):
-        """
-        Gets the intfacfs available flag.
-
-        :returns:   intfacfs available flag
-        :rtype:     bool
-        """
-
-        return self._intfacfs_available
-
-    @property
-    def bfiq_accumulator(self):
-        """
-        Returns the nested default dictionary with complex stage data for each antenna array as well
-        as some metadata.
-
-        :returns:   bfiq_accumulator containing beamform data for each slice
-        :rtype:     dict
-        """
-
-        return self._bfiq_accumulator
-
-    @property
-    def antenna_iq_accumulator(self):
-        """
-        Returns the nested default dictionary with complex stage data for each antenna as well
-        as some metadata for each slice.
-
-        :returns:   antenna_iq_accumulator containing data for each antenna and slice
-        :rtype:     dict
-        """
-
-        return self._antenna_iq_accumulator
-
-    @property
-    def mainacfs_accumulator(self):
-        """
-        Returns the default dict containing a list of main acf data for each slice. There is an
-        array of data for each sampling period.
-
-        :returns:   mainacfs_accumulator containing main acf data for each slice
-        :rtype:     dict
-        """
-
-        return self._mainacfs_accumulator
-
-    @property
-    def xcfs_accumulator(self):
-        """
-        Returns the default dict containing a list of xcf data for each slice. There is an
-        array of data for each sampling period.
-
-        :returns:   xcfs_accumulator containing xcf data for each slice
-        :rtype:     dict
-        """
-
-        return self._xcfs_accumulator
-
-    @property
-    def intfacfs_accumulator(self):
-        """
-        Returns the default dict containing a list of intf acf data for each slice. There is an
-        array of data for each sampling period.
-
-        :returns:   intfacfs_accumulator containing intf acf data for each slice
-        :rtype:     dict
-        """
-
-        return self._intfacfs_accumulator
-
-    @property
-    def timestamps(self):
-        """
-        Return the python list of sequence timestamps (when the sampling period begins)
-        from the processsed data packets
-
-        :returns:   sequence timestamps from the processed data packets
-        :rtype:     list
-        """
-
-        return self._timestamps
-
-    @property
-    def rx_rate(self):
-        """
-        Return the rx_rate of the data in the data packet
-
-        :returns:   sampling rate in Hz
-        :rtype:     float
-        """
-
-        return self._rx_rate
-
-    @property
-    def output_sample_rate(self):
-        """
-        Return the output rate of the filtered, decimated data in the data packet.
-
-        :returns:   output sampling rate in Hz
-        :rtype:     float
-        """
-
-        return self._output_sample_rate
-
-    @property
-    def slice_ids(self):
-        """
-        Return the slice ids in python set so they are guaranteed unique
-
-        :returns:   slice id numbers
-        :rtype:     set
-        """
-
-        return self._slice_ids
-
-    @property
-    def raw_rf_available(self):
-        """
-        Gets the raw_rf available flag.
-
-        :returns:   raw_rf available flag
-        :rtype:     bool
-        """
-
-        return self._raw_rf_available
-
-    @property
-    def rawrf_locations(self):
-        """
-        Gets the list of raw rf memory locations.
-
-        :returns:   raw rf memory locations
-        :rtype:     list of strings
-        """
-
-        return self._rawrf_locations
-
-    @property
-    def rawrf_num_samps(self):
-        """
-        Gets the number of rawrf samples per antenna.
-
-        :returns:   number of rawrf samples per antenna
-        :rtype:     int
-        """
-
-        return self._rawrf_num_samps
-
-    @property
-    def gps_locked(self):
-        """
-        Return the boolean value indicating if the GPS was locked during the entire int period
-
-        :returns:   gps_locked flag
-        :rtype:     bool
-        """
-
-        return self._gps_locked
-
-    @property
-    def gps_to_system_time_diff(self):
-        """
-        Gets the maximum time diff in seconds between the GPS (box_time) and system (NTP) during
-        the integration period. Negative if GPS time is ahead of system/NTP time.
-
-        :returns:   gps to system time diff
-        :rtype:     double
-        """
-
-        return self._gps_to_system_time_diff
-
-    @property
-    def agc_status_word(self):
-        """
-        AGC Status, a '1' in bit position corresponds to an AGC fault on that transmitter
-
-        :returns:   agc_status_word
-        :rtype:     int
-        """
-
-        return self._agc_status_word
-
-    @property
-    def lp_status_word(self):
-        """
-        Low Power, a '1' in bit position corresponds to a low power condition on that transmitter
-
-        :returns:   lp_status_word
-        :rtype:     int
-        """
-
-        return self._lp_status_word
 
 
 class DataWrite(object):
@@ -700,7 +466,8 @@ class DataWrite(object):
         # Default this to true so we know if we are running for the first time.
         self.first_time = True
 
-    def write_json_file(self, filename, data_dict):
+    @staticmethod
+    def write_json_file(filename, data_dict):
         """
         Write out data to a json file. If the file already exists it will be overwritten.
 
@@ -713,7 +480,8 @@ class DataWrite(object):
         with open(filename, 'w+') as f:
             f.write(json.dumps(data_dict))
 
-    def write_hdf5_file(self, filename, data_dict, dt_str):
+    @staticmethod
+    def write_hdf5_file(filename, data_dict, dt_str):
         """
         Write out data to an HDF5 file. If the file already exists it will be overwritten.
 
@@ -725,25 +493,24 @@ class DataWrite(object):
         :type   dt_str:     str
         """
 
-        def convert_to_numpy(dd):
+        def convert_to_numpy(dict_of_lists):
             """
             Converts lists stored in dict into numpy array. Recursive.
 
-            :param  dd: Dictionary with lists to convert to numpy arrays.
-            :type   dd: dict
+            :param  dict_of_lists: Dictionary with lists to convert to numpy arrays.
+            :type   dict_of_lists: dict
             """
-            for k, v in dd.items():
+            for k, v in dict_of_lists.items():
                 if isinstance(v, dict):
                     convert_to_numpy(v)
                 elif isinstance(v, list):
-                    dd[k] = np.array(v)
+                    dict_of_lists[k] = np.array(v)
                 else:
                     continue
 
         convert_to_numpy(data_dict)
 
-        time_stamped_dd = {}
-        time_stamped_dd[dt_str] = data_dict
+        time_stamped_dd = {dt_str: data_dict}
 
         # Ignoring warning that arises from using integers as the keys of the data dictionary.
         warnings.simplefilter('ignore', tables.NaturalNameWarning)
@@ -760,7 +527,8 @@ class DataWrite(object):
                 log.exception("unknown error when saving to file", exception=e)
                 sys.exit(-1)
 
-    def write_dmap_file(self, filename, data_dict):
+    @staticmethod
+    def write_dmap_file(filename, data_dict):
         """
         Write out data to a dmap file. If the file already exists it will be overwritten.
 
@@ -789,7 +557,7 @@ class DataWrite(object):
         :type   write_raw_rf:       bool
         :param  write_tx:           Should the generated tx samples and metadata be written to file?
         :type   write_tx:           bool
-        :param  file_ext:           Type of file extention to use
+        :param  file_ext:           Type of file extension to use
         :type   file_ext:           str
         :param  aveperiod_meta:     Metadata from radar control about averaging period
         :type   aveperiod_meta:     AveperiodMetadataMessage
@@ -872,29 +640,35 @@ class DataWrite(object):
 
             self.next_boundary = two_hr_ceiling(time_now)
 
-        def write_file(tmp_file, final_data_dict, two_hr_file_with_type):
+        def write_file(tmp_file, aveperiod_data, two_hr_file_with_type, file_type):
             """
             Writes the final data out to the location based on the type of file extension required
 
             :param  tmp_file:               File path and name to write single record
             :type   tmp_file:               str
-            :param  final_data_dict:        Data dict parsed out from message
-            :type   final_data_dict:        dict
+            :param  aveperiod_data:         Collection of data from sequences
+            :type   aveperiod_data:         SequenceData
             :param  two_hr_file_with_type:  Name of the two hour file with data type added
             :type   two_hr_file_with_type:  str
+            :param  file_type:              Data type, e.g. 'antennas_iq', 'bfiq', etc.
+            :type   file_type:              str
             """
 
             try:
                 os.makedirs(dataset_directory, exist_ok=True)
-            except OSError as e:
-                if e.args[0] == errno.ENOSPC:
-                    log.critical("no space left on device", error=e)
-                    log.exception("no space left on device", exception=e)
+            except OSError as err:
+                if err.args[0] == errno.ENOSPC:
+                    log.critical("no space left on device", error=err)
+                    log.exception("no space left on device", exception=err)
                     sys.exit(-1)
                 else:
-                    log.critical("unknown error when making dirs", error=e)
-                    log.exception("unknown error when making dirs", exception=e)
+                    log.critical("unknown error when making dirs", error=err)
+                    log.exception("unknown error when making dirs", exception=err)
                     sys.exit(-1)
+
+            data_dict = {}
+            for f in SequenceData.type_fields(file_type):
+                data_dict[f] = getattr(aveperiod_data, f)
 
             if file_ext == 'hdf5':
                 full_two_hr_file = f"{dataset_directory}/{two_hr_file_with_type}.hdf5.site"
@@ -902,17 +676,17 @@ class DataWrite(object):
                 try:
                     fd = os.open(full_two_hr_file, os.O_CREAT)
                     os.close(fd)
-                except OSError as e:
+                except OSError as err:
                     if e.args[0] == errno.ENOSPC:
-                        log.critical("no space left on device", error=e)
-                        log.exception("no space left on device", exception=e)
+                        log.critical("no space left on device", error=err)
+                        log.exception("no space left on device", exception=err)
                         sys.exit(-1)
                     else:
-                        log.critical("unknown error when opening file", error=e)
-                        log.exception("unknown error when opening file", exception=e)
+                        log.critical("unknown error when opening file", error=err)
+                        log.exception("unknown error when opening file", exception=err)
                         sys.exit(-1)
 
-                self.write_hdf5_file(tmp_file, final_data_dict, epoch_milliseconds)
+                self.write_hdf5_file(tmp_file, data_dict, epoch_milliseconds)
 
                 # Use external h5copy utility to move new record into 2hr file.
                 cmd = 'h5copy -i {newfile} -o {twohr} -s {dtstr} -d {dtstr}'
@@ -924,11 +698,11 @@ class DataWrite(object):
                 # Temp file is removed in real time module.
 
             elif file_ext == 'json':
-                self.write_json_file(tmp_file, final_data_dict)
+                self.write_json_file(tmp_file, data_dict)
             elif file_ext == 'dmap':
-                self.write_dmap_file(tmp_file, final_data_dict)
+                self.write_dmap_file(tmp_file, data_dict)
 
-        def write_correlations(parameters_holder):
+        def write_correlations(aveperiod_data):
             """
             Parses out any possible correlation data from message and writes to file. Some variables
             are captured from outer scope.
@@ -937,33 +711,15 @@ class DataWrite(object):
             individually. At this point, they will be combined into data for a single integration
             time via averaging.
 
-            :param  parameters_holder:  A dict that hold dicts of parameters for each slice.
-            :type   parameters_holder:  dict
+            :param  aveperiod_data:  Dict of SequenceData for each slice.
+            :type   aveperiod_data:  dict
             """
-
-            needed_fields = [
-            "borealis_git_hash",        "experiment_id",        "experiment_name",
-            "experiment_comment",       "num_slices",           "slice_comment",
-            "station",                  "num_sequences",        "range_sep",
-            "first_range_rtt",          "first_range",          "rx_sample_rate",
-            "scan_start_marker",        "int_time",             "tx_pulse_len",
-            "tau_spacing",              "main_antenna_count",   "intf_antenna_count",
-            "freq",                     "samples_data_type",    "pulses",
-            "lags",                     "blanked_samples",      "sqn_timestamps",
-            "beam_nums",                "beam_azms",            "correlation_descriptors",
-            "correlation_dimensions",   "main_acfs",            "intf_acfs",
-            "xcfs",                     "noise_at_freq",        "data_normalization_factor",
-            "slice_id",                 "slice_interfacing",    "averaging_method",
-            "scheduling_mode",          "gps_locked",           "gps_to_system_time_diff",
-            "agc_status_word",          "lp_status_word"
-            ]
-            # Note: num_ranges not in needed_fields but is used to make correlation_dimensions
 
             main_acfs = data_parsing.mainacfs_accumulator
             xcfs = data_parsing.xcfs_accumulator
             intf_acfs = data_parsing.intfacfs_accumulator
 
-            def find_expectation_value(x, parameters, field_name):
+            def find_expectation_value(x, template):
                 """
                 Get the mean or median of all correlations from all sequences in the integration
                 period - only this will be recorded.
@@ -973,20 +729,20 @@ class DataWrite(object):
 
                 # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
                 # so we get median of all sequences.
-                averaging_method = parameters['averaging_method']
+                averaging_method = template.averaging_method
                 array_2d = np.array(x, dtype=np.complex64)
-                num_beams, num_ranges, num_lags = np.array([len(parameters["beam_nums"]),
-                                                            parameters["num_ranges"],
-                                                            parameters["lags"].shape[0]],
+                num_beams, num_ranges, num_lags = np.array([len(template.beam_nums),
+                                                            template.num_ranges,
+                                                            template.lags.shape[0]],
                                                            dtype=np.uint32)
 
                 # First range offset in samples
-                sample_off = parameters['first_range_rtt'] * 1e-6 * parameters['rx_sample_rate']
+                sample_off = template.first_range_rtt * 1e-6 * template.rx_sample_rate
                 sample_off = np.uint32(sample_off)
 
                 # Find sample number which corresponds with second pulse in sequence
-                tau_in_samples = parameters['tau_spacing'] * 1e-6 * parameters['rx_sample_rate']
-                second_pulse_sample_num = np.uint32(tau_in_samples) * parameters['pulses'][1] - sample_off - 1
+                tau_in_samples = template.tau_spacing * 1e-6 * template.rx_sample_rate
+                second_pulse_sample_num = np.uint32(tau_in_samples) * template.pulses[1] - sample_off - 1
 
                 # Average the data
                 try:
@@ -996,237 +752,174 @@ class DataWrite(object):
                     elif averaging_method == 'median':
                         array_expectation_value = np.median(np.real(array_2d), axis=0) + \
                                                   1j * np.median(np.imag(array_2d), axis=0)
-                except Exception as e:
-                    log.error("wrong averaging method [mean, median]", error=e)
-                    log.exception("wrong averaging method [mean, median]", exception=e)
+                except Exception as err:
+                    log.error("wrong averaging method [mean, median]", error=err)
+                    log.exception("wrong averaging method [mean, median]", exception=err)
                     sys.exit(1)
-
 
                 # Reshape array to be 3d so we can replace lag0 far ranges that are cluttered with those
                 # from alternate lag0 which have no clutter.
+                # TODO: Can we refactor so that pycharm doesn't get mad at this?
                 array_3d = array_expectation_value.reshape((num_beams, num_ranges, num_lags))
                 array_3d[:, second_pulse_sample_num:, 0] = array_3d[:, second_pulse_sample_num:, -1]
 
                 # Flatten back to a list
-                parameters[field_name] = array_3d.flatten()
+                return array_3d.flatten()
 
-            for slice_id in main_acfs:
-                parameters = parameters_holder[slice_id]
-                find_expectation_value(main_acfs[slice_id]['data'], parameters, 'main_acfs')
+            for slice_num in main_acfs:
+                slice_data = aveperiod_data[slice_num]
+                slice_data.main_acfs = find_expectation_value(main_acfs[slice_num]['data'], slice_data)
 
-            for slice_id in xcfs:
-                parameters = parameters_holder[slice_id]
-                find_expectation_value(xcfs[slice_id]['data'], parameters, 'xcfs')
+            for slice_num in xcfs:
+                slice_data = aveperiod_data[slice_num]
+                slice_data.xcfs = find_expectation_value(xcfs[slice_num]['data'], slice_data)
 
-            for slice_id in intf_acfs:
-                parameters = parameters_holder[slice_id]
-                find_expectation_value(intf_acfs[slice_id]['data'], parameters, 'intf_acfs')
+            for slice_num in intf_acfs:
+                slice_data = aveperiod_data[slice_num]
+                slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'], slice_data)
 
-            for slice_id, parameters in parameters_holder.items():
-                parameters['correlation_descriptors'] = ['num_beams', 'num_ranges', 'num_lags']
-                parameters['correlation_dimensions'] = np.array([len(parameters["beam_nums"]),
-                                                                 parameters["num_ranges"], parameters["lags"].shape[0]],
-                                                                dtype=np.uint32)
-                for field in list(parameters.keys()):
-                    if field not in needed_fields:
-                        parameters.pop(field, None)
+            for slice_num, slice_data in aveperiod_data.items():
+                slice_data.correlation_descriptors = ['num_beams', 'num_ranges', 'num_lags']
+                slice_data.correlation_dimensions = np.array([len(slice_data.beam_nums), slice_data.num_ranges,
+                                                              slice_data.lags.shape[0]], dtype=np.uint32)
 
-                name = dataset_name.format(sliceid=slice_id, dformat="rawacf")
+                name = dataset_name.format(sliceid=slice_num, dformat="rawacf")
                 output_file = dataset_location.format(name=name)
+                two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="rawacf")
 
-                two_hr_file_with_type = self.slice_filenames[slice_id].format(ext="rawacf")
+                write_file(output_file, slice_data, two_hr_file_with_type, "rawacf")
 
-                write_file(output_file, parameters, two_hr_file_with_type)
-
-        def write_bfiq_params(parameters_holder):
+        def write_bfiq_params(aveperiod_data):
             """
             write out any possible beamformed IQ data that has been parsed. Adds additional slice
             info to each parameter dict. Some variables are captured from outer scope.
 
-            :param  parameters_holder:  A dict that hold dicts of parameters for each slice.
-            :type   parameters_holder:  dict
+            :param  aveperiod_data:  Dict of SequenceData for each slice.
+            :type   aveperiod_data:  dict
             """
-
-            needed_fields = [
-            "borealis_git_hash",        "experiment_id",                "experiment_name",
-            "experiment_comment",       "num_slices",                   "slice_comment",
-            "station",                  "num_sequences",                "rx_sample_rate",
-            "pulse_phase_offset",       "scan_start_marker",            "int_time",
-            "tx_pulse_len",             "tau_spacing",                  "main_antenna_count",
-            "intf_antenna_count",       "freq",                         "samples_data_type",
-            "pulses",                   "blanked_samples",              "sqn_timestamps",
-            "beam_nums",                "beam_azms",                    "data_dimensions",
-            "data_descriptors",         "antenna_arrays_order",         "data",
-            "num_samps",                "noise_at_freq",                "range_sep",
-            "first_range_rtt",          "first_range",                  "lags",
-            "num_ranges",               "data_normalization_factor",    "slice_id",
-            "slice_interfacing",        "scheduling_mode",              "gps_locked",
-            "gps_to_system_time_diff",  "agc_status_word", "            lp_status_word"
-            ]
 
             bfiq = data_parsing.bfiq_accumulator
             slice_id_list = [x for x in bfiq.keys() if isinstance(x, int)]
 
-            # Pop these off so we dont include them in later iteration.
+            # Pop these off so we don't include them in later iteration.
             data_descriptors = bfiq.pop('data_descriptors', None)
 
-            for slice_id in slice_id_list:
-                parameters = parameters_holder[slice_id]
-                parameters['data_descriptors'] = data_descriptors
-                parameters['antenna_arrays_order'] = []
+            for slice_num in slice_id_list:
+                slice_data = aveperiod_data[slice_num]
+                slice_data.data_descriptors = data_descriptors
+                slice_data.antenna_arrays_order = []
 
                 flattened_data = []
                 num_antenna_arrays = 1
-                parameters['antenna_arrays_order'].append("main")
-                flattened_data.append(bfiq[slice_id]['main_data'].flatten())
-                if "intf" in bfiq[slice_id]:
+                slice_data.antenna_arrays_order.append("main")
+                flattened_data.append(bfiq[slice_num]['main_data'].flatten())
+                if "intf" in bfiq[slice_num]:
                     num_antenna_arrays += 1
-                    parameters['antenna_arrays_order'].append("intf")
-                    flattened_data.append(bfiq[slice_id]['intf_data'].flatten())
+                    slice_data.antenna_arrays_order.append("intf")
+                    flattened_data.append(bfiq[slice_num]['intf_data'].flatten())
 
                 flattened_data = np.concatenate(flattened_data)
-                parameters['data'] = flattened_data
+                slice_data.data = flattened_data
 
-                parameters['num_samps'] = np.uint32(bfiq[slice_id]['num_samps'])
-                parameters['data_dimensions'] = np.array([num_antenna_arrays,
-                                                          aveperiod_meta.num_sequences,
-                                                          len(parameters['beam_nums']),
-                                                          parameters['num_samps']], dtype=np.uint32)
+                slice_data.num_samps = np.uint32(bfiq[slice_num]['num_samps'])
+                slice_data.data_dimensions = np.array([num_antenna_arrays, aveperiod_meta.num_sequences,
+                                                       len(slice_data.beam_nums), slice_data.num_samps],
+                                                      dtype=np.uint32)
 
-                for field in list(parameters.keys()):
-                    if field not in needed_fields:
-                        parameters.pop(field, None)
-
-            for slice_id, parameters in parameters_holder.items():
-                name = dataset_name.format(sliceid=slice_id, dformat="bfiq")
+            for slice_num, slice_data in aveperiod_data.items():
+                name = dataset_name.format(sliceid=slice_num, dformat="bfiq")
                 output_file = dataset_location.format(name=name)
+                two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="bfiq")
 
-                two_hr_file_with_type = self.slice_filenames[slice_id].format(ext="bfiq")
+                write_file(output_file, slice_data, two_hr_file_with_type, "bfiq")
 
-                write_file(output_file, parameters, two_hr_file_with_type)
-
-        def write_antenna_iq_params(parameters_holder):
+        def write_antenna_iq_params(aveperiod_data):
             """
             Writes out any pre-beamformed IQ that has been parsed. Adds additional slice info
             to each paramater dict. Some variables are captured from outer scope. Pre-beamformed iq
             is the individual antenna received data. Antenna_arrays_order will list the antennas' order.
 
-            :param  parameters_holder:  A dict that hold dicts of parameters for each slice.
-            :type   parameters_holder:  dict
+            :param  aveperiod_data:  Dict that holds SequenceData for each slice.
+            :type   aveperiod_data:  dict
             """
-
-            needed_fields = [
-            "borealis_git_hash",    "experiment_id",                "experiment_name",
-            "experiment_comment",   "num_slices",                   "slice_comment",
-            "station",              "num_sequences",                "rx_sample_rate",
-            "scan_start_marker",    "int_time",                     "tx_pulse_len",
-            "tau_spacing",          "main_antenna_count",           "intf_antenna_count",
-            "freq",                 "samples_data_type",            "pulses",
-            "sqn_timestamps",       "beam_nums",                    "beam_azms",
-            "data_dimensions",      "data_descriptors",             "antenna_arrays_order",
-            "data",                 "num_samps",                    "pulse_phase_offset",
-            "noise_at_freq",        "data_normalization_factor",    "blanked_samples",
-            "slice_id",             "slice_interfacing",            "scheduling_mode",
-            "gps_locked",           "gps_to_system_time_diff",      "agc_status_word",
-            "lp_status_word"
-            ]
 
             antenna_iq = data_parsing.antenna_iq_accumulator
             slice_id_list = [x for x in antenna_iq.keys() if isinstance(x, int)]
 
-            # Pop these so we don't include them in later iteration.
+            # Pop these so we don't include them in later iteration.    TODO: Is this necessary? What iteration?
             data_descriptors = antenna_iq.pop('data_descriptors', None)
 
             # Parse the antennas from message
             rx_main_antennas = {}
             rx_intf_antennas = {}
 
-            for meta in aveperiod_meta.sequences:
-                for rx_freq in meta.rx_channels:
-                    rx_main_antennas[rx_freq.slice_id] = list(rx_freq.rx_main_antennas)
-                    rx_intf_antennas[rx_freq.slice_id] = list(rx_freq.rx_intf_antennas)
+            for sqn in aveperiod_meta.sequences:
+                for rx_channel in sqn.rx_channels:
+                    rx_main_antennas[rx_channel.slice_id] = list(rx_channel.rx_main_antennas)
+                    rx_intf_antennas[rx_channel.slice_id] = list(rx_channel.rx_intf_antennas)
 
             # Build strings from antennas used in the message. This will be used to know
             # what antennas were recorded on since we sample all available USRP channels
             # and some channels may not be transmitted on, or connected.
-            main_ant_str = lambda x: f"antenna_{x}"
-            intf_ant_str = lambda x: f"antenna_{x + self.options.main_antenna_count}"
-            for slice_id in rx_main_antennas:
-                rx_main_antennas[slice_id] = [main_ant_str(x) for x in rx_main_antennas[slice_id]]
-                rx_intf_antennas[slice_id] = [intf_ant_str(x) for x in rx_intf_antennas[slice_id]]
+            def main_ant_str(x):
+                return f"antenna_{x}"
+
+            def intf_ant_str(x):
+                return f"antenna_{x + self.options.main_antenna_count}"
+
+            for slice_num in rx_main_antennas:
+                rx_main_antennas[slice_num] = [main_ant_str(x) for x in rx_main_antennas[slice_num]]
+                rx_intf_antennas[slice_num] = [intf_ant_str(x) for x in rx_intf_antennas[slice_num]]
 
             final_data_params = {}
-            for slice_id in slice_id_list:
-                final_data_params[slice_id] = {}
+            for slice_num in slice_id_list:
+                final_data_params[slice_num] = {}
 
-                for stage in antenna_iq[slice_id]:
-                    parameters = parameters_holder[slice_id].copy()
+                for stage in antenna_iq[slice_num]:
+                    stage_data = aveperiod_data[slice_num].copy()
 
-                    parameters['data_descriptors'] = data_descriptors
-                    parameters['num_samps'] = np.uint32(
-                        antenna_iq[slice_id][stage].pop('num_samps', None))
+                    stage_data.data_descriptors = data_descriptors
+                    # TODO: Why do we pop?
+                    stage_data.num_samps = np.uint32(antenna_iq[slice_num][stage].pop('num_samps', None))
+                    stage_data.antenna_arrays_order = rx_main_antennas[slice_num] + rx_intf_antennas[slice_num]
+                    num_ants = len(stage_data.antenna_arrays_order)
 
-                    parameters['antenna_arrays_order'] = rx_main_antennas[slice_id] + \
-                                                         rx_intf_antennas[slice_id]
-
-                    num_ants = len(parameters['antenna_arrays_order'])
-
-                    parameters['data_dimensions'] = np.array([num_ants,
-                                                              aveperiod_meta.num_sequences,
-                                                              parameters['num_samps']],
-                                                             dtype=np.uint32)
+                    stage_data.data_dimensions = np.array([num_ants, aveperiod_meta.num_sequences,
+                                                           stage_data.num_samps], dtype=np.uint32)
 
                     data = []
-                    for k, data_dict in antenna_iq[slice_id][stage].items():
-                        if k in parameters['antenna_arrays_order']:
+                    for k, data_dict in antenna_iq[slice_num][stage].items():
+                        if k in stage_data.antenna_arrays_order:
                             data.append(data_dict['data'].flatten())
 
                     flattened_data = np.concatenate(data)
-                    parameters['data'] = flattened_data
+                    stage_data.data = flattened_data
 
-                    for field in list(parameters.keys()):
-                        if field not in needed_fields:
-                            parameters.pop(field, None)
+                    final_data_params[slice_num][stage] = stage_data
 
-                    final_data_params[slice_id][stage] = parameters
-
-            for slice_id, slice_ in final_data_params.items():
+            for slice_num, slice_ in final_data_params.items():
                 for stage, params in slice_.items():
-                    name = dataset_name.format(sliceid=slice_id, dformat=f"{stage}_iq")
+                    name = dataset_name.format(sliceid=slice_num, dformat=f"{stage}_iq")
                     output_file = dataset_location.format(name=name)
 
                     ext = f"{stage}_iq"
-                    two_hr_file_with_type = self.slice_filenames[slice_id].format(ext=ext)
+                    two_hr_file_with_type = self.slice_filenames[slice_num].format(ext=ext)
 
-                    write_file(output_file, params, two_hr_file_with_type)
+                    write_file(output_file, params, two_hr_file_with_type, "antennas_iq")
 
-        def write_raw_rf_params(param):
+        def write_raw_rf_params(slice_data):
             """
             Opens the shared memory location in the message and writes the samples out to file.
             Write medium must be able to sustain high write bandwidth. Shared memory is destroyed
-            after write. Some variables are captured in scope.
+            after write. Some variables are captured in scope. It's expected that the
+            user will have knowledge of what they are looking for when working with this data.
+            Note that because this data is not slice-specific a lot of slice-specific data (ex.
+            pulses, beam_nums, beam_azms) is not included (user must look at the experiment they
+            ran).
 
-            :param  param:  A dict of parameters to write. Some will be removed.
-            :type   param:  dict
+            :param  slice_data:  Parameters for a single slice during the averaging period.
+            :type   slice_data:  SequenceData
             """
-
-            needed_fields = [
-            "borealis_git_hash",    "experiment_id",            "experiment_name",
-            "experiment_comment",   "num_slices",               "station",
-            "num_sequences",        "rx_sample_rate",           "scan_start_marker",
-            "int_time",             "main_antenna_count",       "intf_antenna_count",
-            "samples_data_type",    "sqn_timestamps",           "data_dimensions",
-            "data_descriptors",     "data",                     "num_samps",
-            "rx_center_freq",       "blanked_samples",          "scheduling_mode",
-            "gps_locked",           "gps_to_system_time_diff",  "agc_status_word",
-            "lp_status_word"
-            ]
-
-            # Some fields don't make much sense when working with the raw rf. It's expected that the
-            # user will have knowledge of what they are looking for when working with this data.
-            # Note that because this data is not slice-specific a lot of slice-specific data (ex.
-            # pulses, beam_nums, beam_azms) is not included (user must look at the experiment they
-            # ran)
 
             raw_rf = data_parsing.rawrf_locations
             num_rawrf_samps = data_parsing.rawrf_num_samps
@@ -1236,154 +929,137 @@ class DataWrite(object):
             output_file = dataset_location.format(name=name)
 
             samples_list = []
-            shms = []
+            shared_memory_locations = []
             total_ants = len(self.options.main_antennas) + len(self.options.intf_antennas)
 
             for raw in raw_rf:
-                shm = shared_memory.SharedMemory(name=raw)
-                rawrf_array = np.ndarray((total_ants, num_rawrf_samps), dtype=np.complex64, buffer=shm.buf)
+                shared_mem = shared_memory.SharedMemory(name=raw)
+                rawrf_array = np.ndarray((total_ants, num_rawrf_samps), dtype=np.complex64, buffer=shared_mem.buf)
 
                 samples_list.append(rawrf_array.flatten())
 
-                shms.append(shm)
+                shared_memory_locations.append(shared_mem)
 
-            param['data'] = np.concatenate(samples_list)
+            slice_data.data = np.concatenate(samples_list)
+            slice_data.rx_sample_rate = np.float32(data_parsing.rx_rate)
+            slice_data.num_samps = np.uint32(len(samples_list[0]) / total_ants)
+            slice_data.data_descriptors = ["num_sequences", "num_antennas", "num_samps"]
+            slice_data.data_dimensions = np.array([slice_data.num_sequences, total_ants,
+                                                   slice_data.num_samps], dtype=np.uint32)
+            slice_data.main_antenna_count = np.uint32(self.options.main_antenna_count)
+            slice_data.intf_antenna_count = np.uint32(self.options.intf_antenna_count)
 
-            param['rx_sample_rate'] = np.float32(data_parsing.rx_rate)
+            write_file(output_file, slice_data, self.raw_rf_two_hr_name, "rawrf")
 
-            param['num_samps'] = np.uint32(len(samples_list[0]) / total_ants)
-
-            param['data_descriptors'] = ["num_sequences", "num_antennas", "num_samps"]
-            param['data_dimensions'] = np.array([param['num_sequences'], total_ants,
-                                                 param['num_samps']],
-                                                dtype=np.uint32)
-            param['main_antenna_count'] = np.uint32(self.options.main_antenna_count)
-            param['intf_antenna_count'] = np.uint32(self.options.intf_antenna_count)
-
-            for field in list(param.keys()):
-                if field not in needed_fields:
-                    param.pop(field, None)
-
-            write_file(output_file, param, self.raw_rf_two_hr_name)
-
-            # Can only close mapped memory after its been written to disk.
-            for shm in shms:
-                shm.close()
-                shm.unlink()
+            # Can only close mapped memory after it's been written to disk.
+            for shared_mem in shared_memory_locations:
+                shared_mem.close()
+                shared_mem.unlink()
 
         def write_tx_data():
             """
             Writes out the tx samples and metadata for debugging purposes.
             Does not use same parameters of other writes.
             """
-            tx_data = None
-            for meta in aveperiod_meta.sequences:
-                if meta.tx_data is not None:
-                    tx_data = copy.deepcopy(TX_TEMPLATE)
-                    break
+            tx_data = SequenceData()
+            for f in SequenceData.type_fields('txdata'):
+                setattr(tx_data, f, [])     # initialize to a list for all fields
 
-            if tx_data is not None:
-                for meta in aveperiod_meta.sequences:
-                    meta_data = meta.tx_data
-                    tx_data['tx_rate'].append(meta_data.tx_rate)
-                    tx_data['tx_center_freq'].append(meta_data.tx_ctr_freq)
-                    tx_data['pulse_timing_us'].append(meta_data.pulse_timing_us)
-                    tx_data['pulse_sample_start'].append(meta_data.pulse_sample_start)
-                    tx_data['dm_rate'].append(meta_data.dm_rate)
-                    tx_data['tx_samples'].append(meta_data.tx_samples)
-                    tx_data['decimated_tx_samples'].append(meta_data.decimated_tx_samples)
+            has_tx_data = [sqn.tx_data is not None for sqn in aveperiod_meta.sequences]
 
-                name = dataset_name.replace('{sliceid}.', '').format(dformat='txdata')
-                output_file = dataset_location.format(name=name)
+            if True in has_tx_data:     # If any sequence has tx data, write to file
+                for sqn in aveperiod_meta.sequences:
+                    if sqn.tx_data is not None:
+                        meta_data = sqn.tx_data
+                        tx_data.tx_rate.append(meta_data.tx_rate)
+                        tx_data.tx_center_freq.append(meta_data.tx_ctr_freq)
+                        tx_data.pulse_timing_us.append(meta_data.pulse_timing_us)
+                        tx_data.pulse_sample_start.append(meta_data.pulse_sample_start)
+                        tx_data.dm_rate.append(meta_data.dm_rate)
+                        tx_data.tx_samples.append(meta_data.tx_samples)
+                        tx_data.decimated_tx_samples.append(meta_data.decimated_tx_samples)
 
-                write_file(output_file, tx_data, self.tx_data_two_hr_name)
+                    name = dataset_name.replace('{sliceid}.', '').format(dformat='txdata')
+                    output_file = dataset_location.format(name=name)
 
-        parameters_holder = {}
+                    write_file(output_file, tx_data, self.tx_data_two_hr_name, 'txdata')
+
+        all_slice_data = {}
         for meta in aveperiod_meta.sequences:
             for rx_freq in meta.rx_channels:
-                parameters = DATA_TEMPLATE.copy()
-                parameters['borealis_git_hash'] = self.git_hash.decode('utf-8')
-                parameters['experiment_id'] = np.int16(aveperiod_meta.experiment_id)
-                parameters['experiment_name'] = aveperiod_meta.experiment_name
-                parameters['experiment_comment'] = aveperiod_meta.experiment_comment
-                parameters['scheduling_mode'] = aveperiod_meta.scheduling_mode
-                parameters['slice_comment'] = rx_freq.slice_comment
-                parameters['slice_id'] = np.uint32(rx_freq.slice_id)
-                parameters['averaging_method'] = rx_freq.averaging_method    # string
-                parameters['slice_interfacing'] = rx_freq.interfacing        # string
-                parameters['num_slices'] = len(aveperiod_meta.sequences) * len(meta.rx_channels)
-                parameters['station'] = self.options.site_id
-                parameters['num_sequences'] = aveperiod_meta.num_sequences
-                parameters['num_ranges'] = np.uint32(rx_freq.num_ranges)
-                parameters['range_sep'] = np.float32(rx_freq.range_sep)
+
                 # time to first range and back. convert to meters, div by c then convert to us
                 rtt = (rx_freq.first_range * 2 * 1.0e3 / speed_of_light) * 1.0e6
-                parameters['first_range_rtt'] = np.float32(rtt)
-                parameters['first_range'] = np.float32(rx_freq.first_range)
-                parameters['rx_sample_rate'] = data_parsing.output_sample_rate  # this applies to pre-bf and bfiq
-                parameters['scan_start_marker'] = aveperiod_meta.scan_flag  # Should this change to scan_start_marker?
-                parameters['int_time'] = np.float32(aveperiod_meta.aveperiod_time)
-                parameters['tx_pulse_len'] = np.uint32(rx_freq.pulse_len)
-                parameters['tau_spacing'] = np.uint32(rx_freq.tau_spacing)
-                parameters['main_antenna_count'] = np.uint32(len(rx_freq.rx_main_antennas))
-                parameters['intf_antenna_count'] = np.uint32(len(rx_freq.rx_intf_antennas))
-                parameters['freq'] = np.uint32(rx_freq.rx_freq)
-                parameters['rx_center_freq'] = aveperiod_meta.rx_ctr_freq
-                parameters['samples_data_type'] = "complex float"
-                parameters['pulses'] = np.array(rx_freq.ptab, dtype=np.uint32)
 
                 encodings = []
                 for encoding in rx_freq.sequence_encodings:
                     encoding = np.array(encoding, dtype=np.float32)
                     encodings.append(encoding)
-
                 encodings = np.array(encodings, dtype=np.float32)
-                parameters['pulse_phase_offset'] = encodings
-                parameters['data_normalization_factor'] = aveperiod_meta.data_normalization_factor
 
-                lags = []
-                for lag in rx_freq.ltabs:
-                    lags.append([lag.pulse_position[0], lag.pulse_position[1]])
+                lags = [[lag.pulse_position[0], lag.pulse_position[1]] for lag in rx_freq.ltabs]
 
-                parameters['lags'] = np.array(lags, dtype=np.uint32)
+                parameters = SequenceData()
+                parameters.agc_status_word = np.uint32(data_parsing.agc_status_word),
+                parameters.averaging_method = rx_freq.averaging_method,
+                parameters.beam_azms = [beam.beam_azimuth for beam in rx_freq.beams],
+                parameters.beam_nums = [np.uint32(beam.beam_num) for beam in rx_freq.beams],
+                parameters.blanked_samples = np.array(meta.blanks, dtype=np.uint32),
+                parameters.borealis_git_hash = self.git_hash.decode('utf-8'),
+                parameters.data_normalization_factor = aveperiod_meta.data_normalization_factor,
+                parameters.experiment_comment = aveperiod_meta.experiment_comment,
+                parameters.experiment_id = np.int16(aveperiod_meta.experiment_id),
+                parameters.experiment_name = aveperiod_meta.experiment_name,
+                parameters.first_range = np.float32(rx_freq.first_range),
+                parameters.first_range_rtt = np.float32(rtt),
+                parameters.freq = np.uint32(rx_freq.rx_freq),
+                parameters.gps_locked = data_parsing.gps_locked,
+                parameters.gps_to_system_time_diff = data_parsing.gps_to_system_time_diff,
+                parameters.int_time = np.float32(aveperiod_meta.aveperiod_time),
+                parameters.intf_antenna_count = np.uint32(len(rx_freq.rx_intf_antennas)),
+                parameters.lags = np.array(lags, dtype=np.uint32),
+                parameters.lp_status_word = np.uint32(data_parsing.lp_status_word),
+                parameters.main_antenna_count = np.uint32(len(rx_freq.rx_main_antennas)),
+                parameters.noise_at_freq = [0.0] * aveperiod_meta.num_sequences,  # TODO: should come from data_parsing
+                parameters.num_ranges = np.uint32(rx_freq.num_ranges),
+                parameters.num_sequences = aveperiod_meta.num_sequences,
+                parameters.num_slices = len(aveperiod_meta.sequences) * len(meta.rx_channels),
+                parameters.pulse_phase_offset = encodings,
+                parameters.pulses = np.array(rx_freq.ptab, dtype=np.uint32),
+                parameters.range_sep = np.float32(rx_freq.range_sep),
+                parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq,
+                parameters.rx_sample_rate = data_parsing.output_sample_rate,
+                parameters.samples_data_type = "complex float",
+                parameters.scan_start_marker = aveperiod_meta.scan_flag,
+                parameters.scheduling_mode = aveperiod_meta.scheduling_mode,
+                parameters.slice_comment = rx_freq.slice_comment,
+                parameters.slice_id = np.uint32(rx_freq.slice_id),
+                parameters.slice_interfacing = rx_freq.interfacing,
+                parameters.sqn_timestamps = data_parsing.timestamps,
+                parameters.station = self.options.site_id,
+                parameters.tau_spacing = np.uint32(rx_freq.tau_spacing),
+                parameters.tx_pulse_len = np.uint32(rx_freq.pulse_len),
 
-                parameters['blanked_samples'] = np.array(meta.blanks, dtype=np.uint32)
-                parameters['sqn_timestamps'] = data_parsing.timestamps
+                all_slice_data[rx_freq.slice_id] = parameters
 
-                parameters['beam_nums'] = []
-                parameters['beam_azms'] = []
-                for beam in rx_freq.beams:
-                    parameters['beam_nums'].append(np.uint32(beam.beam_num))
-                    parameters['beam_azms'].append(beam.beam_azimuth)
-
-                parameters['noise_at_freq'] = [0.0] * aveperiod_meta.num_sequences  # TODO update. should come from data_parsing
-
-                parameters['gps_locked'] = data_parsing.gps_locked
-                parameters['gps_to_system_time_diff'] = data_parsing.gps_to_system_time_diff
-
-                parameters['agc_status_word'] = np.uint32(data_parsing.agc_status_word)
-                parameters['lp_status_word'] = np.uint32(data_parsing.lp_status_word)
-
-                # num_samps, antenna_arrays_order, data_descriptors, data_dimensions, data
-                # correlation_descriptors, correlation_dimensions, main_acfs, intf_acfs, xcfs
-                # all get set within the separate write functions.
-
-                parameters_holder[rx_freq.slice_id] = parameters
-
+        # We no longer need to deepcopy. The following fields are changed in each write_{type} method:
+        # rawacf:      [main_acfs, intf_acfs, xcfs, correlation_descriptors, correlation_dimensions]
+        # bfiq:        [data_descriptors, num_samps, antenna_arrays_order, data_dimensions, data]
+        # antennas_iq: [data_descriptors, num_samps, antenna_arrays_order, data_dimensions, data]
+        # rawrf:       [data_descriptors, num_samps, data, rx_sample_rate, data_dimensions, main_antenna_count,
+        #               intf_antenna_count]
+        # txdata: completely uses its own fields
         if write_rawacf and data_parsing.mainacfs_available:
-            write_correlations(copy.deepcopy(parameters_holder))
-
+            write_correlations(all_slice_data)
         if write_bfiq and data_parsing.bfiq_available:
-            write_bfiq_params(copy.deepcopy(parameters_holder))
-
+            write_bfiq_params(all_slice_data)
         if write_antenna_iq and data_parsing.antenna_iq_available:
-            write_antenna_iq_params(copy.deepcopy(parameters_holder))
-
-        if data_parsing.raw_rf_available:
+            write_antenna_iq_params(all_slice_data)
+        if data_parsing.rawrf_available:
             if write_raw_rf:
-                # Just need first available slice paramaters.
-                one_slice_params = copy.deepcopy(next(iter(parameters_holder.values())))
-                write_raw_rf_params(one_slice_params)
+                # Just need first available slice parameters.
+                one_slice_data = next(iter(all_slice_data.values()))
+                write_raw_rf_params(one_slice_data)
             else:
                 for rf_samples_location in data_parsing.rawrf_locations:
                     if rf_samples_location is not None:
@@ -1434,7 +1110,7 @@ def main():
 
     log.debug("socket connected")
 
-    data_parsing = ParseData(options)
+    data_parsing = ParseData(options=options)
 
     current_experiment = None
     data_write = None
@@ -1507,7 +1183,7 @@ def main():
                         thread = threading.Thread(target=data_write.output_data, kwargs=kwargs)
                         thread.daemon = True
                         thread.start()
-                        data_parsing = ParseData(options)
+                        data_parsing = ParseData(options=options)
 
                 first_time = False
 
