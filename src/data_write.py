@@ -40,7 +40,7 @@ import utils.options.data_write_options as dwo
 
 
 @dataclass(init=False)
-class SequenceData:
+class SliceData:
     """
     This class defines all fields that need to be written by any type of data file. The 'groups' metadata lists
     the applicable file types for each field.
@@ -647,7 +647,7 @@ class DataWrite(object):
             :param  tmp_file:               File path and name to write single record
             :type   tmp_file:               str
             :param  aveperiod_data:         Collection of data from sequences
-            :type   aveperiod_data:         SequenceData
+            :type   aveperiod_data:         SliceData
             :param  two_hr_file_with_type:  Name of the two hour file with data type added
             :type   two_hr_file_with_type:  str
             :param  file_type:              Data type, e.g. 'antennas_iq', 'bfiq', etc.
@@ -667,7 +667,7 @@ class DataWrite(object):
                     sys.exit(-1)
 
             data_dict = {}
-            for f in SequenceData.type_fields(file_type):
+            for f in SliceData.type_fields(file_type):
                 data_dict[f] = getattr(aveperiod_data, f)
 
             if file_ext == 'hdf5':
@@ -918,7 +918,7 @@ class DataWrite(object):
             ran).
 
             :param  slice_data:  Parameters for a single slice during the averaging period.
-            :type   slice_data:  SequenceData
+            :type   slice_data:  SliceData
             """
 
             raw_rf = data_parsing.rawrf_locations
@@ -961,8 +961,8 @@ class DataWrite(object):
             Writes out the tx samples and metadata for debugging purposes.
             Does not use same parameters of other writes.
             """
-            tx_data = SequenceData()
-            for f in SequenceData.type_fields('txdata'):
+            tx_data = SliceData()
+            for f in SliceData.type_fields('txdata'):
                 setattr(tx_data, f, [])     # initialize to a list for all fields
 
             has_tx_data = [sqn.tx_data is not None for sqn in aveperiod_meta.sequences]
@@ -999,7 +999,7 @@ class DataWrite(object):
 
                 lags = [[lag.pulse_position[0], lag.pulse_position[1]] for lag in rx_freq.ltabs]
 
-                parameters = SequenceData()
+                parameters = SliceData()
                 parameters.agc_status_word = np.uint32(data_parsing.agc_status_word),
                 parameters.averaging_method = rx_freq.averaging_method,
                 parameters.beam_azms = [beam.beam_azimuth for beam in rx_freq.beams],
@@ -1048,7 +1048,7 @@ class DataWrite(object):
         # antennas_iq: [data_descriptors, num_samps, antenna_arrays_order, data_dimensions, data]
         # rawrf:       [data_descriptors, num_samps, data, rx_sample_rate, data_dimensions, main_antenna_count,
         #               intf_antenna_count]
-        # txdata: completely uses its own fields
+        # txdata:      completely uses its own fields
         if write_rawacf and data_parsing.mainacfs_available:
             write_correlations(all_slice_data)
         if write_bfiq and data_parsing.bfiq_available:
@@ -1066,7 +1066,6 @@ class DataWrite(object):
                         shm = shared_memory.SharedMemory(name=rf_samples_location)
                         shm.close()
                         shm.unlink()
-
         if write_tx:
             write_tx_data()
 
