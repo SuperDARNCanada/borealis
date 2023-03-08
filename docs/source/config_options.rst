@@ -157,10 +157,10 @@ Config Parameters
 |                                |                               | is finished for reading               |
 |                                |                               | of AGC and low power signals (s).     |
 +--------------------------------+-------------------------------+---------------------------------------+
-| usrp_master_clock_rate         | 1.00E+06                      | Clock rate of the USRP master         |
+| usrp_master_clock_rate         | 1.00E+08                      | Clock rate of the USRP master         |
 |                                |                               | clock (Sps).                          |
 +--------------------------------+-------------------------------+---------------------------------------+
-| max_output_sample_rate         | 1.00E+03                      | Maximum rate allowed after            |
+| max_output_sample_rate         | 1.00E+05                      | Maximum rate allowed after            |
 |                                |                               | downsampling (Sps).                   |
 +--------------------------------+-------------------------------+---------------------------------------+
 | max_filtering_stages           | 6                             | The maximum number of filtering       |
@@ -196,7 +196,7 @@ Config Parameters
 |                                | | "aggregator" : true         | overrides.                            |
 |                                | | }                           |                                       |
 +--------------------------------+-------------------------------+---------------------------------------+
-| log_aggregator_addr            | 0.0.0.0                       | Address of log aggregator.            |
+| log_aggregator_addr            | 0.0.0.0                       | Address of log aggregator. Uses UDP.  |
 +--------------------------------+-------------------------------+---------------------------------------+
 | log_aggregator_port            | 12201                         | Port of log aggregator.               |
 +--------------------------------+-------------------------------+---------------------------------------+

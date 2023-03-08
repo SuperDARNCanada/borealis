@@ -1253,11 +1253,11 @@ class ExperimentPrototype(object):
                     f'self.num_slices = {self.num_slices}\n'\
                     f'self.slice_ids = {self.slice_ids}\n'\
                     f'self.slice_keys = {self.slice_keys}\n'\
-                    f'self.options = {self.options.__repr__()}\n'\
+                    f'self.options = {self.options.__str__()}\n'\
                     f'self.txctrfreq = {self.txctrfreq}\n'\
                     f'self.txrate = {self.txrate}\n'\
                     f'self.rxctrfreq = {self.rxctrfreq}\n'\
-                    f'self. xcf = {self.xcf}\n'\
+                    f'self.xcf = {self.xcf}\n'\
                     f'self.acfint = {self.acfint}\n'\
                     f'self.slice_dict = {self.slice_dict}\n'\
                     f'self.interface = {self.interface}\n'
