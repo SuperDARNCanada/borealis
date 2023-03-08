@@ -10,8 +10,8 @@ if __debug__:
 else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
 
-import borealis.utils.socket_operations as so
-from ..src.utils.options.options import Options
+import src.utils.socket_operations as so
+from src.utils.options.options import Options
 
 def get_tids(process_name):
 
