@@ -11,7 +11,7 @@ else:
     sys.path.append(os.environ["BOREALISPATH"] + '/build/release/utils/protobuf')
 
 import src.utils.socket_operations as so
-from src.utils.options.options import Options
+from src.utils.options import Options
 
 def get_tids(process_name):
 

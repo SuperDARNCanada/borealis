@@ -20,7 +20,7 @@ from scipy.constants import speed_of_light
 import re
 from pathlib import Path
 
-from utils.options.options import Options
+from utils.options import Options
 from experiment_prototype.sample_building.sample_building import get_wavetables
 
 from experiment_prototype.experiment_exception import ExperimentException

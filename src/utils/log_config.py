@@ -30,7 +30,7 @@
 import inspect
 from pathlib import Path
 import sys
-from options.options import Options
+from options import Options
 # We need these two handlers from logging to print to a file and stdout
 import logging
 from logging import StreamHandler

@@ -11,7 +11,7 @@
 import math
 from scipy.signal import firwin, remez, kaiserord
 
-from utils.options.options import Options
+from utils.options import Options
 from experiment_prototype.experiment_exception import ExperimentException
 
 

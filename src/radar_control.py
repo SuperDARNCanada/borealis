@@ -22,7 +22,7 @@ import numpy as np
 from functools import reduce
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
-from utils.options.options import Options
+from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations
 

@@ -14,7 +14,7 @@ import argparse
 import zmq
 import pickle
 from utils import socket_operations as so
-from utils.options.options import Options
+from utils.options import Options
 
 if __debug__:
     from debug.src.utils.protobuf import rxsamplesmetadata_pb2

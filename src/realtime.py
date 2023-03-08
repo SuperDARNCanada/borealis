@@ -18,7 +18,7 @@ import pydarnio
 import numpy as np
 from backscatter import fitacf
 
-from utils.options.options import Options
+from utils.options import Options
 from utils import socket_operations as so
 
 

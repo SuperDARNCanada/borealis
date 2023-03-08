@@ -29,7 +29,7 @@ import faulthandler
 from scipy.constants import speed_of_light
 import copy
 import pickle
-from utils.options.options import Options
+from utils.options import Options
 from utils import socket_operations as so
 
 

@@ -23,7 +23,7 @@ import importlib
 import threading
 import pickle
 
-from utils.options.options import Options
+from utils.options import Options
 from utils import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype

@@ -37,7 +37,7 @@ else:
     from release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 
 from utils.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
-from utils.options.options import Options
+from utils.options import Options
 from utils import socket_operations as so
 
 
