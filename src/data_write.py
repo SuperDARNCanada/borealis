@@ -11,6 +11,7 @@
 # built-in
 import argparse as ap
 import collections
+import copy
 import datetime
 from dataclasses import dataclass, field, fields
 import errno
@@ -136,7 +137,7 @@ class SliceData:
     scheduling_mode: str = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
     slice_comment: str = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
     slice_id: int = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
     slice_interfacing: dict = field(
@@ -859,9 +860,6 @@ class DataWrite(object):
             antenna_iq = data_parsing.antenna_iq_accumulator
             slice_id_list = [x for x in antenna_iq.keys() if isinstance(x, int)]
 
-            # Pop these so we don't include them in later iteration.    TODO: Is this necessary? What iteration?
-            data_descriptors = antenna_iq.pop('data_descriptors', None)
-
             # Parse the antennas from message
             rx_main_antennas = {}
             rx_intf_antennas = {}
@@ -889,11 +887,10 @@ class DataWrite(object):
                 final_data_params[slice_num] = {}
 
                 for stage in antenna_iq[slice_num]:
-                    stage_data = aveperiod_data[slice_num]
+                    stage_data = copy.deepcopy(aveperiod_data[slice_num])
 
-                    stage_data.data_descriptors = data_descriptors
-                    # TODO: Why do we pop?
-                    stage_data.num_samps = np.uint32(antenna_iq[slice_num][stage].pop('num_samps', None))
+                    stage_data.data_descriptors = antenna_iq['data_descriptors']
+                    stage_data.num_samps = np.uint32(antenna_iq[slice_num][stage].get('num_samps', None))
                     stage_data.antenna_arrays_order = rx_main_antennas[slice_num] + rx_intf_antennas[slice_num]
                     num_ants = len(stage_data.antenna_arrays_order)
 
