@@ -200,6 +200,15 @@ class ParseData(object):
     xcfs_accumulator: Dict = field(default_factory=dict)
     xcfs_available: bool = False
 
+    def _get_accumulators(self):
+        """Returns a list of all accumulator dictionaries in this object."""
+        accumulators = []
+        for f in fields(self):
+            name = f.name
+            if 'accumulator' in name:
+                accumulators.append(getattr(self, name))
+        return accumulators
+
     def parse_correlations(self):
         """
         Parses out the possible correlation (acf/xcf) data from the message. Runs on every new
@@ -399,12 +408,17 @@ class ParseData(object):
         :type   data: ProcessedSequenceMessage
         """
         self.processed_data = data
+        self.sequence_num = data.sequence_num
         self.timestamps.append(data.sequence_start_time)
         self.rx_rate = data.rx_sample_rate
         self.output_sample_rate = data.output_sample_rate
 
         for data_set in data.output_datasets:
             self.slice_ids.add(data_set.slice_id)
+
+            for accumulator in self._get_accumulators():
+                if data_set.slice_id not in accumulator.keys():
+                    accumulator[data_set.slice_id] = {}
 
         if data.rawrf_shm != '':
             self.rawrf_available = True
@@ -719,30 +733,29 @@ class DataWrite(object):
             xcfs = data_parsing.xcfs_accumulator
             intf_acfs = data_parsing.intfacfs_accumulator
 
-            def find_expectation_value(x, template):
+            def find_expectation_value(x):
                 """
                 Get the mean or median of all correlations from all sequences in the integration
                 period - only this will be recorded.
                 This is effectively 'averaging' all correlations over the integration time, using a
                 specified method for combining them.
                 """
-
                 # array_2d is num_sequences x (num_beams*num_ranges*num_lags)
                 # so we get median of all sequences.
-                averaging_method = template.averaging_method
+                averaging_method = slice_data.averaging_method
                 array_2d = np.array(x, dtype=np.complex64)
-                num_beams, num_ranges, num_lags = np.array([len(template.beam_nums),
-                                                            template.num_ranges,
-                                                            template.lags.shape[0]],
+                num_beams, num_ranges, num_lags = np.array([len(slice_data.beam_nums),
+                                                            slice_data.num_ranges,
+                                                            slice_data.lags.shape[0]],
                                                            dtype=np.uint32)
 
                 # First range offset in samples
-                sample_off = template.first_range_rtt * 1e-6 * template.rx_sample_rate
+                sample_off = slice_data.first_range_rtt * 1e-6 * slice_data.rx_sample_rate
                 sample_off = np.uint32(sample_off)
 
                 # Find sample number which corresponds with second pulse in sequence
-                tau_in_samples = template.tau_spacing * 1e-6 * template.rx_sample_rate
-                second_pulse_sample_num = np.uint32(tau_in_samples) * template.pulses[1] - sample_off - 1
+                tau_in_samples = slice_data.tau_spacing * 1e-6 * slice_data.rx_sample_rate
+                second_pulse_sample_num = np.uint32(tau_in_samples) * slice_data.pulses[1] - sample_off - 1
 
                 # Average the data
                 try:
@@ -768,15 +781,15 @@ class DataWrite(object):
 
             for slice_num in main_acfs:
                 slice_data = aveperiod_data[slice_num]
-                slice_data.main_acfs = find_expectation_value(main_acfs[slice_num]['data'], slice_data)
+                slice_data.main_acfs = find_expectation_value(main_acfs[slice_num]['data'])
 
             for slice_num in xcfs:
                 slice_data = aveperiod_data[slice_num]
-                slice_data.xcfs = find_expectation_value(xcfs[slice_num]['data'], slice_data)
+                slice_data.xcfs = find_expectation_value(xcfs[slice_num]['data'])
 
             for slice_num in intf_acfs:
                 slice_data = aveperiod_data[slice_num]
-                slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'], slice_data)
+                slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'])
 
             for slice_num, slice_data in aveperiod_data.items():
                 slice_data.correlation_descriptors = ['num_beams', 'num_ranges', 'num_lags']
@@ -876,7 +889,7 @@ class DataWrite(object):
                 final_data_params[slice_num] = {}
 
                 for stage in antenna_iq[slice_num]:
-                    stage_data = aveperiod_data[slice_num].copy()
+                    stage_data = aveperiod_data[slice_num]
 
                     stage_data.data_descriptors = data_descriptors
                     # TODO: Why do we pop?
@@ -1000,45 +1013,45 @@ class DataWrite(object):
                 lags = [[lag.pulse_position[0], lag.pulse_position[1]] for lag in rx_freq.ltabs]
 
                 parameters = SliceData()
-                parameters.agc_status_word = np.uint32(data_parsing.agc_status_word),
-                parameters.averaging_method = rx_freq.averaging_method,
-                parameters.beam_azms = [beam.beam_azimuth for beam in rx_freq.beams],
-                parameters.beam_nums = [np.uint32(beam.beam_num) for beam in rx_freq.beams],
-                parameters.blanked_samples = np.array(meta.blanks, dtype=np.uint32),
-                parameters.borealis_git_hash = self.git_hash.decode('utf-8'),
-                parameters.data_normalization_factor = aveperiod_meta.data_normalization_factor,
-                parameters.experiment_comment = aveperiod_meta.experiment_comment,
-                parameters.experiment_id = np.int16(aveperiod_meta.experiment_id),
-                parameters.experiment_name = aveperiod_meta.experiment_name,
-                parameters.first_range = np.float32(rx_freq.first_range),
-                parameters.first_range_rtt = np.float32(rtt),
-                parameters.freq = np.uint32(rx_freq.rx_freq),
-                parameters.gps_locked = data_parsing.gps_locked,
-                parameters.gps_to_system_time_diff = data_parsing.gps_to_system_time_diff,
-                parameters.int_time = np.float32(aveperiod_meta.aveperiod_time),
-                parameters.intf_antenna_count = np.uint32(len(rx_freq.rx_intf_antennas)),
-                parameters.lags = np.array(lags, dtype=np.uint32),
-                parameters.lp_status_word = np.uint32(data_parsing.lp_status_word),
-                parameters.main_antenna_count = np.uint32(len(rx_freq.rx_main_antennas)),
-                parameters.noise_at_freq = [0.0] * aveperiod_meta.num_sequences,  # TODO: should come from data_parsing
-                parameters.num_ranges = np.uint32(rx_freq.num_ranges),
-                parameters.num_sequences = aveperiod_meta.num_sequences,
-                parameters.num_slices = len(aveperiod_meta.sequences) * len(meta.rx_channels),
-                parameters.pulse_phase_offset = encodings,
-                parameters.pulses = np.array(rx_freq.ptab, dtype=np.uint32),
-                parameters.range_sep = np.float32(rx_freq.range_sep),
-                parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq,
-                parameters.rx_sample_rate = data_parsing.output_sample_rate,
-                parameters.samples_data_type = "complex float",
-                parameters.scan_start_marker = aveperiod_meta.scan_flag,
-                parameters.scheduling_mode = aveperiod_meta.scheduling_mode,
-                parameters.slice_comment = rx_freq.slice_comment,
-                parameters.slice_id = np.uint32(rx_freq.slice_id),
-                parameters.slice_interfacing = rx_freq.interfacing,
-                parameters.sqn_timestamps = data_parsing.timestamps,
-                parameters.station = self.options.site_id,
-                parameters.tau_spacing = np.uint32(rx_freq.tau_spacing),
-                parameters.tx_pulse_len = np.uint32(rx_freq.pulse_len),
+                parameters.agc_status_word = np.uint32(data_parsing.agc_status_word)
+                parameters.averaging_method = rx_freq.averaging_method
+                parameters.beam_azms = [beam.beam_azimuth for beam in rx_freq.beams]
+                parameters.beam_nums = [np.uint32(beam.beam_num) for beam in rx_freq.beams]
+                parameters.blanked_samples = np.array(meta.blanks, dtype=np.uint32)
+                parameters.borealis_git_hash = self.git_hash.decode('utf-8')
+                parameters.data_normalization_factor = aveperiod_meta.data_normalization_factor
+                parameters.experiment_comment = aveperiod_meta.experiment_comment
+                parameters.experiment_id = np.int16(aveperiod_meta.experiment_id)
+                parameters.experiment_name = aveperiod_meta.experiment_name
+                parameters.first_range = np.float32(rx_freq.first_range)
+                parameters.first_range_rtt = np.float32(rtt)
+                parameters.freq = np.uint32(rx_freq.rx_freq)
+                parameters.gps_locked = data_parsing.gps_locked
+                parameters.gps_to_system_time_diff = data_parsing.gps_to_system_time_diff
+                parameters.int_time = np.float32(aveperiod_meta.aveperiod_time)
+                parameters.intf_antenna_count = np.uint32(len(rx_freq.rx_intf_antennas))
+                parameters.lags = np.array(lags, dtype=np.uint32)
+                parameters.lp_status_word = np.uint32(data_parsing.lp_status_word)
+                parameters.main_antenna_count = np.uint32(len(rx_freq.rx_main_antennas))
+                parameters.noise_at_freq = [0.0] * aveperiod_meta.num_sequences  # TODO: should come from data_parsing
+                parameters.num_ranges = np.uint32(rx_freq.num_ranges)
+                parameters.num_sequences = aveperiod_meta.num_sequences
+                parameters.num_slices = len(aveperiod_meta.sequences) * len(meta.rx_channels)
+                parameters.pulse_phase_offset = encodings
+                parameters.pulses = np.array(rx_freq.ptab, dtype=np.uint32)
+                parameters.range_sep = np.float32(rx_freq.range_sep)
+                parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq
+                parameters.rx_sample_rate = data_parsing.output_sample_rate
+                parameters.samples_data_type = "complex float"
+                parameters.scan_start_marker = aveperiod_meta.scan_flag
+                parameters.scheduling_mode = aveperiod_meta.scheduling_mode
+                parameters.slice_comment = rx_freq.slice_comment
+                parameters.slice_id = np.uint32(rx_freq.slice_id)
+                parameters.slice_interfacing = rx_freq.interfacing
+                parameters.sqn_timestamps = data_parsing.timestamps
+                parameters.station = self.options.site_id
+                parameters.tau_spacing = np.uint32(rx_freq.tau_spacing)
+                parameters.tx_pulse_len = np.uint32(rx_freq.pulse_len)
 
                 all_slice_data[rx_freq.slice_id] = parameters
 
