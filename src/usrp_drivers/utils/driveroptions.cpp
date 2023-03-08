@@ -125,13 +125,24 @@ DriverOptions::DriverOptions() {
     }
 
     // Remove trailing comma from channel strings
-    ma_recv_str.pop_back();
-    ma_tx_str.pop_back();
-    ma_channel_str.pop_back();
-    ia_recv_str.pop_back();
-    ia_channel_str.pop_back();
+    if (!ma_recv_str.empty())
+        ma_recv_str.pop_back();
+    if (!ma_tx_str.empty())
+        ma_tx_str.pop_back();
+    if (!ma_channel_str.empty())
+        ma_channel_str.pop_back();
+    if (!ia_recv_str.empty())
+        ia_recv_str.pop_back();
+    if (!ia_channel_str.empty())
+        ia_channel_str.pop_back();
 
-    auto total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
+    std::string total_recv_chs_str;
+    if (ma_recv_str.empty())
+        total_recv_chs_str = ia_recv_str;
+    else if (ia_recv_str.empty())
+        total_recv_chs_str = ma_recv_str;
+    else
+        total_recv_chs_str = ma_recv_str + "," + ia_recv_str;
 
     clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
 
@@ -188,6 +199,9 @@ DriverOptions::DriverOptions() {
         while (ss.good()) {
             std::string s;
             std::getline(ss, s, ',');
+            if (s.empty()) {
+                break;
+            }
             channels.push_back(boost::lexical_cast<size_t>(s));
         }
 
