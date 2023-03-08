@@ -5,6 +5,8 @@
     ~~~~~~~
 
     Parse all configuration options from the config.ini file for the current site.
+    Additionally, parse the hdw.dat and restrict.dat files of the current site for 
+    other configuration information.
 
     :copyright: 2023 SuperDARN Canada
     :author: Theodore Kolkman
@@ -14,20 +16,20 @@ import os
 import json
 from dataclasses import dataclass
 
+
 @dataclass
 class Options:
     def __post_init__(self):
-        self.parse_config()     # Parse info from config file
-        self.parse_hdw()        # Parse info from hdw file
-        self.parse_restrict()   # Parse info from restrict.dat file
-        self.verify_options()   # Check that all parsed values are valid
-
+        self.parse_config()  # Parse info from config file
+        self.parse_hdw()  # Parse info from hdw file
+        self.parse_restrict()  # Parse info from restrict.dat file
+        self.verify_options()  # Check that all parsed values are valid
 
     # ZMQ Identities
     radctrl_to_exphan_identity: str = "RADCTRL_EXPHAN_IDEN"
     radctrl_to_dsp_identity: str = "RADCTRL_DSP_IDEN"
     radctrl_to_driver_identity: str = "RADCTRL_DRIVER_IDEN"
-    radctrl_to_brian_identity:str = "RADCTRL_BRIAN_IDEN"
+    radctrl_to_brian_identity: str = "RADCTRL_BRIAN_IDEN"
     radctrl_to_dw_identity: str = "RADCTRL_DW_IDEN"
     driver_to_radctrl_identity: str = "DRIVER_RADCTRL_IDEN"
     driver_to_dsp_identity: str = "DRIVER_DSP_IDEN"
@@ -54,7 +56,7 @@ class Options:
     brian_to_driver_identity: str = "BRIAN_DRIVER_IDEN"
     brian_to_dspbegin_identity: str = "BRIAN_DSPBEGIN_IDEN"
     brian_to_dspend_identity: str = "BRIAN_DSPEND_IDEN"
-    
+
     def parse_config(self):
         # Read in config.ini file for current site
         if not os.environ["BOREALISPATH"]:
@@ -62,8 +64,8 @@ class Options:
         if not os.environ['RADAR_ID']:
             raise ValueError('RADAR_ID env variable not set')
         path = f'{os.environ["BOREALISPATH"]}/config/' \
-            f'{os.environ["RADAR_ID"]}/' \
-            f'{os.environ["RADAR_ID"]}_config.ini'
+               f'{os.environ["RADAR_ID"]}/' \
+               f'{os.environ["RADAR_ID"]}_config.ini'
         try:
             with open(path, 'r') as data:
                 raw_config = json.load(data)
@@ -122,8 +124,8 @@ class Options:
         self.pulse_ramp_time = float(raw_config["pulse_ramp_time"])
         self.tr_window_time = float(raw_config["tr_window_time"])
 
-        self.usrp_master_clock_rate = float(raw_config['usrp_master_clock_rate']) # Hz
-        self.max_output_sample_rate = float(raw_config['max_output_sample_rate'])  
+        self.usrp_master_clock_rate = float(raw_config['usrp_master_clock_rate'])  # Hz
+        self.max_output_sample_rate = float(raw_config['max_output_sample_rate'])
         # should use to check iqdata samples when adjusting the experiment during operations.
         self.max_filtering_stages = int(raw_config['max_filtering_stages'])
         self.max_filter_taps_per_stage = int(raw_config['max_filter_taps_per_stage'])
@@ -141,7 +143,6 @@ class Options:
         self.log_aggregator_addr = raw_config["log_aggregator_addr"]
         self.log_aggregator_port = int(raw_config["log_aggregator_port"])
         self.hdw_path = raw_config['hdw_path']
-
 
     def parse_hdw(self):
         # Load information from the hardware file
@@ -170,26 +171,25 @@ class Options:
             errmsg = f'Found {len(params)} parameters in hardware file, expected 22'
             raise ValueError(errmsg)
 
-        self.status = params[1]         # 1 operational, -1 offline
-        self.geo_lat = params[4]        # decimal degrees, S = negative
-        self.geo_long = params[5]       # decimal degrees, W = negative
-        self.altitude = params[6]       # metres
-        self.boresight = params[7]      # degrees from geographic north, CCW = negative.
+        self.status = params[1]  # 1 operational, -1 offline
+        self.geo_lat = params[4]  # decimal degrees, S = negative
+        self.geo_long = params[5]  # decimal degrees, W = negative
+        self.altitude = params[6]  # metres
+        self.boresight = params[7]  # degrees from geographic north, CCW = negative.
         self.boresight_shift = params[8]  # degrees from physical boresight. nominal 0.0 degrees
-        self.beam_sep = params[9]       # degrees, nominal 3.24 degrees
-        self.velocity_sign = params[10] # +1.0 or -1.0
-        self.phase_sign = params[11]    # +1 indicates correct interferometry phase, -1 indicates 180
-        self.tdiff_a = params[12]       # us for channel A.
-        self.tdiff_b = params[13]       # us for channel B.
+        self.beam_sep = params[9]  # degrees, nominal 3.24 degrees
+        self.velocity_sign = params[10]  # +1.0 or -1.0
+        self.phase_sign = params[11]  # +1 indicates correct interferometry phase, -1 indicates 180
+        self.tdiff_a = params[12]  # us for channel A.
+        self.tdiff_b = params[13]  # us for channel B.
         # interferometer offset from midpoint of main, metres [x, y, z] where x is along line of
         # antennas, y is along array normal and z is altitude difference, in m.
         self.intf_offset = [float(params[14]), float(params[15]), float(params[16])]
-        self.analog_rx_rise = params[17]        # us
+        self.analog_rx_rise = params[17]  # us
         self.analog_rx_attenuator = params[18]  # dB
-        self.analog_atten_stages = params[19]   # number of stages
+        self.analog_atten_stages = params[19]  # number of stages
         self.max_range_gates = params[20]
         self.max_beams = params[21]  # so a beam number always points in a certain direction
-
 
     def parse_restrict(self):
         # Read in restrict.dat
@@ -198,8 +198,8 @@ class Options:
         if not os.environ['RADAR_ID']:
             raise ValueError('RADAR_ID env variable not set')
         path = f'{os.environ["BOREALISPATH"]}/config/' \
-            f'{os.environ["RADAR_ID"]}/' \
-            f'restrict.dat.{os.environ["RADAR_ID"]}'
+               f'{os.environ["RADAR_ID"]}/' \
+               f'restrict.dat.{os.environ["RADAR_ID"]}'
         try:
             with open(path) as data:
                 restricted = data.readlines()
@@ -217,7 +217,7 @@ class Options:
                     self.default_freq = int(splitup[1])  # kHz
                     restricted.remove(line)
                     break
-        else: #no break
+        else:  # no break
             raise Exception('No Default Frequency Found in Restrict.dat')
 
         self.restricted_ranges = []
@@ -231,7 +231,6 @@ class Options:
                 raise ValueError('Error parsing Restrict.Dat Frequency Ranges, Invalid Literal')
             restricted_range = tuple(splitup)
             self.restricted_ranges.append(restricted_range)
-
 
     def verify_options(self):
         if self.site_id != os.environ["RADAR_ID"]:
@@ -270,7 +269,6 @@ class Options:
             errmsg = f'hdw_path directory {self.hdw_path} does not exist'
             raise ValueError(errmsg)
 
-
     def __repr__(self):
         return_str = f"""\n    main_antennas = {self.main_antennas} \
                     \n    main_antenna_count = {self.main_antenna_count} \
@@ -305,7 +303,7 @@ class Options:
                     \n    max_beams = {self.max_beams} \
                     \n    max_freq = {self.max_freq} \
                     \n    min_freq = {self.min_freq} \
-                    \n    minimum_pulse_length = {self. minimum_pulse_length} \
+                    \n    minimum_pulse_length = {self.minimum_pulse_length} \
                     \n    minimum_tau_spacing_length = {self.minimum_tau_spacing_length} \
                     \n    minimum_pulse_separation = {self.minimum_pulse_separation} \
                     \n    tr_window_time = {self.tr_window_time} \

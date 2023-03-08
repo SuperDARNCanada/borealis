@@ -19,7 +19,7 @@ References
 import argparse
 import os
 import sys
-from .general import load_config
+from general import load_config
 from datetime import datetime as dt
 import glob
 import subprocess
