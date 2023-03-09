@@ -278,7 +278,7 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     if isinstance(new_exp, ExperimentPrototype):
         experiment = new_exp
         new_experiment_received = True
-        log.debug("new experiment found")
+        log.info("new experiment found")
     elif new_exp is not None:
         log.debug("received non experiment_prototype type")
     else:
