@@ -21,100 +21,96 @@ from dataclasses import dataclass, field
 @dataclass
 class Options:
     # config.ini options
-    site_id: str = field(init=False)
-    main_antenna_count: int = field(init=False)
-    intf_antenna_count: int = field(init=False)
-    num_n200s: int = field(init=False)
-    n200_addrs: list[str] = field(init=False)
-    main_antennas: list[int] = field(init=False)
-    intf_antennas: list[int] = field(init=False)
-
-    main_antenna_spacing: float = field(init=False)
-    intf_antenna_spacing: float = field(init=False)
-    min_freq: float = field(init=False)
-    max_freq: float = field(init=False)
-    minimum_pulse_length: float = field(init=False)
-    minimum_tau_spacing_length: float = field(init=False)
-    minimum_pulse_separation: float = field(init=False)
-
-    max_tx_sample_rate: float = field(init=False)
-    max_rx_sample_rate: float = field(init=False)
-    max_usrp_dac_amplitude: float = field(init=False)
-    pulse_ramp_time: float = field(init=False)
-    tr_window_time: float = field(init=False)
-
-    usrp_master_clock_rate: float = field(init=False)
-    max_output_sample_rate: float = field(init=False)
-    max_filtering_stages: int = field(init=False)
-    max_filter_taps_per_stage: int = field(init=False)
-
-    router_address: str = field(init=False)
-    realtime_address: str = field(init=False)
-    ringbuffer_name: str = field(init=False)
-
     data_directory: str = field(init=False)
+    hdw_path: str = field(init=False)
+    intf_antennas: list[int] = field(init=False)
+    intf_antenna_spacing: float = field(init=False)
+    intf_antenna_count: int = field(init=False)
+    log_aggregator_addr: str = field(init=False)
+    log_aggregator_bool: str = field(init=False)
+    log_aggregator_port: str = field(init=False)
+    log_console_bool: str = field(init=False)
     log_directory: str = field(init=False)
     log_level: str = field(init=False)
-    log_console_bool: str = field(init=False)
     log_logfile_bool: str = field(init=False)
-    log_aggregator_bool: str = field(init=False)
-    log_aggregator_addr: str = field(init=False)
-    log_aggregator_port: str = field(init=False)
-    hdw_path: str = field(init=False)
+    main_antennas: list[int] = field(init=False)
+    main_antenna_spacing: float = field(init=False)
+    main_antenna_count: int = field(init=False)
+    max_filtering_stages: int = field(init=False)
+    max_filter_taps_per_stage: int = field(init=False)
+    max_freq: float = field(init=False)
+    max_output_sample_rate: float = field(init=False)
+    max_rx_sample_rate: float = field(init=False)
+    max_tx_sample_rate: float = field(init=False)
+    max_usrp_dac_amplitude: float = field(init=False)
+    min_freq: float = field(init=False)
+    min_pulse_length: float = field(init=False)
+    min_pulse_separation: float = field(init=False)
+    min_tau_spacing_length: float = field(init=False)
+    n200_addrs: list[str] = field(init=False)
+    n200_count: int = field(init=False)
+    pulse_ramp_time: float = field(init=False)
+    realtime_address: str = field(init=False)
+    ringbuffer_name: str = field(init=False)
+    router_address: str = field(init=False)
+    site_id: str = field(init=False)
+    tr_window_time: float = field(init=False)
+    usrp_master_clock_rate: float = field(init=False)
 
     # hdw.dat options
-    status: int = field(init=False)
-    geo_lat: float = field(init=False)
-    geo_long: float = field(init=False)
     altitude: float = field(init=False)
+    analog_atten_stages: int = field(init=False)
+    analog_rx_attenuator: float = field(init=False)
+    analog_rx_rise: float = field(init=False)
+    beam_sep: float = field(init=False)
     boresight: float = field(init=False)
     boresight_shift: float = field(init=False)
-    beam_sep: float = field(init=False)
-    velocity_sign: int = field(init=False)
+    geo_lat: float = field(init=False)
+    geo_long: float = field(init=False)
+    intf_offset: list[float] = field(init=False)
+    max_beams: int = field(init=False)
+    max_range_gates: int = field(init=False)
     phase_sign: int = field(init=False)
+    status: int = field(init=False)
     tdiff_a: float = field(init=False)
     tdiff_b: float = field(init=False)
-    intf_offset: list[float] = field(init=False)
-    analog_rx_rise: float = field(init=False)
-    analog_rx_attenuator: float = field(init=False)
-    analog_atten_stages: int = field(init=False)
-    max_range_gates: int = field(init=False)
-    max_beams: int = field(init=False)
+    velocity_sign: int = field(init=False)
 
     # restrict.dat options
+    default_freq: int = field(init=False)
     restricted_ranges: list[tuple[int]] = field(init=False)
 
     # ZMQ Identities
-    radctrl_to_exphan_identity: str = "RADCTRL_EXPHAN_IDEN"
-    radctrl_to_dsp_identity: str = "RADCTRL_DSP_IDEN"
-    radctrl_to_driver_identity: str = "RADCTRL_DRIVER_IDEN"
-    radctrl_to_brian_identity: str = "RADCTRL_BRIAN_IDEN"
-    radctrl_to_dw_identity: str = "RADCTRL_DW_IDEN"
-    driver_to_radctrl_identity: str = "DRIVER_RADCTRL_IDEN"
-    driver_to_dsp_identity: str = "DRIVER_DSP_IDEN"
-    driver_to_brian_identity: str = "DRIVER_BRIAN_IDEN"
-    driver_to_mainaffinity_identity: str = "DRIVER_MAINAFFINITY_IDEN"
-    driver_to_txaffinity_identity: str = "DRIVER_TXAFFINITY_IDEN"
-    driver_to_rxaffinity_identity: str = "DRIVER_RXAFFINITY_IDEN"
-    mainaffinity_to_driver_identity: str = "MAINAFFINITY_DRIVER_IDEN"
-    txaffinity_to_driver_identity: str = "TXAFFINITY_DRIVER_IDEN"
-    rxaffinity_to_driver_identity: str = "RXAFFINITY_DRIVER_IDEN"
-    exphan_to_radctrl_identity: str = "EXPHAN_RADCTRL_IDEN"
-    exphan_to_dsp_identity: str = "EXPHAN_DSP_IDEN"
-    dsp_to_radctrl_identity: str = "DSP_RADCTRL_IDEN"
-    dsp_to_driver_identity: str = "DSP_DRIVER_IDEN"
-    dsp_to_exphan_identity: str = "DSP_EXPHAN_IDEN"
-    dsp_to_dw_identity: str = "DSP_DW_IDEN"
-    dspbegin_to_brian_identity: str = "DSPBEGIN_BRIAN_IDEN"
-    dspend_to_brian_identity: str = "DSPEND_BRIAN_IDEN"
-    dw_to_dsp_identity: str = "DW_DSP_IDEN"
-    dw_to_radctrl_identity: str = "DW_RADCTRL_IDEN"
-    dw_to_rt_identity: str = "RT_DW_IDEN"
-    rt_to_dw_identity: str = "DW_RT_IDEN"
-    brian_to_radctrl_identity: str = "BRIAN_RADCTRL_IDEN"
     brian_to_driver_identity: str = "BRIAN_DRIVER_IDEN"
     brian_to_dspbegin_identity: str = "BRIAN_DSPBEGIN_IDEN"
     brian_to_dspend_identity: str = "BRIAN_DSPEND_IDEN"
+    brian_to_radctrl_identity: str = "BRIAN_RADCTRL_IDEN"
+    driver_to_brian_identity: str = "DRIVER_BRIAN_IDEN"
+    driver_to_dsp_identity: str = "DRIVER_DSP_IDEN"
+    driver_to_mainaffinity_identity: str = "DRIVER_MAINAFFINITY_IDEN"
+    driver_to_radctrl_identity: str = "DRIVER_RADCTRL_IDEN"
+    driver_to_rxaffinity_identity: str = "DRIVER_RXAFFINITY_IDEN"
+    driver_to_txaffinity_identity: str = "DRIVER_TXAFFINITY_IDEN"
+    dspbegin_to_brian_identity: str = "DSPBEGIN_BRIAN_IDEN"
+    dspend_to_brian_identity: str = "DSPEND_BRIAN_IDEN"
+    dsp_to_driver_identity: str = "DSP_DRIVER_IDEN"
+    dsp_to_dw_identity: str = "DSP_DW_IDEN"
+    dsp_to_exphan_identity: str = "DSP_EXPHAN_IDEN"
+    dsp_to_radctrl_identity: str = "DSP_RADCTRL_IDEN"
+    dw_to_dsp_identity: str = "DW_DSP_IDEN"
+    dw_to_radctrl_identity: str = "DW_RADCTRL_IDEN"
+    dw_to_rt_identity: str = "RT_DW_IDEN"
+    exphan_to_dsp_identity: str = "EXPHAN_DSP_IDEN"
+    exphan_to_radctrl_identity: str = "EXPHAN_RADCTRL_IDEN"
+    mainaffinity_to_driver_identity: str = "MAINAFFINITY_DRIVER_IDEN"
+    radctrl_to_brian_identity: str = "RADCTRL_BRIAN_IDEN"
+    radctrl_to_driver_identity: str = "RADCTRL_DRIVER_IDEN"
+    radctrl_to_dsp_identity: str = "RADCTRL_DSP_IDEN"
+    radctrl_to_dw_identity: str = "RADCTRL_DW_IDEN"
+    radctrl_to_exphan_identity: str = "RADCTRL_EXPHAN_IDEN"
+    rt_to_dw_identity: str = "DW_RT_IDEN"
+    rxaffinity_to_driver_identity: str = "RXAFFINITY_DRIVER_IDEN"
+    txaffinity_to_driver_identity: str = "TXAFFINITY_DRIVER_IDEN"
 
     def __post_init__(self):
         if not os.environ["BOREALISPATH"]:
@@ -144,7 +140,7 @@ class Options:
         self.intf_antenna_count = int(raw_config["intf_antenna_count"])
 
         # Parse N200 array and calculate which main and intf antennas operating
-        self.num_n200s = 0
+        self.n200_count = 0
         self.n200_addrs = []    # Used for checking IPs of N200s
         self.main_antennas = []
         self.intf_antennas = []
@@ -168,7 +164,7 @@ class Options:
                 self.intf_antennas.append(intf_antenna_num)
             if rx or tx or rx_int:
                 self.n200_addrs.append(n200["addr"])
-                self.num_n200s += 1
+                self.n200_count += 1
         self.main_antennas.sort()
         self.intf_antennas.sort()
 
@@ -176,11 +172,11 @@ class Options:
         self.intf_antenna_spacing = float(raw_config['intf_antenna_spacing'])  # m
         self.min_freq = float(raw_config['min_freq'])  # Hz
         self.max_freq = float(raw_config['max_freq'])  # Hz
-        self.minimum_pulse_length = float(raw_config['minimum_pulse_length'])  # us
-        self.minimum_tau_spacing_length = float(raw_config['minimum_tau_spacing_length'])  # us
+        self.min_pulse_length = float(raw_config['min_pulse_length'])  # us
+        self.min_tau_spacing_length = float(raw_config['min_tau_spacing_length'])  # us
         # Minimum pulse separation is the minimum before the experiment treats it as a single pulse
         # (transmitting zeroes or no receiving between the pulses) 125 us is approx two TX/RX times
-        self.minimum_pulse_separation = float(raw_config['minimum_pulse_separation'])  # us
+        self.min_pulse_separation = float(raw_config['min_pulse_separation'])  # us
 
         self.max_tx_sample_rate = float(raw_config['max_tx_sample_rate'])  # sps
         self.max_rx_sample_rate = float(raw_config['max_rx_sample_rate'])  # sps
@@ -200,13 +196,14 @@ class Options:
 
         self.data_directory = raw_config["data_directory"]
         self.log_directory = raw_config["log_directory"]
+        self.hdw_path = raw_config['hdw_path']
+
         self.log_level = raw_config["log_level"]
         self.log_console_bool = raw_config["log_handlers"]["console"]
         self.log_logfile_bool = raw_config["log_handlers"]["logfile"]
         self.log_aggregator_bool = raw_config["log_handlers"]["aggregator"]
         self.log_aggregator_addr = raw_config["log_aggregator_addr"]
         self.log_aggregator_port = int(raw_config["log_aggregator_port"])
-        self.hdw_path = raw_config['hdw_path']
 
     def parse_hdw(self):
         # Load information from the hardware file
@@ -332,9 +329,9 @@ class Options:
                        \n    intf_antenna_spacing = {self.intf_antenna_spacing} metres \
                        \n    min_freq = {self.min_freq} Hz\
                        \n    max_freq = {self.max_freq} Hz\
-                       \n    minimum_pulse_length = {self.minimum_pulse_length} us \
-                       \n    minimum_tau_spacing_length = {self.minimum_tau_spacing_length} us \
-                       \n    minimum_pulse_separation = {self.minimum_pulse_separation} us \
+                       \n    min_pulse_length = {self.min_pulse_length} us \
+                       \n    min_tau_spacing_length = {self.min_tau_spacing_length} us \
+                       \n    min_pulse_separation = {self.min_pulse_separation} us \
                        \n    max_tx_sample_rate = {self.max_tx_sample_rate} Hz (samples/sec)\
                        \n    max_rx_sample_rate = {self.max_rx_sample_rate} Hz (samples/sec)\
                        \n    max_usrp_dac_amplitude = {self.max_usrp_dac_amplitude} V\

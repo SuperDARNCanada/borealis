@@ -71,7 +71,7 @@ if __name__ == "__main__":
     process_name = "n200_driver"
     options = Options()
 
-    num_boxes = options.num_n200s
+    num_boxes = options.n200_count
     cpus = range(10)
 
     ids = [options.mainaffinity_to_driver_identity, options.txaffinity_to_driver_identity,

@@ -79,13 +79,13 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | max_freq                       | 20.00E+06                     | Maximum frequency we can run (Hz).    |
 +--------------------------------+-------------------------------+---------------------------------------+
-| minimum_pulse_length           | 100                           | Minimum pulse length (us) dependent   |
+| min_pulse_length               | 100                           | Minimum pulse length (us) dependent   |
 |                                |                               | upon AGC feedback sample and hold.    |
 +--------------------------------+-------------------------------+---------------------------------------+
-| minimum_tau_spacing_length     | 1                             | Minimum length of multi-pulse         |
+| min_tau_spacing_length         | 1                             | Minimum length of multi-pulse         |
 |                                |                               | increment (us).                       |
 +--------------------------------+-------------------------------+---------------------------------------+
-| minimum_pulse_separation       | 125                           | The minimum separation (us) before    |
+| min_pulse_separation           | 125                           | The minimum separation (us) before    |
 |                                |                               | experiment treats it as a single      |
 |                                |                               | pulse (transmitting zeroes and not    |
 |                                |                               | receiving between the pulses). 125 us |

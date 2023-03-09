@@ -495,7 +495,7 @@ class ExperimentPrototype(object):
             'pulse_ramp_time':          self.options.pulse_ramp_time,
             'max_usrp_dac_amplitude':   self.options.max_usrp_dac_amplitude,
             'rx_sample_rate':           self.rxrate,
-            'minimum_pulse_separation': self.options.minimum_pulse_separation,
+            'min_pulse_separation':     self.options.min_pulse_separation,
             'txctrfreq':                self.txctrfreq,
             'txrate':                   self.txrate,
             'intf_offset' :             self.options.intf_offset,
@@ -1960,10 +1960,10 @@ class ExperimentPrototype(object):
         # Check that pulse_len and tau_spacing make sense (values in us)
         if exp_slice['pulse_len'] > exp_slice['tau_spacing']:
             error_list.append(f"Slice {exp_slice['slice_id']} pulse length greater than tau_spacing")
-        if exp_slice['pulse_len'] < self.options.minimum_pulse_length and \
+        if exp_slice['pulse_len'] < self.options.min_pulse_length and \
                 exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * 1.0e6:
             error_list.append(f"Slice {exp_slice['slice_id']} pulse length too small")
-        if exp_slice['tau_spacing'] < self.options.minimum_tau_spacing_length:
+        if exp_slice['tau_spacing'] < self.options.min_tau_spacing_length:
             error_list.append(f"Slice {exp_slice['slice_id']} multi-pulse increment too small")
         if not math.isclose((exp_slice['tau_spacing'] * self.output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
             error_list.append(f"Slice {exp_slice['slice_id']} correlation lags will be off because"\
