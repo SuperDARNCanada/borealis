@@ -817,21 +817,17 @@ class DataWrite(object):
                 second_pulse_sample_num = np.uint32(tau_in_samples) * slice_data.pulses[1] - sample_off - 1
 
                 # Average the data
-                try:
-                    assert averaging_method in ['mean', 'median']
-                    if averaging_method == 'mean':
-                        array_expectation_value = np.mean(array_2d, axis=0)
-                    elif averaging_method == 'median':
-                        array_expectation_value = np.median(np.real(array_2d), axis=0) + \
-                                                  1j * np.median(np.imag(array_2d), axis=0)
-                except Exception as err:
-                    log.error("wrong averaging method [mean, median]", error=err)
-                    log.exception("wrong averaging method [mean, median]", exception=err)
-                    sys.exit(1)
+                if averaging_method == 'mean':
+                    array_expectation_value = np.mean(array_2d, axis=0)
+                elif averaging_method == 'median':
+                    array_expectation_value = np.median(np.real(array_2d), axis=0) + \
+                                              1j * np.median(np.imag(array_2d), axis=0)
+                else:
+                    log.error("wrong averaging method [mean, median]")
+                    raise
 
                 # Reshape array to be 3d so we can replace lag0 far ranges that are cluttered with those
                 # from alternate lag0 which have no clutter.
-                # TODO: Can we refactor so that pycharm doesn't get mad at this?
                 array_3d = array_expectation_value.reshape((num_beams, num_ranges, num_lags))
                 array_3d[:, second_pulse_sample_num:, 0] = array_3d[:, second_pulse_sample_num:, -1]
 
@@ -873,12 +869,9 @@ class DataWrite(object):
             bfiq = data_parsing.bfiq_accumulator
             slice_id_list = [x for x in bfiq.keys() if isinstance(x, int)]
 
-            # Pop these off so we don't include them in later iteration.
-            data_descriptors = bfiq.pop('data_descriptors', None)
-
             for slice_num in slice_id_list:
                 slice_data = aveperiod_data[slice_num]
-                slice_data.data_descriptors = data_descriptors
+                slice_data.data_descriptors = bfiq['data_descriptors']
                 slice_data.antenna_arrays_order = []
 
                 flattened_data = []
@@ -930,15 +923,10 @@ class DataWrite(object):
             # Build strings from antennas used in the message. This will be used to know
             # what antennas were recorded on since we sample all available USRP channels
             # and some channels may not be transmitted on, or connected.
-            def main_ant_str(x):
-                return f"antenna_{x}"
-
-            def intf_ant_str(x):
-                return f"antenna_{x + self.options.main_antenna_count}"
-
             for slice_num in rx_main_antennas:
-                rx_main_antennas[slice_num] = [main_ant_str(x) for x in rx_main_antennas[slice_num]]
-                rx_intf_antennas[slice_num] = [intf_ant_str(x) for x in rx_intf_antennas[slice_num]]
+                rx_main_antennas[slice_num] = [f'antenna_{x}' for x in rx_main_antennas[slice_num]]
+                rx_intf_antennas[slice_num] = [f'antenna_{x + self.options.main_antenna_count}' for x in
+                                               rx_intf_antennas[slice_num]]
 
             final_data_params = {}
             for slice_num in slice_id_list:
