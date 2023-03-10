@@ -565,7 +565,6 @@ def main():
             pprint("Main buffer shape: {}".format(main_sequence_samples.shape))
             processed_main_samples = DSP(main_sequence_samples, rx_rate, dm_rates, dm_scheme_taps, mixing_freqs,
                                          main_beam_angles)
-            filter_timer = time.perf_counter()
             main_corrs = DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
                                                        processed_main_samples.beamformed_samples,
                                                        output_sample_rate, slice_details)
