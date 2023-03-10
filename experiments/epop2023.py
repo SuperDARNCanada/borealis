@@ -44,7 +44,7 @@ class Epop2023(ExperimentPrototype):
 
         if kwargs:
             if 'freq' in kwargs.keys():
-                freq = kwargs['freq']
+                freq = int(kwargs['freq'])
 
         self.printing('Frequency set to {}'.format(freq))
 
