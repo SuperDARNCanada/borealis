@@ -99,7 +99,7 @@ class Options:
     dsp_to_radctrl_identity: str = "DSP_RADCTRL_IDEN"
     dw_to_dsp_identity: str = "DW_DSP_IDEN"
     dw_to_radctrl_identity: str = "DW_RADCTRL_IDEN"
-    dw_to_rt_identity: str = "RT_DW_IDEN"
+    dw_to_rt_identity: str = "DW_RT_IDEN"
     exphan_to_dsp_identity: str = "EXPHAN_DSP_IDEN"
     exphan_to_radctrl_identity: str = "EXPHAN_RADCTRL_IDEN"
     mainaffinity_to_driver_identity: str = "MAINAFFINITY_DRIVER_IDEN"
@@ -108,7 +108,7 @@ class Options:
     radctrl_to_dsp_identity: str = "RADCTRL_DSP_IDEN"
     radctrl_to_dw_identity: str = "RADCTRL_DW_IDEN"
     radctrl_to_exphan_identity: str = "RADCTRL_EXPHAN_IDEN"
-    rt_to_dw_identity: str = "DW_RT_IDEN"
+    rt_to_dw_identity: str = "RT_DW_IDEN"
     rxaffinity_to_driver_identity: str = "RXAFFINITY_DRIVER_IDEN"
     txaffinity_to_driver_identity: str = "TXAFFINITY_DRIVER_IDEN"
 
