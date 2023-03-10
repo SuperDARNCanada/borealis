@@ -30,17 +30,18 @@ from pathlib import Path
 from importlib import import_module
 
 BOREALISPATH = os.environ['BOREALISPATH']
-sys.path.append(BOREALISPATH)
+sys.path.append(f"{BOREALISPATH}/src")
+
 
 # Need to hardcode this, as unittest does weird things when you supply an argument on command line,
 # or if you use argparse. There is probably a better way
 input_test_file = BOREALISPATH + "/tests/testing_utils/experiments/experiment_tests.csv"
 
 # Call experiment handler main function like so: eh.main(['normalscan', 'discretionary'])
-from src import experiment_handler as eh
-from src.experiment_prototype.experiment_exception import ExperimentException
-import src.borealis_experiments.superdarn_common_fields as scf
-from src.experiment_prototype.experiment_prototype import ExperimentPrototype
+import experiment_handler as eh
+from experiment_prototype.experiment_exception import ExperimentException
+import borealis_experiments.superdarn_common_fields as scf
+from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
 def ehmain(experiment='normalscan', scheduling_mode='discretionary'):
