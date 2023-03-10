@@ -30,4 +30,4 @@ import os
 Import('*')
 
 Prog('octoclock_test', Glob("./*.c*"),
-     LIBS=['uhd','boost_system', 'boost_program_options'])
+    LIBS=['uhd','boost_system', 'boost_program_options'])

@@ -249,8 +249,8 @@ def experiment_handler(semaphore, args):
         semaphore.acquire()
         if message in ['EXPNEEDED', 'NOERROR']:
             if message == 'EXPNEEDED':
-                log.info("sending new experiment from beginning", message=message)
-
+                log.info("sending new experiment", message=message)
+            # Starting anew if EXPNEEDED, otherwise sending None
             send_experiment(exp_handler_to_radar_control,
                             options.radctrl_to_exphan_identity,
                             serialized_exp)

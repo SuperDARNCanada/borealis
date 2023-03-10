@@ -111,7 +111,7 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
                  structlog.processors.CallsiteParameter.FUNC_NAME,  # function name
                  structlog.processors.CallsiteParameter.MODULE,  # module name
                  structlog.processors.CallsiteParameter.PROCESS,  # process ID
-                 # structlog.processors.CallsiteParameter.THREAD,  # tread ID
+                 # structlog.processors.CallsiteParameter.THREAD,  # thread ID
                  # structlog.processors.CallsiteParameter.FILENAME,  # file name
                  # structlog.processors.CallsiteParameter.LINENO,  # line number
 
