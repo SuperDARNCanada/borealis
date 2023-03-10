@@ -24,7 +24,6 @@ import subprocess as sp
 import sys
 import threading
 import time
-from typing import List, Dict, Set
 import warnings
 
 # third-party
@@ -47,117 +46,176 @@ class SliceData:
     the applicable file types for each field.
     """
     agc_status_word: int = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
-    antenna_arrays_order: List[str] = field(
-        metadata={'groups': ['antennas_iq', 'bfiq']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': '32 bits, a 1 in bit position corresponds to an AGC fault on that transmitter'})
+    antenna_arrays_order: list[str] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq'],
+                  'description': 'Descriptors for the data layout'})
     averaging_method: str = field(
-        metadata={'groups': ['rawacf']})
-    beam_azms: List[float] = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
-    beam_nums: List[int] = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+        metadata={'groups': ['rawacf'],
+                  'description': 'Averaging method, e.g. mean, median'})
+    beam_azms: list[float] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Beams azimuths for each beam in degrees CW of boresight'})
+    beam_nums: list[int] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Beam numbers used in this slice'})
     blanked_samples: np.ndarray = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Samples blanked during transmission'})
     borealis_git_hash: str = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
-    correlation_descriptors: List[str] = field(
-        metadata={'groups': ['rawacf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Version and commit hash of Borealis at runtime'})
+    correlation_descriptors: list[str] = field(
+        metadata={'groups': ['rawacf'],
+                  'description': 'Denotes what each acf/xcf dimension represents'})
     correlation_dimensions: np.ndarray = field(
-        metadata={'groups': ['rawacf']})
+        metadata={'groups': ['rawacf'],
+                  'description': 'Dimensions in which to reshape the acf/xcf data'})
     data: np.ndarray = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf']})
-    data_descriptors: List[str] = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
+                  'description': 'Contiguous set of samples at the given sample rate'})
+    data_descriptors: list[str] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
+                  'description': 'Denotes what each data dimension represents'})
     data_dimensions: np.ndarray = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
+                  'description': 'Dimensions in which to reshape the data'})
     data_normalization_factor: float = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
-    decimated_tx_samples: List = field(
-        metadata={'groups': ['txdata']})
-    dm_rate: List[int] = field(
-        metadata={'groups': ['txdata']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Cumulative scale of all of the filters for a total scaling factor to normalize by'})
+    decimated_tx_samples: list = field(
+        metadata={'groups': ['txdata'],
+                  'description': 'Samples decimated by dm_rate'})
+    dm_rate: list[int] = field(
+        metadata={'groups': ['txdata'],
+                  'description': 'Total decimation rate of the filtering scheme'})
     experiment_comment: str = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Comment about the whole experiment'})
     experiment_id: int = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Number used to identify experiment'})
     experiment_name: str = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Name of the experiment class'})
     first_range: int = field(
-        metadata={'groups': ['bfiq', 'rawacf']})
+        metadata={'groups': ['bfiq', 'rawacf'],
+                  'description': 'Distance to first range in km'})
     first_range_rtt: float = field(
-        metadata={'groups': ['bfiq', 'rawacf']})
+        metadata={'groups': ['bfiq', 'rawacf'],
+                  'description': 'Round trip time of flight to first range in microseconds'})
     freq: float = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Frequency used for this experiment slice in kHz'})
     gps_locked: bool = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'True if the GPS was locked during the entire averaging period'})
     gps_to_system_time_diff: float = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Max time diff in seconds between GPS and system/NTP time during the averaging '
+                                 'period'})
     int_time: float = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Integration time in seconds'})
     intf_acfs: np.ndarray = field(
-        metadata={'groups': ['rawacf']})
+        metadata={'groups': ['rawacf'],
+                  'description': 'Interferometer array autocorrelations'})
     intf_antenna_count: int = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Number of interferometer array antennas'})
     lags: np.ndarray = field(
-        metadata={'groups': ['bfiq', 'rawacf']})        # TODO: Should this be in antennas_iq too? Or removed from bfiq?
+        metadata={'groups': ['bfiq', 'rawacf'],         # TODO: Should this be in antennas_iq too? Or removed from bfiq?
+                  'description': 'Time difference between pairs of pulses in pulse array, in units of tau_spacing'})
     lp_status_word: int = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': '32 bits, a 1 in bit position corresponds to a low power condition on that '
+                                 'transmitter'})
     main_acfs: np.ndarray = field(
-        metadata={'groups': ['rawacf']})
+        metadata={'groups': ['rawacf'],
+                  'description': 'Main array autocorrelations'})
     main_antenna_count: int = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Number of main array antennas'})
     noise_at_freq: np.ndarray = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Noise at the receive frequency'})     # TODO: Implement and give units
     num_ranges: int = field(
-        metadata={'groups': ['bfiq']})                              # TODO: Does this need to be in more file types?
+        metadata={'groups': ['bfiq'],                   # TODO: Does this need to be in more file types?
+                  'description': 'Number of ranges to calculate correlations for'})
     num_samps: int = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
+                  'description': 'Number of samples in the sampling period'})
     num_sequences: int = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Number of sampling periods in the averaging period'})
     num_slices: int = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Number of slices in the experiment at this averaging period'})
     pulse_phase_offset: np.ndarray = field(
-        metadata={'groups': ['antennas_iq', 'bfiq']})
-    pulse_sample_start: List[float] = field(
-        metadata={'groups': ['txdata']})
-    pulse_timing_us: List[float] = field(
-        metadata={'groups': ['txdata']})
+        metadata={'groups': ['antennas_iq', 'bfiq'],
+                  'description': 'Phase offset in degrees for each pulse in pulses'})
+    pulse_sample_start: list[float] = field(
+        metadata={'groups': ['txdata'],
+                  'description': 'Beginning of pulses in sequence measured in samples'})
+    pulse_timing_us: list[float] = field(
+        metadata={'groups': ['txdata'],
+                  'description': 'Beginning of pulses in sequence measured in microseconds'})
     pulses: np.ndarray = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Pulse sequence in units of tau_spacing'})
     range_sep: int = field(
-        metadata={'groups': ['bfiq', 'rawacf']})                      # TODO: Does this need to be in antennas_iq?
+        metadata={'groups': ['bfiq', 'rawacf'],         # TODO: Does this need to be in antennas_iq?
+                  'description': 'Range gate separation (equivalent distance between samples) in km'})
     rx_center_freq: float = field(
-        metadata={'groups': 'rawrf'})
+        metadata={'groups': ['rawrf'],
+                  'description': 'Center frequency of the data in kHz'})
     rx_sample_rate: float = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Sampling rate of the samples being written to file in Hz'})
     samples_data_type: str = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'C data type of the samples'})
     scan_start_marker: bool = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Designates if the record is the first in a scan'})
     scheduling_mode: str = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Type of scheduling time at the time of this dataset'})
     slice_comment: str = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Comment that describes the slice'})
     slice_id: int = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Slice ID of the file and dataset'})
     slice_interfacing: dict = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
-    sqn_timestamps: List[float] = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Interfacing of this slice to other slices'})
+    sqn_timestamps: list[float] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'GPS timestamps of start of first pulse for each sampling period in the averaging '
+                                 'period in seconds since epoch'})
     station: str = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
+                  'description': 'Three letter radar identifier'})
     tau_spacing: float = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
-    tx_center_freq: List[float] = field(
-        metadata={'groups': ['txdata']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Unit of spacing between pulses in microseconds'})
+    tx_center_freq: list[float] = field(
+        metadata={'groups': ['txdata'],
+                  'description': 'Center frequency of the transmitted data in kHz'})
     tx_pulse_len: float = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf']})
-    tx_rate: List[float] = field(
-        metadata={'groups': ['txdata']})
-    tx_samples: List = field(
-        metadata={'groups': ['txdata']})
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
+                  'description': 'Length of the pulse in microseconds'})
+    tx_rate: list[float] = field(
+        metadata={'groups': ['txdata'],
+                  'description': 'Sampling rate of the samples being sent to the USRPs'})
+    tx_samples: list = field(
+        metadata={'groups': ['txdata'],
+                  'description': 'Samples sent to USRPs for transmission'})
     xcfs: np.ndarray = field(
-        metadata={'groups': ['rawacf']})
+        metadata={'groups': ['rawacf'],
+                  'description': 'Cross-correlations between main and interferometer arrays'})
 
     @classmethod
     def type_fields(cls, file_type: str):
@@ -177,28 +235,28 @@ class ParseData(object):
     This class is for aggregating data during an averaging period.
     """
     agc_status_word: int = 0b0
-    antenna_iq_accumulator: Dict = field(default_factory=dict)
+    antenna_iq_accumulator: dict = field(default_factory=dict)
     antenna_iq_available: bool = False
-    bfiq_accumulator: Dict = field(default_factory=dict)
+    bfiq_accumulator: dict = field(default_factory=dict)
     bfiq_available: bool = False
     intfacfs_available: bool = False
     gps_locked: bool = True     # init True so that logical AND works properly in update() method
     gps_to_system_time_diff: float = 0.0
-    intfacfs_accumulator: Dict = field(default_factory=dict)
+    intfacfs_accumulator: dict = field(default_factory=dict)
     lp_status_word: int = 0b0
-    mainacfs_accumulator: Dict = field(default_factory=dict)
+    mainacfs_accumulator: dict = field(default_factory=dict)
     mainacfs_available: bool = False
     options: dwo.DataWriteOptions = None
     output_sample_rate: float = 0.0
     processed_data: ProcessedSequenceMessage = field(init=False)
     rawrf_available: bool = False
-    rawrf_locations: List[str] = field(default_factory=list)
+    rawrf_locations: list[str] = field(default_factory=list)
     rawrf_num_samps: int = 0
     rx_rate: float = 0.0
     sequence_num: int = field(init=False)
-    slice_ids: Set = field(default_factory=set)
-    timestamps: List[float] = field(default_factory=list)
-    xcfs_accumulator: Dict = field(default_factory=dict)
+    slice_ids: set = field(default_factory=set)
+    timestamps: list[float] = field(default_factory=list)
+    xcfs_accumulator: dict = field(default_factory=dict)
     xcfs_available: bool = False
 
     def _get_accumulators(self):
