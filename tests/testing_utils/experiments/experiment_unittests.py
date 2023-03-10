@@ -34,7 +34,7 @@ sys.path.append(BOREALISPATH)
 
 # Need to hardcode this, as unittest does weird things when you supply an argument on command line,
 # or if you use argparse. There is probably a better way
-input_test_file = BOREALISPATH + "/tests/testing_utils/experiments/experiment_tests.csv"
+input_test_file = f"{BOREALISPATH}/tests/testing_utils/experiments/experiment_tests.csv"
 
 # Call experiment handler main function like so: eh.main(['normalscan', 'discretionary'])
 from src import experiment_handler as eh
@@ -90,23 +90,22 @@ class TestExperimentEnvSetup(unittest.TestCase):
         Test the code that checks for the config file
         """
         # Rename the config file temporarily
-        os.rename(BOREALISPATH + '/config.ini', BOREALISPATH + '/_config.ini')
+        site_id = scf.options.site_id
+        os.rename(f"{BOREALISPATH}/config/{site_id}/{site_id}_config.ini", f"{BOREALISPATH}/_config.ini")
         with self.assertRaisesRegex(ExperimentException, "Cannot open config file at "):
             ehmain()
-        # experiment_prototype.experiment_exception.ExperimentException: Cannot open config file
-        # at /home/kevin/PycharmProjects/borealis//config.ini
 
         # Now rename the config file and move on
-        os.rename(BOREALISPATH + '/_config.ini', BOREALISPATH + '/config.ini')
+        os.rename(f"{BOREALISPATH}/_config.ini", f"{BOREALISPATH}/config/{site_id}/{site_id}_config.ini")
 
     def test_hdw_file(self):
         """
         Test the code that checks for the hdw.dat file
         """
-        site_name = scf.opts.site_id
+        site_name = scf.options.site_id
+        hdw_path = scf.options.hdw_path
         # Rename the hdw.dat file temporarily
-        os.rename(BOREALISPATH + f'/hdw.dat.{site_name}',
-                  BOREALISPATH + f'/_hdw.dat.{site_name}')
+        os.rename(f"{hdw_path}/hdw.dat.{site_name}", f"{BOREALISPATH}/_hdw.dat.{site_name}")
 
         with self.assertRaisesRegex(ExperimentException, "Cannot open hdw.dat.[a-z]{3} file at"):
              ehmain()
@@ -115,15 +114,14 @@ class TestExperimentEnvSetup(unittest.TestCase):
 
         # Now rename the hdw.dat file and move on
 
-        os.rename(BOREALISPATH + f'/_hdw.dat.{site_name}',
-                  BOREALISPATH + f'/hdw.dat.{site_name}')
+        os.rename(f"{BOREALISPATH}/_hdw.dat.{site_name}", f"{hdw_path}/hdw.dat.{site_name}")
 
     def test_all_experiments(self):
         """
         Test that all experiments in the experiments folder run without issues
         """
         # This iterates through modules in the experiments directory
-        for (_, name, _) in pkgutil.iter_modules([Path(BOREALISPATH + '/experiments/')]):
+        for (_, name, _) in pkgutil.iter_modules([Path(f"{BOREALISPATH}/experiments/")]):
             # This imports any module found in the experiments directory
             imported_module = import_module('.' + name, package='experiments')
             # This for loop goes through all attributes of the imported module
