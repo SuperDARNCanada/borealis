@@ -43,11 +43,14 @@ import src.borealis_experiments.superdarn_common_fields as scf
 from src.experiment_prototype.experiment_prototype import ExperimentPrototype
 
 
-def ehmain(experiment='normalscan', scheduling_mode='discretionary'):
+def ehmain(experiment_name='normalscan', scheduling_mode='discretionary'):
     """
     Convenience method to call the experiment handler with arguments
     """
-    eh.main([experiment, scheduling_mode])
+    Experiment = eh.retrieve_experiment(experiment_name)
+    exp = Experiment()
+    exp._set_scheduling_mode(scheduling_mode)
+    exp.build_scans()
 
 
 class TestExperimentEnvSetup(unittest.TestCase):
@@ -155,7 +158,7 @@ def test_generator(module_name, exception_msg_regex):
     """
     def test(self):
         with self.assertRaisesRegex(ExperimentException, exception_msg_regex):
-            ehmain(experiment=module_name)
+            ehmain(experiment_name=module_name)
     return test
 
 
