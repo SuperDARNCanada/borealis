@@ -41,15 +41,7 @@ from pathlib import Path
 from importlib import import_module
 
 BOREALISPATH = os.environ['BOREALISPATH']
-<<<<<<< HEAD
-sys.path.append(BOREALISPATH)
-
-# Need to hardcode this, as unittest does weird things when you supply an argument on command line,
-# or if you use argparse. There is probably a better way
-input_test_file = f"{BOREALISPATH}/tests/testing_utils/experiments/experiment_tests.csv"
-=======
 sys.path.append(f"{BOREALISPATH}/src")
->>>>>>> 17c223e (Added command line arguments for unittest script)
 
 import experiment_handler as eh
 from experiment_prototype.experiment_exception import ExperimentException

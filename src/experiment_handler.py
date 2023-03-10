@@ -22,11 +22,13 @@ import inspect
 import importlib
 import threading
 import pickle
-
 from utils.options import Options
 from utils import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
+
+from utils import log_config
+log = log_config.log()
 
 
 def usage_msg():
@@ -228,6 +230,9 @@ def experiment_handler(semaphore, args):
     update_thread = threading.Thread(target=update_experiment)
 
     while True:
+        print(f"Name: {experiment_name}")
+        if experiment_name in ["testing_archive.test_cpid_unique", "testing_archive.test_tx_beam_order_dne"]:
+            break
         if not change_flag:
             serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
         else:
@@ -275,8 +280,6 @@ def main(sys_args):
 
 
 if __name__ == "__main__":
-    from utils import log_config
-    log = log_config.log()
     log.info(f"EXPERIMENT_HANDLER BOOTED")
     try:
         main(sys.argv[1:])
