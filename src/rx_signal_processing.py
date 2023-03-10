@@ -251,17 +251,15 @@ class DSP(object):
         :returns:   Correlations for slices.
         :rtype:     list
         """
-
         values = []
-        for s in slice_index_details:
-            if s['lags'].size == 0:
+        for s, slice_info in enumerate(slice_index_details):
+            if slice_info['lags'].size == 0:
                 values.append(np.array([]))
                 continue
-            range_off = np.arange(s['num_range_gates'], dtype=np.int32) + s['first_range_off']
 
-            tau_in_samples = s['tau_spacing'] * 1e-6 * output_sample_rate
-
-            lag_pulses_as_samples = np.array(s['lags'], np.int32) * np.int32(tau_in_samples)
+            range_off = np.arange(slice_info['num_range_gates'], dtype=np.int32) + slice_info['first_range_off']
+            tau_in_samples = slice_info['tau_spacing'] * 1e-6 * output_sample_rate
+            lag_pulses_as_samples = np.array(slice_info['lags'], np.int32) * np.int32(tau_in_samples)
 
             # [num_range_gates, 1, 1]
             # [1, num_lags, 2]
@@ -272,17 +270,17 @@ class DSP(object):
             row = samples_for_all_range_lags[..., 1].astype(np.int32)
 
             # [num_range_gates, num_lags, 2]
-            column = samples_for_all_range_lags[..., 0].astype(np.int32)
+            col = samples_for_all_range_lags[..., 0].astype(np.int32)
 
-            # [num_beams, num_range_gates, num_lags]
-            values_for_slice = np.zeros((beamformed_samples_1.shape[1] + row.shape[:2]), dtype=np.complex64)
+            values_for_slice = np.empty((beamformed_samples_1.shape[1], row.shape[0], row.shape[1]), dtype=np.complex64)
 
             for lag in range(row.shape[1]):
-                values_for_slice = beamformed_samples_1[s, :, row[:, lag]] * \
-                                   beamformed_samples_2[s, :, column[:, lag]].conj()
+                values_for_slice[:, :, lag] = np.einsum('ij,ij->ji',
+                                                        beamformed_samples_1[s, :, row[:, lag]],
+                                                        beamformed_samples_2[s, :, col[:, lag]].conj())
 
-            # [num_range_gates, num_lags, num_beams]
-            values_for_slice = np.einsum('ijk,j->kij', values_for_slice, s['lag_phase_offsets'])
+            # [num_beams, num_range_gates, num_lags]
+            values_for_slice = np.einsum('ijk,k->ijk', values_for_slice, slice_info['lag_phase_offsets'])
 
             values.append(values_for_slice)
 
@@ -567,6 +565,7 @@ def main():
             pprint("Main buffer shape: {}".format(main_sequence_samples.shape))
             processed_main_samples = DSP(main_sequence_samples, rx_rate, dm_rates, dm_scheme_taps, mixing_freqs,
                                          main_beam_angles)
+            filter_timer = time.perf_counter()
             main_corrs = DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
                                                        processed_main_samples.beamformed_samples,
                                                        output_sample_rate, slice_details)
