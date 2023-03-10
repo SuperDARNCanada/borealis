@@ -201,7 +201,7 @@ class Sequence(ScanClassBase):
             last_pulse_num_samps = pulse_data['total_num_samps']
 
             # If there are overlaps (two pulses within minimum separation time) then make them into one single pulse
-            min_sep = self.transmit_metadata['minimum_pulse_separation']
+            min_sep = self.transmit_metadata['min_pulse_separation']
             if pulse_timing_us < last_timing_us + last_pulse_len_us + min_sep:
                 # If the current pulse is completely enveloped by the previous pulse,
                 # these values won't change or else we are truncating the previous pulse.

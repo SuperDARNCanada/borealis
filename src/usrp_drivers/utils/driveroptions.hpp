@@ -53,7 +53,7 @@ class DriverOptions: public Options {
         std::vector<size_t> receive_channels_;
         std::vector<size_t> transmit_channels_;
         std::string main_rx_subdev_;
-        std::string interferometer_rx_subdev_;
+        std::string intf_rx_subdev_;
         std::string pps_;
         std::string ref_;
         std::string cpu_;
@@ -64,8 +64,8 @@ class DriverOptions: public Options {
         double agc_signal_read_delay_;
         std::vector<size_t> main_antennas_;
         uint32_t main_antenna_count_;
-        std::vector<size_t> interferometer_antennas_;
-        uint32_t interferometer_antenna_count_;
+        std::vector<size_t> intf_antennas_;
+        uint32_t intf_antenna_count_;
         double ringbuffer_size_bytes_;
         uint32_t atr_rx_;
         uint32_t atr_tx_;

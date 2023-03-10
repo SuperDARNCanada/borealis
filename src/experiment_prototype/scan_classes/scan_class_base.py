@@ -47,7 +47,7 @@ class ScanClassBase(object):
                                 - 'pulse_ramp_time' [s],
                                 - 'max_usrp_dac_amplitude' [V peak],
                                 - 'rx_sample_rate' [Hz],
-                                - 'minimum_pulse_separation' [us],
+                                - 'min_pulse_separation' [us],
                                 - 'txctrfreq' [kHz],
                                 - 'txrate' [Hz],
                                 - 'intf_offset' [m,m,m],

@@ -30,7 +30,7 @@
 import inspect
 from pathlib import Path
 import sys
-from .general import load_config
+from .options import Options
 # We need these two handlers from logging to print to a file and stdout
 import logging
 from logging import StreamHandler
@@ -81,20 +81,20 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
     module_name = caller.name.split('.')[0]
 
     # Gather the borealis configuration information
-    raw_config = load_config()
+    options = Options()
 
     # If no override log level is set load the config log level
     if log_level is None:
-        log_level = str(raw_config["log_level"])
+        log_level = options.log_level
     if console is None:
-        console = raw_config["log_handlers"]["console"]
+        console = options.log_console_bool
     if logfile is None:
-        logfile = raw_config["log_handlers"]["logfile"]
+        logfile = options.log_logfile_bool
     if aggregator is None:
-        aggregator = raw_config["log_handlers"]["aggregator"]
+        aggregator = options.log_aggregator_bool
     # Set the log file and dir path. The time tag will be appended at the midnight
     # roll over by the TimedRotatingLogHandler.
-    log_file = f"{raw_config['log_directory']}/{module_name}"
+    log_file = f"{options.log_directory}/{module_name}"
 
     # Configure structlog here once for everything so that every log is uniformly formatted
     structlog.configure(
@@ -152,8 +152,8 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
     # Set up the third handler to pipe logs to the log aggregator (Graylogs). See further logging documentation
     # to set up the log aggregator server and the extractors on the server.
     if aggregator:
-        aggregator_handler = graypy.GELFUDPHandler(raw_config["log_aggregator_addr"],
-                                                   int(raw_config["log_aggregator_port"]))
+        aggregator_handler = graypy.GELFUDPHandler(options.log_aggregator_addr,
+                                                   options.log_aggregator_port)
         aggregator_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             processor=structlog.processors.JSONRenderer(sort_keys=False)))
         root_logger.addHandler(aggregator_handler)

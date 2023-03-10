@@ -37,7 +37,7 @@ else:
     from release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 
 from utils.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
-import utils.options.signal_processing_options as spo
+from utils.options import Options
 from utils import socket_operations as so
 
 
@@ -339,17 +339,17 @@ def fill_datawrite_message(processed_data, slice_details, data_outputs):
 
 
 def main():
-    sig_options = spo.SignalProcessingOptions()
+    options = Options()
 
-    sockets = so.create_sockets([sig_options.dsp_radctrl_identity,
-                                 sig_options.dsp_driver_identity], sig_options.router_address)
+    sockets = so.create_sockets([options.dsp_to_radctrl_identity,
+                                 options.dsp_to_driver_identity], options.router_address)
 
     dsp_to_radar_control = sockets[0]
     dsp_to_driver = sockets[1]
 
     ringbuffer = None
 
-    total_antennas = len(sig_options.main_antennas) + len(sig_options.intf_antennas)
+    total_antennas = len(options.main_antennas) + len(options.intf_antennas)
 
     dm_rates = []
     dm_scheme_taps = []
@@ -361,7 +361,7 @@ def main():
     first_time = True
     while True:
 
-        reply = so.recv_bytes(dsp_to_radar_control, sig_options.radctrl_dsp_identity, log)
+        reply = so.recv_bytes(dsp_to_radar_control, options.radctrl_to_dsp_identity, log)
 
         sqn_meta_message = pickle.loads(reply)
 
@@ -411,8 +411,8 @@ def main():
             detail['lags'] = np.array(lags, dtype=np.uint32)
             detail['num_lags'] = len(lags)
 
-            main_beams = chan.beam_phases[:, :len(sig_options.main_antennas)]
-            intf_beams = chan.beam_phases[:, len(sig_options.main_antennas):]
+            main_beams = chan.beam_phases[:, :len(options.main_antennas)]
+            intf_beams = chan.beam_phases[:, len(options.main_antennas):]
 
             detail['num_beams'] = main_beams.shape[0]
 
@@ -432,8 +432,8 @@ def main():
                     temp[:x.shape[0], :] = x
                     x = temp    # Reassign to the new larger array with zero-padded beams
 
-        pad_beams(main_beam_angles, len(sig_options.main_antennas))
-        pad_beams(intf_beam_angles, len(sig_options.intf_antennas))
+        pad_beams(main_beam_angles, len(options.main_antennas))
+        pad_beams(intf_beam_angles, len(options.intf_antennas))
 
         main_beam_angles = np.array(main_beam_angles, dtype=np.complex64)
         intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
@@ -441,8 +441,8 @@ def main():
 
         # Get meta from driver
         message = "Need data to process"
-        so.send_data(dsp_to_driver, sig_options.driver_dsp_identity, message)
-        reply = so.recv_bytes(dsp_to_driver, sig_options.driver_dsp_identity, log)
+        so.send_data(dsp_to_driver, options.driver_to_dsp_identity, message)
+        reply = so.recv_bytes(dsp_to_driver, options.driver_to_dsp_identity, log)
 
         rx_metadata = RxSamplesMetadata()
         rx_metadata.ParseFromString(reply)
@@ -455,7 +455,7 @@ def main():
 
         # First time configuration
         if first_time:
-            shm = ipc.SharedMemory(sig_options.ringbuffer_name)
+            shm = ipc.SharedMemory(options.ringbuffer_name)
             mapped_mem = mmap.mmap(shm.fd, shm.size)
             ringbuffer = np.frombuffer(mapped_mem, dtype=np.complex64).reshape(total_antennas, -1)
 
@@ -513,11 +513,11 @@ def main():
             if cupy_available:
                 cp.cuda.runtime.setDevice(0)
 
-            seq_begin_iden = sig_options.dspbegin_brian_identity + str(sequence_num)
-            seq_end_iden = sig_options.dspend_brian_identity + str(sequence_num)
-            dw_iden = sig_options.dsp_dw_identity + str(sequence_num)
+            seq_begin_iden = options.dspbegin_to_brian_identity + str(sequence_num)
+            seq_end_iden = options.dspend_to_brian_identity + str(sequence_num)
+            dw_iden = options.dsp_to_dw_identity + str(sequence_num)
             gpu_socks = so.create_sockets([seq_begin_iden, seq_end_iden, dw_iden],
-                                          sig_options.router_address)
+                                          options.router_address)
 
             dspbegin_to_brian = gpu_socks[0]
             dspend_to_brian = gpu_socks[1]
@@ -549,13 +549,13 @@ def main():
             mark_timer = time.perf_counter()
             reply_packet = {"sequence_num": sequence_num}
             msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
-            so.recv_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, log)
-            so.send_bytes(dspbegin_to_brian, sig_options.brian_dspbegin_identity, msg)
+            so.recv_bytes(dspbegin_to_brian, options.brian_to_dspbegin_identity, log)
+            so.send_bytes(dspbegin_to_brian, options.brian_to_dspbegin_identity, msg)
             log_dict["dsp_begin_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
 
             # Process main samples
             mark_timer = time.perf_counter()
-            main_sequence_samples = sequence_samples[:len(sig_options.main_antennas), :]
+            main_sequence_samples = sequence_samples[:len(options.main_antennas), :]
             main_sequence_samples_shape = main_sequence_samples.shape
             processed_main_samples = DSP(main_sequence_samples, rx_rate, dm_rates, dm_scheme_taps, mixing_freqs,
                                          main_beam_angles)
@@ -567,8 +567,8 @@ def main():
             # Process intf samples if intf exists
             mark_timer = time.perf_counter()
             intf_sequence_samples_shape = None
-            if sig_options.intf_antenna_count > 0:
-                intf_sequence_samples = sequence_samples[len(sig_options.main_antennas):, :]
+            if options.intf_antenna_count > 0:
+                intf_sequence_samples = sequence_samples[len(options.main_antennas):, :]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
                 processed_intf_samples = DSP(intf_sequence_samples, rx_rate, dm_rates,
                                              dm_scheme_taps, mixing_freqs, intf_beam_angles)
@@ -584,8 +584,8 @@ def main():
             mark_timer = time.perf_counter()
             reply_packet["kerneltime"] = log_dict["main_dsp_time"] + log_dict["intf_dsp_time"]
             msg = pickle.dumps(reply_packet, protocol=pickle.HIGHEST_PROTOCOL)
-            so.recv_bytes(dspend_to_brian, sig_options.brian_dspend_identity, log)
-            so.send_bytes(dspend_to_brian, sig_options.brian_dspend_identity, msg)
+            so.recv_bytes(dspend_to_brian, options.brian_to_dspend_identity, log)
+            so.send_bytes(dspend_to_brian, options.brian_to_dspend_identity, msg)
             log_dict["dsp_end_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
 
             log_dict["total_sequence_process_time"] = (time.perf_counter() - start_timer) * 1e3
@@ -645,7 +645,7 @@ def main():
                     stage = DebugDataStage(f'stage_{i}')
                     debug_data_in_shm(stage, main_data, 'main')
 
-                    if sig_options.intf_antenna_count > 0:
+                    if options.intf_antenna_count > 0:
                         intf_data = processed_intf_samples.filter_outputs[i]
                         debug_data_in_shm(stage, intf_data, 'intf')
 
@@ -658,7 +658,7 @@ def main():
             stage.main_shm = main_shm.name
             stage.num_samps = processed_main_samples.antennas_iq_samples.shape[-1]
             main_shm.close()
-            if sig_options.intf_antenna_count > 0:
+            if options.intf_antenna_count > 0:
                 intf_shm = processed_intf_samples.shared_mem['antennas_iq']
                 stage.intf_shm = intf_shm.name
                 intf_shm.close()
@@ -689,7 +689,7 @@ def main():
 
             data_outputs['main_corrs'] = main_corrs
 
-            if sig_options.intf_antenna_count > 0:
+            if options.intf_antenna_count > 0:
                 data_outputs['cross_corrs'] = cross_corrs
                 data_outputs['intf_corrs'] = intf_corrs
                 processed_data.bfiq_intf_shm = processed_intf_samples.shared_mem['bfiq'].name
@@ -700,7 +700,7 @@ def main():
             sqn_message = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
             log_dict["add_bfiq_and_acfs_to_stage_time"] = (time.perf_counter() - mark_timer) * 1e3
 
-            so.send_bytes(dsp_to_dw, sig_options.dw_dsp_identity, sqn_message)
+            so.send_bytes(dsp_to_dw, options.dw_to_dsp_identity, sqn_message)
 
             log_dict["total_serialize_send_time"] = (time.perf_counter() - start_timer) * 1e3
             log.info("processing sequence",
