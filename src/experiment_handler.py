@@ -230,9 +230,6 @@ def experiment_handler(semaphore, args):
     update_thread = threading.Thread(target=update_experiment)
 
     while True:
-        print(f"Name: {experiment_name}")
-        if experiment_name in ["testing_archive.test_cpid_unique", "testing_archive.test_tx_beam_order_dne"]:
-            break
         if not change_flag:
             serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
         else:
