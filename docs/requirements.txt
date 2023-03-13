@@ -14,3 +14,4 @@ latex
 inotify
 matplotlib
 sphinx-rtd-theme
+structlog
