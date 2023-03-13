@@ -36,7 +36,7 @@ from scipy.constants import speed_of_light
 # local
 from utils import socket_operations as so
 from utils.message_formats import ProcessedSequenceMessage
-import utils.options.data_write_options as dwo
+from utils.options import Options
 
 
 @dataclass(init=False)
@@ -246,7 +246,7 @@ class ParseData(object):
     lp_status_word: int = 0b0
     mainacfs_accumulator: dict = field(default_factory=dict)
     mainacfs_available: bool = False
-    options: dwo.DataWriteOptions = None
+    options: Options = None
     output_sample_rate: float = 0.0
     processed_data: ProcessedSequenceMessage = field(init=False)
     rawrf_available: bool = False
