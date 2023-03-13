@@ -130,9 +130,9 @@ class Options:
         try:
             with open(path, 'r') as data:
                 raw_config = json.load(data)
-        except IOError:
-            print(f'IOError on config file at {path}')
-            raise
+        except OSError:
+            errmsg = f'Cannot open config file at {path}'
+            raise ValueError(errmsg)
 
         # Initialize all options from config file
         self.site_id = raw_config['site_id']
@@ -212,7 +212,7 @@ class Options:
         try:
             with open(hdw_dat_file) as hdwdata:
                 lines = hdwdata.readlines()
-        except IOError:
+        except OSError:
             errmsg = f'Cannot open hdw.dat file at {hdw_dat_file}'
             raise ValueError(errmsg)
 

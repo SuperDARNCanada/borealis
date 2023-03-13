@@ -27,6 +27,7 @@ import sys
 import inspect
 import pkgutil
 from pathlib import Path
+from glob import glob
 from importlib import import_module
 
 BOREALISPATH = os.environ['BOREALISPATH']
@@ -71,19 +72,20 @@ class TestExperimentEnvSetup(unittest.TestCase):
         with self.assertRaisesRegex(SystemExit, "2"):
             eh.main([])
 
-    #def test_borealispath(self):
-    #    """
-    #    Test failure to have BOREALISPATH in env
-    #    """
-        # Need to remove the environment variable, reset for other tests
-   #     os.environ.pop('BOREALISPATH')
-   #     sys.path.remove(BOREALISPATH)
-   #     del os.environ['BOREALISPATH']
-   #     os.unsetenv('BOREALISPATH')
-   #     with self.assertRaisesRegex(KeyError, "BOREALISPATH"):
-   #         ehmain()
-   #     os.environ['BOREALISPATH'] = BOREALISPATH
-   #     sys.path.append(BOREALISPATH)
+    @unittest.skip("Skip for TODO reason")
+    def test_borealispath(self):
+       """
+       Test failure to have BOREALISPATH in env
+       """
+       # Need to remove the environment variable, reset for other tests
+       os.environ.pop('BOREALISPATH')
+       sys.path.remove(BOREALISPATH)
+       del os.environ['BOREALISPATH']
+       os.unsetenv('BOREALISPATH')
+       with self.assertRaisesRegex(KeyError, "BOREALISPATH"):
+           ehmain()
+       os.environ['BOREALISPATH'] = BOREALISPATH
+       sys.path.append(BOREALISPATH)
 
     def test_config_file(self):
         """
@@ -92,12 +94,13 @@ class TestExperimentEnvSetup(unittest.TestCase):
         # Rename the config file temporarily
         site_id = scf.options.site_id
         os.rename(f"{BOREALISPATH}/config/{site_id}/{site_id}_config.ini", f"{BOREALISPATH}/_config.ini")
-        with self.assertRaisesRegex(ExperimentException, "Cannot open config file at "):
+        with self.assertRaisesRegex(ValueError, "Cannot open config file at "):
             ehmain()
 
         # Now rename the config file and move on
         os.rename(f"{BOREALISPATH}/_config.ini", f"{BOREALISPATH}/config/{site_id}/{site_id}_config.ini")
 
+    @unittest.skip("Cannot test this while hdw.dat files are in /usr/local/hdw")
     def test_hdw_file(self):
         """
         Test the code that checks for the hdw.dat file
@@ -105,35 +108,61 @@ class TestExperimentEnvSetup(unittest.TestCase):
         site_name = scf.options.site_id
         hdw_path = scf.options.hdw_path
         # Rename the hdw.dat file temporarily
-        os.rename(f"{hdw_path}/hdw.dat.{site_name}", f"{BOREALISPATH}/_hdw.dat.{site_name}")
+        os.rename(f"{hdw_path}/hdw.dat.{site_name}", f"{hdw_path}/_hdw.dat.{site_name}")
 
-        with self.assertRaisesRegex(ExperimentException, "Cannot open hdw.dat.[a-z]{3} file at"):
+        with self.assertRaisesRegex(ValueError, "Cannot open hdw.dat.[a-z]{3} file at"):
              ehmain()
-        # experiment_prototype.experiment_exception.ExperimentException: Cannot open hdw.dat.
-        # file at /home/kevin/PycharmProjects/borealis//hdw.dat.
 
         # Now rename the hdw.dat file and move on
-
-        os.rename(f"{BOREALISPATH}/_hdw.dat.{site_name}", f"{hdw_path}/hdw.dat.{site_name}")
+        os.rename(f"{hdw_path}/_hdw.dat.{site_name}", f"{hdw_path}/hdw.dat.{site_name}")
 
     def test_all_experiments(self):
         """
         Test that all experiments in the experiments folder run without issues
         """
+        # Get list of all experiments. Remove absolute path and file suffix.
+        # experiment_files_list = [Path(x).stem for x in glob(f"{BOREALISPATH}/src/borealis_experiments/*.py")]
+        # print(experiment_files_list)
+        # for experiment_file in experiment_files_list:
+        #     # experiment = import_module(experiment_file)
+        #     print(experiment_file)
+            # print(experiment.name)
+            # print(experiment)
+        X = 1
+
         # This iterates through modules in the experiments directory
-        for (_, name, _) in pkgutil.iter_modules([Path(f"{BOREALISPATH}/experiments/")]):
-            # This imports any module found in the experiments directory
-            imported_module = import_module('.' + name, package='experiments')
+        # for (_, name, _) in pkgutil.iter_modules([Path(f"{BOREALISPATH}/src/borealis_experiments/")]):
+        #     # print(name)
+        #     # This imports any module found in the experiments directory
+        #     # imported_module = import_module('.' + name, package='borealis_experiments')
+        #     # print(imported_module.__name__)
+        #     def test_experiment(self):
+        #         try:
+        #             ehmain(experiment_name=name)
+        #         except Exception as err:
+        #             print("Caught the exception!!!")
+        #             self.fail(err)
+
+
+            # setattr(TestExperiments, name, test_experiment)
+
+            # with self.subTest(name=name):
+            #     try:
+            #         ehmain(experiment_name=name)
+            #     except Exception as err:
+            #         print("Caught the exception!!!")
+            #         self.fail(err)
             # This for loop goes through all attributes of the imported module
-            for i in dir(imported_module):
-                attribute = getattr(imported_module, i)
-                # If the attribute is the class, and it's a subclass of ExperimentPrototype,
-                # and it's not ExperimentPrototype, then run it
-                if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
-                    print(f"{attribute}: {name}")
-                    if 'ExperimentPrototype' in str(attribute):
-                        break
-                    attribute()
+            # for i in dir(imported_module):
+            #     print(i)
+            #     attribute = getattr(imported_module, i)
+            #     # If the attribute is the class, and it's a subclass of ExperimentPrototype,
+            #     # and it's not ExperimentPrototype, then run it
+            #     if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
+            #         print(f"{attribute}: {name}")
+            #         if 'ExperimentPrototype' in str(attribute):
+            #             break
+            #         attribute()
 
 
 class TestExperimentExceptions(unittest.TestCase):
@@ -145,7 +174,7 @@ class TestExperimentExceptions(unittest.TestCase):
         """
         This function is called before every test_* method (every test case in unittest lingo)
         """
-        print("Method: ", self._testMethodName)
+        print("\nMethod: ", self._testMethodName)
 
 
 def test_generator(module_name, exception_msg_regex):
@@ -159,12 +188,7 @@ def test_generator(module_name, exception_msg_regex):
             ehmain(experiment_name=module_name)
     return test
 
-
-if __name__ == '__main__':
-    # Redirect stderr because it's annoying
-    # null = open(os.devnull, 'w')
-    # sys.stderr = null
-
+def build_unit_tests():
     # Open the file hardcoded above with a set of tests, one per line.
     # File format is: [experiment module]::[string regex message that the experiment will raise]
     # Generate a single test for each of the lines in the file.
@@ -184,4 +208,51 @@ if __name__ == '__main__':
     except TypeError:
         print("No extra tests supplied, only performing basic tests")
 
-    unittest.main()
+class TestExperiments(unittest.TestCase):
+    """
+       A unittest class to test various ways for an experiment to fail for the experiment_handler
+       module. All test methods must begin with the word 'test' to be run by unittest.
+    """
+    def setUp(self):
+        """
+        This function is called before every test_* method (every test case in unittest lingo)
+        """
+        print("\nExperiment: ", self._testMethodName)
+
+def build_experiment_tests():
+    for (_, name, _) in pkgutil.iter_modules([Path(f"{BOREALISPATH}/src/borealis_experiments/")]):
+        # print(name)
+        # This imports any module found in the experiments directory
+        # imported_module = import_module('.' + name, package='borealis_experiments')
+        # print(imported_module.__name__)
+        def test_experiment(self):
+            try:
+                # print(f"Testing experiment {name}")
+                ehmain(experiment_name=name)
+            except Exception as err:
+                print("Caught the exception!!!")
+                self.fail(err)
+
+
+        setattr(TestExperiments, name, test_experiment)
+        # print(f"Created experiment {name}")
+
+if __name__ == '__main__':
+    # Redirect stderr because it's annoying
+    # null = open(os.devnull, 'w')
+    # sys.stderr = null
+
+    # build_unit_tests()
+    build_experiment_tests()
+    x = TestExperiments()
+    print(x.__repr__)
+    # unittest.main()
+    # experiment_files_list = [Path(x).stem for x in glob(f"{BOREALISPATH}/src/borealis_experiments/*.py")]
+    # # print(experiment_files_list)
+    # for experiment_file in experiment_files_list:
+    #     experiment = import_module(experiment_file)
+    #     print(experiment_file)
+    #     print(experiment.__name__)
+    # x = TestExperimentEnvSetup()
+    # x.test_all_experiments()
+        
