@@ -11,7 +11,7 @@
 import math
 from scipy.signal import firwin, remez, kaiserord
 
-from utils.options.experimentoptions import ExperimentOptions
+from utils.options import Options
 from experiment_prototype.experiment_exception import ExperimentException
 
 
@@ -81,13 +81,13 @@ class DecimationScheme(object):
             return(create_default_scheme())
 
         else:
-            options = ExperimentOptions()
+            options = Options()
             self.rxrate = rxrate
             self.output_sample_rate = output_sample_rate
             # check that number of stages is correct
-            if len(stages) > options.max_number_of_filtering_stages:
+            if len(stages) > options.max_filtering_stages:
                 errmsg = f'Number of decimation stages ({len(stages)}) is greater than max'\
-                         f' available {options.max_number_of_filtering_stages}'
+                         f' available {options.max_filtering_stages}'
                 raise ExperimentException(errmsg)
             self.dm_rates = []
             self.output_rates = []

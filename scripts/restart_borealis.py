@@ -1,26 +1,19 @@
 #!/usr/bin/python
-# Copyright 2020 SuperDARN Canada, University of Saskatchewan
-# Author: Kevin Krieger
+
 """
-Python script to check data being written and restart Borealis in case it's not
+    restart_borealis
+    ~~~~~~~~~~~~~~~~
 
-Classes
--------
+    Python script to check data being written and restart Borealis in case it's not
 
-Methods
--------
-
-
-References
-----------
-
-
+    :copyright: 2020 SuperDARN Canada
+    :author: Kevin Krieger
 """
 
 import argparse
 import os
 import sys
-from src.utils.general import load_config
+import json
 from datetime import datetime as dt
 import glob
 import subprocess
@@ -48,7 +41,19 @@ def main():
     borealis_path = args.borealis_path
 
     # Gather the borealis configuration information
-    raw_config = load_config()
+    if not os.environ["BOREALISPATH"]:
+        raise ValueError("BOREALISPATH env variable not set")
+    if not os.environ['RADAR_ID']:
+        raise ValueError('RADAR_ID env variable not set')
+    path = f'{os.environ["BOREALISPATH"]}/config/' \
+           f'{os.environ["RADAR_ID"]}/' \
+           f'{os.environ["RADAR_ID"]}_config.ini'
+    try:
+        with open(path, 'r') as data:
+            raw_config = json.load(data)
+    except IOError:
+        print(f'IOError on config file at {path}')
+        raise
 
     data_directory = raw_config["data_directory"]
 

@@ -20,7 +20,7 @@ from scipy.constants import speed_of_light
 import re
 from pathlib import Path
 
-from utils.options.experimentoptions import ExperimentOptions
+from utils.options import Options
 from experiment_prototype.sample_building.sample_building import get_wavetables
 
 from experiment_prototype.experiment_exception import ExperimentException
@@ -415,7 +415,7 @@ class ExperimentPrototype(object):
                      ' Only experiments run during discretionary time will have negative CPIDs.'
             raise ExperimentException(errmsg)
 
-        self.__options = ExperimentOptions()
+        self.__options = Options()
 
         self.__cpid = cpid
 
@@ -488,14 +488,14 @@ class ExperimentPrototype(object):
             'output_rx_rate':           self.output_rx_rate,
             'main_antennas':            self.options.main_antennas,
             'main_antenna_count':       self.options.main_antenna_count,
-            'intf_antenna_count':       self.options.interferometer_antenna_count,
+            'intf_antenna_count':       self.options.intf_antenna_count,
             'tr_window_time':           self.options.tr_window_time,
             'main_antenna_spacing':     self.options.main_antenna_spacing,
-            'intf_antenna_spacing':     self.options.interferometer_antenna_spacing,
+            'intf_antenna_spacing':     self.options.intf_antenna_spacing,
             'pulse_ramp_time':          self.options.pulse_ramp_time,
             'max_usrp_dac_amplitude':   self.options.max_usrp_dac_amplitude,
             'rx_sample_rate':           self.rxrate,
-            'minimum_pulse_separation': self.options.minimum_pulse_separation,
+            'min_pulse_separation':     self.options.min_pulse_separation,
             'txctrfreq':                self.txctrfreq,
             'txrate':                   self.txrate,
             'intf_offset' :             self.options.intf_offset,
@@ -709,7 +709,7 @@ class ExperimentPrototype(object):
         restrict.dat files.
 
         :returns:   options
-        :rtype:     :py:class:`ExperimentOptions`
+        :rtype:     :py:class:`Options`
         """
 
         return self.__options
@@ -1253,11 +1253,11 @@ class ExperimentPrototype(object):
                     f'self.num_slices = {self.num_slices}\n'\
                     f'self.slice_ids = {self.slice_ids}\n'\
                     f'self.slice_keys = {self.slice_keys}\n'\
-                    f'self.options = {self.options.__repr__()}\n'\
+                    f'self.options = {self.options.__str__()}\n'\
                     f'self.txctrfreq = {self.txctrfreq}\n'\
                     f'self.txrate = {self.txrate}\n'\
                     f'self.rxctrfreq = {self.rxctrfreq}\n'\
-                    f'self. xcf = {self.xcf}\n'\
+                    f'self.xcf = {self.xcf}\n'\
                     f'self.acfint = {self.acfint}\n'\
                     f'self.slice_dict = {self.slice_dict}\n'\
                     f'self.interface = {self.interface}\n'
@@ -1670,7 +1670,7 @@ class ExperimentPrototype(object):
             slice_with_defaults['rx_main_antennas'] = [i for i in self.options.main_antennas]
         if 'rx_int_antennas' not in exp_slice:
             slice_with_defaults['rx_int_antennas'] = \
-                [i for i in self.options.interferometer_antennas]
+                [i for i in self.options.intf_antennas]
         if 'pulse_phase_offset' not in exp_slice:
             slice_with_defaults['pulse_phase_offset'] = None
         if 'scanbound' not in exp_slice:
@@ -1921,10 +1921,10 @@ class ExperimentPrototype(object):
         if len(exp_slice['rx_main_antennas']) > options.main_antenna_count:
             error_list.append(f"Slice {exp_slice['slice_id']} has too many main RX antenna channels"\
                 f" {len(exp_slice['rx_main_antennas'])} greater than config {options.main_antenna_count}")
-        if len(exp_slice['rx_int_antennas']) > options.interferometer_antenna_count:
+        if len(exp_slice['rx_int_antennas']) > options.intf_antenna_count:
             error_list.append(f"Slice {exp_slice['slice_id']} has too many RX interferometer antenna"\
                 f" channels {len(exp_slice['rx_int_antennas'])} greater than config"\
-                f" {options.interferometer_antenna_count}")
+                f" {options.intf_antenna_count}")
 
         # Check if the antenna identifier number is greater than the config file's
         # maximum antennas for all three of tx antennas, rx antennas and rx int antennas
@@ -1945,9 +1945,9 @@ class ExperimentPrototype(object):
             error_list.append(f"Slice {exp_slice['slice_id']} RX main antennas has duplicate antennas")
 
         for i in range(len(exp_slice['rx_int_antennas'])):
-            if exp_slice['rx_int_antennas'][i] >= options.interferometer_antenna_count:
+            if exp_slice['rx_int_antennas'][i] >= options.intf_antenna_count:
                 error_list.append(f"Slice {exp_slice['slice_id']} specifies interferometer array"\
-                    f" antenna numbers over config max {options.interferometer_antenna_count}")
+                    f" antenna numbers over config max {options.intf_antenna_count}")
 
         if list_tests.has_duplicates(exp_slice['rx_int_antennas']):
             error_list.append(f"Slice {exp_slice['slice_id']} RX interferometer antennas has"\
@@ -1960,10 +1960,10 @@ class ExperimentPrototype(object):
         # Check that pulse_len and tau_spacing make sense (values in us)
         if exp_slice['pulse_len'] > exp_slice['tau_spacing']:
             error_list.append(f"Slice {exp_slice['slice_id']} pulse length greater than tau_spacing")
-        if exp_slice['pulse_len'] < self.options.minimum_pulse_length and \
+        if exp_slice['pulse_len'] < self.options.min_pulse_length and \
                 exp_slice['pulse_len'] <= 2 * self.options.pulse_ramp_time * 1.0e6:
             error_list.append(f"Slice {exp_slice['slice_id']} pulse length too small")
-        if exp_slice['tau_spacing'] < self.options.minimum_tau_spacing_length:
+        if exp_slice['tau_spacing'] < self.options.min_tau_spacing_length:
             error_list.append(f"Slice {exp_slice['slice_id']} multi-pulse increment too small")
         if not math.isclose((exp_slice['tau_spacing'] * self.output_rx_rate % 1.0), 0.0, abs_tol=0.0001):
             error_list.append(f"Slice {exp_slice['slice_id']} correlation lags will be off because"\

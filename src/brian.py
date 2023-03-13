@@ -14,7 +14,7 @@ import argparse
 import zmq
 import pickle
 from utils import socket_operations as so
-from utils.options import experimentoptions as options
+from utils.options import Options
 
 if __debug__:
     from debug.src.utils.protobuf import rxsamplesmetadata_pb2
@@ -24,18 +24,18 @@ else:
 TIME_PROFILE = True
 
 
-def router(opts):
+def router(options):
     """
     The router is responsible for moving traffic between modules by routing traffic using named sockets.
 
-    :param  opts: Options parsed from config file
-    :type   opts: ExperimentOptions class
+    :param  options: Options parsed from config file
+    :type   options: Options class
     """
 
     context = zmq.Context().instance()
     router = context.socket(zmq.ROUTER)
     router.setsockopt(zmq.ROUTER_MANDATORY, 1)
-    router.bind(opts.router_address)
+    router.bind(options.router_address)
 
     log.info("booting router")
     frames_to_send = []
@@ -70,7 +70,7 @@ def router(opts):
         frames_to_send = non_sent
 
 
-def sequence_timing(opts):
+def sequence_timing(options):
     """
     Thread function for sequence timing
 
@@ -82,12 +82,12 @@ def sequence_timing(opts):
     :type   context: zmq context, optional
     """
 
-    ids = [opts.brian_to_radctrl_identity,
-           opts.brian_to_driver_identity,
-           opts.brian_to_dspbegin_identity,
-           opts.brian_to_dspend_identity]
+    ids = [options.brian_to_radctrl_identity,
+           options.brian_to_driver_identity,
+           options.brian_to_dspbegin_identity,
+           options.brian_to_dspend_identity]
 
-    sockets_list = so.create_sockets(ids, opts.router_address)
+    sockets_list = so.create_sockets(ids, options.router_address)
 
     brian_to_radar_control = sockets_list[0]
     brian_to_driver = sockets_list[1]
@@ -137,7 +137,7 @@ def sequence_timing(opts):
             if want_to_start and good_to_start and dsp_finish_counter:
                 # Acknowledge new sequence can begin to Radar Control by requesting new sequence metadata
                 log.debug("requesting metadata from radar_control")
-                so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity, "Requesting metadata")
+                so.send_request(brian_to_radar_control, options.radctrl_to_brian_identity, "Requesting metadata")
                 want_to_start = good_to_start = False
                 dsp_finish_counter -= 1
 
@@ -177,7 +177,7 @@ def sequence_timing(opts):
         if first_time:
             # Request new sequence metadata
             log.debug("requesting metadata from radar control")
-            so.send_request(brian_to_radar_control, opts.radctrl_to_brian_identity, "Requesting metadata")
+            so.send_request(brian_to_radar_control, options.radctrl_to_brian_identity, "Requesting metadata")
             first_time = False
 
         socks = dict(sequence_poller.poll())
@@ -185,7 +185,7 @@ def sequence_timing(opts):
         if brian_to_driver in socks and socks[brian_to_driver] == zmq.POLLIN:
 
             # Receive metadata of completed sequence from driver such as timing
-            reply = so.recv_obj(brian_to_driver, opts.driver_to_brian_identity, log)
+            reply = so.recv_obj(brian_to_driver, options.driver_to_brian_identity, log)
             meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
             meta.ParseFromString(reply)
 
@@ -196,7 +196,7 @@ def sequence_timing(opts):
 
             # Requesting acknowledgement of work begins from DSP
             log.debug("requesting work begins from dsp")
-            iden = opts.dspbegin_to_brian_identity + str(meta.sequence_num)
+            iden = options.dspbegin_to_brian_identity + str(meta.sequence_num)
             so.send_request(brian_to_dsp_begin, iden, "Requesting work begins")
 
             start_new_sock.send_string("want_to_start")
@@ -204,7 +204,7 @@ def sequence_timing(opts):
         if brian_to_radar_control in socks and socks[brian_to_radar_control] == zmq.POLLIN:
 
             # Get new sequence metadata from radar control
-            reply = so.recv_obj(brian_to_radar_control, opts.radctrl_to_brian_identity, log)
+            reply = so.recv_obj(brian_to_radar_control, options.radctrl_to_brian_identity, log)
 
             sigp = pickle.loads(reply)
 
@@ -215,7 +215,7 @@ def sequence_timing(opts):
 
             # Request acknowledgement of sequence from driver
             log.debug("requesting ack from driver")
-            so.send_request(brian_to_driver, opts.driver_to_brian_identity, "Requesting ack")
+            so.send_request(brian_to_driver, options.driver_to_brian_identity, "Requesting ack")
 
         if brian_to_dsp_begin in socks and socks[brian_to_dsp_begin] == zmq.POLLIN:
 
@@ -229,7 +229,7 @@ def sequence_timing(opts):
             # Requesting acknowledgement of work ends from DSP
 
             log.debug("requesting work end from dsp")
-            iden = opts.dspend_to_brian_identity + str(sig_p['sequence_num'])
+            iden = options.dspend_to_brian_identity + str(sig_p['sequence_num'])
             so.send_request(brian_to_dsp_end, iden, "Requesting work ends")
 
             # Acknowledge we want to start something new.
@@ -265,12 +265,12 @@ def main():
     parser.add_argument('--router-only', action='store_true', help=help_msg)
     args = parser.parse_args()
 
-    opts = options.ExperimentOptions()
+    options = Options()
     threads = []
-    threads.append(threading.Thread(target=router, args=(opts,)))
+    threads.append(threading.Thread(target=router, args=(options,)))
 
     if not args.router_only:
-        threads.append(threading.Thread(target=sequence_timing, args=(opts,)))
+        threads.append(threading.Thread(target=sequence_timing, args=(options,)))
 
     for thread in threads:
         thread.daemon = True

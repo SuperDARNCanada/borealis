@@ -22,7 +22,7 @@ import numpy as np
 from functools import reduce
 
 from experiment_prototype.experiment_prototype import ExperimentPrototype
-from utils.options.experimentoptions import ExperimentOptions
+from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations
 
@@ -278,7 +278,7 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     if isinstance(new_exp, ExperimentPrototype):
         experiment = new_exp
         new_experiment_received = True
-        log.debug("new experiment found")
+        log.info("new experiment found")
     elif new_exp is not None:
         log.debug("received non experiment_prototype type")
     else:
@@ -443,7 +443,7 @@ def main():
     """
 
     # Get config options
-    options = ExperimentOptions()
+    options = Options()
 
     # The socket identities for radar_control, retrieved from options
     ids = [options.radctrl_to_exphan_identity, options.radctrl_to_dsp_identity,

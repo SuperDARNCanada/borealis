@@ -334,7 +334,7 @@ class ParseData(object):
         main_shm.unlink()
 
         intf_available = False
-        if self.processed_data.bfiq_intf_shm != '':
+        if self.processed_data.bfiq_intf_shm:
             intf_available = True
             intf_shm = shared_memory.SharedMemory(name=self.processed_data.bfiq_intf_shm)
             temp_data = np.ndarray((num_slices, max_num_beams, num_samps),
@@ -506,8 +506,8 @@ class DataWrite(object):
     """
     This class contains the functions used to write out processed data to files.
 
-    :param  data_write_options: The data write options from config file
-    :type   data_write_options: DataWriteOptions
+    :param  data_write_options: The options parsed from config file
+    :type   data_write_options: Options
     """
 
     def __init__(self, data_write_options):
@@ -1149,7 +1149,7 @@ def main():
                         action='store_true')
     args = parser.parse_args()
 
-    options = dwo.DataWriteOptions()
+    options = Options()
     sockets = so.create_sockets([options.dw_to_dsp_identity,
                                  options.dw_to_radctrl_identity,
                                  options.dw_to_rt_identity],

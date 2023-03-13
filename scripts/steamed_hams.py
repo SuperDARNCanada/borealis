@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 
 """
-Copyright SuperDARN Canada 2020
-Keith Kotyk
+    Borealis Start up script
+    ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Borealis Start up script
+    The Simpsons, Season 7 Episode 21
 
-The Simpsons, Season 1 Episode 3 - Steamed Hams
-
+    :copyright: 2020 SuperDARN Canada
+    :author: Keith Kotyk
 """
 import argparse
 import sys
@@ -15,9 +15,7 @@ import subprocess as sp
 import datetime
 import os
 import time
-
-sys.path.append(f'{os.environ["BOREALISPATH"]}/src')
-from utils.general import load_config
+import json
 
 PYTHON_VERSION = os.environ['PYTHON_VERSION']
 
@@ -208,7 +206,19 @@ day_dir = now.strftime("%Y%m%d")
 logfile_timestamp = now.strftime("%Y.%m.%d.%H:%M")
 
 # Gather the borealis configuration information
-raw_config = load_config()
+if not os.environ["BOREALISPATH"]:
+    raise ValueError("BOREALISPATH env variable not set")
+if not os.environ['RADAR_ID']:
+    raise ValueError('RADAR_ID env variable not set')
+path = f'{os.environ["BOREALISPATH"]}/config/' \
+        f'{os.environ["RADAR_ID"]}/' \
+        f'{os.environ["RADAR_ID"]}_config.ini'
+try:
+    with open(path, 'r') as data:
+        raw_config = json.load(data)
+except IOError:
+    print(f'IOError on config file at {path}')
+    raise
 
 log_dir = raw_config['log_directory']
 sp.call("mkdir -p " + log_dir, shell=True)
