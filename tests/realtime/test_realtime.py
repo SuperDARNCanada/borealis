@@ -19,6 +19,7 @@ sys.path.append(BOREALISPATH)
 from src import realtime
 from src.utils.options import realtime_options as rto
 
+
 class TestRealtimeOptions(unittest.TestCase):
     """
     unittest class to test the realtime options module.
@@ -27,8 +28,6 @@ class TestRealtimeOptions(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.empty_config =
-
 
     def setUp(self):
         """
@@ -114,8 +113,6 @@ class TestRealtime(unittest.TestCase):
         Should return None
         """
         pass
-
-    def test_
 
 
 if __name__ == "__main__":
