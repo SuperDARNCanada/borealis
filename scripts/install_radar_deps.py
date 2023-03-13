@@ -17,7 +17,6 @@ import sys
 import os
 import multiprocessing as mp
 import argparse as ap
-from borealis.utils.shared_macros import COLOR
 
 
 def usage_msg():
@@ -98,88 +97,72 @@ def install_packages(distro: str, user: str, python_version: str):
     :param  python_version: Version of python to install
     :type   python_version: str
     """
-    print(COLOR('yellow', '\n### Installing system packages ###'))
-    packages = ["wget",
-                "gcc",
-                "gcc-c++",
-                "vim",
-                "git",
-                "scons",
-                "python3-pip",
-                "gdb",
-                "jq",
-                "screen",
+    print('### Installing system packages ###')
 
-                "hdf5",
-                "libhdf5-dev",
-                "hdf5-tools",
+    common_packages = [
+        # "wget",                 # Comes native with openSUSE
+        "gcc",
+        "gcc-c++",
+        "git",
+        "scons",                # For building Borealis
+        "python3-pip",
+        "python39",             # Could make this user-specified
+        "python39-pip",         # Could make this user-specified
+        "gdb",                  # For engineeringdebug mode
+        "jq",                   # For reading JSON files from the command line
+        "at",                   # Required for the scheduler
+        "mutt",                 # Required for the scheduler
+        # "vim",                  # Comes native with openSUSE
+        # "screen",               # Comes native with openSUSE
+        "hdf5",
+        # "autoconf",
+        # "automake",
+        # "libtool",
+        # "curl",                 # Comes native with openSUSE
+        # "make",                 # Comes native with openSUSE
+        # "unzip",                # Comes native with openSUSE
 
-                "autoconf",
-                "automake",
-                "libtool",
-                "curl",
-                "make",
-                "unzip",
+        # "libarmadillo9",        # TODO: Remove this? They were for when rx_signal_processing was in C++
+        # "libarmadillo-dev",     # TODO: Remove this? They were for when rx_signal_processing was in C++. Ubuntu-specific
 
-                "libarmadillo9",
-                "libarmadillo-dev",
+        "python3-mako",         # Required for UHD
+        # "doxygen",              # TODO: Do we need this? It's optional for UHD
+        # "python3-docutils",     # Unnecessary for Borealis computer (used by ReadTheDocs)
+        "cmake",
+        # "uhd-udev",             # I think we don't need this
+        # "libuhd-dev",           # I think we don't need this
+        # "libgps23",             # I think we don't need this
+        # "dpdk",                 # Uncertain if we need/use this
+        "pps-tools",
+        ]
 
-                "pps-tools",
+    variant_packages = [
+        # "dpdk-{}",        # Uncertain if we need/use this
+        "libusb-1_0-{}",    # Needed for UHD
+        "python39-{}",
+        "python3-{}",
+        "libx11-{}",
+        "pps-tools-{}",
+        # "libevent-{}",      # Not installed at all sites, probably not needed
+        "net-snmp-{}",
+    ]
 
-                "libboost_*_66_0",
-                "libboost-*67.0*",  # Ubuntu 19.10
-                "libboost-*71.0*",  # Ubuntu 20.04
+    ubuntu_packages = [
+        "libsnmp-dev",
+        "libusb-1.0-0-dev",
+        "libhdf5-dev",
+        "liboost-all-dev",
+        "libboost-dev",
+        "hdf5-tools",
+        "linux-headers-generic",
+        "libboost-*67.0*",  # Ubuntu 19.10
+        "libboost-*71.0*",  # Ubuntu 20.04
+    ]
 
-                "python3-mako",
-                "doxygen",
-                "python3-docutils",
-                "cmake",
-
-                "uhd-udev",
-                "libuhd-dev",
-
-                "libgps23",
-                "dpdk",
-
-                "net-snmp-devel",
-                "net-snmp-dev",
-                "libsnmp-dev",
-
-                "libevent-devel",
-                "libevent-dev",
-
-                "dpdk-devel",
-                "dpdk-dev",
-
-                "pps-tools-devel",
-                "pps-tools-dev",
-                "pps-tools",
-
-                "libX11-devel",
-                "libx11-dev",
-
-                "python3-devel",
-                "python3-dev",
-
-                "python39",
-                "python39-devel",
-                "python39-pip",
-
-                "boost-devel",
-                "liboost-all-dev",
-                "libboost-dev",
-
-                "libusb-1_0-devel",
-                "libusb-1.0-0-dev",
-
-                "dpdk-dev",
-                "dpdk-devel",
-
-                "kernel-devel",
-                "linux-headers-generic",
-
-                "unison",
-                ]
+    opensuse_packages = [
+        "kernel-devel",
+        "libboost_*_66_0",
+    ]
 
     pip = ["deepdish",
            "posix_ipc",
@@ -192,13 +175,17 @@ def install_packages(distro: str, user: str, python_version: str):
 
     if "openSUSE" in distro:
         pck_mgr = 'zypper'
+        variant_packages = [pck.format('devel') for pck in variant_packages]
+        all_packages = common_packages + variant_packages + opensuse_packages
     elif 'Ubuntu' in distro:
         pck_mgr = 'apt-get'
+        variant_packages = [pck.format('dev') for pck in variant_packages]
+        all_packages = common_packages + variant_packages + ubuntu_packages
     else:
         print("Could not detect package manager type")
         sys.exit(-1)
 
-    for pck in packages:
+    for pck in all_packages:
         install_cmd = pck_mgr + " install -y " + pck
         print(install_cmd)
         execute_cmd(install_cmd)
@@ -214,7 +201,7 @@ def install_protobuf():
     """
     Install protobuf.
     """
-    print(COLOR('yellow', '\n### Installing protocol buffers ###'))
+    print('### Installing protocol buffers ###')
     proto_cmd = "cd ${IDIR};" \
                 "git clone https://github.com/protocolbuffers/protobuf.git;" \
                 "cd protobuf || exit;" \
@@ -234,7 +221,7 @@ def install_zmq():
     """
     Install ZMQ and C++ bindings.
     """
-    print(COLOR('yellow', '\n### Installing ZeroMQ ###'))
+    print('### Installing ZeroMQ ###')
     libsodium_cmd = "cd ${IDIR};" \
                     "wget https://download.libsodium.org/libsodium/releases/LATEST.tar.gz;" \
                     "tar xzf LATEST.tar.gz;" \
@@ -265,7 +252,7 @@ def install_ntp():
     """
     Install NTP with PPS support.
     """
-    print(COLOR('yellow', '\n### Installing NTP ###'))
+    print('### Installing NTP ###')
     ntp_cmd = "cd ${IDIR};" \
               "cp -v /usr/include/sys/timepps.h /usr/include/ || exit;" \
               "wget -N http://www.eecis.udel.edu/~ntp/ntp_spool/ntp4/ntp-4.2/ntp-4.2.8p13.tar.gz;" \
@@ -285,7 +272,7 @@ def install_uhd(distro: str):
     :param  distro: Distribution to install on
     :type   distro: str
     """
-    print(COLOR('yellow', '\n### Installing UHD ###'))
+    print('### Installing UHD ###')
 
     def fix_boost_links():
         import glob
@@ -360,7 +347,7 @@ def install_cuda(distro: str):
     :param  distro: Distribution to install on
     :type   distro: str
     """
-    print(COLOR('yellow', '\n### Installing CUDA ###'))
+    print('### Installing CUDA ###')
 
     if "openSUSE" in distro:
         pre_cuda_setup_cmd = "groupadd video;" \
@@ -404,7 +391,7 @@ def install_borealis_env(python_version: str, user: str, group: str):
     :param  group:          Group to assign ownership permissions of the venv to
     :type   group:          str
     """
-    print(COLOR('yellow', '\n### Creating Borealis virtual environment ###'))
+    print('### Creating Borealis virtual environment ###')
 
     execute_cmd(f"mkdir -p $BOREALISPATH/borealis_env{python_version}")
     execute_cmd(f"chown -R {user}:{group} $BOREALISPATH/borealis_env{python_version}")
@@ -425,7 +412,7 @@ def install_directories(user: str, group: str):
     :param  group:  Group to have group ownership permissions over the directories
     :type   group:  str
     """
-    print(COLOR('yellow', '\n### Creating Borealis directories ###'))
+    print('### Creating Borealis directories ###')
     mkdirs_cmd = "mkdir -p /data/borealis_logs;" \
                  "mkdir -p /data/borealis_data;" \
                  f"mkdir -p /home/{user}/logs;" \
@@ -441,7 +428,7 @@ def install_hdw_dat(radar: str):
     :param  radar:  Radar ID of site hdw file to install
     :type   radar:  str
     """
-    print(COLOR('yellow', '\n### Installing SuperDARN hdw repo ###'))
+    print('### Installing SuperDARN hdw repo ###')
     execute_cmd("git clone https://github.com/SuperDARN/hdw.git /usr/local/hdw")
     install_hdw_cmd = f"cp -v /usr/local/hdw/hdw.dat.{radar} $BOREALISPATH"
 
@@ -457,7 +444,7 @@ def install_config(user: str, group: str):
     :param  group:  Group to have group ownership permissions
     :type   group:  str
     """
-    print(COLOR('yellow', '\n### Installing Borealis config files ###'))
+    print('### Installing Borealis config files ###')
     install_config_cmd = "bash -c 'cd $BOREALISPATH';" \
                          "git submodule update --init;" \
                          f"chown -R {user}:{group} borealis_config_files;"
@@ -480,18 +467,18 @@ def main():
     args = parser.parse_args()
 
     if os.geteuid() != 0:
-        print(COLOR('red', 'ERROR: ') + "You must run this script as root.")
+        print('ERROR: You must run this script as root.')
         sys.exit(1)
 
     if not os.path.isdir(args.install_dir):
-        print(COLOR('red', 'ERROR: ') + f"Install directory does not exist: {args.install_dir}")
+        print(f'ERROR: Install directory does not exist: {args.install_dir}')
         sys.exit(1)
 
     if args.borealis_dir == "":
         try:
             borealispath = os.environ['BOREALISPATH']
         except KeyError:
-            print(COLOR('red', 'ERROR: ') + "You must have an environment variable set for BOREALISPATH.")
+            print('ERROR: You must have an environment variable set for BOREALISPATH.')
             sys.exit(1)
     else:
         os.environ['BOREALISPATH'] = args.borealis_dir
@@ -509,21 +496,21 @@ def main():
     try:
         python_version = os.environ['PYTHON_VERSION']
         if python_version != args.python_version:
-            print(COLOR('red', 'WARNING: ') + 'PYTHON_VERSION already defined as {version} - Behaviour could be '
+            print('WARNING: PYTHON_VERSION already defined as {version} - Behaviour could be '
                   'affected unless this is removed.')
             specify_python = True
     except KeyError:
         specify_python = True
 
     if specify_python:
-        print(COLOR('yellow', f'\n### Specifying PYTHON_VERSION in /home/{args.user}/.profile ###'))
+        print(f'### Specifying PYTHON_VERSION in /home/{args.user}/.profile ###')
         execute_cmd(f'echo "export PYTHON_VERSION={args.python_version}" >> /home/{args.user}/.profile')
 
     if args.upgrade_to_v06:     # Only need to update hdw repo and make new virtualenv for Borealis.
-        print(COLOR('yellow', '\n### Upgrading to Borealis v0.6 configuration ###'))
+        print('### Upgrading to Borealis v0.6 configuration ###')
         install_hdw_dat(args.radar)
         install_borealis_env(args.python_version, args.user, args.group)
-        print(COLOR('yellow', '\n### REMINDER: Verify that your config.ini file conforms to the new format ###'))
+        print('### REMINDER: Verify that your config.ini file conforms to the new format ###')
 
     else:   # Installing fresh, do it all!
         install_packages(distro, args.user, args.python_version)
