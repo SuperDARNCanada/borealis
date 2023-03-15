@@ -1,3 +1,5 @@
+.. _experiments:
+
 ======================
 Building an Experiment
 ======================
@@ -200,7 +202,7 @@ cpid *required*
     the CPID, or control program identifier. This must be unique to the experiment. You will need to
     request this from your institution's radar operator. You should clearly document the name of the
     experiment and some operating details that correspond to the CPID. Please see `this SuperDARN
-    Canada webpage https://superdarn.ca/cpid-info`_ for more information, and to see lists of CPIDs
+    Canada webpage <https://superdarn.ca/cpid-info>`_ for more information, and to see lists of CPIDs
     that already exist.
 
 output_rx_rate *defaults*

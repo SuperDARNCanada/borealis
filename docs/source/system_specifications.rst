@@ -83,7 +83,7 @@ Minimum requirements:
 - 1x 256GB SSD (operating system partition)
 - 1x 1TB HDD (data partition)
 - 1x Intel X550-T2 10Gb PCIe network card (if the motherboard does not have 10G networking) OR
-optionally, a Fiber optic NIC such as the Mellanox MCX4121A-ACAT, or the Intel X710-BM2
+  optionally, a Fiber optic NIC such as the Mellanox MCX4121A-ACAT, or the Intel X710-BM2
 
 **NOTE:** Intel 82579LM controllers WILL NOT WORK
 

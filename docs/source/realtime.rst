@@ -1,3 +1,5 @@
+.. _realtime-package:
+
 ================
 Realtime Package
 ================

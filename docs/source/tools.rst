@@ -2,6 +2,8 @@
 Tools
 =====
 
+.. _NEC:
+
 ---
 NEC
 ---
@@ -70,7 +72,7 @@ is in the main lobe at 0 degrees off azimuth (boresite). This is effectively a b
 standard SuperDARN configuration and shows that the radar array has a F/B ratio of 22dB, a beamwidth
 of 8 degrees and a gain of 17.47dB. Note this is at a frequency of 10.5MHz.
 
-.. image:: img/4nec2_ttfd_standard.png
+.. image:: img/4nec2/4nec2_ttfd_standard.png
    :width: 600px
    :alt: ttfd array modeled in 4nec2
    :align: center
@@ -103,6 +105,7 @@ from transmitters #6 and #12 not contributing to the system. The effects are imm
 the higher power sidelobes. The main lobe gain is reduced from 16.66dB to 16.13dB. The main lobe
 remains the same shape but is slightly smaller (~1 degree) in elevation angle.
 
+.. _NTP:
 
 ---
 NTP

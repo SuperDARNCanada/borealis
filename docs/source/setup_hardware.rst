@@ -1,3 +1,5 @@
+.. _hardware:
+
 ========
 Hardware
 ========
@@ -145,14 +147,14 @@ Installing the Custom-Made TXIO Board
        punch using a 1/4" washer after warming up the spacer with a heat gun.
     #. Optional: add labels to each LED.
     
-    .. image:: img/txio_leds.jpg
+    .. image:: img/txio/txio_leds.jpg
        :scale: 50%
        :alt: LEDs installed with spacers
        :align: center
     
 #. Install the fan, making sure to re-install it the same way it was originally installed.
 
-    .. image:: img/txio_fan_direction.jpg
+    .. image:: img/txio/txio_fan_direction.jpg
        :scale: 50%
        :alt: Arrows indicate fan rotation and air flow direction
        :align: center
@@ -189,12 +191,12 @@ Installing the Custom-Made TXIO Board
 	| [NC]    | [NC]      | [NC]        | 5        |
 	+---------+-----------+-------------+----------+
 
-    .. image:: img/txio_dsub_fanpwr.jpg
+    .. image:: img/txio/txio_dsub_fanpwr.jpg
        :scale: 50%
        :alt: TXIO dsub wire connections
        :align: center
 
-    .. image:: img/txio_lfrx_signals.jpg
+    .. image:: img/txio/txio_lfrx_signals.jpg
        :scale: 50%
        :alt: TXIO lrfx signal connections
        :align: center
@@ -202,7 +204,7 @@ Installing the Custom-Made TXIO Board
 #. Connect the four U.Fl to SMA female bulkhead cables to J4, J5, J6 and J7 of the TXIO board.
    Orientation of the cables doesn't matter, as they will fit in the N200 case if rotated properly.
 
-    .. image:: img/txio_pcb_connections.jpg
+    .. image:: img/txio/txio_pcb_connections.jpg
        :scale: 50%
        :alt: TXIO PCB view
        :align: center
@@ -269,12 +271,12 @@ Installing the Custom-Made TXIO Board
 	+---------+-----------+-------------+-------------+-----------+
 
 
-    .. image:: img/txio_lfrx_signals.jpg
+    .. image:: img/txio/txio_lfrx_signals.jpg
        :scale: 80%
        :alt: TXIO LFRX signal connections
        :align: center
 
-    .. image:: img/txio_lfrx_pwr.jpg
+    .. image:: img/txio/txio_lfrx_pwr.jpg
        :scale: 80%
        :alt: TXIO LRFX pwr connections
        :align: center
@@ -292,7 +294,7 @@ Installing the Custom-Made TXIO Board
     - Finally, connect the LFRX jumper wires from J1 and LED wires from J3 to complete the
       installation.
 
-    .. image:: img/txio_rear.jpg
+    .. image:: img/txio/txio_rear.jpg
        :scale: 80%
        :alt: TXIO rear view
        :align: center

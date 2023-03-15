@@ -1,3 +1,5 @@
+.. _transmitter-interface:
+
 =======================
 Transmitter interfacing
 =======================
@@ -18,10 +20,11 @@ commonalities between the interfaces are similar enough to allow a single design
 The design is called the ``TXIO`` board and it consists of a custom PCB that uses GPIO signals
 from one of the two daughtercards in the N200s (either the LFRX or LFTX) that are programmed as
 ATR (Automatic Transmit-Receive) and conditions those single-ended signals into differential signals
-that the SuperDARN Canada transmitters expect. See :ref:`TXIO board design` for details on the TXIO board.
-It also has two inputs from the transmitters for the :ref:`Low Power<Low power signal>` and
-:ref:`AGC Status<AGC status signal>` signals.
+that the SuperDARN Canada transmitters expect. See :ref:`TXIO board design <txio-board>` for details
+on the TXIO board. It also has two inputs from the transmitters for the
+:ref:`Low Power <low-power>` and :ref:`AGC Status <agc-status>` signals.
 
+.. _agc_status:
 
 AGC status signal
 -----------------
@@ -38,6 +41,8 @@ AGC board with a SN75183 (U203 on new AGC boards):
   generated with an SN74LS123 monostable multivibrator, and an Rext of 22kOhm/Cext of 22uF.
 - TEST – This signal indicates if the AGC is in test mode or not. It is a differential input to the
   AGC boards that is received by a differential line receiver, the SN75182 (U200 on the new AGC boards).
+
+.. _low-power:
 
 Low power signal
 ----------------

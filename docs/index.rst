@@ -12,7 +12,8 @@ Borealis is a newly developed digital radar system by the engineering team at Su
 It is a substantial upgrade to existing SuperDARN systems. Features of Borealis include:
 
 - Several new experimental capabilities (see :ref:`new-experiments`)
-- Improved diagnostics and telemetry (see :ref:`monitoring` and the :ref:`Realtime Package`)
+- Improved diagnostics and telemetry (see :ref:`monitoring` and the
+  :ref:`realtime package <realtime-package>`)
 - Flexible and easy-to-implement experiments (see :ref:`experiments`)
 - Direct sampling of each antenna receive path in the standard SuperDARN array, resulting in flexible
   post-processing of data if the samples from each antenna are stored (see :ref:`antennas_iq`)
@@ -24,14 +25,16 @@ This documentation attempts to capture all information required for a new user t
 from nothing and eventually have a Borealis system running. The information includes:
 
 - What :ref:`parts` to buy
-- What :ref:`hardware<Hardware>` and :ref:`software<Software>` modifications are required parts
-- What :ref:`options<config options>` there are within the Borealis system and how to configure them
-- How to set up :ref:`tests<Lab Testing>` in order to verify a working system
-- How to write your own custom :ref:`experiments<Building an Experiment>`
-- How data produced by Borealis :ref:`map<rawacf to rawacf SDARN (DMap) Conversion>` to formats
+- How to interface with :ref:`existing transmitters <transmitter-interface>` and how the
+  :ref:`Canadian radars do it <txio-board>`
+- What :ref:`hardware` and :ref:`software` modifications are required
+- What :ref:`options <config-options>` there are within the Borealis system and how to configure them
+- How to set up :ref:`tests <lab-testing>` in order to verify a working system
+- How to write your own custom :ref:`experiments`
+- How data produced by Borealis :ref:`map <rawacf-sdarn-mapping>` to formats
   agreed upon by the SuperDARN community
 - How to simulate a SuperDARN antenna array with :ref:`NEC` using our custom python script
-- :ref:`Common issues<Common Failure Modes>`
+- And of course no documentation is complete without a list of :ref:`common issues <failure-modes>`
 
 This documentation is always being updated and refined, so please check back regularly for updates.
 Any comments, questions, and/or suggestions can be sent to the
@@ -41,7 +44,7 @@ has helped to make the Borealis system as successful as it is today!
 
 Limitations
 -----------
-Current limitations as of February, 2023:
+Current limitations as of March, 2023:
 
 - Borealis does not implement clear frequency search before transmitting. Only fixed frequencies
   are used
@@ -71,6 +74,7 @@ In the near future, we plan to implement:
     /source/starting_the_radar
     /source/lab_testing
     /source/transmitter_interface
+    /source/txio_board
     /source/scheduling
     /source/monitoring
     /source/building_an_experiment

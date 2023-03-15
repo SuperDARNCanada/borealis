@@ -30,7 +30,7 @@ not include the ``.py`` extension. The code environment is the type of compilati
 was compiled using ``scons`` such as ``release``, ``debug``, etc. **NOTE** This script will kill the
 Borealis software if it is currently running, before it starts it anew. The scheduling mode is one
 of ``common``, ``special``, or ``discretionary`` depending upon the DARN-SWG schedule (see the
-scheduling working group page `here http://superdarn.thayer.dartmouth.edu/WG-sched/charter.html`_)
+scheduling working group page `here <http://superdarn.thayer.dartmouth.edu/WG-sched/charter.html>`_)
 
 The script will boot all the radar processes in a detached ``screen`` window that runs in the
 background. This window can be reattached in any terminal window locally or over ssh (``screen -r``)

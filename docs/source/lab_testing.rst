@@ -1,3 +1,5 @@
+.. _lab-testing:
+
 ===========
 Lab Testing
 ===========
