@@ -27,7 +27,6 @@ import sys
 import inspect
 import pkgutil
 from pathlib import Path
-from glob import glob
 from importlib import import_module
 
 BOREALISPATH = os.environ['BOREALISPATH']
@@ -37,21 +36,32 @@ sys.path.append(BOREALISPATH)
 # or if you use argparse. There is probably a better way
 input_test_file = f"{BOREALISPATH}/tests/testing_utils/experiments/experiment_tests.csv"
 
-# Call experiment handler main function like so: eh.main(['normalscan', 'discretionary'])
-from src import experiment_handler as eh
-from src.experiment_prototype.experiment_exception import ExperimentException
-import src.borealis_experiments.superdarn_common_fields as scf
-from src.experiment_prototype.experiment_prototype import ExperimentPrototype
-
+import experiment_handler as eh
+from experiment_prototype.experiment_exception import ExperimentException
+from experiment_prototype.experiment_prototype import ExperimentPrototype
+import borealis_experiments.superdarn_common_fields as scf
 
 def ehmain(experiment_name='normalscan', scheduling_mode='discretionary'):
     """
-    Convenience method to call the experiment handler with arguments
+    Calls the functions within experiment handler that verify an experiment
+
+    :param  experiment_name: The module name of the experiment to be verified. Experiment name must
+                             be in module format (i.e. testing_archive.test_example for unit tests)
+                             to work properly
+    :type   experiment_name: str
+    :param  scheduling_mode: The scheduling mode to run. Defaults to 'discretionary'
+    :type   scheduling_mode: str
     """
-    Experiment = eh.retrieve_experiment(experiment_name)
-    exp = Experiment()
-    exp._set_scheduling_mode(scheduling_mode)
-    exp.build_scans()
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:
+            Experiment = eh.retrieve_experiment(experiment_name)
+            exp = Experiment()
+            exp._set_scheduling_mode(scheduling_mode)
+            exp.build_scans()
+        finally:
+            sys.stdout = old_stdout
 
 
 class TestExperimentEnvSetup(unittest.TestCase):
@@ -61,9 +71,10 @@ class TestExperimentEnvSetup(unittest.TestCase):
     """
     def setUp(self):
         """
-        This function is called before every test_* method (every test case in unittest lingo)
+        This function is called before every test_* method within this class (every test case in
+        unittest lingo)
         """
-        print("Method: ", self._testMethodName)
+        print("\nMethod: ", self._testMethodName)
 
     def test_no_args(self):
         """
@@ -116,143 +127,120 @@ class TestExperimentEnvSetup(unittest.TestCase):
         # Now rename the hdw.dat file and move on
         os.rename(f"{hdw_path}/_hdw.dat.{site_name}", f"{hdw_path}/hdw.dat.{site_name}")
 
-    def test_all_experiments(self):
-        """
-        Test that all experiments in the experiments folder run without issues
-        """
-        # Get list of all experiments. Remove absolute path and file suffix.
-        # experiment_files_list = [Path(x).stem for x in glob(f"{BOREALISPATH}/src/borealis_experiments/*.py")]
-        # print(experiment_files_list)
-        # for experiment_file in experiment_files_list:
-        #     # experiment = import_module(experiment_file)
-        #     print(experiment_file)
-            # print(experiment.name)
-            # print(experiment)
-        X = 1
-
-        # This iterates through modules in the experiments directory
-        # for (_, name, _) in pkgutil.iter_modules([Path(f"{BOREALISPATH}/src/borealis_experiments/")]):
-        #     # print(name)
-        #     # This imports any module found in the experiments directory
-        #     # imported_module = import_module('.' + name, package='borealis_experiments')
-        #     # print(imported_module.__name__)
-        #     def test_experiment(self):
-        #         try:
-        #             ehmain(experiment_name=name)
-        #         except Exception as err:
-        #             print("Caught the exception!!!")
-        #             self.fail(err)
-
-
-            # setattr(TestExperiments, name, test_experiment)
-
-            # with self.subTest(name=name):
-            #     try:
-            #         ehmain(experiment_name=name)
-            #     except Exception as err:
-            #         print("Caught the exception!!!")
-            #         self.fail(err)
-            # This for loop goes through all attributes of the imported module
-            # for i in dir(imported_module):
-            #     print(i)
-            #     attribute = getattr(imported_module, i)
-            #     # If the attribute is the class, and it's a subclass of ExperimentPrototype,
-            #     # and it's not ExperimentPrototype, then run it
-            #     if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
-            #         print(f"{attribute}: {name}")
-            #         if 'ExperimentPrototype' in str(attribute):
-            #             break
-            #         attribute()
-
 
 class TestExperimentExceptions(unittest.TestCase):
     """
-       A unittest class to test various ways for an experiment to fail for the experiment_handler
-       module. All test methods must begin with the word 'test' to be run by unittest.
+    A unittest class to test various ways for an experiment to fail for the experiment_handler
+    module. Tests will check that exceptions are correctly thrown for each failure case. All test
+    methods must begin with the word 'test' to be run by unittest.
     """
     def setUp(self):
         """
         This function is called before every test_* method (every test case in unittest lingo)
         """
-        print("\nMethod: ", self._testMethodName)
+        print("\nException Test: ", self._testMethodName)
 
 
-def test_generator(module_name, exception_msg_regex):
+def build_unit_tests():
+    """
+    Create individual unit tests for all test cases specified in experiment_tests.csv
+
+    Open the file hardcoded above with a set of tests, one per line.
+    File format is: [experiment module]::[string regex message that the experiment will raise]
+    Generate a single test for each of the lines in the file.
+    """
+    try:
+        with open(input_test_file) as test_suite_list:
+            for test_line in test_suite_list.readlines():
+                # Remove comment lines and empty lines
+                if test_line.startswith('#') or test_line.strip() == '':
+                    continue
+                # Separate on double colon to ensure the regex msg isn't split
+                exp_module_name = test_line.split('::')[0]  # Names all start with "test_"
+                exp_exception_msg_regex = test_line.split('::')[1]
+                test = exception_test_generator(exp_module_name, exp_exception_msg_regex.strip())
+                # setattr makes a properly named test method within TestExperimentExceptions which 
+                # can be run by unittest.main()
+                setattr(TestExperimentExceptions, exp_module_name, test)
+        print("Done building exception unit tests")
+    except TypeError:
+        print(f"Could not open test file {input_test_file}, only performing basic tests")
+
+def exception_test_generator(module_name, exception_msg_regex):
     """
     Generate a single test for the given module name and exception message
-    :param module_name: Experiment module name, string (i.e. 'normalscan')
-    :param exception_msg_regex: Error msg the experiment module is expected to return, regex string
+
+    :param module_name: Experiment module name, i.e. 'normalscan'
+    :type module_name: str
+    :param exception_msg_regex: Regex error msg the experiment module is expected to return
+    :type exception_msg_regex: str
     """
     def test(self):
         with self.assertRaisesRegex(ExperimentException, exception_msg_regex):
             ehmain(experiment_name=module_name)
     return test
 
-def build_unit_tests():
-    # Open the file hardcoded above with a set of tests, one per line.
-    # File format is: [experiment module]::[string regex message that the experiment will raise]
-    # Generate a single test for each of the lines in the file.
-    try:
-        with open(input_test_file) as test_suite_list:
-            for test in test_suite_list.readlines():
-                # Remove comment lines and empty lines
-                if test.startswith('#') or test.strip() == '':
-                    continue
-                # Separate on double colon to ensure the regex msg isn't split
-                exp_module_name = test.split('::')[0]
-                exp_exception_msg_regex = test.split('::')[1]
-                test = test_generator(exp_module_name, exp_exception_msg_regex.strip())
-                # setattr is used to add properly named test methods to TestExperimentExceptions
-                setattr(TestExperimentExceptions, exp_module_name, test)
-        print("Done building tests")
-    except TypeError:
-        print("No extra tests supplied, only performing basic tests")
 
 class TestExperiments(unittest.TestCase):
     """
-       A unittest class to test various ways for an experiment to fail for the experiment_handler
-       module. All test methods must begin with the word 'test' to be run by unittest.
+    A unittest class to test all Borealis experiments and verify that none of them are built
+    incorrectly. Tests are verified using code within experiment handler. All test methods must
+    begin with the word 'test' to be run by unittest.
     """
     def setUp(self):
         """
         This function is called before every test_* method (every test case in unittest lingo)
         """
-        print("\nExperiment: ", self._testMethodName)
+        print("\nExperiment Test: ", self._testMethodName)
+
 
 def build_experiment_tests():
-    for (_, name, _) in pkgutil.iter_modules([Path(f"{BOREALISPATH}/src/borealis_experiments/")]):
-        # print(name)
-        # This imports any module found in the experiments directory
-        # imported_module = import_module('.' + name, package='borealis_experiments')
-        # print(imported_module.__name__)
-        def test_experiment(self):
-            try:
-                # print(f"Testing experiment {name}")
-                ehmain(experiment_name=name)
-            except Exception as err:
-                print("Caught the exception!!!")
-                self.fail(err)
+    """
+    Create individual unit tests for all experiments within the base borealis_experiments/
+    directory. All experiments are run to ensure no exceptions are thrown when they are built
+    """
+    experiment_package = 'borealis_experiments'
+    experiment_path = f"{BOREALISPATH}/src/{experiment_package}/"
+    if not os.path.exists(experiment_path):
+        raise OSError(f"Error: experiment path {experiment_path} is invalid")
 
+    # Iterate through all modules in the borealis_experiments directory
+    for (_, name, _) in pkgutil.iter_modules([Path(experiment_path)]):
+        imported_module = import_module('.' + name, package=experiment_package)
+        # Loop through all attributes of each found module
+        for i in dir(imported_module):
+            attribute = getattr(imported_module, i)
+            # To verify that an attribute is a runnable experiment, check that the attribute is 
+            # a class and inherits from ExperimentPrototype
+            if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
+                # Only create a test if the current attribute is the experiment itself
+                if 'ExperimentPrototype' not in str(attribute):
+                    test = experiment_test_generator(name)
+                    # setattr make the "test" function a method within TestExperiments called 
+                    # "test_[name]" which can be run via unittest.main()
+                    setattr(TestExperiments, f"test_{name}", test)
 
-        setattr(TestExperiments, name, test_experiment)
-        # print(f"Created experiment {name}")
+def experiment_test_generator(module_name):
+    """
+    Generate a single test for a given experiment name. The test will try to run the experiment, 
+    and if any exceptions are thrown (i.e. the experiment is built incorrectly) the test will fail.
+
+    :param module_name: Experiment module name (i.e. 'normalscan')
+    :type module_name: str
+    """
+    def test(self):
+        try:
+            ehmain(experiment_name=module_name)
+        except Exception as err:
+            self.fail(err)
+    return test
 
 if __name__ == '__main__':
+    
     # Redirect stderr because it's annoying
     # null = open(os.devnull, 'w')
     # sys.stderr = null
 
-    # build_unit_tests()
+    build_unit_tests()
     build_experiment_tests()
-    x = TestExperiments()
-    print(x.__repr__)
-    # unittest.main()
-    # experiment_files_list = [Path(x).stem for x in glob(f"{BOREALISPATH}/src/borealis_experiments/*.py")]
-    # # print(experiment_files_list)
-    # for experiment_file in experiment_files_list:
-    #     experiment = import_module(experiment_file)
-    #     print(experiment_file)
-    #     print(experiment.__name__)
-    # x = TestExperimentEnvSetup()
-    # x.test_all_experiments()
-        
+    unittest.main()
