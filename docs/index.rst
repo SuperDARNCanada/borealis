@@ -30,7 +30,7 @@ from nothing and eventually have a Borealis system running. The information incl
 - What :ref:`hardware` and :ref:`software` modifications are required
 - What :ref:`options <config-options>` there are within the Borealis system and how to configure them
 - How to set up :ref:`tests <lab-testing>` in order to verify a working system
-- How to write your own custom :ref:`experiments`
+- How to write your own custom :ref:`experiments <building-experiments>`
 - How data produced by Borealis :ref:`map <rawacf-sdarn-mapping>` to formats
   agreed upon by the SuperDARN community
 - How to simulate a SuperDARN antenna array with :ref:`NEC` using our custom python script

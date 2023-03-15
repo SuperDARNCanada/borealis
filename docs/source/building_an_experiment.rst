@@ -1,4 +1,4 @@
-.. _experiments:
+.. _building-experiments:
 
 ======================
 Building an Experiment
