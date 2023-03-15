@@ -1,46 +1,49 @@
 """
-Okay what is this for?
-
-read logs on control the radar when oopsies happen (daemon)
-
-gather misc system health information and log it (radar_status)
-
-mini aggregator of nice clean logs before sending to reduce volume (radar_status)
-
-console based viewer w/ plotext so we don't have to start 6 segments any more (radar_status)
-
+TODO (Adam):
+    read logs on control the radar when oopsies happen (daemon)
+    gather misc system health information and log it (radar_status)
+    mini aggregator of nice clean logs before sending to reduce volume (radar_status)
+    console based viewer w/ plotext so we don't have to start 6 segments any more (radar_status)
 """
 
-
-def statustype():
-    errors = ('EXPNEEDED', 'NOERROR', 'WARNING', 'EXITERROR')
-    return errors
-
-def errortype():
-    return {}  # TODO
+import time
+import subprocess
+import json
 
 
-class RadarStatus():  # TODO finish the class when we determine how to log and what information
-    # from the driver that we would like to pass back to the experiment / user.
-    # Suggested information: confirmed ctrfreq's and sampling rate's from the driver
-    # third-stage sampling rate (rate of result data)
-    """Class to define transmit specifications of a certain frequency, beam, and pulse sequence.
-    
-    errors = ('EXPNEEDED', 'NOERROR', 'WARNING', 'EXITERROR')
-    
-    Probably will be phased out once administrator is working
+def execute_cmd(cmd):
+    try:
+        output = subprocess.check_output(cmd, shell=True)
+    except subprocess.CalledProcessError as err:
+        output = {'cmd_error': err.output}
+    return output.decode('utf-8')
+
+
+def inxi_cli():
     """
+    General system health information:
+    """
+    cmd = f"inxi --tty --no-sudo --swap --disk --info --processes --sensors --output json --output-file print"
+    msg = execute_cmd(cmd)
+    msg = json.loads(msg)
+    log.info("system health", **msg)
 
-    def __init__(self):
-        """
-        A RadarStatus is only initiated on startup of radar_control so we need an experiment 
-        at this point. 
-        """
-        self.status = 'EXPNEEDED'# needs a control program.
-        self.errorcode = None
-        self.logs_for_user = []
+    return
 
 
-    # def warning(self, warning_data):
-    #     self.status = 'WARNING'
-    #     self.logs_for_user.append(warning_data)
+def main():
+    while True:
+        inxi_cli()
+        time.sleep(5)
+
+
+if __name__ == '__main__':
+    from utils import log_config
+
+    log = log_config.log(logfile=False, aggregator=False)
+    log.info(f"RADAR_STATUS BOOTED")
+    try:
+        main()
+    except Exception as main_exception:
+        log.critical("RADAR_STATUS CRASHED", error=main_exception)
+        log.exception("RADAR_STATUS CRASHED", exception=main_exception)
