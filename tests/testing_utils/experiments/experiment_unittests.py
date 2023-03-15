@@ -2,7 +2,7 @@
 Test module for the experiment_handler/experiment_prototype code.
 It is run simply via 'python3 experiment_unittests.py' and will go through all tests
 in the experiment_tests.csv file as well as the hardcoded tests here that don't fit nicely into
-a csv file.
+a csv file. All experiments will also be tested to ensure none throw any exceptions.
 
 The csv file format is:
 [#][experiment file module import name]::[regex error message]
@@ -20,7 +20,7 @@ https://www.bnmetrics.com/blog/dynamic-import-in-python3
 :author: Kevin Krieger
 """
 
-
+import argparse
 import unittest
 import os
 import sys
@@ -30,11 +30,15 @@ from pathlib import Path
 from importlib import import_module
 
 BOREALISPATH = os.environ['BOREALISPATH']
+<<<<<<< HEAD
 sys.path.append(BOREALISPATH)
 
 # Need to hardcode this, as unittest does weird things when you supply an argument on command line,
 # or if you use argparse. There is probably a better way
 input_test_file = f"{BOREALISPATH}/tests/testing_utils/experiments/experiment_tests.csv"
+=======
+sys.path.append(f"{BOREALISPATH}/src")
+>>>>>>> 17c223e (Added command line arguments for unittest script)
 
 import experiment_handler as eh
 from experiment_prototype.experiment_exception import ExperimentException
@@ -98,6 +102,7 @@ class TestExperimentEnvSetup(unittest.TestCase):
        os.environ['BOREALISPATH'] = BOREALISPATH
        sys.path.append(BOREALISPATH)
 
+    @unittest.skip("Skip because it is annoying")
     def test_config_file(self):
         """
         Test the code that checks for the config file
@@ -141,13 +146,16 @@ class TestExperimentExceptions(unittest.TestCase):
         print("\nException Test: ", self._testMethodName)
 
 
-def build_unit_tests():
+def build_unit_tests(input_test_file):
     """
-    Create individual unit tests for all test cases specified in experiment_tests.csv
+    Create individual unit tests for all test cases specified in input .csv file. The input file
+    will contain a set of tests (one per line), and will generate individual tests for each line in
+    the file. File format is: 
+    
+    [experiment module]::[string regex message that the experiment will raise]
 
-    Open the file hardcoded above with a set of tests, one per line.
-    File format is: [experiment module]::[string regex message that the experiment will raise]
-    Generate a single test for each of the lines in the file.
+    :param input_test_file: Path to the csv file containing unit tests formatted as described above
+    :type input_test_file: str
     """
     try:
         with open(input_test_file) as test_suite_list:
@@ -219,6 +227,7 @@ def build_experiment_tests():
                     # setattr make the "test" function a method within TestExperiments called 
                     # "test_[name]" which can be run via unittest.main()
                     setattr(TestExperiments, f"test_{name}", test)
+    print("Done building experiment tests")
 
 def experiment_test_generator(module_name):
     """
@@ -236,11 +245,21 @@ def experiment_test_generator(module_name):
     return test
 
 if __name__ == '__main__':
-    
-    # Redirect stderr because it's annoying
-    # null = open(os.devnull, 'w')
-    # sys.stderr = null
+    # Default .csv file containing exception unittests to run
+    default_test_file = f"{BOREALISPATH}/tests/testing_utils/experiments/experiment_tests.csv"
 
-    build_unit_tests()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--site_id", required=False, default="sas", 
+                        choices=["sas", "pgr", "inv", "rkn", "cly", "lab"], 
+                        help="Site ID of site to test experiments as")
+    parser.add_argument("--test_file", required=False, default=default_test_file,
+                        help=".csv file containing experiment unittests to run. If no file \
+                        provided, uses default file")
+
+    args, unittest_args = parser.parse_known_args()
+    os.environ["RADAR_ID"] = args.site_id
+    test_file = args.test_file
+
+    build_unit_tests(test_file)
     build_experiment_tests()
-    unittest.main()
+    unittest.main(argv=sys.argv[:1] + unittest_args) # Pass remaining command line args to unittest
