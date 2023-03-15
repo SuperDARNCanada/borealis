@@ -24,7 +24,7 @@ that the SuperDARN Canada transmitters expect. See :ref:`TXIO board design <txio
 on the TXIO board. It also has two inputs from the transmitters for the
 :ref:`Low Power <low-power>` and :ref:`AGC Status <agc-status>` signals.
 
-.. _agc_status:
+.. _agc-status:
 
 AGC status signal
 -----------------

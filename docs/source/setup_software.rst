@@ -137,7 +137,7 @@ name: radar) that will run Borealis
 
 #. If you're building Borealis for a non University of Saskatchewan radar, use a USASK
    ```config.ini``` file (located in ``borealis/config/``) as a template, or follow the config file
-   :ref:`documentation <config options>` to create your own file in the Borealis directory.
+   :ref:`documentation <config-options>` to create your own file in the Borealis directory.
 
 #. In ``config.ini``, there is an entry called "realtime_address". This defines the protocol,
    interface, and port that the realtime module uses for socket communication. This should be set to
