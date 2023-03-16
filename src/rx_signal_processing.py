@@ -6,7 +6,7 @@
     :copyright: 2020 SuperDARN Canada
     :author: Keith Kotyk
 """
-
+import os
 import sys
 import time
 import threading
@@ -31,10 +31,11 @@ if cupy_available:
 else:
     import numpy as xp
 
+sys.path.append(os.environ['BOREALISPATH'])
 if __debug__:
-    from debug.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
+    from build.debug.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 else:
-    from release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
+    from build.release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 
 from utils.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
 from utils.options import Options
