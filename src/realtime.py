@@ -63,9 +63,13 @@ class RealtimeServer:
         threads = [threading.Thread(target=self.get_temp_file_from_datawrite),
                    threading.Thread(target=self.handle_remote_connection)]
 
+        self.log.debug("Starting threads")
+
         for thread in threads:
             thread.daemon = True
             thread.start()
+
+        self.log.debug("Threads started")
 
         for thread in threads:
             thread.join()
@@ -79,18 +83,23 @@ class RealtimeServer:
         :return fitacf data in python dict, or None on error or if we don't need to convert
         """
         # Error check the filename format
-        temp_rawacf_regex = '\d{8}\.\d{4}\.\d{2}\.\d{6}\.[a-z]{3}\.[a-z]\.rawacf\.hdf5'
-        match = re.fullmatch(temp_rawacf_regex, filename)
+        temp_rawacf_regex = '\d{8}\.\d{4}\.\d{2}\.\d{6}\.[a-z]{3}\.[0-9]\.rawacf\.hdf5'
+        base_filename = os.path.basename(filename)
+        match = re.fullmatch(temp_rawacf_regex, base_filename)
         if not match:
+            # There is an antennas_iq temp file also sent every time, so this log msg is debug
+            # instead of a warning
+            self.log.debug("temp file did not match regex", filename=filename)
             os.remove(filename)
             return None
 
         # Read and convert data
-        fields = filename.split(".")
+        fields = base_filename.split(".")
         file_time = fields[0] + fields[1] + fields[2] + fields[3]
 
         # Make sure we only process the first slice for simultaneous multi-slice data for now
         if file_time == self.last_file_time:
+            self.log.debug("not processing multi-slice data for slices > 0", filename=base_filename)
             os.remove(filename)
             return None
 
@@ -103,7 +112,7 @@ class RealtimeServer:
             converted = pydarnio.BorealisConvert(filename, "rawacf", "/dev/null", slice_num, "site")
             os.remove(filename)
         except pydarnio.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
-            self.log.info("error converting", filename=filename)
+            self.log.warn("error converting", filename=filename)
             os.remove(filename)
             return None
 
