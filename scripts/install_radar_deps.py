@@ -85,65 +85,65 @@ def get_distribution():
     return distro
 
 
-def install_packages(distro: str, user: str, python_version: str):
+def install_python(distro: str, python_version: str):
+    """
+    Install the required Python packages for the specified version.
+
+    :param distro:          Distribution to install on
+    :type  distro:          str
+    :param python_version:  Version of python to install
+    :type  python_version:  str
+    """
+    print(f'### Installing python{python_version} ###')
+    if 'openSUSE' not in distro:
+        raise ValueError(f'ERROR: Unable to install python for {distro}. Please consult the documentation for {distro} '
+                         f'for instructions on how to install python{python_version}')
+    else:
+        short_version = ''.join(python_version.split('.'))
+        packages = [
+            'python3-devel',
+            'python3-pip',
+            f'python{short_version}',
+            f'python{short_version}-devel',
+        ]
+        for pck in packages:
+            install_cmd = f'zypper install -y {pck}'
+            print(install_cmd)
+            execute_cmd(install_cmd)
+
+
+def install_packages(distro: str):
     """
     Install the needed packages used by Borealis. Multiple options are listed for distributions that
     use different names.
 
     :param  distro:         Distribution to install on
     :type   distro:         str
-    :param  user:           User to install as
-    :type   user:           str
-    :param  python_version: Version of python to install
-    :type   python_version: str
     """
     print('### Installing system packages ###')
 
     common_packages = [
-        # "wget",                 # Comes native with openSUSE
         "gcc",
         "gcc-c++",
         "git",
         "scons",                # For building Borealis
-        "python3-pip",
-        "python39",             # Could make this user-specified
-        "python39-pip",         # Could make this user-specified
         "gdb",                  # For engineeringdebug mode
         "jq",                   # For reading JSON files from the command line
         "at",                   # Required for the scheduler
         "mutt",                 # Required for the scheduler
-        # "vim",                  # Comes native with openSUSE
-        # "screen",               # Comes native with openSUSE
         "hdf5",
-        # "autoconf",
-        # "automake",
-        # "libtool",
-        # "curl",                 # Comes native with openSUSE
-        # "make",                 # Comes native with openSUSE
-        # "unzip",                # Comes native with openSUSE
-
-        # "libarmadillo9",        # TODO: Remove this? They were for when rx_signal_processing was in C++
-        # "libarmadillo-dev",     # TODO: Remove this? They were for when rx_signal_processing was in C++. Ubuntu-specific
-
+        "autoconf",             # Required for installing protobuf and zmq
+        "automake",             # Required for installing protobuf and zmq
+        "libtool",              # Required for installing protobuf and zmq
         "python3-mako",         # Required for UHD
-        # "doxygen",              # TODO: Do we need this? It's optional for UHD
-        # "python3-docutils",     # Unnecessary for Borealis computer (used by ReadTheDocs)
         "cmake",
-        # "uhd-udev",             # I think we don't need this
-        # "libuhd-dev",           # I think we don't need this
-        # "libgps23",             # I think we don't need this
-        # "dpdk",                 # Uncertain if we need/use this
         "pps-tools",
         ]
 
     variant_packages = [
-        # "dpdk-{}",        # Uncertain if we need/use this
         "libusb-1_0-{}",    # Needed for UHD
-        "python39-{}",
-        "python3-{}",
         "libx11-{}",
         "pps-tools-{}",
-        # "libevent-{}",      # Not installed at all sites, probably not needed
         "net-snmp-{}",
     ]
 
@@ -162,16 +162,8 @@ def install_packages(distro: str, user: str, python_version: str):
     opensuse_packages = [
         "kernel-devel",
         "libboost_*_66_0",
+        "uhd-devel",
     ]
-
-    pip = ["deepdish",
-           "posix_ipc",
-           "inotify",
-           "matplotlib",
-           "virtualenv",
-           "protobuf==3.19.4",
-           "numpy",
-           "zmq"]
 
     if "openSUSE" in distro:
         pck_mgr = 'zypper'
@@ -190,10 +182,33 @@ def install_packages(distro: str, user: str, python_version: str):
         print(install_cmd)
         execute_cmd(install_cmd)
 
-    update_pip = f"sudo -u {user} pip{python_version} install --upgrade pip"
+
+def pip_install_packages(user: str, python_version: str):
+    """
+    Install required python packages using pip
+
+    :param user:            User to install as
+    :type  user:            str
+    :param python_version:  Version of python to install on
+    :type  python_version:  str
+    """
+    packages = [
+        'wheel',
+        'deepdish',
+        'posix_ipc',
+        'inotify',
+        'matplotlib',
+        'virtualenv',
+        'protobuf==3.19.4',
+        'numpy',
+        'zmq',
+    ]
+    update_pip = f'sudo -u {user} python{python_version} -m pip install --upgrade pip'
+    print(update_pip)
     execute_cmd(update_pip)
 
-    pip_cmd = f"sudo -u {user} pip{python_version} install " + " ".join(pip)
+    pip_cmd = f'sudo -u {user} python{python_version} -m pip install ' + ' '.join(packages)
+    print(pip_cmd)
     execute_cmd(pip_cmd)
 
 
@@ -209,8 +224,8 @@ def install_protobuf():
                 "git submodule init && git submodule update;" \
                 "./autogen.sh;" \
                 "./configure;" \
-                "make -j${CORES};" \
-                "make -j${CORES} check;" \
+                "make;" \
+                "make check;" \
                 "make install;" \
                 "ldconfig;"
 
@@ -272,6 +287,9 @@ def install_uhd(distro: str):
     :param  distro: Distribution to install on
     :type   distro: str
     """
+    if 'openSUSE' in distro:    # Already installed via zypper
+        return
+
     print('### Installing UHD ###')
 
     def fix_boost_links():
@@ -396,7 +414,7 @@ def install_borealis_env(python_version: str, user: str, group: str):
     execute_cmd(f"mkdir -p $BOREALISPATH/borealis_env{python_version}")
     execute_cmd(f"chown -R {user}:{group} $BOREALISPATH/borealis_env{python_version}")
     execute_cmd(f"sudo -u {user} python{python_version} -m venv $BOREALISPATH/borealis_env{python_version};")
-
+    execute_cmd(f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install wheel")
     pip_cmd = f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install zmq numpy scipy " \
               "protobuf==3.19.4 posix_ipc git+https://github.com/SuperDARN/pyDARNio.git@develop " \
               "git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter cupy; " 
@@ -415,41 +433,35 @@ def install_directories(user: str, group: str):
     print('### Creating Borealis directories ###')
     mkdirs_cmd = "mkdir -p /data/borealis_logs;" \
                  "mkdir -p /data/borealis_data;" \
-                 f"mkdir -p /home/{user}/logs;" \
+                 f"sudo -u {user} mkdir -p /home/{user}/logs;" \
                  f"chown {user}:{group} /data/borealis_*;"
 
     execute_cmd(mkdirs_cmd)
 
 
-def install_hdw_dat(radar: str):
+def install_hdw_dat():
     """
     Install hdw git repo
-
-    :param  radar:  Radar ID of site hdw file to install
-    :type   radar:  str
     """
     print('### Installing SuperDARN hdw repo ###')
     execute_cmd("git clone https://github.com/SuperDARN/hdw.git /usr/local/hdw")
-    install_hdw_cmd = f"cp -v /usr/local/hdw/hdw.dat.{radar} $BOREALISPATH"
-
-    execute_cmd(install_hdw_cmd)
 
 
-def install_config(user: str, group: str):
+def install_experiments(user: str, group: str):
     """
-    Install Borealis data and logging directories
+    Install Borealis experiment directory
 
     :param  user:   User to have user ownership permissions
     :type   user:   str
     :param  group:  Group to have group ownership permissions
     :type   group:  str
     """
-    print('### Installing Borealis config files ###')
-    install_config_cmd = "bash -c 'cd $BOREALISPATH';" \
-                         "git submodule update --init;" \
-                         f"chown -R {user}:{group} borealis_config_files;"
-
-    execute_cmd(install_config_cmd)
+    print('### Installing Borealis experiment files ###')
+    install_experiments_cmd = "bash -c 'cd $BOREALISPATH';" \
+                              f"sudo -u {user} git submodule update --init;" \
+                              f"chown -R {user}:{group} src/borealis_experiments;"
+    
+    execute_cmd(install_experiments_cmd)
 
 
 def main():
@@ -490,39 +502,43 @@ def main():
     os.environ['CORES'] = str(mp.cpu_count())
 
     # Set up bash .profile RADAR_ID export
-    execute_cmd(f'echo "export RADAR_ID={args.radar}" >> /home/{args.user}/.profile')
-
+    radar_id = os.environ.get('RADAR_ID', None)
+    if radar_id is None:
+        execute_cmd(f'echo "export RADAR_ID={args.radar}" >> /home/{args.user}/.profile')
+    elif radar_id != args.radar:
+        raise ValueError(f'ERROR: RADAR_ID already specified as {radar_id}, cannot overwrite as {args.radar}')
+    
     specify_python = False
     try:
         python_version = os.environ['PYTHON_VERSION']
         if python_version != args.python_version:
-            print('WARNING: PYTHON_VERSION already defined as {version} - Behaviour could be '
-                  'affected unless this is removed.')
-            specify_python = True
+            raise ValueError('ERROR: PYTHON_VERSION already defined as {version}')
     except KeyError:
         specify_python = True
 
     if specify_python:
         print(f'### Specifying PYTHON_VERSION in /home/{args.user}/.profile ###')
         execute_cmd(f'echo "export PYTHON_VERSION={args.python_version}" >> /home/{args.user}/.profile')
+        install_python(distro, args.python_version)
 
     if args.upgrade_to_v06:     # Only need to update hdw repo and make new virtualenv for Borealis.
         print('### Upgrading to Borealis v0.6 configuration ###')
-        install_hdw_dat(args.radar)
+        install_hdw_dat()
         install_borealis_env(args.python_version, args.user, args.group)
         print('### REMINDER: Verify that your config.ini file conforms to the new format ###')
 
     else:   # Installing fresh, do it all!
-        install_packages(distro, args.user, args.python_version)
+        install_packages(distro)
+        pip_install_packages(args.user, args.python_version)
         install_protobuf()
         install_zmq()
         install_ntp()
         install_uhd(distro)
         install_cuda(distro)
-        install_hdw_dat(args.radar)
+        install_hdw_dat()
         install_borealis_env(args.python_version, args.user, args.group)
         install_directories(args.user, args.group)
-        install_config(args.user, args.group)
+        install_experiments(args.user, args.group)
 
 
 if __name__ == '__main__':
