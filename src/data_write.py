@@ -27,9 +27,8 @@ import time
 import warnings
 
 # third-party
+import h5py
 import numpy as np
-import deepdish as dd
-import tables
 import zmq
 from scipy.constants import speed_of_light
 
@@ -540,56 +539,69 @@ class DataWrite(object):
         self.first_time = True
 
     @staticmethod
-    def write_json_file(filename, data_dict):
+    def write_json_file(filename, slice_data, file_type):
         """
         Write out data to a json file. If the file already exists it will be overwritten.
 
         :param  filename:   The path to the file to write out
         :type   filename:   str
-        :param  data_dict:  Python dictionary to write out to the JSON file.
-        :type   data_dict:  dict
+        :param  slice_data: Data to write out to the JSON file.
+        :type   slice_data: SliceData
+        :param  file_type:  The type of file to write.
+        :type   file_type:  str
         """
+        data_dict = {}
+        for relevant_field in SliceData.type_fields(file_type):
+            data_dict[relevant_field] = getattr(slice_data, relevant_field)
 
         with open(filename, 'w+') as f:
             f.write(json.dumps(data_dict))
 
     @staticmethod
-    def write_hdf5_file(filename, data_dict, dt_str):
+    def write_hdf5_file(filename, slice_data, dt_str, file_type):
         """
         Write out data to an HDF5 file. If the file already exists it will be overwritten.
 
         :param  filename:   The path to the file to write out
         :type   filename:   str
-        :param  data_dict:  Python dictionary to write out to the HDF5 file.
-        :type   data_dict:  dict
+        :param  slice_data: Data to write out to the HDF5 file.
+        :type   slice_data: SliceData
         :param  dt_str:     A datetime timestamp of the first transmission time in the record
         :type   dt_str:     str
+        :param  file_type:  Type of file to write.
+        :type   file_type:  str
         """
 
-        def convert_to_numpy(dict_of_lists):
-            """
-            Converts lists stored in dict into numpy array. Recursive.
-
-            :param  dict_of_lists: Dictionary with lists to convert to numpy arrays.
-            :type   dict_of_lists: dict
-            """
-            for k, v in dict_of_lists.items():
-                if isinstance(v, dict):
-                    convert_to_numpy(v)
-                elif isinstance(v, list):
-                    dict_of_lists[k] = np.array(v)
-                else:
-                    continue
-
-        convert_to_numpy(data_dict)
-
-        time_stamped_dd = {dt_str: data_dict}
-
-        # Ignoring warning that arises from using integers as the keys of the data dictionary.
-        warnings.simplefilter('ignore', tables.NaturalNameWarning)
-
         try:
-            dd.io.save(filename, time_stamped_dd, compression=None)
+            with h5py.File(filename, 'a') as f:
+                group = f.create_group(dt_str)
+
+                for relevant_field in SliceData.type_fields(file_type):
+                    array_field = False
+                    data = getattr(slice_data, relevant_field)
+
+                    # Massage the data into the correct types
+                    if isinstance(data, dict):
+                        data = np.bytes_(str(data))
+                    elif isinstance(data, str):
+                        data = np.bytes_(data)
+                    elif isinstance(data, bool):
+                        data = np.bool_(data)
+                    elif isinstance(data, list):
+                        if isinstance(data[0], str):
+                            data = np.array(data, np.str_)
+                        else:
+                            data = np.array(data)
+                            array_field = True
+                    elif isinstance(data, np.ndarray):
+                        array_field = True
+
+                    # Store in the file appropriately
+                    if array_field:
+                        group.create_dataset(relevant_field, data=data)
+                    else:
+                        group.attrs[relevant_field] = data
+
         except Exception as e:
             if "No space left on device" in str(e):
                 log.critical("no space left on device", error=e)
@@ -601,14 +613,14 @@ class DataWrite(object):
                 sys.exit(-1)
 
     @staticmethod
-    def write_dmap_file(filename, data_dict):
+    def write_dmap_file(filename, slice_data):
         """
         Write out data to a dmap file. If the file already exists it will be overwritten.
 
         :param  filename:   The path to the file to write out
         :type   filename:   str
-        :param  data_dict:  Python dictionary to write out to the dmap file.
-        :type   data_dict:  dict
+        :param  slice_data: Data to write out to the dmap file.
+        :type   slice_data: SliceData
         """
 
         # TODO: Complete this by parsing through the dictionary and write out to proper dmap format
@@ -739,10 +751,6 @@ class DataWrite(object):
                     log.exception("unknown error when making dirs", exception=err)
                     sys.exit(-1)
 
-            data_dict = {}
-            for f in SliceData.type_fields(file_type):
-                data_dict[f] = getattr(aveperiod_data, f)
-
             if file_ext == 'hdf5':
                 full_two_hr_file = f"{dataset_directory}/{two_hr_file_with_type}.hdf5.site"
 
@@ -759,7 +767,7 @@ class DataWrite(object):
                         log.exception("unknown error when opening file", exception=err)
                         sys.exit(-1)
 
-                self.write_hdf5_file(tmp_file, data_dict, epoch_milliseconds)
+                self.write_hdf5_file(tmp_file, aveperiod_data, epoch_milliseconds, file_type)
 
                 # Use external h5copy utility to move new record into 2hr file.
                 cmd = 'h5copy -i {newfile} -o {twohr} -s {dtstr} -d {dtstr}'
@@ -771,9 +779,9 @@ class DataWrite(object):
                 # Temp file is removed in real time module.
 
             elif file_ext == 'json':
-                self.write_json_file(tmp_file, data_dict)
+                self.write_json_file(tmp_file, aveperiod_data)
             elif file_ext == 'dmap':
-                self.write_dmap_file(tmp_file, data_dict)
+                self.write_dmap_file(tmp_file, aveperiod_data)
 
         def write_correlations(aveperiod_data):
             """
