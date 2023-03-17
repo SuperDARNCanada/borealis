@@ -589,10 +589,10 @@ class DataWrite(object):
                         data = np.bool_(data)
                     elif isinstance(data, list):
                         if isinstance(data[0], str):
-                            data = np.array(data, np.str_)
+                            data = np.array(data, np.bytes_)
                         else:
                             data = np.array(data)
-                            array_field = True
+                        array_field = True
                     elif isinstance(data, np.ndarray):
                         array_field = True
 
