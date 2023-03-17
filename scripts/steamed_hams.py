@@ -178,13 +178,15 @@ modules = {"brian": "",
            "radar_control": "",
            "data_write": "",
            "realtime": "",
-           "rx_signal_processing": ""}
+           "rx_signal_processing": "",
+           "usrp_driver": ""}
 
 for mod in modules.keys():
     opts = python_opts.format(module=mod)
     modules[mod] = f"source borealis_env{PYTHON_VERSION}/bin/activate; python{PYTHON_VERSION} {opts} src/{mod}.py" \
 
 modules['data_write'] = modules['data_write'] + " " + data_write_args
+modules['usrp_driver'] = modules['usrp_driver'] + " " + f'--mode={mode} --c_debug_opts="{c_debug_opts}"'
 
 if args.kwargs_string:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
@@ -193,8 +195,8 @@ else:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
                                     args.scheduling_mode_type
     
-# Configure C prog
-modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
+# # Configure C prog
+# modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
 
 # Set up the screenrc file and populate it
 screenrc = BOREALISSCREENRC.format(

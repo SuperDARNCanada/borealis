@@ -142,7 +142,7 @@ def log(log_level=None, console=None, logfile=None, aggregator=None, status=Fals
             foreign_pre_chain=shared_processors,  # These run on logs that do not come from structlog
             processors=[swap_logger_name,
                         structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                        structlog.dev.ConsoleRenderer(sort_keys=False, pad_event=40, colors=True)]))
+                        structlog.dev.ConsoleRenderer(sort_keys=False, colors=True)]))
         root_logger.addHandler(console_handler)
 
     # Set up the second handler to pipe logs to a JSON file that rotates at midnight
@@ -175,7 +175,7 @@ def log(log_level=None, console=None, logfile=None, aggregator=None, status=Fals
         status_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             processors=[swap_logger_name,
                         structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                        structlog.dev.ConsoleRenderer(sort_keys=False, pad_event=40, colors=True)]))
+                        structlog.dev.ConsoleRenderer(sort_keys=False, pad_event=80, colors=True)]))
         root_logger.addHandler(status_handler)
 
     # Apply the configuration
