@@ -257,7 +257,7 @@ def experiment_test_generator(module_name):
 
 if __name__ == '__main__':
     # Default .csv file containing exception unittests to run
-    default_test_file = f"{BOREALISPATH}/tests/testing_utils/experiments/experiment_tests.csv"
+    default_test_file = f"{BOREALISPATH}/tests/experiments/experiment_tests.csv"
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--site_id", required=False, default="sas", 
