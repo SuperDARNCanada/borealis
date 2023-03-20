@@ -99,21 +99,10 @@ def log(log_level=None, console=None, logfile=None, aggregator=None, status=Fals
 
     # Processors are a list of functions that sequentially modify the event_dict (log message)
     shared_processors = [
-        # structlog.stdlib.add_logger_name,  # Add the name of the logger to event dict
+        structlog.stdlib.add_logger_name,  # Add the name of the logger to event dict
         structlog.stdlib.add_log_level,  # Add log level to event dict
         structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add ISO-8601 timestamp
-        structlog.processors.StackInfoRenderer(),  # Move "stack_info" in event_dict to "stack" and render
         structlog.processors.UnicodeDecoder(),  # Decode byte strings to unicode strings
-        structlog.processors.CallsiteParameterAdder(  # Add items from the call enum
-            {
-                structlog.processors.CallsiteParameter.FUNC_NAME,  # function name
-                structlog.processors.CallsiteParameter.MODULE,  # module name
-                structlog.processors.CallsiteParameter.PROCESS,  # process ID
-                # structlog.processors.CallsiteParameter.THREAD,  # thread ID
-                # structlog.processors.CallsiteParameter.FILENAME,  # file name
-                # structlog.processors.CallsiteParameter.LINENO,  # line number
-
-            }),
         ]
 
     # Configure structlog here once for everything so that every log is uniformly formatted
@@ -121,6 +110,17 @@ def log(log_level=None, console=None, logfile=None, aggregator=None, status=Fals
     structlog.configure(
         processors=shared_processors + [
             structlog.stdlib.filter_by_level,  # Abort pipeline on log levels lower than threshold
+            structlog.processors.StackInfoRenderer(),  # Move "stack_info" in event_dict to "stack" and render
+            structlog.processors.CallsiteParameterAdder(  # Add items from the call enum
+                {
+                    structlog.processors.CallsiteParameter.FUNC_NAME,  # function name
+                    structlog.processors.CallsiteParameter.MODULE,  # module name
+                    structlog.processors.CallsiteParameter.PROCESS,  # process ID
+                    # structlog.processors.CallsiteParameter.THREAD,  # thread ID
+                    # structlog.processors.CallsiteParameter.FILENAME,  # file name
+                    # structlog.processors.CallsiteParameter.LINENO,  # line number
+
+                }),
             # The last processor has to be a renderer to render the log to file, stream, etc. in some style
             # This wrapper lets us decide on the renderer later. This is needed to have two renderers.
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter
