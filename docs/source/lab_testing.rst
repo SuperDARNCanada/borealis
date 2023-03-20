@@ -58,7 +58,7 @@ N200 Output Testing
      and widths of both signals.
 
 #. Loopback tests at boresight. This test allows you to see the differences in channel power after
-   digitizing. It verifies that N200's are synchronized, this is due to boresight steering having no
+   digitizing. It verifies that N200s are synchronized, this is due to boresight steering having no
    phase offset so with all equal cable lengths the phase output on all antennas should be the same
    (check with rawrf and antennas_iq) - scripts are available under
    ``tools/testing_utils/plot_borealis_hdf5_data/``

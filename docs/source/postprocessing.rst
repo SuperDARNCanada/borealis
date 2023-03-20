@@ -7,7 +7,7 @@ for example, to fix a mistake in the original processing or to beamform in new d
 been collected. A Python package,
 `borealis_postprocessors <https://github.com/SuperDARNCanada/borealis_postprocessors>`_, has been written for exactly
 this purpose. The package contains an identical processing chain to Borealis, as well as additional processing classes
-for novel post-processing. It is written in an easily extensible way to facilitate development of new processing
+for novel post-processing. It is written in an easily extensible way to facilitate the development of new processing
 capabilities.
 
 As an example of the usefulness of this package, we have used it to implement bistatic experiments using pairs of
