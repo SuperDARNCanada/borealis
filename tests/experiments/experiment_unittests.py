@@ -12,8 +12,8 @@ The csv test file format is: [#][experiment file module import name]::[regex err
 The [#] is an optional comment, and that line will be removed An example of a test line is:
 testing_archive.my_test_experiment.py::Regex line that * matches the ExperimentException err msg
 
-This script can also be run to test individual experiments by using the --experiments flag. For
-example: `python3 experiment_unittests.py --experiments normalscan normalsound` will only test the
+This script can also be run to test individual experiments by using the --experiment flag. For
+example: `python3 experiment_unittests.py --experiment normalscan normalsound` will only test the
 normalscan and normalsound experiments. Any experiments specified must exist within the Borealis
 experiments top level directory (i.e. src/borealis_experiments).
 
