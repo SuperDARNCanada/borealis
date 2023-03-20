@@ -14,10 +14,10 @@ the file and convert them to schedule file (SCD) commands.
 
 The schedule files need to be synced to the radar sites. The SCD files that the local
 script adds to should all be in this directory so that syncing is all automated. This syncing is
-currently done via a daemon process (scheduler_sync.daemon) that continually watches the local files
+currently done via a daemon process (``scheduler_sync.daemon``) that continually watches the local files
 for changes using inotify, then rsyncs the changed files to each site.
 
-The remote script (remote_server.py) will check for changes to any synced files and then generate
+The remote script (``remote_server.py``) will check for changes to any synced files and then generate
 ``atq`` command arguments for Borealis experiments to run. This allows us to utilize scheduling
 utilities already available in Linux.
 
