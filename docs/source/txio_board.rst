@@ -84,11 +84,11 @@ datasheet, the absolute maximum voltage on any pin is 4.6V:
 TXIO design
 -----------
 This section describes some of the design of the TXIO board, latest revision.
-Please see the pdf of the schematic here: :download:`TXIO schematic <doc/txio_rev5_schematic.pdf>`
-See also a representative BOM here: :download:`TXIO BOM revision 5 <doc/txio_rev5_bom.pdf>`
+Please see the pdf of the schematic here: :download:`TXIO schematic <download/txio_rev5_schematic.pdf>`
+See also a representative BOM here: :download:`TXIO BOM revision 5 <download/txio_rev5_bom.pdf>`
 
-Change Notes from Revision 4
-----------------------------
+Change Notes for Revision 5
+---------------------------
 - Change pad sizes for capacitors to 0805 from 0805 hand-solderable. This was done because the pads
   of the capacitors were too large, and accommodated even 1206 sized capacitors.
 - Change pad sizes for resistors to 0603 hand solderable from 0805 hand solderable. This was done
@@ -271,8 +271,10 @@ more than ten units.
 LEDs were chosen based on availability, cost, color, form factor, luminous intensity, and viewing
 angle. The viewing angle needs to be wide enough to see the LED easily within a building housing the
 Borealis rack (greater than 15 degree half-angles are suggested), the luminous intensity of all four
-types of LEDs should be roughly the same, so that similar current-limiting resistors can be used for
-all LEDs if possible, the form factors all need to be the same to fit the LED front panel clips,
+types of LEDs should be roughly the same, so that the luminous intensity can be controlled via the
+current-limiting resistor. The intensity of the green and blue LEDs are decreased by increasing the
+size of the current-limiting resistors so that they are a comfortable brightness in a well-lit room.
+The form factors all need to be the same to fit the LED front panel clips,
 and the LEDs should be widely available at a reasonable cost.
 
 **Chips**
@@ -283,7 +285,7 @@ repairs and reflow-solderable for initial build) and supply voltage.
 
 
 -------------------------------
-Hisorical Designs
+Historical Designs
 -------------------------------
 
 Revisions 1 through 4 were developed by Marci Detwiller and Adam Lozinsky at the University of
