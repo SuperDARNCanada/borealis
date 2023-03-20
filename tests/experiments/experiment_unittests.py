@@ -251,15 +251,38 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--site_id", required=False, default="sas", 
                         choices=["sas", "pgr", "inv", "rkn", "cly", "lab"], 
-                        help="Site ID of site to test experiments as")
+                        help="Site ID of site to test experiments as. Defaults to sas.")
     parser.add_argument("--test_file", required=False, default=default_test_file,
                         help=".csv file containing experiment unittests to run. If no file \
-                        provided, uses default file")
+                        provided, uses default exception unittest file.")
+    parser.add_argument("--experiment", required=False, nargs="+", default=None, 
+                        help="Only run the experiments specified after this option. Experiments \
+                        specified must exist within the top-level Borealis experiments directory.")
 
-    args, unittest_args = parser.parse_known_args()
+
+    args, extra_args = parser.parse_known_args()
     os.environ["RADAR_ID"] = args.site_id
     test_file = args.test_file
+    experiments = args.experiment
 
-    build_unit_tests(test_file)
-    build_experiment_tests()
-    unittest.main(argv=sys.argv[:1] + unittest_args) # Pass remaining command line args to unittest
+    if len(extra_args) != 0:
+        print(f"Unknown command line arguments {extra_args}")
+        parser.print_help()
+        exit(1)
+
+    if experiments is None:  # Run all unit tests and experiment tests
+        build_unit_tests(test_file)
+        build_experiment_tests()
+        unittest.main(argv=sys.argv[:1])
+    else:  # Only test specified experiments
+        build_experiment_tests()
+        exp_tests = []
+        for exp in experiments:
+            # Check experiment exists 
+            if hasattr(TestExperiments, f"test_{exp}"):
+                # Create correct string to test the experiment with unittest
+                exp_tests.append(f"TestExperiments.test_{exp}")
+            else:
+                print(f"Could not find experiment {exp}. Exiting...")
+                exit(1)
+        unittest.main(argv=sys.argv[:1] + exp_tests)
