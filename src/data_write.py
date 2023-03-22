@@ -589,7 +589,7 @@ class DataWrite(object):
                         data = np.bool_(data)
                     elif isinstance(data, list):
                         if isinstance(data[0], str):
-                            data = np.array(data, np.bytes_)
+                            data = np.bytes_(data)
                         else:
                             data = np.array(data)
                         array_field = True
@@ -767,19 +767,28 @@ class DataWrite(object):
                         log.exception("unknown error when opening file", exception=err)
                         sys.exit(-1)
 
-                self.write_hdf5_file(tmp_file, aveperiod_data, epoch_milliseconds, file_type)
+                self.write_hdf5_file(full_two_hr_file, aveperiod_data, epoch_milliseconds, file_type)
 
-                # Use external h5copy utility to move new record into 2hr file.
-                cmd = 'h5copy -i {newfile} -o {twohr} -s {dtstr} -d {dtstr}'
-                cmd = cmd.format(newfile=tmp_file, twohr=full_two_hr_file, dtstr=epoch_milliseconds)
+                # Send rawacf data to realtime (if there is any)
+                if file_type == 'rawacf':
+                    group = {}
+                    for relevant_field in SliceData.type_fields(file_type):
+                        data = getattr(aveperiod_data, relevant_field)
 
-                # TODO(keith): improve call to subprocess.
-                sp.call(cmd.split())
-                so.send_data(rt_dw['socket'], rt_dw['iden'], tmp_file)
-                # Temp file is removed in real time module.
+                        # Massage the data into the correct types
+                        if isinstance(data, dict):
+                            data = str(data)
+                        elif isinstance(data, list):
+                            if isinstance(data[0], str):
+                                data = np.bytes_(data)
+                            else:
+                                data = np.array(data)
+                        group[relevant_field] = data
+                    full_dict = {epoch_milliseconds: group}
+                    so.send_bytes(rt_dw['socket'], rt_dw['iden'], pickle.dumps(full_dict))
 
             elif file_ext == 'json':
-                self.write_json_file(tmp_file, aveperiod_data)
+                self.write_json_file(tmp_file, aveperiod_data, file_type)
             elif file_ext == 'dmap':
                 self.write_dmap_file(tmp_file, aveperiod_data)
 
@@ -839,8 +848,7 @@ class DataWrite(object):
                 array_3d = array_expectation_value.reshape((num_beams, num_ranges, num_lags))
                 array_3d[:, second_pulse_sample_num:, 0] = array_3d[:, second_pulse_sample_num:, -1]
 
-                # Flatten back to a list
-                return array_3d.flatten()
+                return array_3d
 
             for slice_num in main_acfs:
                 slice_data = aveperiod_data[slice_num]
@@ -882,17 +890,16 @@ class DataWrite(object):
                 slice_data.data_descriptors = bfiq['data_descriptors']
                 slice_data.antenna_arrays_order = []
 
-                flattened_data = []
+                all_data = []
                 num_antenna_arrays = 1
                 slice_data.antenna_arrays_order.append("main")
-                flattened_data.append(bfiq[slice_num]['main_data'].flatten())
+                all_data.append(bfiq[slice_num]['main_data'])
                 if "intf" in bfiq[slice_num]:
                     num_antenna_arrays += 1
                     slice_data.antenna_arrays_order.append("intf")
-                    flattened_data.append(bfiq[slice_num]['intf_data'].flatten())
+                    all_data.append(bfiq[slice_num]['intf_data'])
 
-                flattened_data = np.concatenate(flattened_data)
-                slice_data.data = flattened_data
+                slice_data.data = np.concatenate(all_data)
 
                 slice_data.num_samps = np.uint32(bfiq[slice_num]['num_samps'])
                 slice_data.data_dimensions = np.array([num_antenna_arrays, aveperiod_meta.num_sequences,
@@ -954,10 +961,9 @@ class DataWrite(object):
                     data = []
                     for k, data_dict in antenna_iq[slice_num][stage].items():
                         if k in stage_data.antenna_arrays_order:
-                            data.append(data_dict['data'].flatten())
+                            data.append(data_dict['data'])
 
-                    flattened_data = np.concatenate(data)
-                    stage_data.data = flattened_data
+                    stage_data.data = np.concatenate(data)
 
                     final_data_params[slice_num][stage] = stage_data
 
@@ -1000,7 +1006,7 @@ class DataWrite(object):
                 shared_mem = shared_memory.SharedMemory(name=raw)
                 rawrf_array = np.ndarray((total_ants, num_rawrf_samps), dtype=np.complex64, buffer=shared_mem.buf)
 
-                samples_list.append(rawrf_array.flatten())
+                samples_list.append(rawrf_array)
 
                 shared_memory_locations.append(shared_mem)
 
@@ -1106,13 +1112,6 @@ class DataWrite(object):
 
                 all_slice_data[rx_freq.slice_id] = parameters
 
-        # We no longer need to deepcopy. The following fields are changed in each write_{type} method:
-        # rawacf:      [main_acfs, intf_acfs, xcfs, correlation_descriptors, correlation_dimensions]
-        # bfiq:        [data_descriptors, num_samps, antenna_arrays_order, data_dimensions, data]
-        # antennas_iq: [data_descriptors, num_samps, antenna_arrays_order, data_dimensions, data]
-        # rawrf:       [data_descriptors, num_samps, data, rx_sample_rate, data_dimensions, main_antenna_count,
-        #               intf_antenna_count]
-        # txdata:      completely uses its own fields
         if write_rawacf and data_parsing.mainacfs_available:
             write_correlations(all_slice_data)
         if write_bfiq and data_parsing.bfiq_available:

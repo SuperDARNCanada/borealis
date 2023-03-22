@@ -10,7 +10,7 @@
 
 import zmq
 import threading
-import os
+import pickle
 import queue
 import json
 import zlib
@@ -37,46 +37,31 @@ def main():
     def get_temp_file_from_datawrite():
         last_file_time = None
         while True:
-            filename = so.recv_data(data_write_to_realtime, options.dw_to_rt_identity, log)
+            rawacf_pickled = so.recv_bytes(data_write_to_realtime, options.dw_to_rt_identity, log)
+            rawacf_data = pickle.loads(rawacf_pickled)
 
-            if "rawacf" in filename:
-                # Read and convert data
-                fields = filename.split(".")
-                file_time = fields[0] + fields[1] + fields[2] + fields[3]
+            # TODO: Make sure we only process the first slice for simultaneous multi-slice data for now
+            try:
+                log.info("using pydarnio to convert")
+                converted = pydarnio.BorealisConvert.__convert_rawacf_record(0, rawacf_data, "")
+            except pydarnio.borealis_exceptions.BorealisConvert2RawacfError:
+                log.info("error converting")
+                continue
 
-                # Make sure we only process the first slice for simultaneous multi-slice data for now
-                if file_time == last_file_time:
-                    os.remove(filename)
-                    continue
+            data = converted.sdarn_dict
 
-                last_file_time = file_time
+            fit_data = fitacf._fit(data[0])
+            tmp = fit_data.copy()
 
-                slice_num = int(fields[5])
-                try:
-                    log.info("using pydarnio to convert", filename=filename)
-                    converted = pydarnio.BorealisConvert(filename, "rawacf", "/dev/null", slice_num, "site")
-                    os.remove(filename)
-                except pydarnio.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
-                    log.info("error converting", filename=filename)
-                    os.remove(filename)
-                    continue
+            # Can't jsonify numpy so we convert to native types for realtime purposes.
+            for k, v in fit_data.items():
+                if hasattr(v, 'dtype'):
+                    if isinstance(v, np.ndarray):
+                        tmp[k] = v.tolist()
+                    else:
+                        tmp[k] = v.item()
 
-                data = converted.sdarn_dict
-
-                fit_data = fitacf._fit(data[0])
-                tmp = fit_data.copy()
-
-                # Can't jsonify numpy so we convert to native types for realtime purposes.
-                for k, v in fit_data.items():
-                    if hasattr(v, 'dtype'):
-                        if isinstance(v, np.ndarray):
-                            tmp[k] = v.tolist()
-                        else:
-                            tmp[k] = v.item()
-
-                q.put(tmp)
-            else:
-                os.remove(filename)
+            q.put(tmp)
 
     def handle_remote_connection():
         """
