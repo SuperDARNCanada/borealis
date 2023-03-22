@@ -1,3 +1,5 @@
+.. _failure-modes:
+
 ====================
 Common Failure Modes
 ====================
