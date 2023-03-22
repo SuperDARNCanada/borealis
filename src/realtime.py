@@ -35,22 +35,21 @@ def main():
     q = queue.Queue()
 
     def get_temp_file_from_datawrite():
-        last_file_time = None
         while True:
             rawacf_pickled = so.recv_bytes(data_write_to_realtime, options.dw_to_rt_identity, log)
             rawacf_data = pickle.loads(rawacf_pickled)
 
             # TODO: Make sure we only process the first slice for simultaneous multi-slice data for now
             try:
-                log.info("using pydarnio to convert")
-                converted = pydarnio.BorealisConvert.__convert_rawacf_record(0, rawacf_data, "")
+                record = sorted(list(rawacf_data.keys()))[0]
+                log.info("using pydarnio to convert", record=record)
+                converted = pydarnio.BorealisConvert.\
+                    _BorealisConvert__convert_rawacf_record(0, (record, rawacf_data[record]), "")
             except pydarnio.borealis_exceptions.BorealisConvert2RawacfError:
                 log.info("error converting")
                 continue
 
-            data = converted.sdarn_dict
-
-            fit_data = fitacf._fit(data[0])
+            fit_data = fitacf._fit(converted[0])
             tmp = fit_data.copy()
 
             # Can't jsonify numpy so we convert to native types for realtime purposes.
