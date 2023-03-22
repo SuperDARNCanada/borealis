@@ -186,7 +186,7 @@ for mod in modules.keys():
     modules[mod] = f"source borealis_env{PYTHON_VERSION}/bin/activate; python{PYTHON_VERSION} {opts} src/{mod}.py" \
 
 modules['data_write'] = modules['data_write'] + " " + data_write_args
-modules['usrp_driver'] = modules['usrp_driver'] + " " + f'--mode={mode} --c_debug_opts="{c_debug_opts}"'
+modules['usrp_driver'] = modules['usrp_driver'] + " " + f'{mode} --c_debug_opts="{c_debug_opts}"'
 
 if args.kwargs_string:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \

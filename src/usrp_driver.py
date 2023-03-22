@@ -9,7 +9,7 @@
     :copyright: 2023 SuperDARN Canada
     :author: Adam Lozinsky
 """
-
+import os
 import subprocess
 import faulthandler
 import argparse as ap
@@ -24,8 +24,9 @@ def main():
                         default='')
     args = parser.parse_args()
 
-    cmd = f"source mode {args.run_mode}; {args.c_debug_opts} usrp_driver"
-    with subprocess.Popen([cmd], bufsize=1, universal_newlines=True,
+    path = os.environ["BOREALISPATH"]
+    cmd = f"source {path}/mode {args.run_mode}; {args.c_debug_opts} usrp_driver"
+    with subprocess.Popen([cmd], shell=True, #bufsize=1, universal_newlines=True,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE) as driver:
         for out, err in zip(iter(driver.stdout.readline, b''), iter(driver.stderr.readline, b'')):
             if out is not None:
@@ -45,6 +46,7 @@ if __name__ == '__main__':
     log.info(f"USRP_DRIVER BOOTED")
     try:
         main()
+        log.info(f"USRP_DRIVER EXITED")
     except Exception as main_exception:
         log.critical("USRP_DRIVER CRASHED", error=main_exception)
         log.exception("USRP_DRIVER CRASHED", exception=main_exception)

@@ -108,7 +108,12 @@ def log(log_level=None, console=None, logfile=None, aggregator=None, status=Fals
     # Configure structlog here once for everything so that every log is uniformly formatted
     # noinspection PyTypeChecker
     structlog.configure(
-        processors=shared_processors + [
+        processors=
+        [
+            structlog.stdlib.add_logger_name,  # Add the name of the logger to event dict
+            structlog.stdlib.add_log_level,  # Add log level to event dict
+            structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add ISO-8601 timestamp
+            structlog.processors.UnicodeDecoder(),  # Decode byte strings to unicode strings
             structlog.stdlib.filter_by_level,  # Abort pipeline on log levels lower than threshold
             structlog.processors.StackInfoRenderer(),  # Move "stack_info" in event_dict to "stack" and render
             structlog.processors.CallsiteParameterAdder(  # Add items from the call enum
