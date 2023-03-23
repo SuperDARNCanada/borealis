@@ -24,7 +24,6 @@ import subprocess as sp
 import sys
 import threading
 import time
-import warnings
 
 # third-party
 import h5py
@@ -65,20 +64,14 @@ class SliceData:
     borealis_git_hash: str = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Version and commit hash of Borealis at runtime'})
-    correlation_descriptors: list[str] = field(
-        metadata={'groups': ['rawacf'],
-                  'description': 'Denotes what each acf/xcf dimension represents'})
-    correlation_dimensions: np.ndarray = field(
-        metadata={'groups': ['rawacf'],
-                  'description': 'Dimensions in which to reshape the acf/xcf data'})
     data: np.ndarray = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
                   'description': 'Contiguous set of samples at the given sample rate'})
     data_descriptors: list[str] = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Denotes what each data dimension represents'})
     data_dimensions: np.ndarray = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Dimensions in which to reshape the data'})
     data_normalization_factor: float = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
@@ -99,10 +92,10 @@ class SliceData:
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Name of the experiment class'})
     first_range: int = field(
-        metadata={'groups': ['bfiq', 'rawacf'],
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Distance to first range in km'})
     first_range_rtt: float = field(
-        metadata={'groups': ['bfiq', 'rawacf'],
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Round trip time of flight to first range in microseconds'})
     freq: float = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
@@ -124,7 +117,7 @@ class SliceData:
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Number of interferometer array antennas'})
     lags: np.ndarray = field(
-        metadata={'groups': ['bfiq', 'rawacf'],         # TODO: Should this be in antennas_iq too? Or removed from bfiq?
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Time difference between pairs of pulses in pulse array, in units of tau_spacing'})
     lp_status_word: int = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
@@ -140,7 +133,7 @@ class SliceData:
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Noise at the receive frequency'})     # TODO: Implement and give units
     num_ranges: int = field(
-        metadata={'groups': ['bfiq'],                   # TODO: Does this need to be in more file types?
+        metadata={'groups': ['antennas_iq', 'bfiq'],
                   'description': 'Number of ranges to calculate correlations for'})
     num_samps: int = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
@@ -164,7 +157,7 @@ class SliceData:
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Pulse sequence in units of tau_spacing'})
     range_sep: int = field(
-        metadata={'groups': ['bfiq', 'rawacf'],         # TODO: Does this need to be in antennas_iq?
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Range gate separation (equivalent distance between samples) in km'})
     rx_center_freq: float = field(
         metadata={'groups': ['rawrf'],
@@ -863,9 +856,9 @@ class DataWrite(object):
                 slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'])
 
             for slice_num, slice_data in aveperiod_data.items():
-                slice_data.correlation_descriptors = ['num_beams', 'num_ranges', 'num_lags']
-                slice_data.correlation_dimensions = np.array([len(slice_data.beam_nums), slice_data.num_ranges,
-                                                              slice_data.lags.shape[0]], dtype=np.uint32)
+                slice_data.data_descriptors = ['num_beams', 'num_ranges', 'num_lags']
+                slice_data.data_dimensions = np.array([len(slice_data.beam_nums), slice_data.num_ranges,
+                                                       slice_data.lags.shape[0]], dtype=np.uint32)
 
                 name = dataset_name.format(sliceid=slice_num, dformat="rawacf")
                 output_file = dataset_location.format(name=name)
