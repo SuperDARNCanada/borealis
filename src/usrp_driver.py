@@ -25,28 +25,36 @@ def main():
     args = parser.parse_args()
 
     path = os.environ["BOREALISPATH"]
-    cmd = f"source {path}/mode {args.run_mode}; {args.c_debug_opts} usrp_driver"
-    with subprocess.Popen([cmd], shell=True, #bufsize=1, universal_newlines=True,
+    cmd = f"source {path}mode {args.run_mode}; {args.c_debug_opts} usrp_driver"
+    log.info('usrp_driver start command', command=cmd)
+    with subprocess.Popen([cmd], shell=True, bufsize=1, text=True, universal_newlines=True,
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE) as driver:
-        for out, err in zip(iter(driver.stdout.readline, b''), iter(driver.stderr.readline, b'')):
+        # TODO: - the screen is clearing after crash which is not what i want
+        #       - messages are buffering on launch
+        #       - need to simulate L, U, to see how it logs
+        for out, err in zip(iter(driver.stdout.readline, ''), iter(driver.stderr.readline, '')):
             if out is not None:
                 log.info(out)
             if err is not None:
-                log.error(err)
+                # UHD sends INFO level logs to STDERR, so we need to capture it here.
+                if 'INFO' in err:
+                    log.info(err)
+                else:
+                    log.error(err)
 
         if driver.poll() is not None:
-            log.exception("usrp error", err=subprocess.CalledProcessError(cmd=cmd, returncode=driver.returncode))
-            raise
+            raise subprocess.CalledProcessError(cmd=cmd, returncode=driver.returncode)
 
 
 if __name__ == '__main__':
     from utils import log_config
 
-    log = log_config.log(logfile=False, aggregator=False)
+    log = log_config.log()
     log.info(f"USRP_DRIVER BOOTED")
     try:
         main()
         log.info(f"USRP_DRIVER EXITED")
     except Exception as main_exception:
+        # print(main_exception)
         log.critical("USRP_DRIVER CRASHED", error=main_exception)
         log.exception("USRP_DRIVER CRASHED", exception=main_exception)
