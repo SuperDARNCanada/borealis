@@ -892,7 +892,7 @@ class DataWrite(object):
                     slice_data.antenna_arrays_order.append("intf")
                     all_data.append(bfiq[slice_num]['intf_data'])
 
-                slice_data.data = np.concatenate(all_data)
+                slice_data.data = np.stack(all_data, axis=0)
 
                 slice_data.num_samps = np.uint32(bfiq[slice_num]['num_samps'])
                 slice_data.data_dimensions = np.array([num_antenna_arrays, aveperiod_meta.num_sequences,
@@ -956,7 +956,7 @@ class DataWrite(object):
                         if k in stage_data.antenna_arrays_order:
                             data.append(data_dict['data'])
 
-                    stage_data.data = np.concatenate(data)
+                    stage_data.data = np.stack(data, axis=0)
 
                     final_data_params[slice_num][stage] = stage_data
 
@@ -1003,7 +1003,7 @@ class DataWrite(object):
 
                 shared_memory_locations.append(shared_mem)
 
-            slice_data.data = np.concatenate(samples_list)
+            slice_data.data = np.stack(samples_list, axis=0)
             slice_data.rx_sample_rate = np.float32(data_parsing.rx_rate)
             slice_data.num_samps = np.uint32(len(samples_list[0]) / total_ants)
             slice_data.data_descriptors = ["num_sequences", "num_antennas", "num_samps"]
