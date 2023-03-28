@@ -77,6 +77,7 @@ def main():
                 continue
             else:
                 # Split result by enclosed brackets [...] to get log level and device
+                # Example: "[INFO] [GPS] No gps lock..." becomes "", "INFO", " ", "GPS", "No gps lock..."
                 result = re.split('\[|\]', result)
                 if len(result) > 1:
                     # Log UHD logs with correct level
