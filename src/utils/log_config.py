@@ -57,7 +57,7 @@ def swap_logger_name(_, __, event_dict):
     return event_dict
 
 
-def log(log_level=None, console=None, logfile=None, aggregator=None, status=False):
+def log(log_level=None, console=None, logfile=None, aggregator=None):
     """
     :param log_level: Logging threshold [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
     :type log_level: str
@@ -67,8 +67,6 @@ def log(log_level=None, console=None, logfile=None, aggregator=None, status=Fals
     :type logfile: bool
     :param aggregator: Enable (True) or Disable (False) aggregator log forwarding override
     :type aggregator: bool
-    :param status: Enable (True) or Disable (False) radar_status log observations
-    :type status: bool
 
     :notes:
     There are three parts to logging; processors, renderers, and handlers.
@@ -172,16 +170,6 @@ def log(log_level=None, console=None, logfile=None, aggregator=None, status=Fals
             processors=[structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes _records
                         structlog.processors.JSONRenderer(sort_keys=False)]))
         root_logger.addHandler(aggregator_handler)
-
-    # Set up the fourth handler to pipe logs through a socket to radar_status
-    # TODO (Adam): Finish making this work
-    if status:
-        status_handler = logging.handlers.SocketHandler(host="localhost", port=10514)
-        status_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-            processors=[swap_logger_name,
-                        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                        structlog.dev.ConsoleRenderer(sort_keys=False, pad_event=80, colors=True)]))
-        root_logger.addHandler(status_handler)
 
     # Apply the configuration
     structlog.configure()

@@ -37,7 +37,7 @@ def main():
 
     path = os.environ["BOREALISPATH"]
     cmd = f"source {path}/mode {args.run_mode}; {args.c_debug_opts} usrp_driver"
-    log.info('usrp_driver start command', command=cmd)
+    log.debug('usrp_driver start command', command=cmd)
 
     # If you are here to work on the code below this comment I bid you good luck!
     # This will only work on LINUX!
@@ -77,6 +77,7 @@ def main():
                 continue
             else:
                 # Split result by enclosed brackets [...] to get log level and device
+                # Example: "[INFO] [GPS] No gps lock..." becomes ["", "INFO", " ", "GPS", "No gps lock..."]
                 result = re.split('\[|\]', result)
                 if len(result) > 1:
                     # Log UHD logs with correct level
