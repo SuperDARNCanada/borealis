@@ -142,7 +142,7 @@ def install_packages(distro: str):
 
     variant_packages = [
         "libusb-1_0-{}",    # Needed for UHD
-        "libx11-{}",
+        "libX11-{}",
         "pps-tools-{}",
         "net-snmp-{}",
     ]
@@ -416,8 +416,8 @@ def install_borealis_env(python_version: str, user: str, group: str):
     execute_cmd(f"sudo -u {user} python{python_version} -m venv $BOREALISPATH/borealis_env{python_version};")
     execute_cmd(f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install wheel")
     pip_cmd = f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install zmq numpy scipy " \
-              "protobuf==3.19.4 posix_ipc git+https://github.com/SuperDARN/pyDARNio.git@develop " \
-              "git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter cupy; " 
+              "protobuf==3.19.4 posix_ipc git+https://github.com/SuperDARN/pyDARNio.git@develop structlog graylog " \
+              "rich git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter cupy; "
     execute_cmd(pip_cmd)
 
 
@@ -512,14 +512,13 @@ def main():
     try:
         python_version = os.environ['PYTHON_VERSION']
         if python_version != args.python_version:
-            raise ValueError('ERROR: PYTHON_VERSION already defined as {version}')
+            raise ValueError(f'ERROR: PYTHON_VERSION already defined as {python_version}')
     except KeyError:
         specify_python = True
 
     if specify_python:
         print(f'### Specifying PYTHON_VERSION in /home/{args.user}/.profile ###')
         execute_cmd(f'echo "export PYTHON_VERSION={args.python_version}" >> /home/{args.user}/.profile')
-        install_python(distro, args.python_version)
 
     if args.upgrade_to_v06:     # Only need to update hdw repo and make new virtualenv for Borealis.
         print('### Upgrading to Borealis v0.6 configuration ###')
@@ -529,6 +528,7 @@ def main():
 
     else:   # Installing fresh, do it all!
         install_packages(distro)
+        install_python(distro, args.python_version)
         pip_install_packages(args.user, args.python_version)
         install_protobuf()
         install_zmq()
