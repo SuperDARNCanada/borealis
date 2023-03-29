@@ -23,41 +23,44 @@
 # 
 # [Install]
 # WantedBy=multi-user.target
+#
+# Reference: https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/
 
 ###################################################################################################
 
 source "${HOME}/.profile"   # Source BOREALISPATH, RADAR_ID, and SLACK_WEBHOOK
-source "${BOREALISPATH}/borealis_env3.9/bin/activate"
+source "${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/activate"
 
 readonly THRESHOLD=3     # Number of consecutive Borealis restarts before sending alert
-readonly INTERVAL=30     # Time in seconds between restart_borealis.py calls
+readonly INTERVAL=300    # Time in seconds between restart_borealis.py calls
 
 readonly LOGFILE="${HOME}/logs/restart_borealis.log"
 
 ###################################################################################################
 
-# exec &>> $LOGFILE  # Redirect all stdout/stderr in this script to LOGFILE
+exec &>> $LOGFILE  # Redirect all stdout/stderr in this script to LOGFILE
 
-printf "\nDaemon $0 starting on $(hostname) for ${RADAR_ID}\n"
-date --utc "+%Y%m%d %H:%M:%S UTC"
+TIMESTAMP=$(date --utc "+%Y%m%d %H:%M:%S UTC")
+printf "\n$TIMESTAMP Daemon $0 starting on $(hostname) for ${RADAR_ID}\n"
 
 restarts=0  # Number of consecutive restarts
 while true; do
-    python3 /home/radar/borealis/scripts/restart_borealis.py -r $INTERVAL
+    python3 /home/radar/borealis/scripts/restart_borealis.py --restart-after-seconds $INTERVAL
     retval=$?
     if [[ $retval -eq 0 ]]; then
         restarts=0
     else
         restarts=$((restarts + 1))
     fi
-    echo $restarts
 
-    if [[ $restarts -ge $THRESHOLD ]]; then  # Send alert to Slack
-        date --utc "+%Y%m%d %H:%M:%S UTC"
-        echo "Sending alert to Slack"
+    # [[ -eq ]] so only one alert is sent each time
+    if [[ $restarts -eq $THRESHOLD ]]; then  # Send alert to Slack
+        TIMESTAMP=$(date --utc "+%Y%m%d %H:%M:%S UTC")
+        printf "$TIMESTAMP Sending alert to Slack, restart #$restarts\n"
 
-        message="Alert: Borealis has been restarted $restarts consecutive times"
-        # curl --header "Content-type: application/json" --data "{'text':'${message}'}" $SLACK_WEBHOOK
+        message="restart_borealis: Borealis has been restarted consecutive times at $RADAR_ID"
+        curl --silent --header "Content-type: application/json" --data "{'text':'${message}'}" $SLACK_WEBHOOK
+        printf "\n"
     fi
 
     sleep $INTERVAL
