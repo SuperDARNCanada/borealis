@@ -25,12 +25,35 @@ def get_args():
     """
     Supports the command-line arguments listed below.
     """
-    parser = argparse.ArgumentParser(description="Borealis Check")
+    # Gather the borealis configuration information
+    if not os.environ["BOREALISPATH"]:
+        raise ValueError("BOREALISPATH env variable not set")
+    if not os.environ["RADAR_ID"]:
+        raise ValueError("RADAR_ID env variable not set")
+    BOREALISPATH=os.environ["BOREALISPATH"]
+    RADAR_ID=os.environ["RADAR_ID"]
+    
+    # Config file parsing needed for data directory location
+    path = f'{BOREALISPATH}/config/{RADAR_ID}/{RADAR_ID}_config.ini'
+    try:
+        with open(path, 'r') as data:
+            raw_config = json.load(data)
+    except IOError:
+        raise(f"IOError on config file at {path}")
+
+    
+    parser = argparse.ArgumentParser(description="Python script to check data being written and "
+                                                 "restart Borealis in case it's not")
     parser.add_argument('-r', '--restart-after-seconds', type=int, default=300,
                         help="How many seconds can the data file be out of date before attempting "
                              "to restart the radar? Default 300 seconds (5 minutes)")
-    parser.add_argument('-p', '--borealis-path', required=False, help="Path to Borealis directory",
-                        dest="borealis_path", default="/home/radar/borealis/")
+    parser.add_argument('-p', '--borealis-path', required=False, dest="borealis_path",
+                        default=BOREALISPATH, help="Path to Borealis directory. Default "
+                                                   "BOREALISPATH environment variable")
+    parser.add_argument('-d', '--data-directory', required=False, dest="data_directory",
+                        default=raw_config["data_directory"],
+                        help="Path to Borealis data directory. Defaults to data_directory within "
+                             "config file")
     args = parser.parse_args()
     return args
 
@@ -40,23 +63,7 @@ def main():
     args = get_args()
     restart_after_seconds = args.restart_after_seconds
     borealis_path = args.borealis_path
-
-    # Gather the borealis configuration information
-    if not os.environ["BOREALISPATH"]:
-        raise ValueError("BOREALISPATH env variable not set")
-    if not os.environ["RADAR_ID"]:
-        raise ValueError("RADAR_ID env variable not set")
-    path = f'{os.environ["BOREALISPATH"]}/config/' \
-           f'{os.environ["RADAR_ID"]}/' \
-           f'{os.environ["RADAR_ID"]}_config.ini'
-    try:
-        with open(path, 'r') as data:
-            raw_config = json.load(data)
-    except IOError:
-        print(f"IOError on config file at {path}")
-        raise
-
-    data_directory = raw_config["data_directory"]
+    data_directory = args.data_directory
 
     # Get today's date and look for the current data file being written
     today = dt.utcnow().strftime("%Y%m%d")
@@ -95,7 +102,7 @@ def main():
             print("Error with stop_radar.sh:")
             print(indent(error, "      "))
 
-        time.sleep(1)
+        time.sleep(5)
 
         # Now call the start radar script, reads will block, so no need to communicate with
         # this process.
