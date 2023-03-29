@@ -10,7 +10,7 @@
 # Dependencies:
 #   - mutt (Installed with zypper)
 #   - postfix enabled and started
-#   - SLACK_WEBHOOK defined in ~/.profile to a valid Slack webhook URL
+#   - SLACK_WEBHOOK, RADAR_ID, BOREALISPATH defined in ~/.profile to a valid Slack webhook URL
 #
 # This script should be ran as a systemd daemon. An example .service file is shown below:
 # [Unit]
@@ -26,7 +26,8 @@
 
 ###################################################################################################
 
-source "${HOME}/.profile"
+source "${HOME}/.profile"   # Source BOREALISPATH, RADAR_ID, and SLACK_WEBHOOK
+source "${BOREALISPATH}/borealis_env3.9/bin/activate"
 
 readonly THRESHOLD=3     # Number of consecutive Borealis restarts before sending alert
 readonly INTERVAL=30     # Time in seconds between restart_borealis.py calls
@@ -42,7 +43,7 @@ date --utc "+%Y%m%d %H:%M:%S UTC"
 
 restarts=0  # Number of consecutive restarts
 while true; do
-    python3 /home/radar/borealis/scripts/restart_borealis.py -r $INVERVAL
+    python3 /home/radar/borealis/scripts/restart_borealis.py -r $INTERVAL
     retval=$?
     if [[ $retval -eq 0 ]]; then
         restarts=0
