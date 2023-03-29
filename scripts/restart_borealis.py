@@ -102,7 +102,7 @@ def main():
             print("Error with stop_radar.sh:")
             print(indent(error, "      "))
 
-        time.sleep(5)
+        time.sleep(1)
 
         # Now call the start radar script, reads will block, so no need to communicate with
         # this process.
