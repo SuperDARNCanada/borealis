@@ -1,3 +1,5 @@
+.. _software:
+
 ========
 Software
 ========
@@ -128,7 +130,7 @@ name: radar) that will run Borealis
 
 #. If you're building Borealis for a non University of Saskatchewan radar, use a USASK
    ```config.ini``` file (located in ``borealis/config/``) as a template, or follow the config file
-   :ref:`documentation <config options>` to create your own file in the Borealis directory. Your config file should
+   :ref:`documentation <config-options>` to create your own file in the Borealis directory. Your config file should
    be placed in borealis/config/[site_id]/[site_id]_config.ini
 
 #. In ``config.ini``, there is an entry called "realtime_address". This defines the protocol,
