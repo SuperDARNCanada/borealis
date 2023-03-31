@@ -74,7 +74,7 @@ integrating Slack alerts, see `here
 <https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`__. 
 
 To set up the daemon using ``systemd``, add a ``.service`` file within ``/usr/lib/systemd/system/``
-(for OpenSuSe). For example, ::
+(for openSUSE). For example, ::
 
     [Unit]
     Description=Restart borealis daemon

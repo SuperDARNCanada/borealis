@@ -10,7 +10,8 @@
 # Dependencies:
 #   - mutt (Installed with zypper)
 #   - postfix enabled and started
-#   - SLACK_WEBHOOK, RADAR_ID, BOREALISPATH defined in ~/.profile to a valid Slack webhook URL
+#   - SLACK_WEBHOOK defined in ~/.profile to a valid Slack webhook URL
+#   - RADAR_ID, BOREALISPATH, and PYTHON_VERSION defined in ~/.profile
 #
 # This script should be ran as a systemd daemon. An example .service file is shown below:
 # [Unit]
@@ -28,7 +29,7 @@
 
 ###################################################################################################
 
-source "${HOME}/.profile"   # Source BOREALISPATH, RADAR_ID, and SLACK_WEBHOOK
+source "${HOME}/.profile"   # Source BOREALISPATH, RADAR_ID, PYTHON_VERSION, and SLACK_WEBHOOK
 source "${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/activate"
 
 readonly THRESHOLD=3     # Number of consecutive Borealis restarts before sending alert
