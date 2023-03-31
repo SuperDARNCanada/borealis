@@ -22,12 +22,13 @@ import inspect
 import importlib
 import threading
 import pickle
-
 from utils.options import Options
 from utils import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
+from utils import log_config
+log = log_config.log()
 
 def usage_msg():
     """
@@ -275,8 +276,6 @@ def main(sys_args):
 
 
 if __name__ == "__main__":
-    from utils import log_config
-    log = log_config.log()
     log.info(f"EXPERIMENT_HANDLER BOOTED")
     try:
         main(sys.argv[1:])

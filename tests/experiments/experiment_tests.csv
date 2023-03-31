@@ -39,9 +39,7 @@
 #    3. Cannot find valid lines for current time period in hardware file
 #    4. Found incorrect number of parameters in hardware file (need 19)
 #    5. Cannot open restrict.dat file (typically at borealis_path/restrict.dat.[radar])
-#
-#
-#
+
 
 # **** The following test is from module sample_building method get_wavetables:
 testing_archive.test_wavetype_not_defined::Wavetype .* not defined
@@ -49,6 +47,7 @@ testing_archive.test_wavetype_not_defined::Wavetype .* not defined
 # **** The following 2 tests are from experiment_handler module, retrieve_experiment() method ****
 testing_archive.test_no_class::No experiment classes are present that are built from parent class ExperimentPrototype - exiting
 testing_archive.test_two_classes::You have more than one experiment class in your experiment file - exiting
+testing_archive.test_no_inheritance::No experiment classes are present that are built from parent class ExperimentPrototype - exiting
 
 # **** The following 8 tests are from ExperimentPrototype class, __init__() method ****
 testing_archive.test_cpid_unique::CPID must be unique. .* is in use by another local experiment
@@ -105,25 +104,10 @@ testing_archive.test_tx_antenna_pattern_not_2d::Slice .* tx antenna pattern retu
 testing_archive.test_tx_antenna_pattern_dim_mismatch::Slice .* tx antenna pattern return 2nd dimension \(.*\) must be equal to number of main antennas \(.*\)
 testing_archive.test_tx_antenna_pattern_magnitude::Slice .* tx antenna pattern return must not have any values with a magnitude greater than 1
 testing_archive.test_tx_beam_order_listnum_too_high::Slice .* scan tx beam number .* DNE
-#testing_archive.test_tx_beams::Slice .* has no beams
 testing_archive.test_wait_for_first_scanbound_type::Slice .* wait_for_first_scanbound must be True or False, got .* instead 
 
 ##### I'm not sure how to test the following 1 test right now #####
 #testing_archive.test_beam_order_too_long::Slice .* beam order too long for scanbound
-##### The following tests seem to be superceded by tests in experiment_prototype.py in check_slice_minimum_requirements ####
-#testing_archive.test_beam_order_empty::Slice .* beam order scan empty
-#testing_archive.test_beam_order_num_too_high::Slice .* scan beam number .* DNE
-#testing_archive.test_beam_order_listnum_too_high::Slice .* scan beam number .* DNE
-##### The following test is superceded by a test in experiment_prototype.py in check_slice_minimum_requirements #####
-#testing_archive.test_no_seq::Slice .* has transmission frequency but no pulse sequence defined
-##### The below test seems to be superceded by sample_building.py: get_wavetables(...)
-#testing_archive.test_wavetype_not_supported::Slice .* wavetype of .* currently not supported
-##### The following test appears to be a duplicate of another test in experiment_prototype.py check_slice_minimum_requirements(...) ####
-#testing_archive.test_no_intt_intn::Slice .* has transmission but no intt or intn
-##### The following test doesn't appear to fail, and the radar operates with the message: "intn is set in experiment slice but will not be used due to intt No Self Check Errors." ####
-#testing_archive.test_both_intt_intn::Slice .* choose either intn or intt to be the limit for number of integrations in an integration period.
-##### The following test seems to be superceded by other specific parameter tests
-#testing_archive.test_missing_param::Slice .* is missing Necessary Parameter .*
 
 # **** The following 28 tests (22+5 extra from the dne tests) are from ExperimentPrototype class, check_slice_minimum_requirements() method ****
 testing_archive.test_sequence_dne::Slice must specify pulse_sequence that must be a list of integers
@@ -162,13 +146,9 @@ testing_archive.test_clrfrqrng_not_ints::clrfrqrange must be an integer list of 
 testing_archive.test_clrfrqrng_not_inc::clrfrqrange must be between min and max tx frequencies .* and rx frequencies .* according to license and/or center frequencies / sampling rates / transition bands, and must have lower frequency first
 testing_archive.test_clrfrqrng_too_high::clrfrqrange must be between min and max tx frequencies .* and rx frequencies .* according to license and/or center frequencies / sampling rates / transition bands, and must have lower frequency first
 testing_archive.test_clrfrqrng_too_low::clrfrqrange must be between min and max tx frequencies .* and rx frequencies .* according to license and/or center frequencies / sampling rates / transition bands, and must have lower frequency first
-#testing_archive.test_clrfrqrng_restricted::clrfrqrange is entirely within restricted range .*
 testing_archive.test_rxfreq_not_num::freq must be a number \(kHz\) between rx min and max frequencies .* for the radar license and be within range given center frequency .* kHz, sampling rate .* kHz, and transition band .* kHz
 testing_archive.test_rxfreq_too_high::freq must be a number \(kHz\) between rx min and max frequencies .* for the radar license and be within range given center frequency .* kHz, sampling rate .* kHz, and transition band .* kHz
 testing_archive.test_rxfreq_too_low::freq must be a number \(kHz\) between rx min and max frequencies .* for the radar license and be within range given center frequency .* kHz, sampling rate .* kHz, and transition band .* kHz
-testing_archive.test_txfreq_not_num::freq must be a number \(kHz\) between tx min and max frequencies .* and rx min and max frequencies .* for the radar license and be within range given center frequencies \(.* kHz\), sampling rates \(.* kHz\), and transition band \(.* kHz\)
-testing_archive.test_txfreq_too_high::freq must be a number \(kHz\) between tx min and max frequencies .* and rx min and max frequencies .* for the radar license and be within range given center frequencies \(.* kHz\), sampling rates \(.* kHz\), and transition band \(.* kHz\)
-testing_archive.test_txfreq_too_low::freq must be a number \(kHz\) between tx min and max frequencies .* and rx min and max frequencies .* for the radar license and be within range given center frequencies \(.* kHz\), sampling rates \(.* kHz\), and transition band \(.* kHz\)
 testing_archive.test_txfreq_restricted::freq is within a restricted frequency range .*
 
 # **** The following 1 test is from ExperimentPrototype class, self_check() method ****
