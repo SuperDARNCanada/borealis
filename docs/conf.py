@@ -36,6 +36,7 @@ sys.path.insert(5, os.environ['PATH'])
 RADAR_ID = 'sas'
 os.environ['RADAR_ID'] = RADAR_ID
 
+# -- Pre-build configuration ----------------------------------------------
 
 # Doxygen: Reads all c++ source and header files, and parses the documentation to xml files 
 # for further reading. 
@@ -49,19 +50,6 @@ run(['breathe-apidoc', '--force', '--no-toc', '--generate', 'file', '-o', f'{cur
 
 # Update the experiment subrepo so experiment files can be read into documentation
 run(['git', 'submodule', 'update', '--init'])
-
-# Clone in the HDW repo temporarily so modules reading them don't throw errors
-# TODO: Get this path into config file somehow, as that's now how we specify hdw location
-run(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
-
-# Change config file HDW path to path accessible by ReadTheDocs
-# TODO: Come up with a way that doesn't require modifying a version controlled config file
-config_file = BOREALISPATH + f'/config/{RADAR_ID}/{RADAR_ID}_config.ini'
-with open(config_file, 'r') as file:
-    data = json.load(file)
-data['hdw_path'] = BOREALISPATH + '/hdw'
-with open(config_file, 'w') as file:
-    json.dump(data, file)
 
 
 # -- General configuration ------------------------------------------------
@@ -87,7 +75,8 @@ extensions = [
     'myst_parser'
 ]
 
-autodoc_mock_imports = ["debug", "release"]
+# Modules that can't be imported on RTD will be ignored if they are listed here
+autodoc_mock_imports = ["debug", "release", "utils"]
 
 breathe_projects = {"borealis" : "xml/"}
 breathe_default_project = "borealis"
