@@ -276,6 +276,9 @@ def main(sys_args):
 
 
 if __name__ == "__main__":
+    from utils import log_config
+
+    log = log_config.log()
     log.info(f"EXPERIMENT_HANDLER BOOTED")
     try:
         main(sys.argv[1:])

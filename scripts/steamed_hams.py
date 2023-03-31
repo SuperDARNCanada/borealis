@@ -12,10 +12,8 @@
 import argparse
 import sys
 import subprocess as sp
-import datetime
 import os
 import time
-import json
 
 PYTHON_VERSION = os.environ['PYTHON_VERSION']
 
@@ -180,13 +178,15 @@ modules = {"brian": "",
            "radar_control": "",
            "data_write": "",
            "realtime": "",
-           "rx_signal_processing": ""}
+           "rx_signal_processing": "",
+           "usrp_driver": ""}
 
 for mod in modules.keys():
     opts = python_opts.format(module=mod)
     modules[mod] = f"source borealis_env{PYTHON_VERSION}/bin/activate; python{PYTHON_VERSION} {opts} src/{mod}.py" \
 
 modules['data_write'] = modules['data_write'] + " " + data_write_args
+modules['usrp_driver'] = modules['usrp_driver'] + " " + f'{mode} --c_debug_opts="{c_debug_opts}"'
 
 if args.kwargs_string:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
@@ -195,36 +195,11 @@ else:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
                                     args.scheduling_mode_type
     
-# Configure C progs
-c_progs = ['usrp_driver']
-for cprg in c_progs:
-    modules[cprg] = f"source mode {mode}; {c_debug_opts} {cprg}"
+# Bypass the python wrapper to run cuda-gdb
+if mode == "debug":
+    modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
 
-# Configure terminal output to also go to file.
-now = datetime.datetime.utcnow()
-day_dir = now.strftime("%Y%m%d")
-logfile_timestamp = now.strftime("%Y.%m.%d.%H:%M")
-
-# Gather the borealis configuration information
-if not os.environ["BOREALISPATH"]:
-    raise ValueError("BOREALISPATH env variable not set")
-if not os.environ['RADAR_ID']:
-    raise ValueError('RADAR_ID env variable not set')
-path = f'{os.environ["BOREALISPATH"]}/config/' \
-        f'{os.environ["RADAR_ID"]}/' \
-        f'{os.environ["RADAR_ID"]}_config.ini'
-try:
-    with open(path, 'r') as data:
-        raw_config = json.load(data)
-except IOError:
-    print(f'IOError on config file at {path}')
-    raise
-
-log_dir = raw_config['log_directory']
-sp.call("mkdir -p " + log_dir, shell=True)
-for mod in modules.keys():
-    modules[mod] = modules[mod] + f" 2>&1 | tee {log_dir}/{logfile_timestamp}-{mod}; bash"
-
+# Set up the screenrc file and populate it
 screenrc = BOREALISSCREENRC.format(
     START_RT=modules['realtime'],
     START_BRIAN=modules['brian'],
@@ -239,11 +214,13 @@ screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"
 with open(screenrc_file, 'w') as f:
     f.write(screenrc)
 
+# Clean up any residuals in shared memory and dead screens
 sp.call("rm -r /dev/shm/*", shell=True)
 sp.call("screen -X -S borealis quit", shell=True)
 
 # Give the os a chance to free all previously used sockets, etc.
 time.sleep(1)
 
+# Lights, camera, action!
 screen_launch = "screen -S borealis -c " + screenrc_file
 sp.call(screen_launch, shell=True)

@@ -54,7 +54,6 @@ class SCDUtils(object):
         self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {kwargs_string}"
         self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
-
     def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string=''):
         """
         Checks the line parameters to see if they are valid and then returns a dict with all the
@@ -143,7 +142,6 @@ class SCDUtils(object):
 
         return scd_lines
 
-
     def fmt_line(self, line_dict):
         """
         Formats a dictionary with line info into a text line for file.
@@ -161,7 +159,6 @@ class SCDUtils(object):
                                         duration=line_dict["duration"],
                                         kwargs_string=line_dict["kwargs_string"])
         return line_str
-
 
     def write_scd(self, scd_lines):
         """
@@ -183,7 +180,6 @@ class SCDUtils(object):
         with open(self.scd_filename, 'w') as f:
             for line in text_lines:
                 f.write(f"{line}\n")
-
 
     def add_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
                  duration='-', kwargs_string=''):
@@ -227,7 +223,6 @@ class SCDUtils(object):
 
         self.write_scd(new_scd)
 
-
     def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
                     duration='-', kwargs_string=''):
         """
@@ -260,7 +255,6 @@ class SCDUtils(object):
             raise ValueError("Line does not exist in SCD")
 
         self.write_scd(scd_lines)
-
 
     def get_relevant_lines(self, yyyymmdd, hhmm):
         """
