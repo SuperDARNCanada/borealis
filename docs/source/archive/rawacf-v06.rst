@@ -1,52 +1,49 @@
-.. _antennas_iq:
+===========
+rawacf v0.6
+===========
 
-================
-antennas_iq v0.7
-================
-
-This is the most up to date version of this file format produced by Borealis version 0.7, the
+This is the most up to date version of this file format produced by Borealis version 0.6, the
 current version.
 
 For data files from previous Borealis software versions, see `here
 <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`__.
 
-The pyDARNio format class for this format is BorealisAntennasIq found in the `borealis_formats
-<https://github.com/SuperDARN/pyDARNio/blob/main/pydarnio/borealis/borealis_formats.py>`_.
+The pyDARNio format class for this format is BorealisRawacf found in the `borealis_formats
+<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
 
-The antennas_iq format is intended to hold individual antennas I and Q data. The data is filtered,
-but is not averaged. 
+The rawacf format is intended to hold beamformed, averaged, correlated data.
 
 Both site files and array-restructured files exist for this file type. Both are described below.
 
------------------------
-antennas_iq array files
------------------------
+------------------
+rawacf array files
+------------------
 
 Array restructured files are produced after the radar has finished writing a file and contain record
 data in multi-dimensional arrays so as to avoid repeated values, shorten the read time, and improve
 human readability. Fields that are unique to the record are written as arrays where the first
 dimension is equal to the number of records recorded. Other fields that are unique to the slice or
-experiment (and are therefore repeated for all records) are written only once. 
+experiment (and are therefore repeated for all records) are written only once.
 
 The group names in these files are the field names themselves, greatly reducing the number of group
 names in the file when compared to site files and making the file much more human readable.
 
-The naming convention of the antennas_iq array-structured files are: ::
+The naming convention of the rawacf array-structured files are: ::
 
-    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].antennas_iq.hdf5
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].rawacf.hdf5
 
 For example: ::
-    
-    20191105.1400.02.sas.0.antennas_iq.hdf5
+
+    20191105.1400.02.sas.0.rawacf.hdf5
 
 This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
 provides data for slice 0 of the experiment that ran at that time. It has been array restructured
 because it does not have a .site designation at the end of the filename.
 
 These files are zlib compressed which is native to hdf5 and no decompression is necessary before
-reading using your hdf5 library. 
+reading using your hdf5 library.
 
-The file fields in the antennas_iq array files are:
+The file fields in the rawacf array files are:
 
 +-----------------------------------+---------------------------------------------+
 | | **FIELD NAME**                  | **description**                             |
@@ -58,19 +55,20 @@ The file fields in the antennas_iq array files are:
 | | [num_records]                   | | transmitter. A '1' indicates an agc fault |
 | |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
-| | **antenna_arrays_order**        | | States what order the data is in and      |
-| | *bytes*                         | | describes the data layout for the         |
-| | [num_antennas]                  | | num_antennas data dimension               |
-| |                                 | | Antennas are recorded main array          |
-| |                                 | | ascending and then interferometer array   |
-| |                                 | | ascending                                 |
+| | **averaging_method**            | | A string describing the averaging method. |
+| | *unicode*                       | | Default is 'mean' but an experiment can   |
+| |                                 | | set this to 'median' to get the median of |
+| |                                 | | all sequences in an integration period,   |
+| |                                 | | and other methods to combine all          |
+| |                                 | | sequences in an integration period could  |
+| |                                 | | be added in the future.                   |
 +-----------------------------------+---------------------------------------------+
 | | **beam_azms**                   | | A list of the beam azimuths for each beam |
 | | *float64*                       | | in degrees off boresite. Note that this   |
 | | [num_records x                  | | is padded with zeroes for any record      |
 | | max_num_beams]                  | | which has num_beams less than the         |
-| |                                 | | max_num_beams. The num_beams field should | 
-| |                                 | | be used to read the correct number of     | 
+| |                                 | | max_num_beams. The num_beams field should |
+| |                                 | | be used to read the correct number of     |
 | |                                 | | beams for each record.                    |
 +-----------------------------------+---------------------------------------------+
 | | **beam_nums**                   | | A list of beam numbers used in this slice |
@@ -94,24 +92,16 @@ The file fields in the antennas_iq array files are:
 | |                                 | | characters. Typically begins with the     |
 | |                                 | | latest git tag of the software.           |
 +-----------------------------------+---------------------------------------------+
-| | **data**                        | | A set of samples (complex float) at given |
-| | *complex64*                     | | sample rate. Note that records that do not|
-| | [num_records x                  | | have num_sequences = max_num_sequences    |
-| | num_antennas x                  | | will have padded zeros. The num_sequences |
-| | max_num_sequences x             | | array should be used to determine the     |
-| | num_samps]                      | | correct number of sequences to read for   |
-| |                                 | | the record.                               |
-+-----------------------------------+---------------------------------------------+
-| | **data_descriptors**            | | Denotes what each data dimension          |
-| | *bytes*                         | | represents. = 'num_records',              |
-| | [4]                             | | ‘num_antennas’, ‘max_num_sequences’,      |
-| |                                 | | ‘num_samps’                               |
+| | **correlation_descriptors**     | | Denotes what each correlation dimension   |
+| | *unicode*                       | | (in main_acfs, intf_acfs, xcfs)           |
+| | [4]                             | | represents. = 'num_records',              |
+| |                                 | | ‘max_num_beams’, 'num_ranges', 'num_lags' |
 +-----------------------------------+---------------------------------------------+
 | | **data_normalization_factor**   | | Scale of all the filters used,            |
-| | *float32*                       | | multiplied, for a total scale to          | 
+| | *float32*                       | | multiplied, for a total scale to          |
 | |                                 | | normalize the data by.                    |
 +-----------------------------------+---------------------------------------------+
-| | **experiment_comment**          | | Comment provided in experiment about the  | 
+| | **experiment_comment**          | | Comment provided in experiment about the  |
 | | *unicode*                       | | experiment as a whole.                    |
 +-----------------------------------+---------------------------------------------+
 | | **experiment_id**               | | Number used to identify the experiment.   |
@@ -135,13 +125,20 @@ The file fields in the antennas_iq array files are:
 | | [num_records]                   | | False if it unlocked at least once.       |
 +-----------------------------------+---------------------------------------------+
 | | **gps_to_system_time_diff**     | | The max time difference between box_time  |
-| | *float32*                       | | (GPS time) and system time (NTP) during   |
-| | [num_records]                   | | the integration. Negative when GPS time   |
-| |                                 | | is ahead of system time.                  |
+| | *float32*                       | | GPS time) and system time (NTP) during the|
+| | [num_records]                   | | integration. Negative when GPS time is    |
+| |                                 | | ahead of system time.                     |
 +-----------------------------------+---------------------------------------------+
 | | **int_time**                    | | Integration time in seconds.              |
-| | *float32*                       | |                                           | 
-| | [num_records]                   | |                                           | 
+| | *float32*                       | |                                           |
+| | [num_records]                   | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **intf_acfs**                   | | Interferometer array correlations. Note   |
+| | *complex64*                     | | that records that do not have num_beams = |
+| | [num_records x                  | | max_num_beams will have padded zeros. The |
+| | max_num_beams x                 | | num_beams array should be used to         |
+| | num_ranges x                    | | determine the correct number of beams to  |
+| | num_lags]                       | | read for the record.                      |
 +-----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**          | | Number of interferometer array antennas   |
 | | *uint32*                        | |                                           |
@@ -156,8 +153,15 @@ The file fields in the antennas_iq array files are:
 | | [num_records]                   | | transmitter. A '1' indicates low power    |
 | |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
+| | **main_acfs**                   | | Main array correlations. Note             |
+| | *complex64*                     | | that records that do not have num_beams = |
+| | [num_records x                  | | max_num_beams will have padded zeros. The |
+| | max_num_beams x                 | | num_beams array should be used to         |
+| | num_ranges x                    | | determine the correct number of beams to  |
+| | num_lags]                       | | read for the record.                      |
++-----------------------------------+---------------------------------------------+
 | | **main_antenna_count**          | | Number of main array antennas             |
-| | *uint32*                        | |                                           | 
+| | *uint32*                        | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **noise_at_freq**               | | Noise at the receive frequency, with      |
 | | *float64*                       | | dimension = number of sequences.          |
@@ -170,25 +174,19 @@ The file fields in the antennas_iq array files are:
 | |                                 | | correct number of sequences to read for   |
 | |                                 | | the record.                               |
 +-----------------------------------+---------------------------------------------+
-| | **num_beams**                   | | The number of beams to calculate for each |
-| | *uint32*                        | | record.                                   | 
-| | [num_records]                   | |                                           | 
+| | **num_beams**                   | | The number of beams calculated for each   |
+| | *uint32*                        | | record. Allows the user to correctly read |
+| | [num_records]                   | | the data up to the correct number and     |
+| |                                 | | remove the padded zeros in the data       |
+| |                                 | | array.                                    |
 +-----------------------------------+---------------------------------------------+
 | | **num_blanked_samples**         | | The number of blanked samples for each    |
-| | *uint32*                        | | record.                                   | 
+| | *uint32*                        | | record.                                   |
 | | [num_records]                   | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **num_ranges**                  | | Number of ranges to calculate             |
-| | *uint32*                        | | correlations for.                         |
-+-----------------------------------+---------------------------------------------+
-| | **num_samps**                   | | Number of samples in the sampling         |
-| | *uint32*                        | | period. Each sequence has its own         |
-| |                                 | | sampling period. Will also be provided    |
-| |                                 | | as the last data_dimension value.         |
-+-----------------------------------+---------------------------------------------+
 | | **num_sequences**               | | Number of sampling periods (equivalent to |
-| | *int64*                         | | number sequences transmitted) in the      | 
-| | [num_records]                   | | integration time for each record. Allows  | 
+| | *int64*                         | | number sequences transmitted) in the      |
+| | [num_records]                   | | integration time for each record. Allows  |
 | |                                 | | the user to correctly read the data up to |
 | |                                 | | the correct number and remove the padded  |
 | |                                 | | zeros in the data array.                  |
@@ -198,10 +196,6 @@ The file fields in the antennas_iq array files are:
 | | [num_records]                   | | than 1, data should exist in another file |
 | |                                 | | for the same time period as that record   |
 | |                                 | | for the other slice.                      |
-+-----------------------------------+---------------------------------------------+
-| | **pulse_phase_offset**          | | For pulse encoding phase, in degrees      |
-| | *float32*                       | | offset. Contains one phase offset per     | 
-| | [] or [num pulses x 1]          | | pulse in pulses                           |
 +-----------------------------------+---------------------------------------------+
 | | **pulses**                      | | The pulse sequence in units of the        |
 | | *uint32*                        | | tau_spacing.                              |
@@ -217,95 +211,103 @@ The file fields in the antennas_iq array files are:
 | | **samples_data_type**           | | C data type of the samples, provided for  |
 | | *unicode*                       | | user friendliness. = 'complex float'      |
 +-----------------------------------+---------------------------------------------+
-| | **scan_start_marker**           | | Designates if the record is the first in  | 
+| | **scan_start_marker**           | | Designates if the record is the first in  |
 | | *bool*                          | | a scan (scan is defined by the            |
 | | [num_records]                   | | experiment).                              |
 +-----------------------------------+---------------------------------------------+
-| | **scheduling_mode**             | | The mode being run during this time       | 
+| | **scheduling_mode**             | | The mode being run during this time       |
 | | *unicode*                       | | period (ex. 'common', 'special',          |
 | |                                 | | 'discretionary').                         |
 +-----------------------------------+---------------------------------------------+
 | | **slice_comment**               | | Additional text comment that describes    |
-| | *unicode*                       | | the slice written in this file. The slice |
-| |                                 | | number of this file is provided in the    |
-| |                                 | | filename.                                 | 
+| | *unicode*                       | | the slice written in this file.           |
 +-----------------------------------+---------------------------------------------+
 | | **slice_id**                    | | The slice id of this file.                |
 | | *uint32*                        | |                                           |
-+-----------------------------------+---------------------------------------------+ 
-| | **slice_interfacing**           | | The interfacing of this slice to          | 
++-----------------------------------+---------------------------------------------+
+| | **slice_interfacing**           | | The interfacing of this slice to          |
 | | *unicode*                       | | other slices for each record. String      |
-| | [num_records]                   | | representation of the python dictionary   | 
-| |                                 | | of {slice : interface_type, ... }. Can    | 
-| |                                 | | differ between records if slices updated. | 
+| | [num_records]                   | | representation of the python dictionary   |
+| |                                 | | of {slice : interface_type, ... }. Can    |
+| |                                 | | differ between records if slices updated. |
 +-----------------------------------+---------------------------------------------+
 | | **sqn_timestamps**              | | A list of GPS timestamps corresponding to |
-| | *float64*                       | | the beginning of transmission for each    | 
+| | *float64*                       | | the beginning of transmission for each    |
 | | [num_records x                  | | sampling period in the integration time.  |
-| | max_num_sequences]              | | These timestamps come back from the USRP  | 
+| | max_num_sequences]              | | These timestamps come back from the USRP  |
 | |                                 | | driver and the USRPs are GPS disciplined  |
 | |                                 | | and synchronized using the Octoclock.     |
 | |                                 | | Provided in seconds since epoch.          |
-| |                                 | | Note that records that do not have        | 
-| |                                 | | num_sequences = max_num_sequences will    | 
-| |                                 | | have padded zeros. The num_sequences      | 
-| |                                 | | array should be used to determine the     | 
-| |                                 | | correct number of sequences to read for   | 
+| |                                 | | Note that records that do not have        |
+| |                                 | | num_sequences = max_num_sequences will    |
+| |                                 | | have padded zeros. The num_sequences      |
+| |                                 | | array should be used to determine the     |
+| |                                 | | correct number of sequences to read for   |
 | |                                 | | the record.                               |
 +-----------------------------------+---------------------------------------------+
 | | **station**                     | | Three-letter radar identifier.            |
-| | *unicode*                       | |                                           | 
+| | *unicode*                       | |                                           |
 +-----------------------------------+---------------------------------------------+
-| | **tau_spacing**                 | | The minimum spacing between pulses in     | 
-| | *uint32*                        | | microseconds. Spacing between pulses is   | 
+| | **tau_spacing**                 | | The minimum spacing between pulses in     |
+| | *uint32*                        | | microseconds. Spacing between pulses is   |
 | |                                 | | always a multiple of this.                |
 +-----------------------------------+---------------------------------------------+
-| | **tx_pulse_len**                | | Length of the transmit pulse in           | 
+| | **tx_pulse_len**                | | Length of the transmit pulse in           |
 | | *uint32*                        | | microseconds.                             |
 +-----------------------------------+---------------------------------------------+
+| | **xcfs**                        | | Cross correlations of interferometer to   |
+| | *complex64*                     | | main array. Note                          |
+| | [num_records x                  | | that records that do not have num_beams = |
+| | max_num_beams x                 | | max_num_beams will have padded zeros. The |
+| | num_ranges x                    | | num_beams array should be used to         |
+| | num_lags]                       | | determine the correct number of beams to  |
+| |                                 | | read for the record.                      |
++-----------------------------------+---------------------------------------------+
 
-----------------------
-antennas_iq site files
-----------------------
+-----------------
+rawacf site files
+-----------------
 
 Site files are produced by the Borealis code package and have the data in a record by record style
 format. In site files, the hdf5 group names (ie record names) are given as the timestamp in ms past
-epoch of the first sequence or sampling period recorded in the record. 
+epoch of the first sequence or sampling period recorded in the record.
 
-The naming convention of the antennas_iq site-structured files are: ::
+The naming convention of the rawacf site-structured files are: ::
 
-    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].antennas_iq.hdf5.site
+    [YYYYmmDD].[HHMM].[SS].[station_id].[slice_id].rawacf.hdf5.site
 
 For example: ::
-    
-    20191105.1400.02.sas.0.antennas_iq.hdf5.site 
-    
+
+    20191105.1400.02.sas.0.rawacf.hdf5.site
+
 This is the file that began writing at 14:00:02 UT on November 5 2019 at the Saskatoon site, and it
-provides data for slice 0 of the experiment that ran at that time. 
+provides data for slice 0 of the experiment that ran at that time.
 
 These files are often bzipped after they are produced.
 
-The file fields under the record name in antennas_iq site files are:
+The file fields under the record name in rawacf site files are:
 
 +----------------------------------+---------------------------------------------+
 | | **Field name**                 | **description**                             |
-| | *type*                         |                                             |  
+| | *type*                         |                                             |
 +==================================+=============================================+
 | | **agc_status_word**            | | AGC status word. Bit position             |
 | | *uint32*                       | | corresponds to the USRP motherboard/      |
 | |                                | | transmitter. A '1' indicates an agc fault |
 | |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
-| | **antenna_arrays_order**       | | States what order the data is in and      | 
-| | *[bytes, ]*                    | | describes the data layout for the         |
-| |                                | | num_antennas data dimension. Antennas are |
-| |                                | | recorded main array ascending and then    | 
-| |                                | | interferometer array ascending.           |
+| | **averaging_method**           | | A string describing the averaging method. |
+| | *unicode*                      | | Default is 'mean' but an experiment can   |
+| |                                | | set this to 'median' to get the median of |
+| |                                | | all sequences in an integration period,   |
+| |                                | | and other methods to combine all          |
+| |                                | | sequences in an integration period could  |
+| |                                | | be added in the future.                   |
 +----------------------------------+---------------------------------------------+
 | | **beam_azms**                  | | A list of the beam azimuths for each      |
 | | *[float64, ]*                  | | beam in degrees off boresite.             |
 +----------------------------------+---------------------------------------------+
-| | **beam_nums**                  | | A list of beam numbers used in this slice | 
+| | **beam_nums**                  | | A list of beam numbers used in this slice |
 | | *[uint32, ]*                   | | in this record.                           |
 +----------------------------------+---------------------------------------------+
 | | **blanked_samples**            | | Samples that should be blanked because    |
@@ -315,23 +317,19 @@ The file fields under the record name in antennas_iq site files are:
 | |                                | | pulses array due to multiple slices in a  |
 | |                                | | single sequence.                          |
 +----------------------------------+---------------------------------------------+
-| | **borealis_git_hash**          | | Identifies the version of Borealis that   | 
-| | *unicode*                      | | made this data. Contains git commit hash  | 
-| |                                | | characters. Typically begins with the     | 
+| | **borealis_git_hash**          | | Identifies the version of Borealis that   |
+| | *unicode*                      | | made this data. Contains git commit hash  |
+| |                                | | characters. Typically begins with the     |
 | |                                | | latest git tag of the software.           |
 +----------------------------------+---------------------------------------------+
-| | **data**                       | | A contiguous set of samples (complex      | 
-| | *[complex64, ]*                | | float) at given sample rate. Dimensions   |
-| |                                | | match data_dimensions field.              |
+| | **correlation_descriptors**    | | Denotes what each correlation dimension   |
+| | *[unicode, ]*                  | | (in main_acfs, intf_acfs, xcfs)           |
+| |                                | | represents. ('num_beams, 'num_ranges',    |
+| |                                | | 'num_lags')                               |
 +----------------------------------+---------------------------------------------+
-| | **data_descriptors**           | | Denotes what each data dimension          | 
-| | *[bytes, ]*                    | | represents. = ‘num_antennas’,             |
-| |                                | | ‘num_sequences’, ‘num_samps’ for          |
-| |                                | | antennas_iq                               |
-+----------------------------------+---------------------------------------------+
-| | **data_dimensions**            | | The dimensions of the data.               |
-| | *[uint32, ]*                   | | Dimensions correspond to                  |
-| |                                | | data_descriptors.                         |
+| | **correlation_dimensions**     | | The dimensions in which to reshape the    |
+| | *[uint32, ]*                   | | acf or xcf datasets. Dimensions           |
+| |                                | | correspond to correlation_descriptors.    |
 +----------------------------------+---------------------------------------------+
 | | **data_normalization_factor**  | | Scale of all the filters used, multiplied |
 | | *float32*                      | | for a total scale to normalize the data   |
@@ -352,8 +350,8 @@ The file fields under the record name in antennas_iq site files are:
 | | **first_range_rtt**            | | Round trip time of flight to first range  |
 | | *float32*                      | | in microseconds.                          |
 +----------------------------------+---------------------------------------------+
-| | **freq**                       | | The frequency used for this experiment,   | 
-| | *uint32*                       | | in kHz. This is the frequency the data    | 
+| | **freq**                       | | The frequency used for this experiment,   |
+| | *uint32*                       | | in kHz. This is the frequency the data    |
 | |                                | | has been filtered to.                     |
 +----------------------------------+---------------------------------------------+
 | | **gps_locked**                 | | Designates if the local GPS had a lock    |
@@ -365,7 +363,10 @@ The file fields under the record name in antennas_iq site files are:
 | |                                | | ahead of system time.                     |
 +----------------------------------+---------------------------------------------+
 | | **int_time**                   | | Integration time in seconds.              |
-| | *float32*                      | |                                           | 
+| | *float32*                      | |                                           |
++----------------------------------+---------------------------------------------+
+| | **intf_acfs**                  | | Interferometer array correlations.        |
+| | *[complex64, ]*                | |                                           |
 +----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**         | | Number of interferometer array antennas   |
 | | *uint32*                       | |                                           |
@@ -381,34 +382,25 @@ The file fields under the record name in antennas_iq site files are:
 | |                                | | transmitter. A '1' indicates low power    |
 | |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
-| | **main_antenna_count**         | | Number of main array antennas             |
-| | *uint32*                       | |                                           | 
+| | **main_acfs**                  | | Main array correlations.                  |
+| | *[complex64, ]*                | |                                           |
 +----------------------------------+---------------------------------------------+
-| | **noise_at_freq**              | | Noise at the receive frequency, with      | 
-| | *[float64, ]*                  | | dimension = number of sequences.          | 
-| |                                | | 20191114: not currently implemented and   | 
+| | **main_antenna_count**         | | Number of main array antennas             |
+| | *uint32*                       | |                                           |
++----------------------------------+---------------------------------------------+
+| | **noise_at_freq**              | | Noise at the receive frequency, with      |
+| | *[float64, ]*                  | | dimension = number of sequences.          |
+| |                                | | 20191114: not currently implemented and   |
 | |                                | | filled with zeros. Still a TODO.          |
 +----------------------------------+---------------------------------------------+
-| | **num_ranges**                 | | Number of ranges to calculate             |
-| | *uint32*                       | | correlations for.                         |
-+----------------------------------+---------------------------------------------+
-| | **num_samps**                  | | Number of samples in the sampling         |
-| | *uint32*                       | | period. Each sequence has its own         |
-| |                                | | sampling period. Will also be provided    |
-| |                                | | as the last data_dimension value.         |
-+----------------------------------+---------------------------------------------+
-| | **num_sequences**              | | Number of sampling periods (equivalent to | 
-| | *int64*                        | | number sequences transmitted) in the      | 
+| | **num_sequences**              | | Number of sampling periods (equivalent to |
+| | *int64*                        | | number sequences transmitted) in the      |
 | |                                | | integration time.                         |
 +----------------------------------+---------------------------------------------+
 | | **num_slices**                 | | Number of slices used simultaneously in   |
 | | *int64*                        | | this record by the experiment. If more    |
 | |                                | | than 1, data should exist in another file |
 | |                                | | for this time period for the other slice. |
-+----------------------------------+---------------------------------------------+
-| | **pulse_phase_offset**         | | For pulse encoding phase, in degrees      |
-| | *[float32, ]*                  | | offset. Contains one phase offset per     |
-| |                                | | pulse in pulses, or none.                 |
 +----------------------------------+---------------------------------------------+
 | | **pulses**                     | | The pulse sequence in units of the        |
 | | *[uint32, ]*                   | | tau_spacing.                              |
@@ -436,29 +428,32 @@ The file fields under the record name in antennas_iq site files are:
 +----------------------------------+---------------------------------------------+
 | | **slice_id**                   | | The slice id of this file.                |
 | | *uint32*                       | |                                           |
-+----------------------------------+---------------------------------------------+ 
-| | **slice_interfacing**          | | The interfacing of this slice to          | 
-| | *unicode*                      | | other slices. String representation of    |
-| |                                | | the python dictionary of                  | 
-| |                                | | {slice : interface_type, ... }            | 
 +----------------------------------+---------------------------------------------+
-| | **sqn_timestamps**             | | A list of GPS timestamps corresponding to | 
-| | *[float64, ]*                  | | the beginning of transmission for each    | 
-| |                                | | sampling period in the integration time.  | 
-| |                                | | These timestamps come from the USRP       | 
-| |                                | | driver and the USRPs are GPS disciplined  | 
-| |                                | | and synchronized using the Octoclock.     | 
+| | **slice_interfacing**          | | The interfacing of this slice to          |
+| | *unicode*                      | | other slices. String representation of    |
+| |                                | | the python dictionary of                  |
+| |                                | | {slice : interface_type, ... }            |
++----------------------------------+---------------------------------------------+
+| | **sqn_timestamps**             | | A list of GPS timestamps corresponding to |
+| | *[float64, ]*                  | | the beginning of transmission for each    |
+| |                                | | sampling period in the integration time.  |
+| |                                | | These timestamps come from the USRP       |
+| |                                | | driver and the USRPs are GPS disciplined  |
+| |                                | | and synchronized using the Octoclock.     |
 | |                                | | Provided in seconds since epoch.          |
 +----------------------------------+---------------------------------------------+
 | | **station**                    | | Three-letter radar identifier.            |
-| | *unicode*                      | |                                           | 
+| | *unicode*                      | |                                           |
 +----------------------------------+---------------------------------------------+
-| | **tau_spacing**                | | The minimum spacing between pulses in     | 
-| | *uint32*                       | | microseconds. Spacing between pulses is   | 
+| | **tau_spacing**                | | The minimum spacing between pulses in     |
+| | *uint32*                       | | microseconds. Spacing between pulses is   |
 | |                                | | always a multiple of this.                |
 +----------------------------------+---------------------------------------------+
-| | **tx_pulse_len**               | | Length of the transmit pulse in           | 
+| | **tx_pulse_len**               | | Length of the transmit pulse in           |
 | | *uint32*                       | | microseconds.                             |
++----------------------------------+---------------------------------------------+
+| | **xcfs**                       | | Cross correlations of interferometer to   |
+| | *[complex64, ]*                | | main array.                               |
 +----------------------------------+---------------------------------------------+
 
 ------------------------
@@ -470,3 +465,21 @@ code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
 Restructuring between site and array formats occur within the BorealisRestructure class, found `here
 <https://github.com/SuperDARN/pyDARNio/blob/main/pydarnio/borealis/borealis_restructure.py>`__.
+
+----------------------------------------
+rawacf to rawacf SDARN (DMap) Conversion
+----------------------------------------
+
+Conversion to SDARN IO (DMap rawacf) is available but can fail based on experiment complexity. The
+conversion also reduces the precision of the data due to conversion from complex floats to int of
+all samples. Similar precision is lost in timestamps.
+
+HDF5 is a much more user-friendly format and we encourage the use of this data if possible. Please
+reach out if you have questions on how to use the Borealis rawacf files.
+
+The mapping to rawacf dmap files is completed as follows:
+
+..  toctree::
+    :maxdepth: 2
+
+    ./../rawacf_mapping

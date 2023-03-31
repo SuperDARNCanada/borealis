@@ -24,12 +24,10 @@ import subprocess as sp
 import sys
 import threading
 import time
-import warnings
 
 # third-party
+import h5py
 import numpy as np
-import deepdish as dd
-import tables
 import zmq
 from scipy.constants import speed_of_light
 
@@ -66,20 +64,14 @@ class SliceData:
     borealis_git_hash: str = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Version and commit hash of Borealis at runtime'})
-    correlation_descriptors: list[str] = field(
-        metadata={'groups': ['rawacf'],
-                  'description': 'Denotes what each acf/xcf dimension represents'})
-    correlation_dimensions: np.ndarray = field(
-        metadata={'groups': ['rawacf'],
-                  'description': 'Dimensions in which to reshape the acf/xcf data'})
     data: np.ndarray = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
                   'description': 'Contiguous set of samples at the given sample rate'})
     data_descriptors: list[str] = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Denotes what each data dimension represents'})
     data_dimensions: np.ndarray = field(
-        metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Dimensions in which to reshape the data'})
     data_normalization_factor: float = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
@@ -100,10 +92,10 @@ class SliceData:
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Name of the experiment class'})
     first_range: int = field(
-        metadata={'groups': ['bfiq', 'rawacf'],
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Distance to first range in km'})
     first_range_rtt: float = field(
-        metadata={'groups': ['bfiq', 'rawacf'],
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Round trip time of flight to first range in microseconds'})
     freq: float = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
@@ -125,7 +117,7 @@ class SliceData:
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Number of interferometer array antennas'})
     lags: np.ndarray = field(
-        metadata={'groups': ['bfiq', 'rawacf'],         # TODO: Should this be in antennas_iq too? Or removed from bfiq?
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Time difference between pairs of pulses in pulse array, in units of tau_spacing'})
     lp_status_word: int = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
@@ -141,7 +133,7 @@ class SliceData:
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Noise at the receive frequency'})     # TODO: Implement and give units
     num_ranges: int = field(
-        metadata={'groups': ['bfiq'],                   # TODO: Does this need to be in more file types?
+        metadata={'groups': ['antennas_iq', 'bfiq'],
                   'description': 'Number of ranges to calculate correlations for'})
     num_samps: int = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawrf'],
@@ -165,7 +157,7 @@ class SliceData:
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Pulse sequence in units of tau_spacing'})
     range_sep: int = field(
-        metadata={'groups': ['bfiq', 'rawacf'],         # TODO: Does this need to be in antennas_iq?
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Range gate separation (equivalent distance between samples) in km'})
     rx_center_freq: float = field(
         metadata={'groups': ['rawrf'],
@@ -540,56 +532,69 @@ class DataWrite(object):
         self.first_time = True
 
     @staticmethod
-    def write_json_file(filename, data_dict):
+    def write_json_file(filename, slice_data, file_type):
         """
         Write out data to a json file. If the file already exists it will be overwritten.
 
         :param  filename:   The path to the file to write out
         :type   filename:   str
-        :param  data_dict:  Python dictionary to write out to the JSON file.
-        :type   data_dict:  dict
+        :param  slice_data: Data to write out to the JSON file.
+        :type   slice_data: SliceData
+        :param  file_type:  The type of file to write.
+        :type   file_type:  str
         """
+        data_dict = {}
+        for relevant_field in SliceData.type_fields(file_type):
+            data_dict[relevant_field] = getattr(slice_data, relevant_field)
 
         with open(filename, 'w+') as f:
             f.write(json.dumps(data_dict))
 
     @staticmethod
-    def write_hdf5_file(filename, data_dict, dt_str):
+    def write_hdf5_file(filename, slice_data, dt_str, file_type):
         """
         Write out data to an HDF5 file. If the file already exists it will be overwritten.
 
         :param  filename:   The path to the file to write out
         :type   filename:   str
-        :param  data_dict:  Python dictionary to write out to the HDF5 file.
-        :type   data_dict:  dict
+        :param  slice_data: Data to write out to the HDF5 file.
+        :type   slice_data: SliceData
         :param  dt_str:     A datetime timestamp of the first transmission time in the record
         :type   dt_str:     str
+        :param  file_type:  Type of file to write.
+        :type   file_type:  str
         """
 
-        def convert_to_numpy(dict_of_lists):
-            """
-            Converts lists stored in dict into numpy array. Recursive.
-
-            :param  dict_of_lists: Dictionary with lists to convert to numpy arrays.
-            :type   dict_of_lists: dict
-            """
-            for k, v in dict_of_lists.items():
-                if isinstance(v, dict):
-                    convert_to_numpy(v)
-                elif isinstance(v, list):
-                    dict_of_lists[k] = np.array(v)
-                else:
-                    continue
-
-        convert_to_numpy(data_dict)
-
-        time_stamped_dd = {dt_str: data_dict}
-
-        # Ignoring warning that arises from using integers as the keys of the data dictionary.
-        warnings.simplefilter('ignore', tables.NaturalNameWarning)
-
         try:
-            dd.io.save(filename, time_stamped_dd, compression=None)
+            with h5py.File(filename, 'a') as f:
+                group = f.create_group(dt_str)
+
+                for relevant_field in SliceData.type_fields(file_type):
+                    array_field = False
+                    data = getattr(slice_data, relevant_field)
+
+                    # Massage the data into the correct types
+                    if isinstance(data, dict):
+                        data = np.bytes_(str(data))
+                    elif isinstance(data, str):
+                        data = np.bytes_(data)
+                    elif isinstance(data, bool):
+                        data = np.bool_(data)
+                    elif isinstance(data, list):
+                        if isinstance(data[0], str):
+                            data = np.bytes_(data)
+                        else:
+                            data = np.array(data)
+                        array_field = True
+                    elif isinstance(data, np.ndarray):
+                        array_field = True
+
+                    # Store in the file appropriately
+                    if array_field:
+                        group.create_dataset(relevant_field, data=data)
+                    else:
+                        group.attrs[relevant_field] = data
+
         except Exception as e:
             if "No space left on device" in str(e):
                 log.critical("no space left on device", error=e)
@@ -601,14 +606,14 @@ class DataWrite(object):
                 sys.exit(-1)
 
     @staticmethod
-    def write_dmap_file(filename, data_dict):
+    def write_dmap_file(filename, slice_data):
         """
         Write out data to a dmap file. If the file already exists it will be overwritten.
 
         :param  filename:   The path to the file to write out
         :type   filename:   str
-        :param  data_dict:  Python dictionary to write out to the dmap file.
-        :type   data_dict:  dict
+        :param  slice_data: Data to write out to the dmap file.
+        :type   slice_data: SliceData
         """
 
         # TODO: Complete this by parsing through the dictionary and write out to proper dmap format
@@ -739,10 +744,6 @@ class DataWrite(object):
                     log.exception("unknown error when making dirs", exception=err)
                     sys.exit(-1)
 
-            data_dict = {}
-            for f in SliceData.type_fields(file_type):
-                data_dict[f] = getattr(aveperiod_data, f)
-
             if file_ext == 'hdf5':
                 full_two_hr_file = f"{dataset_directory}/{two_hr_file_with_type}.hdf5.site"
 
@@ -759,21 +760,30 @@ class DataWrite(object):
                         log.exception("unknown error when opening file", exception=err)
                         sys.exit(-1)
 
-                self.write_hdf5_file(tmp_file, data_dict, epoch_milliseconds)
+                self.write_hdf5_file(full_two_hr_file, aveperiod_data, epoch_milliseconds, file_type)
 
-                # Use external h5copy utility to move new record into 2hr file.
-                cmd = 'h5copy -i {newfile} -o {twohr} -s {dtstr} -d {dtstr}'
-                cmd = cmd.format(newfile=tmp_file, twohr=full_two_hr_file, dtstr=epoch_milliseconds)
+                # Send rawacf data to realtime (if there is any)
+                if file_type == 'rawacf':
+                    group = {}
+                    for relevant_field in SliceData.type_fields(file_type):
+                        data = getattr(aveperiod_data, relevant_field)
 
-                # TODO(keith): improve call to subprocess.
-                sp.call(cmd.split())
-                so.send_data(rt_dw['socket'], rt_dw['iden'], tmp_file)
-                # Temp file is removed in real time module.
+                        # Massage the data into the correct types
+                        if isinstance(data, dict):
+                            data = str(data)
+                        elif isinstance(data, list):
+                            if isinstance(data[0], str):
+                                data = np.bytes_(data)
+                            else:
+                                data = np.array(data)
+                        group[relevant_field] = data
+                    full_dict = {epoch_milliseconds: group}
+                    so.send_bytes(rt_dw['socket'], rt_dw['iden'], pickle.dumps(full_dict))
 
             elif file_ext == 'json':
-                self.write_json_file(tmp_file, data_dict)
+                self.write_json_file(tmp_file, aveperiod_data, file_type)
             elif file_ext == 'dmap':
-                self.write_dmap_file(tmp_file, data_dict)
+                self.write_dmap_file(tmp_file, aveperiod_data)
 
         def write_correlations(aveperiod_data):
             """
@@ -831,8 +841,7 @@ class DataWrite(object):
                 array_3d = array_expectation_value.reshape((num_beams, num_ranges, num_lags))
                 array_3d[:, second_pulse_sample_num:, 0] = array_3d[:, second_pulse_sample_num:, -1]
 
-                # Flatten back to a list
-                return array_3d.flatten()
+                return array_3d
 
             for slice_num in main_acfs:
                 slice_data = aveperiod_data[slice_num]
@@ -847,9 +856,9 @@ class DataWrite(object):
                 slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'])
 
             for slice_num, slice_data in aveperiod_data.items():
-                slice_data.correlation_descriptors = ['num_beams', 'num_ranges', 'num_lags']
-                slice_data.correlation_dimensions = np.array([len(slice_data.beam_nums), slice_data.num_ranges,
-                                                              slice_data.lags.shape[0]], dtype=np.uint32)
+                slice_data.data_descriptors = ['num_beams', 'num_ranges', 'num_lags']
+                slice_data.data_dimensions = np.array([len(slice_data.beam_nums), slice_data.num_ranges,
+                                                       slice_data.lags.shape[0]], dtype=np.uint32)
 
                 name = dataset_name.format(sliceid=slice_num, dformat="rawacf")
                 output_file = dataset_location.format(name=name)
@@ -874,17 +883,16 @@ class DataWrite(object):
                 slice_data.data_descriptors = bfiq['data_descriptors']
                 slice_data.antenna_arrays_order = []
 
-                flattened_data = []
+                all_data = []
                 num_antenna_arrays = 1
                 slice_data.antenna_arrays_order.append("main")
-                flattened_data.append(bfiq[slice_num]['main_data'].flatten())
+                all_data.append(bfiq[slice_num]['main_data'])
                 if "intf" in bfiq[slice_num]:
                     num_antenna_arrays += 1
                     slice_data.antenna_arrays_order.append("intf")
-                    flattened_data.append(bfiq[slice_num]['intf_data'].flatten())
+                    all_data.append(bfiq[slice_num]['intf_data'])
 
-                flattened_data = np.concatenate(flattened_data)
-                slice_data.data = flattened_data
+                slice_data.data = np.stack(all_data, axis=0)
 
                 slice_data.num_samps = np.uint32(bfiq[slice_num]['num_samps'])
                 slice_data.data_dimensions = np.array([num_antenna_arrays, aveperiod_meta.num_sequences,
@@ -946,10 +954,9 @@ class DataWrite(object):
                     data = []
                     for k, data_dict in antenna_iq[slice_num][stage].items():
                         if k in stage_data.antenna_arrays_order:
-                            data.append(data_dict['data'].flatten())
+                            data.append(data_dict['data'])
 
-                    flattened_data = np.concatenate(data)
-                    stage_data.data = flattened_data
+                    stage_data.data = np.stack(data, axis=0)
 
                     final_data_params[slice_num][stage] = stage_data
 
@@ -992,11 +999,11 @@ class DataWrite(object):
                 shared_mem = shared_memory.SharedMemory(name=raw)
                 rawrf_array = np.ndarray((total_ants, num_rawrf_samps), dtype=np.complex64, buffer=shared_mem.buf)
 
-                samples_list.append(rawrf_array.flatten())
+                samples_list.append(rawrf_array)
 
                 shared_memory_locations.append(shared_mem)
 
-            slice_data.data = np.concatenate(samples_list)
+            slice_data.data = np.stack(samples_list, axis=0)
             slice_data.rx_sample_rate = np.float32(data_parsing.rx_rate)
             slice_data.num_samps = np.uint32(len(samples_list[0]) / total_ants)
             slice_data.data_descriptors = ["num_sequences", "num_antennas", "num_samps"]
@@ -1098,13 +1105,6 @@ class DataWrite(object):
 
                 all_slice_data[rx_freq.slice_id] = parameters
 
-        # We no longer need to deepcopy. The following fields are changed in each write_{type} method:
-        # rawacf:      [main_acfs, intf_acfs, xcfs, correlation_descriptors, correlation_dimensions]
-        # bfiq:        [data_descriptors, num_samps, antenna_arrays_order, data_dimensions, data]
-        # antennas_iq: [data_descriptors, num_samps, antenna_arrays_order, data_dimensions, data]
-        # rawrf:       [data_descriptors, num_samps, data, rx_sample_rate, data_dimensions, main_antenna_count,
-        #               intf_antenna_count]
-        # txdata:      completely uses its own fields
         if write_rawacf and data_parsing.mainacfs_available:
             write_correlations(all_slice_data)
         if write_bfiq and data_parsing.bfiq_available:
