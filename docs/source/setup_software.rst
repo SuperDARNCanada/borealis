@@ -126,18 +126,12 @@ name: radar) that will run Borealis
    abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'. ::
 
     cd $BOREALISPATH
-    sudo -E python3 install_radar_deps.py [radar abbreviation] $BOREALISPATH 2>&1 | tee install_log.txt
-
-#. If you're building Borealis for a University of Saskatchewan radar, complete the following steps.
-   If not, skip ahead to the next step. Create symlink ``config.ini`` in Borealis directory and link
-   to the site specific config file. ::
-
-    cd $BOREALISPATH
-    ln -svi $BOREALISPATH/config/[radarcode]/[radarcode]_config.ini config.ini
+    sudo -E python3 install_radar_deps.py [radar abbreviation] $BOREALISPATH --python-version=3.9 2>&1 | tee install_log.txt
 
 #. If you're building Borealis for a non University of Saskatchewan radar, use a USASK
    ```config.ini``` file (located in ``borealis/config/``) as a template, or follow the config file
-   :ref:`documentation <config-options>` to create your own file in the Borealis directory.
+   :ref:`documentation <config-options>` to create your own file in the Borealis directory. Your config file should
+   be placed in borealis/config/[site_id]/[site_id]_config.ini
 
 #. In ``config.ini``, there is an entry called "realtime_address". This defines the protocol,
    interface, and port that the realtime module uses for socket communication. This should be set to
