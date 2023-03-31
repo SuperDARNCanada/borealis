@@ -195,8 +195,9 @@ else:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
                                     args.scheduling_mode_type
     
-# # Configure C prog
-# modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
+# Bypass the python wrapper to run cuda-gdb
+if mode == "debug":
+    modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
 
 # Set up the screenrc file and populate it
 screenrc = BOREALISSCREENRC.format(
