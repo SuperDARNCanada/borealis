@@ -47,21 +47,28 @@ run('doxygen')
 cur_dir = os.path.abspath(os.path.dirname(__file__))
 run(['breathe-apidoc', '--force', '--no-toc', '--generate', 'file', '-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
 
-# Update the experiment subrepo so experiment files can be read into documentation
-run(['git', 'submodule', 'update', '--init'])
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:  # Only run following changes on ReadTheDocs
 
-# Clone in the HDW repo temporarily so modules reading them don't throw errors
-# TODO: Get this path into config file somehow, as that's now how we specify hdw location
-run(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
+    # Update the experiment subrepo so experiment files can be read into documentation
+    run(['git', 'submodule', 'update', '--init'])
 
-# Change config file HDW path to path accessible by ReadTheDocs
-# TODO: Come up with a way that doesn't require modifying a version controlled config file
-config_file = BOREALISPATH + f'/config/{RADAR_ID}/{RADAR_ID}_config.ini'
-with open(config_file, 'r') as file:
-    data = json.load(file)
-data['hdw_path'] = BOREALISPATH + '/hdw'
-with open(config_file, 'w') as file:
-    json.dump(data, file)
+    # Clone in the HDW repo temporarily so modules reading them don't throw errors
+    # TODO: Get this path into config file somehow, as that's now how we specify hdw location
+    run(['git', 'clone', 'https://github.com/SuperDARN/hdw', f'{BOREALISPATH}/hdw'])
+
+    # Create data directory that RTD can see so no errors are thrown
+    run(['mkdir', '-p', f'{BOREALISPATH}/borealis_data'])
+
+    # Change config file hdw and data paths to paths accessible by ReadTheDocs
+    # TODO: Come up with a way that doesn't require modifying a version controlled config file
+    config_file = f'{BOREALISPATH}/config/{RADAR_ID}/{RADAR_ID}_config.ini'
+    with open(config_file, 'r') as file:
+        data = json.load(file)
+    data['hdw_path'] = f'{BOREALISPATH}/hdw'
+    data['data_directory'] = f'{BOREALISPATH}/borealis_data'
+    with open(config_file, 'w') as file:
+        json.dump(data, file)
 
 
 # -- General configuration ------------------------------------------------
