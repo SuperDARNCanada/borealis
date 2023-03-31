@@ -57,16 +57,18 @@ if on_rtd:  # Only run following changes on ReadTheDocs
     # TODO: Get this path into config file somehow, as that's now how we specify hdw location
     run(['git', 'clone', 'https://github.com/SuperDARN/hdw', f'{BOREALISPATH}/hdw'])
 
-    # Create data directory that RTD can see so no errors are thrown
+    # Create data and log directory that RTD can see so no errors are thrown
     run(['mkdir', '-p', f'{BOREALISPATH}/borealis_data'])
+    run(['mkdir', '-p', f'{BOREALISPATH}/borealis_logs'])
 
-    # Change config file hdw and data paths to paths accessible by ReadTheDocs
+    # Change config file hdw and data/log paths to paths accessible by ReadTheDocs
     # TODO: Come up with a way that doesn't require modifying a version controlled config file
     config_file = f'{BOREALISPATH}/config/{RADAR_ID}/{RADAR_ID}_config.ini'
     with open(config_file, 'r') as file:
         data = json.load(file)
     data['hdw_path'] = f'{BOREALISPATH}/hdw'
     data['data_directory'] = f'{BOREALISPATH}/borealis_data'
+    data['log_directory'] = f'{BOREALISPATH}/borealis_logs'
     with open(config_file, 'w') as file:
         json.dump(data, file)
 
