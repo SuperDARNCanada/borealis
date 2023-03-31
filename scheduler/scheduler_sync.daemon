@@ -24,7 +24,7 @@
 #       WantedBy=multi-user.target
 #
 # The site to sync to can be specified by calling the daemon with the following syntax:
-#       systemctl [command] scheduler_sync@[RADARID]
+#       systemctl [command] scheduler_sync@[RADAR_ID]
 #
 # Dependencies:
 #   - inotifywait (installed by zypper in inotify-tools)
@@ -32,32 +32,32 @@
 #   to the SITE_NUM association
 #   - ssh link between SuperDARN-CSSDP -> Maxwell (no password prompt for rsync)
 #
-# Parameter RADARID: [sas, pgr, rkn, inv, cly]
+# Parameter RADAR_ID: [sas, pgr, rkn, inv, cly]
 
 ###################################################################################################
 
-# Create an associative array that associates each RADARID with a SITE_NUM. SITE_NUM is used to get
+# Create an associative array that associates each RADAR_ID with a SITE_NUM. SITE_NUM is used to get
 # correct port connecting Maxwell and the site borealis computer. 
 declare -A SITE_NUM=( ["sas"]="0" ["pgr"]="1" ["cly"]="2" ["rkn"]="3" ["inv"]="4" )
 
 if [[ $# -ne 1 ]]; then
-    printf "Usage: ./sync_schedules.daemon RADARID\n"
+    printf "Usage: ./sync_schedules.daemon RADAR_ID\n"
     exit 1
 fi
 
-RADARID=$1
+RADAR_ID=$1
 
 readonly WATCH_DIR="/data/borealis_schedules"
-readonly SCD_FILE="${WATCH_DIR}/${RADARID}.scd"
+readonly SCD_FILE="${WATCH_DIR}/${RADAR_ID}.scd"
 
 # Define logging directory
 script_name=$(echo $(basename $0) | cut --fields 1 --delimiter '.')
 readonly LOG_DIR="${HOME}/logs/scheduler"
 mkdir --parents $LOG_DIR
-readonly LOGFILE="${LOG_DIR}/${script_name}_${RADARID}.log"
+readonly LOGFILE="${LOG_DIR}/${script_name}_${RADAR_ID}.log"
 
 # Define destination and firewall computer
-readonly SITE_ID="${SITE_NUM[$RADARID]}"    # Get site id corresponding to correct Maxwell port
+readonly SITE_ID="${SITE_NUM[$RADAR_ID]}"    # Get site id corresponding to correct Maxwell port
 readonly MAXWELL="dataman@maxwell.usask.ca"
 readonly DEST="radar@localhost"
 readonly DEST_PORT="5${SITE_ID}522"
@@ -66,7 +66,7 @@ readonly DEST_DIR="/home/radar/borealis_schedules"
 ###################################################################################################
 
 exec &>> $LOGFILE # Redirect STDOUT and STDERR to $LOGFILE
-printf "Starting $0 $RADARID at $(date --utc "+%Y%m%d %H:%M:%S UTC")\n"
+printf "Starting $0 $RADAR_ID at $(date --utc "+%Y%m%d %H:%M:%S UTC")\n"
 
 # Inotify will trigger on all modify (file content change) and attrib (file metadata change) events.
 # These events happen in close succession, leading to many triggers at once. To reduce the number of
@@ -80,18 +80,34 @@ inotifywait --monitor --timefmt '%Y%m%d.%H:%M:%S' --format '%T %w %e %f' -e modi
 while read TIME DIRECTORY ACTION FILE # These must line up with format parameters
 do
     # The conditional filters the inotify output to only trigger the syncronization when the .scd
-    # file for the site specified by RADARID is modified.
-    if [[ "$FILE" =~ .*$RADARID\.scd$ ]]
+    # file for the site specified by RADAR_ID is modified.
+    if [[ "$FILE" =~ .*$RADAR_ID\.scd$ ]]
     then
         # Only execute the code once every $filter_time seconds
         cur_time=$(date "+%s")
         if [[ $(($endtime + $filter_time)) -lt $cur_time ]]; then
-            printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Schedule modified for $RADARID\n"
+            printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Schedule modified for $RADAR_ID\n"
             sleep 1     # Wait 1 s to ensure all changes to scd file are finished
 
             # Sync the .scd file to site via Maxwell
             printf "Sending ${SCD_FILE} to ${DEST}:${DEST_DIR}\n"
-            rsync -av --rsh="ssh $MAXWELL ssh -p $DEST_PORT" "${SCD_FILE}" "${DEST}:${DEST_DIR}"
+            retval=1
+            while [[ $retval -ne 0 ]]; do
+                rsync -av --rsh="ssh $MAXWELL ssh -p $DEST_PORT" "${SCD_FILE}" "${DEST}:${DEST_DIR}"
+
+                ### Check that the schedule successfully made it to site ###
+                # Get the md5sum of the remote schedule file
+                ssh $MAXWELL ssh -p $DEST_PORT $DEST "md5sum --binary $DEST_DIR/$FILE" > $HOME/tmp.md5
+                # Modify tmp.md5 so checksum can be compared to source schedule file
+                sed -i "s~$DEST_DIR/$FILE~$WATCH_DIR/$FILE~g" $HOME/tmp.md5
+                # Verify md5sum of destination file is same as source
+                md5sum --check --status $HOME/tmp.md5
+                retval=$?
+                if [[ $retval -ne 0]]; then
+                    printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Error in syncing schedule, trying again\n"
+                    sleep 60  # Try again in 60s
+                fi
+            done
 
             printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Finished syncing schedule\n\n"
             endtime=$(date "+%s")
