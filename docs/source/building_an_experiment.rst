@@ -500,17 +500,24 @@ look at :doc:`experiments`.
 Checking Your Experiment for Errors
 -----------------------------------
 
-A suite of unit tests have been written to check experiments for errors. This suite of tests can be
-run by doing the following:
+An experiment testing script ``experiment_unittests.py`` has been written to check experiments for
+errors and ensure the operation of experiment checking source code.. This suite of tests can be run
+on by running the following command: ::
 
-#. Make sure your experiment is located in the ``src/borealis_experiments`` directory
-#. Ensure the file has an appropriate name reflecting the name of the experiment.
-#. Ensure that the file ``experiment_tests.csv`` exists alongside the ``experiment_unittests.py`` file
-#. Run the following, which will run the extensive set of tests in the ``experiment_unittests.py``
-   file and tell you how many passed, how many failed and how many tests had errors: ::
-   
-        python3 BOREALISPATH/tests/testing_utils/experiments/experiment_unittests.py
+        python3 BOREALISPATH/tests/experiments/experiment_unittests.py
 
+This will test all experiments within the ``borealis_experiments`` directory, and run all exception
+checking unittests within ``experiment_tests.csv``. At the end the results of all tests will be
+summarized, showing how many tests passed and failed.
+
+This testing script can also be used to check specific experiments are written correctly. To do
+this, ensure your experiment is in the ``src/borealis_experiments`` directory and run the following
+command: ::
+
+        python3 BOREALISPATH/tests/experiments/experiment_unittests.py --experiment [EXPERIMENT_NAME]
+
+where EXPERIMENT_NAME is the module name of your experiment. If there are any errors while checking
+your experiment, the test will fail and the exception will describe the error. 
 
 ..  toctree::
     :glob:
