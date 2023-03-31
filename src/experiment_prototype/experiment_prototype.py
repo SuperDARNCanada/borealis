@@ -381,7 +381,7 @@ class ExperimentPrototype(object):
         # Quickly check for uniqueness with a search in the experiments directory first taking care
         # not to look for CPID in any experiments that are just tests (located in the testing
         # directory)
-        experiment_files_list = list(Path(BOREALISPATH + "/experiments/").glob("*.py"))
+        experiment_files_list = list(Path(f"{BOREALISPATH}/src/borealis_experiments/").glob("*.py"))
         self.__experiment_name = self.__class__.__name__  
         # TODO use this to check the cpid is correct using pygit2, or __class__.__module__ for
         # module name 

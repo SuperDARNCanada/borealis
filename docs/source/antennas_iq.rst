@@ -1,15 +1,17 @@
+.. _antennas_iq:
+
 ================
-antennas_iq v0.6
+antennas_iq v0.7
 ================
 
-This is the most up to date version of this file format produced by Borealis version 0.6, the
+This is the most up to date version of this file format produced by Borealis version 0.7, the
 current version.
 
 For data files from previous Borealis software versions, see `here
 <https://borealis.readthedocs.io/en/latest/borealis_data.html#previous-versions>`__.
 
 The pyDARNio format class for this format is BorealisAntennasIq found in the `borealis_formats
-<https://github.com/SuperDARN/pyDARNio/blob/master/pydarnio/borealis/borealis_formats.py>`_.
+<https://github.com/SuperDARN/pyDARNio/blob/main/pydarnio/borealis/borealis_formats.py>`_.
 
 The antennas_iq format is intended to hold individual antennas I and Q data. The data is filtered,
 but is not averaged. 
@@ -57,7 +59,7 @@ The file fields in the antennas_iq array files are:
 | |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**        | | States what order the data is in and      |
-| | *unicode*                       | | describes the data layout for the         |
+| | *bytes*                         | | describes the data layout for the         |
 | | [num_antennas]                  | | num_antennas data dimension               |
 | |                                 | | Antennas are recorded main array          |
 | |                                 | | ascending and then interferometer array   |
@@ -101,7 +103,7 @@ The file fields in the antennas_iq array files are:
 | |                                 | | the record.                               |
 +-----------------------------------+---------------------------------------------+
 | | **data_descriptors**            | | Denotes what each data dimension          |
-| | *unicode*                       | | represents. = 'num_records',              |
+| | *bytes*                         | | represents. = 'num_records',              |
 | | [4]                             | | ‘num_antennas’, ‘max_num_sequences’,      |
 | |                                 | | ‘num_samps’                               |
 +-----------------------------------+---------------------------------------------+
@@ -113,10 +115,16 @@ The file fields in the antennas_iq array files are:
 | | *unicode*                       | | experiment as a whole.                    |
 +-----------------------------------+---------------------------------------------+
 | | **experiment_id**               | | Number used to identify the experiment.   |
-| | *int64*                         | |                                           | 
+| | *int16*                         | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **experiment_name**             | | Name of the experiment file.              |
-| | *unicode*                       | |                                           | 
+| | *unicode*                       | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **first_range**                 | | Distance to use for first range in km.    |
+| | *float32*                       | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **first_range_rtt**             | | Round trip time of flight to first range  |
+| | *float32*                       | | in microseconds.                          |
 +-----------------------------------+---------------------------------------------+
 | | **freq**                        | | The frequency used for this experiment,   |
 | | *uint32*                        | | in kHz. This is the frequency the data    |
@@ -136,7 +144,12 @@ The file fields in the antennas_iq array files are:
 | | [num_records]                   | |                                           | 
 +-----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**          | | Number of interferometer array antennas   |
-| | *uint32*                        | |                                           | 
+| | *uint32*                        | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **lags**                        | | The lags created from two pulses in the   |
+| | *uint32*                        | | pulses array. Values have to be from      |
+| | [number of lags, 2]             | | pulses array. The lag number is lag[1] -  |
+| |                                 | | lag[0] for each lag pair.                 |
 +-----------------------------------+---------------------------------------------+
 | | **lp_status_word**              | | Low power status word. Bit position       |
 | | *uint32*                        | | corresponds to the USRP motherboard/      |
@@ -163,7 +176,10 @@ The file fields in the antennas_iq array files are:
 +-----------------------------------+---------------------------------------------+
 | | **num_blanked_samples**         | | The number of blanked samples for each    |
 | | *uint32*                        | | record.                                   | 
-| | [num_records]                   | |                                           | 
+| | [num_records]                   | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **num_ranges**                  | | Number of ranges to calculate             |
+| | *uint32*                        | | correlations for.                         |
 +-----------------------------------+---------------------------------------------+
 | | **num_samps**                   | | Number of samples in the sampling         |
 | | *uint32*                        | | period. Each sequence has its own         |
@@ -190,6 +206,10 @@ The file fields in the antennas_iq array files are:
 | | **pulses**                      | | The pulse sequence in units of the        |
 | | *uint32*                        | | tau_spacing.                              |
 | | [number of pulses]              | |                                           |
++-----------------------------------+---------------------------------------------+
+| | **range_sep**                   | | Range gate separation (conversion from    |
+| | *float32*                       | | time (1/rx_sample_rate) to equivalent     |
+| |                                 | | distance between samples), in km.         |
 +-----------------------------------+---------------------------------------------+
 | | **rx_sample_rate**              | | Sampling rate of the samples in this      |
 | | *float64*                       | | file's data in Hz.                        |
@@ -277,7 +297,7 @@ The file fields under the record name in antennas_iq site files are:
 | |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**       | | States what order the data is in and      | 
-| | *[unicode, ]*                  | | describes the data layout for the         |
+| | *[bytes, ]*                    | | describes the data layout for the         |
 | |                                | | num_antennas data dimension. Antennas are |
 | |                                | | recorded main array ascending and then    | 
 | |                                | | interferometer array ascending.           |
@@ -301,17 +321,16 @@ The file fields under the record name in antennas_iq site files are:
 | |                                | | latest git tag of the software.           |
 +----------------------------------+---------------------------------------------+
 | | **data**                       | | A contiguous set of samples (complex      | 
-| | *[complex64, ]*                | | float) at given sample rate. Needs to be  | 
-| |                                | | reshaped by data_dimensions to be         | 
-| |                                | | correctly read.                           |
+| | *[complex64, ]*                | | float) at given sample rate. Dimensions   |
+| |                                | | match data_dimensions field.              |
 +----------------------------------+---------------------------------------------+
 | | **data_descriptors**           | | Denotes what each data dimension          | 
-| | *[unicode, ]*                  | | represents. = ‘num_antennas’,             |
+| | *[bytes, ]*                    | | represents. = ‘num_antennas’,             |
 | |                                | | ‘num_sequences’, ‘num_samps’ for          |
 | |                                | | antennas_iq                               |
 +----------------------------------+---------------------------------------------+
-| | **data_dimensions**            | | The dimensions in which to reshape the    | 
-| | *[uint32, ]*                   | | data. Dimensions correspond to            |
+| | **data_dimensions**            | | The dimensions of the data.               |
+| | *[uint32, ]*                   | | Dimensions correspond to                  |
 | |                                | | data_descriptors.                         |
 +----------------------------------+---------------------------------------------+
 | | **data_normalization_factor**  | | Scale of all the filters used, multiplied |
@@ -322,10 +341,16 @@ The file fields under the record name in antennas_iq site files are:
 | | *unicode*                      | | experiment as a whole.                    |
 +----------------------------------+---------------------------------------------+
 | | **experiment_id**              | | Number used to identify the experiment.   |
-| | *int64*                        | |                                           | 
+| | *int16*                        | |                                           |
 +----------------------------------+---------------------------------------------+
 | | **experiment_name**            | | Name of the experiment file.              |
-| | *unicode*                      | |                                           | 
+| | *unicode*                      | |                                           |
++----------------------------------+---------------------------------------------+
+| | **first_range**                | | Distance to use for first range in km.    |
+| | *float32*                      | |                                           |
++----------------------------------+---------------------------------------------+
+| | **first_range_rtt**            | | Round trip time of flight to first range  |
+| | *float32*                      | | in microseconds.                          |
 +----------------------------------+---------------------------------------------+
 | | **freq**                       | | The frequency used for this experiment,   | 
 | | *uint32*                       | | in kHz. This is the frequency the data    | 
@@ -343,7 +368,13 @@ The file fields under the record name in antennas_iq site files are:
 | | *float32*                      | |                                           | 
 +----------------------------------+---------------------------------------------+
 | | **intf_antenna_count**         | | Number of interferometer array antennas   |
-| | *uint32*                       | |                                           | 
+| | *uint32*                       | |                                           |
++----------------------------------+---------------------------------------------+
+| | **lags**                       | | The lags created from two pulses in the   |
+| | *[[uint32, ], ]*               | | pulses array. Dimensions are number of    |
+| |                                | | lags x 2. Values have to be from pulses   |
+| |                                | | array. The lag number is lag[1] - lag[0]  |
+| |                                | | for each lag pair.                        |
 +----------------------------------+---------------------------------------------+
 | | **lp_status_word**             | | Low power status word. Bit position       |
 | | *uint32*                       | | corresponds to the USRP motherboard/      |
@@ -357,6 +388,9 @@ The file fields under the record name in antennas_iq site files are:
 | | *[float64, ]*                  | | dimension = number of sequences.          | 
 | |                                | | 20191114: not currently implemented and   | 
 | |                                | | filled with zeros. Still a TODO.          |
++----------------------------------+---------------------------------------------+
+| | **num_ranges**                 | | Number of ranges to calculate             |
+| | *uint32*                       | | correlations for.                         |
 +----------------------------------+---------------------------------------------+
 | | **num_samps**                  | | Number of samples in the sampling         |
 | | *uint32*                       | | period. Each sequence has its own         |
@@ -378,6 +412,10 @@ The file fields under the record name in antennas_iq site files are:
 +----------------------------------+---------------------------------------------+
 | | **pulses**                     | | The pulse sequence in units of the        |
 | | *[uint32, ]*                   | | tau_spacing.                              |
++----------------------------------+---------------------------------------------+
+| | **range_sep**                  | | Range gate separation (conversion from    |
+| | *float32*                      | | time (1/rx_sample_rate) to equivalent     |
+| |                                | | distance between samples), in km.         |
 +----------------------------------+---------------------------------------------+
 | | **rx_sample_rate**             | | Sampling rate of the samples in this      |
 | | *float64*                      | | file's data in Hz.                        |

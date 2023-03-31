@@ -1,8 +1,8 @@
 ==========
-rawrf v0.6
+rawrf v0.7
 ==========
 
-This is the most up to date version of this file format produced by Borealis version 0.6, the
+This is the most up to date version of this file format produced by Borealis version 0.7, the
 current version.
 
 For data files from previous Borealis software versions, see `here
@@ -71,19 +71,19 @@ The file fields under the record name in rawrf site files are:
 | |                                | | correctly read.                           |
 +----------------------------------+---------------------------------------------+
 | | **data_descriptors**           | | Denotes what each data dimension          | 
-| | *[unicode, ]*                  | | represents. = ‘num_sequences’,            |
+| | *[bytes, ]*                    | | represents. = ‘num_sequences’,            |
 | |                                | | ‘num_antennas’, ‘num_samps’ for           |
 | |                                | | rawrf                                     |
 +----------------------------------+---------------------------------------------+
-| | **data_dimensions**            | | The dimensions in which to reshape the    | 
-| | *[uint32, ]*                   | | data. Dimensions correspond to            |
+| | **data_dimensions**            | | The dimensions of the data.               |
+| | *[uint32, ]*                   | | Dimensions correspond to                  |
 | |                                | | data_descriptors.                         |
 +----------------------------------+---------------------------------------------+
 | | **experiment_comment**         | | Comment provided in experiment about the  |
 | | *unicode*                      | | experiment as a whole.                    |
 +----------------------------------+---------------------------------------------+
 | | **experiment_id**              | | Number used to identify the experiment.   |
-| | *int64*                        | |                                           | 
+| | *int16*                        | |                                           |
 +----------------------------------+---------------------------------------------+
 | | **experiment_name**            | | Name of the experiment file.              |
 | | *unicode*                      | |                                           | 

@@ -11,7 +11,7 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
-
+import os
 import sys
 import time
 from datetime import datetime, timedelta
@@ -26,10 +26,11 @@ from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations
 
+sys.path.append(os.environ['BOREALISPATH'])
 if __debug__:
-    from debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
+    from build.debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
 else:
-    from release.src.utils.protobuf.driverpacket_pb2 import DriverPacket
+    from build.release.src.utils.protobuf.driverpacket_pb2 import DriverPacket
 
 TIME_PROFILE = False
 
