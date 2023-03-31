@@ -15,3 +15,5 @@ inotify
 matplotlib
 sphinx-rtd-theme
 structlog
+graypy
+rich
