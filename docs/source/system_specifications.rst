@@ -1,3 +1,5 @@
+.. _parts:
+
 ======================================
 SuperDARN Canada System Specifications
 ======================================
@@ -14,10 +16,12 @@ Digital Radio Equipment
 
 - 1x Ettus Octoclock-g (includes GPSDO)
 - 2x Ettus Octoclock
-- 51x ~8 1/4" SMA bulkhead Female to Male RG-316 for daughterboards
-- 18x 48" SMA Male to Male RG-316 for PPS signals
-- 18x 48" SMA Male to Male RG-316 for 10MHz REF signals
-- 1x SMA Male to 0.1" pin header RG-316 for PPS signal input to motherboard
+- 51x ~8 1/4" SMA bulkhead Female to Male RG-316 for daughterboards (for 17x N200s, 3 cables each)
+- 18x 48" SMA Male to Male RG-316 for PPS signals (2x from octoclock-g to octoclocks, 16x for N200s)
+- 18x 48" SMA Male to Male RG-316 for 10MHz REF signals (2x from octoclock-g to octoclocks,
+  16x for N200s)
+- 1x SMA Male to 0.1" pin header RG-316 for PPS signal input to motherboard (homemade by cutting up
+  a coaxial cable and soldering to a 0.1" two-position pin header)
 - GPS Antenna (Male SMA connector)
 - 17x Custom TXIO Revision 5.0 board (for transmitter interfacing)
 - 22x Mini-Circuits ZFL-500LN pre-amps (20 and 2 spare)
@@ -44,6 +48,7 @@ Current control computer hardware (1 January 2022):
 **NOTE:** Always update the BIOS before installing the computer in the field.
 
 **NOTE:** The motherboard has a 10G and 1G port, an additional network card is not required.
+Optionally, Fiber optic cards can be used as a link to network switches that support them.
 
 **NOTE:** XMP must be enabled in BIOS to utilize the full 6000 MHz RAM speed. RAM must also be socketed in
 the optimal configuration DIMM_A2 and DIMM_B2 for two sticks.
@@ -77,9 +82,10 @@ Minimum requirements:
 - 1x CPU compatible motherboard with serial port header or an extra unshared bandwidth PCIe slot for a serial card
 - 1x 256GB SSD (operating system partition)
 - 1x 1TB HDD (data partition)
-- 1x Intel X550-T2 10Gb PCIe network card (if the motherboard does not have 10G networking)
+- 1x Intel X550-T2 10Gb PCIe network card (if the motherboard does not have 10G networking) OR
+  optionally, a Fiber optic NIC such as the Mellanox MCX4121A-ACAT, or the Intel X710-BM2
 
-**NOTE:**: Intel 82579LM controllers WILL NOT WORK
+**NOTE:** Intel 82579LM controllers WILL NOT WORK
 
 **NOTE:** A BIOS flash is required to use a RTX3000+ series NVidia GPU.
 
@@ -88,9 +94,15 @@ Networking
 ----------
 
 - 3x Netgear XS708E-200NES (North American model #) 10Gb switches (parent model name is XS708Ev2)
+  (NOTE: These network switches are discontinued as of 2021. See `this page
+  <https://community.netgear.com/t5/Plus-and-Smart-Switches-Forum/XS708T-and-XS716T-discontinued/m-p/2137635>`_)
+- A potential replacement with a fiber optic link (SFP+) is the FS S3900 48 Port 1GbE switch.
 - 1x 5-port network switch that can handle 10Mbps and 100Mbps connection speeds (10BASE-T and 100BASE-T)
-- 27x SSTP CAT 6a 7ft cables or better*
-- 2x SSTP CAT 6a 15ft cables*
+  OR if using the FS S3900 48 port, it supports 10Mbps for the octoclocks.
+- 27x SSTP CAT 6a 7ft cables or better* (16x for the N200s, 2x for daisy-chaining the switches, 3x
+  for the octoclocks, 1x for connecting to the 1GbE network switch, and 5x spares).
+- 2x SSTP CAT 6a 15ft cables* (for connecting to the Borealis computer, and one spare)
+- Optional for Fiber: DAC/AOC cables such as the FS SFPP-AO05
 
 **NOTE:** network cables need to be verified for the whole system as not all cables seem to work
 reliably.
@@ -112,7 +124,7 @@ Rack and Cabling
 ----------------
 
 - 4x 8 outlet rackmount PDU
-- 2x APC AP7900B rackmount PDU
+- 2x APC AP7900B rackmount PDU (minimum, a third would be useful)
 - 1x 4 post 42U rack
 - 4x custom-made USRP N200 rackmount shelves (or Ettus ones)
 - 1x rackmount shelf for interferometer pre-amps

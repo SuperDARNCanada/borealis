@@ -466,6 +466,8 @@ code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 Restructuring between site and array formats occur within the BorealisRestructure class, found `here
 <https://github.com/SuperDARN/pyDARNio/blob/main/pydarnio/borealis/borealis_restructure.py>`__.
 
+.. _rawacf-sdarn-mapping:
+
 ----------------------------------------
 rawacf to rawacf SDARN (DMap) Conversion
 ----------------------------------------
