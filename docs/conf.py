@@ -36,6 +36,7 @@ sys.path.insert(5, os.environ['PATH'])
 RADAR_ID = 'sas'
 os.environ['RADAR_ID'] = RADAR_ID
 
+# -- Pre-build configuration ----------------------------------------------
 
 # Doxygen: Reads all c++ source and header files, and parses the documentation to xml files 
 # for further reading. 
@@ -47,30 +48,8 @@ run('doxygen')
 cur_dir = os.path.abspath(os.path.dirname(__file__))
 run(['breathe-apidoc', '--force', '--no-toc', '--generate', 'file', '-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
 
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd:  # Only run following changes on ReadTheDocs
-
-    # Update the experiment subrepo so experiment files can be read into documentation
-    run(['git', 'submodule', 'update', '--init'])
-
-    # Clone in the HDW repo temporarily so modules reading them don't throw errors
-    # TODO: Get this path into config file somehow, as that's now how we specify hdw location
-    run(['git', 'clone', 'https://github.com/SuperDARN/hdw', f'{BOREALISPATH}/hdw'])
-
-    # Create data and log directory that RTD can see so no errors are thrown
-    run(['mkdir', '-p', f'{BOREALISPATH}/borealis_data'])
-    run(['mkdir', '-p', f'{BOREALISPATH}/borealis_logs'])
-
-    # Change config file hdw and data/log paths to paths accessible by ReadTheDocs
-    # TODO: Come up with a way that doesn't require modifying a version controlled config file
-    config_file = f'{BOREALISPATH}/config/{RADAR_ID}/{RADAR_ID}_config.ini'
-    with open(config_file, 'r') as file:
-        data = json.load(file)
-    data['hdw_path'] = f'{BOREALISPATH}/hdw'
-    data['data_directory'] = f'{BOREALISPATH}/borealis_data'
-    data['log_directory'] = f'{BOREALISPATH}/borealis_logs'
-    with open(config_file, 'w') as file:
-        json.dump(data, file)
+# Update the experiment subrepo so experiment files can be read into documentation
+run(['git', 'submodule', 'update', '--init'])
 
 
 # -- General configuration ------------------------------------------------
@@ -96,7 +75,8 @@ extensions = [
     'myst_parser'
 ]
 
-autodoc_mock_imports = ["debug", "release"]
+# Modules that can't be imported on RTD will be ignored if they are listed here
+autodoc_mock_imports = ["debug", "release", "utils"]
 
 breathe_projects = {"borealis" : "xml/"}
 breathe_default_project = "borealis"
