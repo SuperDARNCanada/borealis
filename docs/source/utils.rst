@@ -2,23 +2,7 @@
 Borealis Options
 ================
 
-
-.. automodule:: src.utils.options.data_write_options
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-.. automodule:: src.utils.options.experimentoptions
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-.. automodule:: src.utils.options.realtime_options
-    :members:
-    :undoc-members:
-    :show-inheritance:
-    
-.. automodule:: src.utils.options.signal_processing_options
+.. automodule:: src.utils.options
     :members:
     :undoc-members:
     :show-inheritance:
