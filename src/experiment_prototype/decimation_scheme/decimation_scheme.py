@@ -21,8 +21,7 @@ class DecimationStage(object):
         """
         Create a decimation stage with given decimation rate, input sample rate, and filter taps.
 
-        :param  stage_num:      the index of this filter/decimate stage to all stages (beginning
-                                with stage 0)
+        :param  stage_num:      the index of this filter/decimate stage to all stages (beginning with stage 0)
         :type   stage_num:      int
         :param  input_rate:     the input sampling rate, in Hz.
         :type   input_rate:     float
@@ -67,7 +66,7 @@ class DecimationScheme(object):
         :param  stages:             a list of DecimationStages. Defaults to None
         :type   stages:             list or None
         """
-
+        self.stages = stages
         if stages is None:  
             # create the default filters according to default scheme. Currently only creating
             # default filters if sampling rate and output rate are set up as per original design.
@@ -78,47 +77,46 @@ class DecimationScheme(object):
                 raise ExperimentException(errmsg)
 
             # set up defaults as per design.
-            return(create_default_scheme())
+            scheme = create_default_scheme()
+            self.stages = scheme.stages
 
-        else:
-            options = Options()
-            self.rxrate = rxrate
-            self.output_sample_rate = output_sample_rate
-            # check that number of stages is correct
-            if len(stages) > options.max_filtering_stages:
-                errmsg = f'Number of decimation stages ({len(stages)}) is greater than max'\
-                         f' available {options.max_filtering_stages}'
+        options = Options()
+        self.rxrate = rxrate
+        self.output_sample_rate = output_sample_rate
+        # check that number of stages is correct
+        if len(self.stages) > options.max_filtering_stages:
+            errmsg = f'Number of decimation stages ({len(self.stages)}) is greater than max'\
+                     f' available {options.max_filtering_stages}'
+            raise ExperimentException(errmsg)
+        self.dm_rates = []
+        self.output_rates = []
+        self.input_rates = []
+        self.filter_scaling_factors = []
+
+        for dec_stage in self.stages:
+            self.dm_rates.append(dec_stage.dm_rate)
+            self.output_rates.append(dec_stage.output_rate)
+            self.input_rates.append(dec_stage.input_rate)
+            filter_scaling_factor = sum(dec_stage.filter_taps)
+            self.filter_scaling_factors.append(filter_scaling_factor)
+
+        # check rates are appropriate given rxrate and output_sample_rate, and
+        # check sequentiality of stages, ie output rate transfers to input rate of next stage.
+        if self.input_rates[0] != self.rxrate:
+            errmsg = f'Decimation stage 0 does not have input rate {self.input_rates[0]}'\
+                     f' equal to USRP sampling rate {self.rxrate}'
+            raise ExperimentException(errmsg)
+
+        for stage_num in range(0, len(self.stages) - 1):
+            if not math.isclose(self.output_rates[stage_num], self.input_rates[stage_num + 1], abs_tol=0.001):
+                errmsg = f'Decimation stage {stage_num} output rate {self.output_rates[stage_num]}'\
+                         f' does not equal next stage {stage_num + 1} input rate {self.input_rates[stage_num + 1]}'
                 raise ExperimentException(errmsg)
-            self.dm_rates = []
-            self.output_rates = []
-            self.input_rates = []
-            self.filter_scaling_factors = []
 
-            self.stages = stages
-            for dec_stage in self.stages:
-                self.dm_rates.append(dec_stage.dm_rate)
-                self.output_rates.append(dec_stage.output_rate)
-                self.input_rates.append(dec_stage.input_rate)
-                filter_scaling_factor = sum(dec_stage.filter_taps)
-                self.filter_scaling_factors.append(filter_scaling_factor)
-
-            # check rates are appropriate given rxrate and output_sample_rate, and
-            # check sequentiality of stages, ie output rate transfers to input rate of next stage.
-            if self.input_rates[0] != self.rxrate:
-                errmsg = f'Decimation stage 0 does not have input rate {self.input_rates[0]}'\
-                         f' equal to USRP sampling rate {self.rxrate}'
-                raise ExperimentException(errmsg)
-
-            for stage_num in range(0, len(stages) -1):
-                if not math.isclose(self.output_rates[stage_num], self.input_rates[stage_num + 1], abs_tol=0.001):
-                    errmsg = f'Decimation stage {stage_num} output rate {self.output_rates[stage_num]}'\
-                             f' does not equal next stage {stage_num + 1} input rate {self.input_rates[stage_num + 1]}'
-                    raise ExperimentException(errmsg)
-
-            if self.output_rates[-1] != self.output_sample_rate:
-                errmsg = f'Last decimation stage {len(stages) - 1} does not have output rate'\
-                         f' {self.output_rates[-1]} equal to requested output data rate {self.output_sample_rate}'
-                raise ExperimentException(errmsg)
+        if self.output_rates[-1] != self.output_sample_rate:
+            errmsg = f'Last decimation stage {len(self.stages) - 1} does not have output rate'\
+                     f' {self.output_rates[-1]} equal to requested output data rate {self.output_sample_rate}'
+            raise ExperimentException(errmsg)
 
     def __repr__(self):
         repr_str = f'Decimation Scheme with {len(self.stages)} stages:\n'
@@ -128,7 +126,7 @@ class DecimationScheme(object):
             repr_str += f'\nDecimation by: {stage.dm_rate}'
             repr_str += f'\nOutput Rate: {stage.output_rate} Hz'
             repr_str += f'\nNum taps: {len(stage.filter_taps)}'
-            #repr_str += '\nFilter Taps: {}\n'.format(stage.filter_taps)
+            # repr_str += '\nFilter Taps: {}\n'.format(stage.filter_taps)
         return repr_str
 
 
@@ -147,17 +145,18 @@ def create_default_scheme():
     rates = [5.0e6, 500.0e3, 100.0e3, 50.0e3/3]
     dm_rates = [10, 5, 6, 5]
     transition_widths = [150.0e3, 40.0e3, 15.0e3, 1.0e3]
-    cutoffs = [20.0e3, 10.0e3, 10.0e3, 5.0e3] # bandwidth is double this
+    cutoffs = [20.0e3, 10.0e3, 10.0e3, 5.0e3]   # bandwidth is double this
     ripple_dbs = [150.0, 80.0, 35.0, 9.0]
     scaling_factors = [10.0, 100.0, 100.0, 100.0]
     all_stages = []
 
-    for stage in range(0,4):
-        filter_taps = list(scaling_factors[stage] * create_firwin_filter_by_attenuation(rates[stage], 
-            transition_widths[stage], cutoffs[stage], ripple_dbs[stage]))
+    for stage in range(0, 4):
+        filter_taps = list(scaling_factors[stage] *
+                           create_firwin_filter_by_attenuation(rates[stage], transition_widths[stage], cutoffs[stage],
+                                                               ripple_dbs[stage]))
         all_stages.append(DecimationStage(stage, rates[stage], dm_rates[stage], filter_taps))
 
-    return (DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages))
+    return DecimationScheme(5.0e6, 10.0e3/3, stages=all_stages)
 
 
 def calculate_num_filter_taps(sampling_freq, trans_width, k):
@@ -175,7 +174,7 @@ def calculate_num_filter_taps(sampling_freq, trans_width, k):
     :returns:   num_taps, number of taps for the FIR filter.
     :rtype:     int
     """
-    num_taps = int(k * (sampling_freq /trans_width))
+    num_taps = int(k * (sampling_freq / trans_width))
     return num_taps
 
 
@@ -193,24 +192,20 @@ def create_remez_filter(sampling_freq, cutoff_freq, trans_width):
     :returns:   lowpass filter taps created using the remez method.
     :rtype:     ndarray
     """
-
     num_taps = calculate_num_filter_taps(sampling_freq, trans_width, 3)
-
-    lpass = remez(num_taps, [0, cutoff_freq, cutoff_freq + trans_width,
-                                    0.5 * sampling_freq], [1, 0], Hz=sampling_freq)
+    lpass = remez(num_taps, [0, cutoff_freq, cutoff_freq + trans_width, 0.5 * sampling_freq], [1, 0], fs=sampling_freq)
 
     return lpass
 
 
-def create_firwin_filter_by_attenuation(sample_rate, transition_width, cutoff_hz, ripple_db, 
-    window_type='kaiser'):
+def create_firwin_filter_by_attenuation(sample_rate, transition_width, cutoff_hz, ripple_db, window_type='kaiser'):
     """
     Create a firwin filter. 
 
     :param      sample_rate:        sample rate
     :type       sample_rate:        float
     :param      transition_width:   transition bandwidth between cutoff of passband and stopband (Hz)
-    :type       transiiton_width:   float
+    :type       transition_width:   float
     :param      cutoff_hz:          cutoff frequency, in hz
     :type       cutoff_hz:          float
     :param      ripple_db:          The desired attenuation in the stop band, in dB.
@@ -221,7 +216,6 @@ def create_firwin_filter_by_attenuation(sample_rate, transition_width, cutoff_hz
     :returns:   taps, coefficient of FIR filter
     :rtype:     ndarray
     """
-
     # The Nyquist rate of the signal, as we have complex sampled data
     nyq_rate = sample_rate
 
@@ -229,7 +223,7 @@ def create_firwin_filter_by_attenuation(sample_rate, transition_width, cutoff_hz
     width_ratio = transition_width/nyq_rate
 
     # Compute the order and Kaiser parameter for the FIR filter.
-    N, beta = kaiserord(ripple_db, width_ratio)
+    num_taps, beta = kaiserord(ripple_db, width_ratio)
 
     # Use firwin with a Kaiser window to create a lowpass FIR filter
     if window_type == 'kaiser':
@@ -237,38 +231,29 @@ def create_firwin_filter_by_attenuation(sample_rate, transition_width, cutoff_hz
     else:
         window = window_type
 
-    taps = firwin(N, 2*cutoff_hz/nyq_rate, window=window)
+    taps = firwin(num_taps, 2*cutoff_hz/nyq_rate, window=window)
 
     return taps
 
 
-def create_firwin_filter_by_num_taps(sample_rate, transition_width, cutoff_hz, num_taps, 
-    window_type=('kaiser', 8.0)):
+def create_firwin_filter_by_num_taps(sample_rate, cutoff_hz, num_taps, window_type=('kaiser', 8.0)):
     """
     Create a firwin filter. 
 
     :param      sample_rate:        sample rate
     :type       sample_rate:        float
-    :param      transition_width:   transition bandwidth between cutoff of passband and stopband (Hz)
-    :type       transiiton_width:   float
     :param      cutoff_hz:          cutoff frequency, in hz
     :type       cutoff_hz:          float
     :param      num_taps:           The desired number of filter taps
-    :type       num_taps:           float
+    :type       num_taps:           int
     :param      window_type:        Window for the filter. Defaults to kaiser
     :type       window_type:        str
 
     :returns:   taps, coefficient of FIR filter
     :rtype:     ndarray
     """
-
     # The Nyquist rate of the signal.
-    nyq_rate = sample_rate  # because we have complex sampled data. 
-
-    # The desired width of the transition from pass to stop,
-    # relative to the Nyquist rate. '
-    width_ratio = transition_width/nyq_rate
-
+    nyq_rate = sample_rate  # because we have complex sampled data.
     taps = firwin(num_taps, 2*cutoff_hz/nyq_rate, window=window_type)
 
     return taps
