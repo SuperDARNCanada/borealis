@@ -91,57 +91,6 @@ def get_phase_shift(beam_angle, freq, num_antennas, antenna_spacing, centre_offs
     return phase_shift
 
 
-def get_wavetables(wavetype):
-    """
-    Find the wavetable to sample from for a given wavetype.
-
-    If there are ever any other types of wavetypes besides 'SINE', set them up here.
-
-    NOTE: The wavetables should sample a single cycle of the waveform. Note that we will have to
-    block frequencies that could interfere with our license, which will affect the waveform. This
-    blocking of frequencies is not currently set up, so beware. Would have to get the spectrum of
-    the wavetable waveform and then block frequencies that when mixed with the centre frequency,
-    result in the restricted frequencies.
-
-    Also NOTE: wavetables create a fixed frequency resolution based on their length. This code is
-    from get_samples:
-
-    f_norm = wave_freq / rate
-
-    sample_skip = int(f_norm * wave_table_len) # THIS MUST BE AN INT, WHICH DEFINES THE FREQUENCY
-    RESOLUTION.
-
-    actual_wave_freq = (float(sample_skip) / float(wave_table_len)) * rate
-
-    :param  wavetype:   A string descriptor of the wavetype.
-    :type   wavetype:   str
-
-    :returns:   (iwavetable, qwavetable): in-phase wavetable and quadrature wavetable. If 'SINE'
-                wavetype, both are NONE
-    :rtype:     tuple(list,list) or tuple(None, None)
-    """
-
-    # TODO : See docstring above.
-
-    if wavetype == "SINE":
-        iwave_table = None
-        qwave_table = None
-
-    else:
-        iwave_table = []
-        qwave_table = []
-        errmsg = f"Wavetype {wavetype} not defined"
-        raise ExperimentException(errmsg)
-
-    # Example of a wavetable is below, if they were defined for SINE wavetypes.
-    # wave_table_len=8192
-    # for i in range(0, wave_table_len):
-    #    iwave_table.append(math.cos(i*2*math.pi/wave_table_len))
-    #    qwave_table.append(math.sin(i*2*math.pi/wave_table_len))
-
-    return iwave_table, qwave_table
-
-
 def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_table=None, qwave_table=None):
     """
     Get basic (not phase-shifted) samples for a given pulse.
