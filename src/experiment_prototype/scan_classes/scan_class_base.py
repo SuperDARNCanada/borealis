@@ -92,8 +92,8 @@ class ScanClassBase(object):
 
         # TODO documentation make a detailed example of this and diagram
         nested_class_param_lists = []
-        if __debug__:
-            print(self.nested_slice_list)
+        # TODO: Log appropriately (was nested under __debug__)
+        print(self.nested_slice_list)
         for slice_list in self.nested_slice_list:
             slices_for_nested_class = {}
             for slice_id in slice_list:

@@ -91,13 +91,12 @@ def get_phase_shift(beam_angle, freq, num_antennas, antenna_spacing, centre_offs
     return phase_shift
 
 
-def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_table=None, qwave_table=None):
+def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude):
     """
     Get basic (not phase-shifted) samples for a given pulse.
 
-    Find the normalized sample array given the rate (Hz), frequency (Hz), pulse length (s), and
-    wavetables (list containing single cycle of waveform). Will shift for beam later. No need to use
-    wavetable if just a sine wave.
+    Find the normalized sample array given the rate (Hz), frequency (Hz), pulse length (s).
+    Will shift for beam later.
 
     :param  rate:           tx sampling rate, in Hz.
     :type   rate:           float
@@ -112,98 +111,38 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, iwave_tabl
     :type   ramp_time:      float
     :param  max_amplitude:  USRP's max DAC amplitude. N200 = 0.707 max
     :type   max_amplitude:  float
-    :param  iwave_table:    i samples (in-phase) wavetable if a wavetable is required (ie. not a
-                            sine wave to be sampled)
-    :type   iwave_table:    list
-    :param  qwave_table:    q samples (quadrature) wavetable if a wavetable is required (ie. not a
-                            sine wave to be sampled)
-    :type   qwave_table:    list
 
-    :returns:   a tuple containing the following:
+    :returns:
 
-            - samples:          a numpy array of complex samples, representing all samples\
-                                needed for a pulse of length pulse_len sampled at a rate of rate.
-            - actual_wave_freq: the frequency possible given the wavetable. If wavetype\
-                                != 'SINE' (i.e. calculated wavetables were used), then\
-                                actual_wave_freq may not be equal to the requested wave_freq param.
-    :rtype:     tuple(ndarray, float)
+            samples:        a numpy array of complex samples, representing all samples
+                            needed for a pulse of length pulse_len sampled at a rate of rate.
+    :rtype:     ndarray
     """
 
     wave_freq = float(wave_freq)
     rate = float(rate)
 
-    if iwave_table is None and qwave_table is None:
-        sampling_freq = 2 * math.pi * wave_freq / rate
+    sampling_freq = 2 * math.pi * wave_freq / rate
 
-        # for linear we used the below:
-        linear_rampsampleslen = round(rate * ramp_time)  # number of samples for ramp-up and ramp-down of pulse.
-        sampleslen = round(rate * pulse_len)
+    # for linear we used the below:
+    linear_rampsampleslen = round(rate * ramp_time)  # number of samples for ramp-up and ramp-down of pulse.
+    sampleslen = round(rate * pulse_len)
 
-        rads = sampling_freq * np.arange(sampleslen)
-        wave_form = np.exp(rads * 1j)
+    rads = sampling_freq * np.arange(sampleslen)
+    wave_form = np.exp(rads * 1j)
 
-        amplitude_ramp_up = np.arange(linear_rampsampleslen)/linear_rampsampleslen
-        amplitude_ramp_down = np.flipud(amplitude_ramp_up)
+    amplitude_ramp_up = np.arange(linear_rampsampleslen)/linear_rampsampleslen
+    amplitude_ramp_down = np.flipud(amplitude_ramp_up)
 
-        ramp_up_piece = wave_form[:linear_rampsampleslen]
-        ramp_down_piece = wave_form[sampleslen - linear_rampsampleslen:]
-        np.multiply(ramp_up_piece, amplitude_ramp_up, out=ramp_up_piece)
-        np.multiply(ramp_down_piece, amplitude_ramp_down, out=ramp_down_piece)
+    ramp_up_piece = wave_form[:linear_rampsampleslen]
+    ramp_down_piece = wave_form[sampleslen - linear_rampsampleslen:]
+    np.multiply(ramp_up_piece, amplitude_ramp_up, out=ramp_up_piece)
+    np.multiply(ramp_down_piece, amplitude_ramp_down, out=ramp_down_piece)
 
-        samples = wave_form * max_amplitude
-
-        actual_wave_freq = wave_freq
-
-    elif iwave_table is not None and qwave_table is not None:
-        wave_table_len = len(iwave_table)
-
-        # TODO turn this into Gaussian ramp-up not linear!!
-        rampsampleslen = int(rate * ramp_time)
-        # Number of samples in ramp-up, ramp-down
-
-        sampleslen = int(rate * pulse_len + 2 * rampsampleslen)
-        samples = np.empty([sampleslen], dtype=np.complex64)
-
-        # sample at wave_freq with given phase shift
-        f_norm = wave_freq / rate
-        sample_skip = int(f_norm * wave_table_len)
-        # This must be an int to create perfect sine, and
-        #   this int defines the frequency resolution of our generated
-        #   waveform
-
-        actual_wave_freq = (float(sample_skip) / float(wave_table_len)) * rate
-        # This is the actual frequency given the sample_skip
-        for i in range(0, rampsampleslen):
-            amp = max_amplitude * float(i + 1) / float(rampsampleslen)  # rampup is linear
-            if sample_skip < 0:
-                ind = -1 * ((abs(sample_skip * i)) % wave_table_len)
-            else:
-                ind = (sample_skip * i) % wave_table_len
-            samples[i] = (amp * iwave_table[ind] + amp * qwave_table[ind] * 1j)
-            # qsamples[chi,i]=amp*qwave_table[ind]
-        for i in range(rampsampleslen, sampleslen - rampsampleslen):
-            amp = max_amplitude
-            if sample_skip < 0:
-                ind = -1 * ((abs(sample_skip * i)) % wave_table_len)
-            else:
-                ind = (sample_skip * i) % wave_table_len
-            samples[i] = (amp * iwave_table[ind] + amp * qwave_table[ind] * 1j)
-            # qsamples[chi,i]=qwave_table[ind]
-        for i in range(sampleslen - rampsampleslen, sampleslen):
-            amp = max_amplitude * float(sampleslen - i) / float(rampsampleslen)
-            if sample_skip < 0:
-                ind = -1 * ((abs(sample_skip * i)) % wave_table_len)
-            else:
-                ind = (sample_skip * i) % wave_table_len
-            samples[i] = (amp * iwave_table[ind] + amp * qwave_table[ind] * 1j)
-            # qsamples[chi,i]=amp*qwave_table[ind]
-
-    else:
-        errmsg = "Error: only one wavetable passed"
-        raise ExperimentException(errmsg)
+    samples = wave_form * max_amplitude
 
     # Samples is an array of complex samples
     # NOTE: phasing will be done in shift_samples function
-    return samples, actual_wave_freq
+    return samples
 
 

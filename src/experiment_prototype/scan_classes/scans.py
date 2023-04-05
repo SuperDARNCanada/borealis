@@ -37,9 +37,9 @@ class Scan(ScanClassBase):
         ScanClassBase.__init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata)
 
         # scan metadata - must be the same between all slices combined in scan.  Metadata includes:
-        self.scanbound = self.slice_dict[self.slice_ids[0]]['scanbound']
+        self.scanbound = self.slice_dict[self.slice_ids[0]].scanbound
         for slice_id in self.slice_ids:
-            if self.slice_dict[slice_id]['scanbound'] != self.scanbound:
+            if self.slice_dict[slice_id].scanbound != self.scanbound:
                 errmsg = f"Scan boundary not the same between slices {self.slice_ids[0]} and"\
                          f" {slice_id} for AVEPERIOD or CONCURRENT interfaced slices"
                 raise ExperimentException(errmsg)
@@ -51,8 +51,8 @@ class Scan(ScanClassBase):
         self.beamdir = {}
         self.scan_beams = {}
         for slice_id in self.slice_ids:
-            self.beamdir[slice_id] = self.slice_dict[slice_id]['beam_angle']
-            self.scan_beams[slice_id] = self.slice_dict[slice_id]['rx_beam_order']
+            self.beamdir[slice_id] = self.slice_dict[slice_id].beam_angle
+            self.scan_beams[slice_id] = self.slice_dict[slice_id].rx_beam_order
 
         self.aveperiods = []
         self.nested_slice_list = self.get_aveperiod_slice_ids()
@@ -113,8 +113,8 @@ class Scan(ScanClassBase):
 
         combos = self.slice_combos_sorter(intt_combos, self.slice_ids)
 
-        if __debug__:
-            print(f"AvePeriod slice id list: {combos}")
+        # TODO: Log appropriately. Was nested under __debug__
+        print(f"AvePeriod slice id list: {combos}")
 
         return combos
 

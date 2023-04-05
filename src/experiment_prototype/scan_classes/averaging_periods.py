@@ -74,24 +74,24 @@ class AveragingPeriod(ScanClassBase):
         # we may have to search multiple ranges.
         self.clrfrqrange = []
         for slice_id in self.slice_ids:
-            if self.slice_dict[slice_id]['clrfrqflag']:
+            if self.slice_dict[slice_id].clrfrqflag:
                 self.clrfrqflag = True
-                self.clrfrqrange.append(self.slice_dict[slice_id]['clrfrqrange'])
+                self.clrfrqrange.append(self.slice_dict[slice_id].clrfrqrange)
 
         # TODO: SET UP CLEAR FREQUENCY SEARCH CAPABILITY
         # also note for when setting this up clrfrqranges may overlap
 
-        self.intt = self.slice_dict[self.slice_ids[0]]['intt']
-        self.intn = self.slice_dict[self.slice_ids[0]]['intn']
+        self.intt = self.slice_dict[self.slice_ids[0]].intt
+        self.intn = self.slice_dict[self.slice_ids[0]].intn
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
-                if self.slice_dict[slice_id]['intt'] != self.intt:
+                if self.slice_dict[slice_id].intt != self.intt:
                     errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
                             " interfaced and do not have the same Averaging Period duration intt"
                     raise ExperimentException(errmsg)
         elif self.intn is not None:
             for slice_id in self.slice_ids:
-                if self.slice_dict[slice_id]['intn'] != self.intn:
+                if self.slice_dict[slice_id].intn != self.intn:
                     errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
                             " interfaced and do not have the same NAVE goal intn"
                     raise ExperimentException(errmsg)
@@ -141,8 +141,8 @@ class AveragingPeriod(ScanClassBase):
 
         combos = self.slice_combos_sorter(sequence_combos, self.slice_ids)
 
-        if __debug__:
-            print(f"sequences slice id combos: {combos}")
+        # TODO: Log appropriately (was __debug__ wrapped)
+        print(f"sequences slice id combos: {combos}")
 
         return combos
 
