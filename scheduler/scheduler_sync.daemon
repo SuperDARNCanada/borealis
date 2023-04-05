@@ -65,7 +65,8 @@ readonly DEST_PORT="5${SITE_ID}522"
 readonly DEST_DIR="/home/radar/borealis_schedules"
 
 # Define Slack webhook to send alert
-readonly SLACK_WEBHOOK="SLACK_WEBHOOK_${RADAR_ID^^}"  # ^^ makes $RADAR_ID all caps
+readonly WEBHOOK_VARIABLE="SLACK_WEBHOOK_${RADAR_ID^^}"  # ^^ makes $RADAR_ID all caps
+readonly SLACK_WEBHOOK="${!WEBHOOK_VARIABLE}"  # Get URL from $SLACK_WEBHOOK_[RADAR_ID]
 readonly MAX_ATTEMPTS=3  # Number of attempts before sending alert
 
 ###################################################################################################
