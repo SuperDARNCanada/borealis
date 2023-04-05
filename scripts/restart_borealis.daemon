@@ -11,6 +11,8 @@
 #   - mutt (Installed with zypper)
 #   - postfix enabled and started
 #   - SLACK_WEBHOOK defined in ~/.profile to a valid Slack webhook URL
+#   - Any email or SMS-to-email addresses to be notified should be defined in the CONTACTS array
+#     within .profile
 #   - RADAR_ID, BOREALISPATH, and PYTHON_VERSION defined in ~/.profile
 #
 # This script should be ran as a systemd daemon. An example .service file is shown below:
@@ -60,7 +62,12 @@ while true; do
         printf "$TIMESTAMP Sending alert to Slack, restart #$restarts\n"
 
         message="restart_borealis: Borealis has been restarted consecutive times at $RADAR_ID"
+        # Send message to Slack
         curl --silent --header "Content-type: application/json" --data "{'text':'${message}'}" $SLACK_WEBHOOK
+        # Send message to all listed in $CONTACTS environment variable
+        for address in "${CONTACTS[@]}"; do
+            echo -e $message | mutt -- $address
+        done
         printf "\n"
     fi
 
