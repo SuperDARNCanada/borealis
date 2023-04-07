@@ -96,6 +96,17 @@ class Sequence(ScanClassBase):
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
         ScanClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata)
 
+        self.decimation_scheme = self.slice_dict[self.slice_ids[0]].decimation_scheme
+        for slice_id in self.slice_ids:
+            if self.slice_dict[slice_id].decimation_scheme != self.decimation_scheme:
+                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are CONCURRENT interfaced and do not have the " \
+                         f"same decimation scheme"
+                raise ExperimentException(errmsg)
+
+        dm_rate = 1
+        for stage in self.decimation_scheme.stages:
+            dm_rate *= stage.dm_rate
+
         txrate = self.transmit_metadata['txrate']
         txctrfreq = self.transmit_metadata['txctrfreq']
         main_antenna_count = self.transmit_metadata['main_antenna_count']
@@ -106,7 +117,6 @@ class Sequence(ScanClassBase):
         max_usrp_dac_amplitude = self.transmit_metadata['max_usrp_dac_amplitude']
         tr_window_time = self.transmit_metadata['tr_window_time']
         intf_offset = self.transmit_metadata['intf_offset']
-        dm_rate = self.transmit_metadata['dm_rate']
 
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
@@ -379,12 +389,6 @@ class Sequence(ScanClassBase):
         if self.align_sequences:
             log.info("aligning sequences to 0.1 s boundaries.")
 
-        self.decimation_scheme = self.slice_dict[self.slice_ids[0]].decimation_scheme
-        for slice_id in self.slice_ids:
-            if self.slice_dict[slice_id].decimation_scheme != self.decimation_scheme:
-                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are CONCURRENT interfaced and do not have the " \
-                         f"same decimation scheme"
-                raise ExperimentException(errmsg)
 
     def make_sequence(self, beam_iter, sequence_num):
         """

@@ -13,16 +13,20 @@ import math
 
 # third-party
 import numpy as np
-from pydantic.dataclasses import dataclass
-from pydantic import StrictInt, validator, root_validator
+from pydantic.dataclasses import dataclass, Field
+from pydantic import (
+    validator, root_validator, conlist, conint, confloat, StrictBool, StrictInt, PositiveInt, PositiveFloat,
+)
 from scipy.constants import speed_of_light
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, Callable
 
 # local
 from utils.options import Options
 from experiment_prototype.experiment_exception import ExperimentException
-from experiment_prototype.decimation_scheme.decimation_scheme import create_default_scheme, DecimationScheme
+from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme
 from experiment_prototype import list_tests
+
+options = Options()
 
 slice_key_set = frozenset([
     "acf",
@@ -64,11 +68,23 @@ experiment is run). If set by the user, the values will be overwritten and there
 """
 
 
+def default_callable():
+    """This function does nothing, and exists only as a default value for Callable fields in ExperimentSlice"""
+    pass
+
+
 class SliceConfig:
     validate_assignment = True
     validate_all = True
     allow_mutation = False
     extra = 'forbid'
+    arbitrary_types_allowed = True
+
+
+freq_float_hz = confloat(ge=options.min_freq, le=options.max_freq)
+freq_float_khz = confloat(ge=options.min_freq / 1e3, le=options.max_freq / 1e3)
+freq_int_hz = conint(ge=options.min_freq, le=options.max_freq)
+freq_int_khz = conint(ge=options.min_freq / 1e3, le=options.max_freq / 1e3)
 
 
 @dataclass(config=SliceConfig)
@@ -116,7 +132,7 @@ class ExperimentSlice:
         do imaging we will still have to quantize the directions we are looking in to certain beam
         directions. It is up to the user to ensure that this field works well with the specified
         tx_beam_order or tx_antenna_pattern.
-    rx_only *read-only*
+    rxonly *read-only*
         A boolean flag to indicate that the slice doesn't transmit, only receives.
     tau_spacing *required*
         multi-pulse increment (mpinc) in us, Defines minimum space between pulses.
@@ -193,7 +209,7 @@ class ExperimentSlice:
         rx_beam_order, which can be a list of lists of integers. The length of this list must be equal
         to the length of the rx_beam_order list. If tx_antenna_pattern is given, the items in
         tx_beam_order specify which row of the return from tx_antenna_pattern to use to beamform a given
-        transmission. Default is None, i.e. rx_only slice.
+        transmission. Default is None, i.e. rxonly slice.
     wait_for_first_scanbound *defaults*
         A boolean flag to determine when an experiment starts running. True (default) means an
         experiment will wait until the first averaging period in a scan to start transmitting. False
@@ -220,53 +236,67 @@ class ExperimentSlice:
         A dictionary of slice_id : interface_type for each sibling slice in the experiment at any given
         time.
     """
-    # These fields can be specified in exp_slice_dict, subject to some conditions.
-    acf: Optional[bool] = False
-    acfint: Optional[bool] = False
-    align_sequences: Optional[bool] = False
-    averaging_method: Optional[Literal['mean', 'median']]
-    beam_angle: list[float]
-    clrfrqrange: Optional[list[float]]
-    comment: Optional[str] = ''
-    cpid: StrictInt
-    decimation_scheme: DecimationScheme
-    first_range: Union[float, int]
-    freq: Optional[Union[float, int]]
-    intn: Optional[StrictInt]
-    intt: Optional[float]
-    lag_table: Optional[list[list[StrictInt]]]
-    num_ranges: Optional[StrictInt]
-    pulse_len: StrictInt
-    pulse_phase_offset: Optional[callable]
-    pulse_sequence: list[StrictInt]
-    range_sep: float    # TODO: We overwrite this anyway, remove? Consider pulse compression in this decision
-    rx_beam_order: list[Union[list[int], int]]
-    rx_int_antennas: Optional[list[int]]
-    rx_main_antennas: Optional[list[int]]
-    rx_only: bool
-    scanbound: Optional[list[float]]
-    seqoffset: Optional[int]
-    slice_id: int
-    tau_spacing: float
-    tx_antennas: Optional[list[int]]
-    tx_antenna_pattern: Optional[callable]
-    tx_beam_order: Optional[list[Union[list[int]], int]]
-    wait_for_first_scanbound: Optional[bool]
-    xcf: Optional[bool] = False
+    # NOTE: The order of fields matters, as the validation is done according to the order defined here. Validation
+    # of some fields assumes that other fields have already been validated, so be careful and test if making any changes
+    # to the order below.
 
     # These fields are for checking the validity of the user-specified fields, to ensure the slice is
     # compatible with the experiment settings.
-    tx_minfreq: InitVar[float]
-    tx_maxfreq: InitVar[float]
-    rx_minfreq: InitVar[float]
-    rx_maxfreq: InitVar[float]
-    txctrfreq: InitVar[float]
-    rxctrfreq: InitVar[float]
-    tx_bandwidth: InitVar[float]
-    rx_bandwidth: InitVar[float]
-    output_rx_rate: InitVar[float]
-    transition_bandwidth: InitVar[float]
-    options: InitVar[Options]
+    tx_minfreq: freq_float_hz
+    tx_maxfreq: freq_float_hz
+    rx_minfreq: freq_float_hz
+    rx_maxfreq: freq_float_hz
+    txctrfreq: freq_float_khz
+    rxctrfreq: freq_float_khz
+    tx_bandwidth: float
+    rx_bandwidth: float
+    output_rx_rate: float
+    transition_bandwidth: float
+
+    # These fields can be specified in exp_slice_dict, subject to some conditions. Some may have dynamic default values.
+    beam_angle: conlist(float, unique_items=True)
+    cpid: StrictInt
+    decimation_scheme: DecimationScheme
+    first_range: Union[PositiveFloat, PositiveInt]
+    num_ranges: conint(gt=0, le=options.max_range_gates)
+    tau_spacing: conint(ge=options.min_tau_spacing_length)
+    pulse_len: conint(ge=options.min_pulse_length)
+    pulse_sequence: conlist(conint(ge=0), unique_items=True)
+    rx_beam_order: conlist(Union[list[conint(ge=0)], conint(ge=0)])
+    rxonly: StrictBool
+    slice_id: conint(ge=0)
+    freq: Union[freq_float_khz, freq_int_khz]
+
+    # These fields have default values. Some have specification requirements in conjunction with each other
+    # e.g. one of intt or intn must be specified.
+    tx_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count),
+                                  max_items=options.main_antenna_count,
+                                  unique_items=True)] = Field(default_factory=list)
+    rx_main_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count),
+                                       max_items=options.main_antenna_count,
+                                       unique_items=True)] = Field(default_factory=list)
+    rx_int_antennas: Optional[conlist(conint(ge=0, lt=options.intf_antenna_count),
+                                      max_items=options.intf_antenna_count,
+                                      unique_items=True)] = Field(default_factory=list)
+    tx_antenna_pattern: Optional[Callable] = default_callable
+    tx_beam_order: Optional[list[Union[conint(ge=0), list[conint(ge=0)]]]] = Field(default_factory=list)
+    intt: Optional[float] = -1
+    scanbound: Optional[list[PositiveFloat]] = Field(default_factory=list)
+    pulse_phase_offset: Optional[Callable] = default_callable
+    clrfrqrange: Optional[conlist(freq_float_khz, max_items=2)] = Field(default_factory=list)
+    clrfrqflag: StrictBool = Field(init=False)
+
+    acf: Optional[StrictBool] = False
+    acfint: Optional[StrictBool] = False
+    align_sequences: Optional[StrictBool] = False
+    averaging_method: Optional[Literal['mean', 'median']] = 'mean'
+    comment: Optional[str] = ''
+    intn: Optional[int] = -1
+    lag_table: Optional[list[list[StrictInt]]] = Field(default_factory=list)
+    range_sep: Optional[PositiveFloat] = Field(init=False)
+    seqoffset: Optional[conint(ge=0)] = 0
+    wait_for_first_scanbound: Optional[StrictBool] = False
+    xcf: Optional[bool] = False
 
     # Validators which check that all mutually exclusive sets of fields have one option set
 
@@ -290,6 +320,7 @@ class ExperimentSlice:
             raise ExperimentException(errmsg)
         if 'intt' in values and 'intn' in values:
             print('intn is set in experiment slice but will not be used due to intt')
+            values.pop('intn')
             # TODO Log warning intn will not be used
         return values
 
@@ -309,30 +340,21 @@ class ExperimentSlice:
             raise ExperimentException(errmsg)
         return values
 
-    # Validators which check a specific field
+    # Validate that a list is increasing
 
-    @validator('num_ranges')
-    def check_num_ranges(cls, num_ranges, values):
-        if num_ranges <= 0:
-            raise ValueError(f"num_ranges must be greater than zero. Slice {values['slice_id']}")
-        return num_ranges
+    @validator('pulse_sequence', 'beam_angle')
+    def check_list_increasing(cls, v_list):
+        if not list_tests.is_increasing(v_list):
+            raise ValueError(f"not increasing: {v_list}")
+        return v_list
 
-    @validator('pulse_sequence')
-    def check_pulse_sequence(cls, pulse_sequence, values):
-        for element in pulse_sequence:
-            if element < 0:
-                raise ValueError(f"pulse_sequence must be list of positive integers. Slice {values['slice_id']}")
-        if not list_tests.is_increasing(pulse_sequence):
-            raise ValueError(f"pulse_sequence not increasing. Slice {values['slice_id']}")
-        return pulse_sequence
+    # Validators that depend on other previously-validated fields
 
     @validator('tau_spacing')
     def check_tau_spacing(cls, tau_spacing, values):
         # TODO : tau_spacing needs to be an integer multiple of pulse_len in ros - is there a max ratio
         #  allowed for pulse_len/tau_spacing ? Add this check and add check for each slice's tx duty-cycle
         #  and make sure we aren't transmitting the entire time after combination with all slices
-        if tau_spacing < values['options'].min_tau_spacing_length:
-            raise ValueError(f"Slice {values['slice_id']} multi-pulse increment too small")
         if not math.isclose((tau_spacing * values['output_rx_rate'] % 1.0), 0.0, abs_tol=0.0001):
             raise ValueError(f"Slice {values['slice_id']} correlation lags will be off because tau_spacing "
                              f"{tau_spacing} us is not a multiple of the output rx sampling period "
@@ -343,8 +365,7 @@ class ExperimentSlice:
     def check_pulse_len(cls, pulse_len, values):
         if pulse_len > values['tau_spacing']:
             raise ValueError(f"Slice {values['slice_id']} pulse length greater than tau_spacing")
-        if pulse_len < values['options'].min_pulse_length and \
-                pulse_len <= 2 * values['options'].pulse_ramp_time * 1.0e6:
+        if pulse_len <= 2 * options.pulse_ramp_time * 1.0e6:
             raise ValueError(f"Slice {values['slice_id']} pulse length too small")
         if 'acf' in values and values['acf']:
             # The below check is an assumption that is made during acf calculation
@@ -358,6 +379,9 @@ class ExperimentSlice:
 
     @validator('intt')
     def check_intt(cls, intt, values):
+        if intt is -1:  # Not provided
+            return
+
         # check intn and intt make sense given tau_spacing, and pulse_sequence.
         # Sequence length is length of pulse sequence plus the scope sync delay time.
         # TODO: this is an old check and seqtime now set in sequences class, update.
@@ -370,104 +394,79 @@ class ExperimentSlice:
 
     @validator('tx_antennas')
     def check_tx_antennas(cls, tx_antennas, values):
-        if len(tx_antennas) > values['options'].main_antenna_count:
-            raise ExperimentException(f"Slice {values['slice_id']} has too many main TX antenna channels "
-                                      f"{len(tx_antennas)} greater than config {values['options'].main_antenna_count}")
-        if max(tx_antennas) >= values['options'].main_antenna_count:
-            raise ExperimentException(f"Slice {values['slice_id']} specifies TX main array antenna numbers over "
-                                      f"config max {values['options'].main_antenna_count}")
-        if list_tests.has_duplicates(tx_antennas):
-            raise ExperimentException(f"Slice {values['slice_id']} TX main antennas has duplicate antennas")
+        if not tx_antennas:
+            return [i for i in options.main_antennas]
         return tx_antennas
 
     @validator('rx_main_antennas')
     def check_rx_main_antennas(cls, rx_main_antennas, values):
-        if len(rx_main_antennas) > values['options'].main_antenna_count:
-            raise ExperimentException(f"Slice {values['slice_id']} has too many main RX antenna channels "
-                                      f"{len(rx_main_antennas)} greater than config "
-                                      f"{values['options'].main_antenna_count}")
-        for i in range(len(rx_main_antennas)):
-            if rx_main_antennas[i] >= values['options'].main_antenna_count:
-                raise ExperimentException(f"Slice {values['slice_id']} specifies RX main array antenna numbers over "
-                                          f"config max {values['options'].main_antenna_count}")
-        if list_tests.has_duplicates(rx_main_antennas):
-            raise ExperimentException(f"Slice {values['slice_id']} RX main antennas has duplicate antennas")
+        if not rx_main_antennas:
+            return [i for i in options.main_antennas]
         return rx_main_antennas
 
     @validator('rx_int_antennas')
     def check_rx_int_antennas(cls, rx_int_antennas, values):
-        if len(rx_int_antennas) > values['options'].intf_antenna_count:
-            raise ExperimentException(f"Slice {values['slice_id']} has too many RX interferometer antenna channels "
-                                      f"{len(rx_int_antennas)} greater than config "
-                                      f"{values['options'].intf_antenna_count}")
-        for i in range(len(rx_int_antennas)):
-            if rx_int_antennas[i] >= values['options'].intf_antenna_count:
-                raise ExperimentException(f"Slice {values['slice_id']} specifies interferometer array antenna numbers "
-                                          f"over config max {values['options'].intf_antenna_count}")
-        if list_tests.has_duplicates(rx_int_antennas):
-            raise ExperimentException(f"Slice {values['slice_id']} RX interferometer antennas has duplicate antennas")
+        if not rx_int_antennas:
+            return [i for i in options.intf_antennas]
         return rx_int_antennas
 
     @validator('tx_antenna_pattern')
     def check_tx_antenna_pattern(cls, tx_antenna_pattern, values):
+        if tx_antenna_pattern is default_callable:  # No value given
+            return
+
         antenna_pattern = tx_antenna_pattern(values['freq'], values['tx_antennas'],
-                                             values['options'].main_antenna_spacing)
+                                             options.main_antenna_spacing)
         if not isinstance(antenna_pattern, np.ndarray):
             raise ExperimentException(f"Slice {values['slice_id']} tx antenna pattern return is not a numpy array")
         else:
             if len(antenna_pattern.shape) != 2:
                 raise ExperimentException(f"Slice {values['slice_id']} tx antenna pattern return shape "
                                           f"{antenna_pattern.shape} must be 2-dimensional")
-            elif antenna_pattern.shape[1] != values['options'].main_antenna_count:
+            elif antenna_pattern.shape[1] != options.main_antenna_count:
                 raise ExperimentException(f"Slice {values['slice_id']} tx antenna pattern return 2nd dimension "
                                           f"({antenna_pattern.shape[1]}) must be equal to number of main antennas "
-                                          f"({values['options'].main_antenna_count})")
+                                          f"({options.main_antenna_count})")
             antenna_pattern_mag = np.abs(antenna_pattern)
             if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
                 raise ExperimentException(f"Slice {values['slice_id']} tx antenna pattern return must not have any "
                                           f"values with a magnitude greater than 1")
         return tx_antenna_pattern
 
-    @validator('beam_angle')
-    def check_beam_angle(cls, beam_angle, values):
-        if list_tests.has_duplicates(beam_angle):
-            raise ExperimentException(f"Slice {values['slice_id']} beam angles has duplicate directions")
-        if not list_tests.is_increasing(beam_angle):
-            raise ExperimentException(f"Slice {values['slice_id']} beam_angle not increasing clockwise (E of N is "
-                                      f"positive)")
-        return beam_angle
-
-    @validator('rx_beam_order')
-    def check_rx_beam_order(cls, rx_beam_order, values):
-        for element in rx_beam_order:
-            if isinstance(element, list):
-                for beamnum in element:
-                    if beamnum >= len(values['beam_angle']):
-                        errmsg = f"Beam number {beamnum} could not index in beam_angle list of " \
-                                 f"length {len(values['beam_angle'])}. Slice: {values['slice_id']}"
-                        raise ExperimentException(errmsg)
-            else:
-                if element >= len(values['beam_angle']):
-                    errmsg = f"Beam number {element} could not index in beam_angle list of length " \
-                             f"{len(values['beam_angle'])}. Slice: {values['slice_id']}"
+    @validator('rx_beam_order', each_item=True)
+    def check_rx_beam_order(cls, rx_beam, values):
+        if isinstance(rx_beam, list):
+            for beamnum in rx_beam:
+                if beamnum >= len(values['beam_angle']):
+                    errmsg = f"Beam number {beamnum} could not index in beam_angle list of " \
+                             f"length {len(values['beam_angle'])}. Slice: {values['slice_id']}"
                     raise ExperimentException(errmsg)
-        return rx_beam_order
+        else:
+            if rx_beam >= len(values['beam_angle']):
+                errmsg = f"Beam number {rx_beam} could not index in beam_angle list of length " \
+                         f"{len(values['beam_angle'])}. Slice: {values['slice_id']}"
+                raise ExperimentException(errmsg)
+        return rx_beam
 
     @validator('tx_beam_order')
     def check_tx_beam_order(cls, tx_beam_order, values):
+        if not tx_beam_order:   # Empty list, was not specified
+            return
+
         if len(tx_beam_order) != len(values['rx_beam_order']):
             errmsg = f"tx_beam_order does not have same length as rx_beam_order. Slice: {values['slice_id']}"
             raise ExperimentException(errmsg)
         for element in tx_beam_order:
-            if element >= len(values['beam_angle']) and 'tx_pattern' not in values:
+            if element >= len(values['beam_angle']) and \
+                    ('tx_antenna_pattern' not in values or not values['tx_antenna_pattern']):
                 errmsg = f"Beam number {element} in tx_beam_order could not index in beam_angle " \
                          f"list of length {len(values['beam_angle'])}. Slice: {values['slice_id']}"
                 raise ExperimentException(errmsg)
 
         num_beams = len(values['beam_angle'])
-        if 'tx_antenna_pattern' in values:
+        if 'tx_antenna_pattern' in values and values['tx_antenna_pattern']:
             antenna_pattern = values['tx_antenna_pattern'](values['freq'], values['tx_antennas'],
-                                                           values['options'].main_antenna_spacing)
+                                                           options.main_antenna_spacing)
             if isinstance(antenna_pattern, np.ndarray):
                 num_beams = antenna_pattern.shape[0]
         for bmnum in tx_beam_order:
@@ -478,6 +477,9 @@ class ExperimentSlice:
 
     @validator('scanbound')
     def check_scanbound(cls, scanbound, values):
+        if not scanbound:   # No scanbound defined
+            return
+
         if 'intt' not in values:
             raise ExperimentException(f"Slice {values['slice_id']} must have intt enabled to use scanbound")
         elif any(i < 0 for i in scanbound):
@@ -501,6 +503,9 @@ class ExperimentSlice:
 
     @validator('pulse_phase_offset')
     def check_pulse_phase_offset(cls, ppo, values):
+        if ppo is default_callable:     # No value given
+            return
+
         # Test the encoding fn with beam iterator of 0 and sequence num of 0. test the user's
         # phase encoding function on first beam (beam_iterator = 0) and first sequence
         # (sequence_number = 0)
@@ -518,6 +523,9 @@ class ExperimentSlice:
 
     @validator('clrfrqrange')
     def check_clrfrqrange(cls, clrfrqrange, values):
+        if not clrfrqrange:
+            return
+
         if len(clrfrqrange) != 2:
             raise ExperimentException('clrfrqrange must be an integer list of length = 2')
 
@@ -534,7 +542,7 @@ class ExperimentSlice:
 
         still_checking = True
         while still_checking:
-            for freq_range in values['options'].restricted_ranges:
+            for freq_range in options.restricted_ranges:
                 if freq_range[0] <= clrfrqrange[0] <= freq_range[1]:
                     if freq_range[0] <= clrfrqrange[1] <= freq_range[1]:
                         # the range is entirely within the restricted range.
@@ -599,7 +607,7 @@ class ExperimentSlice:
                          f"and transition band ({values['transition_bandwidth'] / 1.0e3} kHz)."
                 raise ExperimentException(errmsg)
 
-            for freq_range in values['options'].restricted_ranges:
+            for freq_range in options.restricted_ranges:
                 if freq_range[0] <= freq <= freq_range[1]:
                     raise ExperimentException(f"freq is within a restricted frequency range {freq_range}")
 
@@ -607,21 +615,21 @@ class ExperimentSlice:
 
     # Validators that set dynamic default values (depends on user-specified fields)
 
-    @validator('xcf', pre=True, always=True)
+    @validator('xcf', always=True)
     def check_xcf(cls, xcf, values):
         if 'acf' in values and values['acf']:
             return xcf
         else:   # TODO log that no xcf will happen if acfs are not set.
             return False
 
-    @validator('acfint', pre=True, always=True)
-    def check_xcf(cls, acfint, values):
+    @validator('acfint', always=True)
+    def check_acfint(cls, acfint, values):
         if 'acf' in values and values['acf']:
             return acfint
         else:   # TODO log that no acfint will happen if acfs are not set.
             return False
 
-    @validator('range_sep', pre=True, always=True)
+    @validator('range_sep', always=True)
     def check_range_sep(cls, range_sep, values):
         # This is the distance travelled by the wave in the length of the pulse, divided by
         # two because it's an echo (travels there and back). In km.
@@ -638,14 +646,14 @@ class ExperimentSlice:
             pass
         return correct_range_sep
 
-    @validator('averaging_method', pre=True, always=True)
+    @validator('averaging_method', always=True)
     def check_averaging_method(cls, averaging_method, values):
         if 'acf' in values and values['acf']:
             return averaging_method or 'mean'
         else:   # TODO: log averaging_method will not be used
             return None
 
-    @validator('lag_table', pre=True, always=True)
+    @validator('lag_table', always=True)
     def check_lag_table(cls, lag_table, values):
         if 'acf' in values and values['acf']:
             if lag_table:

@@ -97,13 +97,13 @@ class AveragingPeriod(ScanClassBase):
                     raise ExperimentException(errmsg)
 
         for slice_id in self.slice_ids: 
-            if len(self.slice_dict[slice_id]['rx_beam_order']) != \
-               len(self.slice_dict[self.slice_ids[0]]['rx_beam_order']):
+            if len(self.slice_dict[slice_id].rx_beam_order) != \
+               len(self.slice_dict[self.slice_ids[0]].rx_beam_order):
                 errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
                         " interfaced but do not have the same number of averaging periods in"\
                         " their beam order"
                 raise ExperimentException(errmsg)
-        self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]]['rx_beam_order'])
+        self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]].rx_beam_order)
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 

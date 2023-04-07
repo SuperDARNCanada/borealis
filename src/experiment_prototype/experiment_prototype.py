@@ -778,7 +778,7 @@ class ExperimentPrototype:
 
         # Now we setup the slice which will check minimum requirements and set defaults, and then
         # will complete a check_slice and raise any errors found.
-        new_exp_slice = ExperimentSlice(**exp_slice, options=self.options, **self.__slice_restrictions)
+        new_exp_slice = ExperimentSlice(**exp_slice, **self.__slice_restrictions)
 
         # now check that the interfacing values make sense before appending.
         full_interfacing_dict = self.check_new_slice_interfacing(interfacing_dict)
