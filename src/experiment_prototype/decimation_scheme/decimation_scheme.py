@@ -49,6 +49,12 @@ class DecimationStage(object):
                 raise ExperimentException(errmsg)
         self.filter_taps = filter_taps
 
+    def __eq__(self, other):
+        for k, v in self.__dict__.items():
+            if v != getattr(other, k, None):
+                return False
+        return True
+
 
 class DecimationScheme(object):
     """
@@ -128,6 +134,12 @@ class DecimationScheme(object):
             repr_str += f'\nNum taps: {len(stage.filter_taps)}'
             # repr_str += '\nFilter Taps: {}\n'.format(stage.filter_taps)
         return repr_str
+
+    def __eq__(self, other):
+        for k, v in self.__dict__.items():
+            if v != getattr(other, k, None):
+                return False
+        return True
 
 
 def create_default_scheme(): 

@@ -125,7 +125,7 @@ class ExperimentSlice:
         averaging period. Can have lists within the list, resulting in multiple beams running
         simultaneously in the averaging period, so imaging. A beam number of 0 in this list gives us the
         direction of the 0th element in the beam_angle list. It is up to the writer to ensure their beam
-        pattern makes sense. Typically rx_beam_order is just in order (scanning W to E or E to W, ie.
+        pattern makes sense. Typically rx_beam_order is just in order (scanning W to E or E to W), ie.
         [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]. You can list numbers multiple times in
         the rx_beam_order list, for example [0, 1, 1, 2, 1] or use multiple beam numbers in a single
         averaging period (example [[0, 1], [3, 4]], which would trigger an imaging integration. When we
@@ -257,18 +257,18 @@ class ExperimentSlice:
     beam_angle: conlist(float, unique_items=True)
     cpid: StrictInt
     decimation_scheme: DecimationScheme
-    first_range: Union[PositiveFloat, PositiveInt]
+    first_range: Union[confloat(ge=0), conint(ge=0)]
     num_ranges: conint(gt=0, le=options.max_range_gates)
     tau_spacing: conint(ge=options.min_tau_spacing_length)
     pulse_len: conint(ge=options.min_pulse_length)
     pulse_sequence: conlist(conint(ge=0), unique_items=True)
     rx_beam_order: conlist(Union[list[conint(ge=0)], conint(ge=0)])
-    rxonly: StrictBool
     slice_id: conint(ge=0)
     freq: Union[freq_float_khz, freq_int_khz]
 
     # These fields have default values. Some have specification requirements in conjunction with each other
     # e.g. one of intt or intn must be specified.
+    rxonly: Optional[StrictBool] = False
     tx_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count),
                                   max_items=options.main_antenna_count,
                                   unique_items=True)] = Field(default_factory=list)
@@ -281,7 +281,7 @@ class ExperimentSlice:
     tx_antenna_pattern: Optional[Callable] = default_callable
     tx_beam_order: Optional[list[Union[conint(ge=0), list[conint(ge=0)]]]] = Field(default_factory=list)
     intt: Optional[float] = -1
-    scanbound: Optional[list[PositiveFloat]] = Field(default_factory=list)
+    scanbound: Optional[list[confloat(ge=0)]] = Field(default_factory=list)
     pulse_phase_offset: Optional[Callable] = default_callable
     clrfrqrange: Optional[conlist(freq_float_khz, max_items=2)] = Field(default_factory=list)
     clrfrqflag: StrictBool = Field(init=False)
@@ -305,7 +305,7 @@ class ExperimentSlice:
         if 'tx_antenna_pattern' not in values and 'tx_beam_order' in values:
             errmsg = f"tx_beam_order must be specified if tx_antenna_pattern specified. Slice: {values['slice_id']}"
             raise ExperimentException(errmsg)
-        elif 'tx_beam_order' in values and 'rxonly' in values and values['rxonly'] is True:
+        elif 'tx_beam_order' in values and 'rxonly' in values and values['rxonly']:
             errmsg = f"rxonly specified as True but tx_beam_order specified. Slice: {values['slice_id']}"
             raise ExperimentException(errmsg)
         elif 'tx_beam_order' not in values and 'rxonly' in values and values['rxonly'] is False:
@@ -315,20 +315,18 @@ class ExperimentSlice:
 
     @root_validator(pre=True)
     def check_intt_intn(cls, values):
-        if 'intt' not in values and 'intn' not in values:
+        if values['intt'] == -1 and values['intn'] == -1:
             errmsg = f"Slice must specify either an intn (unitless) or intt in ms. Slice: {values['slice_id']}"
             raise ExperimentException(errmsg)
-        if 'intt' in values and 'intn' in values:
-            print('intn is set in experiment slice but will not be used due to intt')
-            values.pop('intn')
-            # TODO Log warning intn will not be used
+        elif values['intt'] != -1 and values['intn'] != -1:
+            errmsg = f"intn is set in experiment slice but will not be used due to intt. Slice: {values['slice_id']}"
+            raise ExperimentException(errmsg)
         return values
 
     @root_validator(pre=True)
     def check_freq_clrfrqrange(cls, values):
         if 'clrfrqrange' in values:
             values['clrfrqflag'] = True
-
             if 'freq' in values and values['freq'] not in range(values['clrfrqrange'][0], values['clrfrqrange'][1]):
                 # TODO: Log this appropriately
                 print("Slice parameter 'freq' removed as 'clrfrqrange' takes precedence. If this is not desired,"
@@ -379,7 +377,7 @@ class ExperimentSlice:
 
     @validator('intt')
     def check_intt(cls, intt, values):
-        if intt is -1:  # Not provided
+        if intt == -1:  # Not provided
             return
 
         # check intn and intt make sense given tau_spacing, and pulse_sequence.
@@ -579,10 +577,10 @@ class ExperimentSlice:
 
     @validator('freq')
     def check_freq(cls, freq, values):
-        if values['rxonly']:  # RX only mode.
+        if 'rxonly' in values and values['rxonly']:  # RX only mode.
             # In this mode, freq is required.
             if (freq * 1000) >= values['rx_maxfreq'] or (freq * 1000) <= values['rx_minfreq']:
-                errmsg = "freq must be a number (kHz) between rx min and max frequencies " \
+                errmsg = f"freq ({freq}) must be a number (kHz) between rx min and max frequencies " \
                          f"{(values['rx_minfreq'] / 1.0e3, values['rx_maxfreq'] / 1.0e3)} for the radar license " \
                          f"and be within range given center frequency {values['rxctrfreq']} kHz, " \
                          f"sampling rate {values['rx_bandwidth'] / 1.0e3} kHz, and transition band " \
@@ -598,7 +596,7 @@ class ExperimentSlice:
                 freq_error = True
 
             if freq_error:
-                errmsg = "freq must be a number (kHz) between tx min and max frequencies " \
+                errmsg = f"freq ({freq}) must be a number (kHz) between tx min and max frequencies " \
                          f"{(values['tx_minfreq'] / 1.0e3, values['tx_maxfreq'] / 1.0e3)} and rx min and max " \
                          f"frequencies {(values['rx_minfreq'] / 1.0e3, values['rx_maxfreq'] / 1.0e3)} for the " \
                          f"radar license and be within range given center frequencies " \
