@@ -17,6 +17,7 @@ import os
 # third-party
 import numpy as np
 from pathlib import Path
+from pydantic import ValidationError
 import re
 
 # local
@@ -778,7 +779,10 @@ class ExperimentPrototype:
 
         # Now we setup the slice which will check minimum requirements and set defaults, and then
         # will complete a check_slice and raise any errors found.
+        # try:
         new_exp_slice = ExperimentSlice(**exp_slice, **self.__slice_restrictions)
+        # except ValidationError as err:
+        #     raise ExperimentException(str(err))     # Wrap any errors in an ExperimentException
 
         # now check that the interfacing values make sense before appending.
         full_interfacing_dict = self.check_new_slice_interfacing(interfacing_dict)
@@ -851,7 +855,7 @@ class ExperimentPrototype:
         slice_params_to_edit = dict(kwargs)
 
         try:
-            edited_slice = self.slice_dict[edit_slice_id].copy()
+            edited_slice = copy.deepcopy(self.slice_dict[edit_slice_id])
         except (KeyError, TypeError):
             # the edit_slice_id is not an index in the slice_dict
             errmsg = f'Trying to edit {edit_slice_id} but it does not exist in Slice_IDs list.'

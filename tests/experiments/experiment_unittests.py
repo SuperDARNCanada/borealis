@@ -48,6 +48,7 @@ from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import borealis_experiments.superdarn_common_fields as scf
 
+
 def ehmain(experiment_name='normalscan', scheduling_mode='discretionary'):
     """
     Calls the functions within experiment handler that verify an experiment
@@ -149,45 +150,50 @@ class TestExperimentExceptions(unittest.TestCase):
         print("\nException Test: ", self._testMethodName)
 
 
-def build_unit_tests(input_test_file):
+def build_unit_tests():
     """
-    Create individual unit tests for all test cases specified in input .csv file. The input file
-    will contain a set of tests (one per line), and will generate individual tests for each line in
-    the file. File format is: 
-    
-    [experiment module]::[string regex message that the experiment will raise]
-
-    :param input_test_file: Path to the csv file containing unit tests formatted as described above
-    :type input_test_file: str
+    Create individual unit tests for all test cases specified in testing_archive directory of experiments path.
     """
-    try:
-        with open(input_test_file) as test_suite_list:
-            for test_line in test_suite_list.readlines():
-                # Remove comment lines and empty lines
-                if test_line.startswith('#') or test_line.strip() == '':
-                    continue
-                # Separate on double colon to ensure the regex msg isn't split
-                exp_module_name = test_line.split('::')[0]  # Names all start with "test_"
-                exp_exception_msg_regex = test_line.split('::')[1]
-                test = exception_test_generator(exp_module_name, exp_exception_msg_regex.strip())
-                # setattr makes a properly named test method within TestExperimentExceptions which 
-                # can be run by unittest.main()
-                setattr(TestExperimentExceptions, exp_module_name, test)
-        print("Done building exception unit tests")
-    except TypeError:
-        print(f"Could not open test file {input_test_file}, only performing basic tests")
+    experiment_package = 'testing_archive'
+    experiment_path = f"{BOREALISPATH}/src/borealis_experiments/{experiment_package}/"
+    if not os.path.exists(experiment_path):
+        raise OSError(f"Error: experiment path {experiment_path} is invalid")
 
-def exception_test_generator(module_name, exception_msg_regex):
+    # Iterate through all modules in the borealis_experiments directory
+    for (_, name, _) in pkgutil.iter_modules([Path(experiment_path)]):
+        imported_module = import_module('.' + name, package=f'borealis_experiments.{experiment_package}')
+        # Loop through all attributes of each found module
+        for i in dir(imported_module):
+            attribute = getattr(imported_module, i)
+            # To verify that an attribute is a runnable experiment, check that the attribute is
+            # a class and inherits from ExperimentPrototype
+            if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
+                # Only create a test if the current attribute is the experiment itself
+                if 'ExperimentPrototype' not in str(attribute):
+                    # Should have a classmethod called "error_message" that contains the error message raised
+                    exp_exception, msg = getattr(attribute, 'error_message')()
+                    test = exception_test_generator('testing_archive.' + name, exp_exception, msg)
+                    # setattr makes a properly named test method within TestExperimentExceptions which
+                    # can be run by unittest.main()
+                    setattr(TestExperimentExceptions, name, test)
+                    break
+
+    print("Done building experiment tests")
+
+
+def exception_test_generator(module_name, exception, exception_message):
     """
     Generate a single test for the given module name and exception message
 
-    :param module_name: Experiment module name, i.e. 'normalscan'
-    :type module_name: str
-    :param exception_msg_regex: Regex error msg the experiment module is expected to return
-    :type exception_msg_regex: str
+    :param module_name:         Experiment module name, i.e. 'normalscan'
+    :type  module_name:         str
+    :param exception:           Exception that is expected to be raised
+    :type  exception:           BaseException
+    :param exception_message:   Message from the Exception raised.
+    :type  exception_message:   str
     """
     def test(self):
-        with self.assertRaisesRegex(ExperimentException, exception_msg_regex):
+        with self.assertRaisesRegex(exception, exception_message):
             ehmain(experiment_name=module_name)
     return test
 
@@ -232,6 +238,7 @@ def build_experiment_tests():
                     setattr(TestExperiments, f"test_{name}", test)
     print("Done building experiment tests")
 
+
 def experiment_test_generator(module_name):
     """
     Generate a single test for a given experiment name. The test will try to run the experiment, 
@@ -247,25 +254,18 @@ def experiment_test_generator(module_name):
             self.fail(err)
     return test
 
-if __name__ == '__main__':
-    # Default .csv file containing exception unittests to run
-    default_test_file = f"{BOREALISPATH}/tests/experiments/experiment_tests.csv"
 
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--site_id", required=False, default="sas", 
                         choices=["sas", "pgr", "inv", "rkn", "cly", "lab"], 
                         help="Site ID of site to test experiments as. Defaults to sas.")
-    parser.add_argument("--test_file", required=False, default=default_test_file,
-                        help=".csv file containing experiment unittests to run. If no file \
-                        provided, uses default exception unittest file.")
     parser.add_argument("--experiment", required=False, nargs="+", default=None, 
                         help="Only run the experiments specified after this option. Experiments \
                         specified must exist within the top-level Borealis experiments directory.")
 
-
     args, extra_args = parser.parse_known_args()
     os.environ["RADAR_ID"] = args.site_id
-    test_file = args.test_file
     experiments = args.experiment
 
     if len(extra_args) != 0:
@@ -274,7 +274,7 @@ if __name__ == '__main__':
         exit(1)
 
     if experiments is None:  # Run all unit tests and experiment tests
-        build_unit_tests(test_file)
+        build_unit_tests()
         build_experiment_tests()
         unittest.main(argv=sys.argv[:1])
     else:  # Only test specified experiments
