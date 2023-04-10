@@ -44,7 +44,6 @@ BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(f"{BOREALISPATH}/src")
 
 import experiment_handler as eh
-from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 import borealis_experiments.superdarn_common_fields as scf
 
@@ -137,7 +136,7 @@ class TestExperimentEnvSetup(unittest.TestCase):
         os.rename(f"{hdw_path}/_hdw.dat.{site_name}", f"{hdw_path}/hdw.dat.{site_name}")
 
 
-class TestExperimentExceptions(unittest.TestCase):
+class TestExperimentArchive(unittest.TestCase):
     """
     A unittest class to test various ways for an experiment to fail for the experiment_handler
     module. Tests will check that exceptions are correctly thrown for each failure case. All test
@@ -148,6 +147,19 @@ class TestExperimentExceptions(unittest.TestCase):
         This function is called before every test_* method (every test case in unittest lingo)
         """
         print("\nException Test: ", self._testMethodName)
+
+
+class TestActiveExperiments(unittest.TestCase):
+    """
+    A unittest class to test all Borealis experiments and verify that none of them are built
+    incorrectly. Tests are verified using code within experiment handler. All test methods must
+    begin with the word 'test' to be run by unittest.
+    """
+    def setUp(self):
+        """
+        This function is called before every test_* method (every test case in unittest lingo)
+        """
+        print("\nExperiment Test: ", self._testMethodName)
 
 
 def build_unit_tests():
@@ -170,15 +182,19 @@ def build_unit_tests():
             if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
                 # Only create a test if the current attribute is the experiment itself
                 if 'ExperimentPrototype' not in str(attribute):
-                    # Should have a classmethod called "error_message" that contains the error message raised
-                    exp_exception, msg = getattr(attribute, 'error_message')()
-                    test = exception_test_generator('testing_archive.' + name, exp_exception, msg)
-                    # setattr makes a properly named test method within TestExperimentExceptions which
+                    if hasattr(attribute, 'error_message'):
+                        # If expected to fail, should have a classmethod called "error_message"
+                        # that contains the error message raised
+                        exp_exception, msg = getattr(attribute, 'error_message')()
+                        test = exception_test_generator('testing_archive.' + name, exp_exception, msg)
+                    else:   # No exception expected - this is a positive test
+                        test = experiment_test_generator('testing_archive.' + name)
+                    # setattr makes a properly named test method within TestExperimentArchive which
                     # can be run by unittest.main()
-                    setattr(TestExperimentExceptions, name, test)
+                    setattr(TestExperimentArchive, name, test)
                     break
 
-    print("Done building experiment tests")
+    print("Done building unit tests")
 
 
 def exception_test_generator(module_name, exception, exception_message):
@@ -196,19 +212,6 @@ def exception_test_generator(module_name, exception, exception_message):
         with self.assertRaisesRegex(exception, exception_message):
             ehmain(experiment_name=module_name)
     return test
-
-
-class TestExperiments(unittest.TestCase):
-    """
-    A unittest class to test all Borealis experiments and verify that none of them are built
-    incorrectly. Tests are verified using code within experiment handler. All test methods must
-    begin with the word 'test' to be run by unittest.
-    """
-    def setUp(self):
-        """
-        This function is called before every test_* method (every test case in unittest lingo)
-        """
-        print("\nExperiment Test: ", self._testMethodName)
 
 
 def build_experiment_tests():
@@ -233,9 +236,9 @@ def build_experiment_tests():
                 # Only create a test if the current attribute is the experiment itself
                 if 'ExperimentPrototype' not in str(attribute):
                     test = experiment_test_generator(name)
-                    # setattr make the "test" function a method within TestExperiments called 
+                    # setattr make the "test" function a method within TestActiveExperiments called
                     # "test_[name]" which can be run via unittest.main()
-                    setattr(TestExperiments, f"test_{name}", test)
+                    setattr(TestActiveExperiments, f"test_{name}", test)
     print("Done building experiment tests")
 
 
@@ -282,9 +285,9 @@ if __name__ == '__main__':
         exp_tests = []
         for exp in experiments:
             # Check experiment exists 
-            if hasattr(TestExperiments, f"test_{exp}"):
+            if hasattr(TestActiveExperiments, f"test_{exp}"):
                 # Create correct string to test the experiment with unittest
-                exp_tests.append(f"TestExperiments.test_{exp}")
+                exp_tests.append(f"TestActiveExperiments.test_{exp}")
             else:
                 print(f"Could not find experiment {exp}. Exiting...")
                 exit(1)
