@@ -724,6 +724,8 @@ def main():
                                 debug_samples.append(dbg)
                             pulse_transmit_data_tracker[sequence_index][num_sequences] = sqn
 
+                        decimation_scheme = sequence.decimation_scheme
+
                         def send_pulses():
                             for pulse_transmit_data in pulse_transmit_data_tracker[sequence_index][num_sequences]:
                                 data_to_driver(radar_control_to_driver,
@@ -796,7 +798,6 @@ def main():
                         num_sequences += 1
 
                         if first_aveperiod:
-                            decimation_scheme = None
                             first_aveperiod = False
 
                         # Sequence is done
@@ -828,7 +829,7 @@ def main():
                                             experiment.cpid, experiment.experiment_name,
                                             experiment.scheduling_mode,
                                             experiment.output_rx_rate, experiment.comment_string,
-                                            experiment.decimation_scheme.filter_scaling_factors,
+                                            decimation_scheme.filter_scaling_factors,
                                             experiment.rxctrfreq,
                                             debug_samples=debug_samples)
 

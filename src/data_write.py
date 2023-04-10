@@ -443,13 +443,13 @@ class ParseData(object):
                     slice_data[param_name] = np.array(param_data, dtype=np.complex64)
 
         for slice_data in self.mainacfs_accumulator.values():
-            slice_data['data'] = np.array(slice_data['data'], np.complex64)
+            slice_data['data'] = np.array(slice_data.get('data', []), np.complex64)
 
         for slice_data in self.intfacfs_accumulator.values():
-            slice_data['data'] = np.array(slice_data['data'], np.complex64)
+            slice_data['data'] = np.array(slice_data.get('data', []), np.complex64)
 
         for slice_data in self.xcfs_accumulator.values():
-            slice_data['data'] = np.array(slice_data['data'], np.complex64)
+            slice_data['data'] = np.array(slice_data.get('data', []), np.complex64)
 
     def update(self, data):
         """
