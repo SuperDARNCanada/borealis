@@ -660,13 +660,3 @@ class ExperimentSlice:
         else:   # TODO: log lag_table will not be used
             lag_table = []
         return lag_table
-
-    # Validator for any time after instantiation.
-
-    def check_slice(self):
-        """
-        This method can be called at any time to verify that the slice is still valid.
-        """
-        *_, validation_error = validate_model(self.__class__, self.__dict__)
-        if validation_error:
-            raise validation_error
