@@ -7,6 +7,7 @@
     :author: Remington Rohel
 """
 # built-in
+import copy
 from dataclasses import InitVar
 import itertools
 import math
@@ -75,7 +76,6 @@ def default_callable():
 class SliceConfig:
     validate_assignment = True
     validate_all = True
-    allow_mutation = False
     extra = 'forbid'
     arbitrary_types_allowed = True
     error_msg_templates = {}
@@ -660,3 +660,14 @@ class ExperimentSlice:
         else:   # TODO: log lag_table will not be used
             lag_table = []
         return lag_table
+
+    def check_slice(self):
+        """
+        Checks and verifies all fields at any time after instantiation.
+        """
+        new_exp = copy.deepcopy(self.__dict__)
+        to_pop = [k for k, v in new_exp.items() if v is None]
+        to_pop.extend(['__pydantic_initialised__', 'slice_interfacing'])    # Remove fields that we expect to have now
+        for k in to_pop:
+            new_exp.pop(k, None)    # default None just in case slice_interfacing isn't set yet
+        self.__class__(**new_exp)   # Will raise exception if something is amiss

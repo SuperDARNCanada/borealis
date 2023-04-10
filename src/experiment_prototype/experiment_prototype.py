@@ -1030,5 +1030,7 @@ class ExperimentPrototype:
         # python they just have a bit of a mangled name so they are not readily available but give
         # the user notice that they should be left alone. If the __slice_dict has been changed
         # improperly, we should check it for problems here.
+        for exp_slice in self.slice_dict.values():
+            exp_slice.check_slice()
 
         print("No Self Check Errors. Continuing...")    # TODO: Log this
