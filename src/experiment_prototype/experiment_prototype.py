@@ -779,10 +779,7 @@ class ExperimentPrototype:
 
         # Now we setup the slice which will check minimum requirements and set defaults, and then
         # will complete a check_slice and raise any errors found.
-        # try:
         new_exp_slice = ExperimentSlice(**exp_slice, **self.__slice_restrictions)
-        # except ValidationError as err:
-        #     raise ExperimentException(str(err))     # Wrap any errors in an ExperimentException
 
         # now check that the interfacing values make sense before appending.
         full_interfacing_dict = self.check_new_slice_interfacing(interfacing_dict)
@@ -1026,19 +1023,20 @@ class ExperimentPrototype:
         # TODO: check if self.cpid is not unique - incorporate known cpids from git repo
         # TODO: use pygit2 for this
 
-        # TODO: See if this can be recreated with ExperimentSlice class
-        # # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
-        # # any time after setup. We run it now in case the user has changed something
-        # # inappropriately (ie, any way other than using edit_slice, add_slice, or del_slice).
-        # # "Private" instance variables with leading underscores are not actually private in
-        # # python they just have a bit of a mangled name so they are not readily available but give
-        # # the user notice that they should be left alone. If the __slice_dict has been changed
-        # # improperly, we should check it for problems here.
-        # for a_slice in self.slice_ids:
-        #     selferrs = self.slice_dict[a_slice].check_slice()
-        #     if not selferrs:
-        #         continue        # If returned error dictionary is empty
-        #     errmsg = f"Self Check Errors Occurred with slice Number : {a_slice} \nSelf Check Errors are : {selferrs}"
-        #     raise ExperimentException(errmsg)
+        # run check_slice on all slices. Check_slice is a full check and can be done on a slice at
+        # any time after setup. We run it now in case the user has changed something
+        # inappropriately (ie, any way other than using edit_slice, add_slice, or del_slice).
+        # "Private" instance variables with leading underscores are not actually private in
+        # python they just have a bit of a mangled name so they are not readily available but give
+        # the user notice that they should be left alone. If the __slice_dict has been changed
+        # improperly, we should check it for problems here.
+        errors = ""
+        for a_slice in self.slice_ids:
+            try:
+                self.slice_dict[a_slice].check_slice()
+            except ValidationError as err:
+                errors += str(err)
+        if errors != "":
+            raise ExperimentException(errors)
 
         print("No Self Check Errors. Continuing...")    # TODO: Log this

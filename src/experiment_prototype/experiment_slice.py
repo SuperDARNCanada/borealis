@@ -663,7 +663,7 @@ class ExperimentSlice:
 
     # Validator for any time after instantiation.
 
-    def verify(self):
+    def check_slice(self):
         """
         This method can be called at any time to verify that the slice is still valid.
         """
