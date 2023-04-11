@@ -8,7 +8,6 @@
 """
 # built-in
 import copy
-from dataclasses import InitVar
 import itertools
 import math
 
@@ -16,7 +15,7 @@ import math
 import numpy as np
 from pydantic.dataclasses import dataclass, Field
 from pydantic import (
-    validator, root_validator, conlist, conint, confloat, StrictBool, StrictInt, PositiveFloat, validate_model
+    validator, root_validator, conlist, conint, confloat, StrictBool, StrictInt, PositiveFloat
 )
 from scipy.constants import speed_of_light
 from typing import Optional, Union, Literal, Callable
@@ -87,6 +86,7 @@ freq_float_hz = confloat(ge=options.min_freq, le=options.max_freq, strict=True)
 freq_float_khz = confloat(ge=options.min_freq / 1e3, le=options.max_freq / 1e3, strict=True)
 freq_int_hz = conint(ge=options.min_freq, le=options.max_freq, strict=True)
 freq_int_khz = conint(ge=options.min_freq / 1e3, le=options.max_freq / 1e3, strict=True)
+beam_order_type = list[conint(ge=0, strict=True)]
 
 
 @dataclass(config=SliceConfig)
@@ -265,7 +265,7 @@ class ExperimentSlice:
     tau_spacing: conint(ge=options.min_tau_spacing_length, strict=True)
     pulse_len: conint(ge=options.min_pulse_length, strict=True)
     pulse_sequence: conlist(conint(ge=0, strict=True), unique_items=True)
-    rx_beam_order: conlist(Union[list[conint(ge=0, strict=True)], conint(ge=0, strict=True)])
+    rx_beam_order: list[Union[beam_order_type, conint(ge=0, strict=True)]]
 
     # These fields have default values. Some have specification requirements in conjunction with each other
     # e.g. one of intt or intn must be specified.
@@ -281,8 +281,7 @@ class ExperimentSlice:
                                       max_items=options.intf_antenna_count,
                                       unique_items=True)] = Field(default_factory=list)
     tx_antenna_pattern: Optional[Callable] = default_callable
-    tx_beam_order: Optional[list[Union[conint(ge=0, strict=True), list[conint(ge=0, strict=True)]]]] = \
-        Field(default_factory=list)
+    tx_beam_order: Optional[beam_order_type] = Field(default_factory=list)
     intt: Optional[confloat(ge=0)] = None
     scanbound: Optional[list[confloat(ge=0)]] = Field(default_factory=list)
     pulse_phase_offset: Optional[Callable] = default_callable
@@ -329,8 +328,8 @@ class ExperimentSlice:
             values['clrfrqflag'] = True
             if 'freq' in values and values['freq']:
                 # TODO: Log this appropriately
-                print("Slice parameter 'freq' removed as 'clrfrqrange' takes precedence. If this is not desired,"
-                      "remove 'clrfrqrange' parameter from experiment.")
+                print(f"Slice parameter 'freq' removed as 'clrfrqrange' takes precedence. If this is not desired,"
+                      f"remove 'clrfrqrange' parameter from experiment. Slice: {values['slice_id']}")
         elif 'freq' in values and values['freq']:
             values['clrfrqflag'] = False
         else:
@@ -364,13 +363,7 @@ class ExperimentSlice:
             raise ValueError(f"Slice {values['slice_id']} pulse length greater than tau_spacing")
         if pulse_len <= 2 * options.pulse_ramp_time * 1.0e6:
             raise ValueError(f"Slice {values['slice_id']} pulse length too small")
-        if 'acf' in values and values['acf']:
-            # The below check is an assumption that is made during acf calculation
-            # (1 output received sample = 1 range separation)
-            if not math.isclose(pulse_len * 1.0e-6, (1 / values['output_rx_rate']), abs_tol=0.000001):
-                raise ValueError(f"For an experiment slice with real-time acfs, pulse length must be equal (within 1 "
-                                 f"us) to 1/output_rx_rate to make acfs valid. Current pulse length is {pulse_len} us, "
-                                 f"output rate is {values['output_rx_rate']} Hz.")
+
         return pulse_len
 
     @validator('intt')
@@ -523,7 +516,7 @@ class ExperimentSlice:
             return clrfrqrange
 
         if clrfrqrange[0] >= clrfrqrange[1]:
-            raise ValueError(f"clrfrqrange must be between min and max tx frequencies "
+            raise ValueError(f"Slice {values['slice_id']} clrfrqrange must be between min and max tx frequencies "
                              f"{(values['tx_minfreq'], values['tx_maxfreq'])} and rx frequencies "
                              f"{(values['rx_minfreq'], values['rx_maxfreq'])} according to license and/or center "
                              f"frequencies / sampling rates / transition bands, and must have lower frequency first.")
@@ -534,9 +527,11 @@ class ExperimentSlice:
                 if freq_range[0] <= clrfrqrange[0] <= freq_range[1]:
                     if freq_range[0] <= clrfrqrange[1] <= freq_range[1]:
                         # the range is entirely within the restricted range.
-                        raise ValueError(f'clrfrqrange is entirely within restricted range {freq_range}')
+                        raise ValueError(f"clrfrqrange is entirely within restricted range {freq_range}. Slice: "
+                                         f"{values['slice_id']}")
                     else:
-                        print('Clrfrqrange will be modified because it is partially in a restricted range.')
+                        print(f"Slice: {values['slice_id']} clrfrqrange will be modified because it is partially in a "
+                              f"restricted range.")
                         # TODO Log warning, changing clrfrqrange because lower portion is in a restricted
                         #  frequency range.
                         clrfrqrange[0] = freq_range[1] + 1
@@ -546,7 +541,8 @@ class ExperimentSlice:
                 else:
                     # lower end is not in restricted frequency range.
                     if freq_range[0] <= clrfrqrange[1] <= freq_range[1]:
-                        print('Clrfrqrange will be modified because it is partially in a restricted range.')
+                        print(f"Slice: {values['slice_id']} clrfrqrange will be modified because it is partially in a "
+                              f"restricted range.")
                         # TODO Log warning, changing clrfrqrange because upper portion is in a
                         #  restricted frequency range.
                         clrfrqrange[1] = freq_range[0] - 1
@@ -556,7 +552,8 @@ class ExperimentSlice:
                     else:  # neither end of clrfrqrange is inside the restricted range but
                         # we should check if the range is inside the clrfrqrange.
                         if clrfrqrange[0] <= freq_range[0] <= clrfrqrange[1]:
-                            print('There is a restricted range within the clrfrqrange - STOP.')
+                            print(f"There is a restricted range within the clrfrqrange - STOP. Slice: "
+                                  f"{values['slice_id']}")
                             # TODO Log a warning that there is a restricted range in the middle
                             #  of the clrfrqrange that will be avoided OR could make this an
                             #  Error. Still need to implement clear frequency searching.
@@ -566,39 +563,13 @@ class ExperimentSlice:
         return values
 
     @validator('freq')
-    def check_freq(cls, freq, values):
+    def check_freq(cls, freq):
         if not freq:
             return
 
-        if 'rxonly' in values and values['rxonly']:  # RX only mode.
-            # In this mode, freq is required.
-            if (freq * 1000) >= values['rx_maxfreq'] or (freq * 1000) <= values['rx_minfreq']:
-                raise ValueError(f"freq ({freq}) must be a number (kHz) between rx min and max frequencies "
-                                 f"{(values['rx_minfreq'] / 1.0e3, values['rx_maxfreq'] / 1.0e3)} for the radar "
-                                 f"license and be within range given center frequency {values['rxctrfreq']} kHz, "
-                                 f"sampling rate {values['rx_bandwidth'] / 1.0e3} kHz, and transition band "
-                                 f"{values['transition_bandwidth'] / 1.0e3} kHz.")
-
-        else:  # TX-specific mode, without a clear frequency search.
-            # In this mode, freq is required along with the other requirements.
-            freq_error = False
-            if (freq * 1000) >= values['tx_maxfreq'] or (freq * 1000) >= values['rx_maxfreq']:
-                freq_error = True
-            elif (freq * 1000) <= values['tx_minfreq'] or (freq * 1000) <= values['rx_minfreq']:
-                freq_error = True
-
-            if freq_error:
-                raise ValueError(f"freq ({freq}) must be a number (kHz) between tx min and max frequencies "
-                                 f"{(values['tx_minfreq'] / 1.0e3, values['tx_maxfreq'] / 1.0e3)} and rx min and max "
-                                 f"frequencies {(values['rx_minfreq'] / 1.0e3, values['rx_maxfreq'] / 1.0e3)} for the "
-                                 f"radar license and be within range given center frequencies (tx: "
-                                 f"{values['txctrfreq']} kHz, rx: {values['rxctrfreq']} kHz), sampling rates (tx: "
-                                 f"{values['tx_bandwidth'] / 1.0e3} kHz, rx: {values['rx_bandwidth'] / 1.0e3} kHz), "
-                                 f"and transition band ({values['transition_bandwidth'] / 1.0e3} kHz).")
-
-            for freq_range in options.restricted_ranges:
-                if freq_range[0] <= freq <= freq_range[1]:
-                    raise ValueError(f"freq is within a restricted frequency range {freq_range}")
+        for freq_range in options.restricted_ranges:
+            if freq_range[0] <= freq <= freq_range[1]:
+                raise ValueError(f"freq is within a restricted frequency range {freq_range}")
 
         return freq
 
@@ -649,7 +620,7 @@ class ExperimentSlice:
                 for lag in lag_table:
                     if not set(np.array(lag).flatten()).issubset(set(values['pulse_sequence'])):
                         raise ValueError(f"Lag {lag} not valid; One of the pulses does not exist in the sequence. "
-                                         f"Slice {values['slice_id']}")
+                                         f"Slice: {values['slice_id']}")
             else:
                 # build lag table from pulse_sequence
                 lag_table = list(itertools.combinations(values['pulse_sequence'], 2))
@@ -661,6 +632,27 @@ class ExperimentSlice:
             lag_table = []
         return lag_table
 
+    # Validators for when a check requires that an early-validated field and later-validated field have both been
+    # validated. E.g. could not validate pulse_len fully off the bat because it depends on acf, which gets validated
+    # later.
+
+    @root_validator()
+    def check_pulse_len_given_acf(cls, values):
+        """
+        This must be checked after all validation as pulse_len is validated before acf (since acf has a default).
+        """
+        if 'acf' in values and values['acf'] and 'pulse_len' in values:
+            # The below check is an assumption that is made during acf calculation
+            # (1 output received sample = 1 range separation)
+            if not math.isclose(values['pulse_len'], (1 / values['output_rx_rate'] * 1e6), abs_tol=0.0000001):
+                raise ValueError(f"For an experiment slice with real-time acfs, pulse length must be equal (within 1 "
+                                 f"us) to 1/output_rx_rate to make acfs valid. Current pulse length is "
+                                 f"{values['pulse_len']} us, output rate is {values['output_rx_rate']} Hz. "
+                                 f"Slice: {values['slice_id']}")
+        return values
+
+    # Post-initialization validator
+
     def check_slice(self):
         """
         Checks and verifies all fields at any time after instantiation.
@@ -670,4 +662,4 @@ class ExperimentSlice:
         to_pop.extend(['__pydantic_initialised__', 'slice_interfacing'])    # Remove fields that we expect to have now
         for k in to_pop:
             new_exp.pop(k, None)    # default None just in case slice_interfacing isn't set yet
-        self.__class__(**new_exp)   # Will raise exception if something is amiss
+        ExperimentSlice(**new_exp)   # Will raise exception if something is amiss
