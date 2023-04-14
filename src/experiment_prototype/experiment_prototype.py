@@ -934,7 +934,7 @@ class ExperimentPrototype:
         self.__running_experiment = ScanClassBase(self.slice_ids, self.slice_dict, self.interface,
                                                   self.transmit_metadata)
 
-        self.__running_experiment.nested_slice_list = self.get_scan_slice_ids()
+        self.__running_experiment.nested_slice_list = self.__running_experiment.get_nested_slice_ids()
 
         self.__scan_objects = []
         for params in self.__running_experiment.prep_for_nested_scan_class():
@@ -965,32 +965,6 @@ class ExperimentPrototype:
         log.info("Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: "
                  "{len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)}")
         log.info(f"Max concurrent slices: {max_num_concurrent_slices}")
-
-    def get_scan_slice_ids(self):
-        """
-        Organize the slice_ids by scan.
-
-        Take my own interfacing and get info on how many scans and which slices make which scans.
-        Return a list of lists where each inner list contains the slices that are in an
-        averagingperiod that is inside this scan. ie. len(nested_slice_list) = # of averagingperiods
-        in this scan, len(nested_slice_list[0]) = # of slices in the first averagingperiod, etc.
-
-        :returns:   A list that has one element per scan. Each element is a list of slice_ids
-                    signifying which slices are combined inside that scan. The list returned could
-                    be of length 1, meaning only one scan is present in the experiment.
-        :rtype:     list of lists
-        """
-        # TODO add this to ScanClassBase method by just passing in the current type (Experiment,
-        # Scan, AvePeriod) which would allow you to determine which interfacing to pull out.
-        scan_combos = []
-
-        for k, interface_value in self.interface.items():
-            if interface_value != "SCAN":
-                scan_combos.append(list(k))
-
-        combos = self.__running_experiment.slice_combos_sorter(scan_combos, self.slice_ids)
-
-        return combos
 
     def get_slice_interfacing(self, slice_id):
         """

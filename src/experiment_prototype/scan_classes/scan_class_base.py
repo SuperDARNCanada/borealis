@@ -221,4 +221,39 @@ class ScanClassBase(object):
         list_of_combos = sorted(list_of_combos)
         return list_of_combos
 
+    def get_nested_slice_ids(self):
+        """
+        Organize the slice_ids by interface.
 
+        This method is inherited by child classes and organizes all slices in each child class which
+        should be combined by the class. For example, all slices in a Scan should be combined if they
+        share an AveragingPeriod or Sequence or are concurrent.
+
+        Returns a list of lists where each inner list contains the slices that are combined inside
+        this object. e.g. for ScanClassBase:
+        len(nested_slice_list) = # of scans in this experiment,
+        len(nested_slice_list[0]) = # of slices in the first scan
+
+        :returns:   A list that has one element per scan. Each element is a list of slice_ids
+                    signifying which slices are combined inside that scan. The list returned could
+                    be of length 1, meaning only one scan is present in the experiment.
+        :rtype:     list of lists
+        """
+        nested_combos = []
+
+        combine_below_dict = {
+            'ScanClassBase': 'SCAN',        # Combine everything AVEPERIOD, SEQUENCE, or CONCURRENT interfaced
+            'Scan': 'AVEPERIOD',            # Combine everything SEQUENCE or CONCURRENT interfaced
+            'AveragingPeriod': 'SEQUENCE',  # Combine everything CONCURRENT interfaced
+            'Sequence': None                # All slices in a Sequence are already CONCURRENT
+        }
+
+        combine_below = combine_below_dict[type(self).__name__]     # Returns the class name of the calling instance
+
+        for k, interface_value in self.interface.items():
+            if interface_value != combine_below:
+                nested_combos.append(list(k))
+
+        combos = self.slice_combos_sorter(nested_combos, self.slice_ids)
+
+        return combos

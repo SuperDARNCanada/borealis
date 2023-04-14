@@ -120,7 +120,7 @@ class AveragingPeriod(ScanClassBase):
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 
         # Determine how this averaging period is made by separating out the SEQUENCE interfaced.
-        self.nested_slice_list = self.get_sequence_slice_ids()
+        self.nested_slice_list = self.get_nested_slice_ids()
         self.sequences = []
 
         for params in self.prep_for_nested_scan_class():
@@ -129,33 +129,6 @@ class AveragingPeriod(ScanClassBase):
         self.one_pulse_only = False
 
         self.beam_iter = 0 # used to keep track of place in beam order.
-
-    def get_sequence_slice_ids(self):
-        """
-        Return the slice_ids that are within the Sequences in this AveragingPeriod instance.
-
-        Take the interface keys inside this averagingperiod and return a list of lists where each
-        inner list contains the slices that are in a sequence that is inside this averagingperiod.
-        ie. len(nested_slice_list) = # of sequences in this averagingperiod,
-        len(nested_slice_list[0]) = # of slices in the first sequence, etc.
-
-        :returns:   the nested_slice_list which is used when creating the sequences in this
-                    averagingperiod.
-        :rtype:     list
-        """
-
-        sequence_combos = []
-
-        # Remove SEQUENCE combos as we are trying to separate those.
-        for k, interface_type in self.interface.items():  # TODO make example
-            if interface_type == "CONCURRENT":
-                sequence_combos.append(list(k))
-
-        combos = self.slice_combos_sorter(sequence_combos, self.slice_ids)
-
-        log.debug(f"sequences slice id combos: {combos}")
-
-        return combos
 
     def set_beamdirdict(self, beamiter):
         """
