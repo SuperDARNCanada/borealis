@@ -15,4 +15,5 @@ inotify
 matplotlib
 sphinx-rtd-theme
 structlog
+h5py
 pydantic
