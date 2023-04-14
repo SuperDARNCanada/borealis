@@ -242,16 +242,16 @@ class ScanClassBase(object):
         nested_combos = []
 
         combine_below_dict = {
-            'ScanClassBase': 'SCAN',        # Combine everything AVEPERIOD, SEQUENCE, or CONCURRENT interfaced
-            'Scan': 'AVEPERIOD',            # Combine everything SEQUENCE or CONCURRENT interfaced
-            'AveragingPeriod': 'SEQUENCE',  # Combine everything CONCURRENT interfaced
-            'Sequence': None                # All slices in a Sequence are already CONCURRENT
+            'ScanClassBase': ['AVEPERIOD', 'SEQUENCE', 'CONCURRENT'],   # Combine everything except SCAN interfaced
+            'Scan': ['SEQUENCE', 'CONCURRENT'],     # Combine everything SEQUENCE or CONCURRENT interfaced
+            'AveragingPeriod': ['CONCURRENT'],      # Combine everything CONCURRENT interfaced
+            'Sequence': []  # All slices in a Sequence are already CONCURRENT and should be combined already
         }
 
-        combine_below = combine_below_dict[type(self).__name__]     # Returns the class name of the calling instance
+        combine_list = combine_below_dict[type(self).__name__]     # Returns the class name of the calling instance
 
         for k, interface_value in self.interface.items():
-            if interface_value != combine_below:
+            if interface_value not in combine_list:
                 nested_combos.append(list(k))
 
         combos = self.slice_combos_sorter(nested_combos, self.slice_ids)
