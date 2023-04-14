@@ -934,8 +934,6 @@ class ExperimentPrototype:
         self.__running_experiment = ScanClassBase(self.slice_ids, self.slice_dict, self.interface,
                                                   self.transmit_metadata)
 
-        self.__running_experiment.nested_slice_list = self.__running_experiment.get_nested_slice_ids()
-
         self.__scan_objects = []
         for params in self.__running_experiment.prep_for_nested_scan_class():
             self.__scan_objects.append(Scan(*params))

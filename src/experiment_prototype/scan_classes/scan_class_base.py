@@ -89,6 +89,9 @@ class ScanClassBase(object):
         # all necessary experiment-wide transmit metadata
         self.transmit_metadata = transmit_metadata
 
+        # List of lists, each inner list is all slice ids that share a scan
+        self.nested_slice_list = self.get_nested_slice_ids()
+
     def prep_for_nested_scan_class(self):
         """
         Retrieve the params needed for the nested class (also with base ScanClassBase).
