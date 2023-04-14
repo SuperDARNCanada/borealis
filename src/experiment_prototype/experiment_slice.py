@@ -11,8 +11,10 @@
 """
 # built-in
 import copy
+import inspect
 import itertools
 import math
+from pathlib import Path
 
 # third-party
 import numpy as np
@@ -21,12 +23,17 @@ from pydantic import (
     validator, root_validator, conlist, conint, confloat, StrictBool, StrictInt, PositiveFloat
 )
 from scipy.constants import speed_of_light
+import structlog
 from typing import Optional, Union, Literal, Callable
 
 # local
 from utils.options import Options
 from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, create_default_scheme
-from experiment_prototype import list_tests
+
+# Obtain the module name that imported this log_config
+caller = Path(inspect.stack()[-1].filename)
+module_name = caller.name.split('.')[0]
+log = structlog.getLogger(module_name)
 
 options = Options()
 
@@ -337,9 +344,8 @@ class ExperimentSlice:
         if 'clrfrqrange' in values and values['clrfrqrange']:
             values['clrfrqflag'] = True
             if 'freq' in values and values['freq']:
-                # TODO: Log this appropriately
-                print(f"Slice parameter 'freq' removed as 'clrfrqrange' takes precedence. If this is not desired,"
-                      f"remove 'clrfrqrange' parameter from experiment. Slice: {values['slice_id']}")
+                log.info(f"Slice parameter 'freq' removed as 'clrfrqrange' takes precedence. If this is not desired,"
+                         f"remove 'clrfrqrange' parameter from experiment. Slice: {values['slice_id']}")
         elif 'freq' in values and values['freq']:
             values['clrfrqflag'] = False
         else:
@@ -350,7 +356,7 @@ class ExperimentSlice:
 
     @validator('pulse_sequence', 'beam_angle')
     def check_list_increasing(cls, v_list):
-        if not list_tests.is_increasing(v_list):
+        if not all(x < y for x, y in zip(v_list, v_list[1:])):
             raise ValueError(f"not increasing: {v_list}")
         return v_list
 
@@ -540,10 +546,8 @@ class ExperimentSlice:
                         raise ValueError(f"clrfrqrange is entirely within restricted range {freq_range}. Slice: "
                                          f"{values['slice_id']}")
                     else:
-                        print(f"Slice: {values['slice_id']} clrfrqrange will be modified because it is partially in a "
-                              f"restricted range.")
-                        # TODO Log warning, changing clrfrqrange because lower portion is in a restricted
-                        #  frequency range.
+                        log.warning(f"Slice: {values['slice_id']} clrfrqrange will be modified because it is partially "
+                                    f"in a restricted range.")
                         clrfrqrange[0] = freq_range[1] + 1
                         # outside of restricted range now.
                         break  # we have changed the 'clrfrqrange' - must restart the
@@ -551,10 +555,8 @@ class ExperimentSlice:
                 else:
                     # lower end is not in restricted frequency range.
                     if freq_range[0] <= clrfrqrange[1] <= freq_range[1]:
-                        print(f"Slice: {values['slice_id']} clrfrqrange will be modified because it is partially in a "
-                              f"restricted range.")
-                        # TODO Log warning, changing clrfrqrange because upper portion is in a
-                        #  restricted frequency range.
+                        log.warning(f"Slice: {values['slice_id']} clrfrqrange will be modified because it is partially "
+                                    f"in a restricted range.")
                         clrfrqrange[1] = freq_range[0] - 1
                         # outside of restricted range now.
                         break  # we have changed the 'clrfrqrange' - must restart the for loop
@@ -562,11 +564,9 @@ class ExperimentSlice:
                     else:  # neither end of clrfrqrange is inside the restricted range but
                         # we should check if the range is inside the clrfrqrange.
                         if clrfrqrange[0] <= freq_range[0] <= clrfrqrange[1]:
-                            print(f"There is a restricted range within the clrfrqrange - STOP. Slice: "
-                                  f"{values['slice_id']}")
-                            # TODO Log a warning that there is a restricted range in the middle
-                            #  of the clrfrqrange that will be avoided OR could make this an
-                            #  Error. Still need to implement clear frequency searching.
+                            log.warning(f"There is a restricted range within the clrfrqrange - STOP. Slice: "
+                                        f"{values['slice_id']}")
+                            # TODO: Error. Still need to implement clear frequency searching.
             else:  # no break, so no changes to the clrfrqrange
                 still_checking = False
 
@@ -589,14 +589,16 @@ class ExperimentSlice:
     def check_xcf(cls, xcf, values):
         if 'acf' in values and values['acf']:
             return xcf
-        else:   # TODO log that no xcf will happen if acfs are not set.
+        else:
+            log.info(f"XCF defaulted to False as ACF not set. Slice: {values['slice_id']}")
             return False
 
     @validator('acfint', always=True)
     def check_acfint(cls, acfint, values):
         if 'acf' in values and values['acf']:
             return acfint
-        else:   # TODO log that no acfint will happen if acfs are not set.
+        else:
+            log.info(f"ACFINT defaulted to False as ACF not set. Slice: {values['slice_id']}")
             return False
 
     @validator('range_sep', always=True)
@@ -610,8 +612,7 @@ class ExperimentSlice:
                     errmsg = f"range_sep = {range_sep} was set incorrectly. range_sep will be overwritten " \
                              f"based on pulse_len, which must be equal to 1/rx_rate. The new range_sep = " \
                              f"{correct_range_sep}"
-                    # TODO change to logging
-                    print(errmsg)
+                    log.warning(errmsg)
             range_sep = correct_range_sep
         return range_sep
 
@@ -619,7 +620,8 @@ class ExperimentSlice:
     def check_averaging_method(cls, averaging_method, values):
         if 'acf' in values and values['acf']:
             return averaging_method or 'mean'
-        else:   # TODO: log averaging_method will not be used
+        else:
+            log.info(f"Averaging method unset as ACF not set. Slice: {values['slice_id']}")
             return None
 
     @validator('lag_table', always=True)
@@ -638,7 +640,8 @@ class ExperimentSlice:
                 # sort by lag number
                 lag_table = sorted(lag_table, key=lambda x: x[1] - x[0])
                 lag_table.append([values['pulse_sequence'][-1], values['pulse_sequence'][-1]])  # alternate lag 0
-        else:   # TODO: log lag_table will not be used
+        else:
+            log.info(f"Lag table unused as ACF not set. Slice: {values['slice_id']}")
             lag_table = []
         return lag_table
 

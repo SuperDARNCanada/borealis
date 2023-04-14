@@ -12,23 +12,26 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
-
-import math
-import numpy as np
-import copy
+# built-in
 import collections
+import copy
 from functools import reduce
+import inspect
+import math
+from pathlib import Path
 
+# third-party
+import numpy as np
+import structlog
+
+# local
 from experiment_prototype.sample_building.sample_building import get_samples, get_phase_shift
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 from experiment_prototype.experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
-import inspect
-from pathlib import Path
 caller = Path(inspect.stack()[-1].filename)
 module_name = caller.name.split('.')[0]
-import structlog
 log = structlog.getLogger(module_name)
 
 

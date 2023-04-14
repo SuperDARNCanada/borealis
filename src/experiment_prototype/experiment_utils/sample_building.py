@@ -7,34 +7,12 @@
     :copyright: 2017 SuperDARN Canada
     :author: Marci Detwiller
 """
-
-from scipy.constants import speed_of_light
-import numpy as np
+# built-in
 import math
-from experiment_prototype.experiment_exception import ExperimentException
 
-
-def resolve_imaging_directions(beamdirs_list, num_antennas, antenna_spacing):   # TODO: Delete this? Unused
-    """
-    Resolve imaging directions to direction per antenna.
-
-    This function will take in a list of directions and resolve that to a direction for each
-    antenna. It will return a list of length num_antenna where each element is a direction off
-    orthogonal for that antenna.
-
-    :param beamdirs_list: The list of beam directions for this pulse sequence.
-    :param num_antennas: The number of antennas to calculate direcitonrs for.
-    :param antenna_spacing: The spacing between the antennas.
-    :returns beamdirs: A list of beam directions for each antenna.
-    :returns amplitudes: A list of amplitudes for each antenna
-    """
-
-    # TODO. Note that we could make this a user-writeable custom function specific to an experiment
-    # because you may want more power in certain directions, etc. ??
-    # Or may prefer changing input params to a single beam direction and perhaps beamwidth?
-    beamdirs = [beamdirs_list[ant % len(beamdirs_list)] for ant in range(0, num_antennas)]  # TODO fix
-    amplitudes = [1.0 for ant in range(0, num_antennas)]  # TODO fix
-    return beamdirs, amplitudes
+# third-party
+import numpy as np
+from scipy.constants import speed_of_light
 
 
 def get_phase_shift(beam_angle, freq, num_antennas, antenna_spacing, centre_offset=0.0):

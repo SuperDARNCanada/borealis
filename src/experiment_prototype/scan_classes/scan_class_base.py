@@ -10,9 +10,21 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
-
-from experiment_prototype.experiment_exception import ExperimentException
+# built-in
+import inspect
 import itertools
+from pathlib import Path
+
+# third-party
+import structlog
+
+# local
+from experiment_prototype.experiment_exception import ExperimentException
+
+# Obtain the module name that imported this log_config
+caller = Path(inspect.stack()[-1].filename)
+module_name = caller.name.split('.')[0]
+log = structlog.getLogger(module_name)
 
 
 class ScanClassBase(object):
@@ -92,8 +104,7 @@ class ScanClassBase(object):
 
         # TODO documentation make a detailed example of this and diagram
         nested_class_param_lists = []
-        # TODO: Log appropriately (was nested under __debug__)
-        print(self.nested_slice_list)
+        log.debug(self.nested_slice_list)
         for slice_list in self.nested_slice_list:
             slices_for_nested_class = {}
             for slice_id in slice_list:

@@ -12,10 +12,22 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
+# built-in
+import inspect
+from pathlib import Path
 
+# third-party
+import structlog
+
+# local
 from experiment_prototype.scan_classes.averaging_periods import AveragingPeriod
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 from experiment_prototype.experiment_exception import ExperimentException
+
+# Obtain the module name that imported this log_config
+caller = Path(inspect.stack()[-1].filename)
+module_name = caller.name.split('.')[0]
+log = structlog.getLogger(module_name)
 
 
 class Scan(ScanClassBase):
@@ -113,8 +125,7 @@ class Scan(ScanClassBase):
 
         combos = self.slice_combos_sorter(intt_combos, self.slice_ids)
 
-        # TODO: Log appropriately. Was nested under __debug__
-        print(f"AvePeriod slice id list: {combos}")
+        log.debug(f"AvePeriod slice id list: {combos}")
 
         return combos
 

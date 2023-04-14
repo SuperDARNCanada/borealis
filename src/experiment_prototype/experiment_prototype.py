@@ -11,14 +11,15 @@
 """
 # built-in
 import copy
+import inspect
 import math
 import os
+from pathlib import Path
 
 # third-party
 import numpy as np
-from pathlib import Path
-from pydantic import ValidationError
 import re
+import structlog
 
 # local
 from utils.options import Options
@@ -26,6 +27,11 @@ from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_slice import ExperimentSlice, slice_key_set, hidden_key_set
 from experiment_prototype.scan_classes.scans import Scan
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+
+# Obtain the module name that imported this log_config
+caller = Path(inspect.stack()[-1].filename)
+module_name = caller.name.split('.')[0]
+log = structlog.getLogger(module_name)
 
 BOREALISPATH = os.environ['BOREALISPATH']
 
@@ -492,8 +498,7 @@ class ExperimentPrototype:
         if max_freq < self.options.max_freq:
             return max_freq
         else:
-            # TODO log warning that wave_freq should not exceed options.max_freq - ctrfreq
-            #  (possible to transmit above licensed band)
+            log.warning(f"Maximum transmit frequency cannot exceed {self.options.max_freq} due to radio license.")
             return self.options.max_freq
 
     @property
@@ -513,8 +518,7 @@ class ExperimentPrototype:
         if min_freq > self.options.min_freq:
             return min_freq
         else:
-            # TODO log warning that wave_freq should not go below ctrfreq - options.minfreq
-            #  (possible to transmit below licensed band)
+            log.warning(f"Minimum transmit frequency cannot go below {self.options.min_freq} due to radio license.")
             return self.options.min_freq
 
     @property
@@ -560,7 +564,7 @@ class ExperimentPrototype:
         if min_freq > 1000:     # Hz
             return min_freq
         else:
-            # TODO: log warning that the rx minimum frequency possible is set to  1kHz
+            log.warning(f"Minimum receive frequency set to 1 kHz")
             return 1000         # Hz
 
     @property
@@ -879,7 +883,7 @@ class ExperimentPrototype:
             new_slice_id = self.add_slice(edited_slice, interface_values)
             return new_slice_id
 
-        except ExperimentException:
+        except ExperimentException as err:
             # if any failure occurs when checking the slice, the slice has not been added to the
             # slice dictionary so we will revert to old slice
             self.__slice_dict[edit_slice_id] = removed_slice
@@ -893,7 +897,7 @@ class ExperimentPrototype:
             # reset all slice_interfacing back
             self.__update_slice_interfacing()
 
-            # TODO: Log that this operation failed
+            log.error(f"Slice has errors, unable to add to experiment", errors=err)
 
             return edit_slice_id
 
@@ -954,14 +958,13 @@ class ExperimentPrototype:
                     if len(seq.slice_ids) > max_num_concurrent_slices:
                         max_num_concurrent_slices = len(seq.slice_ids)
 
-        # TODO: Log appropriately
-        print(f"Number of Scan types: {len(self.__scan_objects)}")
-        print(f"Number of AveragingPeriods in Scan #1: {len(self.__scan_objects[0].aveperiods)}")
-        print(f"Number of Sequences in Scan #1, Averaging Period #1: "
-              f"{len(self.__scan_objects[0].aveperiods[0].sequences)}")
-        print("Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1:"
-              f" {len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)}")
-        print(f"Max concurrent slices: {max_num_concurrent_slices}")
+        log.info(f"Number of Scan types: {len(self.__scan_objects)}")
+        log.info(f"Number of AveragingPeriods in Scan #1: {len(self.__scan_objects[0].aveperiods)}")
+        log.info(f"Number of Sequences in Scan #1, Averaging Period #1: "
+                 f"{len(self.__scan_objects[0].aveperiods[0].sequences)}")
+        log.info("Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: "
+                 "{len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)}")
+        log.info(f"Max concurrent slices: {max_num_concurrent_slices}")
 
     def get_scan_slice_ids(self):
         """
@@ -1034,4 +1037,4 @@ class ExperimentPrototype:
         for exp_slice in self.slice_dict.values():
             exp_slice.check_slice()
 
-        print("No Self Check Errors. Continuing...")    # TODO: Log this
+        log.info("No Self Check Errors. Continuing...")

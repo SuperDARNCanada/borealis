@@ -10,10 +10,22 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
+# built-in
+import inspect
+from pathlib import Path
 
+# third party
+import structlog
+
+# local
 from experiment_prototype.scan_classes.sequences import Sequence
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 from experiment_prototype.experiment_exception import ExperimentException
+
+# Obtain the module name that imported this log_config
+caller = Path(inspect.stack()[-1].filename)
+module_name = caller.name.split('.')[0]
+log = structlog.getLogger(module_name)
 
 """ 
 Scans are made up of AveragingPeriods, these are typically a 3sec time of the same pulse sequence
@@ -141,8 +153,7 @@ class AveragingPeriod(ScanClassBase):
 
         combos = self.slice_combos_sorter(sequence_combos, self.slice_ids)
 
-        # TODO: Log appropriately (was __debug__ wrapped)
-        print(f"sequences slice id combos: {combos}")
+        log.debug(f"sequences slice id combos: {combos}")
 
         return combos
 
