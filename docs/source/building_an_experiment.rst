@@ -125,6 +125,7 @@ Examples for each will be given below this section:
     - the same SCANBOUND value.
     - the same INTT or INTN value.
     - the same BEAM_ORDER length (scan length)
+    - the same DECIMATION_SCHEME
 
 --------------------------
 Slice Interfacing Examples
@@ -311,6 +312,9 @@ rx_beam_order *required*
     beam directions. It is up to the user to ensure that this field works well with the specified
     tx_beam_order or tx_antenna_pattern.
 
+rx_only *required if tx_beam_order not specified*
+    A boolean flag to indicate that the slice doesn't transmit, only receives.
+
 clrfrqrange *required or freq required*
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] in kHz.
     **Not currently supported.**
@@ -341,6 +345,10 @@ averaging_method *defaults*
 comment *defaults*
     a comment string that will be placed in the borealis files describing the slice. Defaults
     to empty string.
+
+decimation_scheme *defaults*
+    an instance of class DecimationScheme defining the filtering for the slice. Defaults to a
+    default scheme from decimation_scheme.py
 
 lag_table *defaults*
     used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from 8-pulse
@@ -424,9 +432,6 @@ cpid *read-only*
     experiment-wide attribute but is stored within the slice as well. This is provided by the user
     but not within the slice, instead when the experiment is initialized.
 
-rx_only *read-only*
-    A boolean flag to indicate that the slice doesn't transmit, only receives.
-
 slice_id *read-only*
     The ID of this slice object. An experiment can have multiple slices. This is not set by the user
     but instead set by the experiment automatically when the slice is added. Each slice id within an
@@ -436,20 +441,6 @@ slice_id *read-only*
 slice_interfacing *read-only*
     A dictionary of slice_id : interface_type for each sibling slice in the experiment at any given
     time.
-
-
-**Not currently supported and will be removed**
-
-wavetype *defaults*
-    string for wavetype. The default is SINE. **Not currently supported.**
-
-iwavetable *defaults*
-    a list of numeric values to sample from. The default is None. Not currently supported but could
-    be set up (with caution) for non-SINE. **Not currently supported.**
-
-qwavetable *defaults*
-    a list of numeric values to sample from. The default is None. Not currently supported but could
-    be set up (with caution) for non-SINE. **Not currently supported.**
 
 ------------------
 Experiment Example
@@ -507,8 +498,8 @@ on by running the following command: ::
         python3 BOREALISPATH/tests/experiments/experiment_unittests.py
 
 This will test all experiments within the ``borealis_experiments`` directory, and run all exception
-checking unittests within ``experiment_tests.csv``. At the end the results of all tests will be
-summarized, showing how many tests passed and failed.
+checking unittests within the testing_archive directory of the experiments directory.
+At the end the results of all tests will be summarized, showing how many tests passed and failed.
 
 This testing script can also be used to check specific experiments are written correctly. To do
 this, ensure your experiment is in the ``src/borealis_experiments`` directory and run the following

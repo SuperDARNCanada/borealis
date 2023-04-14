@@ -112,11 +112,9 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude):
     :param  max_amplitude:  USRP's max DAC amplitude. N200 = 0.707 max
     :type   max_amplitude:  float
 
-    :returns:
-
-            samples:        a numpy array of complex samples, representing all samples
+    :returns samples:       a numpy array of complex samples, representing all samples
                             needed for a pulse of length pulse_len sampled at a rate of rate.
-    :rtype:     ndarray
+    :rtype:  ndarray
     """
 
     wave_freq = float(wave_freq)

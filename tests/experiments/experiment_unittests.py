@@ -2,15 +2,9 @@
 Test module for the experiment_handler/experiment_prototype code.
 
 This script can be run most simply via 'python3 experiment_unittests.py'. This will run through all
-experiment exception tests defined in the hardcoded experiment_tests.csv file, all experiments
-defined in the Borealis experiments top level directory, as well as any other tests hard coded into
-this script. Any experiment that raises an exception when building will show up as a failed test
-here.
-
-The csv test file format is: [#][experiment file module import name]::[regex error message]
-
-The [#] is an optional comment, and that line will be removed An example of a test line is:
-testing_archive.my_test_experiment.py::Regex line that * matches the ExperimentException err msg
+experiments defined in the Borealis experiments top level directory, experiment exception tests
+defined in the testing_archive directory, as well as any other tests hard coded into this script.
+Any experiment that raises an exception when building will show up as a failed test here.
 
 This script can also be run to test individual experiments by using the --experiment flag. For
 example: `python3 experiment_unittests.py --experiment normalscan normalsound` will only test the
@@ -20,7 +14,6 @@ experiments top level directory (i.e. src/borealis_experiments).
 Other command line options include:
 
 - Specifying what radar site to run the tests as
-- Running a different unittest csv file
 
 References:
 https://stackoverflow.com/questions/32899/how-do-you-generate-dynamic-parameterized-unit-tests-in-python

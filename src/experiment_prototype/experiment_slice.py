@@ -1,7 +1,10 @@
 """
     experiment_slice
     ~~~~~~~~~~~~~~~~~~~~
-    This module contains the class for experiment slices.
+    This module contains the class for experiment slices, the base unit of a Borealis experiment.
+    Each field of a slice has allowed types, and some have limits on the values they can take.
+    The class also defines methods for complex validation of a slice, to confirm that all values
+    make sense in the context of SuperDARN operations.
 
     :copyright: 2023 SuperDARN Canada
     :author: Remington Rohel
@@ -22,7 +25,7 @@ from typing import Optional, Union, Literal, Callable
 
 # local
 from utils.options import Options
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme
+from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, create_default_scheme
 from experiment_prototype import list_tests
 
 options = Options()
@@ -73,11 +76,18 @@ def default_callable():
 
 
 class SliceConfig:
+    """
+    This class configures pydantic options for ExperimentSlice.
+
+    validate_assignment: Whether to run all validators for a field whenever field is changed (init or after init)
+    validate_all: Whether to validate default fields
+    extra: Whether to allow extra fields not defined when instantiating
+    arbitrary_types_allowed: Whether to allow arbitrary types like user-defined classes (e.g. Options, DecimationScheme)
+    """
     validate_assignment = True
     validate_all = True
     extra = 'forbid'
     arbitrary_types_allowed = True
-    error_msg_templates = {}
 
 
 freq_hz = confloat(ge=options.min_freq, le=options.max_freq)
@@ -259,7 +269,6 @@ class ExperimentSlice:
     slice_id: conint(ge=0, strict=True)
     beam_angle: conlist(Union[confloat(strict=True), conint(strict=True)], unique_items=True)
     cpid: StrictInt
-    decimation_scheme: DecimationScheme
     first_range: Union[confloat(ge=0), conint(ge=0)]
     num_ranges: conint(gt=0, le=options.max_range_gates, strict=True)
     tau_spacing: conint(ge=options.min_tau_spacing_length, strict=True)
@@ -287,6 +296,7 @@ class ExperimentSlice:
     pulse_phase_offset: Optional[Callable] = default_callable
     clrfrqrange: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
     clrfrqflag: StrictBool = Field(init=False)
+    decimation_scheme: DecimationScheme = create_default_scheme()
 
     acf: Optional[StrictBool] = False
     acfint: Optional[StrictBool] = False
