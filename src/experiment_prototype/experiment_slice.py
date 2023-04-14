@@ -28,7 +28,7 @@ from typing import Optional, Union, Literal, Callable
 
 # local
 from utils.options import Options
-from experiment_prototype.decimation_scheme.decimation_scheme import DecimationScheme, create_default_scheme
+from experiment_prototype.experiment_utils.decimation_scheme import DecimationScheme, create_default_scheme
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)

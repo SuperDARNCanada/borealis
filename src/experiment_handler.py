@@ -24,7 +24,7 @@ import threading
 import pickle
 from utils.options import Options
 from utils import socket_operations
-from src.experiment_prototype.experiment_utils.experiment_exception import ExperimentException
+from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from utils import log_config

@@ -7,12 +7,15 @@
 
     :copyright: 2018 SuperDARN Canada
 """
-
+# built-in
 import math
+
+# third-party
 from scipy.signal import firwin, remez, kaiserord
 
-from utils.options import Options
+# local
 from experiment_prototype.experiment_exception import ExperimentException
+from utils.options import Options
 
 
 class DecimationStage(object):

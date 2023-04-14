@@ -25,7 +25,7 @@ import numpy as np
 import structlog
 
 # local
-from experiment_prototype.sample_building.sample_building import get_samples, get_phase_shift
+from experiment_prototype.experiment_utils.sample_building import get_samples, get_phase_shift
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 from experiment_prototype.experiment_exception import ExperimentException
 
