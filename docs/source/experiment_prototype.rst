@@ -21,11 +21,6 @@ Experiment Prototype Package
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: src.experiment_prototype.list_tests
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 ------------------
 Scan Class Package
 ------------------
