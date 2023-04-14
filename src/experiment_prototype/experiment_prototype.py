@@ -560,6 +560,7 @@ class ExperimentPrototype:
         if min_freq > 1000:     # Hz
             return min_freq
         else:
+            # TODO: log warning that the rx minimum frequency possible is set to  1kHz
             return 1000         # Hz
 
     @property
