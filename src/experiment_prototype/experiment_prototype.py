@@ -960,7 +960,7 @@ class ExperimentPrototype:
         log.info(f"Number of AveragingPeriods in Scan #1: {len(self.__scan_objects[0].aveperiods)}")
         log.info(f"Number of Sequences in Scan #1, Averaging Period #1: "
                  f"{len(self.__scan_objects[0].aveperiods[0].sequences)}")
-        log.info("Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: "
+        log.info(f"Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: "
                  "{len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)}")
         log.info(f"Max concurrent slices: {max_num_concurrent_slices}")
 
