@@ -215,9 +215,9 @@ class ScanClassBase(object):
 
         combine_list = combine_below_dict[type(self).__name__]     # Returns the class name of the calling instance
 
-        for k, interface_value in self.interface.items():
+        for slice_ids_combo, interface_value in self.interface.items():
             if interface_value in combine_list:
-                nested_combos.append(list(k))
+                nested_combos.append(list(slice_ids_combo))
 
         combos = self.slice_combos_sorter(nested_combos, self.slice_ids)
 
