@@ -21,11 +21,6 @@ Experiment Prototype Package
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: src.experiment_prototype.list_tests
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 ------------------
 Scan Class Package
 ------------------
@@ -54,7 +49,7 @@ Scan Class Package
 Decimation Scheme
 -----------------
 
-.. automodule:: src.experiment_prototype.decimation_scheme.decimation_scheme
+.. automodule:: src.experiment_prototype.experiment_utils.decimation_scheme
     :members:
     :undoc-members:
     :show-inheritance:

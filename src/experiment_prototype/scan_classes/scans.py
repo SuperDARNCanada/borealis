@@ -12,10 +12,22 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
+# built-in
+import inspect
+from pathlib import Path
 
+# third-party
+import structlog
+
+# local
 from experiment_prototype.scan_classes.averaging_periods import AveragingPeriod
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 from experiment_prototype.experiment_exception import ExperimentException
+
+# Obtain the module name that imported this log_config
+caller = Path(inspect.stack()[-1].filename)
+module_name = caller.name.split('.')[0]
+log = structlog.getLogger(module_name)
 
 
 class Scan(ScanClassBase):
@@ -37,9 +49,9 @@ class Scan(ScanClassBase):
         ScanClassBase.__init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata)
 
         # scan metadata - must be the same between all slices combined in scan.  Metadata includes:
-        self.scanbound = self.slice_dict[self.slice_ids[0]]['scanbound']
+        self.scanbound = self.slice_dict[self.slice_ids[0]].scanbound
         for slice_id in self.slice_ids:
-            if self.slice_dict[slice_id]['scanbound'] != self.scanbound:
+            if self.slice_dict[slice_id].scanbound != self.scanbound:
                 errmsg = f"Scan boundary not the same between slices {self.slice_ids[0]} and"\
                          f" {slice_id} for AVEPERIOD or CONCURRENT interfaced slices"
                 raise ExperimentException(errmsg)
@@ -51,11 +63,11 @@ class Scan(ScanClassBase):
         self.beamdir = {}
         self.scan_beams = {}
         for slice_id in self.slice_ids:
-            self.beamdir[slice_id] = self.slice_dict[slice_id]['beam_angle']
-            self.scan_beams[slice_id] = self.slice_dict[slice_id]['rx_beam_order']
+            self.beamdir[slice_id] = self.slice_dict[slice_id].beam_angle
+            self.scan_beams[slice_id] = self.slice_dict[slice_id].rx_beam_order
 
         self.aveperiods = []
-        self.nested_slice_list = self.get_aveperiod_slice_ids()
+        self.nested_slice_list = self.get_nested_slice_ids()
 
         for params in self.prep_for_nested_scan_class():
             self.aveperiods.append(AveragingPeriod(*params))
@@ -84,39 +96,6 @@ class Scan(ScanClassBase):
 
         self.aveperiod_iter = 0 # used to keep track of index into aveperiods list.
         # AveragingPeriod will be in slice_id # order
-
-    def get_aveperiod_slice_ids(self):
-        """
-        Return the slice_ids that are within the AveragingPeriods in this Scan instance.
-
-        Take the interface keys inside this scan and return a list of lists where each inner list
-        contains the slices that are in an averagingperiod that is inside this scan. ie.
-        len(nested_slice_list) = # of averagingperiods in this scan, len(nested_slice_list[0]) = #
-        of slices in the first averagingperiod, etc.
-
-        :returns:   the nested_slice_list which is used when creating the AveragingPeriods for this
-                    scan. 
-        :rtype:     list
-        """
-        intt_combos = []
-
-        for k, interface_value in self.interface.items():
-            if interface_value == "CONCURRENT" or interface_value == "SEQUENCE":
-                intt_combos.append(list(k))
-        # Inside the scan, we have a subset of the interface dictionary including all combinations
-        # of slice_id that are included in this Scan instance. They could be interfaced AVEPERIOD,
-        # SEQUENCE, or CONCURRENT. We want to remove all of the AVEPERIOD combinations as we want to
-        # eventually have a list of lists (combos) that is of length = # of AVEPERIODs in the scan,
-        # with all slices included in the averaging periods inside the inner lists.
-
-        # TODO(Remington): make example and diagram
-
-        combos = self.slice_combos_sorter(intt_combos, self.slice_ids)
-
-        if __debug__:
-            print(f"AvePeriod slice id list: {combos}")
-
-        return combos
 
     def prep_for_nested_scan_class(self):
         """

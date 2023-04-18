@@ -38,5 +38,4 @@ Utils
     :maxdepth: 1
 
     utils
-    radar_status
     sample_building
