@@ -193,6 +193,9 @@ class SliceData:
     tau_spacing: float = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Unit of spacing between pulses in microseconds'})
+    tx_antenna_mag: list[float] = field(
+        metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
+                  'description': 'Magnitude of transmit signal for each antenna between 0 (off) and 1 (full power)'})
     tx_center_freq: list[float] = field(
         metadata={'groups': ['txdata'],
                   'description': 'Center frequency of the transmitted data in kHz'})
@@ -1048,62 +1051,63 @@ class DataWrite(object):
                     write_file(output_file, tx_data, self.tx_data_two_hr_name, 'txdata')
 
         all_slice_data = {}
-        for meta in aveperiod_meta.sequences:
-            for rx_freq in meta.rx_channels:
+        for sqn_meta in aveperiod_meta.sequences:
+            for rx_channel in sqn_meta.rx_channels:
 
                 # time to first range and back. convert to meters, div by c then convert to us
-                rtt = (rx_freq.first_range * 2 * 1.0e3 / speed_of_light) * 1.0e6
+                rtt = (rx_channel.first_range * 2 * 1.0e3 / speed_of_light) * 1.0e6
 
                 encodings = []
-                for encoding in rx_freq.sequence_encodings:
+                for encoding in rx_channel.sequence_encodings:
                     encoding = np.array(encoding, dtype=np.float32)
                     encodings.append(encoding)
                 encodings = np.array(encodings, dtype=np.float32)
 
-                lags = [[lag.pulse_position[0], lag.pulse_position[1]] for lag in rx_freq.ltabs]
+                lags = [[lag.pulse_position[0], lag.pulse_position[1]] for lag in rx_channel.ltabs]
 
                 parameters = SliceData()
                 parameters.agc_status_word = np.uint32(data_parsing.agc_status_word)
-                parameters.averaging_method = rx_freq.averaging_method
-                parameters.beam_azms = [beam.beam_azimuth for beam in rx_freq.beams]
-                parameters.beam_nums = [np.uint32(beam.beam_num) for beam in rx_freq.beams]
-                parameters.blanked_samples = np.array(meta.blanks, dtype=np.uint32)
+                parameters.averaging_method = rx_channel.averaging_method
+                parameters.beam_azms = [beam.beam_azimuth for beam in rx_channel.beams]
+                parameters.beam_nums = [np.uint32(beam.beam_num) for beam in rx_channel.beams]
+                parameters.blanked_samples = np.array(sqn_meta.blanks, dtype=np.uint32)
                 parameters.borealis_git_hash = self.git_hash.decode('utf-8')
                 parameters.data_normalization_factor = aveperiod_meta.data_normalization_factor
                 parameters.experiment_comment = aveperiod_meta.experiment_comment
                 parameters.experiment_id = np.int16(aveperiod_meta.experiment_id)
                 parameters.experiment_name = aveperiod_meta.experiment_name
-                parameters.first_range = np.float32(rx_freq.first_range)
+                parameters.first_range = np.float32(rx_channel.first_range)
                 parameters.first_range_rtt = np.float32(rtt)
-                parameters.freq = np.uint32(rx_freq.rx_freq)
+                parameters.freq = np.uint32(rx_channel.rx_freq)
                 parameters.gps_locked = data_parsing.gps_locked
                 parameters.gps_to_system_time_diff = data_parsing.gps_to_system_time_diff
                 parameters.int_time = np.float32(aveperiod_meta.aveperiod_time)
-                parameters.intf_antenna_count = np.uint32(len(rx_freq.rx_intf_antennas))
+                parameters.intf_antenna_count = np.uint32(len(rx_channel.rx_intf_antennas))
                 parameters.lags = np.array(lags, dtype=np.uint32)
                 parameters.lp_status_word = np.uint32(data_parsing.lp_status_word)
-                parameters.main_antenna_count = np.uint32(len(rx_freq.rx_main_antennas))
+                parameters.main_antenna_count = np.uint32(len(rx_channel.rx_main_antennas))
                 parameters.noise_at_freq = [0.0] * aveperiod_meta.num_sequences  # TODO: should come from data_parsing
-                parameters.num_ranges = np.uint32(rx_freq.num_ranges)
+                parameters.num_ranges = np.uint32(rx_channel.num_ranges)
                 parameters.num_sequences = aveperiod_meta.num_sequences
-                parameters.num_slices = len(aveperiod_meta.sequences) * len(meta.rx_channels)
+                parameters.num_slices = len(aveperiod_meta.sequences) * len(sqn_meta.rx_channels)
                 parameters.pulse_phase_offset = encodings
-                parameters.pulses = np.array(rx_freq.ptab, dtype=np.uint32)
-                parameters.range_sep = np.float32(rx_freq.range_sep)
+                parameters.pulses = np.array(rx_channel.ptab, dtype=np.uint32)
+                parameters.range_sep = np.float32(rx_channel.range_sep)
                 parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq
                 parameters.rx_sample_rate = data_parsing.output_sample_rate
                 parameters.samples_data_type = "complex float"
                 parameters.scan_start_marker = aveperiod_meta.scan_flag
                 parameters.scheduling_mode = aveperiod_meta.scheduling_mode
-                parameters.slice_comment = rx_freq.slice_comment
-                parameters.slice_id = np.uint32(rx_freq.slice_id)
-                parameters.slice_interfacing = rx_freq.interfacing
+                parameters.slice_comment = rx_channel.slice_comment
+                parameters.slice_id = np.uint32(rx_channel.slice_id)
+                parameters.slice_interfacing = rx_channel.interfacing
                 parameters.sqn_timestamps = data_parsing.timestamps
                 parameters.station = self.options.site_id
-                parameters.tau_spacing = np.uint32(rx_freq.tau_spacing)
-                parameters.tx_pulse_len = np.uint32(rx_freq.pulse_len)
+                parameters.tau_spacing = np.uint32(rx_channel.tau_spacing)
+                parameters.tx_antenna_mag = np.float32(rx_channel.tx_antenna_mag)
+                parameters.tx_pulse_len = np.uint32(rx_channel.pulse_len)
 
-                all_slice_data[rx_freq.slice_id] = parameters
+                all_slice_data[rx_channel.slice_id] = parameters
 
         if write_rawacf and data_parsing.mainacfs_available:
             write_correlations(all_slice_data)
