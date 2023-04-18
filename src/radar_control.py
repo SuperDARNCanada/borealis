@@ -192,8 +192,8 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
         chan_add.first_range = slice_dict[slice_id].first_range
         chan_add.range_sep = slice_dict[slice_id].range_sep
 
-        main_bms = beam_dict[slice_id].main
-        intf_bms = beam_dict[slice_id].intf
+        main_bms = beam_dict[slice_id]['main']
+        intf_bms = beam_dict[slice_id]['intf']
 
         beams = []
         for i in range(main_bms.shape[0]):
