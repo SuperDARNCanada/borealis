@@ -160,10 +160,8 @@ class Sequence(ScanClassBase):
             else:
                 self.basic_slice_pulses[slice_id] = []
                 tx_main_phase_shift = np.zeros((rx_main_phase_shift.shape[0], len(exp_slice['tx_antennas'])),
-                                               dtype=np.float32)
-            self.tx_main_phase_shifts[slice_id] = np.zeros((tx_main_phase_shift.shape[0], main_antenna_count),
-                                                           dtype=np.float32)
-            self.tx_main_phase_shifts[slice_id][:, exp_slice['tx_antennas']] = tx_main_phase_shift
+                                               dtype=np.complex64)
+            self.tx_main_phase_shifts[slice_id] = tx_main_phase_shift
 
             for pulse_time in exp_slice['pulse_sequence']:
                 pulse_timing_us = pulse_time * exp_slice['tau_spacing'] + exp_slice['seqoffset']

@@ -193,9 +193,10 @@ class SliceData:
     tau_spacing: float = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf'],
                   'description': 'Unit of spacing between pulses in microseconds'})
-    tx_antenna_mag: list[float] = field(
+    tx_antenna_phases: list[complex] = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
-                  'description': 'Magnitude of transmit signal for each antenna between 0 (off) and 1 (full power)'})
+                  'description': 'Phases of transmit signal for each antenna. Magnitude between 0 (off) and 1 '
+                                 '(full power)'})
     tx_center_freq: list[float] = field(
         metadata={'groups': ['txdata'],
                   'description': 'Center frequency of the transmitted data in kHz'})
@@ -1104,7 +1105,7 @@ class DataWrite(object):
                 parameters.sqn_timestamps = data_parsing.timestamps
                 parameters.station = self.options.site_id
                 parameters.tau_spacing = np.uint32(rx_channel.tau_spacing)
-                parameters.tx_antenna_mag = np.float32(rx_channel.tx_antenna_mag)
+                parameters.tx_antenna_phases = np.complex64(rx_channel.tx_antenna_phases)
                 parameters.tx_pulse_len = np.uint32(rx_channel.pulse_len)
 
                 all_slice_data[rx_channel.slice_id] = parameters

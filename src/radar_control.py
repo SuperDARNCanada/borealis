@@ -372,7 +372,7 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden, seqnum
 
             rxchannel.rx_main_antennas = sqn_slice['rx_main_antennas']
             rxchannel.rx_intf_antennas = sqn_slice['rx_int_antennas']
-            rxchannel.tx_antenna_mag = np.abs(sequence.tx_main_phase_shifts[slice_id][beam_iter])
+            rxchannel.tx_antenna_phases = sequence.tx_main_phase_shifts[slice_id][beam_iter]
 
             beams = sqn_slice['rx_beam_order'][beam_iter]
             if isinstance(beams, int):
