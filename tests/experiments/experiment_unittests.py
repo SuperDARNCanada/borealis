@@ -207,7 +207,7 @@ def exception_test_generator(module_name, exception, exception_message):
     return test
 
 
-def build_experiment_tests():
+def build_experiment_tests(experiments=None):
     """
     Create individual unit tests for all experiments within the base borealis_experiments/
     directory. All experiments are run to ensure no exceptions are thrown when they are built
@@ -219,19 +219,20 @@ def build_experiment_tests():
 
     # Iterate through all modules in the borealis_experiments directory
     for (_, name, _) in pkgutil.iter_modules([Path(experiment_path)]):
-        imported_module = import_module('.' + name, package=experiment_package)
-        # Loop through all attributes of each found module
-        for i in dir(imported_module):
-            attribute = getattr(imported_module, i)
-            # To verify that an attribute is a runnable experiment, check that the attribute is 
-            # a class and inherits from ExperimentPrototype
-            if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
-                # Only create a test if the current attribute is the experiment itself
-                if 'ExperimentPrototype' not in str(attribute):
-                    test = experiment_test_generator(name)
-                    # setattr make the "test" function a method within TestActiveExperiments called
-                    # "test_[name]" which can be run via unittest.main()
-                    setattr(TestActiveExperiments, f"test_{name}", test)
+        if experiments is None or name in experiments:
+            imported_module = import_module('.' + name, package=experiment_package)
+            # Loop through all attributes of each found module
+            for i in dir(imported_module):
+                attribute = getattr(imported_module, i)
+                # To verify that an attribute is a runnable experiment, check that the attribute is
+                # a class and inherits from ExperimentPrototype
+                if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
+                    # Only create a test if the current attribute is the experiment itself
+                    if 'ExperimentPrototype' not in str(attribute):
+                        test = experiment_test_generator(name)
+                        # setattr make the "test" function a method within TestActiveExperiments called
+                        # "test_[name]" which can be run via unittest.main()
+                        setattr(TestActiveExperiments, f"test_{name}", test)
     print("Done building experiment tests")
 
 
@@ -251,37 +252,37 @@ def experiment_test_generator(module_name):
     return test
 
 
-if __name__ == '__main__':
+def main(raw_args=None, buffer=True):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--site_id", required=False, default="sas", 
-                        choices=["sas", "pgr", "inv", "rkn", "cly", "lab"], 
+    parser.add_argument("--site_id", required=False, default="sas",
+                        choices=["sas", "pgr", "inv", "rkn", "cly", "lab"],
                         help="Site ID of site to test experiments as. Defaults to sas.")
-    parser.add_argument("--experiment", required=False, nargs="+", default=None, 
+    parser.add_argument("--experiment", required=False, nargs="+", default=None,
                         help="Only run the experiments specified after this option. Experiments \
-                        specified must exist within the top-level Borealis experiments directory.")
+                            specified must exist within the top-level Borealis experiments directory.")
+    args = parser.parse_args(raw_args)
 
-    args, extra_args = parser.parse_known_args()
     os.environ["RADAR_ID"] = args.site_id
     experiments = args.experiment
-
-    if len(extra_args) != 0:
-        print(f"Unknown command line arguments {extra_args}")
-        parser.print_help()
-        exit(1)
 
     if experiments is None:  # Run all unit tests and experiment tests
         build_unit_tests()
         build_experiment_tests()
-        unittest.main(argv=sys.argv[:1])
+        result = unittest.main(exit=False, buffer=buffer)
     else:  # Only test specified experiments
-        build_experiment_tests()
+        build_experiment_tests(experiments)
         exp_tests = []
         for exp in experiments:
-            # Check experiment exists 
+            # Check experiment exists
             if hasattr(TestActiveExperiments, f"test_{exp}"):
                 # Create correct string to test the experiment with unittest
                 exp_tests.append(f"TestActiveExperiments.test_{exp}")
             else:
                 print(f"Could not find experiment {exp}. Exiting...")
                 exit(1)
-        unittest.main(argv=sys.argv[:1] + exp_tests)
+        result = unittest.main(argv=[parser.prog] + exp_tests, exit=False, buffer=buffer)
+    return result
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

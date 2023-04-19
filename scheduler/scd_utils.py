@@ -6,10 +6,15 @@
 
     :copyright: 2019 SuperDARN Canada
 """
-
+import os
 import datetime as dt
 import shutil
 import sys
+import unittest
+
+borealis_path = os.environ['BOREALISPATH']
+sys.path.append(f"{borealis_path}/tests/experiments")
+import experiment_unittests
 
 
 def get_next_month_from_date(date=None):
@@ -101,13 +106,19 @@ class SCDUtils(object):
         if scheduling_mode not in possible_scheduling_modes:
             raise ValueError(f"Unknown scheduling mode type {scheduling_mode} not in {possible_scheduling_modes}")
 
-        return {"timestamp" : epoch_milliseconds,
-                "time" : time,
-                "duration" : str(duration),
-                "prio" : str(prio),
-                "experiment" : experiment,
-                "scheduling_mode" : scheduling_mode,
-                "kwargs_string" : kwargs_string}
+        # See if the experiment itself would run
+        args = ['--site_id', self.scd_filename[:2], '--experiment', experiment]
+        test_program = experiment_unittests.main(args, buffer=True)
+        if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
+            raise ValueError("Experiment could not be scheduled due to errors in experiment.")
+
+        return {"timestamp": epoch_milliseconds,
+                "time": time,
+                "duration": str(duration),
+                "prio": str(prio),
+                "experiment": experiment,
+                "scheduling_mode": scheduling_mode,
+                "kwargs_string": kwargs_string}
 
     def read_scd(self):
         """
