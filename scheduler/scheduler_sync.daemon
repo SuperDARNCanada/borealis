@@ -115,7 +115,7 @@ do
                 if [[ $retval -ne 0 ]]; then
                     printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Error in syncing schedule, trying again\n"
                     attempts=$((attempts + 1))
-                    if [[ $attempts -ge $MAX_ATTEMPTS ]]; then
+                    if [[ $attempts -eq $MAX_ATTEMPTS ]]; then
                         message="scheduler_sync@$RADAR_ID: Schedule failed to sync for $RADAR_ID"
                         curl --silent --header "Content-type: application/json" --data "{'text':'${message}'}" $SLACK_WEBHOOK
                         break
