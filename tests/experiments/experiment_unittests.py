@@ -41,6 +41,20 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 import borealis_experiments.superdarn_common_fields as scf
 
 
+def redirect_to_devnull(func, *args, **kwargs):
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = devnull
+        sys.stderr = devnull
+        try:
+            result = func(*args, **kwargs)
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+    return result
+
+
 def ehmain(experiment_name='normalscan', scheduling_mode='discretionary'):
     """
     Calls the functions within experiment handler that verify an experiment
@@ -52,16 +66,10 @@ def ehmain(experiment_name='normalscan', scheduling_mode='discretionary'):
     :param  scheduling_mode: The scheduling mode to run. Defaults to 'discretionary'
     :type   scheduling_mode: str
     """
-    with open(os.devnull, "w") as devnull:
-        old_stdout = sys.stdout
-        sys.stdout = devnull
-        try:
-            Experiment = eh.retrieve_experiment(experiment_name)
-            exp = Experiment()
-            exp._set_scheduling_mode(scheduling_mode)
-            exp.build_scans()
-        finally:
-            sys.stdout = old_stdout
+    Experiment = eh.retrieve_experiment(experiment_name)
+    exp = Experiment()
+    exp._set_scheduling_mode(scheduling_mode)
+    exp.build_scans()
 
 
 class TestExperimentEnvSetup(unittest.TestCase):
@@ -187,7 +195,7 @@ def build_unit_tests():
                     setattr(TestExperimentArchive, name, test)
                     break
 
-    print("Done building unit tests")
+    # print("Done building unit tests")
 
 
 def exception_test_generator(module_name, exception, exception_message):
@@ -203,7 +211,7 @@ def exception_test_generator(module_name, exception, exception_message):
     """
     def test(self):
         with self.assertRaisesRegex(exception, exception_message):
-            ehmain(experiment_name=module_name)
+            redirect_to_devnull(ehmain, experiment_name=module_name)
     return test
 
 
@@ -233,7 +241,7 @@ def build_experiment_tests(experiments=None):
                         # setattr make the "test" function a method within TestActiveExperiments called
                         # "test_[name]" which can be run via unittest.main()
                         setattr(TestActiveExperiments, f"test_{name}", test)
-    print("Done building experiment tests")
+    # print("Done building experiment tests")
 
 
 def experiment_test_generator(module_name):
@@ -246,13 +254,13 @@ def experiment_test_generator(module_name):
     """
     def test(self):
         try:
-            ehmain(experiment_name=module_name)
+            redirect_to_devnull(ehmain, experiment_name=module_name)
         except Exception as err:
             self.fail(err)
     return test
 
 
-def main(raw_args=None, buffer=True):
+def main(raw_args=None, buffer=True, print_results=True):
     parser = argparse.ArgumentParser()
     parser.add_argument("--site_id", required=False, default="sas",
                         choices=["sas", "pgr", "inv", "rkn", "cly", "lab"],
@@ -268,7 +276,7 @@ def main(raw_args=None, buffer=True):
     if experiments is None:  # Run all unit tests and experiment tests
         build_unit_tests()
         build_experiment_tests()
-        result = unittest.main(exit=False, buffer=buffer)
+        argv = None
     else:  # Only test specified experiments
         build_experiment_tests(experiments)
         exp_tests = []
@@ -280,7 +288,11 @@ def main(raw_args=None, buffer=True):
             else:
                 print(f"Could not find experiment {exp}. Exiting...")
                 exit(1)
-        result = unittest.main(argv=[parser.prog] + exp_tests, exit=False, buffer=buffer)
+        argv = [parser.prog] + exp_tests
+    if print_results:
+        result = unittest.main(argv=argv, exit=False, buffer=buffer)
+    else:
+        result = redirect_to_devnull(unittest.main, argv=argv, exit=False, buffer=buffer)
     return result
 
 

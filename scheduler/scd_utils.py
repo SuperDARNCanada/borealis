@@ -108,9 +108,10 @@ class SCDUtils(object):
 
         # See if the experiment itself would run
         args = ['--site_id', self.scd_filename[:2], '--experiment', experiment]
-        test_program = experiment_unittests.main(args, buffer=True)
+        test_program = experiment_unittests.main(args, buffer=True, print_results=False)
         if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
-            raise ValueError("Experiment could not be scheduled due to errors in experiment.")
+            raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
+                             f"{test_program.result.failures[0][1]}")
 
         return {"timestamp": epoch_milliseconds,
                 "time": time,

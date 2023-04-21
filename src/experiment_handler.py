@@ -28,7 +28,8 @@ from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from utils import log_config
-log = log_config.log()
+log = log_config.log(log_level='NOTSET', console=False, logfile=False, aggregator=False)
+
 
 def usage_msg():
     """
