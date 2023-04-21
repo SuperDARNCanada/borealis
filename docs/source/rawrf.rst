@@ -150,7 +150,11 @@ The file fields under the record name in rawrf site files are:
 | |                                | | Provided in seconds since epoch.          |
 +----------------------------------+---------------------------------------------+
 | | **station**                    | | Three-letter radar identifier.            |
-| | *unicode*                      | |                                           | 
+| | *unicode*                      | |                                           |
++----------------------------------+---------------------------------------------+
+| | **tx_antenna_phases**          | | The complex phase for each antenna for    |
+| | *[complex64, ]*                | | transmission, normalized such that full-  |
+| |                                | | power has magnitude 1.                    |
 +----------------------------------+---------------------------------------------+
 
 ------------------------
