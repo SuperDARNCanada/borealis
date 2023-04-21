@@ -66,8 +66,8 @@ def ehmain(experiment_name='normalscan', scheduling_mode='discretionary'):
     :param  scheduling_mode: The scheduling mode to run. Defaults to 'discretionary'
     :type   scheduling_mode: str
     """
-    Experiment = eh.retrieve_experiment(experiment_name)
-    exp = Experiment()
+    experiment = eh.retrieve_experiment(experiment_name)
+    exp = experiment()
     exp._set_scheduling_mode(scheduling_mode)
     exp.build_scans()
 
@@ -93,18 +93,18 @@ class TestExperimentEnvSetup(unittest.TestCase):
 
     @unittest.skip("Skip for TODO reason")
     def test_borealispath(self):
-       """
-       Test failure to have BOREALISPATH in env
-       """
-       # Need to remove the environment variable, reset for other tests
-       os.environ.pop('BOREALISPATH')
-       sys.path.remove(BOREALISPATH)
-       del os.environ['BOREALISPATH']
-       os.unsetenv('BOREALISPATH')
-       with self.assertRaisesRegex(KeyError, "BOREALISPATH"):
-           ehmain()
-       os.environ['BOREALISPATH'] = BOREALISPATH
-       sys.path.append(BOREALISPATH)
+        """
+        Test failure to have BOREALISPATH in env
+        """
+        # Need to remove the environment variable, reset for other tests
+        os.environ.pop('BOREALISPATH')
+        sys.path.remove(BOREALISPATH)
+        del os.environ['BOREALISPATH']
+        os.unsetenv('BOREALISPATH')
+        with self.assertRaisesRegex(KeyError, "BOREALISPATH"):
+            ehmain()
+        os.environ['BOREALISPATH'] = BOREALISPATH
+        sys.path.append(BOREALISPATH)
 
     @unittest.skip("Skip because it is annoying")
     def test_config_file(self):
@@ -131,7 +131,7 @@ class TestExperimentEnvSetup(unittest.TestCase):
         os.rename(f"{hdw_path}/hdw.dat.{site_name}", f"{hdw_path}/_hdw.dat.{site_name}")
 
         with self.assertRaisesRegex(ValueError, "Cannot open hdw.dat.[a-z]{3} file at"):
-             ehmain()
+            ehmain()
 
         # Now rename the hdw.dat file and move on
         os.rename(f"{hdw_path}/_hdw.dat.{site_name}", f"{hdw_path}/hdw.dat.{site_name}")
@@ -195,8 +195,6 @@ def build_unit_tests():
                     setattr(TestExperimentArchive, name, test)
                     break
 
-    # print("Done building unit tests")
-
 
 def exception_test_generator(module_name, exception, exception_message):
     """
@@ -241,7 +239,6 @@ def build_experiment_tests(experiments=None):
                         # setattr make the "test" function a method within TestActiveExperiments called
                         # "test_[name]" which can be run via unittest.main()
                         setattr(TestActiveExperiments, f"test_{name}", test)
-    # print("Done building experiment tests")
 
 
 def experiment_test_generator(module_name):
