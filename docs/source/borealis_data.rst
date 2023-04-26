@@ -53,7 +53,13 @@ your data is of the most up to date version. The current Borealis software versi
 Previous versions
 -----------------
 
-* v0.5 follows the v0.5 format.
+..  toctree::
+    :maxdepth: 1
+
+    archive/rawacf-v06
+    archive/bfiq-v06
+    archive/antennas_iq-v06
+    archive/rawrf-v06
 
 ..  toctree::
     :maxdepth: 1
@@ -63,8 +69,6 @@ Previous versions
     archive/antennas_iq-v05
     archive/rawrf-v05
 
-* v0.2, v0.3, and v0.4 follow the v0.4 format.
-
 ..  toctree::
     :maxdepth: 1
 
@@ -72,6 +76,8 @@ Previous versions
     archive/bfiq-v04
     archive/antennas_iq-v04
     archive/rawrf-v04
+
+v0.2 and v0.3  follow the v0.4 format.
 
 ------------
 Reading Data

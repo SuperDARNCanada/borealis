@@ -10,9 +10,21 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
-
-from experiment_prototype.experiment_exception import ExperimentException
+# built-in
+import inspect
 import itertools
+from pathlib import Path
+
+# third-party
+import structlog
+
+# local
+from experiment_prototype.experiment_exception import ExperimentException
+
+# Obtain the module name that imported this log_config
+caller = Path(inspect.stack()[-1].filename)
+module_name = caller.name.split('.')[0]
+log = structlog.getLogger(module_name)
 
 
 class ScanClassBase(object):
@@ -77,6 +89,9 @@ class ScanClassBase(object):
         # all necessary experiment-wide transmit metadata
         self.transmit_metadata = transmit_metadata
 
+        # List of lists, each inner list is all slice ids that share a scan
+        self.nested_slice_list = self.get_nested_slice_ids()
+
     def prep_for_nested_scan_class(self):
         """
         Retrieve the params needed for the nested class (also with base ScanClassBase).
@@ -92,8 +107,7 @@ class ScanClassBase(object):
 
         # TODO documentation make a detailed example of this and diagram
         nested_class_param_lists = []
-        if __debug__:
-            print(self.nested_slice_list)
+        log.debug(self.nested_slice_list)
         for slice_list in self.nested_slice_list:
             slices_for_nested_class = {}
             for slice_id in slice_list:
@@ -137,77 +151,74 @@ class ScanClassBase(object):
                     within the list are of however long necessary
         :rtype:     list
         """
+        disjoint_sets = []
 
-        list_of_combos = sorted(list_of_combos)
+        # Go through all interfaces and create sets of mutually-interfaced slices
+        for slice_interfacing in list_of_combos:
+            slice_already_interfaced_with = False
+            for disjoint_set in disjoint_sets:
+                # Add both slice ids to this set if either one is already a member
+                if slice_interfacing[0] in disjoint_set or slice_interfacing[1] in disjoint_set:
+                    disjoint_set.update({slice_interfacing[0], slice_interfacing[1]})
+                    slice_already_interfaced_with = True
+            if not slice_already_interfaced_with:
+                # Create a new set with just these two
+                disjoint_sets.append({slice_interfacing[0], slice_interfacing[1]})
 
-        # if [2,4] and [1,4], then also must be [1,2] in the list_of_combos Now we are going to
-        # modify the list of lists of length = 2 to be a list of length x so that if [1,2] and [2,4]
-        # and [1,4] are in list_of_combos, we want only one list element for this scan : [1,2,4] .
-
-        scan_i = 0  # TODO detailed explanation with examples. Consider changing to a graph traversal algorithm?
-        while scan_i < len(list_of_combos):  # i: element in list_of_combos (representing one scan)
-            slice_id_k = 0
-            while slice_id_k < len(list_of_combos[scan_i]):  # k: element in scan (representing a slice)
-                scan_j = scan_i + 1  # j: iterates through the other elements of list_of_combos, to combine them into
-                # the first, i, if they are in fact part of the same scan.
-                while scan_j < len(list_of_combos):
-                    if list_of_combos[scan_i][slice_id_k] == list_of_combos[scan_j][0]:
-                        # if an element (slice_id) inside the i scan is the same as a slice_id in
-                        # the j scan (somewhere further in the list_of_combos), then we need to
-                        # combine that j scan into the i scan. We only need to check the first
-                        # element of the j scan because list_of_combos has been sorted and we know
-                        # the first slice_id in the scan is less than the second slice id.
-                        add_n_slice_id = list_of_combos[scan_j][1]  # the slice_id to add to the i scan from the j scan.
-                        list_of_combos[scan_i].append(add_n_slice_id)
-                        # Combine the indices if there are 3+ slices combining in same scan
-                        for m in range(0, len(list_of_combos[scan_i]) - 1):
-                            # if we have added z to scan_i, such that scan_i is now [x,y,z], we now
-                            # have to remove from the list_of_combos list [x,z], and [y,z].
-                            # If x,z existed as SCAN but y,z did not, we have an error.
-
-                            # Try all values in list_of_combos[i] except the last value, which is = to add_n.
-                            try:
-                                list_of_combos.remove([list_of_combos[scan_i][m], add_n_slice_id])
-                                # list_of_combos[j][1] is the known last value in list_of_combos[i]
-                            except ValueError:
-                                # This error would occur if e.g. you had set [x,y] and [x,z] to
-                                # CONCURRENT but [y,z] to SCAN. This means that we couldn't remove
-                                # the scan_combo y,z from the list because it was not added to
-                                # list_of_combos because it wasn't a scan type, so the interfacing
-                                # would not make sense (conflict).
-                                errmsg = f"Interfacing not Valid: exp_slice {list_of_combos[scan_i][m]}"\
-                                    f" and exp_slice {list_of_combos[scan_i][slice_id_k]} are combined"\
-                                    f" in-scan and do not interface the same with exp_slice {add_n_slice_id}"
-                                raise ExperimentException(errmsg)
-                        scan_j = scan_j - 1
-                        # This means that the former list_of_combos[j] has been deleted and there
-                        # are new values at index j, so decrement before incrementing in the while
-                        # loop.
-                        # The above for loop will delete more than one element of list_of_combos
-                        # (min 2) but the while scan_j < len(list_of_combos) will reevaluate the
-                        # length of list_of_combos.
-                    scan_j = scan_j + 1
-                slice_id_k = slice_id_k + 1  
-                # if interfacing has been properly set up, the loop will only ever find elements to
-                # add to scan_i when slice_id_k = 0. If there were errors though (ex. x,y and y,z =
-                # CONCURRENT but x,z did not) then iterating through the slice_id elements will
-                # allow us to find the error.
-            scan_i = scan_i + 1  
-            # At this point, all elements in the just-finished scan_i will not be found anywhere
-            #  else in list_of_combos.
-
-        # Now list_of_combos is a list of lists,  where a slice_id occurs only once, within the
-        # nested list.
-
-        for slice_id in all_keys:
-            for combo in list_of_combos:
-                if slice_id in combo:
+        # Check all slice ids and add any missing ones to their own set.
+        for key in all_keys:
+            slice_in_set = False
+            for disjoint_set in disjoint_sets:
+                if key in disjoint_set:     # This slice interfaces with others
+                    slice_in_set = True
                     break
-            else:  # no break
-                list_of_combos.append([slice_id])
-                # Append the slice on its own, it is in its own object.
+            if not slice_in_set:    # This slice doesn't interface with the others, make a new set
+                disjoint_sets.append({key})
 
-        list_of_combos = sorted(list_of_combos)
-        return list_of_combos
+        # Go through all sets and make sure they are disjoint (don't share any slice ids)
+        for i in range(len(disjoint_sets)):
+            for j in range(i + 1, len(disjoint_sets)):
+                bad_slices = disjoint_sets[i].intersection(disjoint_sets[j])
+                if len(bad_slices) != 0:
+                    raise ExperimentException(f"The following slices do not interface well with other slices: "
+                                              f"{bad_slices}")
+            disjoint_sets[i] = sorted(list(disjoint_sets[i]))   # Convert to a list
 
+        return disjoint_sets
 
+    def get_nested_slice_ids(self):
+        """
+        Organize the slice_ids by interface.
+
+        This method is inherited by child classes and organizes all slices in each child class which
+        should be combined by the class. For example, all slices in a Scan should be combined if they
+        share an AveragingPeriod or Sequence or are concurrent.
+
+        Returns a list of lists where each inner list contains the slices that are combined inside
+        this object. e.g. for ScanClassBase:
+        len(nested_slice_list) = # of scans in this experiment,
+        len(nested_slice_list[0]) = # of slices in the first scan
+
+        :returns:   A list that has one element per scan. Each element is a list of slice_ids
+                    signifying which slices are combined inside that scan. The list returned could
+                    be of length 1, meaning only one scan is present in the experiment.
+        :rtype:     list of lists
+        """
+        nested_combos = []
+
+        combine_below_dict = {
+            'ScanClassBase': ['AVEPERIOD', 'SEQUENCE', 'CONCURRENT'],   # Combine everything except SCAN interfaced
+            'Scan': ['SEQUENCE', 'CONCURRENT'],     # Combine everything SEQUENCE or CONCURRENT interfaced
+            'AveragingPeriod': ['CONCURRENT'],      # Combine everything CONCURRENT interfaced
+            'Sequence': []  # All slices in a Sequence are already CONCURRENT and should be combined already
+        }
+
+        combine_list = combine_below_dict[type(self).__name__]     # Returns the class name of the calling instance
+
+        for slice_ids_combo, interface_value in self.interface.items():
+            if interface_value in combine_list:
+                nested_combos.append(list(slice_ids_combo))
+
+        combos = self.slice_combos_sorter(nested_combos, self.slice_ids)
+
+        return combos

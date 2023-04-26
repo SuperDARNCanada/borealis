@@ -27,14 +27,11 @@ import sphinx_rtd_theme
 BOREALISPATH = os.path.abspath('..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
-sys.path.insert(1, BOREALISPATH + '/src')
-sys.path.insert(2, BOREALISPATH + '/src/experiment_prototype')
-sys.path.insert(3, BOREALISPATH + '/src/utils')
-sys.path.insert(4, BOREALISPATH + '/scheduler')
+sys.path.insert(1, f'{BOREALISPATH}/src')
+sys.path.insert(2, f'{BOREALISPATH}/src/experiment_prototype')
+sys.path.insert(3, f'{BOREALISPATH}/src/utils')
+sys.path.insert(4, f'{BOREALISPATH}/scheduler')
 sys.path.insert(5, os.environ['PATH'])
-
-RADAR_ID = 'sas'
-os.environ['RADAR_ID'] = RADAR_ID
 
 # -- Pre-build configuration ----------------------------------------------
 
@@ -50,6 +47,28 @@ run(['breathe-apidoc', '--force', '--no-toc', '--generate', 'file', '-o', f'{cur
 
 # Update the experiment subrepo so experiment files can be read into documentation
 run(['git', 'submodule', 'update', '--init'])
+
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+if on_rtd:  # Only run following changes on ReadTheDocs
+    RADAR_ID = 'sas'
+    os.environ['RADAR_ID'] = RADAR_ID
+
+    # Change config file hdw and data/log paths to be accessible by ReadTheDocs
+    config_file = f'{BOREALISPATH}/config/{RADAR_ID}/{RADAR_ID}_config.ini'
+    with open(config_file, 'r') as file:
+        raw_config = json.load(file)
+    raw_config['hdw_path'] = f'{BOREALISPATH}/hdw'
+    raw_config['data_directory'] = f'{BOREALISPATH}/borealis_data'
+    raw_config['log_directory'] = f'{BOREALISPATH}/borealis_logs'
+    with open(config_file, 'w') as file:
+        json.dump(raw_config, file)
+
+    # Clone in the HDW repo temporarily so modules reading them don't throw errors
+    run(['git', 'clone', 'https://github.com/SuperDARN/hdw', raw_config['hdw_path']])
+
+    # Create data and log directory that RTD can see so no errors are thrown
+    run(['mkdir', '-p', raw_config['data_directory']])
+    run(['mkdir', '-p', raw_config['log_directory']])
 
 
 # -- General configuration ------------------------------------------------
@@ -76,7 +95,7 @@ extensions = [
 ]
 
 # Modules that can't be imported on RTD will be ignored if they are listed here
-autodoc_mock_imports = ["debug", "release", "utils"]
+autodoc_mock_imports = ["build", "utils.log_config"]
 
 breathe_projects = {"borealis" : "xml/"}
 breathe_default_project = "borealis"

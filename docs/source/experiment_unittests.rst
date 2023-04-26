@@ -9,15 +9,13 @@ Experiment Unittests
     :name: experiment_unittests-py
 
 
-Experiments must be listed in ``experiment_tests.csv`` in the following format: ::
+This script tests both runnable experiments (those in borealis/src/borealis_experiments/) and a set of unit tests
+(those in borealis/src/borealis_experiments/testing_archive/). Some unit tests are meant to raise an exception;
+these tests have an extra method defined which returns the expected exception and a regex of the expected error message.
+An example unit test is shown below.
 
-    [#][experiment file module import name]::[regex error message]
-
-An excerpt of ``experiment_tests.csv`` is shown below for reference.
-
-
-..  literalinclude:: ../../tests/experiments/experiment_tests.csv
-    :lineno-start: 128
-    :lines: 128-133
-    :caption: experiment_tests.csv
-    :name: experiment_tests.csv
+..  literalinclude:: ../../src/borealis_experiments/testing_archive/test_rxonly_dne.py
+    :language: python
+    :linenos:
+    :caption: Example Unit Test file
+    :name: test_rxonly_dne-py

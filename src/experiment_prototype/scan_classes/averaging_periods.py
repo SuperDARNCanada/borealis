@@ -10,10 +10,22 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
+# built-in
+import inspect
+from pathlib import Path
 
+# third party
+import structlog
+
+# local
 from experiment_prototype.scan_classes.sequences import Sequence
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 from experiment_prototype.experiment_exception import ExperimentException
+
+# Obtain the module name that imported this log_config
+caller = Path(inspect.stack()[-1].filename)
+module_name = caller.name.split('.')[0]
+log = structlog.getLogger(module_name)
 
 """ 
 Scans are made up of AveragingPeriods, these are typically a 3sec time of the same pulse sequence
@@ -74,41 +86,41 @@ class AveragingPeriod(ScanClassBase):
         # we may have to search multiple ranges.
         self.clrfrqrange = []
         for slice_id in self.slice_ids:
-            if self.slice_dict[slice_id]['clrfrqflag']:
+            if self.slice_dict[slice_id].clrfrqflag:
                 self.clrfrqflag = True
-                self.clrfrqrange.append(self.slice_dict[slice_id]['clrfrqrange'])
+                self.clrfrqrange.append(self.slice_dict[slice_id].clrfrqrange)
 
         # TODO: SET UP CLEAR FREQUENCY SEARCH CAPABILITY
         # also note for when setting this up clrfrqranges may overlap
 
-        self.intt = self.slice_dict[self.slice_ids[0]]['intt']
-        self.intn = self.slice_dict[self.slice_ids[0]]['intn']
+        self.intt = self.slice_dict[self.slice_ids[0]].intt
+        self.intn = self.slice_dict[self.slice_ids[0]].intn
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
-                if self.slice_dict[slice_id]['intt'] != self.intt:
+                if self.slice_dict[slice_id].intt != self.intt:
                     errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
                             " interfaced and do not have the same Averaging Period duration intt"
                     raise ExperimentException(errmsg)
         elif self.intn is not None:
             for slice_id in self.slice_ids:
-                if self.slice_dict[slice_id]['intn'] != self.intn:
+                if self.slice_dict[slice_id].intn != self.intn:
                     errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
                             " interfaced and do not have the same NAVE goal intn"
                     raise ExperimentException(errmsg)
 
         for slice_id in self.slice_ids: 
-            if len(self.slice_dict[slice_id]['rx_beam_order']) != \
-               len(self.slice_dict[self.slice_ids[0]]['rx_beam_order']):
+            if len(self.slice_dict[slice_id].rx_beam_order) != \
+               len(self.slice_dict[self.slice_ids[0]].rx_beam_order):
                 errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
                         " interfaced but do not have the same number of averaging periods in"\
                         " their beam order"
                 raise ExperimentException(errmsg)
-        self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]]['rx_beam_order'])
+        self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]].rx_beam_order)
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
 
         # Determine how this averaging period is made by separating out the SEQUENCE interfaced.
-        self.nested_slice_list = self.get_sequence_slice_ids()
+        self.nested_slice_list = self.get_nested_slice_ids()
         self.sequences = []
 
         for params in self.prep_for_nested_scan_class():
@@ -117,34 +129,6 @@ class AveragingPeriod(ScanClassBase):
         self.one_pulse_only = False
 
         self.beam_iter = 0 # used to keep track of place in beam order.
-
-    def get_sequence_slice_ids(self):
-        """
-        Return the slice_ids that are within the Sequences in this AveragingPeriod instance.
-
-        Take the interface keys inside this averagingperiod and return a list of lists where each
-        inner list contains the slices that are in a sequence that is inside this averagingperiod.
-        ie. len(nested_slice_list) = # of sequences in this averagingperiod,
-        len(nested_slice_list[0]) = # of slices in the first sequence, etc.
-
-        :returns:   the nested_slice_list which is used when creating the sequences in this
-                    averagingperiod.
-        :rtype:     list
-        """
-
-        sequence_combos = []
-
-        # Remove SEQUENCE combos as we are trying to separate those.
-        for k, interface_type in self.interface.items():  # TODO make example
-            if interface_type == "CONCURRENT":
-                sequence_combos.append(list(k))
-
-        combos = self.slice_combos_sorter(sequence_combos, self.slice_ids)
-
-        if __debug__:
-            print(f"sequences slice id combos: {combos}")
-
-        return combos
 
     def set_beamdirdict(self, beamiter):
         """
