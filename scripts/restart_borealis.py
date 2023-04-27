@@ -18,18 +18,42 @@ from datetime import datetime as dt
 import glob
 import subprocess
 import time
+from textwrap import indent
 
 
 def get_args():
     """
     Supports the command-line arguments listed below.
     """
-    parser = argparse.ArgumentParser(description="Borealis Check")
+    # Gather the borealis configuration information
+    if not os.environ["BOREALISPATH"]:
+        raise ValueError("BOREALISPATH env variable not set")
+    if not os.environ["RADAR_ID"]:
+        raise ValueError("RADAR_ID env variable not set")
+    BOREALISPATH=os.environ["BOREALISPATH"]
+    RADAR_ID=os.environ["RADAR_ID"]
+    
+    # Config file parsing needed for data directory location
+    path = f'{BOREALISPATH}/config/{RADAR_ID}/{RADAR_ID}_config.ini'
+    try:
+        with open(path, 'r') as data:
+            raw_config = json.load(data)
+    except IOError:
+        raise(f"IOError on config file at {path}")
+
+    
+    parser = argparse.ArgumentParser(description="Python script to check data being written and "
+                                                 "restart Borealis in case it's not")
     parser.add_argument('-r', '--restart-after-seconds', type=int, default=300,
-                        help='How many seconds can the data file be out of date before attempting '
-                             'to restart the radar? Default 300 seconds (5 minutes)')
-    parser.add_argument('-p', '--borealis-path', required=False, help='Path to Borealis directory',
-                        dest='borealis_path', default='/home/radar/borealis/')
+                        help="How many seconds can the data file be out of date before attempting "
+                             "to restart the radar? Default 300 seconds (5 minutes)")
+    parser.add_argument('-p', '--borealis-path', required=False, dest="borealis_path",
+                        default=BOREALISPATH, help="Path to Borealis directory. Default "
+                                                   "BOREALISPATH environment variable")
+    parser.add_argument('-d', '--data-directory', required=False, dest="data_directory",
+                        default=raw_config["data_directory"],
+                        help="Path to Borealis data directory. Defaults to data_directory within "
+                             "config file")
     args = parser.parse_args()
     return args
 
@@ -39,23 +63,7 @@ def main():
     args = get_args()
     restart_after_seconds = args.restart_after_seconds
     borealis_path = args.borealis_path
-
-    # Gather the borealis configuration information
-    if not os.environ["BOREALISPATH"]:
-        raise ValueError("BOREALISPATH env variable not set")
-    if not os.environ['RADAR_ID']:
-        raise ValueError('RADAR_ID env variable not set')
-    path = f'{os.environ["BOREALISPATH"]}/config/' \
-           f'{os.environ["RADAR_ID"]}/' \
-           f'{os.environ["RADAR_ID"]}_config.ini'
-    try:
-        with open(path, 'r') as data:
-            raw_config = json.load(data)
-    except IOError:
-        print(f'IOError on config file at {path}')
-        raise
-
-    data_directory = raw_config["data_directory"]
+    data_directory = args.data_directory
 
     # Get today's date and look for the current data file being written
     today = dt.utcnow().strftime("%Y%m%d")
@@ -71,32 +79,43 @@ def main():
 
     # How many seconds ago was the last write to a data file?
     last_data_write = now_utc_seconds - new_file_write_time
-    print('Write: {}, Now: {}, Diff: {} s' 
-          ''.format(dt.utcfromtimestamp(new_file_write_time).strftime('%Y%m%d.%H%M:%S'), 
-                    dt.utcfromtimestamp(now_utc_seconds).strftime('%Y%m%d.%H%M:%S'),
-                    last_data_write))
+    print(f"Last write time: {dt.utcfromtimestamp(new_file_write_time).strftime('%Y-%m-%dT%H:%M:%S')}, "
+          f"Current time: {dt.utcfromtimestamp(now_utc_seconds).strftime('%Y-%m-%dT%H:%M:%S')}, "
+          f"Difference: {last_data_write} s")
 
     # if under the threshold it is OK, if not then there's a problem
-    print(f"{last_data_write} seconds since last write")
     if float(last_data_write) <= float(restart_after_seconds):
+        print(f"{last_data_write} s within {restart_after_seconds} s threshold "
+               "- no restart neccessary")
         sys.exit(0)
     else:
+        print(f"{last_data_write} s greater than {restart_after_seconds} s threshold "
+               "- attempting to restart Borealis")        
         # Now we attempt to restart Borealis
-        stop_borealis = subprocess.Popen(f"{borealis_path}/borealis/scripts/stop_radar.sh",
-                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stop_borealis = subprocess.Popen(f"{borealis_path}/scripts/stop_radar.sh",
+                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         output, error = stop_borealis.communicate()
-        # Check out the output to make sure it's all good (empty output means it's all good)
+        print("Borealis stop_radar.sh called")
+        print(indent(output, "    "))
+        # Check that the stop_radar.sh script was successful (empty error output means it worked)
         if error:
-            print(f'Attempting to restart Borealis: {error}')
+            print("Error with stop_radar.sh:")
+            print(indent(error, "      "))
 
-        time.sleep(5)
+        time.sleep(1)
 
         # Now call the start radar script, reads will block, so no need to communicate with
         # this process.
-        start_borealis = subprocess.Popen(f"{borealis_path}/borealis/scripts/start_radar.sh",
-                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print('Borealis stop_radar.sh and start_radar.sh called')
-        sys.exit(0)
+        start_borealis = subprocess.Popen(f"{borealis_path}/scripts/start_radar.sh",
+                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        output, error = start_borealis.communicate()
+        print("Borealis start_radar.sh called")
+        print(indent(output, "    "))
+        if error:
+            print("Error with start_radar:")
+            print(indent(error, "      "))
+
+        sys.exit(1)
 
 
 if __name__ == '__main__':
