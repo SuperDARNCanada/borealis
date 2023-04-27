@@ -252,6 +252,11 @@ The file fields in the rawacf array files are:
 | | *uint32*                        | | microseconds. Spacing between pulses is   | 
 | |                                 | | always a multiple of this.                |
 +-----------------------------------+---------------------------------------------+
+| | **tx_antenna_phases**           | | The complex phase for each antenna for    |
+| | *complex64*                     | | transmission, normalized such that full-  |
+| | [num_records x                  | | power has magnitude 1.                    |
+| | num_main_antennas]              | |                                           |
++-----------------------------------+---------------------------------------------+
 | | **tx_pulse_len**                | | Length of the transmit pulse in           | 
 | | *uint32*                        | | microseconds.                             |
 +-----------------------------------+---------------------------------------------+
@@ -448,6 +453,10 @@ The file fields under the record name in rawacf site files are:
 | | **tau_spacing**                | | The minimum spacing between pulses in     | 
 | | *uint32*                       | | microseconds. Spacing between pulses is   | 
 | |                                | | always a multiple of this.                |
++----------------------------------+---------------------------------------------+
+| | **tx_antenna_phases**          | | The complex phase for each antenna for    |
+| | *[complex64, ]*                | | transmission, normalized such that full-  |
+| |                                | | power has magnitude 1.                    |
 +----------------------------------+---------------------------------------------+
 | | **tx_pulse_len**               | | Length of the transmit pulse in           | 
 | | *uint32*                       | | microseconds.                             |
