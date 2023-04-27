@@ -27,8 +27,8 @@
 """"""
 import os
 
-# Import('*')
+Import('*')
 
-# Prog('test_rx_tx', Glob("./test_rx_tx.cpp"), with_libs='utils::utils',
-     # LIBS=['boost_system','uhd'])
+Prog('test_rx_tx', Glob("./test_rx_tx.cpp"), with_libs=['utils', 'messages'],
+     LIBS=['protobuf', 'pthread', 'boost_system', 'uhd', 'zmq', 'rt'])
 

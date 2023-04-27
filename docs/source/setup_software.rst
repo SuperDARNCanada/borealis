@@ -10,7 +10,12 @@ known to work.
 
 **NOTE:** Commands that require root privileges will have a ``sudo`` or ``su`` command ahead of
 them, or explicitly say 'as root', all others should be executed as the normal user (recommended
-name: radar) that will run Borealis
+name: radar) that will run Borealis.
+
+**NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card
+for parallel computations. This will severely slow down the system, but may be useful in some cases.
+If this is desired, you can skip the first step of installing NVIDIA drivers on your machine, and
+see the note when running ``install_radar_deps.py``.
 
 #. Install the latest version of the NVIDIA drivers (see
    https://en.opensuse.org/SDB:NVIDIA_drivers). The driver must be able to support running the GPU
@@ -123,7 +128,8 @@ name: radar) that will run Borealis
    create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD
    does not configure correctly, an improper Boost installation or library naming convention is the
    likely reason. Note that you need python3 installed before you can run this script. The radar
-   abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'. ::
+   abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'. **NOTE:** If you do
+   not want CUDA installed, pass the ``--no-cuda`` flag as an option. ::
 
     cd $BOREALISPATH
     sudo -E python3 install_radar_deps.py [radar abbreviation] $BOREALISPATH --python-version=3.9 2>&1 | tee install_log.txt

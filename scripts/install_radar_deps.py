@@ -398,7 +398,7 @@ def install_cuda(distro: str):
     execute_cmd(cuda_cmd)
 
 
-def install_borealis_env(python_version: str, user: str, group: str):
+def install_borealis_env(python_version: str, user: str, group: str, no_cupy: bool = False):
     """
     Create virtual environment and install utilities needed for Borealis operation.
 
@@ -408,6 +408,8 @@ def install_borealis_env(python_version: str, user: str, group: str):
     :type   user:           str
     :param  group:          Group to assign ownership permissions of the venv to
     :type   group:          str
+    :param  install_cupy:   Flag on whether to install cupy
+    :type   install_cupy:   bool
     """
     print('### Creating Borealis virtual environment ###')
 
@@ -415,10 +417,15 @@ def install_borealis_env(python_version: str, user: str, group: str):
     execute_cmd(f"chown -R {user}:{group} $BOREALISPATH/borealis_env{python_version}")
     execute_cmd(f"sudo -u {user} python{python_version} -m venv $BOREALISPATH/borealis_env{python_version};")
     execute_cmd(f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install wheel")
-    pip_cmd = f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install zmq numpy scipy " \
-              "protobuf==3.19.4 posix_ipc git+https://github.com/SuperDARN/pyDARNio.git@develop structlog graylog " \
-              "rich git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter cupy; "
-    execute_cmd(pip_cmd)
+    pip_packages = ['zmq', 'numpy', 'scipy', 'protobuf==3.19.4', 'posix_ipc', 'structlog', 'graylog', 'rich',
+                    'git+https://github.com/SuperDARN/pyDARNio.git@develop',
+                    'git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter']
+    if not no_cupy:
+        pip_packages.append('cupy')
+    pkg_str = ''
+    for pkg in pip_packages:
+        pkg_str += f' {pkg}'
+    execute_cmd(f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install {pkg_str}")
 
 
 def install_directories(user: str, group: str):
@@ -474,6 +481,7 @@ def main():
     parser.add_argument("--python-version", help="The version of Python to use for the installation. Default 3.9",
                         default='3.9')
     parser.add_argument("--upgrade-to-v06", help="Is this to upgrade from Borealis v0.5 to v0.6?", action="store_true")
+    parser.add_argument("--no-cuda", help="Do not install CUDA and cupy libraries.", action="store_true")
     parser.add_argument("radar", help="The three letter abbreviation for this radar. Example: sas")
     parser.add_argument("install_dir", help="Path to the installation directory")
     args = parser.parse_args()
@@ -523,7 +531,7 @@ def main():
     if args.upgrade_to_v06:     # Only need to update hdw repo and make new virtualenv for Borealis.
         print('### Upgrading to Borealis v0.6 configuration ###')
         install_hdw_dat()
-        install_borealis_env(args.python_version, args.user, args.group)
+        install_borealis_env(args.python_version, args.user, args.group, args.no_cuda)
         print('### REMINDER: Verify that your config.ini file conforms to the new format ###')
 
     else:   # Installing fresh, do it all!
@@ -534,9 +542,10 @@ def main():
         install_zmq()
         install_ntp()
         install_uhd(distro)
-        install_cuda(distro)
+        if not args.no_cuda:
+            install_cuda(distro)
         install_hdw_dat()
-        install_borealis_env(args.python_version, args.user, args.group)
+        install_borealis_env(args.python_version, args.user, args.group, args.no_cuda)
         install_directories(args.user, args.group)
         install_experiments(args.user, args.group)
 
