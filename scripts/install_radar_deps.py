@@ -398,7 +398,7 @@ def install_cuda(distro: str):
     execute_cmd(cuda_cmd)
 
 
-def install_borealis_env(python_version: str, user: str, group: str, install_cupy: bool = True):
+def install_borealis_env(python_version: str, user: str, group: str, no_cupy: bool = False):
     """
     Create virtual environment and install utilities needed for Borealis operation.
 
@@ -420,7 +420,7 @@ def install_borealis_env(python_version: str, user: str, group: str, install_cup
     pip_packages = ['zmq', 'numpy', 'scipy', 'protobuf==3.19.4', 'posix_ipc', 'structlog', 'graylog', 'rich',
                     'git+https://github.com/SuperDARN/pyDARNio.git@develop',
                     'git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter']
-    if install_cupy:
+    if not no_cupy:
         pip_packages.append('cupy')
     pkg_str = ''
     for pkg in pip_packages:
