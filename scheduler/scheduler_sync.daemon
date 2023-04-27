@@ -31,6 +31,7 @@
 #   - Maxwell is configured via autossh to each site Borealis computer with ports that correspond 
 #   to the SITE_NUM association
 #   - ssh link between SuperDARN-CSSDP -> Maxwell (no password prompt for rsync)
+#   - SLACK_WEBHOOK_[RADAR_ID] defined within .profile on mrcopy for each respective site
 #
 # Parameter RADAR_ID: [sas, pgr, rkn, inv, cly]
 
@@ -63,6 +64,11 @@ readonly DEST="radar@localhost"
 readonly DEST_PORT="5${SITE_ID}522"
 readonly DEST_DIR="/home/radar/borealis_schedules"
 
+# Define Slack webhook to send alert
+readonly WEBHOOK_VARIABLE="SLACK_WEBHOOK_${RADAR_ID^^}"  # ^^ makes $RADAR_ID all caps
+readonly SLACK_WEBHOOK="${!WEBHOOK_VARIABLE}"  # Get URL from $SLACK_WEBHOOK_[RADAR_ID]
+readonly MAX_ATTEMPTS=3  # Number of attempts before sending alert
+
 ###################################################################################################
 
 exec &>> $LOGFILE # Redirect STDOUT and STDERR to $LOGFILE
@@ -92,6 +98,7 @@ do
             # Sync the .scd file to site via Maxwell
             printf "Sending ${SCD_FILE} to ${DEST}:${DEST_DIR}\n"
             retval=1
+            attempts=0
             while [[ $retval -ne 0 ]]; do
                 rsync -av --rsh="ssh $MAXWELL ssh -p $DEST_PORT" "${SCD_FILE}" "${DEST}:${DEST_DIR}"
 
@@ -103,9 +110,17 @@ do
                 # Verify md5sum of destination file is same as source
                 md5sum --check --status $HOME/tmp.md5
                 retval=$?
-                if [[ $retval -ne 0]]; then
+                rm $HOME/tmp.md5
+
+                if [[ $retval -ne 0 ]]; then
                     printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Error in syncing schedule, trying again\n"
-                    sleep 60  # Try again in 60s
+                    attempts=$((attempts + 1))
+                    if [[ $attempts -eq $MAX_ATTEMPTS ]]; then
+                        message="scheduler_sync@$RADAR_ID: Schedule failed to sync for $RADAR_ID"
+                        curl --silent --header "Content-type: application/json" --data "{'text':'${message}'}" $SLACK_WEBHOOK
+                        break
+                    fi
+                    sleep 5  # Try again in 5 s
                 fi
             done
 

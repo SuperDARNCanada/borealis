@@ -12,10 +12,12 @@ grab them if there is anything new. At the time of writing, these files are host
 `<https://github.com/SuperDARN/schedules>`_. This automated script will then parse the lines from
 the file and convert them to schedule file (SCD) commands.
 
-The schedule files need to be synced to the radar sites. The SCD files that the local
-script adds to should all be in this directory so that syncing is all automated. This syncing is
-currently done via a daemon process (``scheduler_sync.daemon``) that continually watches the local files
-for changes using inotify, then rsyncs the changed files to each site.
+The schedule files need to be synced to the radar sites. The SCD files that the local script adds to
+should all be in this directory so that syncing is all automated. This syncing is currently done via
+a daemon process (``scheduler_sync.daemon``) that continually watches the local files for changes
+using inotify, then rsyncs the changed files to each site. If a schedule fails to sync, an alert is
+sent to our group's Slack workspace to notify us. For more information on integrating Slack alerts,
+see `here <https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`__. 
 
 The remote script (``remote_server.py``) will check for changes to any synced files and then generate
 ``atq`` command arguments for Borealis experiments to run. This allows us to utilize scheduling
