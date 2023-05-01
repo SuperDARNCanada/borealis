@@ -400,13 +400,15 @@ class ExperimentSlice:
     @validator('tx_antennas')
     def check_tx_antennas(cls, tx_antennas):
         if not tx_antennas:
-            return [i for i in options.main_antennas]
+            tx_antennas = [i for i in options.main_antennas]
         return tx_antennas
 
     @validator('rx_main_antennas')
     def check_rx_main_antennas(cls, rx_main_antennas):
         if not rx_main_antennas:
-            return [i for i in options.main_antennas]
+            rx_main_antennas = [i for i in options.main_antennas]
+        if len(rx_main_antennas) == 0:
+            raise ValueError("Must have at least one main antenna for RX")
         return rx_main_antennas
 
     @validator('rx_int_antennas')
@@ -477,6 +479,8 @@ class ExperimentSlice:
             for bmnum in tx_beam_order:
                 if bmnum >= num_beams:
                     raise ValueError(f"Slice {values['slice_id']} scan tx beam number {bmnum} DNE")
+        if len(values['tx_antennas']) == 0:
+            raise ValueError("Must have TX antennas specified if tx_beam_order specified")
 
         return tx_beam_order
 
@@ -587,19 +591,21 @@ class ExperimentSlice:
 
     @validator('xcf', always=True)
     def check_xcf(cls, xcf, values):
-        if 'acf' in values and values['acf']:
-            return xcf
-        else:
+        if 'acf' not in values or not values['acf']:
+            xcf = False
             log.info(f"XCF defaulted to False as ACF not set. Slice: {values['slice_id']}")
             return False
+        if xcf and len(values['rx_int_antennas']) == 0:
+            raise ValueError("XCF set to True but no interferometer antennas present")
 
     @validator('acfint', always=True)
     def check_acfint(cls, acfint, values):
-        if 'acf' in values and values['acf']:
-            return acfint
-        else:
+        if 'acf' not in values or not values['acf']:
+            acfint = False
             log.info(f"ACFINT defaulted to False as ACF not set. Slice: {values['slice_id']}")
-            return False
+        if acfint and len(values['rx_int_antennas']) == 0:
+            raise ValueError("ACFINT set to True but no interferometer antennas present")
+        return acfint
 
     @validator('range_sep', always=True)
     def check_range_sep(cls, range_sep, values):

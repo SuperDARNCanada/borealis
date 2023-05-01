@@ -853,11 +853,17 @@ class DataWrite(object):
 
             for slice_num in xcfs:
                 slice_data = aveperiod_data[slice_num]
-                slice_data.xcfs = find_expectation_value(xcfs[slice_num]['data'])
+                if data_parsing.xcfs_available:
+                    slice_data.xcfs = find_expectation_value(xcfs[slice_num]['data'])
+                else:
+                    slice_data.xcfs = np.array([], np.complex64)
 
             for slice_num in intf_acfs:
                 slice_data = aveperiod_data[slice_num]
-                slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'])
+                if data_parsing.intfacfs_available:
+                    slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'])
+                else:
+                    slice_data.intf_acfs = np.array([], np.complex64)
 
             for slice_num, slice_data in aveperiod_data.items():
                 slice_data.data_descriptors = ['num_beams', 'num_ranges', 'num_lags']
