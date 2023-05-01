@@ -289,13 +289,13 @@ class ExperimentSlice:
     rxonly: Optional[StrictBool] = False
     tx_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count, strict=True),
                                   max_items=options.main_antenna_count,
-                                  unique_items=True)] = Field(default_factory=list)
+                                  unique_items=True)] = None
     rx_main_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count, strict=True),
                                        max_items=options.main_antenna_count,
-                                       unique_items=True)] = Field(default_factory=list)
+                                       unique_items=True)] = None
     rx_int_antennas: Optional[conlist(conint(ge=0, lt=options.intf_antenna_count, strict=True),
                                       max_items=options.intf_antenna_count,
-                                      unique_items=True)] = Field(default_factory=list)
+                                      unique_items=True)] = None
     tx_antenna_pattern: Optional[Callable] = default_callable
     tx_beam_order: Optional[beam_order_type] = Field(default_factory=list)
     intt: Optional[confloat(ge=0)] = None
@@ -399,13 +399,13 @@ class ExperimentSlice:
 
     @validator('tx_antennas')
     def check_tx_antennas(cls, tx_antennas):
-        if not tx_antennas:
+        if tx_antennas is None:
             tx_antennas = [i for i in options.main_antennas]
         return tx_antennas
 
     @validator('rx_main_antennas')
     def check_rx_main_antennas(cls, rx_main_antennas):
-        if not rx_main_antennas:
+        if rx_main_antennas is None:
             rx_main_antennas = [i for i in options.main_antennas]
         if len(rx_main_antennas) == 0:
             raise ValueError("Must have at least one main antenna for RX")
@@ -413,7 +413,7 @@ class ExperimentSlice:
 
     @validator('rx_int_antennas')
     def check_rx_int_antennas(cls, rx_int_antennas):
-        if not rx_int_antennas:
+        if rx_int_antennas is None:
             return [i for i in options.intf_antennas]
         return rx_int_antennas
 
@@ -479,7 +479,7 @@ class ExperimentSlice:
             for bmnum in tx_beam_order:
                 if bmnum >= num_beams:
                     raise ValueError(f"Slice {values['slice_id']} scan tx beam number {bmnum} DNE")
-        if len(values['tx_antennas']) == 0:
+        if 'tx_antennas' in values and len(values['tx_antennas']) == 0:
             raise ValueError("Must have TX antennas specified if tx_beam_order specified")
 
         return tx_beam_order
@@ -595,7 +595,7 @@ class ExperimentSlice:
             xcf = False
             log.info(f"XCF defaulted to False as ACF not set. Slice: {values['slice_id']}")
             return False
-        if xcf and len(values['rx_int_antennas']) == 0:
+        if xcf and 'rx_int_antennas' in values and len(values['rx_int_antennas']) == 0:
             raise ValueError("XCF set to True but no interferometer antennas present")
 
     @validator('acfint', always=True)
@@ -603,7 +603,7 @@ class ExperimentSlice:
         if 'acf' not in values or not values['acf']:
             acfint = False
             log.info(f"ACFINT defaulted to False as ACF not set. Slice: {values['slice_id']}")
-        if acfint and len(values['rx_int_antennas']) == 0:
+        if acfint and 'rx_int_antennas' in values and len(values['rx_int_antennas']) == 0:
             raise ValueError("ACFINT set to True but no interferometer antennas present")
         return acfint
 
