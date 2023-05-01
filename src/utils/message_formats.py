@@ -98,6 +98,7 @@ class RxChannel:
     num_ranges: int = None
     first_range: int = None
     range_sep: float = None
+    rx_int_antennas: list[int] = field(default_factory=list)
     beam_phases: np.ndarray = None
     lags: list[Lag] = field(default_factory=list)
 

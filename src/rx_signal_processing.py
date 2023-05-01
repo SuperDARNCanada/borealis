@@ -378,6 +378,7 @@ def main():
         mixing_freqs = []
         main_beam_angles = []
         intf_beam_angles = []
+        intf_antennas = set()
 
         # Parse out details and force the data type so that Cupy can optimize with standardized
         # data types.
@@ -398,6 +399,7 @@ def main():
             detail['tau_spacing'] = np.uint32(chan.tau_spacing)
             detail['num_range_gates'] = np.uint32(chan.num_ranges)
             detail['first_range_off'] = np.uint32(chan.first_range / chan.range_sep)
+
             lag_phase_offsets = []
 
             lags = []
@@ -418,7 +420,9 @@ def main():
             slice_details.append(detail)
             main_beam_angles.append(main_beams)
             intf_beam_angles.append(intf_beams)
-
+            
+            intf_antennas.update(set(chan.rx_int_antennas))     # Keep track of all intf antennas for the sequence
+        
         # Different slices can have a different amount of beams used. Slices that use fewer beams
         # than the max number of beams are padded with zeros so that matrix calculations can be
         # used. The extra beams that are processed will be not be parsed for data writing.
@@ -508,6 +512,7 @@ def main():
             start_sample = kwargs['start_sample']
             end_sample = kwargs['end_sample']
             processed_data = kwargs['processed_data']
+            intf_antennas = kwargs['intf_antennas']
 
             if cupy_available:
                 cp.cuda.runtime.setDevice(0)
@@ -566,7 +571,8 @@ def main():
             # Process intf samples if intf exists
             mark_timer = time.perf_counter()
             intf_sequence_samples_shape = None
-            if options.intf_antenna_count > 0:
+            log.info("intf antennas", antennas=intf_antennas)
+            if len(intf_antennas) > 0:
                 intf_sequence_samples = sequence_samples[len(options.main_antennas):, :]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
                 processed_intf_samples = DSP(intf_sequence_samples, rx_rate, dm_rates,
@@ -625,7 +631,7 @@ def main():
                 else:
                     data[...] = data_array
                 try:
-                    assert array_name in ["main", "intf"]
+                    assert array_name in ["main", "intf"]   # TODO: assert doesn't run with -O flag, consider removing
                     if array_name == 'main':
                         holder.main_shm = shm.name
                     elif array_name == 'intf':
@@ -657,7 +663,7 @@ def main():
             stage.main_shm = main_shm.name
             stage.num_samps = processed_main_samples.antennas_iq_samples.shape[-1]
             main_shm.close()
-            if options.intf_antenna_count > 0:
+            if len(intf_antennas) > 0:
                 intf_shm = processed_intf_samples.shared_mem['antennas_iq']
                 stage.intf_shm = intf_shm.name
                 intf_shm.close()
@@ -688,7 +694,7 @@ def main():
 
             data_outputs['main_corrs'] = main_corrs
 
-            if options.intf_antenna_count > 0:
+            if len(intf_antennas) > 0:
                 data_outputs['cross_corrs'] = cross_corrs
                 data_outputs['intf_corrs'] = intf_corrs
                 processed_data.bfiq_intf_shm = processed_intf_samples.shared_mem['bfiq'].name
@@ -713,7 +719,9 @@ def main():
                 "slice_details": copy.deepcopy(slice_details),
                 "start_sample": copy.deepcopy(start_sample),
                 "end_sample": copy.deepcopy(end_sample),
-                "processed_data": copy.deepcopy(processed_data)}
+                "processed_data": copy.deepcopy(processed_data),
+                "intf_antennas": copy.deepcopy(intf_antennas),
+                }
 
         seq_thread = threading.Thread(target=sequence_worker, kwargs=args)
         seq_thread.daemon = True
