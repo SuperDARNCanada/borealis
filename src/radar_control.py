@@ -133,7 +133,8 @@ def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array, txc
 
 def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_radctrl_iden, rxrate,
                       output_sample_rate, seqnum, slice_ids, slice_dict, beam_dict, sequence_time,
-                      first_rx_sample_start, rxctrfreq, pulse_phase_offsets, decimation_scheme=None):
+                      first_rx_sample_start, rxctrfreq, pulse_phase_offsets, main_antennas, intf_antennas,
+                      decimation_scheme=None):
     """
     Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
     Happens every sequence.
@@ -159,6 +160,8 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
         tx data.
     :param rxctrfreq: the center frequency of receiving.
     :param pulse_phase_offsets: Phase offsets (degrees) applied to each pulse in the sequence
+    :param main_antennas: List of main antennas for the experiment
+    :param intf_antennas: List of intf antennas for the experiment
     :param decimation_scheme: object of type DecimationScheme that has all decimation and
         filtering data.
     """
@@ -203,8 +206,13 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
             # to receive on that channel.
             mains = slice_dict[slice_id].rx_main_antennas
             intfs = slice_dict[slice_id].rx_int_antennas
-            temp_main = main_bms[i][mains]
-            temp_intf = intf_bms[i][intfs]
+
+            temp_main = np.zeros(main_bms[i].shape)
+            temp_intf = np.zeros(intf_bms[i].shape)
+
+            # Only add phases for the antennas actually used for this slice
+            temp_main[mains] = main_bms[i][mains]
+            temp_intf[intfs] = intf_bms[i][intfs]
 
             # Combine main and intf such that for a given beam all main phases come first.
             beams.append(np.hstack((temp_main, temp_intf)))
@@ -766,6 +774,8 @@ def main():
                                               sequence.first_rx_sample_start,
                                               experiment.rxctrfreq,
                                               sequence.output_encodings,
+                                              options.main_antennas,
+                                              options.intf_antennas,
                                               sequence.decimation_scheme)
 
                             if TIME_PROFILE:
