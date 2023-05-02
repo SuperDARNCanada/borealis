@@ -207,8 +207,8 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
             mains = slice_dict[slice_id].rx_main_antennas
             intfs = slice_dict[slice_id].rx_int_antennas
 
-            temp_main = np.zeros(main_bms[i].shape)
-            temp_intf = np.zeros(intf_bms[i].shape)
+            temp_main = np.zeros(main_bms[i].shape, dtype=main_bms.dtype)
+            temp_intf = np.zeros(intf_bms[i].shape, dtype=intf_bms.dtype)
 
             # Only add phases for the antennas actually used for this slice
             temp_main[mains] = main_bms[i][mains]
