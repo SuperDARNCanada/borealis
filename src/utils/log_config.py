@@ -57,6 +57,17 @@ def swap_logger_name(_, __, event_dict):
     return event_dict
 
 
+def format_floats(_, __, event_dict):
+    """
+    Truncate all floating-point field to three decimal places. This is done only for ConsoleRenderer
+    to reduce the size of logs in the screen when running the radar.
+    """
+    for k, v in event_dict.items():
+        if isinstance(v, float):
+            event_dict[k] = f"{v:.3f}"
+    return event_dict
+
+
 def log(log_level=None, console=None, logfile=None, aggregator=None):
     """
     :param log_level: Logging threshold [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
@@ -145,6 +156,7 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
             foreign_pre_chain=shared_processors,  # These run on logs that do not come from structlog
             processors=[swap_logger_name,
                         structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                        format_floats,
                         structlog.dev.ConsoleRenderer(sort_keys=False, colors=True)]))
         root_logger.addHandler(console_handler)
 
