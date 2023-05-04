@@ -9,12 +9,17 @@
 """
 
 import subprocess as sp
-from . import scd_utils
-from . import email_utils
+import sys
 import os
 import datetime
 import time
 import argparse
+
+BOREALISPATH = os.environ['BOREALISPATH']
+sys.path.append(f"{BOREALISPATH}/scheduler")
+import scd_utils
+import email_utils
+
 
 SWG_GIT_REPO_DIR = 'schedules'
 SWG_GIT_REPO = "https://github.com/SuperDARN/schedules.git"

@@ -257,7 +257,7 @@ def experiment_test_generator(module_name):
     return test
 
 
-def main(raw_args=None, buffer=True, print_results=True):
+def run_tests(raw_args=None, buffer=True, print_results=True):
     parser = argparse.ArgumentParser()
     parser.add_argument("--site_id", required=False, default="sas",
                         choices=["sas", "pgr", "inv", "rkn", "cly", "lab"],
@@ -265,6 +265,9 @@ def main(raw_args=None, buffer=True, print_results=True):
     parser.add_argument("--experiment", required=False, nargs="+", default=None,
                         help="Only run the experiments specified after this option. Experiments \
                             specified must exist within the top-level Borealis experiments directory.")
+    parser.add_argument("--module", required=False, default='__main__',
+                        help="If calling from another python file, this should be set to "
+                             "'experiment_unittests' in order to properly work.")
     args = parser.parse_args(raw_args)
 
     os.environ["RADAR_ID"] = args.site_id
@@ -287,11 +290,11 @@ def main(raw_args=None, buffer=True, print_results=True):
                 exit(1)
         argv = [parser.prog] + exp_tests
     if print_results:
-        result = unittest.main(argv=argv, exit=False, buffer=buffer)
+        result = unittest.main(module=args.module, argv=argv, exit=False, buffer=buffer)
     else:
-        result = redirect_to_devnull(unittest.main, argv=argv, exit=False, buffer=buffer)
+        result = redirect_to_devnull(unittest.main, module=args.module, argv=argv, exit=False, buffer=buffer)
     return result
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    run_tests(sys.argv[1:])

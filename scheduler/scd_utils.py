@@ -107,11 +107,14 @@ class SCDUtils(object):
             raise ValueError(f"Unknown scheduling mode type {scheduling_mode} not in {possible_scheduling_modes}")
 
         # See if the experiment itself would run
-        args = ['--site_id', self.scd_filename[:2], '--experiment', experiment]
-        test_program = experiment_unittests.main(args, buffer=True, print_results=False)
+        # This is a full path to /.../{site}.scd file, only want {site}
+        site_name = self.scd_filename.split('/')[-1].replace('.scd', '')
+        args = ['--site_id', site_name, '--experiment', experiment, '--module', 'experiment_unittests']
+        test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
         if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
             raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
-                             f"{test_program.result.failures[0][1]}")
+                             f"Errors: {test_program.result.errors}\n"
+                             f"Failures: {test_program.result.failures}")
 
         return {"timestamp": epoch_milliseconds,
                 "time": time,
