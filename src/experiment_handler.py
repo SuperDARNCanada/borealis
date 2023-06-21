@@ -30,6 +30,7 @@ from experiment_prototype.experiment_prototype import ExperimentPrototype
 from utils import log_config
 log = log_config.log()
 
+
 def usage_msg():
     """
     Return the usage message for this process.
@@ -75,6 +76,7 @@ def experiment_parser():
                                                      "run, e.g. common, special, or discretionary.")
     parser.add_argument("--kwargs_string", default='',
                         help="String of keyword arguments for the experiment.")
+    parser.add_argument("--embargo", action="store_true", help="Embargo the file (makes the CPID negative)")
 
     return parser
 
@@ -123,13 +125,13 @@ def retrieve_experiment(experiment_module_name):
         raise ExperimentException(errmsg)
 
     # this is the experiment class that we need to run.
-    Experiment = experiment_classes[0][1]
+    experiment = experiment_classes[0][1]
 
     log.info("retrieving experiment from module",
              experiment_class=experiment_classes[0][0],
              experiment_module=experiment_mod)
 
-    return Experiment
+    return experiment
 
 
 def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
@@ -184,12 +186,12 @@ def experiment_handler(semaphore, args):
     experiment_name = args.experiment_module
     scheduling_mode_type = args.scheduling_mode_type
 
-    Experiment = retrieve_experiment(experiment_name)
+    experiment_class = retrieve_experiment(experiment_name)
     experiment_update = False
-    for method_name, obj in inspect.getmembers(Experiment, inspect.isfunction):
+    for method_name, obj in inspect.getmembers(experiment_class, inspect.isfunction):
         if method_name == 'update':
             experiment_update = True
-            log.debug("experiment contains an updated method", experiment_name=Experiment.experiment_name)
+            log.debug("experiment contains an updated method", experiment_name=experiment_class.experiment_name)
 
     if args.kwargs_string:
         # parse kwargs and pass to experiment
@@ -198,11 +200,12 @@ def experiment_handler(semaphore, args):
         for element in kwargs_list:
             kwarg = element.split('=')
             kwargs[kwarg[0]] = kwarg[1]
-        exp = Experiment(**kwargs)
+        exp = experiment_class(**kwargs)
     else:
-        exp = Experiment()
+        exp = experiment_class()
 
     exp._set_scheduling_mode(scheduling_mode_type)
+    exp._embargo_files(args.embargo)
     change_flag = True
 
     def update_experiment():

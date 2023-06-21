@@ -607,6 +607,18 @@ class ExperimentPrototype:
         """
         return self.__scheduling_mode
 
+    def _embargo_files(self, embargo_flag: bool):
+        """
+        Sets the cpid negative, signifying that the data generated is embargoed for one year by
+        the host institution. Should only be called by the experiment handler after initializing
+        the user's class.
+
+        :param embargo_flag:    Flag to embargo the files
+        :type  embargo_flag:    bool
+        """
+        if embargo_flag:
+            self.__cpid = -1 * self.__cpid
+
     def _set_scheduling_mode(self, scheduling_mode):
         """
         Set the scheduling mode if the provided mode is valid. Should only be called by the
@@ -619,8 +631,6 @@ class ExperimentPrototype:
         """
         if scheduling_mode in possible_scheduling_modes:
             self.__scheduling_mode = scheduling_mode
-            if scheduling_mode == 'discretionary':
-                self.__cpid = -1 * self.__cpid
         else:
             errmsg = f'Scheduling mode {scheduling_mode} set by experiment handler is not '\
                      f' a valid mode: {possible_scheduling_modes}'
