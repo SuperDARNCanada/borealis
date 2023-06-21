@@ -51,10 +51,10 @@ class SCDUtils(object):
         super().__init__()
         self.scd_filename = scd_filename
         self.scd_dt_fmt = "%Y%m%d %H:%M"
-        self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {kwargs_string}"
+        self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs_string}"
         self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
-    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string=''):
+    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string='', embargo=''):
         """
         Checks the line parameters to see if they are valid and then returns a dict with all the
         valid fields.
@@ -73,6 +73,8 @@ class SCDUtils(object):
         :type   duration:           str
         :param  kwargs_string:      kwargs for the experiment instantiation. (Default value = '')
         :type   kwargs_string:      str
+        :param  embargo:            flag for embargoing files. (Default value = '')
+        :type   embargo:            str
 
         :returns:   Dict of line params.
         :rtype:     dict
@@ -101,13 +103,14 @@ class SCDUtils(object):
         if scheduling_mode not in possible_scheduling_modes:
             raise ValueError(f"Unknown scheduling mode type {scheduling_mode} not in {possible_scheduling_modes}")
 
-        return {"timestamp" : epoch_milliseconds,
-                "time" : time,
-                "duration" : str(duration),
-                "prio" : str(prio),
-                "experiment" : experiment,
-                "scheduling_mode" : scheduling_mode,
-                "kwargs_string" : kwargs_string}
+        return {"timestamp": epoch_milliseconds,
+                "time": time,
+                "duration": str(duration),
+                "prio": str(prio),
+                "experiment": experiment,
+                "scheduling_mode": scheduling_mode,
+                "kwargs_string": kwargs_string,
+                "embargo": embargo}
 
     def read_scd(self):
         """
@@ -127,14 +130,21 @@ class SCDUtils(object):
         scd_lines = []
 
         for num, line in enumerate(raw_scd):
-            if len(line) not in [6, 7]:
-                raise ValueError(f"Line {num} has incorrect number of arguments; requires 6 or 7. Line: {line}")
-            # date time experiment mode priority duration (kwargs if any)
+            if len(line) not in [6, 7, 8]:
+                raise ValueError(f"Line {num} has incorrect number of arguments; requires 6 to 8. Line: {line}")
+            # date time experiment mode priority duration [embargo] [kwargs]
             if len(line) == 6:
                 scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
+            elif len(line) == 7:
+                if 'kwargs' in line[-1]:
+                    scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2],
+                                                     kwargs_string=line[6]))
+                else:
+                    scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2],
+                                                     embargo=line[6]))
             else:
-                scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], line[6]))
-
+                scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2],
+                                                 kwargs_string=line[7], embargo=line[6]))
         if len(scd_lines) == 0:
             print('WARNING: SCD file empty; default normalscan will run')
             # add the default infinite duration line 
@@ -157,6 +167,7 @@ class SCDUtils(object):
                                         experiment=line_dict["experiment"],
                                         scheduling_mode=line_dict["scheduling_mode"],
                                         duration=line_dict["duration"],
+                                        embargo=line_dict["embargo"],
                                         kwargs_string=line_dict["kwargs_string"])
         return line_str
 
@@ -182,7 +193,7 @@ class SCDUtils(object):
                 f.write(f"{line}\n")
 
     def add_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
-                 duration='-', kwargs_string=''):
+                 duration='-', kwargs_string='', embargo=''):
         """
         Adds a new line to the schedule.
 
@@ -200,10 +211,13 @@ class SCDUtils(object):
         :type   duration:           str
         :param  kwargs_string:      kwargs for the experiment instantiation. (Default value = '')
         :type   kwargs_string:      str
+        :param  embargo:            flag for embargoing files. (Default value = '')
+        :type   embargo:            str
 
         :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
-        new_line = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string)
+        new_line = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string,
+                                   embargo)
 
         scd_lines = self.read_scd()
 
@@ -224,7 +238,7 @@ class SCDUtils(object):
         self.write_scd(new_scd)
 
     def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
-                    duration='-', kwargs_string=''):
+                    duration='-', kwargs_string='', embargo=''):
         """
         Removes a line from the schedule
 
@@ -242,11 +256,14 @@ class SCDUtils(object):
         :type   duration:           str
         :param  kwargs_string:      kwargs for the experiment instantiation. (Default value = '')
         :type   kwargs_string:      str
+        :param  embargo:            flag for embargoing files. (Default value = '')
+        :type   embargo:            str
 
         :raises ValueError: If line parameters are invalid or if line does not exist.
         """
 
-        line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string)
+        line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string,
+                                     embargo)
 
         scd_lines = self.read_scd()
         try:
