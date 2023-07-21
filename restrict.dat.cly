@@ -1,9 +1,10 @@
 # Restricted frequency table for Clyde River.
-# 
+# Restricted HAM exclusive frequencies 14.000 MHz to 14.350 MHz with a 0.205 MHz buffer.
 default=12200
 9995 10005
 10964 11064
 13360 13419
 13879 13979
+13795 14555
 14990 15010
 19990 20010
