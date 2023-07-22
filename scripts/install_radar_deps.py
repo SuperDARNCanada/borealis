@@ -417,7 +417,8 @@ def install_borealis_env(python_version: str, user: str, group: str, no_cupy: bo
     execute_cmd(f"chown -R {user}:{group} $BOREALISPATH/borealis_env{python_version}")
     execute_cmd(f"sudo -u {user} python{python_version} -m venv $BOREALISPATH/borealis_env{python_version};")
     execute_cmd(f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install wheel")
-    pip_packages = ['zmq', 'numpy', 'scipy', 'protobuf==3.19.4', 'posix_ipc', 'structlog', 'graylog', 'rich',
+    pip_packages = ['zmq', 'numpy', 'scipy', 'protobuf==3.19.4', 'posix_ipc', 
+                    'structlog', 'graylog', 'rich', 'pydantic',
                     'git+https://github.com/SuperDARN/pyDARNio.git@develop',
                     'git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter']
     if not no_cupy:
