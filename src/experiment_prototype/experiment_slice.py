@@ -300,7 +300,7 @@ class ExperimentSlice:
     pulse_phase_offset: Optional[Callable] = default_callable
     clrfrqrange: Optional[conlist(freq_int_khz, min_length=2, max_length=2)] = None
     clrfrqflag: StrictBool = Field(init=False)
-    decimation_scheme: DecimationScheme = create_default_scheme()
+    decimation_scheme: DecimationScheme = Field(default=create_default_scheme)
 
     acf: Optional[StrictBool] = False
     acfint: Optional[StrictBool] = False
