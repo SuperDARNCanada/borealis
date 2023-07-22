@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy as np
 from pydantic.dataclasses import dataclass, Field
 from pydantic import (
-    validator, root_validator, conlist, conint, confloat, StrictBool, StrictInt, PositiveFloat
+    validator, model_validator, conlist, conint, confloat, StrictBool, StrictInt, PositiveFloat
 )
 from scipy.constants import speed_of_light
 import structlog
@@ -92,7 +92,7 @@ class SliceConfig:
     arbitrary_types_allowed: Whether to allow arbitrary types like user-defined classes (e.g. Options, DecimationScheme)
     """
     validate_assignment = True
-    validate_all = True
+    validate_default = True
     extra = 'forbid'
     arbitrary_types_allowed = True
 
@@ -274,34 +274,31 @@ class ExperimentSlice:
 
     # These fields can be specified in exp_slice_dict, subject to some conditions. Some may have dynamic default values.
     slice_id: conint(ge=0, strict=True)
-    beam_angle: conlist(Union[confloat(strict=True), conint(strict=True)], unique_items=True)
+    beam_angle: conlist(Union[confloat(strict=True), conint(strict=True)]) # try conset
     cpid: StrictInt
     first_range: Union[confloat(ge=0), conint(ge=0)]
     num_ranges: conint(gt=0, le=options.max_range_gates, strict=True)
     tau_spacing: conint(ge=options.min_tau_spacing_length, strict=True)
     pulse_len: conint(ge=options.min_pulse_length, strict=True)
-    pulse_sequence: conlist(conint(ge=0, strict=True), unique_items=True)
+    pulse_sequence: conlist(conint(ge=0, strict=True)) # try conset
     rx_beam_order: list[Union[beam_order_type, conint(ge=0, strict=True)]]
-
+        
     # These fields have default values. Some have specification requirements in conjunction with each other
     # e.g. one of intt or intn must be specified.
     freq: Optional[freq_khz] = None
     rxonly: Optional[StrictBool] = False
     tx_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count, strict=True),
-                                  max_items=options.main_antenna_count,
-                                  unique_items=True)] = Field(default_factory=list)
+                                  max_length=options.main_antenna_count)] = Field(default_factory=list) # try conset
     rx_main_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count, strict=True),
-                                       max_items=options.main_antenna_count,
-                                       unique_items=True)] = Field(default_factory=list)
+                                       max_length=options.main_antenna_count)] = Field(default_factory=list) # try conset
     rx_int_antennas: Optional[conlist(conint(ge=0, lt=options.intf_antenna_count, strict=True),
-                                      max_items=options.intf_antenna_count,
-                                      unique_items=True)] = Field(default_factory=list)
+                                      max_length=options.intf_antenna_count)] = Field(default_factory=list) # try conset
     tx_antenna_pattern: Optional[Callable] = default_callable
     tx_beam_order: Optional[beam_order_type] = Field(default_factory=list)
     intt: Optional[confloat(ge=0)] = None
     scanbound: Optional[list[confloat(ge=0)]] = Field(default_factory=list)
     pulse_phase_offset: Optional[Callable] = default_callable
-    clrfrqrange: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
+    clrfrqrange: Optional[conlist(freq_int_khz, min_length=2, max_length=2)] = None
     clrfrqflag: StrictBool = Field(init=False)
     decimation_scheme: DecimationScheme = create_default_scheme()
 
@@ -319,7 +316,7 @@ class ExperimentSlice:
 
     # Validators which check that all mutually exclusive sets of fields have one option set
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
     def check_tx_specifier(cls, values):
         if 'tx_antenna_pattern' not in values and 'tx_beam_order' in values:
             raise ValueError(f"tx_beam_order must be specified if tx_antenna_pattern specified. Slice: "
@@ -330,7 +327,7 @@ class ExperimentSlice:
             raise ValueError(f"rxonly specified as False but tx_beam_order not given. Slice: {values['slice_id']}")
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
     def check_intt_intn(cls, values):
         if not values['intt'] and not values['intn']:
             raise ValueError(f"Slice must specify either an intn (unitless) or intt in ms. Slice: {values['slice_id']}")
@@ -339,7 +336,7 @@ class ExperimentSlice:
                              f"{values['slice_id']}")
         return values
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
     def check_freq_clrfrqrange(cls, values):
         if 'clrfrqrange' in values and values['clrfrqrange']:
             values['clrfrqflag'] = True
@@ -649,7 +646,7 @@ class ExperimentSlice:
     # validated. E.g. could not validate pulse_len fully off the bat because it depends on acf, which gets validated
     # later.
 
-    @root_validator()
+    @model_validator(mode='after')
     def check_pulse_len_given_acf(cls, values):
         """
         This must be checked after all validation as pulse_len is validated before acf (since acf has a default).
