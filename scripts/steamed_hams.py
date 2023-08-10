@@ -215,7 +215,7 @@ with open(screenrc_file, 'w') as f:
     f.write(screenrc)
 
 # Clean up any residuals in shared memory and dead screens
-sp.call("rm -r /dev/shm/*", shell=True)
+sp.call("find /dev/shm/* -type f -not -name 'sem.haveged_sem' -delete", shell=True)
 sp.call("screen -X -S borealis quit", shell=True)
 
 # Give the os a chance to free all previously used sockets, etc.

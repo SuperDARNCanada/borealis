@@ -11,8 +11,6 @@
 """
 
 import inotify.adapters
-from . import scd_utils
-from . import email_utils
 import os
 import datetime
 import argparse
@@ -23,9 +21,11 @@ import subprocess as sp
 import pickle as pkl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from datetime import datetime, timedelta
+import datetime
 
-from . import remote_server_options as rso
+import scd_utils
+import email_utils
+import remote_server_options as rso
 
 
 def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string=''):
@@ -50,9 +50,9 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
 
     borealis_path=os.environ['BOREALISPATH']
     if kwargs_string:
-        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode} --kwargs_string {kwargs_string}'"
+        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode} --kwargs_string {kwargs_string}'"
     else:
-        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}'"
+        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode}'"
 
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"

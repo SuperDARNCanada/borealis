@@ -204,6 +204,8 @@ class ExperimentPrototype:
         self.__cpid = cpid
         self.__scheduling_mode = 'unknown'
         self.__output_rx_rate = float(output_rx_rate)
+        if comment_string is None:
+            comment_string = ''
         self.__comment_string = comment_string
         self.__slice_dict = {}
         self.__new_slice_id = 0
