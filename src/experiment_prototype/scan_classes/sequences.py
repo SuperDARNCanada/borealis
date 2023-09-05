@@ -134,7 +134,6 @@ class Sequence(ScanClassBase):
             wave_freq = freq_khz - txctrfreq
             wave_freq_hz = wave_freq * 1000
 
-
             # Now we set up the phases for receive side
             rx_main_phase_shift = get_phase_shift(exp_slice.beam_angle, freq_khz, main_antenna_count,
                                                   main_antenna_spacing)
@@ -146,7 +145,7 @@ class Sequence(ScanClassBase):
             # Set up the tx pulses if transmitting
             if not exp_slice.rxonly:
                 basic_samples = get_samples(txrate, wave_freq_hz, float(exp_slice.pulse_len) / 1e6,
-                                            pulse_ramp_time, 1.0)
+                                            pulse_ramp_time, 1.0, exp_slice.pulse_codes)
 
                 if exp_slice.tx_antenna_pattern is not None:
                     # Returns an array of size [tx_antennas] of complex numbers of magnitude <= 1
@@ -171,7 +170,6 @@ class Sequence(ScanClassBase):
                 tx_main_phase_shift = np.zeros((rx_main_phase_shift.shape[0], len(exp_slice.tx_antennas)),
                                                dtype=np.complex64)
             self.tx_main_phase_shifts[slice_id] = tx_main_phase_shift
-
 
             for pulse_time in exp_slice.pulse_sequence:
                 pulse_timing_us = pulse_time * exp_slice.tau_spacing + exp_slice.seqoffset

@@ -69,7 +69,7 @@ def get_phase_shift(beam_angle, freq, num_antennas, antenna_spacing, centre_offs
     return phase_shift
 
 
-def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude):
+def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, pulse_codes):
     """
     Get basic (not phase-shifted) samples for a given pulse.
 
@@ -89,6 +89,8 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude):
     :type   ramp_time:      float
     :param  max_amplitude:  USRP's max DAC amplitude. N200 = 0.707 max
     :type   max_amplitude:  float
+    :param  pulse_codes:    Array of complex numbers corresponding to codes within the pulse.
+    :type   pulse_codes:    np.array(np.complex64)
 
     :returns samples:       a numpy array of complex samples, representing all samples
                             needed for a pulse of length pulse_len sampled at a rate of rate.
@@ -106,6 +108,12 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude):
 
     rads = sampling_freq * np.arange(sampleslen)
     wave_form = np.exp(rads * 1j)
+
+    # Apply phase coding here
+    num_chips = len(pulse_codes)
+    chip_len_samps = len(wave_form) / num_chips
+    for c, chip in enumerate(pulse_codes):
+        wave_form[c*chip_len_samps:(c+1)*chip_len_samps] *= chip
 
     amplitude_ramp_up = np.arange(linear_rampsampleslen)/linear_rampsampleslen
     amplitude_ramp_down = np.flipud(amplitude_ramp_up)

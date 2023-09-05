@@ -179,6 +179,10 @@ class ExperimentSlice:
         used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from 8-pulse
         normalscan. This defaults to a lagtable built by the pulse sequence provided. All combinations
         of pulses will be calculated, with both the first pulses and last pulses used for lag-0.
+    pulse_codes *defaults*
+        a handle to a function that will be used to generate intra-pulse codes.
+        Arguments TBD, but the return value is a 1D array of complex values each representing one chip
+        of the code. The maximum amplitude of any chip is 1.
     pulse_phase_offset *defaults*
         a handle to a function that will be used to generate one phase per each pulse in the sequence.
         If a function is supplied, the beam iterator, sequence number, and number of pulses in the
@@ -301,6 +305,7 @@ class ExperimentSlice:
     intt: Optional[confloat(ge=0)] = None
     scanbound: Optional[list[confloat(ge=0)]] = Field(default_factory=list)
     pulse_phase_offset: Optional[Callable] = default_callable
+    pulse_codes: Optional[Callable] = default_callable
     clrfrqrange: Optional[conlist(freq_int_khz, min_items=2, max_items=2)] = None
     clrfrqflag: StrictBool = Field(init=False)
     decimation_scheme: DecimationScheme = Field(default_factory=create_default_scheme)
@@ -525,6 +530,26 @@ class ExperimentSlice:
                     raise ValueError(f"Slice {values['slice_id']} Phase encoding return dimension must be equal to "
                                      f"number of pulses")
         return ppo
+
+    @validator('pulse_codes')
+    def check_pulse_phase_offset(cls, pc, values):
+        if pc is default_callable:      # No value given
+            return
+
+        # Test the encoding fn with beam iterator of 0 and sequence num of 0. test the user's
+        # phase encoding function on first beam (beam_iterator = 0) and first sequence
+        # (sequence_number = 0)
+        pulse_codes = pc(0, 0, len(values['pulse_sequence']))
+        if not isinstance(pulse_codes, np.ndarray):
+            raise ValueError(f"Slice {values['slice_id']} Pulse code return is not numpy array")
+        else:
+            if len(pulse_codes.shape) > 1:
+                raise ValueError(f"Slice {values['slice_id']} Pulse codes return must be 1 dimensional")
+            pulse_codes_mag = np.abs(pulse_codes)
+            if np.argwhere(pulse_codes_mag > 1.0).size > 0:
+                raise ValueError(f"Slice {values['slice_id']} pulse codes return must not have any "
+                                 f"values with a magnitude greater than 1")
+        return pc
 
     @validator('clrfrqrange')
     def check_clrfrqrange(cls, clrfrqrange, values):
