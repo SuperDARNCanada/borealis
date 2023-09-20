@@ -25,7 +25,7 @@ import numpy as np
 import structlog
 
 # local
-from experiment_prototype.experiment_utils.sample_building import get_samples, get_phase_shift
+from experiment_prototype.experiment_utils.sample_building import get_samples, get_phase_shift, expand_pulse_coding
 from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
 from experiment_prototype.experiment_exception import ExperimentException
 
@@ -365,6 +365,7 @@ class Sequence(ScanClassBase):
                                           1e-6)
 
         self.output_encodings = collections.defaultdict(list)
+        self.pulse_codes = collections.defaultdict(list)
 
         # create debug dict for tx samples.
         debug_dict = {'txrate': txrate,
@@ -435,6 +436,7 @@ class Sequence(ScanClassBase):
 
             num_pulses = len(exp_slice.pulse_sequence)
             encode_fn = exp_slice.pulse_phase_offset
+            pulse_coding_fn = exp_slice.pulse_codes
             if encode_fn:
                 # Must return 1D array of length [pulses].
                 phase_encoding = encode_fn(beam_num, sequence_num, num_pulses)
@@ -453,6 +455,20 @@ class Sequence(ScanClassBase):
 
             else:  # no encodings, all pulses in the slice are all the same
                 samples = np.repeat(basic_samples[np.newaxis, :, :], num_pulses, axis=0)
+
+            pulse_coding_fn = exp_slice.pulse_codes
+            if pulse_coding_fn:
+                # Returns a 2D array of shape [num_pulses, num_chips]
+                pulse_coding = pulse_coding_fn(beam_num, sequence_num, num_pulses)
+                self.pulse_codes[slice_id].append(pulse_coding)
+
+                # Extend the codes to the number of samples of each pulse
+                pulse_coding_extended = expand_pulse_coding(samples.shape[-1], pulse_coding)
+
+                # pulse_coding_extended: [pulses, samples]
+                # samples:               [pulses, antennas, samples]
+                # samples (output):      [pulses, antennas, samples]
+                samples = np.einsum('ik,ijk->ijk', pulse_coding_extended, samples)
 
             # sum the samples into their position in the sequence buffer. Find where the relative
             # timing of each pulse matches the sample number in the buffer. Directly sum the samples

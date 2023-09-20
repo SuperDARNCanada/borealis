@@ -52,6 +52,7 @@ slice_key_set = frozenset([
     "intt",
     "lag_table",
     "num_ranges",
+    "pulse_codes",
     "pulse_len",
     "pulse_phase_offset",
     "pulse_sequence",
@@ -532,19 +533,19 @@ class ExperimentSlice:
         return ppo
 
     @validator('pulse_codes')
-    def check_pulse_phase_offset(cls, pc, values):
+    def check_pulse_codes(cls, pc, values):
         if pc is default_callable:      # No value given
             return
 
-        # Test the encoding fn with beam iterator of 0 and sequence num of 0. test the user's
-        # phase encoding function on first beam (beam_iterator = 0) and first sequence
+        # Test the pulse coding function with beam iterator of 0 and sequence num of 0. Test the user's
+        # pulse coding function on first beam (beam_iterator = 0) and first sequence
         # (sequence_number = 0)
         pulse_codes = pc(0, 0, len(values['pulse_sequence']))
         if not isinstance(pulse_codes, np.ndarray):
             raise ValueError(f"Slice {values['slice_id']} Pulse code return is not numpy array")
         else:
-            if len(pulse_codes.shape) > 1:
-                raise ValueError(f"Slice {values['slice_id']} Pulse codes return must be 1 dimensional")
+            if len(pulse_codes.shape) != 2:
+                raise ValueError(f"Slice {values['slice_id']} Pulse codes return must be 2 dimensional")
             pulse_codes_mag = np.abs(pulse_codes)
             if np.argwhere(pulse_codes_mag > 1.0).size > 0:
                 raise ValueError(f"Slice {values['slice_id']} pulse codes return must not have any "

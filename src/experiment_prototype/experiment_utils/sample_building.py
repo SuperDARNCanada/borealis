@@ -13,6 +13,7 @@ import math
 # third-party
 import numpy as np
 from scipy.constants import speed_of_light
+import scipy.signal
 
 
 def get_phase_shift(beam_angle, freq, num_antennas, antenna_spacing, centre_offset=0.0):
@@ -89,8 +90,6 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, pulse_code
     :type   ramp_time:      float
     :param  max_amplitude:  USRP's max DAC amplitude. N200 = 0.707 max
     :type   max_amplitude:  float
-    :param  pulse_codes:    Array of complex numbers corresponding to codes within the pulse.
-    :type   pulse_codes:    np.array(np.complex64)
 
     :returns samples:       a numpy array of complex samples, representing all samples
                             needed for a pulse of length pulse_len sampled at a rate of rate.
@@ -109,13 +108,7 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, pulse_code
     rads = sampling_freq * np.arange(sampleslen)
     wave_form = np.exp(rads * 1j)
 
-    # Apply phase coding here
-    num_chips = len(pulse_codes)
-    chip_len_samps = len(wave_form) / num_chips
-    for c, chip in enumerate(pulse_codes):
-        wave_form[c*chip_len_samps:(c+1)*chip_len_samps] *= chip
-
-    amplitude_ramp_up = np.arange(linear_rampsampleslen)/linear_rampsampleslen
+    amplitude_ramp_up = np.arange(linear_rampsampleslen) / linear_rampsampleslen
     amplitude_ramp_down = np.flipud(amplitude_ramp_up)
 
     ramp_up_piece = wave_form[:linear_rampsampleslen]
@@ -130,3 +123,20 @@ def get_samples(rate, wave_freq, pulse_len, ramp_time, max_amplitude, pulse_code
     return samples
 
 
+def expand_pulse_coding(pulse_len_samps, pulse_codes):
+
+    # Apply phase coding here
+    num_chips = pulse_codes.shape[1]        # shape is [num_pulses, num_chips]
+    chip_len_samps = round(pulse_len_samps / num_chips)
+    pulse_codes_extended = np.zeros((pulse_codes.shape[0], pulse_len_samps), dtype=np.complex64)
+
+    for c in range(pulse_codes.shape[1]-1):     # save the last chip to account for integer rounding
+        pulse_codes_extended[:, c*chip_len_samps:(c+1)*chip_len_samps] = pulse_codes[:, c, np.newaxis]
+    pulse_codes_extended[:, (pulse_codes.shape[1]-1)*chip_len_samps:] = pulse_codes[:, pulse_codes.shape[1]-1, np.newaxis]
+    
+    # Apply a low-pass filter to smooth the code
+    filter_taps = scipy.signal.firwin(11, 0.1)
+    for row in range(pulse_codes.shape[0]):
+        pulse_codes_extended[row, :] = np.convolve(pulse_codes_extended[row], filter_taps)[5:-5]
+
+    return pulse_codes_extended
