@@ -419,6 +419,7 @@ def install_borealis_env(python_version: str, user: str, group: str, no_cupy: bo
     execute_cmd(f"sudo -u {user} $BOREALISPATH/borealis_env{python_version}/bin/python3 -m pip install wheel")
     pip_packages = ['zmq', 'numpy', 'scipy', 'protobuf==3.19.4', 'posix_ipc', 'structlog', 'graylog', 'rich',
                     'graypy', 'pydantic==1.10.11', # Temporary fix for pydantic code to work with python 3.11
+                    'inotify', 'matplotlib', # Used by scheduler
                     'git+https://github.com/SuperDARN/pyDARNio.git@develop',
                     'git+https://github.com/SuperDARNCanada/backscatter.git#egg=backscatter']
     if not no_cupy:
