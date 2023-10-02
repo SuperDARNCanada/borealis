@@ -168,7 +168,7 @@ class Sequence(ScanClassBase):
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
                 self.basic_slice_pulses[slice_id] = []
-                tx_main_phase_shift = np.zeros((rx_main_phase_shift.shape[0], len(exp_slice.tx_antennas)),
+                tx_main_phase_shift = np.zeros((rx_main_phase_shift.shape[0], len(exp_slice['tx_antennas'])),
                                                dtype=np.complex64)
             self.tx_main_phase_shifts[slice_id] = tx_main_phase_shift
 

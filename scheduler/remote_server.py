@@ -528,7 +528,7 @@ def get_relevant_lines(scd_util, time_of_interest):
                 found = True
 
         if not found:
-            time -= timedelta(minutes=1)
+            time -= datetime.timedelta(minutes=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
             hhmm = time.strftime("%H:%M")
