@@ -1,0 +1,4 @@
+# Restricted frequency table for Wallops
+default=13700
+# TODO: Are there any frequencies we need to add?
+# E.g. 14990 15010
