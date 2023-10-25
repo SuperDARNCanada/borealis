@@ -25,9 +25,10 @@ class InterleaveSound(ExperimentPrototype):
     def __init__(self):
         cpid = 197
 
-        forward_beams = [0, 4, 8, 12, 2, 6, 10, 14, 1, 5, 9, 13, 3, 7, 11, 15]
-        reverse_beams = [15, 11, 7, 3, 13, 9, 5, 1, 14, 10, 6, 2, 12, 8, 4, 0]
-        sounding_beams = [0, 2, 4, 6, 8, 10, 12, 14, 1, 3, 5, 7, 9, 11, 13, 15]
+        forward_beams = [0,4,8,12,16,20, 2,6,10,14,18,22, 1,5,9,13,17,21, 3,7,11,15,19,23]
+        reverse_beams = [23,19,15,11,7,3, 21,17,13,9,5,1, 22,18,14,10,6,2, 20,16,12,8,4,0]
+
+        sounding_beams = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
 
         if scf.IS_FORWARD_RADAR:
             beams_to_use = forward_beams
@@ -36,7 +37,7 @@ class InterleaveSound(ExperimentPrototype):
 
         slices = []
         
-        common_scanbound_spacing = 3.0  # seconds
+        common_scanbound_spacing = 2.5  # seconds
         common_intt_ms = common_scanbound_spacing * 1.0e3 - 100  # reduce by 100 ms for processing
 
         slices.append({  # slice_id = 0, the first slice

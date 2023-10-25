@@ -22,8 +22,8 @@ class InterleavedScan(ExperimentPrototype):
     def __init__(self):
         cpid = 191
 
-        forward_beams = [0, 4, 8, 12, 2, 6, 10, 14, 1, 5, 9, 13, 3, 7, 11, 15]
-        reverse_beams = [15, 11, 7, 3, 13, 9, 5, 1, 14, 10, 6, 2, 12, 8, 4, 0]
+        forward_beams = [0,4,8,12,16,20, 2,6,10,14,18,22, 1,5,9,13,17,21, 3,7,11,15,19,23]
+        reverse_beams = [23,19,15,11,7,3, 21,17,13,9,5,1, 22,18,14,10,6,2, 20,16,12,8,4,0]
 
         if scf.IS_FORWARD_RADAR:
             beams_to_use = forward_beams
