@@ -32,7 +32,7 @@ class HAARPScan(ExperimentPrototype):
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
-        if scf.opts.site_id in ["sas", "pgr"]:
+        if scf.opts.site_id in ["sas", "pgr", "wal"]:
             num_ranges = scf.STD_NUM_RANGES
 
         # default frequency set here
@@ -51,7 +51,7 @@ class HAARPScan(ExperimentPrototype):
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
-            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "beam_angle": scf.STD_24_BEAM_ANGLE,
             "beam_order": beams_to_use,
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))],  # 1 min scan
             "txfreq": freq,  # kHz

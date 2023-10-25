@@ -57,10 +57,10 @@ class BistaticTest(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": scf.INTT_7P,  # duration of an integration, in ms
-            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "intt": scf.INTT_7P_24,  # duration of an integration, in ms
+            "beam_angle": scf.STD_24_BEAM_ANGLE,
             "freq": freq,  # kHz
-            "scanbound": [i * 3.7 for i in range(len(scf.STD_16_BEAM_ANGLE))],  # align each aveperiod to 3.7s boundary
+            "scanbound": [i * 3.7 for i in range(len(scf.STD_24_BEAM_ANGLE))],  # align each aveperiod to 3.7s boundary
             "wait_for_first_scanbound": False,
             "align_sequences": True     # align start of sequence to tenths of a second
         }
@@ -87,16 +87,16 @@ class BistaticTest(ExperimentPrototype):
                 comment_str = 'Widebeam transmission'
 
             slice_0['tx_beam_order'] = tx_beam_order
-            rx_beam_order = [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]] * len(tx_beam_order)
+            rx_beam_order = [[i for i in range(len(scf.STD_24_BEAM_ANGLE))]] * len(tx_beam_order)
             slice_0['rx_beam_order'] = rx_beam_order    # Must have same first dimension as tx_beam_order
 
         elif listen_to == scf.opts.site_id:
-            slice_0['rx_beam_order'] = [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]]
+            slice_0['rx_beam_order'] = [[i for i in range(len(scf.STD_24_BEAM_ANGLE))]]
             print('Defaulting to rx_only mode, "listen_to" set to this radar')
             comment_str = 'Widebeam listening mode'
 
         else:
-            slice_0['rx_beam_order'] = [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]]
+            slice_0['rx_beam_order'] = [[i for i in range(len(scf.STD_24_BEAM_ANGLE))]]
             comment_str = 'Bistatic widebeam mode - listening to {}'.format(listen_to)
 
         super().__init__(cpid, comment_string=comment_str)

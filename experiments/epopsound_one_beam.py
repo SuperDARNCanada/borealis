@@ -60,7 +60,7 @@ class Epopsound(ExperimentPrototype):
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
-        if scf.opts.site_id in ["sas", "pgr"]:
+        if scf.opts.site_id in ["sas", "pgr", "wal"]:
             num_ranges = scf.STD_NUM_RANGES
 
         slices = []
@@ -71,7 +71,7 @@ class Epopsound(ExperimentPrototype):
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intn": 10,
-            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "beam_angle": scf.STD_24_BEAM_ANGLE,
             "acf": True,
             "xcf": True,
             "acfint": True

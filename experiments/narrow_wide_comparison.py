@@ -57,8 +57,8 @@ class FullFOVComparison(ExperimentPrototype):
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
-            "beam_angle": scf.STD_16_BEAM_ANGLE,
-            "rx_beam_order": [[i for i in range(len(scf.STD_16_BEAM_ANGLE))]],
+            "beam_angle": scf.STD_24_BEAM_ANGLE,
+            "rx_beam_order": [[i for i in range(len(scf.STD_24_BEAM_ANGLE))]],
             "tx_beam_order": [0],  # only one pattern
             "tx_antenna_pattern": scf.easy_widebeam,
             "freq": freq,  # kHz

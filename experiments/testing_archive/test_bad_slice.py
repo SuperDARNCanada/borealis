@@ -19,13 +19,13 @@ class TestExperiment(ExperimentPrototype):
         super(TestExperiment, self).__init__(cpid)
 
         if scf.IS_FORWARD_RADAR:
-            beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
+            beams_to_use = scf.STD_24_FORWARD_BEAM_ORDER
         else:
-            beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
+            beams_to_use = scf.STD_24_REVERSE_BEAM_ORDER
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
-        if scf.opts.site_id in ["sas", "pgr"]:
+        if scf.opts.site_id in ["sas", "pgr", "wal"]:
             num_ranges = scf.STD_NUM_RANGES
 
         # exp_slice is not a dictionary of slice parameters

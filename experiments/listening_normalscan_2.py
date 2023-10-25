@@ -29,13 +29,13 @@ class ListeningNormalscan2(ExperimentPrototype):
                                        ' offset from the transmit frequency.')
 
         if scf.IS_FORWARD_RADAR:
-            beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
+            beams_to_use = scf.STD_24_FORWARD_BEAM_ORDER
         else:
-            beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
+            beams_to_use = scf.STD_24_REVERSE_BEAM_ORDER
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
-        if scf.opts.site_id in ["sas", "pgr"]:
+        if scf.opts.site_id in ["sas", "pgr", "wal"]:
             num_ranges = scf.STD_NUM_RANGES
 
         self.add_slice({  # slice_id = 0, added first
@@ -45,7 +45,7 @@ class ListeningNormalscan2(ExperimentPrototype):
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
-            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "beam_angle": scf.STD_24_BEAM_ANGLE,
             "rx_beam_order": beams_to_use,
             "tx_beam_order": beams_to_use,
             # scanbound ends at 48s.
@@ -63,7 +63,7 @@ class ListeningNormalscan2(ExperimentPrototype):
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
-            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "beam_angle": scf.STD_24_BEAM_ANGLE,
             # offset beams so not looking in same direction.
             "rx_beam_order": beams_to_use[8:] + beams_to_use[0:8],
             "scanbound" : [i * (3500 * 1e-3) for i in range(len(beams_to_use))],

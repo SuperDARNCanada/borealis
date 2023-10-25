@@ -17,11 +17,13 @@ RX_RATE_15KM = 10.0e3
 
 SEQUENCE_7P = [0, 9, 12, 20, 22, 26, 27]
 TAU_SPACING_7P = 2400  # us
-INTT_7P = 3700
+INTT_7P_16 = 3700
+INTT_7P_24 = 2475
 
 SEQUENCE_8P = [0, 14, 22, 24, 27, 31, 42, 43]
 TAU_SPACING_8P = 1500  # us
-INTT_8P = 3700
+INTT_8P_16 = 3700
+INTT_8P_24 = 2475
 
 STD_8P_LAG_TABLE = [[0, 0],
                     [42, 43],
@@ -52,6 +54,7 @@ PULSE_LEN_45KM = 300  # us
 PULSE_LEN_15KM = 100  # us
 
 STD_16_BEAM_ANGLE = [(float(opts.beam_sep) * (beam_dir - 15/2)) for beam_dir in range(0, 16)]
+STD_24_BEAM_ANGLE = [(float(opts.beam_sep) * (beam_dir - 23/2)) for beam_dir in range(0, 24)]
 
 STD_NUM_RANGES = 75
 POLARDARN_NUM_RANGES = 75
@@ -60,16 +63,23 @@ STD_FIRST_RANGE = 180  # km
 STD_16_FORWARD_BEAM_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 STD_16_REVERSE_BEAM_ORDER = [15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
 
+STD_24_FORWARD_BEAM_ORDER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+STD_24_REVERSE_BEAM_ORDER = [23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+
 # Scanning directions here for now.
 IS_FORWARD_RADAR = IS_REVERSE_RADAR = False
-if opts.site_id in ["sas", "rkn", "inv"]:
+if opts.site_id in ["sas", "rkn", "inv", "wal"]:
     IS_FORWARD_RADAR = True
 
 if opts.site_id in ["cly", "pgr"]:
     IS_REVERSE_RADAR = True
 
 # set common mode operating frequencies with a slight offset.
-if opts.site_id == "sas":
+if opts.site_id == "wal":
+    # TODO: Update
+    COMMON_MODE_FREQ_1 = 12000
+    COMMON_MODE_FREQ_2 = 13000
+elif opts.site_id == "sas":
     COMMON_MODE_FREQ_1 = 10800
     COMMON_MODE_FREQ_2 = 13000
 elif opts.site_id == "pgr":
@@ -100,7 +110,10 @@ def easy_scanbound(intt, beams):
 
 
 # set sounding frequencies
-if opts.site_id == "sas":
+# TODO: Set these frequencies
+if opts.site_id == "wal":
+    SOUNDING_FREQS = [9690, 10500, 11000, 11700, 12400, 12900, 13150]
+elif opts.site_id == "sas":
     SOUNDING_FREQS = [9690, 10500, 11000, 11700, 12400, 12900, 13150]
 elif opts.site_id == "pgr":
     SOUNDING_FREQS = [9600, 10590, 11050, 11750, 13090, 12850, 12400]

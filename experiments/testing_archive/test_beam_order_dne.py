@@ -19,13 +19,13 @@ class TestExperiment(ExperimentPrototype):
         super(TestExperiment, self).__init__(cpid)
 
         if scf.IS_FORWARD_RADAR:
-            beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
+            beams_to_use = scf.STD_24_FORWARD_BEAM_ORDER
         else:
-            beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
+            beams_to_use = scf.STD_24_REVERSE_BEAM_ORDER
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
-        if scf.opts.site_id in ["sas", "pgr"]:
+        if scf.opts.site_id in ["sas", "pgr", "wal"]:
             num_ranges = scf.STD_NUM_RANGES
 
         slice_1 = {  # slice_id = 0, there is only one slice.
@@ -35,7 +35,7 @@ class TestExperiment(ExperimentPrototype):
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 3500,  # duration of an integration, in ms
-            "beam_angle": scf.STD_16_BEAM_ANGLE,  # beam_order dne
+            "beam_angle": scf.STD_24_BEAM_ANGLE,  # beam_order dne
             "tx_beam_order": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             "scanbound": [i * 3.5 for i in range(len(beams_to_use))], #1 min scan
             "freq" : scf.COMMON_MODE_FREQ_1, #kHz

@@ -25,9 +25,9 @@ class Tauscan(ExperimentPrototype):
         super(Tauscan, self).__init__(cpid, comment_string=Tauscan.__doc__)
 
         if scf.IS_FORWARD_RADAR:
-            beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
+            beams_to_use = scf.STD_24_FORWARD_BEAM_ORDER
         else:
-            beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
+            beams_to_use = scf.STD_24_REVERSE_BEAM_ORDER
 
         if scf.opts.site_id == "sas":
             freq = 13200
@@ -43,7 +43,7 @@ class Tauscan(ExperimentPrototype):
             "num_ranges": 100,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": 7000,  # duration of an integration, in ms
-            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "beam_angle": scf.STD_24_BEAM_ANGLE,
             "rx_beam_order": beams_to_use,
             "tx_beam_order": beams_to_use,
             "scanbound" : [i * 7.0 for i in range(len(beams_to_use))],

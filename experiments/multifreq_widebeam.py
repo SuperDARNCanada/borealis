@@ -34,7 +34,7 @@ class MultifreqWidebeam(ExperimentPrototype):
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
-        if scf.opts.site_id in ["sas", "pgr"]:
+        if scf.opts.site_id in ["sas", "pgr", "wal"]:
             num_ranges = scf.STD_NUM_RANGES
 
         tx_freq_1 = scf.COMMON_MODE_FREQ_1
@@ -53,14 +53,14 @@ class MultifreqWidebeam(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": scf.INTT_7P,  # duration of an integration, in ms
+            "intt": scf.INTT_7P_24,  # duration of an integration, in ms
             "beam_angle": [0],
             "rx_beam_order": [0],
             "tx_beam_order": [0],
             "freq": tx_freq_1,  # kHz
             "tx_antennas": [6, 7],  # Using two tx antennas from the middle of array
             "align_sequences": True,
-            "scanbound": [i * scf.INTT_7P * 1e-3 for i in range(len(scf.STD_16_BEAM_ANGLE))],
+            "scanbound": [i * scf.INTT_7P_24 * 1e-3 for i in range(len(scf.STD_24_BEAM_ANGLE))],
         }
 
         slice_2 = copy.deepcopy(slice_1)    # slice_id = 1, the second slice

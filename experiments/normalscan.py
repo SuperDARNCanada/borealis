@@ -25,13 +25,13 @@ class Normalscan(ExperimentPrototype):
         super(Normalscan, self).__init__(cpid)
 
         if scf.IS_FORWARD_RADAR:
-            beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
+            beams_to_use = scf.STD_24_FORWARD_BEAM_ORDER
         else:
-            beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
+            beams_to_use = scf.STD_24_REVERSE_BEAM_ORDER
 
         if scf.opts.site_id in ["cly", "rkn", "inv"]:
             num_ranges = scf.POLARDARN_NUM_RANGES
-        if scf.opts.site_id in ["sas", "pgr"]:
+        if scf.opts.site_id in ["sas", "pgr", "wal"]:
             num_ranges = scf.STD_NUM_RANGES
 
         # default frequency set here
@@ -49,11 +49,11 @@ class Normalscan(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": num_ranges,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": scf.INTT_7P,  # duration of an integration, in ms
-            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "intt": scf.INTT_7P_24,  # duration of an integration, in ms
+            "beam_angle": scf.STD_24_BEAM_ANGLE,
             "rx_beam_order": beams_to_use,
             "tx_beam_order": beams_to_use,
-            "scanbound": scf.easy_scanbound(scf.INTT_7P, beams_to_use), #1 min scan
+            "scanbound": scf.easy_scanbound(scf.INTT_7P_24, beams_to_use), #1 min scan
             "freq" : freq, #kHz
             "acf": True,
             "xcf": True,  # cross-correlation processing

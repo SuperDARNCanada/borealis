@@ -75,7 +75,7 @@ class IBCollabMode(ExperimentPrototype):
 
         decimation_scheme = create_15km_scheme()
 
-        bangle = scf.STD_16_BEAM_ANGLE
+        bangle = scf.STD_24_BEAM_ANGLE
         beams_arr = [0, 2, 4, 6, 8, 0, 2, 4, 6, 8, 0, 2, 4, 6, 8, 0, 2,
                      4, 6, 8, 0, 2, 4, 6, 8, 0, 2, 4, 6, 8]
 

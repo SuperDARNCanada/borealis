@@ -22,9 +22,9 @@ class NormalSound(ExperimentPrototype):
         sounding_beams = [0,2,4,6,8,10,12,14,1,3,5,7,9,11,13,15]
 
         if scf.IS_FORWARD_RADAR:
-            beams_to_use = scf.STD_16_FORWARD_BEAM_ORDER
+            beams_to_use = scf.STD_24_FORWARD_BEAM_ORDER
         else:
-            beams_to_use = scf.STD_16_REVERSE_BEAM_ORDER
+            beams_to_use = scf.STD_24_REVERSE_BEAM_ORDER
 
         slices = []
         
@@ -38,7 +38,7 @@ class NormalSound(ExperimentPrototype):
             "num_ranges": scf.STD_NUM_RANGES,
             "first_range": scf.STD_FIRST_RANGE,
             "intt": common_intt_ms,  # duration of an integration, in ms
-            "beam_angle": scf.STD_16_BEAM_ANGLE,
+            "beam_angle": scf.STD_24_BEAM_ANGLE,
             "beam_order": beams_to_use,
             # this scanbound will be aligned because len(beam_order) = len(scanbound)
             "scanbound" : [i * common_scanbound_spacing for i in range(len(beams_to_use))],
@@ -64,7 +64,7 @@ class NormalSound(ExperimentPrototype):
                 "num_ranges": scf.STD_NUM_RANGES,
                 "first_range": scf.STD_FIRST_RANGE,
                 "intt": sounding_intt_ms,  # duration of an integration, in ms
-                "beam_angle": scf.STD_16_BEAM_ANGLE,
+                "beam_angle": scf.STD_24_BEAM_ANGLE,
                 "beam_order": sounding_beams,
                 "scanbound" : sounding_scanbound,
                 "txfreq" : freq,

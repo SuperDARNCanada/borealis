@@ -35,7 +35,7 @@ class ImptTest(ExperimentPrototype):
             "pulse_len": scf.PULSE_LEN_45KM,
             "num_ranges": scf.STD_NUM_RANGES,
             "first_range": scf.STD_FIRST_RANGE,
-            "intt": scf.INTT_8P,
+            "intt": scf.INTT_8P_24,
             "beam_angle": [1.75],
             "rx_beam_order": [0],
             "tx_beam_order": [0],
