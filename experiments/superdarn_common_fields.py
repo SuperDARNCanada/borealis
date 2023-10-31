@@ -18,6 +18,7 @@ RX_RATE_15KM = 10.0e3
 SEQUENCE_7P = [0, 9, 12, 20, 22, 26, 27]
 TAU_SPACING_7P = 2400  # us
 INTT_7P_16 = 3700
+# TODO: Is this integration time sufficient or does it need to be changed?
 INTT_7P_24 = 2475
 
 SEQUENCE_8P = [0, 14, 22, 24, 27, 31, 42, 43]
@@ -76,9 +77,8 @@ if opts.site_id in ["cly", "pgr"]:
 
 # set common mode operating frequencies with a slight offset.
 if opts.site_id == "wal":
-    # TODO: Update
     COMMON_MODE_FREQ_1 = 12000
-    COMMON_MODE_FREQ_2 = 13000
+    COMMON_MODE_FREQ_2 = 18000
 elif opts.site_id == "sas":
     COMMON_MODE_FREQ_1 = 10800
     COMMON_MODE_FREQ_2 = 13000
