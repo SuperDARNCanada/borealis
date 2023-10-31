@@ -5,7 +5,7 @@ source $HOME/.profile
 
 NOW=`date +'%Y%m%d %H:%M:%S'`
 
-/usr/bin/nohup /usr/bin/python3 $BOREALISPATH/scheduler/remote_server.py --scd-dir=/home/radar/borealis_schedules --emails-filepath=/home/radar/borealis_schedules/emails.txt >/home/radar/logs/scd.out 2>&1 &
+/usr/bin/nohup /usr/bin/python3 /home/radar/scheduler/remote_server.py --scd-dir=/home/radar/borealis_schedules --emails-filepath=/home/radar/emails.txt >/home/radar/logs/scd.out 2>&1 &
 
 retVal=$?
 if [[ $retVal -ne 0 ]]; then
