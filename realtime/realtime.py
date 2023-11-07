@@ -13,6 +13,7 @@ import sys
 import queue
 import json
 import zlib
+sys.path.insert(0, '/home/radar/.local/lib/python3.9/site-packages')
 import pydarnio
 import numpy as np
 from backscatter import fitacf
