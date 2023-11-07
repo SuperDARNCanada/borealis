@@ -30,4 +30,4 @@ import os
 Import('*')
 
 Prog('rx_tx_delay_test', Glob("./*.c*"),
-     LIBS=['uhd','boost_system','boost_thread', 'boost_program_options'])
+     LIBS=['uhd','boost_system','boost_thread', 'boost_program_options', 'pthread'])

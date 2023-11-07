@@ -193,12 +193,11 @@ def install_packages(distro: str, user: str, python_version: str):
         print(install_cmd)
         execute_cmd(install_cmd)
 
-    update_pip = "sudo -u {normal_user} pip{version} install --upgrade pip" \
-                 "".format(normal_user=user, version=python_version)
-    execute_cmd(update_pip)
+    update_pip = "sudo -u {normal_user} pip3 install --upgrade pip3" \
+                 "".format(normal_user=user)
+    # execute_cmd(update_pip)
 
-    pip_cmd = "sudo -u {normal_user} pip{version} install " \
-              "".format(normal_user=user, version=python_version) + " ".join(pip)
+    pip_cmd = "sudo pip3 install " + " ".join(pip)
     execute_cmd(pip_cmd)
 
 
@@ -298,7 +297,7 @@ def install_uhd(distro: str):
 
         files = glob.glob('{}/libboost_*.so.{}*'.format(libpath, boost_version))
         print(files)
-
+        
         files_with_no_ext = []
 
         for f in files:
@@ -361,18 +360,21 @@ def install_cuda(distro: str):
         execute_cmd(cuda_zypper_cmd)
         cuda_cmd = "zypper install -y cuda"
     elif 'Ubuntu' in distro:
-        pre_cuda_setup_cmd = "apt-get install -y gcc-7 g++-7;" \
-                             "update-alternatives --remove-all gcc;" \
-                             "update-alternatives --remove-all g++;" \
-                             "update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 50;" \
-                             "update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 50;" \
-                             "update-alternatives --config gcc;" \
-                             "update-alternatives --config g++;"
-        execute_cmd(pre_cuda_setup_cmd)
-        cuda_file = 'cuda_11.4.3_470.82.01_linux.run'
-        cuda_cmd = "cd ${{IDIR}};" \
-                   "wget -N http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};" \
-                   "sh {cuda_file} --silent --toolkit --samples;".format(cuda_file=cuda_file)
+        
+        cuda_cmd = f'echo "Failed; CUDA installation script for {distro} is not currenlty working - must be done manually"'
+
+        # pre_cuda_setup_cmd = "apt-get install -y gcc-7 g++-7;" \
+        #                      "update-alternatives --remove-all gcc;" \
+        #                      "update-alternatives --remove-all g++;" \
+        #                      "update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 50;" \
+        #                      "update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 50;" \
+        #                      "update-alternatives --config gcc;" \
+        #                      "update-alternatives --config g++;"
+        # execute_cmd(pre_cuda_setup_cmd)
+        # cuda_file = 'cuda_11.4.3_470.82.01_linux.run'
+        # cuda_cmd = "cd ${{IDIR}};" \
+        #            "wget -N http://developer.download.nvidia.com/compute/cuda/10.2/Prod/local_installers/{cuda_file};" \
+        #            "sh {cuda_file} --silent --toolkit --samples;".format(cuda_file=cuda_file)
     else:
         cuda_cmd = f'echo "Failed; No CUDA install script for Linux Distribution: {distro}"'
 
@@ -468,7 +470,7 @@ def main():
     try:
         python_version = os.environ['PYTHON_VERSION']
         if python_version != args.python_version:
-            print(COLOR('red', 'WARNING: ') + 'PYTHON_VERSION already defined as {version} - Behaviour could be '
+            print(COLOR('red', 'WARNING: ') + 'PYTHON_VERSION already defined as {python_version} - Behaviour could be '
                   'affected unless this is removed.')
             specify_python = True
     except KeyError:

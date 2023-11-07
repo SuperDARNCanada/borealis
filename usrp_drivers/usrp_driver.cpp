@@ -1,7 +1,7 @@
 /*Copyright 2016 SuperDARN*/
 #include <unistd.h>
 #include <stdint.h>
-#include <uhd/utils/thread_priority.hpp>
+#include <uhd/utils/thread.hpp>
 #include <uhd/utils/safe_main.hpp>
 #include <uhd/utils/static.hpp>
 #include <uhd/usrp/multi_usrp.hpp>

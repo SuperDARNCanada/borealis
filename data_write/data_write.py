@@ -20,6 +20,7 @@ from multiprocessing import shared_memory
 import subprocess as sp
 import argparse as ap
 import numpy as np
+sys.path.insert(0, '/home/radar/.local/lib/python3.9/site-packages')
 import deepdish as dd
 import tables
 import zmq
