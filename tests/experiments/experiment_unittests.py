@@ -33,12 +33,9 @@ import pkgutil
 from pathlib import Path
 from importlib import import_module
 
+# Need the path append to import within this file
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(f"{BOREALISPATH}/src")
-
-import experiment_handler as eh
-from experiment_prototype.experiment_prototype import ExperimentPrototype
-import borealis_experiments.superdarn_common_fields as scf
 
 
 def redirect_to_devnull(func, *args, **kwargs):
@@ -66,6 +63,8 @@ def ehmain(experiment_name='normalscan', scheduling_mode='discretionary'):
     :param  scheduling_mode: The scheduling mode to run. Defaults to 'discretionary'
     :type   scheduling_mode: str
     """
+    import experiment_handler as eh
+
     experiment = eh.retrieve_experiment(experiment_name)
     exp = experiment()
     exp._set_scheduling_mode(scheduling_mode)
@@ -88,6 +87,8 @@ class TestExperimentEnvSetup(unittest.TestCase):
         """
         Test calling the experiment handler without any command line arguments, which returns 2
         """
+        import experiment_handler as eh
+
         with self.assertRaisesRegex(SystemExit, "2"):
             eh.main([])
 
@@ -125,6 +126,8 @@ class TestExperimentEnvSetup(unittest.TestCase):
         """
         Test the code that checks for the hdw.dat file
         """
+        import borealis_experiments.superdarn_common_fields as scf
+
         site_name = scf.options.site_id
         hdw_path = scf.options.hdw_path
         # Rename the hdw.dat file temporarily
@@ -167,6 +170,8 @@ def build_unit_tests():
     """
     Create individual unit tests for all test cases specified in testing_archive directory of experiments path.
     """
+    from experiment_prototype.experiment_prototype import ExperimentPrototype
+
     experiment_package = 'testing_archive'
     experiment_path = f"{BOREALISPATH}/src/borealis_experiments/{experiment_package}/"
     if not os.path.exists(experiment_path):
@@ -218,6 +223,8 @@ def build_experiment_tests(experiments=None):
     Create individual unit tests for all experiments within the base borealis_experiments/
     directory. All experiments are run to ensure no exceptions are thrown when they are built
     """
+    from experiment_prototype.experiment_prototype import ExperimentPrototype
+
     experiment_package = 'borealis_experiments'
     experiment_path = f"{BOREALISPATH}/src/{experiment_package}/"
     if not os.path.exists(experiment_path):

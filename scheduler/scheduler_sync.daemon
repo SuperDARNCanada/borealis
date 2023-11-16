@@ -68,7 +68,7 @@ readonly SCD_FILE="${WATCH_DIR}/${RADAR_ID}.scd"
 script_name=$(basename "$0" | cut --fields 1 --delimiter '.')
 readonly LOG_DIR="${HOME}/logs/scheduler"
 mkdir --parents "${LOG_DIR}"
-readonly LOGFILE="${LOG_DIR}/${script_name}_${RADAR_ID}.log"
+readonly LOGFILE="${LOG_DIR}/${script_name}_${RADAR_NAME}.log"
 
 # Define destination
 readonly DEST_DIR="/home/radar/borealis_schedules"
