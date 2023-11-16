@@ -188,6 +188,10 @@ class SWG(object):
                 # 2018 11 23 no longer scheduling twofsound as common time during 'no switching'
                 if "no switching" in line:
                     mode_to_use = modes["no_switching_time"]
+                elif "normalsound" in line:
+                    mode_to_use = modes["normalsound_time"]
+                elif "interleavescan" in line:
+                    mode_to_use = modes["interleaved_time"]
                 else:
                     mode_to_use = modes["htr_common_time"]
 
