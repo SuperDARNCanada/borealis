@@ -119,7 +119,9 @@ class SWG(object):
     def pull_new_swg_file(self):
         """Uses git to grab the new scd updates."""
         cmd = f"cd {self.scd_dir}/{SWG_GIT_REPO_DIR}; git pull origin main"
-        sp.call(cmd, shell=True)
+        print("Pulling schedule repository")
+        shell_output = sp.check_output(cmd, shell=True)
+        print(f"Result: {shell_output}")
 
     def parse_swg_to_scd(self, modes, radar, first_run):
 
@@ -137,6 +139,7 @@ class SWG(object):
         :returns:   List of all the parsed parameters.
         :rtype:     list
         """
+        print("Parsing schedule files")
 
         if first_run:
             month_to_use = datetime.datetime.utcnow()
@@ -147,7 +150,7 @@ class SWG(object):
         month = month_to_use.strftime("%m")
         yearmonth = year + month
         swg_file = f"{self.scd_dir}/{SWG_GIT_REPO_DIR}/{year}/{yearmonth}.swg"
-
+        print(f"Reading schedule file {swg_file}")
         with open(swg_file, 'r') as f:
             swg_lines = f.readlines()
 
@@ -224,6 +227,7 @@ class SWG(object):
                      "experiment": mode_to_use,
                      "scheduling_mode": mode_type}
             parsed_params.append(param)
+            print(f"Found schedule line: {param}")
 
         return parsed_params
 
