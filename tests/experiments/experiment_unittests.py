@@ -32,6 +32,7 @@ import inspect
 import pkgutil
 from pathlib import Path
 from importlib import import_module
+import json
 
 # Need the path append to import within this file
 BOREALISPATH = os.environ['BOREALISPATH']
@@ -278,6 +279,32 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     args = parser.parse_args(raw_args)
 
     os.environ["RADAR_ID"] = args.site_id
+
+    # Read in config.ini file for current site to make necessary directories
+    path = f'{os.environ["BOREALISPATH"]}/config/' \
+           f'{os.environ["RADAR_ID"]}/' \
+           f'{os.environ["RADAR_ID"]}_config.ini'
+    try:
+        with open(path, 'r') as data:
+            raw_config = json.load(data)
+    except OSError:
+        errmsg = f'Cannot open config file at {path}'
+        raise ValueError(errmsg)
+
+    # These directories are required for ExperimentHandler to run
+    data_directory = raw_config["data_directory"]
+    log_directory = raw_config["log_directory"]
+    hdw_path = raw_config['hdw_path']
+    hdw_dat_file = f'{hdw_path}/hdw.dat.{os.environ["RADAR_ID"]}'
+    if not os.path.exists(data_directory):
+        os.makedirs(data_directory)
+    if not os.path.exists(log_directory):
+        os.makedirs(log_directory)
+    if not os.path.exists(hdw_path):
+        os.makedirs(hdw_path)
+    if not os.path.exists(hdw_dat_file):
+        open(hdw_dat_file, 'w')
+
     experiments = args.experiment
 
     if experiments is None:  # Run all unit tests and experiment tests
@@ -300,6 +327,27 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
         result = unittest.main(module=args.module, argv=argv, exit=False, buffer=buffer)
     else:
         result = redirect_to_devnull(unittest.main, module=args.module, argv=argv, exit=False, buffer=buffer)
+
+    # Clean up the directories/files we created
+    try:
+        os.removedirs(data_directory)
+    except OSError:     # If directories not empty, this will fail. That is fine.
+        pass
+    try:
+        os.removedirs(log_directory)
+    except OSError:     # If directories not empty, this will fail. That is fine.
+        pass
+    if os.path.getsize(hdw_dat_file) == 0:
+        try:
+            os.remove(hdw_dat_file)
+        except OSError:     # Path is a directory
+            os.removedirs(hdw_dat_file)
+        else:   # File removed, now clean up directories
+            try:
+                os.removedirs(hdw_path)
+            except OSError:     # If directories not empty, this will fail. That is fine.
+                pass
+
     return result
 
 
