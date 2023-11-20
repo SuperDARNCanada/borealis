@@ -73,7 +73,7 @@ def experiment_parser():
                                                   "e.g. normalscan")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. common, special, or discretionary.")
-    parser.add_argument("--kwargs_string", default='',
+    parser.add_argument("--kwargs_string", nargs='+', default='',
                         help="String of keyword arguments for the experiment.")
 
     return parser
@@ -194,7 +194,8 @@ def experiment_handler(semaphore, args):
     if args.kwargs_string:
         # parse kwargs and pass to experiment
         kwargs = {}
-        kwargs_list = args.kwargs_string.split(',')
+        kwargs_list = ' '.join(args.kwargs_string).split(',')
+        log.info('Kwargs specified', kwargs_string=args.kwargs_string, parsed_kwargs=kwargs_list)
         for element in kwargs_list:
             kwarg = element.split('=')
             kwargs[kwarg[0]] = kwarg[1]
