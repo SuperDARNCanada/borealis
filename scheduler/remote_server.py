@@ -48,9 +48,9 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     :rtype:     str
     """
 
-    borealis_path=os.environ['BOREALISPATH']
+    borealis_path = os.environ['BOREALISPATH']
     if kwargs_string:
-        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode} --kwargs_string {kwargs_string}'"
+        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode} --kwargs {kwargs_string}'"
     else:
         start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}'"
 
@@ -60,6 +60,7 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
         cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
     cmd_str = dt.strftime(cmd_str)
     return cmd_str
+
 
 def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
     """Plots the timeline to better visualize runtime.

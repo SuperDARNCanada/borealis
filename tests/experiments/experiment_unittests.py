@@ -53,7 +53,7 @@ def redirect_to_devnull(func, *args, **kwargs):
     return result
 
 
-def ehmain(experiment_name='normalscan', scheduling_mode='discretionary'):
+def ehmain(experiment_name='normalscan', scheduling_mode='discretionary', **kwargs):
     """
     Calls the functions within experiment handler that verify an experiment
 
@@ -63,11 +63,13 @@ def ehmain(experiment_name='normalscan', scheduling_mode='discretionary'):
     :type   experiment_name: str
     :param  scheduling_mode: The scheduling mode to run. Defaults to 'discretionary'
     :type   scheduling_mode: str
+    :param  kwargs: The keyword arguments for the experiment
+    :type   kwargs: dict
     """
     import experiment_handler as eh
 
     experiment = eh.retrieve_experiment(experiment_name)
-    exp = experiment()
+    exp = experiment(**kwargs)
     exp._set_scheduling_mode(scheduling_mode)
     exp.build_scans()
 
@@ -219,7 +221,7 @@ def exception_test_generator(module_name, exception, exception_message):
     return test
 
 
-def build_experiment_tests(experiments=None):
+def build_experiment_tests(experiments=None, kwargs_string=""):
     """
     Create individual unit tests for all experiments within the base borealis_experiments/
     directory. All experiments are run to ensure no exceptions are thrown when they are built
@@ -230,6 +232,13 @@ def build_experiment_tests(experiments=None):
     experiment_path = f"{BOREALISPATH}/src/{experiment_package}/"
     if not os.path.exists(experiment_path):
         raise OSError(f"Error: experiment path {experiment_path} is invalid")
+
+    # parse kwargs and pass to experiment
+    kwargs = {}
+    if kwargs_string:
+        for element in kwargs_string.split(' '):
+            kwarg = element.split('=')
+            kwargs[kwarg[0]] = kwarg[1]
 
     # Iterate through all modules in the borealis_experiments directory
     for (_, name, _) in pkgutil.iter_modules([Path(experiment_path)]):
@@ -243,13 +252,13 @@ def build_experiment_tests(experiments=None):
                 if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
                     # Only create a test if the current attribute is the experiment itself
                     if 'ExperimentPrototype' not in str(attribute):
-                        test = experiment_test_generator(name)
+                        test = experiment_test_generator(name, **kwargs)
                         # setattr make the "test" function a method within TestActiveExperiments called
                         # "test_[name]" which can be run via unittest.main()
                         setattr(TestActiveExperiments, f"test_{name}", test)
 
 
-def experiment_test_generator(module_name):
+def experiment_test_generator(module_name, **kwargs):
     """
     Generate a single test for a given experiment name. The test will try to run the experiment, 
     and if any exceptions are thrown (i.e. the experiment is built incorrectly) the test will fail.
@@ -259,7 +268,7 @@ def experiment_test_generator(module_name):
     """
     def test(self):
         try:
-            redirect_to_devnull(ehmain, experiment_name=module_name)
+            redirect_to_devnull(ehmain, experiment_name=module_name, **kwargs)
         except Exception as err:
             self.fail(err)
     return test
@@ -273,6 +282,9 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     parser.add_argument("--experiments", required=False, nargs="+", default=None,
                         help="Only run the experiments specified after this option. Experiments \
                             specified must exist within the top-level Borealis experiments directory.")
+    parser.add_argument("--kwargs", required=False, nargs="+", default="",
+                        help="Keyword arguments to pass to the experiments. Note that kwargs are passed to all "
+                             "experiments specified.")
     parser.add_argument("--module", required=False, default='__main__',
                         help="If calling from another python file, this should be set to "
                              "'experiment_unittests' in order to properly work.")
@@ -312,7 +324,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
         build_experiment_tests()
         argv = None
     else:  # Only test specified experiments
-        build_experiment_tests(experiments)
+        build_experiment_tests(experiments, args.kwargs)
         exp_tests = []
         for exp in experiments:
             # Check experiment exists

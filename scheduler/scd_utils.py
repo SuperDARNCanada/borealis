@@ -109,7 +109,10 @@ class SCDUtils(object):
         # See if the experiment itself would run
         # This is a full path to /.../{site}.scd file, only want {site}
         site_name = self.scd_filename.split('/')[-1].replace('.scd', '')
-        args = ['--site_id', site_name, '--experiments', experiment, '--module', 'experiment_unittests']
+        args = ['--site_id', site_name,
+                '--experiments', experiment,
+                '--kwargs', kwargs_string,
+                '--module', 'experiment_unittests']
         test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
         if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
             raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
@@ -142,13 +145,10 @@ class SCDUtils(object):
         scd_lines = []
 
         for num, line in enumerate(raw_scd):
-            if len(line) not in [6, 7]:
-                raise ValueError(f"Line {num} has incorrect number of arguments; requires 6 or 7. Line: {line}")
-            # date time experiment mode priority duration (kwargs if any)
-            if len(line) == 6:
-                scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
-            else:
-                scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], line[6]))
+            kwargs = " ".join(line[6:])
+
+            # date time experiment mode priority duration [kwargs]
+            scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], kwargs))
 
         if len(scd_lines) == 0:
             print('WARNING: SCD file empty; default normalscan will run')

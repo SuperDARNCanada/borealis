@@ -123,14 +123,15 @@ def steamed_hams_parser():
                                          "modules based on this mode. Commonly 'release'.")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. 'common', 'special', or 'discretionary'.")
-    parser.add_argument("--kwargs_string", default='', 
-                        help="String of keyword arguments for the experiment.")
+    parser.add_argument("--kwargs", nargs='+', default='',
+                        help="Keyword arguments for the experiment. Each must be formatted as kw=val")
 
     return parser
 
 
 parser = steamed_hams_parser()
 args = parser.parse_args()
+kwargs = ' '.join(args.kwargs_string)
 
 if args.run_mode == "release":
     # python optimized, no debug for regular operations
@@ -190,7 +191,7 @@ modules['usrp_driver'] = modules['usrp_driver'] + " " + f'{mode} --c_debug_opts=
 
 if args.kwargs_string:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
-                                    args.scheduling_mode_type + " --kwargs_string " + args.kwargs_string
+                                    args.scheduling_mode_type + " --kwargs " + kwargs
 else:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
                                     args.scheduling_mode_type
