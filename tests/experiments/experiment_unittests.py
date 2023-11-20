@@ -221,7 +221,7 @@ def exception_test_generator(module_name, exception, exception_message):
     return test
 
 
-def build_experiment_tests(experiments=None, kwargs_string=""):
+def build_experiment_tests(experiments=None, kwargs=None):
     """
     Create individual unit tests for all experiments within the base borealis_experiments/
     directory. All experiments are run to ensure no exceptions are thrown when they are built
@@ -235,8 +235,8 @@ def build_experiment_tests(experiments=None, kwargs_string=""):
 
     # parse kwargs and pass to experiment
     kwargs = {}
-    if kwargs_string:
-        for element in kwargs_string.split(' '):
+    if kwargs:
+        for element in kwargs:
             kwarg = element.split('=')
             kwargs[kwarg[0]] = kwarg[1]
 
