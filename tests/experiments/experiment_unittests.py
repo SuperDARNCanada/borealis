@@ -270,7 +270,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     parser.add_argument("--site_id", required=False, default="sas",
                         choices=["sas", "pgr", "inv", "rkn", "cly", "lab"],
                         help="Site ID of site to test experiments as. Defaults to sas.")
-    parser.add_argument("--experiment", required=False, nargs="+", default=None,
+    parser.add_argument("--experiments", required=False, nargs="+", default=None,
                         help="Only run the experiments specified after this option. Experiments \
                             specified must exist within the top-level Borealis experiments directory.")
     parser.add_argument("--module", required=False, default='__main__',
@@ -305,8 +305,8 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     if not os.path.exists(hdw_dat_file):
         open(hdw_dat_file, 'w')
 
-    experiments = args.experiment
-
+    experiments = args.experiments
+    print(f"Running tests on experiments {experiments}")
     if experiments is None:  # Run all unit tests and experiment tests
         build_unit_tests()
         build_experiment_tests()

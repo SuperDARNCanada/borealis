@@ -109,7 +109,7 @@ class SCDUtils(object):
         # See if the experiment itself would run
         # This is a full path to /.../{site}.scd file, only want {site}
         site_name = self.scd_filename.split('/')[-1].replace('.scd', '')
-        args = ['--site_id', site_name, '--experiment', experiment, '--module', 'experiment_unittests']
+        args = ['--site_id', site_name, '--experiments', experiment, '--module', 'experiment_unittests']
         test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
         if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
             raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
