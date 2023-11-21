@@ -234,11 +234,11 @@ def build_experiment_tests(experiments=None, kwargs=None):
         raise OSError(f"Error: experiment path {experiment_path} is invalid")
 
     # parse kwargs and pass to experiment
-    kwargs = {}
+    kwargs_dict = {}
     if kwargs:
         for element in kwargs:
             kwarg = element.split('=')
-            kwargs[kwarg[0]] = kwarg[1]
+            kwargs_dict[kwarg[0]] = kwarg[1]
 
     # Iterate through all modules in the borealis_experiments directory
     for (_, name, _) in pkgutil.iter_modules([Path(experiment_path)]):
@@ -252,7 +252,7 @@ def build_experiment_tests(experiments=None, kwargs=None):
                 if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
                     # Only create a test if the current attribute is the experiment itself
                     if 'ExperimentPrototype' not in str(attribute):
-                        test = experiment_test_generator(name, **kwargs)
+                        test = experiment_test_generator(name, **kwargs_dict)
                         # setattr make the "test" function a method within TestActiveExperiments called
                         # "test_[name]" which can be run via unittest.main()
                         setattr(TestActiveExperiments, f"test_{name}", test)
