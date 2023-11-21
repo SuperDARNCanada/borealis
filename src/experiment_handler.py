@@ -192,10 +192,10 @@ def experiment_handler(semaphore, args):
             experiment_update = True
             log.debug("experiment contains an updated method", experiment_name=Experiment.experiment_name)
 
-    if args.kwargs_string:
+    if args.kwargs:
         # parse kwargs and pass to experiment
         kwargs = {}
-        for element in args.kwargs_string:
+        for element in args.kwargs:
             kwarg = element.split('=')
             kwargs[kwarg[0]] = kwarg[1]
         exp = Experiment(**kwargs)

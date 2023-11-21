@@ -131,7 +131,7 @@ def steamed_hams_parser():
 
 parser = steamed_hams_parser()
 args = parser.parse_args()
-kwargs = ' '.join(args.kwargs_string)
+kwargs = ' '.join(args.kwargs)
 
 if args.run_mode == "release":
     # python optimized, no debug for regular operations
@@ -189,7 +189,7 @@ for mod in modules.keys():
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 modules['usrp_driver'] = modules['usrp_driver'] + " " + f'{mode} --c_debug_opts="{c_debug_opts}"'
 
-if args.kwargs_string:
+if args.kwargs:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
                                     args.scheduling_mode_type + " --kwargs " + kwargs
 else:
