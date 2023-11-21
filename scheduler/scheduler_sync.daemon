@@ -106,13 +106,13 @@ do
             printf "Sending %s to %s:%s via port %s\n" "${SCD_FILE}" "${SCHEDULER_DEST}" "${DEST_DIR}" "${DEST_PORT}"
             retval=1
             while [[ $retval -ne 0 ]]; do
-                rsync -av --rsh="ssh -n -p $DEST_PORT" "${SCD_FILE}" "${SCHEDULER_DEST}:${DEST_DIR}"
+                rsync -av -p -e "ssh -p $DEST_PORT" "${SCD_FILE}" "${SCHEDULER_DEST}:${DEST_DIR}"
 
                 ### Check that the schedule successfully made it to site ###
                 # Get the md5sum of the remote schedule file
-                ssh -n -p "$DEST_PORT" "${SCHEDULER_DEST}" "md5sum --binary $DEST_DIR/$FILE" > "$HOME/tmp.md5"
+                ssh -n -p "$DEST_PORT" "${SCHEDULER_DEST}" "md5sum --binary ${DEST_DIR}/${FILE}" > "${HOME}/tmp.md5"
                 # Modify tmp.md5 so checksum can be compared to source schedule file
-                sed -i "s~$DEST_DIR/$FILE~$WATCH_DIR/$FILE~g" "$HOME/tmp.md5"
+                sed -i "s~${DEST_DIR}/${FILE}~${WATCH_DIR}/${FILE}~g" "${HOME}/tmp.md5"
                 # Verify md5sum of destination file is same as source
                 md5sum --check --status "$HOME/tmp.md5"
                 retval=$?
