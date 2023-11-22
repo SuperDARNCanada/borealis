@@ -26,7 +26,7 @@ def main():
                                                            'special, discretionary')
     parser.add_argument('--prio', default=0, help='The priority of the line')
     parser.add_argument('--duration', default='-', help='The duration of the line')
-    parser.add_argument('--kwargs', nargs='+', default='', help='Keyword arguments for the experiment')
+    parser.add_argument('--kwargs', nargs='+', help='Keyword arguments for the experiment')
 
     args = parser.parse_args()
 
@@ -36,7 +36,9 @@ def main():
     scd_file = f"{scd_dir}/{site_id}.scd"
     scd_util = scd_utils.SCDUtils(scd_file)
 
-    kwargs = ' '.join(args.kwargs)
+    kwargs = ''
+    if args.kwargs:
+        kwargs = ' '.join(args.kwargs).strip()
 
     if args.add:
         scd_util.add_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, kwargs)

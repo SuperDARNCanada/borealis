@@ -235,8 +235,10 @@ def build_experiment_tests(experiments=None, kwargs=None):
 
     # parse kwargs and pass to experiment
     kwargs_dict = {}
-    if kwargs:
+    if kwargs is not None:
         for element in kwargs:
+            if element is None:
+                continue
             kwarg = element.split('=')
             kwargs_dict[kwarg[0]] = kwarg[1]
 
@@ -282,7 +284,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     parser.add_argument("--experiments", required=False, nargs="+", default=None,
                         help="Only run the experiments specified after this option. Experiments \
                             specified must exist within the top-level Borealis experiments directory.")
-    parser.add_argument("--kwargs", required=False, nargs="+", default="",
+    parser.add_argument("--kwargs", required=False, nargs="+", default=None,
                         help="Keyword arguments to pass to the experiments. Note that kwargs are passed to all "
                              "experiments specified.")
     parser.add_argument("--module", required=False, default='__main__',

@@ -59,7 +59,7 @@ class SCDUtils(object):
         self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {kwargs_string}"
         self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
-    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string=''):
+    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string=None):
         """
         Checks the line parameters to see if they are valid and then returns a dict with all the
         valid fields.
@@ -76,7 +76,7 @@ class SCDUtils(object):
         :type   prio:               str or int
         :param  duration:           an optional duration to run for.
         :type   duration:           str
-        :param  kwargs_string:      kwargs for the experiment instantiation. (Default value = '')
+        :param  kwargs_string:      kwargs for the experiment instantiation. Default None
         :type   kwargs_string:      str
 
         :returns:   Dict of line params.
@@ -90,6 +90,8 @@ class SCDUtils(object):
 
         if not isinstance(kwargs_string, str):
             raise ValueError("kwargs_string should be a string")
+        if kwargs_string == '':
+            kwargs_string = None
 
         if not (0 <= int(prio) <= 20):
             raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
@@ -145,7 +147,7 @@ class SCDUtils(object):
         scd_lines = []
 
         for num, line in enumerate(raw_scd):
-            kwargs = " ".join(line[6:])
+            kwargs = " ".join(line[6:]).strip()
 
             # date time experiment mode priority duration [kwargs]
             scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], kwargs))
