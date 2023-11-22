@@ -1204,13 +1204,8 @@ def max_coupling_card():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(usage=usage_msg())
-    parser.add_argument("-t", "--towers", help="Should antenna support towers be included?",
-                        action='store_true')
-    parser.add_argument("-g", "--guylines", help="Should antenna support tower guylines be included?",
-                        action='store_true')
-    parser.add_argument("-m", "--antennas", help="How many antennas in the main array?", default=16, type=int)
-    parser.add_argument("-i", "--int_antennas", help="How many antennas in the interferometer array?", default=4,
-                        type=int)
+
+    # Options related to transmitting on a subset of antennas
     problem_group = parser.add_argument_group("Array Problems")
     problem_group.add_argument("-a", "--antennas_down", help="Indices of antennas which are receiving but not "
                                                              "transmitting, e.g. '5-7,11'. This is to model if "
@@ -1221,11 +1216,23 @@ if __name__ == '__main__':
                                                                  "nor transmitting, e.g. if an N200 is down. Format "
                                                                  "as '5-7,11'",
                                default="", type=str)
+
+    # Operating parameter options
     parser.add_argument("-b", "--beam", help="Beam to transmit on?", default=BORESIGHT_BEAM, type=float)
     parser.add_argument("-f", "--frequency", help="Frequency to transmit on? MHz", default=10.5, type=float)
     parser.add_argument("-F", "--without_fence", help="Generate the array without fence", action="store_true")
     parser.add_argument("-B", "--broadened_beam", help="Use a broadened beam phase distribution",
                         action="store_true")
+    parser.add_argument("-t", "--towers", help="Should antenna support towers be included?",
+                        action='store_true')
+    parser.add_argument("-g", "--guylines", help="Should antenna support tower guylines be included?",
+                        action='store_true')
+    parser.add_argument("-m", "--antennas", help="How many antennas in the main array?", default=16, type=int)
+    parser.add_argument("-i", "--int_antennas", help="How many antennas in the interferometer array?", default=4,
+                        type=int)
+    parser.add_argument("-G", "--no-ground", help='Do not include ground plane', action='store_true')
+
+    # Options related to setting the array geometry
     geometry_group = parser.add_argument_group("Array Geometry")
     geometry_group.add_argument("-s", "--antenna_spacing", help="What is the spacing between antennas? (m)",
                                 default=15.24, type=float)
@@ -1235,6 +1242,7 @@ if __name__ == '__main__':
                                 default=-100.0, type=float)
     geometry_group.add_argument("-z", "--int_z_spacing", help="The z spacing between main and int arrays? (m)",
                                 default=0.0, type=float)
+
     parser.add_argument("-o", "--output_file", help="Name of NEC input file this program creates",
                         default="sd_array_nec_input.nec")
 
@@ -1381,7 +1389,9 @@ if __name__ == '__main__':
         if args.int_antennas > 0:
             for i_ant in int_antenna_objects:
                 f.write(i_ant.repr_loads())
-        f.write(ground_card())
+
+        if not args.no_ground:
+            f.write(ground_card())
         f.write(extended_kernel_card())
         f.write(max_coupling_card())
         for m_ant in main_antenna_objects:
