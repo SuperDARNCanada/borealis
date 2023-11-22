@@ -235,12 +235,15 @@ def build_experiment_tests(experiments=None, kwargs=None):
 
     # parse kwargs and pass to experiment
     kwargs_dict = {}
-    if kwargs is not None:
+    if kwargs:
         for element in kwargs:
-            if element is None:
+            if element == '':
                 continue
             kwarg = element.split('=')
-            kwargs_dict[kwarg[0]] = kwarg[1]
+            if len(kwarg) == 2:
+                kwargs_dict[kwarg[0]] = kwarg[1]
+            else:
+                raise ValueError(f"Bad kwarg: {element}")
 
     # Iterate through all modules in the borealis_experiments directory
     for (_, name, _) in pkgutil.iter_modules([Path(experiment_path)]):
@@ -284,7 +287,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     parser.add_argument("--experiments", required=False, nargs="+", default=None,
                         help="Only run the experiments specified after this option. Experiments \
                             specified must exist within the top-level Borealis experiments directory.")
-    parser.add_argument("--kwargs", required=False, nargs="+", default=None,
+    parser.add_argument("--kwargs", required=False, nargs="+", default=list,
                         help="Keyword arguments to pass to the experiments. Note that kwargs are passed to all "
                              "experiments specified.")
     parser.add_argument("--module", required=False, default='__main__',

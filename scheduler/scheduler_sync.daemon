@@ -52,6 +52,7 @@ readonly RADAR_ID=$(echo "${RADAR_NAME}" | cut --fields 1 --delimiter '_')
 
 # Import some required settings for sending files over the internet
 source "${HOME}/.scheduler"
+source "${HOME}/.profile"
 
 # Check that RADAR_NAME is defined in RADAR_PORTS, and thus is a valid input
 if [[ ! -v "RADAR_PORTS[${RADAR_NAME^^}]" ]]; then    # ^^ makes $RADAR_NAME all caps
