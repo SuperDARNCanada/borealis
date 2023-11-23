@@ -49,18 +49,19 @@ def main():
                 log.info("error converting")
                 continue
 
-            fit_data = fitacf._fit(converted[0])
-            tmp = fit_data.copy()
+            for rec in converted:
+                fit_data = fitacf._fit(rec)
+                tmp = fit_data.copy()
 
-            # Can't jsonify numpy so we convert to native types for realtime purposes.
-            for k, v in fit_data.items():
-                if hasattr(v, 'dtype'):
-                    if isinstance(v, np.ndarray):
-                        tmp[k] = v.tolist()
-                    else:
-                        tmp[k] = v.item()
+                # Can't jsonify numpy so we convert to native types for realtime purposes.
+                for k, v in fit_data.items():
+                    if hasattr(v, 'dtype'):
+                        if isinstance(v, np.ndarray):
+                            tmp[k] = v.tolist()
+                        else:
+                            tmp[k] = v.item()
 
-            q.put(tmp)
+                q.put(tmp)
 
     def handle_remote_connection():
         """
