@@ -16,4 +16,4 @@ matplotlib
 sphinx-rtd-theme
 structlog
 h5py
-pydantic
+pydantic<=1.10.13
