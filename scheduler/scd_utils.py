@@ -108,7 +108,7 @@ class SCDUtils(object):
 
         # See if the experiment itself would run
         # This is a full path to /.../{site}.scd file, only want {site}
-        site_name = self.scd_filename.split('/')[-1].replace('.scd', '')
+        site_name = os.path.basename(self.scd_filename).replace('.scd', '')
         args = ['--site_id', site_name,
                 '--experiments', experiment,
                 '--kwargs', kwargs_string,
