@@ -107,7 +107,7 @@ do
             printf "Sending %s to %s:%s via port %s\n" "${SCD_FILE}" "${SCHEDULER_DEST}" "${DEST_DIR}" "${DEST_PORT}"
             retval=1
             while [[ $retval -ne 0 ]]; do
-                rsync -av -p -e "ssh -p $DEST_PORT" "${SCD_FILE}" "${SCHEDULER_DEST}:${DEST_DIR}"
+                rsync --archive --verbose --perms --rsh="ssh -p $DEST_PORT" "${SCD_FILE}" "${SCHEDULER_DEST}:${DEST_DIR}"
 
                 ### Check that the schedule successfully made it to site ###
                 # Get the md5sum of the remote schedule file
