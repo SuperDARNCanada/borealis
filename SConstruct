@@ -24,7 +24,7 @@ if GetOption('help'):
     Help(OSTRICH_SCONS_HELP)
 else:
     # Get the base construction environment
-    _BASE_ENV = get_base_env(tools=['default', 'protoc','nvcc'])
+    _BASE_ENV = get_base_env(tools=['default', 'protoc'])
     # Build every selected flavor
     for flavor in _BASE_ENV.flavors:
         sprint('+ Processing flavor %s ...', flavor)

@@ -215,8 +215,9 @@ screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"
 with open(screenrc_file, 'w') as f:
     f.write(screenrc)
 
+# When using OpenSUSE 15.5, there is a file generated on boot in shared memory that must be kept
+sp.call("find /dev/shm/* -type f -not -name 'sem.haveged_sem' -delete", shell=True)
 # Clean up any residuals in shared memory and dead screens
-sp.call("rm -r /dev/shm/*", shell=True)
 sp.call("screen -X -S borealis quit", shell=True)
 
 # Give the os a chance to free all previously used sockets, etc.
