@@ -2,11 +2,10 @@
 # Copyright 2023 SuperDARN Canada, University of Saskatchewan
 # Author: Theodore Kolkman
 #
-# This script continuously monitors the Borealis schedule files on SuperDARN-CSSDP using inotify
+# This script continuously monitors the Borealis schedule files on a computer using inotify
 # and rsync's the files to each site whenever a change is detected. 
 #
-# To sync files to all sites, even those hidden behind a firewall (PGR), Maxwell is used. Rsync
-# sync's via Maxwell to all remote sites, utilizing the autossh link between Maxwell and all site
+# Rsync sync's to all remote sites, utilizing the autossh link between the computer and all site
 # computers.
 #
 # This script should be run via a systemd daemon with the following service file:
@@ -15,8 +14,8 @@
 #    Description=Scheduler synchronization daemon for %i
 #
 #    [Service]
-#    User=mrcopy
-#    ExecStart=/home/mrcopy/borealis/scheduler/scheduler_sync.daemon %i
+#    User=radman
+#    ExecStart=/home/radman/borealis/scheduler/scheduler_sync.daemon %i
 #    RuntimeMaxSec=3600s
 #    Restart=always
 #
@@ -38,7 +37,7 @@
 #       - file must also define SCHEDULER_DEST as SCHEDULER=username@host
 #   - SLACK_WEBHOOK_[RADAR_ID] defined in ${HOME}/.profile, where RADAR_ID is SAS, PGR, etc.
 #
-# Parameter RADAR_NAME: [sas, pgr, rkn, inv, cly]_[bore, main] e.g. sas_bore
+# Parameter RADAR_NAME: [sas, pgr, rkn, inv, cly]_[bore, main] e.g. sas_bore or inv_main
 
 ###################################################################################################
 

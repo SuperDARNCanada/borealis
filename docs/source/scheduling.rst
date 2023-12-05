@@ -43,6 +43,26 @@ Here are the steps to configure scheduling:
     - Configure scheduler sync daemon script to sync to the various Borealis radar computers.
     - Edit the ``local_scd_server.py`` with the correct experiments and radars belonging to your
       institution.
+    - Configure environment variables necessary to run the scheduler. Create a file ``{HOME}/.scheduler``
+      and add the lines: ::
+
+        declare -A RADAR_PORTS=(["AAA_BBBB"]=xxxxx ["CCC_DDDD"]=yyyy)
+        SCHEDULER_DEST="username@host"
+
+      Here "AAA" and "CCC" are three-letter site IDs, in all caps, and "BBBB" and "DDDD" are computer names,
+      such as BORE or MAIN, also in all caps. xxxxx and yyyyy are port numbers needed to connect to the site computers.
+      Two ports are shown, but if you have more or less site computers you can modify the entries of the array as
+      needed. SCHEDULER_DEST defines the username and hostname for the connection to the site computers, assuming all
+      site computers managed have the same username and hostname. This can be achieved if using autossh for persistent
+      ssh connections between the computer and site computers.
+    - If using Slack as a platform, you can add the environment variable ``SLACK_WEBHOOK_[RADAR_ID]`` to
+      ``{HOME}/.profile`` to get notifications whenever the schedule is changed on the server computer and synced
+      with a site computer. For example, we define: ::
+
+        export SLACK_WEBHOOK_SAS=https://hooks.slack.com/services/{specific url here}
+
+      which sends a message to a specific channel of our Slack workspace whenever the scheduler makes changes to
+      ``sas.scd``.
     - Configure a system service or reboot ``cron`` task to run the python3 script
       ``local_scd_server.py`` at boot. This script requires the argument ``--scd-dir`` for the
       schedules directory as well as ``--emails-filepath`` which should be a text file of emails on
