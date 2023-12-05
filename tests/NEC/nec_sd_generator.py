@@ -1242,6 +1242,10 @@ if __name__ == '__main__':
                                 default=-100.0, type=float)
     geometry_group.add_argument("-z", "--int_z_spacing", help="The z spacing between main and int arrays? (m)",
                                 default=0.0, type=float)
+    geometry_group.add_argument('-M', '--reflector_length', help="The length of main reflector fence wires (m)",
+                                type=float)
+    geometry_group.add_argument('-I', '--intf_reflector_length', help="The length of interferometer reflector fence wires (m)",
+                                type=float)
 
     parser.add_argument("-o", "--output_file", help="Name of NEC input file this program creates",
                         default="sd_array_nec_input.nec")
@@ -1365,11 +1369,17 @@ if __name__ == '__main__':
 
         if not args.without_fence:
             if args.antennas > 0:
-                reflector_length = (args.antennas + 1) * args.antenna_spacing
+                if args.reflector_length:
+                    reflector_length = args.reflector_length
+                else:
+                    reflector_length = (args.antennas + 1) * args.antenna_spacing
                 reflector_spacing = 0.707
                 f.write(str(Reflector(reflector_length, reflector_spacing, num_wires=21)))
             if args.int_antennas > 0:
-                int_reflector_length = (args.int_antennas + 1) * args.antenna_spacing
+                if args.intf_reflector_length:
+                    int_reflector_length = args.intf_reflector_length
+                else:
+                    int_reflector_length = (args.int_antennas + 1) * args.antenna_spacing
                 int_reflector_spacing = 0.707
                 f.write(str(Reflector(int_reflector_length, int_reflector_spacing,
                                       global_x=args.int_x_spacing, global_y=args.int_y_spacing,
