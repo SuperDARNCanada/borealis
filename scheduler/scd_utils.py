@@ -59,7 +59,7 @@ class SCDUtils(object):
         self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs_string}"
         self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
-    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string='', embargo=''):
+    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string='', embargo=False):
         """
         Checks the line parameters to see if they are valid and then returns a dict with all the
         valid fields.
@@ -78,8 +78,8 @@ class SCDUtils(object):
         :type   duration:           str
         :param  kwargs_string:      kwargs for the experiment instantiation. Default None
         :type   kwargs_string:      str
-        :param  embargo:            flag for embargoing files. (Default value = '')
-        :type   embargo:            str
+        :param  embargo:            flag for embargoing files. (Default value = False)
+        :type   embargo:            bool
 
         :returns:   Dict of line params.
         :rtype:     dict
@@ -148,10 +148,15 @@ class SCDUtils(object):
         scd_lines = []
 
         for num, line in enumerate(raw_scd):
-            kwargs = " ".join(line[6:])
+            kwarg_entries = line[6:]
+            embargo_flag = '--embargo' in kwarg_entries
+            if embargo_flag:
+                kwarg_entries.remove('--embargo')
+            kwargs = " ".join(kwarg_entries)
 
             # date time experiment mode priority duration [kwargs]
-            scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], kwargs))
+            scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], kwargs,
+                                             embargo=embargo_flag))
 
         if len(scd_lines) == 0:
             print('WARNING: SCD file empty; default normalscan will run')
@@ -175,7 +180,7 @@ class SCDUtils(object):
                                         experiment=line_dict["experiment"],
                                         scheduling_mode=line_dict["scheduling_mode"],
                                         duration=line_dict["duration"],
-                                        embargo=line_dict["embargo"],
+                                        embargo='--embargo' if line_dict["embargo"] else '',
                                         kwargs_string=line_dict["kwargs_string"])
         return line_str
 
@@ -201,7 +206,7 @@ class SCDUtils(object):
                 f.write(f"{line}\n")
 
     def add_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
-                 duration='-', kwargs_string='', embargo=''):
+                 duration='-', kwargs_string='', embargo=False):
         """
         Adds a new line to the schedule.
 
@@ -219,13 +224,13 @@ class SCDUtils(object):
         :type   duration:           str
         :param  kwargs_string:      kwargs for the experiment instantiation. (Default value = '')
         :type   kwargs_string:      str
-        :param  embargo:            flag for embargoing files. (Default value = '')
-        :type   embargo:            str
+        :param  embargo:            flag for embargoing files. (Default value = False)
+        :type   embargo:            bool
 
         :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
         new_line = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string,
-                                   embargo)
+                                   embargo=embargo)
 
         scd_lines = self.read_scd()
 
@@ -264,14 +269,14 @@ class SCDUtils(object):
         :type   duration:           str
         :param  kwargs_string:      kwargs for the experiment instantiation. (Default value = '')
         :type   kwargs_string:      str
-        :param  embargo:            flag for embargoing files. (Default value = '')
-        :type   embargo:            str
+        :param  embargo:            flag for embargoing files. (Default value = False)
+        :type   embargo:            bool
 
         :raises ValueError: If line parameters are invalid or if line does not exist.
         """
 
         line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string,
-                                     embargo)
+                                     embargo=embargo)
 
         scd_lines = self.read_scd()
         try:

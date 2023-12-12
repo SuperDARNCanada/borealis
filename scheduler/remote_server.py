@@ -12,7 +12,6 @@
 
 import inotify.adapters
 import os
-import datetime
 import argparse
 import collections
 import copy
@@ -53,7 +52,7 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
 
     start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}"
     if embargo:
-        start_cmd += f" {embargo}"
+        start_cmd += f" --embargo"
     if kwargs_string:
         start_cmd += f" --kwargs_string {kwargs_string}"
     start_cmd += "'"    # Terminate the echo string
