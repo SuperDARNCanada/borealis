@@ -79,7 +79,18 @@ EXPERIMENTS = {
         "no_switching_time":    "normalscan",
         "interleaved_time":     "interleavedscan",
         "normalsound_time":     "normalsound"
-    }
+    },
+    "lab": {
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
+     }
 }
 
 
