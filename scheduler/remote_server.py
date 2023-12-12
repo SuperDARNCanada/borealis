@@ -27,7 +27,7 @@ import email_utils
 import remote_server_options as rso
 
 
-def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string='', embargo=''):
+def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string='', embargo=False):
     """
     Turns an experiment line from the scd into a formatted atq command.
 
@@ -43,7 +43,7 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     :param  kwargs_string:      String of keyword arguments to run steamed hams (Default value = '')
     :type   kwargs_string:      str
     :param  embargo:            Option to embargo the data (makes the CPID negative)
-    :type   embargo:            str
+    :type   embargo:            bool
 
     :returns:   Formatted atq str.
     :rtype:     str
