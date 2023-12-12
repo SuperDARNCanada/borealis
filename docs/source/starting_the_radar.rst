@@ -55,20 +55,41 @@ This script should be added to the control computer boot-up scripts so that it g
 of scheduled commands.
 
 ------------------
-Automated restarts
+Automated Restarts
 ------------------
 
-Occasionally, the Borealis software stops due to some software or computer issue.
-In order to automatically restart the radar software when this occurs, and to avoid lengthy
-downtimes, a script called restart_borealis.py was written. This script is called via crontab
-periodically (every 10 minutes).
-The script checks for a config file, finds out where the data directory is from the configuration
-file, and then looks for the data file that is currently being written to.
-If the file was written to recently, it does nothing, if a certain threshold of time has
-passed since the file was written to, then it assumes that the radar has stopped running
-properly, and attempts to restart it.
+Occasionally, the Borealis software stops due to some software or computer issue. To automatically
+restart the radar software when this occurs, and to avoid lengthy downtimes, the scripts
+``restart_borealis.daemon`` and ``restart_borealis.py`` were created. 
 
-The crontab entry is shown below: ::
+``restart_borealis.py`` finds the directory Borealis writes to and checks the file most recently
+written to. If the file hasn't been written to within a specified time period, the script assumes
+the radar has stopped running and tries to restart it using ``stop_radar.sh`` and
+``start_radar.sh``.
+
+``restart_borealis.daemon`` runs continuously, periodically executing ``restart_borealis.py``. If
+the radar is restarted consecutive times, an alert is sent to our group's Slack workspace to notify
+us that the radar likely has a problem requiring manual intervention. For more information on
+integrating Slack alerts, see `here
+<https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`__. 
+
+To set up the daemon using ``systemd``, add a ``.service`` file within ``/usr/lib/systemd/system/``
+(for openSUSE). For example, ::
+
+    [Unit]
+    Description=Restart borealis daemon
+
+    [Service]
+    User=radar
+    ExecStart=/home/radar/borealis/scripts/restart_borealis.daemon
+    Restart=always
+
+    [Install]
+    WantedBy=multi-user.target
+
+Then, ``enable`` and ``start`` the daemon using the ``systemctl`` commands.
+
+Alternatively, ``restart_borealis.py`` can be run via ``crontab``, as shown below: ::
 
     */10 * * * * . $HOME/.profile; /usr/bin/python3 /home/radar/borealis/scripts/restart_borealis.py >> /home/radar/borealis/restart_log.txt 2>&1
 

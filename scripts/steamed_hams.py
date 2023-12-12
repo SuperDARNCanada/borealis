@@ -123,15 +123,16 @@ def steamed_hams_parser():
                                          "modules based on this mode. Commonly 'release'.")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. 'common', 'special', or 'discretionary'.")
-    parser.add_argument("--kwargs_string", default='', 
-                        help="String of keyword arguments for the experiment.")
     parser.add_argument("--embargo", action="store_true", help="Embargo the file (makes the CPID negative)")
+    parser.add_argument("--kwargs", nargs='+', default='',
+                        help="Keyword arguments for the experiment. Each must be formatted as kw=val")
 
     return parser
 
 
 parser = steamed_hams_parser()
 args = parser.parse_args()
+kwargs = ' '.join(args.kwargs)
 
 if args.run_mode == "release":
     # python optimized, no debug for regular operations
@@ -192,8 +193,8 @@ modules['experiment_handler'] = modules['experiment_handler'] + " " + args.exper
                                 args.scheduling_mode_type
 if args.embargo:
     modules['experiment_handler'] += " --embargo"
-if args.kwargs_string:
-    modules['experiment_handler'] += " --kwargs_string " + args.kwargs_string
+if args.kwargs:
+    modules['experiment_handler'] += " --kwargs " + kwargs
     
 # Bypass the python wrapper to run cuda-gdb
 if mode == "debug":
@@ -214,8 +215,9 @@ screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"
 with open(screenrc_file, 'w') as f:
     f.write(screenrc)
 
+# When using OpenSUSE 15.5, there is a file generated on boot in shared memory that must be kept
+sp.call("find /dev/shm/* -type f -not -name 'sem.haveged_sem' -delete", shell=True)
 # Clean up any residuals in shared memory and dead screens
-sp.call("rm -r /dev/shm/*", shell=True)
 sp.call("screen -X -S borealis quit", shell=True)
 
 # Give the os a chance to free all previously used sockets, etc.

@@ -11,8 +11,6 @@
 """
 
 import inotify.adapters
-from . import scd_utils
-from . import email_utils
 import os
 import datetime
 import argparse
@@ -23,9 +21,11 @@ import subprocess as sp
 import pickle as pkl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from datetime import datetime, timedelta
+import datetime
 
-from . import remote_server_options as rso
+import scd_utils
+import email_utils
+import remote_server_options as rso
 
 
 def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string='', embargo=''):
@@ -49,7 +49,6 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     :returns:   Formatted atq str.
     :rtype:     str
     """
-
     borealis_path=os.environ['BOREALISPATH']
 
     start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}"
@@ -534,7 +533,7 @@ def get_relevant_lines(scd_util, time_of_interest):
                 found = True
 
         if not found:
-            time -= timedelta(minutes=1)
+            time -= datetime.timedelta(minutes=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
             hhmm = time.strftime("%H:%M")

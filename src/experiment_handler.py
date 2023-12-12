@@ -28,7 +28,8 @@ from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from utils import log_config
-log = log_config.log()
+log = log_config.log(log_level='NOTSET', console=False, logfile=False, aggregator=False)
+
 
 
 def usage_msg():
@@ -74,9 +75,9 @@ def experiment_parser():
                                                   "e.g. normalscan")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. common, special, or discretionary.")
-    parser.add_argument("--kwargs_string", default='',
-                        help="String of keyword arguments for the experiment.")
     parser.add_argument("--embargo", action="store_true", help="Embargo the file (makes the CPID negative)")
+    parser.add_argument("--kwargs", nargs='+', default='',
+                        help="Keyword arguments for the experiment. Each must be formatted as kw=val")
 
     return parser
 
@@ -193,11 +194,10 @@ def experiment_handler(semaphore, args):
             experiment_update = True
             log.debug("experiment contains an updated method", experiment_name=experiment_class.experiment_name)
 
-    if args.kwargs_string:
+    if args.kwargs:
         # parse kwargs and pass to experiment
         kwargs = {}
-        kwargs_list = args.kwargs_string.split(',')
-        for element in kwargs_list:
+        for element in args.kwargs:
             kwarg = element.split('=')
             kwargs[kwarg[0]] = kwarg[1]
         exp = experiment_class(**kwargs)
