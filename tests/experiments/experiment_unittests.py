@@ -287,7 +287,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     parser.add_argument("--experiments", required=False, nargs="+", default=None,
                         help="Only run the experiments specified after this option. Experiments \
                             specified must exist within the top-level Borealis experiments directory.")
-    parser.add_argument("--kwargs", required=False, nargs="+", default=list,
+    parser.add_argument("--kwargs", required=False, nargs="+", default=list(),
                         help="Keyword arguments to pass to the experiments. Note that kwargs are passed to all "
                              "experiments specified.")
     parser.add_argument("--module", required=False, default='__main__',
@@ -327,7 +327,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     if experiments is None:  # Run all unit tests and experiment tests
         build_unit_tests()
         build_experiment_tests()
-        argv = None
+        argv = [sys.argv[0]]
     else:  # Only test specified experiments
         build_experiment_tests(experiments, args.kwargs)
         exp_tests = []
