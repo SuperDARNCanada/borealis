@@ -10,7 +10,6 @@ import os
 import datetime as dt
 import shutil
 import sys
-import unittest
 
 borealis_path = os.environ['BOREALISPATH']
 sys.path.append(f"{borealis_path}/tests/experiments")
@@ -106,18 +105,20 @@ class SCDUtils(object):
         if scheduling_mode not in possible_scheduling_modes:
             raise ValueError(f"Unknown scheduling mode type {scheduling_mode} not in {possible_scheduling_modes}")
 
-        # See if the experiment itself would run
-        # This is a full path to /.../{site}.scd file, only want {site}
-        site_name = os.path.basename(self.scd_filename).replace('.scd', '')
-        args = ['--site_id', site_name,
-                '--experiments', experiment,
-                '--kwargs', kwargs_string,
-                '--module', 'experiment_unittests']
-        test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
-        if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
-            raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
-                             f"Errors: {test_program.result.errors}\n"
-                             f"Failures: {test_program.result.failures}")
+        # Don't bother testing past experiments, formats/settings/capabilities/etc. could have changed
+        if not dt.datetime.utcnow() - time > dt.timedelta(days=1):  # Test if experiment is in future or past day
+            # See if the experiment itself would run
+            # This is a full path to /.../{site}.scd file, only want {site}
+            site_name = os.path.basename(self.scd_filename).replace('.scd', '')
+            args = ['--site_id', site_name,
+                    '--experiments', experiment,
+                    '--kwargs', kwargs_string,
+                    '--module', 'experiment_unittests']
+            test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
+            if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
+                raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
+                                 f"Errors: {test_program.result.errors}\n"
+                                 f"Failures: {test_program.result.failures}")
 
         return {"timestamp": epoch_milliseconds,
                 "time": time,
