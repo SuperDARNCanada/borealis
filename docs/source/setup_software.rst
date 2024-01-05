@@ -272,9 +272,9 @@ see the note when running ``install_radar_deps.py``.
     /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/[PPS tty] && /usr/local/bin/ntpd
 
 #. To verify that ntpd is working correctly, follow the steps outlined in the ntp 
-   `documentation <https://www.ntp.org/documentation/4.2.8-series/debug/>`. Check 
+   `documentation <https://www.ntp.org/documentation/4.2.8-series/debug/>`_. Check 
    ``/var/log/messages`` for the output messages from ``ntpd``. Also see 
-   `PPS Clock Discipline <http://www.fifi.org/doc/ntp-doc/html/driver22.htm>` for information about 
+   `PPS Clock Discipline <http://www.fifi.org/doc/ntp-doc/html/driver22.htm>`_ for information about 
    the PPS ntp clock discipline.
 
 #. Verify that the realtime module is able to communicate with other modules. This can be done by
@@ -284,7 +284,7 @@ see the note when running ``install_radar_deps.py``.
     ss --all | grep 9696
 
 #. For further reading on networking and tuning with the USRP devices, see 
-   `Transport Notes <https://files.ettus.com/manual/page_transport.html>` and 
-   `USRP Host Performance Tuning Tips and Tricks <https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks>`. 
+   `Transport Notes <https://files.ettus.com/manual/page_transport.html>`_ and 
+   `USRP Host Performance Tuning Tips and Tricks <https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks>`_. 
    Also check out the man pages for ``tuned``, ``cpupower``, ``ethtool``, ``ip``, ``sysctl``, 
    ``modprobe``, and ``ldattach``
