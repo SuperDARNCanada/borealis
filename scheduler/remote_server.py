@@ -21,7 +21,6 @@ import subprocess as sp
 import pickle as pkl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import datetime
 
 import scd_utils
 import email_utils
@@ -111,7 +110,7 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         :returns:   Colormap instance 
         :rtype:     ColorMap
         """
-        return plt.cm.get_cmap(name, n)
+        return plt.colormaps[name]
 
     def split_event(long_event):
         """
@@ -602,6 +601,10 @@ def _main():
             subject = f"Successfully scheduled commands at {site_id}"
             emailer.email_log(subject, log_file, [plot_path, pickle_path])
 
+    start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    print(f"\n{start_time} - Scheduler booted")
+    print(f"Inotify monitoring schedule file {scd_file}")
+
     # Make the schedule on restart of application
     make_schedule()
     new_notify = False
@@ -623,7 +626,7 @@ def _main():
                 event_types.extend(type_names)
 
             # File has been copied
-            print(event_types)
+            print(f"Events triggered: {event_types}]")
             if site_id in path:
                 if all(i in event_types for i in ["IN_OPEN", "IN_ACCESS", "IN_CLOSE_WRITE"]):
                     scd_utils.SCDUtils(path)
