@@ -549,8 +549,6 @@ def _main():
 
     scd_dir = args.scd_dir
 
-    emailer = email_utils.Emailer(args.emails_filepath)
-
     inot = inotify.adapters.Inotify()
 
     options = rso.RemoteServerOptions()
@@ -567,6 +565,8 @@ def _main():
         os.makedirs(log_dir)
 
     def make_schedule():
+        emailer = email_utils.Emailer(args.emails_filepath)
+
         time_of_interest = datetime.datetime.utcnow()
 
         log_time_str = time_of_interest.strftime("%Y.%m.%d.%H.%M")
