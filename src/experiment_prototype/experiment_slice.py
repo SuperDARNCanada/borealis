@@ -277,7 +277,7 @@ class ExperimentSlice:
     beam_angle: conlist(Union[confloat(strict=True), conint(strict=True)], unique_items=True)
     cpid: StrictInt
     first_range: Union[confloat(ge=0), conint(ge=0)]
-    num_ranges: conint(gt=0, le=options.max_range_gates, strict=True)
+    num_ranges: conint(gt=0, strict=True)
     tau_spacing: conint(ge=options.min_tau_spacing_length, strict=True)
     pulse_len: conint(ge=options.min_pulse_length, strict=True)
     pulse_sequence: conlist(conint(ge=0, strict=True), unique_items=True)
