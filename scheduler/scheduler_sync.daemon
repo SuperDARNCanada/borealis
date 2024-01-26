@@ -26,7 +26,7 @@
 #       systemctl [command] scheduler_sync@[RADAR_NAME]
 #
 # Dependencies:
-#   - inotifywait (installed by zypper in inotify-tools)
+#   - inotifywait (installed by `zypper in inotify-tools``)
 #   - ssh link between computer and remote radar computers (no password prompt for rsync)
 #
 # Requires:
@@ -77,6 +77,8 @@ readonly DEST_DIR="/home/radar/borealis_schedules"
 readonly SLACK_WEBHOOK="SLACK_WEBHOOK_${RADAR_ID^^}"
 readonly MAX_ATTEMPTS=3  # Number of attempts before sending alert
 
+readonly TMP_FILE="/tmp/sync_${RADAR_NAME}.md5"
+
 ###################################################################################################
 
 exec &>> "$LOGFILE" # Redirect STDOUT and STDERR to $LOGFILE
@@ -112,13 +114,13 @@ do
 
                 ### Check that the schedule successfully made it to site ###
                 # Get the md5sum of the remote schedule file
-                ssh -n -p "$DEST_PORT" "${SCHEDULER_DEST}" "md5sum --binary ${DEST_DIR}/${FILE}" > "${HOME}/tmp.md5"
-                # Modify tmp.md5 so checksum can be compared to source schedule file
-                sed -i "s~${DEST_DIR}/${FILE}~${WATCH_DIR}/${FILE}~g" "${HOME}/tmp.md5"
+                ssh -n -p "$DEST_PORT" "${SCHEDULER_DEST}" "md5sum --binary ${DEST_DIR}/${FILE}" > "$TMP_FILE"
+                # Modify temp file so checksum can be compared to source schedule file
+                sed -i "s~${DEST_DIR}/${FILE}~${WATCH_DIR}/${FILE}~g" "$TMP_FILE"
                 # Verify md5sum of destination file is same as source
-                md5sum --check --status "$HOME/tmp.md5"
+                md5sum --check --status "$TMP_FILE"
                 retval=$?
-                rm $HOME/tmp.md5
+                rm "$TMP_FILE"
                 
                 if [[ $retval -ne 0 ]]; then
                     printf "%s - Error in syncing schedule, trying again\n" "$(date --utc "+%Y%m%d %H:%M:%S UTC")"
