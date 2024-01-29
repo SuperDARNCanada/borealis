@@ -445,7 +445,7 @@ class ExperimentSlice:
         return tx_antenna_pattern
 
     @validator('rx_antenna_pattern')
-    def check_tx_antenna_pattern(selfcls, rx_antenna_pattern, values):
+    def check_rx_antenna_pattern(cls, rx_antenna_pattern, values):
         if rx_antenna_pattern is default_callable:  # No value given
             return
 
