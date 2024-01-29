@@ -235,8 +235,8 @@ class SWG(object):
 def main():
     """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
-    parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
+    parser.add_argument('--emails-filepath', help='A list of emails to send logs to')
     parser.add_argument('--force', action="store_true", help='Force an update to the schedules '
                                                              'for the next month')
     parser.add_argument('--first-run', action="store_true", 
@@ -250,7 +250,12 @@ def main():
     scd_dir = args.scd_dir
     scd_logs = scd_dir + "/logs"
 
-    emailer = email_utils.Emailer(args.emails_filepath)
+    if args.emails_filepath is None:
+        emails_filepath = f"{scd_dir}/emails.txt"
+    else:
+        emails_filepath = args.emails_filepath
+
+    emailer = email_utils.Emailer(emails_filepath)
 
     if not os.path.exists(scd_dir):
         os.makedirs(scd_dir)
@@ -266,6 +271,13 @@ def main():
 
     current_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     print(f"{current_time} - Starting local_scd_server.py...")
+
+    if args.first_run:
+        # Create the .scd files for each site if running for first time
+        for s in sites:
+            filename = f"{scd_dir}/{s}.scd"
+            with open(filename, 'a'):
+                pass
 
     while True:
         if swg.new_swg_file_available() or args.first_run or force_next_month:
