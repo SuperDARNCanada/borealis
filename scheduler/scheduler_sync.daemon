@@ -61,7 +61,7 @@ fi
 
 readonly DEST_PORT="${RADAR_PORTS[${RADAR_NAME^^}]}"
 
-readonly WATCH_DIR="/data/borealis_schedules"
+readonly WATCH_DIR="/home/radman/borealis_schedules"
 readonly SCD_FILE="${WATCH_DIR}/${RADAR_ID}.scd"
 
 # Define logging directory
@@ -105,7 +105,7 @@ do
             printf "%s - Schedule modified for %s\n" "$(date --utc "+%Y%m%d %H:%M:%S UTC")" "$RADAR_ID"
             sleep 1     # Wait 1 s to ensure all changes to scd file are finished
 
-            # Sync the .scd file to site via Maxwell
+            # Sync the .scd file to site via autossh tunnels
             printf "Sending %s to %s:%s via port %s\n" "${SCD_FILE}" "${SCHEDULER_DEST}" "${DEST_DIR}" "${DEST_PORT}"
             retval=1
             attempts=0

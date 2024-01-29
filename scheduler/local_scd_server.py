@@ -264,8 +264,14 @@ def main():
 
     force_next_month = args.force
 
+    current_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{current_time} - Starting local_scd_server.py...")
+
     while True:
         if swg.new_swg_file_available() or args.first_run or force_next_month:
+            current_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"{current_time} - New swg file available")
+
             swg.pull_new_swg_file()
 
             site_experiments = [swg.parse_swg_to_scd(EXPERIMENTS[s], s, args.first_run)
