@@ -60,6 +60,7 @@ slice_key_set = frozenset([
     "rx_int_antennas",
     "rx_main_antennas",
     "rxonly",
+    "rx_antenna_pattern",
     "scanbound",
     "seqoffset",
     "slice_id",
@@ -201,6 +202,10 @@ class ExperimentSlice:
         from config.
     rx_main_antennas *defaults*
         The antennas to receive on in main array, default is all antennas given max number from config.
+    rx_antenna_pattern *defaults*
+        experiment-defined function which returns a complex weighting factor of magnitude <= 1 for each
+        bean direction scanned in the experiment. The return value of the function must be an aray of
+        size [beam_angle].
     scanbound *defaults*
         A list of seconds past the minute for averaging periods in a scan to align to. Defaults to None,
         not required. If one slice in an experiment has a scanbound, they all must.
@@ -297,6 +302,7 @@ class ExperimentSlice:
                                       max_items=options.intf_antenna_count,
                                       unique_items=True)] = Field(default_factory=list)
     tx_antenna_pattern: Optional[Callable] = default_callable
+    rx_antenna_pattern: Optional[Callable] = default_callable
     tx_beam_order: Optional[beam_order_type] = Field(default_factory=list)
     intt: Optional[confloat(ge=0)] = None
     scanbound: Optional[list[confloat(ge=0)]] = Field(default_factory=list)
@@ -437,6 +443,33 @@ class ExperimentSlice:
                 raise ValueError(f"Slice {values['slice_id']} tx antenna pattern return must not have any "
                                  f"values with a magnitude greater than 1")
         return tx_antenna_pattern
+
+    @validator('rx_antenna_pattern')
+    def check_tx_antenna_pattern(selfcls, rx_antenna_pattern, values):
+        if rx_antenna_pattern is default_callable:  # No value given
+            return
+
+        # Main and interferometer patterns
+        antenna_pattern = [rx_antenna_pattern(values['beam_angle'], values['freq'], options.main_antenna_count,
+                                              options.main_antenna_spacing),
+                           rx_antenna_pattern(values['beam_angle'], values['freq'], options.intf_antenna_count,
+                                              options.intf_antenna_spacing)]
+        for index in range(0, len(antenna_pattern)):
+            if index == 0:
+                pattern = "main"
+            else:
+                pattern = "interferometer"
+            if not isinstance(antenna_pattern[index], np.ndarray):
+                raise ValueError(f"Slice {values['slice_id']} {pattern} array rx antenna pattern return is "
+                                 f"not a numpy array")
+            else:
+                if len(antenna_pattern[index].shape) != len(values['beam_angle']):
+                    raise ValueError(f"Slice {values['slice_id']} {pattern} array must be the same shape as beam angle")
+            antenna_pattern_mag = np.abs(antenna_pattern[index])
+            if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
+                raise ValueError(f"Slice {values['slice_id']} {pattern} array rx antenna pattern return must not have "
+                                 f"any values with a magnitude greater than 1")
+        return rx_antenna_pattern
 
     @validator('rx_beam_order', each_item=True)
     def check_rx_beam_order(cls, rx_beam, values):

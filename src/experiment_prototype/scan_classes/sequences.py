@@ -136,10 +136,17 @@ class Sequence(ScanClassBase):
 
 
             # Now we set up the phases for receive side
-            rx_main_phase_shift = get_phase_shift(exp_slice.beam_angle, freq_khz, main_antenna_count,
-                                                  main_antenna_spacing)
-            rx_intf_phase_shift = get_phase_shift(exp_slice.beam_angle, freq_khz, intf_antenna_count,
-                                                  intf_antenna_spacing, intf_offset[0])
+            if exp_slice.rx_antenna_pattern is not None:
+                # Returns an array of size [beam_angle] of complex numbers of magnitude <= 1
+                rx_main_phase_shift = exp_slice.rx_antenna_pattern(exp_slice.beam_angle, freq_khz, main_antenna_count,
+                                                                   main_antenna_spacing)
+                rx_intf_phase_shift = exp_slice.rx_antenna_pattern(exp_slice.beam_angle, freq_khz, intf_antenna_count,
+                                                                   intf_antenna_spacing, intf_offset[0])
+            else:
+                rx_main_phase_shift = get_phase_shift(exp_slice.beam_angle, freq_khz, main_antenna_count,
+                                                      main_antenna_spacing)
+                rx_intf_phase_shift = get_phase_shift(exp_slice.beam_angle, freq_khz, intf_antenna_count,
+                                                      intf_antenna_spacing, intf_offset[0])
 
             self.rx_beam_phases[slice_id] = {'main': rx_main_phase_shift, 'intf': rx_intf_phase_shift}
 
