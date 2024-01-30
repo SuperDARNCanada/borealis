@@ -457,14 +457,17 @@ class ExperimentSlice:
         for index in range(0, len(antenna_pattern)):
             if index == 0:
                 pattern = "main"
+                antenna_num = options.main_antenna_count
             else:
                 pattern = "interferometer"
+                antenna_num = options.intf_antenna_count
             if not isinstance(antenna_pattern[index], np.ndarray):
                 raise ValueError(f"Slice {values['slice_id']} {pattern} array rx antenna pattern return is "
                                  f"not a numpy array")
             else:
-                if len(antenna_pattern[index].shape) != len(values['beam_angle']):
-                    raise ValueError(f"Slice {values['slice_id']} {pattern} array must be the same shape as beam angle")
+                if antenna_pattern[index].shape != (len(values['beam_angle']), antenna_num):
+                    raise ValueError(f"Slice {values['slice_id']} {pattern} array must be the same shape as"
+                                     f" ([beam angle], [antenna_count])")
             antenna_pattern_mag = np.abs(antenna_pattern[index])
             if np.argwhere(antenna_pattern_mag > 1.0).size > 0:
                 raise ValueError(f"Slice {values['slice_id']} {pattern} array rx antenna pattern return must not have "
