@@ -53,7 +53,7 @@ slice dictionary, and that ``num_main_antennas`` matches the number of main ante
 file.
 
 Custom beamforming of the results measured during a full field of view experiment is possible
-through the use of the defining the ``rx_antenna_pattern`` field in the full filed of view
+through defining the ``rx_antenna_pattern`` field in the full field of view
 experiment. A custom function can be written in the experiment and passed to borealis ::
 
     beamforming_function(beam_angle, freq, antenna_count, antenna_spacing, offset=0.0):
