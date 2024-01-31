@@ -52,6 +52,22 @@ the first dimension of the returned array matches the first dimension of ``rx_be
 slice dictionary, and that ``num_main_antennas`` matches the number of main antennas in the config
 file.
 
+Custom beamforming of the results measured during a full field of view experiment is possible
+through the use of the defining the ``rx_antenna_pattern`` field in the full filed of view
+experiment. A custom function can be written in the experiment and passed to borealis ::
+
+    beamforming_function(beam_angle, freq, antenna_count, antenna_spacing, offset=0.0):
+
+    ...
+
+    slice_dict['tx_antenna_pattern'] = beamforming_function
+
+The function should expect to receive beam angles, operating frequencies, number of antennas,
+antenna spacing, and an offset. This function will be called for both the rx signals from the main
+array and the interferometer array. The return is expected to be the desired phase for beamforming
+each antenna, and should be of size [beam_angle, antenna_count]. The magnitude of each entry should
+be less than or equal to 1.
+
 .. _bistatic experiments:
 
 --------------------

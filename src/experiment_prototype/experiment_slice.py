@@ -203,9 +203,10 @@ class ExperimentSlice:
     rx_main_antennas *defaults*
         The antennas to receive on in main array, default is all antennas given max number from config.
     rx_antenna_pattern *defaults*
-        experiment-defined function which returns a complex weighting factor of magnitude <= 1 for each
-        bean direction scanned in the experiment. The return value of the function must be an aray of
-        size [beam_angle].
+        Experiment-defined function which returns a complex weighting factor of magnitude <= 1 for each
+        beam direction scanned in the experiment. The return value of the function must be an array of
+        size [beam_angle, antenna_num]. This function allows for custom beamforming of the receive
+        antennas for borealis processing of antenna iq to rawacf.
     scanbound *defaults*
         A list of seconds past the minute for averaging periods in a scan to align to. Defaults to None,
         not required. If one slice in an experiment has a scanbound, they all must.
@@ -453,7 +454,7 @@ class ExperimentSlice:
         antenna_pattern = [rx_antenna_pattern(values['beam_angle'], values['freq'], options.main_antenna_count,
                                               options.main_antenna_spacing),
                            rx_antenna_pattern(values['beam_angle'], values['freq'], options.intf_antenna_count,
-                                              options.intf_antenna_spacing)]
+                                              options.intf_antenna_spacing, offset=-100)]
         for index in range(0, len(antenna_pattern)):
             if index == 0:
                 pattern = "main"
