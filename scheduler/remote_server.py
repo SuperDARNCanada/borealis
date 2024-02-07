@@ -370,12 +370,17 @@ def get_relevant_lines(scd_util, time_of_interest):
 def _main():
     """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new SCD file entries")
-    parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
+    parser.add_argument('--emails-filepath', help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
 
     args = parser.parse_args()
 
     scd_dir = args.scd_dir
+    
+    if args.emails_filepath is None:
+        emails_filepath = f"{scd_dir}/emails.txt"
+    else:
+        emails_filepath = args.emails_filepath
 
     inot = inotify.adapters.Inotify()
 
@@ -393,7 +398,7 @@ def _main():
         os.makedirs(log_dir)
 
     def make_schedule():
-        emailer = email_utils.Emailer(args.emails_filepath)
+        emailer = email_utils.Emailer(emails_filepath)
 
         time_of_interest = datetime.datetime.utcnow()
 
