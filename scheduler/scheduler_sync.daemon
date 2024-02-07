@@ -30,11 +30,13 @@
 #   - ssh link between computer and remote radar computers (no password prompt for rsync)
 #
 # Requires:
-#   - file ${HOME}/.scheduler with read permissions
-#       - file must declare an array RADAR_PORTS like
+#   - file ${HOME}/.scheduler with read permissions defining the following variables:
+#       - file must declare an array RADAR_PORTS as follows:
 #           declare -A RADAR_PORTS=(["SAS_BORE"]=xxxxx ["SAS_MAIN"]=yyyyy)
 #         where xxxxx and yyyyy are ports for an ssh connection to the computer.
-#       - file must also define SCHEDULER_DEST as SCHEDULER=username@host
+#       - SCHEDULER_DEST (example: username@host)
+#       - LOCAL_SCHEDULE_DIR (example: /home/radman/borealis_schedules)
+#       - REMOTE_SCHEDULE_DIR (example: /home/radar/borealis_schedules)
 #   - SLACK_WEBHOOK_[RADAR_ID] defined in ${HOME}/.profile, where RADAR_ID is SAS, PGR, etc.
 #
 # Parameter RADAR_NAME: [sas, pgr, rkn, inv, cly]_[bore, main] e.g. sas_bore or inv_main
@@ -59,9 +61,19 @@ if [[ ! -v "RADAR_PORTS[${RADAR_NAME^^}]" ]]; then    # ^^ makes $RADAR_NAME all
   exit 1
 fi
 
-readonly DEST_PORT="${RADAR_PORTS[${RADAR_NAME^^}]}"
+# Check that required variables are defined within .scheduler
+if [[ -v "SCHEDULER_DEST" || -v "LOCAL_SCHEDULE_DIR" || -v "REMOTE_SCHEDULE_DIR" ]]; then
+    printf "Required variables are not all defined within .scheduler\n"
+    exit 1
+fi
 
-readonly WATCH_DIR="/home/radman/borealis_schedules"
+# Define destination
+readonly DEST_PORT="${RADAR_PORTS[${RADAR_NAME^^}]}"    # Defined within .scheduler
+readonly DEST_ADDRESS="${SCHEDULER_DEST}"               # Defined within .scheduler
+readonly DEST_DIR="${REMOTE_SCHEDULE_DIR}"              # Defined within .scheduler
+
+# Define the directory and file we are watching
+readonly WATCH_DIR="${LOCAL_SCHEDULE_DIR}"              # Defined within .scheduler
 readonly SCD_FILE="${WATCH_DIR}/${RADAR_ID}.scd"
 
 # Define logging directory
@@ -69,9 +81,6 @@ script_name=$(basename "$0" | cut --fields 1 --delimiter '.')
 readonly LOG_DIR="${HOME}/logs/scheduler"
 mkdir --parents "${LOG_DIR}"
 readonly LOGFILE="${LOG_DIR}/${script_name}_${RADAR_NAME}.log"
-
-# Define destination
-readonly DEST_DIR="/home/radar/borealis_schedules"
 
 # Define Slack webhook to send alert
 readonly SLACK_WEBHOOK="SLACK_WEBHOOK_${RADAR_ID^^}"
@@ -106,15 +115,15 @@ do
             sleep 1     # Wait 1 s to ensure all changes to scd file are finished
 
             # Sync the .scd file to site via autossh tunnels
-            printf "Sending %s to %s:%s via port %s\n" "${SCD_FILE}" "${SCHEDULER_DEST}" "${DEST_DIR}" "${DEST_PORT}"
+            printf "Sending %s to %s:%s via port %s\n" "${SCD_FILE}" "${DEST_ADDRESS}" "${DEST_DIR}" "${DEST_PORT}"
             retval=1
             attempts=0
             while [[ $retval -ne 0 ]]; do
-                rsync --archive --verbose --perms --rsh="ssh -p $DEST_PORT" "${SCD_FILE}" "${SCHEDULER_DEST}:${DEST_DIR}"
+                rsync --archive --verbose --perms --rsh="ssh -p $DEST_PORT" "${SCD_FILE}" "${DEST_ADDRESS}:${DEST_DIR}"
 
                 ### Check that the schedule successfully made it to site ###
                 # Get the md5sum of the remote schedule file
-                ssh -n -p "$DEST_PORT" "${SCHEDULER_DEST}" "md5sum --binary ${DEST_DIR}/${FILE}" > "$TMP_FILE"
+                ssh -n -p "$DEST_PORT" "${DEST_ADDRESS}" "md5sum --binary ${DEST_DIR}/${FILE}" > "$TMP_FILE"
                 # Modify temp file so checksum can be compared to source schedule file
                 sed -i "s~${DEST_DIR}/${FILE}~${WATCH_DIR}/${FILE}~g" "$TMP_FILE"
                 # Verify md5sum of destination file is same as source
