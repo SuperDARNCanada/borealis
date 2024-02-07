@@ -11,11 +11,11 @@ nohup python3 $BOREALISPATH/scheduler/remote_server.py \
 		--scd-dir=/home/radar/borealis_schedules \
 		>> /home/radar/logs/scd.out 2>&1 &
 
-pid=$!	# Get pid of remote_server.py process
+PID=$!	# Get pid of remote_server.py process
 sleep 1
 
 NOW=$(date +'%Y%m%d %H:%M:%S')
-if ! ps -p $pid > /dev/null; then	 # Check if remote_server.py process still running
+if ! ps -p $PID &> /dev/null; then	 # Check if remote_server.py process still running
 	echo "${NOW} START: FAIL - remote_server.py failed to start." | tee -a $LOGFILE
 	exit 1
 fi

@@ -20,8 +20,9 @@ if screen -ls | grep -q borealis; then
 	retVal=$?
 fi
 
+sleep 1
 NOW=$(date +'%Y%m%d %H:%M:%S')
-if ps -p $PID > /dev/null; then	 # Check if remote_server.py process still running
+if ps -p $PID &> /dev/null; then	 # Check if remote_server.py process still running
 	echo "${NOW} STOP: FAIL - could not kill remote_server.py process." | tee -a $LOGFILE
 	exit 1
 fi
