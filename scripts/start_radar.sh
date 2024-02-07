@@ -1,5 +1,5 @@
 #!/bin/bash
-source "$/home/radar/.profile"
+source "/home/radar/.profile"
 source "${BOREALISPATH}/borealis_env${PYTHON_VERSION}/bin/activate"
 LOGFILE="/home/radar/logs/start_stop.log"
 
@@ -20,7 +20,7 @@ if ! ps -p $pid > /dev/null; then	 # Check if remote_server.py process still run
 	exit 1
 fi
 
-if ! atq &>/dev/null; then		# Check if atq is empty
+if [[ -z $(atq) ]]; then		# Check if atq is empty
 	echo "${NOW} START: FAIL - atq is empty. No radar processes scheduled." | tee -a $LOGFILE
 	exit 1
 fi

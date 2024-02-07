@@ -1,10 +1,10 @@
 #!/bin/bash
-source "$/home/radar/.profile"
+source "/home/radar/.profile"
 LOGFILE="/home/radar/logs/start_stop.log"
 
 # Kill remote_server.py process
 PID=$(pgrep -f remote_server.py) # Get PID of remote_server.py process
-kill -9 $PID
+pkill -9 -f remote_server.py
 
 # Remove all scheduled experiments from at queue
 for i in $(atq | awk '{print $1}')
@@ -26,7 +26,7 @@ if ps -p $PID > /dev/null; then	 # Check if remote_server.py process still runni
 	exit 1
 fi
 
-if atq &>/dev/null; then		# Check if atq isn't empty
+if [[ -n $(atq) ]]; then		# Check if atq is not empty
 	echo "${NOW} STOP: FAIL - could not clear atq. Radar processes still scheduled." | tee -a $LOGFILE
 	exit 1
 fi
