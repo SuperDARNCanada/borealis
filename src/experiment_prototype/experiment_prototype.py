@@ -195,9 +195,9 @@ class ExperimentPrototype:
             errmsg = f'CPID must be unique. {cpid} is in use by another local experiment'
             raise ExperimentException(errmsg)
         if cpid <= 0:
-            errmsg = 'The CPID should be a positive number in the experiment. Borealis'\
-                     ' will determine if it should be negative based on the scheduling mode.'\
-                     ' Only experiments run during discretionary time will have negative CPIDs.'
+            errmsg = 'The CPID should be a positive number in the experiment. If the embargo'\
+                     ' flag is set, then borealis will configure the CPID to be negative to .'\
+                     ' indicate the data is to be embargoed for one year.'
             raise ExperimentException(errmsg)
 
         self.__options = Options()      # Load the config, hardware, and restricted frequency data
