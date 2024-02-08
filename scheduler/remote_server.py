@@ -398,6 +398,7 @@ def _main():
         os.makedirs(log_dir)
 
     def make_schedule():
+        print("Making schedule...")
         emailer = email_utils.Emailer(emails_filepath)
 
         time_of_interest = datetime.datetime.utcnow()
@@ -461,7 +462,6 @@ def _main():
             # File has been copied
             print(f"Events triggered: {event_types}]")
             if site_id in path:
-                print("Schedule updated - make_schedule() called.")
                 if all(i in event_types for i in ["IN_OPEN", "IN_ACCESS", "IN_CLOSE_WRITE"]):
                     scd_utils.SCDUtils(path)
                     make_schedule()
