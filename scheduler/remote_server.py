@@ -50,7 +50,7 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     """
     borealis_path=os.environ['BOREALISPATH']
 
-    start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}"
+    start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode}"
     if embargo:
         start_cmd += f" --embargo"
     if kwargs_string:
