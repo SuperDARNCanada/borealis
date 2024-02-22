@@ -30,7 +30,6 @@ import os
 import sys
 import inspect
 import pkgutil
-from pathlib import Path
 from importlib import import_module
 import json
 
@@ -181,7 +180,7 @@ def build_unit_tests():
         raise OSError(f"Error: experiment path {experiment_path} is invalid")
 
     # Iterate through all modules in the borealis_experiments directory
-    for (_, name, _) in pkgutil.iter_modules([Path(experiment_path)]):
+    for (_, name, _) in pkgutil.iter_modules([experiment_path]):
         imported_module = import_module('.' + name, package=f'borealis_experiments.{experiment_package}')
         # Loop through all attributes of each found module
         for i in dir(imported_module):
@@ -246,7 +245,7 @@ def build_experiment_tests(experiments=None, kwargs=None):
                 raise ValueError(f"Bad kwarg: {element}")
 
     # Iterate through all modules in the borealis_experiments directory
-    for (_, name, _) in pkgutil.iter_modules([Path(experiment_path)]):
+    for (_, name, _) in pkgutil.iter_modules([experiment_path]):
         if experiments is None or name in experiments:
             imported_module = import_module('.' + name, package=experiment_package)
             # Loop through all attributes of each found module
@@ -287,7 +286,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     parser.add_argument("--experiments", required=False, nargs="+", default=None,
                         help="Only run the experiments specified after this option. Experiments \
                             specified must exist within the top-level Borealis experiments directory.")
-    parser.add_argument("--kwargs", required=False, nargs="+", default=list,
+    parser.add_argument("--kwargs", required=False, nargs="+", default=list(),
                         help="Keyword arguments to pass to the experiments. Note that kwargs are passed to all "
                              "experiments specified.")
     parser.add_argument("--module", required=False, default='__main__',
@@ -327,7 +326,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
     if experiments is None:  # Run all unit tests and experiment tests
         build_unit_tests()
         build_experiment_tests()
-        argv = None
+        argv = [sys.argv[0]]
     else:  # Only test specified experiments
         build_experiment_tests(experiments, args.kwargs)
         exp_tests = []

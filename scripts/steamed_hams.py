@@ -201,14 +201,15 @@ if mode == "debug":
     modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
 
 # Set up the screenrc file and populate it
+log_dir = "/data/borealis_logs/"    # Temporary fix to give us access to exactly what's printed to console from Borealis
 screenrc = BOREALISSCREENRC.format(
-    START_RT=modules['realtime'],
-    START_BRIAN=modules['brian'],
-    START_USRP_DRIVER=modules['usrp_driver'],
-    START_DSP=modules['rx_signal_processing'],
-    START_DATAWRITE=modules['data_write'],
-    START_EXPHAN=modules['experiment_handler'],
-    START_RADCTRL=modules['radar_control'],
+    START_RT=modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log",
+    START_BRIAN=modules['brian'] + " 2>&1 | tee " + log_dir + "brian.log",
+    START_USRP_DRIVER=modules['usrp_driver'] + " 2>&1 | tee " + log_dir + "usrp_driver.log",
+    START_DSP=modules['rx_signal_processing'] + " 2>&1 | tee " + log_dir + "rx_signal_processing.log",
+    START_DATAWRITE=modules['data_write'] + " 2>&1 | tee " + log_dir + "data_write.log",
+    START_EXPHAN=modules['experiment_handler'] + " 2>&1 | tee " + log_dir + "experiment_handler.log",
+    START_RADCTRL=modules['radar_control'] + " 2>&1 | tee " + log_dir + "radar_control.log",
 )
 
 screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"

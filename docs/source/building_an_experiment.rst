@@ -371,6 +371,12 @@ rx_int_antennas *defaults*
 rx_main_antennas *defaults*
     The antennas to receive on in main array, default is all antennas given max number from config.
 
+rx_antenna_pattern *defaults*
+    Experiment-defined function which returns a complex weighting factor of magnitude <= 1 for each
+    beam direction scanned in the experiment. The return value of the function must be an array of
+    size [beam_angle, antenna_num]. This function allows for custom beamforming of the receive
+    antennas for borealis processing of antenna iq to rawacf.
+
 scanbound *defaults*
     A list of seconds past the minute for averaging periods in a scan to align to. Defaults to None,
     not required. If you set this, you will want to ensure that there is a slightly larger amount of
