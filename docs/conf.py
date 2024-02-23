@@ -27,43 +27,48 @@ import sphinx_rtd_theme
 BOREALISPATH = os.path.abspath('..')
 os.environ['BOREALISPATH'] = BOREALISPATH
 sys.path.insert(0, BOREALISPATH)
-sys.path.insert(1, BOREALISPATH + '/src')
-sys.path.insert(2, BOREALISPATH + '/src/experiment_prototype')
-sys.path.insert(3, BOREALISPATH + '/src/utils')
-sys.path.insert(4, BOREALISPATH + '/scheduler')
+sys.path.insert(1, f'{BOREALISPATH}/src')
+sys.path.insert(2, f'{BOREALISPATH}/src/experiment_prototype')
+sys.path.insert(3, f'{BOREALISPATH}/src/utils')
+sys.path.insert(4, f'{BOREALISPATH}/scheduler')
 sys.path.insert(5, os.environ['PATH'])
 
-RADAR_ID = 'sas'
-os.environ['RADAR_ID'] = RADAR_ID
+# -- Pre-build configuration ----------------------------------------------
 
-# hack for readthedocs to cause it to run doxygen first: https://github.com/rtfd/readthedocs.org/issues/388
+# Doxygen: Reads all c++ source and header files, and parses the documentation to xml files 
+# for further reading. 
+run('doxygen')
+
+# Breathe: parses xml files produced by doxygen and creates rst files for use by Sphinx Files
+# are re-generated each call, no table of contents file is created, and only rst files are
+# created. For more information, `breathe-apidoc --help`
+cur_dir = os.path.abspath(os.path.dirname(__file__))
+run(['breathe-apidoc', '--force', '--no-toc', '--generate', 'file', '-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
+
+# Update the experiment subrepo so experiment files can be read into documentation
+run(['git', 'submodule', 'update', '--init'])
+
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-if on_rtd:
-    # Doxygen: Reads all c++ source and header files, and parses the documentation to xml files 
-    # for further reading. 
-    run('doxygen')
+if on_rtd:  # Only run following changes on ReadTheDocs
+    RADAR_ID = 'sas'
+    os.environ['RADAR_ID'] = RADAR_ID
 
-    # Breathe: parses xml files produced by doxygen and creates rst files for use by Sphinx Files
-    # are re-generated each call, no table of contents file is created, and only rst files are
-    # created. For more information, `breathe-apidoc --help`
-    cur_dir = os.path.abspath(os.path.dirname(__file__))
-    run(['breathe-apidoc', '--force', '--no-toc', '--generate', 'file', '-o', f'{cur_dir}/source', f'{cur_dir}/xml/'])
-
-    # Update the experiment subrepo so experiment files can be read into documentation
-    run(['git', 'submodule', 'update', '--init'])
+    # Change config file hdw and data/log paths to be accessible by ReadTheDocs
+    config_file = f'{BOREALISPATH}/config/{RADAR_ID}/{RADAR_ID}_config.ini'
+    with open(config_file, 'r') as file:
+        raw_config = json.load(file)
+    raw_config['hdw_path'] = f'{BOREALISPATH}/hdw'
+    raw_config['data_directory'] = f'{BOREALISPATH}/borealis_data'
+    raw_config['log_directory'] = f'{BOREALISPATH}/borealis_logs'
+    with open(config_file, 'w') as file:
+        json.dump(raw_config, file)
 
     # Clone in the HDW repo temporarily so modules reading them don't throw errors
-    # TODO: Get this path into config file somehow, as that's now how we specify hdw location
-    run(['git', 'clone', 'https://github.com/SuperDARN/hdw', BOREALISPATH + '/hdw'])
+    run(['git', 'clone', 'https://github.com/SuperDARN/hdw', raw_config['hdw_path']])
 
-    # Change config file HDW path to path accessible by ReadTheDocs
-    # TODO: Come up with a way that doesn't require modifying a version controlled config file
-    config_file = BOREALISPATH + f'/config/{RADAR_ID}/{RADAR_ID}_config.ini'
-    with open(config_file, 'r') as file:
-        data = json.load(file)
-    data['hdw_path'] = BOREALISPATH + '/hdw'
-    with open(config_file, 'w') as file:
-        json.dump(data, file)
+    # Create data and log directory that RTD can see so no errors are thrown
+    run(['mkdir', '-p', raw_config['data_directory']])
+    run(['mkdir', '-p', raw_config['log_directory']])
 
 
 # -- General configuration ------------------------------------------------
@@ -89,7 +94,8 @@ extensions = [
     'myst_parser'
 ]
 
-autodoc_mock_imports = ["debug", "release"]
+# Modules that can't be imported on RTD will be ignored if they are listed here
+autodoc_mock_imports = ["build", "utils.log_config"]
 
 breathe_projects = {"borealis" : "xml/"}
 breathe_default_project = "borealis"
@@ -112,7 +118,7 @@ master_doc = 'index'
 # General information about the project.
 project = 'Borealis'
 copyright = '2018, SuperDARN Canada'
-author = 'SuperDARN Canada' #Keith Kotyk, Marci Detwiller, Kevin Krieger
+author = 'SuperDARN Canada'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

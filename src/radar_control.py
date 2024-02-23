@@ -11,7 +11,7 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
-
+import os
 import sys
 import time
 from datetime import datetime, timedelta
@@ -26,10 +26,11 @@ from utils.options import Options
 import utils.message_formats as messages
 from utils import socket_operations
 
+sys.path.append(os.environ['BOREALISPATH'])
 if __debug__:
-    from debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
+    from build.debug.src.utils.protobuf.driverpacket_pb2 import DriverPacket
 else:
-    from release.src.utils.protobuf.driverpacket_pb2 import DriverPacket
+    from build.release.src.utils.protobuf.driverpacket_pb2 import DriverPacket
 
 TIME_PROFILE = False
 
@@ -76,6 +77,7 @@ def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array, txc
     :param rxrate: the rx sampling rate (Hz).
     :param numberofreceivesamples: number of samples to receive at the rx_sample_rate from config.ini file. This
         determines length of Scope Sync GPIO being high for this sequence.
+    :param seqtime: relative timing offset
     :param SOB: start of burst boolean, true for first pulse in sequence.
     :param EOB: end of burst boolean, true for last pulse in sequence.
     :param timing: in us, the time past timezero to send this pulse. Timezero is the start of the sequence.
@@ -138,6 +140,8 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
 
     :param radctrl_to_dsp: The sender socket for sending data to dsp
     :param dsp_radctrl_iden: The receiver socket identity on the dsp side
+    :param radctrl_to_brian: The sender socket for sending data to brian
+    :param brian_radctrl_iden: The receiver socket identity on the brian side
     :param rxrate: The receive sampling rate (Hz).
     :param output_sample_rate: The output sample rate desired for the output data (Hz).
     :param seqnum: the sequence number. This is a unique identifier for the sequence that is always increasing
@@ -177,16 +181,16 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
 
     for slice_id in slice_ids:
         chan_add = messages.RxChannel(slice_id)
-        chan_add.tau_spacing = slice_dict[slice_id]['tau_spacing']
+        chan_add.tau_spacing = slice_dict[slice_id].tau_spacing
 
         # Send the translational frequencies to dsp in order to bandpass filter correctly.
-        if slice_dict[slice_id]['clrfrqflag']:
+        if slice_dict[slice_id].clrfrqflag:
             pass  # TODO - get freq from clear frequency search.
         else:
-            chan_add.rx_freq = slice_dict[slice_id]['freq'] * 1.0e3
-        chan_add.num_ranges = slice_dict[slice_id]['num_ranges']
-        chan_add.first_range = slice_dict[slice_id]['first_range']
-        chan_add.range_sep = slice_dict[slice_id]['range_sep']
+            chan_add.rx_freq = slice_dict[slice_id].freq * 1.0e3
+        chan_add.num_ranges = slice_dict[slice_id].num_ranges
+        chan_add.first_range = slice_dict[slice_id].first_range
+        chan_add.range_sep = slice_dict[slice_id].range_sep
 
         main_bms = beam_dict[slice_id]['main']
         intf_bms = beam_dict[slice_id]['intf']
@@ -196,8 +200,8 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
             # Don't need to send channel numbers, will always send beamdir with length = total antennas.
             # Beam directions are formated e^i*phi so that a 0 will indicate not
             # to receive on that channel.
-            mains = slice_dict[slice_id]['rx_main_antennas']
-            intfs = slice_dict[slice_id]['rx_int_antennas']
+            mains = slice_dict[slice_id].rx_main_antennas
+            intfs = slice_dict[slice_id].rx_int_antennas
             temp_main = main_bms[i][mains]
             temp_intf = intf_bms[i][intfs]
 
@@ -205,14 +209,14 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
             beams.append(np.hstack((temp_main, temp_intf)))
         chan_add.beam_phases = np.array(beams)
 
-        for lag in slice_dict[slice_id]['lag_table']:
+        for lag in slice_dict[slice_id].lag_table:
             lag_add = messages.Lag(lag[0], lag[1], int(lag[1] - lag[0]))
 
             # Get the phase offset for this pulse combination
             if len(pulse_phase_offsets[slice_id]) != 0:
                 pulse_phase_offset = pulse_phase_offsets[slice_id][-1]
-                lag0_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[0])
-                lag1_idx = slice_dict[slice_id]['pulse_sequence'].index(lag[1])
+                lag0_idx = slice_dict[slice_id].pulse_sequence.index(lag[0])
+                lag1_idx = slice_dict[slice_id].pulse_sequence.index(lag[1])
                 phase_in_rad = np.radians(pulse_phase_offset[lag0_idx] - pulse_phase_offset[lag1_idx])
                 phase_offset = np.exp(1j * np.array(phase_in_rad, np.float32))
             # Catch case where no pulse phase offsets are specified
@@ -250,7 +254,7 @@ def search_for_experiment(radar_control_to_exp_handler, exphan_to_radctrl_iden, 
     Check for new experiments from the experiment handler
 
     :param radar_control_to_exp_handler: TODO
-    :param radctrl_to_exphan_iden: The TODO
+    :param exphan_to_radctrl_iden: The TODO
     :param status: status string (EXP_NEEDED or NO_ERROR).
     :returns new_experiment_received: boolean (True for new experiment received)
     :returns experiment: experiment instance (or None if there is no new experiment)
@@ -352,15 +356,16 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden, seqnum
             sequence_add.tx_data = tx_data
 
         for slice_id in sequence.slice_ids:
+            sqn_slice = sequence.slice_dict[slice_id]
             rxchannel = messages.RxChannelMetadata()
             rxchannel.slice_id = slice_id
-            rxchannel.slice_comment = sequence.slice_dict[slice_id]['comment']
-            rxchannel.interfacing = '{}'.format(sequence.slice_dict[slice_id]['slice_interfacing'])
-            rxchannel.rx_only = sequence.slice_dict[slice_id]['rxonly']
-            rxchannel.pulse_len = sequence.slice_dict[slice_id]['pulse_len']
-            rxchannel.tau_spacing = sequence.slice_dict[slice_id]['tau_spacing']
-            rxchannel.rx_freq = sequence.slice_dict[slice_id]['freq']
-            rxchannel.ptab = sequence.slice_dict[slice_id]['pulse_sequence']
+            rxchannel.slice_comment = sqn_slice.comment
+            rxchannel.interfacing = '{}'.format(sqn_slice.slice_interfacing)
+            rxchannel.rx_only = sqn_slice.rxonly
+            rxchannel.pulse_len = sqn_slice.pulse_len
+            rxchannel.tau_spacing = sqn_slice.tau_spacing
+            rxchannel.rx_freq = sqn_slice.freq
+            rxchannel.ptab = sqn_slice.pulse_sequence
 
             # We always build one sequence in advance, so we trim the last one from when radar
             # control stops processing the averaging period.
@@ -368,30 +373,31 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden, seqnum
                 rxchannel.add_sqn_encodings(encoding.flatten().tolist())
             sequence.output_encodings[slice_id] = []
 
-            rxchannel.rx_main_antennas = sequence.slice_dict[slice_id]['rx_main_antennas']
-            rxchannel.rx_intf_antennas = sequence.slice_dict[slice_id]['rx_int_antennas']
+            rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
+            rxchannel.rx_intf_antennas = sqn_slice.rx_int_antennas
+            rxchannel.tx_antenna_phases = sequence.tx_main_phase_shifts[slice_id][beam_iter]
 
-            beams = sequence.slice_dict[slice_id]['rx_beam_order'][beam_iter]
+            beams = sqn_slice.rx_beam_order[beam_iter]
             if isinstance(beams, int):
                 beams = [beams]
 
             for beam in beams:
-                beam_add = messages.Beam(sequence.slice_dict[slice_id]['beam_angle'][beam], beam)
+                beam_add = messages.Beam(sqn_slice.beam_angle[beam], beam)
                 rxchannel.add_beam(beam_add)
 
-            rxchannel.first_range = float(sequence.slice_dict[slice_id]['first_range'])
-            rxchannel.num_ranges = sequence.slice_dict[slice_id]['num_ranges']
-            rxchannel.range_sep = sequence.slice_dict[slice_id]['range_sep']
+            rxchannel.first_range = float(sqn_slice.first_range)
+            rxchannel.num_ranges = sqn_slice.num_ranges
+            rxchannel.range_sep = sqn_slice.range_sep
 
-            if sequence.slice_dict[slice_id]['acf']:
-                rxchannel.acf = sequence.slice_dict[slice_id]['acf']
-                rxchannel.xcf = sequence.slice_dict[slice_id]['xcf']
-                rxchannel.acfint = sequence.slice_dict[slice_id]['acfint']
+            if sqn_slice.acf:
+                rxchannel.acf = sqn_slice.acf
+                rxchannel.xcf = sqn_slice.xcf
+                rxchannel.acfint = sqn_slice.acfint
 
-                for lag in sequence.slice_dict[slice_id]['lag_table']:
+                for lag in sqn_slice.lag_table:
                     lag_add = messages.LagTable(lag, int(lag[1] - lag[0]))
                     rxchannel.add_ltab(lag_add)
-                rxchannel.averaging_method = sequence.slice_dict[slice_id]['averaging_method']
+                rxchannel.averaging_method = sqn_slice.averaging_method
             sequence_add.add_rx_channel(rxchannel)
         message.sequences.append(sequence_add)
 
@@ -406,7 +412,7 @@ def round_up_time(dt=None, round_to=60):
     Round a datetime object to any time lapse in seconds
 
     :param dt: datetime.datetime object, default now.
-    :param roundTo: Closest number of seconds to round to, default 1 minute.
+    :param round_to: Closest number of seconds to round to, default 1 minute.
     :author: Thierry Husson 2012 - Use it as you want but don't blame me.
     :modified: K.Kotyk 2019
 
@@ -494,7 +500,6 @@ def main():
 
     first_aveperiod = True
     next_scan_start = None
-    decimation_scheme = experiment.decimation_scheme
 
     while True:
         # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.
@@ -721,6 +726,8 @@ def main():
                                 debug_samples.append(dbg)
                             pulse_transmit_data_tracker[sequence_index][num_sequences] = sqn
 
+                        decimation_scheme = sequence.decimation_scheme
+
                         def send_pulses():
                             for pulse_transmit_data in pulse_transmit_data_tracker[sequence_index][num_sequences]:
                                 data_to_driver(radar_control_to_driver,
@@ -758,7 +765,7 @@ def main():
                                               sequence.first_rx_sample_start,
                                               experiment.rxctrfreq,
                                               sequence.output_encodings,
-                                              decimation_scheme)
+                                              sequence.decimation_scheme)
 
                             if TIME_PROFILE:
                                 sequence_metadata_time = datetime.utcnow() - start_time
@@ -793,7 +800,6 @@ def main():
                         num_sequences += 1
 
                         if first_aveperiod:
-                            decimation_scheme = None
                             first_aveperiod = False
 
                         # Sequence is done
@@ -825,7 +831,7 @@ def main():
                                             experiment.cpid, experiment.experiment_name,
                                             experiment.scheduling_mode,
                                             experiment.output_rx_rate, experiment.comment_string,
-                                            experiment.decimation_scheme.filter_scaling_factors,
+                                            decimation_scheme.filter_scaling_factors,
                                             experiment.rxctrfreq,
                                             debug_samples=debug_samples)
 

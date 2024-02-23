@@ -6,10 +6,14 @@
 
     :copyright: 2019 SuperDARN Canada
 """
-
+import os
 import datetime as dt
 import shutil
 import sys
+
+borealis_path = os.environ['BOREALISPATH']
+sys.path.append(f"{borealis_path}/tests/experiments")
+import experiment_unittests
 
 
 def get_next_month_from_date(date=None):
@@ -54,7 +58,6 @@ class SCDUtils(object):
         self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {kwargs_string}"
         self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
-
     def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs_string=''):
         """
         Checks the line parameters to see if they are valid and then returns a dict with all the
@@ -72,7 +75,7 @@ class SCDUtils(object):
         :type   prio:               str or int
         :param  duration:           an optional duration to run for.
         :type   duration:           str
-        :param  kwargs_string:      kwargs for the experiment instantiation. (Default value = '')
+        :param  kwargs_string:      kwargs for the experiment instantiation. Default None
         :type   kwargs_string:      str
 
         :returns:   Dict of line params.
@@ -102,13 +105,28 @@ class SCDUtils(object):
         if scheduling_mode not in possible_scheduling_modes:
             raise ValueError(f"Unknown scheduling mode type {scheduling_mode} not in {possible_scheduling_modes}")
 
-        return {"timestamp" : epoch_milliseconds,
-                "time" : time,
-                "duration" : str(duration),
-                "prio" : str(prio),
-                "experiment" : experiment,
-                "scheduling_mode" : scheduling_mode,
-                "kwargs_string" : kwargs_string}
+        # Don't bother testing past experiments, formats/settings/capabilities/etc. could have changed
+        if not dt.datetime.utcnow() - time > dt.timedelta(days=1):  # Test if experiment is in future or past day
+            # See if the experiment itself would run
+            # This is a full path to /.../{site}.scd file, only want {site}
+            site_name = os.path.basename(self.scd_filename).replace('.scd', '')
+            args = ['--site_id', site_name,
+                    '--experiments', experiment,
+                    '--kwargs', kwargs_string,
+                    '--module', 'experiment_unittests']
+            test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
+            if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
+                raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
+                                 f"Errors: {test_program.result.errors}\n"
+                                 f"Failures: {test_program.result.failures}")
+
+        return {"timestamp": epoch_milliseconds,
+                "time": time,
+                "duration": str(duration),
+                "prio": str(prio),
+                "experiment": experiment,
+                "scheduling_mode": scheduling_mode,
+                "kwargs_string": kwargs_string}
 
     def read_scd(self):
         """
@@ -128,13 +146,10 @@ class SCDUtils(object):
         scd_lines = []
 
         for num, line in enumerate(raw_scd):
-            if len(line) not in [6, 7]:
-                raise ValueError(f"Line {num} has incorrect number of arguments; requires 6 or 7. Line: {line}")
-            # date time experiment mode priority duration (kwargs if any)
-            if len(line) == 6:
-                scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2]))
-            else:
-                scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], line[6]))
+            kwargs = " ".join(line[6:])
+
+            # date time experiment mode priority duration [kwargs]
+            scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], kwargs))
 
         if len(scd_lines) == 0:
             print('WARNING: SCD file empty; default normalscan will run')
@@ -142,7 +157,6 @@ class SCDUtils(object):
             scd_lines.append(self.scd_default)
 
         return scd_lines
-
 
     def fmt_line(self, line_dict):
         """
@@ -161,7 +175,6 @@ class SCDUtils(object):
                                         duration=line_dict["duration"],
                                         kwargs_string=line_dict["kwargs_string"])
         return line_str
-
 
     def write_scd(self, scd_lines):
         """
@@ -183,7 +196,6 @@ class SCDUtils(object):
         with open(self.scd_filename, 'w') as f:
             for line in text_lines:
                 f.write(f"{line}\n")
-
 
     def add_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
                  duration='-', kwargs_string=''):
@@ -227,7 +239,6 @@ class SCDUtils(object):
 
         self.write_scd(new_scd)
 
-
     def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
                     duration='-', kwargs_string=''):
         """
@@ -260,7 +271,6 @@ class SCDUtils(object):
             raise ValueError("Line does not exist in SCD")
 
         self.write_scd(scd_lines)
-
 
     def get_relevant_lines(self, yyyymmdd, hhmm):
         """

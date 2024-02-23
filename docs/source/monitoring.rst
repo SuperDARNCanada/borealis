@@ -1,3 +1,5 @@
+.. _monitoring:
+
 ===================
 Borealis Monitoring
 ===================
@@ -29,7 +31,6 @@ The last key difference between NRPE and Nagios Core is that commands to be exec
 host are defined in that host's nrpe.cfg file. Whereas commands executed by Nagios Core are defined
 in the commands.cfg by default.
 
-------------
 Installation
 ------------
 Detailed instructions for installing Nagios Core on several operating systems can be found on
@@ -42,3 +43,14 @@ After installing, simply replace the configuration files with those found in thi
 Installation of NRPE is similarly simple. See our Nagios github page for detailed installation
 steps: https://github.com/SuperDARNCanada/Nagios/tree/develop. An example on how we use Nagios to
 monitor Borealis is shown here: https://github.com/SuperDARNCanada/Nagios/tree/develop
+
+-------------------
+Downtime Monitoring
+-------------------
+A useful metric for measuring the reliability of the system is to quantify the amount of downtime (or uptime), that is,
+the percentage of time that the radar is non-operating (or operating). A companion repository,
+`borealis-data-utils <https://github.com/SuperDARNCanada/borealis-data-utils>`_, contains a script called
+`borealis_gaps.py <https://github.com/SuperDARNCanada/borealis-data-utils/blob/main/borealis_gaps.py>`_ which reads
+through a directory of Borealis HDF5 files and reports all downtimes in a given date range. The script takes several
+command line options, allowing the user to specify the date range, type of file to search for, minimum downtime duration
+to report, number of processes to use, and output format of the report. Follow the links above for more details.

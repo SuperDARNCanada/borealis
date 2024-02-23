@@ -12,10 +12,8 @@
 import argparse
 import sys
 import subprocess as sp
-import datetime
 import os
 import time
-import json
 
 PYTHON_VERSION = os.environ['PYTHON_VERSION']
 
@@ -125,14 +123,15 @@ def steamed_hams_parser():
                                          "modules based on this mode. Commonly 'release'.")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. 'common', 'special', or 'discretionary'.")
-    parser.add_argument("--kwargs_string", default='', 
-                        help="String of keyword arguments for the experiment.")
+    parser.add_argument("--kwargs", nargs='+', default='',
+                        help="Keyword arguments for the experiment. Each must be formatted as kw=val")
 
     return parser
 
 
 parser = steamed_hams_parser()
 args = parser.parse_args()
+kwargs = ' '.join(args.kwargs)
 
 if args.run_mode == "release":
     # python optimized, no debug for regular operations
@@ -180,70 +179,51 @@ modules = {"brian": "",
            "radar_control": "",
            "data_write": "",
            "realtime": "",
-           "rx_signal_processing": ""}
+           "rx_signal_processing": "",
+           "usrp_driver": ""}
 
 for mod in modules.keys():
     opts = python_opts.format(module=mod)
     modules[mod] = f"source borealis_env{PYTHON_VERSION}/bin/activate; python{PYTHON_VERSION} {opts} src/{mod}.py" \
 
 modules['data_write'] = modules['data_write'] + " " + data_write_args
+modules['usrp_driver'] = modules['usrp_driver'] + " " + f'{mode} --c_debug_opts="{c_debug_opts}"'
 
-if args.kwargs_string:
+if args.kwargs:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
-                                    args.scheduling_mode_type + " --kwargs_string " + args.kwargs_string
+                                    args.scheduling_mode_type + " --kwargs " + kwargs
 else:
     modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
                                     args.scheduling_mode_type
     
-# Configure C progs
-c_progs = ['usrp_driver']
-for cprg in c_progs:
-    modules[cprg] = f"source mode {mode}; {c_debug_opts} {cprg}"
+# Bypass the python wrapper to run cuda-gdb
+if mode == "debug":
+    modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
 
-# Configure terminal output to also go to file.
-now = datetime.datetime.utcnow()
-day_dir = now.strftime("%Y%m%d")
-logfile_timestamp = now.strftime("%Y.%m.%d.%H:%M")
-
-# Gather the borealis configuration information
-if not os.environ["BOREALISPATH"]:
-    raise ValueError("BOREALISPATH env variable not set")
-if not os.environ['RADAR_ID']:
-    raise ValueError('RADAR_ID env variable not set')
-path = f'{os.environ["BOREALISPATH"]}/config/' \
-        f'{os.environ["RADAR_ID"]}/' \
-        f'{os.environ["RADAR_ID"]}_config.ini'
-try:
-    with open(path, 'r') as data:
-        raw_config = json.load(data)
-except IOError:
-    print(f'IOError on config file at {path}')
-    raise
-
-log_dir = raw_config['log_directory']
-sp.call("mkdir -p " + log_dir, shell=True)
-for mod in modules.keys():
-    modules[mod] = modules[mod] + f" 2>&1 | tee {log_dir}/{logfile_timestamp}-{mod}; bash"
-
+# Set up the screenrc file and populate it
+log_dir = "/data/borealis_logs/"    # Temporary fix to give us access to exactly what's printed to console from Borealis
 screenrc = BOREALISSCREENRC.format(
-    START_RT=modules['realtime'],
-    START_BRIAN=modules['brian'],
-    START_USRP_DRIVER=modules['usrp_driver'],
-    START_DSP=modules['rx_signal_processing'],
-    START_DATAWRITE=modules['data_write'],
-    START_EXPHAN=modules['experiment_handler'],
-    START_RADCTRL=modules['radar_control'],
+    START_RT=modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log",
+    START_BRIAN=modules['brian'] + " 2>&1 | tee " + log_dir + "brian.log",
+    START_USRP_DRIVER=modules['usrp_driver'] + " 2>&1 | tee " + log_dir + "usrp_driver.log",
+    START_DSP=modules['rx_signal_processing'] + " 2>&1 | tee " + log_dir + "rx_signal_processing.log",
+    START_DATAWRITE=modules['data_write'] + " 2>&1 | tee " + log_dir + "data_write.log",
+    START_EXPHAN=modules['experiment_handler'] + " 2>&1 | tee " + log_dir + "experiment_handler.log",
+    START_RADCTRL=modules['radar_control'] + " 2>&1 | tee " + log_dir + "radar_control.log",
 )
 
 screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"
 with open(screenrc_file, 'w') as f:
     f.write(screenrc)
 
-sp.call("rm -r /dev/shm/*", shell=True)
+# When using OpenSUSE 15.5, there is a file generated on boot in shared memory that must be kept
+sp.call("find /dev/shm/* -type f -not -name 'sem.haveged_sem' -delete", shell=True)
+# Clean up any residuals in shared memory and dead screens
 sp.call("screen -X -S borealis quit", shell=True)
 
 # Give the os a chance to free all previously used sockets, etc.
 time.sleep(1)
 
+# Lights, camera, action!
 screen_launch = "screen -S borealis -c " + screenrc_file
 sp.call(screen_launch, shell=True)

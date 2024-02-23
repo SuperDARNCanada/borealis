@@ -1,11 +1,13 @@
+.. _building-experiments:
+
 ======================
 Building an Experiment
 ======================
 
 Borealis has an extensive set of features and this means that experiments can be designed to be very
 simple or very complex. To help organize writing of experiments, we've designed the system so that
-experiments can be broken into smaller components, called slices, that interface together with other
-components to perform desired functionality. An experiment can have a single slice or several
+experiments can be broken into smaller components, called **slices**, that interface together with
+other components to perform desired functionality. An experiment can have a single slice or several
 working together, depending on the complexity.
 
 Each slice contains the information needed about a specific pulse sequence to run. The parameters of
@@ -23,10 +25,10 @@ Introduction to Borealis Slices
 -------------------------------
 
 Slices are software objects made for the Borealis system that allow easy integration of multiple
-modes into a single experiment. Each slice could be an experiment on its own, and averaged products
-are produced from each slice individually. Slices can be used to create separate frequency channels,
-separate pulse sequences, separate beam scanning order, etc. that can run simultaneously. Slices can
-be interfaced in four different ways (see below).
+modes into a single experiment. Each slice could be an experiment on its own, and averaged data
+products are produced from each slice individually. Slices can be used to create separate frequency
+channels, separate pulse sequences, separate beam scanning order, etc. that can run simultaneously.
+Slices can be interfaced in four different ways (see below).
  
 The following parameters are unique to a slice:  
 
@@ -48,16 +50,16 @@ interfacing, lets first understand the basic building blocks of a SuperDARN expe
 
 **Sequence (integration)**
 
-Made up of pulses with a specified fundamental (tau) spacing, at a specified frequency, and with a
-specified receive time following the transmission (to gather information from the number of ranges
-specified). Researchers might be familiar with a common SuperDARN 7 or 8 pulse sequence design. The
-sequence definition here is the time to transmit one sequence and the time for receiving echoes from
-that sequence.
+Made up of pulses of a specific duration (pulse length) with a specified fundamental (tau) spacing,
+at a specified frequency, and with a specified receive time (duration) following the transmission
+(to gather information from the number of ranges specified). Researchers might be familiar with a
+common SuperDARN 7 or 8 pulse sequence design. The sequence definition here is the time to transmit
+one sequence and the time for receiving echoes from that sequence.
 
 **Averaging period (integration time)**  
 
-A time where the sequences are repeated to gather enough information to average and reduce the
-effect of spurious emissions on the data. These are defined by either number of sequences, or a
+A time duration where the sequences are repeated to gather enough information to average and reduce
+the effect of spurious emissions on the data. These are defined by either number of sequences, or a
 length of time during which as many sequences as possible are transmitted. For example, researchers
 may be familiar with the standard 3 second averaging period in which ~30 pulse sequences are sent
 out and received in a single beam direction.
@@ -66,17 +68,20 @@ out and received in a single beam direction.
 
 A time where the averaging periods are repeated, traditionally to look in different beam directions
 with each averaging period. A scan is defined by the number of beams or integration times.
+Researchers may be familiar with the standard 1-minute 16-beam scan from East to West, or West to
+East, depending upon the radar.
 
 --------------------------------
 Interfacing Types Between Slices
 --------------------------------
 
 Knowing the basic building blocks of a SuperDARN-style experiment, the following types of
-interfacing are possible, arranged from highest level to lowest level:
+interfacing are possible, arranged from highest level of experiment building-block to the lowest level.
+Examples for each will be given below this section:
 
 1. **SCAN**
 
-   The scan by scan interfacing allows for slices to run a scan of one slice, followed by a scan of
+   The scan-by-scan interfacing allows for slices to run a scan of one slice, followed by a scan of
    the second. The scan mode of interfacing typically means that the slice will cycle through all of
    its beams before switching to another slice.
 
@@ -120,6 +125,7 @@ interfacing are possible, arranged from highest level to lowest level:
     - the same SCANBOUND value.
     - the same INTT or INTN value.
     - the same BEAM_ORDER length (scan length)
+    - the same DECIMATION_SCHEME
 
 --------------------------
 Slice Interfacing Examples
@@ -164,8 +170,12 @@ repeats.
 
 
 Here's a theoretical example showing all types of interfacing. In this example, slices 0 and 1 are
-CONCURRENT interfaced. Slices 0 and 2 are SEQUENCE interfaced. Slices 0 and 3 are AVEPERIOD
-interfaced. Slices 0 and 4 are SCAN interfaced.
+CONCURRENT interfaced. Slices 0 and 2 are SEQUENCE interfaced (Note that when slices 0 and 2 are
+SEQUENCE interfaced, that automatically implies that slices 1 and 2 are also SEQUENCE interfaced).
+Slices 0 and 3 are AVEPERIOD interfaced (again, note that this implies that slices 1 and 3 are
+AVEPERIOD interfaced, additionally that slices 2 and 3 are AVEPERIOD interfaced). Slices 0 and 4 are
+SCAN interfaced (finally, to really drive home this point, this implies that slices 1 and 4 are SCAN
+interfaced, slices 2 and 4 are SCAN interfaced, and slices 3 and 4 are SCAN interfaced).
 
 .. image:: img/one-experiment-all-interfacing-types.png
    :width: 800px
@@ -192,7 +202,9 @@ cpid *required*
     The only experiment-wide attribute that is required to be set by the user when initializing is
     the CPID, or control program identifier. This must be unique to the experiment. You will need to
     request this from your institution's radar operator. You should clearly document the name of the
-    experiment and some operating details that correspond to the CPID.
+    experiment and some operating details that correspond to the CPID. Please see `this SuperDARN
+    Canada webpage <https://superdarn.ca/cpid-info>`_ for more information, and to see lists of CPIDs
+    that already exist.
 
 output_rx_rate *defaults*
     The sampling rate of the output data. The default is 10.0e3/3 Hz, or 3.333 kHz.
@@ -205,17 +217,21 @@ tx_bandwidth *defaults*
 
 txctrfreq *defaults*
     The center frequency of the transmit chain. The default is 12000.0 kHz, or 12 MHz. Note that
-    this is tuned so will be set to a quantized value, which in general is not exactly 12 MHz, and
-    the value can be accessed by the user at this attribute after the experiment begins.
+    this is tuned by the UHD driver so will be set to a quantized value, which in general is not
+    exactly 12 MHz, and the value can be accessed by the user by reading this attribute after the
+    experiment begins.
 
 rxctrfreq *defaults*
     The center frequency of the receive chain. The default is 12000.0 kHz, or 12 MHz. Note that this
-    is tuned so will be set to a quantized value, which in general is not exactly 12 MHz, and the
-    value can be accessed by the user at this attribute after the experiment begins.
+    is tuned by the UHD driver so will be set to a quantized value, which in general is not exactly
+    12 MHz, and the value can be accessed by the user by reading this attribute after the experiment
+    begins.
 
 decimation_scheme *defaults*
     The decimation scheme for the experiment, provided by an instance of the class DecimationScheme.
     There is a default scheme specifically set for the default rates and center frequencies above.
+    Any new schemes should be thoroughly tested to ensure that data is being filtered and decimated
+    appropriately.
 
 comment_string *defaults*
     A comment string describing the experiment. It is highly encouraged to provide some description
@@ -246,8 +262,8 @@ dictionary are described below.
 Slice Keys
 ----------
 
-These are the keys that are set by the user when initializing a slice. Some are required, some can
-be defaulted, and some are set by the experiment and are read-only.
+These are the dictionary keys that are set by the user when initializing a slice. Some are required,
+some can be default, and some are set by the experiment and are read-only.
 
 **Slice Keys Required by the User**
 
@@ -296,6 +312,9 @@ rx_beam_order *required*
     beam directions. It is up to the user to ensure that this field works well with the specified
     tx_beam_order or tx_antenna_pattern.
 
+rx_only *required if tx_beam_order not specified*
+    A boolean flag to indicate that the slice doesn't transmit, only receives.
+
 clrfrqrange *required or freq required*
     range for clear frequency search, should be a list of length = 2, [min_freq, max_freq] in kHz.
     **Not currently supported.**
@@ -307,7 +326,8 @@ freq *required or clrfrqrange required*
 **Defaultable Slice Keys**
 
 acf *defaults*
-    flag for rawacf generation. The default is False. If True, the following fields are also used:
+    flag for rawacf generation. **The default is False**. If True, the following fields are also
+    used:
 
     * averaging_method (default 'mean')
     * xcf (default True if acf is True)
@@ -325,6 +345,10 @@ averaging_method *defaults*
 comment *defaults*
     a comment string that will be placed in the borealis files describing the slice. Defaults
     to empty string.
+
+decimation_scheme *defaults*
+    an instance of class DecimationScheme defining the filtering for the slice. Defaults to a
+    default scheme from decimation_scheme.py
 
 lag_table *defaults*
     used in acf calculations. It is a list of lags. Example of a lag: [24, 27] from 8-pulse
@@ -346,6 +370,12 @@ rx_int_antennas *defaults*
 
 rx_main_antennas *defaults*
     The antennas to receive on in main array, default is all antennas given max number from config.
+
+rx_antenna_pattern *defaults*
+    Experiment-defined function which returns a complex weighting factor of magnitude <= 1 for each
+    beam direction scanned in the experiment. The return value of the function must be an array of
+    size [beam_angle, antenna_num]. This function allows for custom beamforming of the receive
+    antennas for borealis processing of antenna iq to rawacf.
 
 scanbound *defaults*
     A list of seconds past the minute for averaging periods in a scan to align to. Defaults to None,
@@ -408,9 +438,6 @@ cpid *read-only*
     experiment-wide attribute but is stored within the slice as well. This is provided by the user
     but not within the slice, instead when the experiment is initialized.
 
-rx_only *read-only*
-    A boolean flag to indicate that the slice doesn't transmit, only receives.
-
 slice_id *read-only*
     The ID of this slice object. An experiment can have multiple slices. This is not set by the user
     but instead set by the experiment automatically when the slice is added. Each slice id within an
@@ -420,20 +447,6 @@ slice_id *read-only*
 slice_interfacing *read-only*
     A dictionary of slice_id : interface_type for each sibling slice in the experiment at any given
     time.
-
-
-**Not currently supported and will be removed**
-
-wavetype *defaults*
-    string for wavetype. The default is SINE. **Not currently supported.**
-
-iwavetable *defaults*
-    a list of numeric values to sample from. The default is None. Not currently supported but could
-    be set up (with caution) for non-SINE. **Not currently supported.**
-
-qwavetable *defaults*
-    a list of numeric values to sample from. The default is None. Not currently supported but could
-    be set up (with caution) for non-SINE. **Not currently supported.**
 
 ------------------
 Experiment Example
@@ -484,17 +497,24 @@ look at :doc:`experiments`.
 Checking Your Experiment for Errors
 -----------------------------------
 
-A suite of unit tests have been written to check experiments for errors. This suite of tests can be
-run on by doing the following:
+An experiment testing script ``experiment_unittests.py`` has been written to check experiments for
+errors and ensure the operation of experiment checking source code.. This suite of tests can be run
+on by running the following command: ::
 
-#. Make sure your experiment is located in the ``src/borealis_experiments`` directory
-#. Ensure the file has an appropriate name reflecting the name of the experiment.
-#. Ensure that the file ``experiment_tests.csv`` exists alongside the ``experiment_unittests.py`` file
-#. Run the following, which will run the extensive set of tests in the ``experiment_unittests.py``
-   file and tell you how many passed, how many failed and how many tests had errors: ::
-   
-        python3 BOREALISPATH/tests/testing_utils/experiments/experiment_unittests.py
+        python3 BOREALISPATH/tests/experiments/experiment_unittests.py
 
+This will test all experiments within the ``borealis_experiments`` directory, and run all exception
+checking unittests within the testing_archive directory of the experiments directory.
+At the end the results of all tests will be summarized, showing how many tests passed and failed.
+
+This testing script can also be used to check specific experiments are written correctly. To do
+this, ensure your experiment is in the ``src/borealis_experiments`` directory and run the following
+command: ::
+
+        python3 BOREALISPATH/tests/experiments/experiment_unittests.py --experiment [EXPERIMENT_NAME]
+
+where EXPERIMENT_NAME is the module name of your experiment. If there are any errors while checking
+your experiment, the test will fail and the exception will describe the error. 
 
 ..  toctree::
     :glob:

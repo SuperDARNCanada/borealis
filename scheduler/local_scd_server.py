@@ -9,12 +9,17 @@
 """
 
 import subprocess as sp
-from . import scd_utils
-from . import email_utils
+import sys
 import os
 import datetime
 import time
 import argparse
+
+BOREALISPATH = os.environ['BOREALISPATH']
+sys.path.append(f"{BOREALISPATH}/scheduler")
+import scd_utils
+import email_utils
+
 
 SWG_GIT_REPO_DIR = 'schedules'
 SWG_GIT_REPO = "https://github.com/SuperDARN/schedules.git"
@@ -114,7 +119,9 @@ class SWG(object):
     def pull_new_swg_file(self):
         """Uses git to grab the new scd updates."""
         cmd = f"cd {self.scd_dir}/{SWG_GIT_REPO_DIR}; git pull origin main"
-        sp.call(cmd, shell=True)
+        print("Pulling schedule repository")
+        shell_output = sp.check_output(cmd, shell=True)
+        print(f"Result: {shell_output}")
 
     def parse_swg_to_scd(self, modes, radar, first_run):
 
@@ -132,6 +139,7 @@ class SWG(object):
         :returns:   List of all the parsed parameters.
         :rtype:     list
         """
+        print("Parsing schedule files")
 
         if first_run:
             month_to_use = datetime.datetime.utcnow()
@@ -142,7 +150,7 @@ class SWG(object):
         month = month_to_use.strftime("%m")
         yearmonth = year + month
         swg_file = f"{self.scd_dir}/{SWG_GIT_REPO_DIR}/{year}/{yearmonth}.swg"
-
+        print(f"Reading schedule file {swg_file}")
         with open(swg_file, 'r') as f:
             swg_lines = f.readlines()
 
@@ -183,6 +191,10 @@ class SWG(object):
                 # 2018 11 23 no longer scheduling twofsound as common time during 'no switching'
                 if "no switching" in line:
                     mode_to_use = modes["no_switching_time"]
+                elif "normalsound" in line:
+                    mode_to_use = modes["normalsound_time"]
+                elif "interleavescan" in line:
+                    mode_to_use = modes["interleaved_time"]
                 else:
                     mode_to_use = modes["htr_common_time"]
 
@@ -215,6 +227,7 @@ class SWG(object):
                      "experiment": mode_to_use,
                      "scheduling_mode": mode_type}
             parsed_params.append(param)
+            print(f"Found schedule line: {param}")
 
         return parsed_params
 

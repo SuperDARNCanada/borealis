@@ -10,7 +10,7 @@
 
 import zmq
 import threading
-import os
+import pickle
 import queue
 import re
 import json
@@ -56,85 +56,53 @@ class RealtimeServer:
         # The logging object
         self.log = logger
 
-    def start_threads(self):
-        """
-        Start the threads of the realtime server
-        """
-        threads = [threading.Thread(target=self.get_temp_file_from_datawrite),
-                   threading.Thread(target=self.handle_remote_connection)]
+        def start_threads(self):
+            """
+            Start the threads of the realtime server
+            """
+            threads = [threading.Thread(target=self.get_temp_file_from_datawrite),
+                       threading.Thread(target=self.handle_remote_connection)]
 
-        self.log.debug("Starting threads")
+            self.log.debug("Starting threads")
 
-        for thread in threads:
-            thread.daemon = True
-            thread.start()
+            for thread in threads:
+                thread.daemon = True
+                thread.start()
 
-        self.log.debug("Threads started")
+            self.log.debug("Threads started")
 
-        for thread in threads:
-            thread.join()
+            for thread in threads:
+                thread.join()
 
-    def read_and_convert_file_to_fitacf(self, filename):
-        """
-        Reads and converts a borealis temp rawacf site file, returning fitacf data.
-        Updates self.last_file_time.
-        It expects a filename with format: YYYYMMDD.HHMM.ss.uuuuuu.[rad].[slice_id].rawacf.hdf5
-        :param filename: string, filename of the borealis temp rawacf site file to convert
-        :return fitacf data in python dict, or None on error or if we don't need to convert
-        """
-        # Error check the filename format
-        temp_rawacf_regex = '\d{8}\.\d{4}\.\d{2}\.\d{6}\.[a-z]{3}\.[0-9]\.rawacf\.hdf5'
-        base_filename = os.path.basename(filename)
-        match = re.fullmatch(temp_rawacf_regex, base_filename)
-        if not match:
-            # There is an antennas_iq temp file also sent every time, so this log msg is debug
-            # instead of a warning
-            self.log.debug("temp file did not match regex", filename=filename)
-            os.remove(filename)
-            return None
-
-        # Read and convert data
-        fields = base_filename.split(".")
-        file_time = fields[0] + fields[1] + fields[2] + fields[3]
-
-        # Make sure we only process the first slice for simultaneous multi-slice data for now
-        if file_time == self.last_file_time:
-            self.log.debug("not processing multi-slice data for slices > 0", filename=base_filename)
-            os.remove(filename)
-            return None
-
-        self.last_file_time = file_time
-
-        slice_num = int(fields[5])
-
-        try:
-            self.log.info("using pydarnio to convert", filename=filename)
-            converted = pydarnio.BorealisConvert(filename, "rawacf", "/dev/null", slice_num, "site")
-            os.remove(filename)
-        except pydarnio.exceptions.borealis_exceptions.BorealisConvert2RawacfError as e:
-            self.log.warn("error converting", filename=filename)
-            os.remove(filename)
-            return None
-
-        return fitacf._fit(converted.sdarn_dict[0])
-
-    def fitacf_data_to_queue(self, fitacf_data):
+    def fitacf_data_to_queue(self, rawacf_data):
         """
         Makes a copy of the fitacf data, and converts to native python type.
         Adds converted fitacf data to queue.
         :param fitacf_data: fitacf data as output from backscatter
         """
-        tmp = fitacf_data.copy()
+        # TODO: Make sure we only process the first slice for simultaneous multi-slice data for now
+        try:
+            record = sorted(list(rawacf_data.keys()))[0]
+            log.info("using pydarnio to convert", record=record)
+            converted = pydarnio.BorealisConvert. \
+                _BorealisConvert__convert_rawacf_record(0, (record, rawacf_data[record]), "")
+        except pydarnio.borealis_exceptions.BorealisConvert2RawacfError:
+            log.info("error converting")
+            return None
 
-        # Can't jsonify numpy, so we convert to native types for rt purposes.
-        for k, v in fitacf_data.items():
-            if hasattr(v, 'dtype'):
-                if isinstance(v, np.ndarray):
-                    tmp[k] = v.tolist()
-                else:
-                    tmp[k] = v.item()
-        # q.put(item) by default blocks until a slot is available in the queue
-        self.q.put(tmp)
+        for rec in converted:
+            fit_data = fitacf._fit(rec)
+            tmp = fit_data.copy()
+
+            # Can't jsonify numpy so we convert to native types for realtime purposes.
+            for k, v in fit_data.items():
+                if hasattr(v, 'dtype'):
+                    if isinstance(v, np.ndarray):
+                        tmp[k] = v.tolist()
+                    else:
+                        tmp[k] = v.item()
+
+            self.q.put(tmp)
 
     def get_temp_file_from_datawrite(self):
         """
@@ -143,12 +111,12 @@ class RealtimeServer:
         the data to the queue.
         """
         while True:
-            filename = so.recv_data(self.data_write_to_realtime, self.options.dw_to_rt_identity,
-                                    self.log)
+            rawacf_pickled = so.recv_bytes(self.data_write_to_realtime, self.options.dw_to_rt_identity,
+                                     self.log)
 
-            fitacf_data = self.read_and_convert_file_to_fitacf(filename)
-            if fitacf_data:
-                self.fitacf_data_to_queue(fitacf_data)
+            rawacf_data = pickle.loads(rawacf_pickled)
+            if rawacf_data:
+                self.fitacf_data_to_queue(rawacf_data)
 
     def handle_remote_connection(self):
         """
@@ -160,7 +128,6 @@ class RealtimeServer:
             serialized = json.dumps(data_dict)
             compressed = zlib.compress(serialized.encode())
             self.realtime_socket.send(compressed)
-
 
 if __name__ == '__main__':
     from utils import log_config

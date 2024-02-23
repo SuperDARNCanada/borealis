@@ -1,8 +1,8 @@
 =========
-bfiq v0.6
+bfiq v0.7
 =========
 
-This is the most up to date version of this file format produced by Borealis version 0.6, the
+This is the most up to date version of this file format produced by Borealis version 0.7, the
 current version.
 
 For data files from previous Borealis software versions, see `here
@@ -57,7 +57,7 @@ The file fields in the bfiq array files are:
 | |                                 | | occurred at least once during integration |
 +-----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**        | | States what order the data is in and      |
-| | *unicode*                       | | describes the data layout for the         |
+| | *bytes*                         | | describes the data layout for the         |
 | | [num_antenna_arrays]            | | num_antenna_arrays data dimension         |
 +-----------------------------------+---------------------------------------------+
 | | **beam_azms**                   | | A list of the beam azimuths for each beam |
@@ -99,7 +99,7 @@ The file fields in the bfiq array files are:
 | |                                 | | and beams to read for the record.         |
 +-----------------------------------+---------------------------------------------+
 | | **data_descriptors**            | | Denotes what each data dimension          |
-| | *unicode*                       | | represents. = 'num_records',              |
+| | *bytes*                         | | represents. = 'num_records',              |
 | | [5]                             | | ‘num_antenna_arrays’,                     |
 | |                                 | | ‘max_num_sequences’, ‘max_num_beams’,     |
 | |                                 | | ‘num_samps’                               |
@@ -112,7 +112,7 @@ The file fields in the bfiq array files are:
 | | *unicode*                       | | experiment as a whole.                    |
 +-----------------------------------+---------------------------------------------+
 | | **experiment_id**               | | Number used to identify the experiment.   |
-| | *int64*                         | |                                           | 
+| | *int16*                         | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **experiment_name**             | | Name of the experiment file.              |
 | | *unicode*                       | |                                           | 
@@ -259,6 +259,11 @@ The file fields in the bfiq array files are:
 | | *uint32*                        | | microseconds. Spacing between pulses is   | 
 | |                                 | | always a multiple of this.                |
 +-----------------------------------+---------------------------------------------+
+| | **tx_antenna_phases**           | | The complex phase for each antenna for    |
+| | *complex64*                     | | transmission, normalized such that full-  |
+| | [num_records x                  | | power has magnitude 1.                    |
+| | num_main_antennas]              | |                                           |
++-----------------------------------+---------------------------------------------+
 | | **tx_pulse_len**                | | Length of the transmit pulse in           | 
 | | *uint32*                        | | microseconds.                             |
 +-----------------------------------+---------------------------------------------+
@@ -296,7 +301,7 @@ The file fields under the record name in bfiq site files are:
 | |                                | | occurred at least once during integration |
 +----------------------------------+---------------------------------------------+
 | | **antenna_arrays_order**       | | States what order the data is in and      |
-| | *[unicode, ]*                  | | describes the data layout for the         |
+| | *[bytes, ]*                    | | describes the data layout for the         |
 | |                                | | num_antenna_arrays data dimension         |
 +----------------------------------+---------------------------------------------+
 | | **beam_azms**                  | | A list of the beam azimuths for each      |
@@ -318,17 +323,16 @@ The file fields under the record name in bfiq site files are:
 | |                                | | latest git tag of the software.           |
 +----------------------------------+---------------------------------------------+
 | | **data**                       | | A contiguous set of samples (complex      | 
-| | *[complex64, ]*                | | float) at given sample rate. Needs to be  | 
-| |                                | | reshaped by data_dimensions to be         | 
-| |                                | | correctly read.                           |
+| | *[complex64, ]*                | | float) at given sample rate. Dimensions   |
+| |                                | | match that of data_dimensions field.      |
 +----------------------------------+---------------------------------------------+
 | | **data_descriptors**           | | Denotes what each data dimension          | 
-| | *[unicode, ]*                  | | represents. = ‘num_antenna_arrays’,       | 
+| | *[bytes, ]*                    | | represents. = ‘num_antenna_arrays’,       |
 | |                                | | ‘num_sequences’, ‘num_beams’, ‘num_samps’ | 
 | |                                | | for bfiq                                  |
 +----------------------------------+---------------------------------------------+
-| | **data_dimensions**            | | The dimensions in which to reshape the    | 
-| | *[uint32, ]*                   | | data. Dimensions correspond to            |
+| | **data_dimensions**            | | The dimensions of the data.               |
+| | *[uint32, ]*                   | | Dimensions correspond to                  |
 | |                                | | data_descriptors.                         |
 +----------------------------------+---------------------------------------------+
 | | **data_normalization_factor**  | | Scale of all the filters used, multiplied |
@@ -339,7 +343,7 @@ The file fields under the record name in bfiq site files are:
 | | *unicode*                      | | experiment as a whole.                    |
 +----------------------------------+---------------------------------------------+
 | | **experiment_id**              | | Number used to identify the experiment.   |
-| | *int64*                        | |                                           | 
+| | *int16*                        | |                                           |
 +----------------------------------+---------------------------------------------+
 | | **experiment_name**            | | Name of the experiment file.              |
 | | *unicode*                      | |                                           | 
@@ -454,6 +458,10 @@ The file fields under the record name in bfiq site files are:
 | | **tau_spacing**                | | The minimum spacing between pulses in     | 
 | | *uint32*                       | | microseconds. Spacing between pulses is   | 
 | |                                | | always a multiple of this.                |
++----------------------------------+---------------------------------------------+
+| | **tx_antenna_phases**          | | The complex phase for each antenna for    |
+| | *[complex64, ]*                | | transmission, normalized such that full-  |
+| |                                | | power has magnitude 1.                    |
 +----------------------------------+---------------------------------------------+
 | | **tx_pulse_len**               | | Length of the transmit pulse in           | 
 | | *uint32*                       | | microseconds.                             |

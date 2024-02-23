@@ -8,6 +8,8 @@
     :copyright: 2017 SuperDARN Canada
 """
 
+import os
+import sys
 import time
 import threading
 import argparse
@@ -16,10 +18,11 @@ import pickle
 from utils import socket_operations as so
 from utils.options import Options
 
+sys.path.append(os.environ['BOREALISPATH'])
 if __debug__:
-    from debug.src.utils.protobuf import rxsamplesmetadata_pb2
+    from build.debug.src.utils.protobuf import rxsamplesmetadata_pb2
 else:
-    from release.src.utils.protobuf import rxsamplesmetadata_pb2
+    from build.release.src.utils.protobuf import rxsamplesmetadata_pb2
 
 TIME_PROFILE = True
 
@@ -282,6 +285,7 @@ def main():
 
 if __name__ == "__main__":
     from utils import log_config
+
     log = log_config.log()
     log.info(f"BRIAN BOOTED")
     try:

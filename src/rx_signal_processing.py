@@ -6,7 +6,7 @@
     :copyright: 2020 SuperDARN Canada
     :author: Keith Kotyk
 """
-
+import os
 import sys
 import time
 import threading
@@ -31,10 +31,11 @@ if cupy_available:
 else:
     import numpy as xp
 
+sys.path.append(os.environ['BOREALISPATH'])
 if __debug__:
-    from debug.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
+    from build.debug.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 else:
-    from release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
+    from build.release.src.utils.protobuf.rxsamplesmetadata_pb2 import RxSamplesMetadata
 
 from utils.message_formats import ProcessedSequenceMessage, DebugDataStage, OutputDataset
 from utils.options import Options
@@ -249,22 +250,15 @@ class DSP(object):
         :returns:   Correlations for slices.
         :rtype:     list
         """
-
-        # [num_slices, num_beams, num_samples]
-        # [num_slices, num_beams, num_samples]
-        correlated = np.einsum('ijk,ijl->ijkl', beamformed_samples_1,
-                               beamformed_samples_2.conj())
-
         values = []
-        for s in slice_index_details:
-            if s['lags'].size == 0:
+        for s, slice_info in enumerate(slice_index_details):
+            if slice_info['lags'].size == 0:
                 values.append(np.array([]))
                 continue
-            range_off = np.arange(s['num_range_gates'], dtype=np.int32) + s['first_range_off']
 
-            tau_in_samples = s['tau_spacing'] * 1e-6 * output_sample_rate
-
-            lag_pulses_as_samples = np.array(s['lags'], np.int32) * np.int32(tau_in_samples)
+            range_off = np.arange(slice_info['num_range_gates'], dtype=np.int32) + slice_info['first_range_off']
+            tau_in_samples = slice_info['tau_spacing'] * 1e-6 * output_sample_rate
+            lag_pulses_as_samples = np.array(slice_info['lags'], np.int32) * np.int32(tau_in_samples)
 
             # [num_range_gates, 1, 1]
             # [1, num_lags, 2]
@@ -275,12 +269,17 @@ class DSP(object):
             row = samples_for_all_range_lags[..., 1].astype(np.int32)
 
             # [num_range_gates, num_lags, 2]
-            column = samples_for_all_range_lags[..., 0].astype(np.int32)
+            col = samples_for_all_range_lags[..., 0].astype(np.int32)
 
-            values_for_slice = correlated[s['slice_num'], :, row, column]
+            values_for_slice = np.empty((beamformed_samples_1.shape[1], row.shape[0], row.shape[1]), dtype=np.complex64)
 
-            # [num_range_gates, num_lags, num_beams]
-            values_for_slice = np.einsum('ijk,j->kij', values_for_slice, s['lag_phase_offsets'])
+            for lag in range(row.shape[1]):
+                values_for_slice[:, :, lag] = np.einsum('ij,ij->ji',
+                                                        beamformed_samples_1[s, :, row[:, lag]],
+                                                        beamformed_samples_2[s, :, col[:, lag]].conj())
+
+            # [num_beams, num_range_gates, num_lags]
+            values_for_slice = np.einsum('ijk,k->ijk', values_for_slice, slice_info['lag_phase_offsets'])
 
             values.append(values_for_slice)
 
@@ -729,6 +728,7 @@ def main():
 
 if __name__ == "__main__":
     from utils import log_config
+
     log = log_config.log()
     log.info(f"RX_SIGNAL_PROCESSING BOOTED")
     try:

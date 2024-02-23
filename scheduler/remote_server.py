@@ -11,8 +11,6 @@
 """
 
 import inotify.adapters
-from . import scd_utils
-from . import email_utils
 import os
 import datetime
 import argparse
@@ -23,9 +21,10 @@ import subprocess as sp
 import pickle as pkl
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from datetime import datetime, timedelta
 
-from . import remote_server_options as rso
+import scd_utils
+import email_utils
+import remote_server_options as rso
 
 
 def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string=''):
@@ -48,11 +47,11 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     :rtype:     str
     """
 
-    borealis_path=os.environ['BOREALISPATH']
+    borealis_path = os.environ['BOREALISPATH']
     if kwargs_string:
-        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode} --kwargs_string {kwargs_string}'"
+        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode} --kwargs_string {kwargs_string}'"
     else:
-        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/steamed_hams.py {experiment} release {scheduling_mode}'"
+        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode}'"
 
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
@@ -60,6 +59,7 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
         cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
     cmd_str = dt.strftime(cmd_str)
     return cmd_str
+
 
 def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
     """Plots the timeline to better visualize runtime.
@@ -110,7 +110,7 @@ def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
         :returns:   Colormap instance 
         :rtype:     ColorMap
         """
-        return plt.cm.get_cmap(name, n)
+        return plt.colormaps[name]
 
     def split_event(long_event):
         """
@@ -528,7 +528,7 @@ def get_relevant_lines(scd_util, time_of_interest):
                 found = True
 
         if not found:
-            time -= timedelta(minutes=1)
+            time -= datetime.timedelta(minutes=1)
 
             yyyymmdd = time.strftime("%Y%m%d")
             hhmm = time.strftime("%H:%M")
@@ -548,8 +548,6 @@ def _main():
 
     scd_dir = args.scd_dir
 
-    emailer = email_utils.Emailer(args.emails_filepath)
-
     inot = inotify.adapters.Inotify()
 
     options = rso.RemoteServerOptions()
@@ -566,6 +564,8 @@ def _main():
         os.makedirs(log_dir)
 
     def make_schedule():
+        emailer = email_utils.Emailer(args.emails_filepath)
+
         time_of_interest = datetime.datetime.utcnow()
 
         log_time_str = time_of_interest.strftime("%Y.%m.%d.%H.%M")
@@ -601,6 +601,10 @@ def _main():
             subject = f"Successfully scheduled commands at {site_id}"
             emailer.email_log(subject, log_file, [plot_path, pickle_path])
 
+    start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    print(f"\n{start_time} - Scheduler booted")
+    print(f"Inotify monitoring schedule file {scd_file}")
+
     # Make the schedule on restart of application
     make_schedule()
     new_notify = False
@@ -622,7 +626,7 @@ def _main():
                 event_types.extend(type_names)
 
             # File has been copied
-            print(event_types)
+            print(f"Events triggered: {event_types}]")
             if site_id in path:
                 if all(i in event_types for i in ["IN_OPEN", "IN_ACCESS", "IN_CLOSE_WRITE"]):
                     scd_utils.SCDUtils(path)

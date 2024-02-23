@@ -1,8 +1,8 @@
 ===========
-rawacf v0.6
+rawacf v0.7
 ===========
 
-This is the most up to date version of this file format produced by Borealis version 0.6, the
+This is the most up to date version of this file format produced by Borealis version 0.7, the
 current version.
 
 For data files from previous Borealis software versions, see `here
@@ -92,8 +92,8 @@ The file fields in the rawacf array files are:
 | |                                 | | characters. Typically begins with the     |
 | |                                 | | latest git tag of the software.           |
 +-----------------------------------+---------------------------------------------+
-| | **correlation_descriptors**     | | Denotes what each correlation dimension   |
-| | *unicode*                       | | (in main_acfs, intf_acfs, xcfs)           |
+| | **data_descriptors**            | | Denotes what each data dimension          |
+| | *bytes*                         | | (in main_acfs, intf_acfs, xcfs)           |
 | | [4]                             | | represents. = 'num_records',              |
 | |                                 | | ‘max_num_beams’, 'num_ranges', 'num_lags' |
 +-----------------------------------+---------------------------------------------+
@@ -105,7 +105,7 @@ The file fields in the rawacf array files are:
 | | *unicode*                       | | experiment as a whole.                    |
 +-----------------------------------+---------------------------------------------+
 | | **experiment_id**               | | Number used to identify the experiment.   |
-| | *int64*                         | |                                           | 
+| | *int16*                         | |                                           |
 +-----------------------------------+---------------------------------------------+
 | | **experiment_name**             | | Name of the experiment file.              |
 | | *unicode*                       | |                                           | 
@@ -252,6 +252,11 @@ The file fields in the rawacf array files are:
 | | *uint32*                        | | microseconds. Spacing between pulses is   | 
 | |                                 | | always a multiple of this.                |
 +-----------------------------------+---------------------------------------------+
+| | **tx_antenna_phases**           | | The complex phase for each antenna for    |
+| | *complex64*                     | | transmission, normalized such that full-  |
+| | [num_records x                  | | power has magnitude 1.                    |
+| | num_main_antennas]              | |                                           |
++-----------------------------------+---------------------------------------------+
 | | **tx_pulse_len**                | | Length of the transmit pulse in           | 
 | | *uint32*                        | | microseconds.                             |
 +-----------------------------------+---------------------------------------------+
@@ -322,14 +327,14 @@ The file fields under the record name in rawacf site files are:
 | |                                | | characters. Typically begins with the     | 
 | |                                | | latest git tag of the software.           |
 +----------------------------------+---------------------------------------------+
-| | **correlation_descriptors**    | | Denotes what each correlation dimension   | 
-| | *[unicode, ]*                  | | (in main_acfs, intf_acfs, xcfs)           | 
+| | **data_descriptors**           | | Denotes what each data dimension          |
+| | *[bytes, ]*                    | | (in main_acfs, intf_acfs, xcfs)           |
 | |                                | | represents. ('num_beams, 'num_ranges',    |
 | |                                | | 'num_lags')                               |
 +----------------------------------+---------------------------------------------+
-| | **correlation_dimensions**     | | The dimensions in which to reshape the    | 
-| | *[uint32, ]*                   | | acf or xcf datasets. Dimensions           |
-| |                                | | correspond to correlation_descriptors.    |
+| | **data_dimensions**            | | The dimensions of the acf of xcf          |
+| | *[uint32, ]*                   | | datasets. Dimensions correspond to        |
+| |                                | | data_descriptors.                         |
 +----------------------------------+---------------------------------------------+
 | | **data_normalization_factor**  | | Scale of all the filters used, multiplied |
 | | *float32*                      | | for a total scale to normalize the data   |
@@ -339,7 +344,7 @@ The file fields under the record name in rawacf site files are:
 | | *unicode*                      | | experiment as a whole.                    |
 +----------------------------------+---------------------------------------------+
 | | **experiment_id**              | | Number used to identify the experiment.   |
-| | *int64*                        | |                                           | 
+| | *int16*                        | |                                           |
 +----------------------------------+---------------------------------------------+
 | | **experiment_name**            | | Name of the experiment file.              |
 | | *unicode*                      | |                                           | 
@@ -449,6 +454,10 @@ The file fields under the record name in rawacf site files are:
 | | *uint32*                       | | microseconds. Spacing between pulses is   | 
 | |                                | | always a multiple of this.                |
 +----------------------------------+---------------------------------------------+
+| | **tx_antenna_phases**          | | The complex phase for each antenna for    |
+| | *[complex64, ]*                | | transmission, normalized such that full-  |
+| |                                | | power has magnitude 1.                    |
++----------------------------------+---------------------------------------------+
 | | **tx_pulse_len**               | | Length of the transmit pulse in           | 
 | | *uint32*                       | | microseconds.                             |
 +----------------------------------+---------------------------------------------+
@@ -465,6 +474,8 @@ code is housed within `pyDARNio <https://github.com/SuperDARN/pyDARNio>`_.
 
 Restructuring between site and array formats occur within the BorealisRestructure class, found `here
 <https://github.com/SuperDARN/pyDARNio/blob/main/pydarnio/borealis/borealis_restructure.py>`__.
+
+.. _rawacf-sdarn-mapping:
 
 ----------------------------------------
 rawacf to rawacf SDARN (DMap) Conversion

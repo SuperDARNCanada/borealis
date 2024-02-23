@@ -40,7 +40,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 37
 fi
 
-PYTHON="$( type -P python )"
+PYTHON="$( type -P python3 )"
 # Check that Python is available
 if [ "x$PYTHON" == "x" ]; then
     echo "Could not find Python" >&2

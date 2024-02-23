@@ -1,3 +1,5 @@
+.. _software:
+
 ========
 Software
 ========
@@ -8,7 +10,12 @@ known to work.
 
 **NOTE:** Commands that require root privileges will have a ``sudo`` or ``su`` command ahead of
 them, or explicitly say 'as root', all others should be executed as the normal user (recommended
-name: radar) that will run Borealis
+name: radar) that will run Borealis.
+
+**NOTE:** It is possible to run Borealis on the CPU, that is, without using your graphics card
+for parallel computations. This will severely slow down the system, but may be useful in some cases.
+If this is desired, you can skip the first step of installing NVIDIA drivers on your machine, and
+see the note when running ``install_radar_deps.py``.
 
 #. Install the latest version of the NVIDIA drivers (see
    https://en.opensuse.org/SDB:NVIDIA_drivers). The driver must be able to support running the GPU
@@ -16,10 +23,11 @@ name: radar) that will run Borealis
    capability version of the GPU. Getting the OS to run stable with NVIDIA is the most important
    step, **so make sure you read this page carefully**.
 
-#. Use the BIOS to find a stable over-clock for the CPU. Usually the recommended turbo frequency is
-   a good place to start. This step is optional, but will help system performance when it comes to
-   streaming high rates from the USRP. Do not adjust higher over-clock settings without doing
-   research.
+#.  **NOTE: Overclocking is no longer suggested, as reliability is more important than
+    performance now**. Use the BIOS to find a stable over-clock for the CPU. Usually the recommended
+    turbo frequency is a good place to start. This step is optional, but will help system performance
+    when it comes to streaming high rates from the USRP. Do not adjust higher over-clock settings
+    without doing research.
 
 #. Use the BIOS to enable boot-on-power. The computer should come back online when power is restored
    after an outage. This setting is typically referred to as *Restore on AC/Power Loss*
@@ -48,7 +56,9 @@ name: radar) that will run Borealis
 
 #. Use the network manager or a line in the reboot script to change the MTU of the interface for the interface used to
    connect to the USRPs. A larger MTU will reduce the amount of network overhead. An MTU larger than 1500 bytes allows
-   what is known as Jumbo frames, which can use up to 9000 bytes of payload. ::
+   what is known as Jumbo frames, which can use up to 9000 bytes of payload. **NOTE this also needs
+   to be enabled on the network switch, and any other devices in the network chain. Setting this
+   to 1500 may be the best option, make sure you test.** ::
 
     sudo ip link set <10G_network_device> mtu 9000
 
@@ -96,7 +106,7 @@ name: radar) that will run Borealis
     sudo tuned-adm profile_info
 
 #. Add an environment variable called BOREALISPATH that points to the cloned git repository in
-   .bashrc or .profile and re-source the file. For example: ::
+   .bashrc or .profile and re-source the file. For example: **(NOTE the extra '/')** ::
 
     export BOREALISPATH=/home/radar/borealis/
     source .profile
@@ -118,21 +128,16 @@ name: radar) that will run Borealis
    create symbolic links to the Boost libraries the UHD (USRP Hardware Driver) understands. If UHD
    does not configure correctly, an improper Boost installation or library naming convention is the
    likely reason. Note that you need python3 installed before you can run this script. The radar
-   abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'. ::
+   abbreviation should be the 3 letter radar code such as 'sas', 'rkn' or 'inv'. **NOTE:** If you do
+   not want CUDA installed, pass the ``--no-cuda`` flag as an option. ::
 
     cd $BOREALISPATH
-    sudo -E python3 install_radar_deps.py [radar abbreviation] $BOREALISPATH 2>&1 | tee install_log.txt
-
-#. If you're building Borealis for a University of Saskatchewan radar, complete the following steps.
-   If not, skip ahead to the next step. Create symlink ``config.ini`` in Borealis directory and link
-   to the site specific config file. ::
-
-    cd $BOREALISPATH
-    ln -svi $BOREALISPATH/config/[radarcode]/[radarcode]_config.ini config.ini
+    sudo -E python3 install_radar_deps.py [radar abbreviation] $BOREALISPATH --python-version=3.9 2>&1 | tee install_log.txt
 
 #. If you're building Borealis for a non University of Saskatchewan radar, use a USASK
    ```config.ini``` file (located in ``borealis/config/``) as a template, or follow the config file
-   :ref:`documentation <config options>` to create your own file in the Borealis directory.
+   :ref:`documentation <config-options>` to create your own file in the Borealis directory. Your config file should
+   be placed in borealis/config/[site_id]/[site_id]_config.ini
 
 #. In ``config.ini``, there is an entry called "realtime_address". This defines the protocol,
    interface, and port that the realtime module uses for socket communication. This should be set to
@@ -140,7 +145,7 @@ name: radar) that will run Borealis
    your computer such as "eth0" or "wlan0". Running ``ip addr``, you should choose a device which is
    UP.
 
-#. Install the necessary software to convert and test data: ::
+#. Install the necessary software to transfer, convert, and test data: ::
 
     cd $HOME
     git clone https://github.com/SuperDARNCanada/borealis-data-utils.git
@@ -266,22 +271,20 @@ name: radar) that will run Borealis
 
     /sbin/modprobe pps_ldisc && /usr/sbin/ldattach PPS /dev/[PPS tty] && /usr/local/bin/ntpd
 
+#. To verify that ntpd is working correctly, follow the steps outlined in the ntp 
+   `documentation <https://www.ntp.org/documentation/4.2.8-series/debug/>`_. Check 
+   ``/var/log/messages`` for the output messages from ``ntpd``. Also see 
+   `PPS Clock Discipline <http://www.fifi.org/doc/ntp-doc/html/driver22.htm>`_ for information about 
+   the PPS ntp clock discipline.
+
 #. Verify that the realtime module is able to communicate with other modules. This can be done by
    running the following command in a new terminal while borealis is running. If all is well, the
    command should output that there is a device listening on the channel specified. ::
 
     ss --all | grep 9696
 
-#. For further reading on networking and tuning with the USRP devices, see
-   https://files.ettus.com/manual/page_transport.html and
-   https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks. Also see
-   http://www.fifi.org/doc/ntp-doc/html/driver22.htm for information about the PPS ntp clock
-   discipline, and the ``man`` pages for:
-
-    - ``tuned``
-    - ``cpupower``
-    - ``ethtool``
-    - ``ip``
-    - ``sysctl``
-    - ``modprobe``
-    - ``ldattach``
+#. For further reading on networking and tuning with the USRP devices, see 
+   `Transport Notes <https://files.ettus.com/manual/page_transport.html>`_ and 
+   `USRP Host Performance Tuning Tips and Tricks <https://kb.ettus.com/USRP_Host_Performance_Tuning_Tips_and_Tricks>`_. 
+   Also check out the man pages for ``tuned``, ``cpupower``, ``ethtool``, ``ip``, ``sysctl``, 
+   ``modprobe``, and ``ldattach``

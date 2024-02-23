@@ -27,12 +27,12 @@ class Options:
     intf_antenna_spacing: float = field(init=False)
     intf_antenna_count: int = field(init=False)
     log_aggregator_addr: str = field(init=False)
-    log_aggregator_bool: str = field(init=False)
-    log_aggregator_port: str = field(init=False)
-    log_console_bool: str = field(init=False)
+    log_aggregator_bool: bool = field(init=False)
+    log_aggregator_port: int = field(init=False)
+    log_console_bool: bool = field(init=False)
     log_directory: str = field(init=False)
     log_level: str = field(init=False)
-    log_logfile_bool: str = field(init=False)
+    log_logfile_bool: bool = field(init=False)
     main_antennas: list[int] = field(init=False)
     main_antenna_spacing: float = field(init=False)
     main_antenna_count: int = field(init=False)
@@ -130,9 +130,9 @@ class Options:
         try:
             with open(path, 'r') as data:
                 raw_config = json.load(data)
-        except IOError:
-            print(f'IOError on config file at {path}')
-            raise
+        except OSError:
+            errmsg = f'Cannot open config file at {path}'
+            raise ValueError(errmsg)
 
         # Initialize all options from config file
         self.site_id = raw_config['site_id']
@@ -212,7 +212,7 @@ class Options:
         try:
             with open(hdw_dat_file) as hdwdata:
                 lines = hdwdata.readlines()
-        except IOError:
+        except OSError:
             errmsg = f'Cannot open hdw.dat file at {hdw_dat_file}'
             raise ValueError(errmsg)
 
