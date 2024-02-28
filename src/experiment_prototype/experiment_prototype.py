@@ -306,7 +306,7 @@ class ExperimentPrototype:
         This experiment's CPID (control program ID, a term that comes from ROS).
 
         :returns:   cpid - read-only, only modified at runtime by set_scheduling_mode() to set to a
-                    negative value during discretionary time
+                    negative value if the embargo flag was set in the schedule
         :rtype:     int
         """
         return self.__cpid
