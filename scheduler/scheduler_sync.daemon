@@ -26,7 +26,7 @@
 #       systemctl [command] scheduler_sync@[RADAR_NAME]
 #
 # Dependencies:
-#   - inotifywait (installed by `zypper in inotify-tools``)
+#   - inotifywait (installed by `zypper in inotify-tools`)
 #   - ssh link between computer and remote radar computers (no password prompt for rsync)
 #
 # Requires:
@@ -62,7 +62,7 @@ if [[ ! -v "RADAR_PORTS[${RADAR_NAME^^}]" ]]; then    # ^^ makes $RADAR_NAME all
 fi
 
 # Check that required variables are defined within .scheduler
-if [[ -v "SCHEDULER_DEST" || -v "LOCAL_SCHEDULE_DIR" || -v "REMOTE_SCHEDULE_DIR" ]]; then
+if [[ ! -v "SCHEDULER_DEST" || ! -v "LOCAL_SCHEDULE_DIR" || ! -v "REMOTE_SCHEDULE_DIR" ]]; then
     printf "Required variables are not all defined within .scheduler\n"
     exit 1
 fi
