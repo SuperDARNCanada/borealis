@@ -26,6 +26,7 @@ def main():
                                                            'special, discretionary')
     parser.add_argument('--prio', default=0, help='The priority of the line')
     parser.add_argument('--duration', default='-', help='The duration of the line')
+    parser.add_argument('--embargo', action='store_true', help='Flag to embargo the files (makes the CPID negative)')
     parser.add_argument('--kwargs', nargs='+', help='Keyword arguments for the experiment')
 
     args = parser.parse_args()
@@ -41,10 +42,12 @@ def main():
         kwargs = ' '.join(args.kwargs).strip()
 
     if args.add:
-        scd_util.add_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, kwargs)
+        scd_util.add_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, kwargs,
+                          args.embargo)
 
     if args.remove:
-        scd_util.remove_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, kwargs)
+        scd_util.remove_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration,
+                             kwargs, args.embargo)
 
 
 if __name__ == '__main__':
