@@ -3,9 +3,15 @@
 """
     remote_server.py
     ~~~~~~~~~~~~~~~~
-    Using inotify to determine if changes to the SCD file are made, this script will automatically
-    parse new changes and update the schedule via Linux's atq. Plots and logs are produced to verify
-    if any issues occur.
+    This process runs on the Borealis computer at each radar site. This process should be running in
+    the background whenever the radar is on, doing the following:
+      - On start up, it schedules Borealis based on the existing schedule (.scd) file for the
+        respective site. This is done using the Linux `at` service and the `atq` command. 
+      - Using inotify, remote_server.py then watches the .scd file for the respective site for any
+        changes. If the .scd file is modified, the scheduled Borealis runs are updated. 
+        
+    Logs are printed to stdout. Specific logs for each time the schedule is updated are also created
+    in borealis_schedules/logs/ and are emailed to verify if any issues occur.
 
     :copyright: 2019 SuperDARN Canada
 """
@@ -14,13 +20,8 @@ import inotify.adapters
 import os
 import datetime
 import argparse
-import collections
 import copy
-import random
 import subprocess as sp
-import pickle as pkl
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
 
 import scd_utils
 import email_utils
@@ -63,178 +64,6 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
         cmd_str = start_cmd + " | at -t %Y%m%d%H%M"
     cmd_str = dt.strftime(cmd_str)
     return cmd_str
-
-
-def plot_timeline(timeline, scd_dir, time_of_interest, site_id):
-    """Plots the timeline to better visualize runtime.
-    
-    :param  timeline:           A list of entries ordered chronologically as scheduled
-    :type   timeline:           list
-    :param  scd_dir:            The scd directory path. (example: /home/radar/borealis_schedules)
-    :type   scd_dir:            str
-    :param  time_of_interest:   The datetime holding the time of scheduling.
-    :type   time_of_interest:   Datetime
-    :param  site_id:            Site identifier for logs.
-    :type   site_id:            str
-
-    :returns:   Tuple of paths to the saved plots.
-    :rtype:     tuple(str, str)
-    """
-    fig, ax = plt.subplots()
-
-    first_date, last_date = None, None
-
-    timeline_list = [{}] * len(timeline)
-
-    def timeline_to_dict(t_list):
-        """
-        Converts the timeline list to an ordered dict for scheduling and
-        colour mapping
-        Returns:
-            OrderedDict: an ordered dict containing the timeline
-        """
-        t_dict = collections.OrderedDict()
-        for line in t_list:
-            if not line['order'] in t_dict:
-                t_dict[line['order']] = []
-
-            t_dict[line['order']].append(line)
-        return t_dict
-
-    def get_cmap(n, name='hsv'):
-        """
-        Returns a function that maps each index in 0, 1, ..., n-1 to a distinct
-        RGB color; the keyword argument name must be a standard mpl colormap name.
-
-        :param  n:      index to a RGB colour
-        :type   n:      int 
-        :param  name:   standard mpl colormap name (Default value = 'hsv')
-        :type   name:   str
-
-        :returns:   Colormap instance 
-        :rtype:     ColorMap
-        """
-        return plt.colormaps[name]
-
-    def split_event(long_event):
-        """
-        Recursively splits a long event that runs during two or more days into two events
-        in order to handle plotting.
-
-        :param  event:  
-        :type   event:  dict
-        """
-        if long_event['start'].day == long_event['end'].day:
-            return [long_event]
-        else:
-            new_event = dict()
-            new_event['color'] = long_event['color']
-            new_event['label'] = long_event['label']
-
-            one_day = datetime.timedelta(days=1)
-            midnight = datetime.datetime.combine(long_event['start'] + one_day, datetime.datetime.min.time())
-
-            first_dur = midnight - long_event['start']
-            second_dur = long_event['end'] - midnight
-
-            # handle the new event first
-            new_event['start'] = midnight
-            new_event['duration'] = second_dur
-            new_event['end'] = long_event['end']
-
-            # now handle the old long_event
-            long_event['duration'] = first_dur
-            long_event['end'] = midnight
-
-            return [long_event] + split_event(new_event)
-
-    # make random colors
-    timeline_dict = timeline_to_dict(timeline)
-    cmap = get_cmap(len(timeline_dict.items()))
-    colors = [cmap(i) for i in range(len(timeline_dict.items()))]
-    random.shuffle(colors)
-
-    # put the colors in and create event records with only start and end times,
-    # durations, colors, and labels
-    for i, (_, events) in enumerate(timeline_dict.items()):
-        for event in events:
-            event['color'] = colors[i]
-
-    plot_last = None
-    for i, event in enumerate(timeline):
-        event_item = dict()
-
-        event_item['color'] = event['color']
-        event_item['label'] = event['experiment']
-
-        event_item['start'] = event['time']
-
-        if event['duration'] == '-':
-            td = scd_utils.get_next_month_from_date(event['time']) - event['time']
-        else:
-            td = datetime.timedelta(minutes=int(event['duration']))
-
-        event_item['end'] = event_item['start'] + td
-        event_item['duration'] = td
-
-        timeline_list[i] = event_item
-
-        if i == 0:
-            first_date = event['time'].date()
-        if i == len(timeline_list) - 1:
-            last_date = event['time'] + td
-            plot_last = (last_date + datetime.timedelta(hours=12)).date()
-
-    event_list = []
-    # loop through events again, splitting them where necessary
-    for event in timeline_list:
-        event_list += split_event(event)
-
-    for event in event_list:
-        day_offset = event['start'].date() - first_date
-        start = event['start'] - day_offset
-        ax.barh(event['start'].date(), event['duration'], 0.16, left=start, color=event['color'], align='edge')
-        ax.text(x=(start + (event['duration'] / 2)), y=event['start'].date(), s=event['label'], color='k', rotation=45,
-                ha='right', va='top', fontsize=8)
-
-    hours = mdates.HourLocator(byhour=[0, 6, 12, 18, 24])
-    days = mdates.DayLocator()
-    x_fmt = mdates.DateFormatter('%H:%M')
-    y_fmt = mdates.DateFormatter('%m-%d')
-
-    ax.xaxis.set_major_locator(hours)
-    ax.xaxis.set_major_formatter(x_fmt)
-    plt.xticks(rotation=45)
-    ax.set_xlabel('Time of Day', fontsize=12)
-
-    ax.yaxis.set_major_locator(days)
-    ax.yaxis.set_major_formatter(y_fmt)
-    ax.yaxis.set_minor_locator(hours)
-    ax.set_ylim(first_date, plot_last)
-    ax.set_ylabel('Date, MM-DD', rotation='vertical', fontsize=12)
-
-    ax.set_title(f"Schedule from {first_date} to {last_date.date()}")
-
-    pretty_date_str = time_of_interest.strftime("%Y-%m-%d")
-    pretty_time_str = time_of_interest.strftime("%H:%M")
-
-    ax.annotate(f"Generated on {pretty_date_str} at {pretty_time_str} UTC", xy=(1, 1),
-                xycoords='axes fraction', fontsize=12, ha='right', va='top')
-
-    plot_time_str = time_of_interest.strftime("%Y.%m.%d.%H.%M")
-    plot_dir = f"{scd_dir}/timeline_plots"
-
-    if not os.path.exists(plot_dir):
-        os.makedirs(plot_dir)
-
-    plot_file = f"{plot_dir}/{site_id}.{plot_time_str}.png"
-    fig.set_size_inches(14, 8)
-    fig.savefig(plot_file, dpi=80)
-
-    pkl_file = f"{plot_dir}/{site_id}.{plot_time_str}.pickle"
-    pkl.dump(fig, open(pkl_file, 'wb'))
-
-    return plot_file, pkl_file
 
 
 def convert_scd_to_timeline(scd_lines, time_of_interest):
@@ -545,12 +374,17 @@ def get_relevant_lines(scd_util, time_of_interest):
 def _main():
     """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new SCD file entries")
-    parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
+    parser.add_argument('--emails-filepath', help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
 
     args = parser.parse_args()
 
     scd_dir = args.scd_dir
+    
+    if args.emails_filepath is None:
+        emails_filepath = f"{scd_dir}/emails.txt"
+    else:
+        emails_filepath = args.emails_filepath
 
     inot = inotify.adapters.Inotify()
 
@@ -568,7 +402,8 @@ def _main():
         os.makedirs(log_dir)
 
     def make_schedule():
-        emailer = email_utils.Emailer(args.emails_filepath)
+        print("Making schedule...")
+        emailer = email_utils.Emailer(emails_filepath)
 
         time_of_interest = datetime.datetime.utcnow()
 
@@ -591,7 +426,6 @@ def _main():
         else:
 
             timeline, warnings = convert_scd_to_timeline(relevant_lines, time_of_interest)
-            plot_path, pickle_path = plot_timeline(timeline, scd_dir, time_of_interest, site_id)
             new_atq_str = timeline_to_atq(timeline, scd_dir, time_of_interest, site_id)
 
             with open(log_file, 'wb') as f:
@@ -603,7 +437,7 @@ def _main():
                     f.write(f"\n{warning}".encode())
 
             subject = f"Successfully scheduled commands at {site_id}"
-            emailer.email_log(subject, log_file, [plot_path, pickle_path])
+            emailer.email_log(subject, log_file)
 
     start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     print(f"\n{start_time} - Scheduler booted")

@@ -16,6 +16,7 @@
 #   - RADAR_ID, BOREALISPATH, and PYTHON_VERSION defined in ~/.profile
 #
 # This script should be ran as a systemd daemon. An example .service file is shown below:
+# /usr/lib/systemd/system/restart_borealis.service
 # [Unit]
 # Description=Restart borealis daemon
 # 
