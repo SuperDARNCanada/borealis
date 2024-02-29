@@ -141,6 +141,10 @@ class ExperimentPrototype:
                                 requires tuning time to set, it cannot be modified after
                                 instantiation.
     :type   rxctrfreq:          float
+    :param  lo_lock_wait:       Determines if the usrp driver will wait for the local oscillator
+                                to reach a locked state before continuing when tuning the tx and
+                                rx center frequencies. Otherwise a default time delay is used
+    :type   lo_lock_wait:       bool
     :param  comment_string:     Description of experiment for data files. This should be used to
                                 describe your overall experiment design. Another comment string
                                 exists for every slice added, to describe information that is
@@ -157,7 +161,7 @@ class ExperimentPrototype:
     """
 
     def __init__(self, cpid, output_rx_rate=default_output_rx_rate, rx_bandwidth=default_rx_bandwidth,
-                 tx_bandwidth=5.0e6, txctrfreq=12000.0, rxctrfreq=12000.0, comment_string=''):
+                 tx_bandwidth=5.0e6, txctrfreq=12000.0, rxctrfreq=12000.0, lo_lock_wait=False, comment_string=''):
         if not isinstance(cpid, int):
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
@@ -248,6 +252,8 @@ class ExperimentPrototype:
 
         clock_divider = math.ceil(rxctrfreq*1e3/clock_multiples)
         self.__rxctrfreq = (clock_divider * clock_multiples)/1e3
+
+        self.__lo_lock_wait = bool(lo_lock_wait)
 
         # This is experiment-wide transmit metadata necessary to build the pulses. This data
         # cannot change within the experiment and is used in the scan classes to pass information
@@ -568,6 +574,17 @@ class ExperimentPrototype:
         else:
             log.warning(f"Minimum receive frequency set to 1 kHz")
             return 1000         # Hz
+
+    @property
+    def lo_lock_wait(self):
+        """
+        True or false statement indicating if the usrp driver will wait for the local oscillator
+        to reach a locked stated, or otherwise use a default time delay.
+
+        :returns:   lo_lock_wait
+        :rtype:     bool
+        """
+        return self.__lo_lock_wait
 
     @property
     def interface(self):

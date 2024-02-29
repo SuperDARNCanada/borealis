@@ -144,7 +144,7 @@ double USRP::get_tx_rate(uint32_t channel)
  * used and what order they are in. To synchronize tuning of all boxes, timed commands are used so
  * that everything is done at once.
  */
-double USRP::set_tx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay)
+double USRP::set_tx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay, bool lo_lock_wait)
 {
   uhd::tune_request_t tune_request(freq);
 
@@ -154,8 +154,15 @@ double USRP::set_tx_center_freq(double freq, std::vector<size_t> chs, uhd::time_
   }
   clear_command_time();
 
-  auto duration = std::chrono::duration<double>(tune_delay.get_real_secs());
-  std::this_thread::sleep_for(duration);
+  // Wait for the LO to settle, or wait for a predefined delay time
+  if ( lo_lock_wait ) {
+    while ( not usrp_->get_tx_sensor("lo_locked").to_bool() ) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  } else {
+    auto duration = std::chrono::duration<double>(tune_delay.get_real_secs());
+    std::this_thread::sleep_for(duration);
+  }
 
   //check for varying USRPs
   for (auto &channel : chs) {
@@ -274,7 +281,7 @@ double USRP::get_rx_rate(uint32_t channel)
  * used. To synchronize tuning of all boxes, timed commands are used so that everything is done at
  * once.
  */
-double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay)
+double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay, bool lo_lock_wait)
 {
   uhd::tune_request_t tune_request(freq);
 
@@ -284,8 +291,15 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs, uhd::time_
   }
   clear_command_time();
 
-  auto duration = std::chrono::duration<double>(tune_delay.get_real_secs());
-  std::this_thread::sleep_for(duration);
+  // Wait for the LO to settle, or wait for a predefined delay time
+  if ( lo_lock_wait ){
+    while ( not usrp->get_rx_sensor("lo_locked").to_bool() ) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  } else {
+    auto duration = std::chrono::duration<double>(tune_delay.get_real_secs());
+    std::this_thread::sleep_for(duration);
+  }
 
   //check for varying USRPs
   for (auto &channel : chs) {

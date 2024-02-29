@@ -25,14 +25,14 @@ class USRP{
     void set_tx_subdev(std::string tx_subdev);
     double set_tx_rate(std::vector<size_t> chs);
     double get_tx_rate(uint32_t channel=0);
-    double set_tx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay);
+    double set_tx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay, bool lo_lock_wait);
     double get_tx_center_freq(uint32_t channel=0);
     void set_main_rx_subdev(std::string main_subdev);
     void set_interferometer_rx_subdev(std::string interferometer_subdev,
                                         uint32_t interferometer_antenna_count);
     double set_rx_rate(std::vector<size_t> rx_chs);
     double get_rx_rate(uint32_t channel=0);
-    double set_rx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay);
+    double set_rx_center_freq(double freq, std::vector<size_t> chs, uhd::time_spec_t tune_delay, bool lo_lock_wait);
     double get_rx_center_freq(uint32_t channel=0);
     void set_time_source(std::string source, std::string clk_addr);
     void check_ref_locked();

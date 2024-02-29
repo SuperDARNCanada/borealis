@@ -60,7 +60,8 @@ def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq
 
 
 def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array, txctrfreq, rxctrfreq, txrate, rxrate,
-                   numberofreceivesamples, seqtime, SOB, EOB, timing, seqnum, align_sequences, repeat=False):
+                   numberofreceivesamples, seqtime, SOB, EOB, timing, seqnum, align_sequences, repeat=False,
+                   lo_lock_wait=False):
     """
     Place data in the driver packet and send it via zeromq to the driver.
 
@@ -88,6 +89,8 @@ def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array, txc
     :param repeat: a boolean indicating whether the pulse is the exact same as the last pulse
         in the sequence, in which case we will save the time and not send the samples list and other
         params that will be the same.
+    :param lo_lock_wait: a boolean indicating if the usrp driver should wait for the local oscillator to reach
+        a locked state when tuning the center frequency. If not then a default time delay is used in while tuning
     """
 
     driverpacket = DriverPacket()
@@ -98,6 +101,7 @@ def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array, txc
     driverpacket.numberofreceivesamples = numberofreceivesamples
     driverpacket.seqtime = seqtime
     driverpacket.align_sequences = align_sequences
+    driverpacket.lo_lock_wait = lo_lock_wait
 
     if repeat:
         # antennas empty
@@ -743,7 +747,8 @@ def main():
                                                pulse_transmit_data['timing'],
                                                seqnum_start + num_sequences,
                                                sequence.align_sequences,
-                                               repeat=pulse_transmit_data['isarepeat'])
+                                               repeat=pulse_transmit_data['isarepeat'],
+                                               lo_lock_wait=experiment.lo_lock_wait)
 
                             if TIME_PROFILE:
                                 pulses_to_driver_time = datetime.utcnow() - start_time
