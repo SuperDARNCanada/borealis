@@ -143,9 +143,7 @@ do
                 else
                     message="scheduler_sync@$RADAR_NAME: Schedule synced for $RADAR_NAME"
                     curl --silent --header "Content-type: application/json" --data "{'text':'${message}'}" "${!SLACK_WEBHOOK}"
-                
                 fi
-
             done
 
             printf "%s - Finished syncing schedule\n\n" "$(date --utc "+%Y%m%d %H:%M:%S UTC")"

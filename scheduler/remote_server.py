@@ -28,7 +28,7 @@ import email_utils
 import remote_server_options as rso
 
 
-def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs_string=''):
+def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs='', embargo=False):
     """
     Turns an experiment line from the scd into a formatted atq command.
 
@@ -41,18 +41,22 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     :param  first_event_flag:   Flag to signal whether the experiment is the first to run (Default
                                 value = False)
     :type   first_event_flag:   bool
-    :param  kwargs_string:      String of keyword arguments to run steamed hams (Default value = '')
-    :type   kwargs_string:      str
+    :param  kwargs:      String of keyword arguments to run steamed hams (Default value = '')
+    :type   kwargs:      str
+    :param  embargo:            Option to embargo the data (makes the CPID negative)
+    :type   embargo:            bool
 
     :returns:   Formatted atq str.
     :rtype:     str
     """
+    borealis_path=os.environ['BOREALISPATH']
 
-    borealis_path = os.environ['BOREALISPATH']
-    if kwargs_string:
-        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode} --kwargs_string {kwargs_string}'"
-    else:
-        start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode}'"
+    start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode}"
+    if embargo:
+        start_cmd += f" --embargo"
+    if kwargs:
+        start_cmd += f" --kwargs {kwargs}"
+    start_cmd += "'"    # Terminate the echo string
 
     if first_event_flag:
         cmd_str = start_cmd + " | at now + 1 minute"
@@ -314,11 +318,11 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     for event in timeline:
         if first_event:
             atq.append(format_to_atq(event['time'], event['experiment'],
-                                     event['scheduling_mode'], True, event['kwargs_string']))
+                                     event['scheduling_mode'], True, event['kwargs'], event['embargo']))
             first_event = False
         else:
             atq.append(format_to_atq(event['time'], event['experiment'],
-                                     event['scheduling_mode'], False, event['kwargs_string']))
+                                     event['scheduling_mode'], False, event['kwargs'], event['embargo']))
     for cmd in atq:
         sp.call(cmd, shell=True)
 

@@ -123,6 +123,7 @@ def steamed_hams_parser():
                                          "modules based on this mode. Commonly 'release'.")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. 'common', 'special', or 'discretionary'.")
+    parser.add_argument("--embargo", action="store_true", help="Embargo the file (makes the CPID negative)")
     parser.add_argument("--kwargs", nargs='+', default='',
                         help="Keyword arguments for the experiment. Each must be formatted as kw=val")
 
@@ -188,13 +189,12 @@ for mod in modules.keys():
 
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 modules['usrp_driver'] = modules['usrp_driver'] + " " + f'{mode} --c_debug_opts="{c_debug_opts}"'
-
+modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
+                                args.scheduling_mode_type
+if args.embargo:
+    modules['experiment_handler'] += " --embargo"
 if args.kwargs:
-    modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
-                                    args.scheduling_mode_type + " --kwargs " + kwargs
-else:
-    modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
-                                    args.scheduling_mode_type
+    modules['experiment_handler'] += " --kwargs " + kwargs
     
 # Bypass the python wrapper to run cuda-gdb
 if mode == "debug":
