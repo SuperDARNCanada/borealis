@@ -187,6 +187,11 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
           DEBUG_MSG(COLOR_BLUE("TRANSMIT") << " burst flags: SOB "  << driver_packet.sob() <<
                       " EOB " << driver_packet.eob());
 
+	  // Draven added these to keep tabs on the frequencies when they might be switched
+	  DEBUG_MSG(COLOR_RED("TRANSMIT") << " TX borealis center freq " << tx_center_freq <<
+                          " vs driver center freq " << driver_packet.txcenterfreq());
+	  DEBUG_MSG(COLOR_RED("TRANSMIT") << " RX borealis center freq " << rx_center_freq <<
+                          " vs driver center freq " << driver_packet.rxcenterfreq());
 
           TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_BLUE("TRANSMIT") << " center freq ",
             [&]() {
@@ -638,10 +643,22 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
 
   USRP usrp_d(driver_options, driver_packet.txrate(), driver_packet.rxrate());
   auto tune_delay = uhd::time_spec_t(TUNING_DELAY);
-  usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), driver_options.get_transmit_channels(),
-                            tune_delay);
-  usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), driver_options.get_receive_channels(),
-                            tune_delay);
+
+  // Added debug messages and timing to track initial N200 tuning during debug
+  DEBUG_MSG(COLOR_GREEN("STARTUP") << " center freqs: TX = " << driver_packet.txcenterfreq() <<
+                          " RX = " << driver_packet.rxcenterfreq());
+  DEBUG_MSG(COLOR_GREEN("STARTUP") << " Tuning Delay is set to " << TUNING_DELAY);
+
+  TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_GREEN("STARTUP") << " Initial tuning to center freq (tx & rx) ",
+    [&]() {
+
+      usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), driver_options.get_transmit_channels(),
+                                tune_delay);
+      usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), driver_options.get_receive_channels(),
+                                tune_delay);
+    }()
+
+  );
 
 
   auto driver_ready_msg = std::string("DRIVER_READY");
