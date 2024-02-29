@@ -15,6 +15,7 @@ message DriverPacket {
   bool SOB = 10;
   bool EOB = 11;
   bool align_sequences = 12;
+  bool lo_lock_wait = 13;
 
   message SamplesBuffer {
     repeated float real = 1;

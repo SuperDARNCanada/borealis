@@ -293,7 +293,7 @@ double USRP::set_rx_center_freq(double freq, std::vector<size_t> chs, uhd::time_
 
   // Wait for the LO to settle, or wait for a predefined delay time
   if ( lo_lock_wait ){
-    while ( not usrp->get_rx_sensor("lo_locked").to_bool() ) {
+    while ( not usrp_->get_rx_sensor("lo_locked").to_bool() ) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
   } else {

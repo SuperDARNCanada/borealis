@@ -204,7 +204,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                   tx_center_freq = usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(),
                                                              tx_channels,
                                                              uhd::time_spec_t(TUNING_DELAY),
-                                                             driver_packet.lo_lock_wait);
+                                                             driver_packet.lo_lock_wait());
                 }
               }
 
@@ -217,7 +217,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
                   rx_center_freq = usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(),
                                                               receive_channels,
                                                               uhd::time_spec_t(TUNING_DELAY),
-                                                              driver_packet.lo_lock_wait);
+                                                              driver_packet.lo_lock_wait());
                 }
               }
 
@@ -655,9 +655,9 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
     [&]() {
 
       usrp_d.set_tx_center_freq(driver_packet.txcenterfreq(), driver_options.get_transmit_channels(),
-                                tune_delay, driver_packet.lo_lock_wait);
+                                tune_delay, driver_packet.lo_lock_wait());
       usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), driver_options.get_receive_channels(),
-                                tune_delay, driver_packet.lo_lock_wait);
+                                tune_delay, driver_packet.lo_lock_wait());
     }()
 
   );
