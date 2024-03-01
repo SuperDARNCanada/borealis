@@ -35,7 +35,8 @@ else:
 TIME_PROFILE = False
 
 
-def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq, txrate, rxrate):
+def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq, txrate, rxrate, 
+                 lo_lock_wait=False):
     """
     First packet sent to driver for setup.
 
@@ -49,6 +50,7 @@ def setup_driver(radctrl_to_driver, driver_to_radctrl_iden, txctrfreq, rxctrfreq
     """
 
     driverpacket = DriverPacket()
+    driverpacket.lo_lock_wait = lo_lock_wait
     driverpacket.txcenterfreq = txctrfreq * 1000  # convert to Hz
     driverpacket.rxcenterfreq = rxctrfreq * 1000  # convert to Hz
     driverpacket.txrate = txrate
@@ -500,7 +502,7 @@ def main():
     # Wait for acknowledgment that USRP object is set up.
     setup_driver(radar_control_to_driver, options.driver_to_radctrl_identity,
                  experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
-                 experiment.rxrate)
+                 experiment.rxrate, lo_lock_wait=experiment.lo_lock_wait)
 
     first_aveperiod = True
     next_scan_start = None

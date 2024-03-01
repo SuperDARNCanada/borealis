@@ -649,7 +649,12 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
   // Added debug messages and timing to track initial N200 tuning during debug
   DEBUG_MSG(COLOR_GREEN("STARTUP") << " center freqs: TX = " << driver_packet.txcenterfreq() <<
                           " RX = " << driver_packet.rxcenterfreq());
-  DEBUG_MSG(COLOR_GREEN("STARTUP") << " Tuning Delay is set to " << TUNING_DELAY);
+  if (driver_packet.lo_lock_wait() == true)
+  {
+    DEBUG_MSG(COLOR_GREEN("STARTUP") << " Tuning will wait for lo lock ");
+  } else {
+    DEBUG_MSG(COLOR_GREEN("STARTUP") << " Tuning Delay is set to " << TUNING_DELAY);
+  }
 
   TIMEIT_IF_TRUE_OR_DEBUG(false, COLOR_GREEN("STARTUP") << " Initial tuning to center freq (tx & rx) ",
     [&]() {
