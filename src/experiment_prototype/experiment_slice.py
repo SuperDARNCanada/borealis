@@ -336,18 +336,6 @@ class ExperimentSlice:
 
     # Validators which check that all mutually exclusive sets of fields have one option set
 
-    # Note - txctrfreq and rxctrfreq are set here and modify the actual center frequency to a
-    # multiple of the clock divider that is possible by the USRP - this default value set
-    # here is not exact (center freq is never exactly 12 MHz).
-
-    # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-    clock_multiples = options.usrp_master_clock_rate / 2 ** 32
-    clock_divider = math.ceil(txctrfreq * 1e3 / clock_multiples)
-    txctrfreq = (clock_divider * clock_multiples) / 1e3
-
-    clock_divider = math.ceil(rxctrfreq * 1e3 / clock_multiples)
-    rxctrfreq = (clock_divider * clock_multiples) / 1e3
-
     @root_validator(pre=True)
     def check_tx_specifier(cls, values):
         if 'tx_antenna_pattern' not in values and 'tx_beam_order' in values:
@@ -664,7 +652,7 @@ class ExperimentSlice:
 
 
     @validator('freq')
-    def check_freq(cls, freq, rxctrfreq, txctrfreq, values):
+    def check_freq(cls, freq, values):
         if not freq:
             return
 
@@ -672,10 +660,10 @@ class ExperimentSlice:
             if freq_range[0] <= freq <= freq_range[1]:
                 raise ValueError(f"freq is within a restricted frequency range {freq_range}")
 
-        max_rx = rxctrfreq * 1000 + (values['rxrate'] / 2.0) - values['transition_bandwidth']
-        min_rx = rxctrfreq * 1000 - (values['rxrate'] / 2.0) + values['transition_bandwidth']
-        max_tx = txctrfreq * 1000 + (values['txrate'] / 2.0) - values['transition_bandwidth']
-        min_tx = txctrfreq * 1000 - (values['txrate'] / 2.0) + values['transition_bandwidth']
+        max_rx = values['rxctrfreq'] * 1000 + (values['rxrate'] / 2.0) - values['transition_bandwidth']
+        min_rx = values['rxctrfreq'] * 1000 - (values['rxrate'] / 2.0) + values['transition_bandwidth']
+        max_tx = values['txctrfreq'] * 1000 + (values['txrate'] / 2.0) - values['transition_bandwidth']
+        min_tx = values['txctrfreq'] * 1000 - (values['txrate'] / 2.0) + values['transition_bandwidth']
 
         if (freq > max_rx) or (freq < min_rx):
             raise ValueError(f"Slice frequency is outside {values['rxrate']/1e6}MHz bandwidth of rx center freq")
