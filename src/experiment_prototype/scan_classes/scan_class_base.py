@@ -125,8 +125,8 @@ class ScanClassBase(object):
                 # combinations([1, 3, 5], 2) --> [1,3], [1,5], [3,5]
                 nested_class_interface[tuple(i)] = self.interface[tuple(i)]
 
-            nested_class_param_lists.append([slice_list, slices_for_nested_class,
-                                             nested_class_interface, self.transmit_metadata])
+            nested_class_param_lists.append([slice_list, slices_for_nested_class, nested_class_interface,
+                                             self.transmit_metadata, self.slice_dict[0].txctrfreq])
 
         return nested_class_param_lists
 

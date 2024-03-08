@@ -495,7 +495,7 @@ def main():
     # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
     setup_driver(radar_control_to_driver, options.driver_to_radctrl_identity,
-                 experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
+                 experiment.slice_dict[0].txctrfreq, experiment.slice_dict[0].rxctrfreq, experiment.txrate,
                  experiment.rxrate)
 
     first_aveperiod = True
@@ -728,13 +728,21 @@ def main():
 
                         decimation_scheme = sequence.decimation_scheme
 
+                        # test logging block
+                        for pulse_transmit_data in pulse_transmit_data_tracker[sequence_index][num_sequences]:
+                            log.info(num_sequences)
+                            log.info(sequence_index)
+                            log.info(pulse_transmit_data)
+
                         def send_pulses():
                             for pulse_transmit_data in pulse_transmit_data_tracker[sequence_index][num_sequences]:
+                                tx_tune = sequence[sequence_index].slice_dict[0].txctrfreq
+                                rx_tune = sequence[sequence_index].slice_dict[0].rxctrfreq
                                 data_to_driver(radar_control_to_driver,
                                                options.driver_to_radctrl_identity,
                                                pulse_transmit_data['samples_array'],
-                                               experiment.txctrfreq,
-                                               experiment.rxctrfreq, experiment.txrate,
+                                               tx_tune, rx_tune,
+                                               experiment.txrate,
                                                experiment.rxrate,
                                                sequence.numberofreceivesamples,
                                                sequence.seqtime,
@@ -763,7 +771,7 @@ def main():
                                               sequence.slice_ids, experiment.slice_dict,
                                               rx_beam_phases, sequence.seqtime,
                                               sequence.first_rx_sample_start,
-                                              experiment.rxctrfreq,
+                                              sequence[sequence_index].slice_dict[0].rxctrfreq,
                                               sequence.output_encodings,
                                               sequence.decimation_scheme)
 
@@ -832,7 +840,7 @@ def main():
                                             experiment.scheduling_mode,
                                             experiment.output_rx_rate, experiment.comment_string,
                                             decimation_scheme.filter_scaling_factors,
-                                            experiment.rxctrfreq,
+                                            experiment.slice_dict[0].rxctrfreq,
                                             debug_samples=debug_samples)
 
                 thread = threading.Thread(target=send_dw)

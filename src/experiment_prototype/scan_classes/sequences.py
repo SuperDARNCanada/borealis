@@ -96,7 +96,7 @@ class Sequence(ScanClassBase):
     :type   transmit_metadata:      dict
     """
 
-    def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
+    def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata, txctrfreq):
         ScanClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata)
 
         self.decimation_scheme = self.slice_dict[self.slice_ids[0]].decimation_scheme
@@ -111,7 +111,6 @@ class Sequence(ScanClassBase):
             dm_rate *= stage.dm_rate
 
         txrate = self.transmit_metadata['txrate']
-        txctrfreq = self.transmit_metadata['txctrfreq']
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         main_antenna_spacing = self.transmit_metadata['main_antenna_spacing']
         intf_antenna_count = self.transmit_metadata['intf_antenna_count']

@@ -48,6 +48,8 @@ slice_key_set = frozenset([
     "cpid",
     "first_range",
     "freq",
+    "txctrfreq",
+    "rxctrfreq",
     "intn",
     "intt",
     "lag_table",
@@ -197,6 +199,10 @@ class ExperimentSlice:
         a calculated value from pulse_len. If already set, it will be overwritten to be the correct
         value determined by the pulse_len. Used for acfs. This is the range gate separation, in the
         radial direction (away from the radar), in km.
+    rxctrfreq *defaults*
+        Center frequency, in kHz, used to mix to baseband.
+        Since this requires tuning time to set, it is the user's responsibility to ensure that the
+        re-tuning time does not detract from the experiment implementation.
     rx_int_antennas *defaults*
         The antennas to receive on in interferometer array, default is all antennas given max number
         from config.
@@ -215,6 +221,10 @@ class ExperimentSlice:
         intended for CONCURRENT interfacing, when you want multiple slice's pulses in one sequence you
         can offset one slice's sequence from the other by a certain time value so as to not run both
         frequencies in the same pulse, etc. Default is 0 offset.
+    txctrfreq *defaults*
+        Center frequency, in kHz, for the USRP to mix the samples with.
+        Since this requires tuning time to set, it is the user's responsibility to ensure that the
+        re-tuning time does not detract from the experiment implementation.
     tx_antennas *defaults*
         The antennas to transmit on, default is all main antennas given max number from config.
     tx_antenna_pattern *defaults*
@@ -271,8 +281,6 @@ class ExperimentSlice:
     tx_maxfreq: freq_float_hz
     rx_minfreq: freq_float_hz
     rx_maxfreq: freq_float_hz
-    txctrfreq: freq_float_khz
-    rxctrfreq: freq_float_khz
     tx_bandwidth: float
     rx_bandwidth: float
     output_rx_rate: float
@@ -292,6 +300,8 @@ class ExperimentSlice:
     # These fields have default values. Some have specification requirements in conjunction with each other
     # e.g. one of intt or intn must be specified.
     freq: Optional[freq_khz] = None
+    txctrfreq: Optional[freq_khz] = 12000.0
+    rxctrfreq: Optional[freq_khz] = 12000.0
     rxonly: Optional[StrictBool] = False
     tx_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count, strict=True),
                                   max_items=options.main_antenna_count,
@@ -325,6 +335,18 @@ class ExperimentSlice:
     xcf: Optional[bool] = False
 
     # Validators which check that all mutually exclusive sets of fields have one option set
+
+    # Note - txctrfreq and rxctrfreq are set here and modify the actual center frequency to a
+    # multiple of the clock divider that is possible by the USRP - this default value set
+    # here is not exact (center freq is never exactly 12 MHz).
+
+    # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+    clock_multiples = options.usrp_master_clock_rate / 2 ** 32
+    clock_divider = math.ceil(txctrfreq * 1e3 / clock_multiples)
+    txctrfreq = (clock_divider * clock_multiples) / 1e3
+
+    clock_divider = math.ceil(rxctrfreq * 1e3 / clock_multiples)
+    rxctrfreq = (clock_divider * clock_multiples) / 1e3
 
     @root_validator(pre=True)
     def check_tx_specifier(cls, values):
@@ -609,14 +631,56 @@ class ExperimentSlice:
 
         return values
 
+
+    @validator('txctrfreq')
+    def check_txctrfreq(cls, txctrfreq, values):
+        if not txctrfreq:
+            return
+
+        max_freq = txctrfreq * 1000 + (values['txrate'] / 2.0) - values['transition_bandwidth']
+        if max_freq > options.max_freq:
+            raise ValueError(f"txctrfreq exceeds the max transmit frequency ({options.max_feq}) set by radio license")
+
+        min_freq = txctrfreq * 1000 - (values['txrate'] / 2.0) + values['transition_bandwidth']
+        if min_freq < options.min_freq:
+            raise ValueError(f"txctrfreq exceeds the min transmit frequency ({options.min_feq}) set by radio license")
+
+        return txctrfreq
+
+    @validator('rxctrfreq')
+    def check_rxctrfreq(cls, rxctrfreq, values):
+        if not rxctrfreq:
+            return
+
+        max_freq = rxctrfreq * 1000 + (values['rxrate'] / 2.0) - values['transition_bandwidth']
+        if max_freq > options.max_freq:
+            raise ValueError(f"rxctrfreq exceeds the max transmit frequency ({options.max_feq}) set by radio license")
+
+        min_freq = rxctrfreq * 1000 - (values['rxrate'] / 2.0) + values['transition_bandwidth']
+        if min_freq < options.min_freq:
+            raise ValueError(f"rxctrfreq exceeds the min transmit frequency ({options.min_feq}) set by radio license")
+
+        return rxctrfreq
+
+
     @validator('freq')
-    def check_freq(cls, freq):
+    def check_freq(cls, freq, rxctrfreq, txctrfreq, values):
         if not freq:
             return
 
         for freq_range in options.restricted_ranges:
             if freq_range[0] <= freq <= freq_range[1]:
                 raise ValueError(f"freq is within a restricted frequency range {freq_range}")
+
+        max_rx = rxctrfreq * 1000 + (values['rxrate'] / 2.0) - values['transition_bandwidth']
+        min_rx = rxctrfreq * 1000 - (values['rxrate'] / 2.0) + values['transition_bandwidth']
+        max_tx = txctrfreq * 1000 + (values['txrate'] / 2.0) - values['transition_bandwidth']
+        min_tx = txctrfreq * 1000 - (values['txrate'] / 2.0) + values['transition_bandwidth']
+
+        if (freq > max_rx) or (freq < min_rx):
+            raise ValueError(f"Slice frequency is outside {values['rxrate']/1e6}MHz bandwidth of rx center freq")
+        if (freq > max_tx) or (freq < min_tx):
+            raise ValueError(f"Slice frequency is outside {values['txrate']/1e6}MHz bandwidth of tx center freq")
 
         return freq
 
