@@ -300,8 +300,8 @@ class ExperimentSlice:
     # These fields have default values. Some have specification requirements in conjunction with each other
     # e.g. one of intt or intn must be specified.
     freq: Optional[freq_khz] = None
-    txctrfreq: Optional[freq_khz] = 12000.0
-    rxctrfreq: Optional[freq_khz] = 12000.0
+    txctrfreq: Optional[freq_khz] = None
+    rxctrfreq: Optional[freq_khz] = None
     rxonly: Optional[StrictBool] = False
     tx_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count, strict=True),
                                   max_items=options.main_antenna_count,
@@ -620,33 +620,35 @@ class ExperimentSlice:
         return values
 
 
-    @validator('txctrfreq')
-    def check_txctrfreq(cls, txctrfreq, values):
+    @validator('txctrfreq', always=True)
+    def check_txctrfreq(cls, txctrfreq):
         if not txctrfreq:
-            return
+            txctrfreq = 12000.0  # Default value when not set
 
-        max_freq = txctrfreq * 1000 + (values['txrate'] / 2.0) - values['transition_bandwidth']
-        if max_freq > options.max_freq:
-            raise ValueError(f"txctrfreq exceeds the max transmit frequency ({options.max_feq}) set by radio license")
+        # Note - txctrfreq set here and modify the actual center frequency to a
+        # multiple of the clock divider that is possible by the USRP - this default value set
+        # here is not exact (center freq is never exactly 12 MHz).
 
-        min_freq = txctrfreq * 1000 - (values['txrate'] / 2.0) + values['transition_bandwidth']
-        if min_freq < options.min_freq:
-            raise ValueError(f"txctrfreq exceeds the min transmit frequency ({options.min_feq}) set by radio license")
+        # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+        clock_multiples = options.usrp_master_clock_rate / 2 ** 32
+        clock_divider = math.ceil(txctrfreq * 1e3 / clock_multiples)
+        txctrfreq = (clock_divider * clock_multiples) / 1e3
 
         return txctrfreq
 
-    @validator('rxctrfreq')
-    def check_rxctrfreq(cls, rxctrfreq, values):
+    @validator('rxctrfreq', always=True)
+    def check_rxctrfreq(cls, rxctrfreq):
         if not rxctrfreq:
-            return
+            rxctrfreq = 12000.0  # Default value when not set
 
-        max_freq = rxctrfreq * 1000 + (values['rxrate'] / 2.0) - values['transition_bandwidth']
-        if max_freq > options.max_freq:
-            raise ValueError(f"rxctrfreq exceeds the max transmit frequency ({options.max_feq}) set by radio license")
+        # Note - rxctrfreq set here and modify the actual center frequency to a
+        # multiple of the clock divider that is possible by the USRP - this default value set
+        # here is not exact (center freq is never exactly 12 MHz).
 
-        min_freq = rxctrfreq * 1000 - (values['rxrate'] / 2.0) + values['transition_bandwidth']
-        if min_freq < options.min_freq:
-            raise ValueError(f"rxctrfreq exceeds the min transmit frequency ({options.min_feq}) set by radio license")
+        # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+        clock_multiples = options.usrp_master_clock_rate / 2 ** 32
+        clock_divider = math.ceil(rxctrfreq * 1e3 / clock_multiples)
+        rxctrfreq = (clock_divider * clock_multiples) / 1e3
 
         return rxctrfreq
 

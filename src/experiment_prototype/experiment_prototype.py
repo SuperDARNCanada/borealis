@@ -730,18 +730,6 @@ class ExperimentPrototype:
         # each added slice has a unique slice id, even if previous slices have been deleted.
         exp_slice['cpid'] = self.cpid
 
-        # Note - txctrfreq and rxctrfreq are set here and modify the actual center frequency to a
-        # multiple of the clock divider that is possible by the USRP - this default value set
-        # here is not exact (center freq is never exactly 12 MHz).
-
-        # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
-        clock_multiples = self.options.usrp_master_clock_rate / 2 ** 32
-        clock_divider = math.ceil(exp_slice['txctrfreq'] * 1e3 / clock_multiples)
-        exp_slice['txctrfreq'] = (clock_divider * clock_multiples) / 1e3
-
-        clock_divider = math.ceil(exp_slice['rxctrfreq'] * 1e3 / clock_multiples)
-        exp_slice['rxctrfreq'] = (clock_divider * clock_multiples) / 1e3
-
         # Now we setup the slice which will check minimum requirements and set defaults, and then
         # will complete a check_slice and raise any errors found.
         new_exp_slice = ExperimentSlice(**exp_slice, **self.__slice_restrictions)
