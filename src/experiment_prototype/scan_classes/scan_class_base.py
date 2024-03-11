@@ -60,7 +60,6 @@ class ScanClassBase(object):
                                 - 'max_usrp_dac_amplitude' [V peak],
                                 - 'rx_sample_rate' [Hz],
                                 - 'min_pulse_separation' [us],
-                                - 'txctrfreq' [kHz],
                                 - 'txrate' [Hz],
                                 - 'intf_offset' [m,m,m],
                                 - 'dm_rate'
@@ -125,8 +124,8 @@ class ScanClassBase(object):
                 # combinations([1, 3, 5], 2) --> [1,3], [1,5], [3,5]
                 nested_class_interface[tuple(i)] = self.interface[tuple(i)]
 
-            nested_class_param_lists.append([slice_list, slices_for_nested_class, nested_class_interface,
-                                             self.transmit_metadata, self.slice_dict[0].txctrfreq])
+            nested_class_param_lists.append([slice_list, slices_for_nested_class, 
+                                             nested_class_interface, self.transmit_metadata])
 
         return nested_class_param_lists
 

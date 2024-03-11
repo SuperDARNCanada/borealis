@@ -96,7 +96,7 @@ class Sequence(ScanClassBase):
     :type   transmit_metadata:      dict
     """
 
-    def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata, txctrfreq):
+    def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
         ScanClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata)
 
         self.decimation_scheme = self.slice_dict[self.slice_ids[0]].decimation_scheme
@@ -140,7 +140,7 @@ class Sequence(ScanClassBase):
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
             freq_khz = float(exp_slice.freq)
-            wave_freq = freq_khz - txctrfreq
+            wave_freq = freq_khz - self.txctrfreq
             wave_freq_hz = wave_freq * 1000
 
 
@@ -386,7 +386,7 @@ class Sequence(ScanClassBase):
 
         # create debug dict for tx samples.
         debug_dict = {'txrate': txrate,
-                      'txctrfreq': txctrfreq,
+                      'txctrfreq': self.txctrfreq,
                       'pulse_timing': [],
                       'pulse_sample_start': [],
                       'sequence_samples': {},
