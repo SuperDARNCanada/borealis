@@ -502,8 +502,7 @@ class ExperimentPrototype:
         :returns:   rx_minfreq
         :rtype:     float
         """
-        min_freq = self.options.min_freq - (self.rxrate/2.0) + transition_bandwidth
-        return min_freq
+        return self.options.min_freq
 
     @property
     def interface(self):

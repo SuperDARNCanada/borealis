@@ -299,9 +299,9 @@ class ExperimentSlice:
 
     # These fields have default values. Some have specification requirements in conjunction with each other
     # e.g. one of intt or intn must be specified.
-    freq: Optional[freq_khz] = None
     txctrfreq: Optional[freq_khz] = None
     rxctrfreq: Optional[freq_khz] = None
+    freq: Optional[freq_khz] = None
     rxonly: Optional[StrictBool] = False
     tx_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count, strict=True),
                                   max_items=options.main_antenna_count,
@@ -662,10 +662,10 @@ class ExperimentSlice:
             if freq_range[0] <= freq <= freq_range[1]:
                 raise ValueError(f"freq is within a restricted frequency range {freq_range}")
 
-        max_rx = values['rxctrfreq'] * 1000 + (values['rxrate'] / 2.0) - values['transition_bandwidth']
-        min_rx = values['rxctrfreq'] * 1000 - (values['rxrate'] / 2.0) + values['transition_bandwidth']
-        max_tx = values['txctrfreq'] * 1000 + (values['txrate'] / 2.0) - values['transition_bandwidth']
-        min_tx = values['txctrfreq'] * 1000 - (values['txrate'] / 2.0) + values['transition_bandwidth']
+        max_rx = (values['rxctrfreq'] * 1000 + (values['rx_bandwidth'] / 2.0) - values['transition_bandwidth']) / 1000
+        min_rx = (values['rxctrfreq'] * 1000 - (values['rx_bandwidth'] / 2.0) + values['transition_bandwidth']) / 1000
+        max_tx = (values['txctrfreq'] * 1000 + (values['tx_bandwidth'] / 2.0) - values['transition_bandwidth']) / 1000
+        min_tx = (values['txctrfreq'] * 1000 - (values['tx_bandwidth'] / 2.0) + values['transition_bandwidth']) / 1000
 
         if (freq > max_rx) or (freq < min_rx):
             raise ValueError(f"Slice frequency is outside {values['rxrate']/1e6}MHz bandwidth of rx center freq")
