@@ -267,10 +267,6 @@ class ExperimentPrototype:
         self.__slice_restrictions = {
             'tx_bandwidth': self.tx_bandwidth,
             'rx_bandwidth': self.rx_bandwidth,
-            'tx_minfreq': self.tx_minfreq,
-            'tx_maxfreq': self.tx_maxfreq,
-            'rx_minfreq': self.rx_minfreq,
-            'rx_maxfreq': self.rx_maxfreq,
             'output_rx_rate': self.output_rx_rate,
             'transition_bandwidth': transition_bandwidth
         }
@@ -450,59 +446,6 @@ class ExperimentPrototype:
         :rtype:     dict
         """
         return self.__transmit_metadata
-
-    @property
-    def tx_maxfreq(self):
-        """
-        The maximum transmit frequency.
-
-        This is the maximum tx frequency possible in this experiment restricted by our license.
-
-        :returns:   tx_maxfreq
-        :rtype:     float
-        """
-        return self.options.max_freq
-
-    @property
-    def tx_minfreq(self):
-        """
-        The minimum transmit frequency.
-
-        This is the minimum tx frequency possible in this experiment restricted by our license
-
-        :returns:   tx_minfreq
-        :rtype:     float
-        """
-        return self.options.min_freq
-
-    @property
-    def rx_maxfreq(self):
-        """
-        The maximum receive frequency.
-
-        This is the maximum tx frequency possible in this experiment. The maximum is slightly
-        less than that allowed by the max center frequency and rxrate, to stay away from the
-        edges of the possible receive band where the signal may be distorted.
-
-        :returns:   rx_maxfreq
-        :rtype:     float
-        """
-        max_freq = self.options.max_freq + (self.rxrate/2.0) - transition_bandwidth
-        return max_freq
-
-    @property
-    def rx_minfreq(self):
-        """
-        The minimum receive frequency.
-
-        This is the minimum rx frequency possible in this experiment. The minimum is slightly
-        more than that allowed by the center frequency and rxrate, to stay away from the
-        edges of the possible receive band where the signal may be distorted.
-
-        :returns:   rx_minfreq
-        :rtype:     float
-        """
-        return self.options.min_freq
 
     @property
     def interface(self):
