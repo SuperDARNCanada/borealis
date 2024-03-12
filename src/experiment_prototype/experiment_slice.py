@@ -47,9 +47,13 @@ slice_key_set = frozenset([
     "comment",
     "cpid",
     "first_range",
-    "freq",
     "txctrfreq",
     "rxctrfreq",
+    "tx_minfreq",
+    "tx_maxfreq",
+    "rx_minfreq",
+    "rx_maxfreq",
+    "freq",
     "intn",
     "intt",
     "lag_table",
@@ -658,41 +662,45 @@ class ExperimentSlice:
 
     @validator('tx_maxfreq', always=True)
     def check_tx_maxfreq(cls, tx_maxfreq, values):
-        new_max = values['txctrfreq'] * 1000 + (values['tx_bandwidth'] / 2.0) - values['transition_bandwidth']
-        if new_max > options.max_freq:
-            tx_maxfreq = options.max_freq
-        else:
-            tx_maxfreq = new_max
+        tx_maxfreq = options.max_freq
+        
+        if 'txctrfreq' in values:
+            new_max = values['txctrfreq'] * 1000 + (values['tx_bandwidth'] / 2.0) - values['transition_bandwidth']
+            if new_max < options.max_freq:
+                tx_maxfreq = new_max
 
         return tx_maxfreq
 
     @validator('tx_minfreq', always=True)
     def check_tx_minfreq(cls, tx_minfreq, values):
-        new_min = values['txctrfreq'] * 1000 - (values['tx_bandwidth'] / 2.0) + values['transition_bandwidth']
-        if new_min < options.min_freq:
-            tx_minfreq = options.min_freq
-        else:
-            tx_minfreq = new_min
+        tx_minfreq = options.min_freq
+
+        if 'txctrfreq' in values:
+            new_min = values['txctrfreq'] * 1000 - (values['tx_bandwidth'] / 2.0) + values['transition_bandwidth']
+            if new_min > options.min_freq:
+                tx_minfreq = new_min
 
         return tx_minfreq
 
     @validator('rx_maxfreq', always=True)
     def check_rx_maxfreq(cls, rx_maxfreq, values):
-        new_max = values['rxctrfreq'] * 1000 + (values['rx_bandwidth'] / 2.0) - values['transition_bandwidth']
-        if new_max > options.max_freq:
-            rx_maxfreq = options.max_freq
-        else:
-            rx_maxfreq = new_max
+        rx_maxfreq = options.max_freq
+
+        if 'rxctrfreq' in values:
+            new_max = values['rxctrfreq'] * 1000 + (values['rx_bandwidth'] / 2.0) - values['transition_bandwidth']
+            if new_max < options.max_freq:
+                rx_maxfreq = new_max
 
         return rx_maxfreq
 
     @validator('rx_minfreq', always=True)
     def check_rx_minfreq(cls, rx_minfreq, values):
-        new_min = values['rxctrfreq'] * 1000 - (values['rx_bandwidth'] / 2.0) + values['transition_bandwidth']
-        if new_min < options.min_freq:
-            rx_minfreq = options.min_freq
-        else:
-            rx_minfreq = new_min
+        rx_minfreq = options.min_freq
+
+        if 'rxctrfreq' in values:
+            new_min = values['rxctrfreq'] * 1000 - (values['rx_bandwidth'] / 2.0) + values['transition_bandwidth']
+            if new_min > options.min_freq:
+                rx_minfreq = new_min
 
         return rx_minfreq
 
