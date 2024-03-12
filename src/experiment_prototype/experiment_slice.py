@@ -713,10 +713,10 @@ class ExperimentSlice:
             if freq_range[0] <= freq <= freq_range[1]:
                 raise ValueError(f"freq is within a restricted frequency range {freq_range}")
 
-        if (freq > values['rx_maxfreq']/1000) or (freq < values['rx_minfreq']/1000):
-            raise ValueError(f"Slice frequency is outside {values['rx_minfreq']} and {values['rx_maxfreq']} bandwidth of rx center freq")
-        if (freq > values['tx_maxfreq']/1000) or (freq < values['tx_minfreq']/1000):
-            raise ValueError(f"Slice frequency is outside {values['tx_minfreq']} and {values['tx_maxfreq']} bandwidth of tx center freq")
+        if (freq > values['rx_maxfreq'] / 1000) or (freq < values['rx_minfreq'] / 1000):
+            raise ValueError(f"Slice frequency is outside bandwidth around rx center frequency {int(values['rxctrfreq'])}")
+        if (freq > values['tx_maxfreq'] / 1000) or (freq < values['tx_minfreq'] / 1000):
+            raise ValueError(f"Slice frequency is outside bandwidth around tx center frequency {int(values['txctrfreq'])}")
 
         return freq
 
