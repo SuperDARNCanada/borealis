@@ -133,6 +133,14 @@ class ExperimentPrototype:
                                 sampling rate of the USRPs. Cannot be changed after instantiation.
                                 Default 5.0 MHz.
     :type  tx_bandwidth:        float
+    :param  txctrfreq:          Used to define a global tx center frequency for all slices of the
+                                experiment.
+                                Default None
+    :type  txctrfreq:           float
+    :param  rxctrfreq:          Used to define a global rx center frequency for all slices of the
+                                experiment.
+                                Default None
+    :type  rxctrfreq:           float
     :param  comment_string:     Description of experiment for data files. This should be used to
                                 describe your overall experiment design. Another comment string
                                 exists for every slice added, to describe information that is
@@ -149,7 +157,7 @@ class ExperimentPrototype:
     """
 
     def __init__(self, cpid, output_rx_rate=default_output_rx_rate, rx_bandwidth=default_rx_bandwidth,
-                 tx_bandwidth=5.0e6, comment_string=''):
+                 tx_bandwidth=5.0e6, txctrfreq=None, rxctrfreq=None, comment_string=''):
         if not isinstance(cpid, int):
             errmsg = 'CPID must be a unique int'
             raise ExperimentException(errmsg)
@@ -209,6 +217,14 @@ class ExperimentPrototype:
 
         self.__txrate = float(tx_bandwidth)  # sampling rate, samples per sec, Hz.
         self.__rxrate = float(rx_bandwidth)  # sampling rate for rx in samples per sec
+        if txctrfreq:
+            self.__tx_global_ctrfreq = float(txctrfreq)  # Use a global txctrfreq
+        else:
+            self.__tx_global_ctrfreq = txctrfreq  # Use slice defined txctrfreqs
+        if rxctrfreq:
+            self.__rx_global_ctrfreq = float(rxctrfreq)  # Use a global rxctrfreq
+        else:
+            self.__rx_global_ctrfreq = rxctrfreq  # Use slice defined rxctrfreqs
 
         # Transmitting is possible in the range of txctrfreq +/- (txrate/2) because we have iq data
         # Receiving is possible in the range of rxctrfreq +/- (rxrate/2)
@@ -304,6 +320,28 @@ class ExperimentPrototype:
         :rtype:     float
         """
         return self.__output_rx_rate
+
+    @property
+    def tx_global_ctrfreq(self):
+        """
+        If defined, sets a common tx center frequency for all slices of an
+        experiment (kHz). Defaults to None
+
+        :returns:   tx_global_ctrfreq - read-only
+        :rtype:     float
+        """
+        return self.__tx_global_ctrfreq
+
+    @property
+    def rx_global_bandwidth(self):
+        """
+        If defined, sets a common rx center frequency for all slices of an
+        experiment (kHz). Defaults to None
+
+        :returns:   rx_global_ctrfreq - read-only
+        :rtype:     float
+        """
+        return self.__rx_global_ctrfreq
 
     @property
     def tx_bandwidth(self):
@@ -671,6 +709,17 @@ class ExperimentPrototype:
         add_slice_id = exp_slice['slice_id'] = self.new_slice_id
         # each added slice has a unique slice id, even if previous slices have been deleted.
         exp_slice['cpid'] = self.cpid
+
+        if self.__tx_global_ctrfreq:
+            if "txctrfreq" in exp_slice:
+                log.warning("txctrfreq defined in slice - but overwriting "
+                            "with global center freq defined in experiment init")
+            exp_slice['txctrfreq'] = self.__tx_global_ctrfreq
+        if self.__rx_global_ctrfreq:
+            if "rxctrfreq" in exp_slice:
+                log.warning("rxctrfreq defined in slice - but overwriting "
+                            "with global center freq defined in experiment init")
+            exp_slice['rxctrfreq'] = self.__rx_global_ctrfreq
 
         # Now we setup the slice which will check minimum requirements and set defaults, and then
         # will complete a check_slice and raise any errors found.
