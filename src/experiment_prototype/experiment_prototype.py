@@ -133,14 +133,6 @@ class ExperimentPrototype:
                                 sampling rate of the USRPs. Cannot be changed after instantiation.
                                 Default 5.0 MHz.
     :type  tx_bandwidth:        float
-    :param  txctrfreq:          Used to define a global tx center frequency for all slices of the
-                                experiment.
-                                Default None
-    :type  txctrfreq:           float
-    :param  rxctrfreq:          Used to define a global rx center frequency for all slices of the
-                                experiment.
-                                Default None
-    :type  rxctrfreq:           float
     :param  comment_string:     Description of experiment for data files. This should be used to
                                 describe your overall experiment design. Another comment string
                                 exists for every slice added, to describe information that is
