@@ -108,11 +108,11 @@ class Sequence(ScanClassBase):
                          f"same decimation scheme"
                 raise ExperimentException(errmsg)
             if self.slice_dict[slice_id].txctrfreq != self.txctrfreq:
-                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are CONCURENT interfaced and do not have the " \
+                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are CONCURRENT interfaced and do not have the " \
                          f"same txctrfreq"
                 raise ExperimentException(errmsg)
             if self.slice_dict[slice_id].rxctrfreq != self.rxctrfreq:
-                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are CONCURENT interfaced and do not have the " \
+                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are CONCURRENT interfaced and do not have the " \
                          f"same rxctrfreq"
                 raise ExperimentException(errmsg)
 
