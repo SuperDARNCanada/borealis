@@ -579,8 +579,7 @@ class ExperimentSlice:
 
         if clrfrqrange[0] >= clrfrqrange[1]:
             raise ValueError(f"Slice {values['slice_id']} clrfrqrange must be between min and max tx frequencies "
-                             f"{(values['tx_minfreq'], values['tx_maxfreq'])} and rx frequencies "
-                             f"{(values['rx_minfreq'], values['rx_maxfreq'])} according to license and/or center "
+                             f"and rx frequencies according to license and/or center "
                              f"frequencies / sampling rates / transition bands, and must have lower frequency first.")
 
         still_checking = True
@@ -653,17 +652,23 @@ class ExperimentSlice:
 
     @validator('freq')
     def check_freq(cls, freq, values):
-        if not freq:
-            raise ValueError(f"Must set a freq (kHz) for experience slice")
-
         for freq_range in options.restricted_ranges:
             if freq_range[0] <= freq <= freq_range[1]:
                 raise ValueError(f"freq is within a restricted frequency range {freq_range}")
+        
+        if 'rxctrfreq' in values:
+            rx_maxfreq = values['rxctrfreq'] * 1000 + (values['rx_bandwidth'] / 2.0) - values['transition_bandwidth']
+            rx_minfreq = values['rxctrfreq'] * 1000 - (values['rx_bandwidth'] / 2.0) + values['transition_bandwidth']
+        else:
+            rx_maxfreq = options.max_freq
+            rx_minfreq = options.min_freq
 
-        rx_maxfreq = values['rxctrfreq'] * 1000 + (values['rx_bandwidth'] / 2.0) - values['transition_bandwidth']
-        rx_minfreq = values['rxctrfreq'] * 1000 - (values['rx_bandwidth'] / 2.0) + values['transition_bandwidth']
-        tx_maxfreq = values['txctrfreq'] * 1000 + (values['tx_bandwidth'] / 2.0) - values['transition_bandwidth']
-        tx_minfreq = values['txctrfreq'] * 1000 - (values['tx_bandwidth'] / 2.0) + values['transition_bandwidth']
+        if 'txctrfreq' in values:
+            tx_maxfreq = values['txctrfreq'] * 1000 + (values['tx_bandwidth'] / 2.0) - values['transition_bandwidth']
+            tx_minfreq = values['txctrfreq'] * 1000 - (values['tx_bandwidth'] / 2.0) + values['transition_bandwidth']
+        else:
+            tx_maxfreq = options.max_freq
+            tx_minfreq = options.min_freq
 
         if (freq > rx_maxfreq / 1000) or (freq < rx_minfreq / 1000):
             raise ValueError(f"Slice frequency is outside bandwidth around rx center frequency {int(values['rxctrfreq'])}")
