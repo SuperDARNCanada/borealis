@@ -775,10 +775,10 @@ def main():
                                          sequence_metadata_time_units='s')
 
                         def make_next_samples():
-                            sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, num_sequences + 1)
+                            sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, num_sequences + len(aveperiod.sequences))
                             if dbg:
                                 debug_samples.append(dbg)
-                            pulse_transmit_data_tracker[sequence_index][num_sequences + 1] = sqn
+                            pulse_transmit_data_tracker[sequence_index][num_sequences + len(aveperiod.sequences)] = sqn
 
                             if TIME_PROFILE:
                                 new_sequence_time = datetime.utcnow() - start_time
