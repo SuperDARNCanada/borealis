@@ -36,7 +36,7 @@
 
 //Delay needed for before any set_time_commands will work.
 #define SET_TIME_COMMAND_DELAY 5e-3 // seconds
-#define TUNING_DELAY 300e-3 // seconds
+#define TUNING_DELAY 1e-3 // seconds
 
 
 // struct containing clocks: one for usrp_time (from the N200s, supplied by Octoclock-G)
