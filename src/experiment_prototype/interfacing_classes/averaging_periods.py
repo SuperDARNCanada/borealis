@@ -95,6 +95,8 @@ class AveragingPeriod(InterfaceClassBase):
 
         self.intt = self.slice_dict[self.slice_ids[0]].intt
         self.intn = self.slice_dict[self.slice_ids[0]].intn
+        self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
+        self.rxctrferq = self.slice_dict[self.slice_ids[0]].rxctrfreq
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id].intt != self.intt:
@@ -114,6 +116,16 @@ class AveragingPeriod(InterfaceClassBase):
                 errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
                         " interfaced but do not have the same number of averaging periods in"\
                         " their beam order"
+                raise ExperimentException(errmsg)
+
+        for slice_id in self.slice_ids:
+            if self.slice_dict[slice_id].txctrfreq != self.txctrfreq:
+                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
+                        " interfaced and do not have the same txctrfreq"
+                raise ExperimentException(errmsg)
+            if self.slice_dict[slice_id].rxctrfreq != self.rxctrfreq:
+                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
+                        " interfaced and do not have the same rxctrfreq"
                 raise ExperimentException(errmsg)
         self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]].rx_beam_order)
 

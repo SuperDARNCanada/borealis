@@ -100,20 +100,10 @@ class Sequence(InterfaceClassBase):
         InterfaceClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata)
 
         self.decimation_scheme = self.slice_dict[self.slice_ids[0]].decimation_scheme
-        self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
-        self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id].decimation_scheme != self.decimation_scheme:
                 errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are CONCURRENT interfaced and do not have the " \
                          f"same decimation scheme"
-                raise ExperimentException(errmsg)
-            if self.slice_dict[slice_id].txctrfreq != self.txctrfreq:
-                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are CONCURRENT interfaced and do not have the " \
-                         f"same txctrfreq"
-                raise ExperimentException(errmsg)
-            if self.slice_dict[slice_id].rxctrfreq != self.rxctrfreq:
-                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are CONCURRENT interfaced and do not have the " \
-                         f"same rxctrfreq"
                 raise ExperimentException(errmsg)
 
         dm_rate = 1
@@ -133,6 +123,7 @@ class Sequence(InterfaceClassBase):
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
         self.tx_main_phase_shifts = {}
+        self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
         single_pulse_timing = []
 
         # For each slice calculate beamformed samples and place into the basic_slice_pulses
