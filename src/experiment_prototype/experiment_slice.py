@@ -202,7 +202,8 @@ class ExperimentSlice:
     rxctrfreq *defaults*
         Center frequency, in kHz, used to mix to baseband.
         Since this requires tuning time to set, it is the user's responsibility to ensure that the
-        re-tuning time does not detract from the experiment implementation.
+        re-tuning time does not detract from the experiment implementation. Tuning time is set in
+        the usrp_driver.cpp script and changes to the time will require recompiling of the code.
     rx_int_antennas *defaults*
         The antennas to receive on in interferometer array, default is all antennas given max number
         from config.
@@ -224,7 +225,8 @@ class ExperimentSlice:
     txctrfreq *defaults*
         Center frequency, in kHz, for the USRP to mix the samples with.
         Since this requires tuning time to set, it is the user's responsibility to ensure that the
-        re-tuning time does not detract from the experiment implementation.
+        re-tuning time does not detract from the experiment implementation. Tuning time is set in
+        the usrp_driver.cpp script and changes to the time will require recompiling of the code.
     tx_antennas *defaults*
         The antennas to transmit on, default is all main antennas given max number from config.
     tx_antenna_pattern *defaults*
