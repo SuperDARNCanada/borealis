@@ -18,8 +18,8 @@ from pathlib import Path
 import structlog
 
 # local
-from experiment_prototype.scan_classes.sequences import Sequence
-from experiment_prototype.scan_classes.interface_class_base import InterfaceClassBase
+from experiment_prototype.interface_classes.sequences import Sequence
+from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
 from experiment_prototype.experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
@@ -96,7 +96,7 @@ class AveragingPeriod(InterfaceClassBase):
         self.intt = self.slice_dict[self.slice_ids[0]].intt
         self.intn = self.slice_dict[self.slice_ids[0]].intn
         self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
-        self.rxctrferq = self.slice_dict[self.slice_ids[0]].rxctrfreq
+        self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id].intt != self.intt:
@@ -135,7 +135,7 @@ class AveragingPeriod(InterfaceClassBase):
         self.nested_slice_list = self.get_nested_slice_ids()
         self.sequences = []
 
-        for params in self.prep_for_nested_scan_class():
+        for params in self.prep_for_nested_interface_class():
             self.sequences.append(Sequence(*params))
 
         self.one_pulse_only = False

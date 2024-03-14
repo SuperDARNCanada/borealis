@@ -3,7 +3,7 @@ Experiment Prototype
 ====================
 
 The experiment_prototype package contains the building blocks of experiments, which includes the
-ExperimentPrototype base class, the scan_classes subpackage including the ScanClassBase classes,
+ExperimentPrototype base class, the interface_classes subpackage including the InterfaceClassBase classes,
 and the ExperimentException. There is also a list_tests module which is used by the
 ExperimentPrototype class.
 
@@ -22,25 +22,25 @@ Experiment Prototype Package
     :show-inheritance:
 
 ------------------
-Scan Class Package
+Interface Class Package
 ------------------
 
-.. automodule:: src.experiment_prototype.scan_classes.scan_class_base
+.. automodule:: src.experiment_prototype.interface_classes.interface_class_base
     :members:
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: src.experiment_prototype.scan_classes.scans
+.. automodule:: src.experiment_prototype.interface_classes.scans
     :members:
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: src.experiment_prototype.scan_classes.averaging_periods
+.. automodule:: src.experiment_prototype.interface_classes.averaging_periods
     :members:
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: src.experiment_prototype.scan_classes.sequences
+.. automodule:: src.experiment_prototype.interface_classes.sequences
     :members:
     :undoc-members:
     :show-inheritance:

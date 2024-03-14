@@ -79,7 +79,7 @@ class InterfaceClassBase(object):
         # interface_types)
         self.interface = object_interface
 
-        # The nested slice list is filled in a child class before the prep_for_ nested_scan_class
+        # The nested slice list is filled in a child class before the prep_for_nested_interface_class
         # function is run. This list is of format [[], [], ...] where the length of the outer list
         # is equal to the number of the lower interface_class_base instance within the instance of the
         # higher interface_class_base ( ex. number of sequences within averagingperiods)
@@ -91,7 +91,7 @@ class InterfaceClassBase(object):
         # List of lists, each inner list is all slice ids that share a scan
         self.nested_slice_list = self.get_nested_slice_ids()
 
-    def prep_for_nested_scan_class(self):
+    def prep_for_nested_interface_class(self):
         """
         Retrieve the params needed for the nested class (also with base InterfaceClassBase).
 

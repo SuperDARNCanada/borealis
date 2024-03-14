@@ -25,8 +25,8 @@ import structlog
 from utils.options import Options
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_slice import ExperimentSlice, slice_key_set, hidden_key_set
-from experiment_prototype.scan_classes.scans import Scan
-from experiment_prototype.scan_classes.interface_class_base import InterfaceClassBase
+from experiment_prototype.interface_classes.scans import Scan
+from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -823,7 +823,7 @@ class ExperimentPrototype:
                                                   self.transmit_metadata)
 
         self.__scan_objects = []
-        for params in self.__running_experiment.prep_for_nested_scan_class():
+        for params in self.__running_experiment.prep_for_nested_interface_class():
             self.__scan_objects.append(Scan(*params))
         
         for scan in self.__scan_objects:

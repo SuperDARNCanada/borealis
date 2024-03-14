@@ -26,7 +26,7 @@ import structlog
 
 # local
 from experiment_prototype.experiment_utils.sample_building import get_samples, get_phase_shift
-from experiment_prototype.scan_classes.interface_class_base import InterfaceClassBase
+from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
 from experiment_prototype.experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
@@ -124,6 +124,7 @@ class Sequence(InterfaceClassBase):
         self.rx_beam_phases = {}
         self.tx_main_phase_shifts = {}
         self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
+        self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
         single_pulse_timing = []
 
         # For each slice calculate beamformed samples and place into the basic_slice_pulses
