@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
 """
-    scan_class_base
+    interface_class_base
     ~~~~~~~~~~~~~~~
-    This is the base module for all ScanClassBase types (iterable for an experiment given certain
+    This is the base module for all InterfaceClassBase types (iterable for an experiment given certain
     parameters). These types include the Scan class, the AveragingPeriod class, and the Sequence
     class.
 
@@ -27,7 +27,7 @@ module_name = caller.name.split('.')[0]
 log = structlog.getLogger(module_name)
 
 
-class ScanClassBase(object):
+class InterfaceClassBase(object):
     """
     The base class for the classes Scan, AveragingPeriod, and Sequence. Scans are made up of
     AveragingPeriods, these are typically a 3sec time of the same pulse sequence pointing in one
@@ -35,15 +35,15 @@ class ScanClassBase(object):
     20-30 times after a clear frequency search.  Sequences are made up of pulses, which is a list of
     dictionaries where each dictionary describes a pulse.
 
-    :param  object_keys:        slice_ids that need to be included in this scan_class_base type.
+    :param  object_keys:        slice_ids that need to be included in this interface_class_base type.
     :type   object_keys:        list  
     :param  object_slice_dict:  the slice dictionary that explains the parameters of each slice that
-                                is included in this scan_class_base type. Keys are the slice_ids
+                                is included in this interface_class_base type. Keys are the slice_ids
                                 included and values are dictionaries including all necessary slice
                                 parameters as keys.
     :type   object_slice_dict:  dict
     :param  object_interface:   the interfacing dictionary that describes how to interface the
-                                slices that are included in this scan_class_base type. Keys are
+                                slices that are included in this interface_class_base type. Keys are
                                 tuples of format (slice_id_1, slice_id_2) and values are of
                                 interface_types set up in experiment_prototype.
     :type   object_interface:   dict
@@ -69,7 +69,7 @@ class ScanClassBase(object):
 
     def __init__(self, object_keys, object_slice_dict, object_interface, transmit_metadata):
 
-        # list of slice_ids included in this scan_class_base
+        # list of slice_ids included in this interface_class_base
         self.slice_ids = object_keys
 
         # dictionary (key = slice_id) of dictionaries (value = slice parameters)
@@ -81,8 +81,8 @@ class ScanClassBase(object):
 
         # The nested slice list is filled in a child class before the prep_for_ nested_scan_class
         # function is run. This list is of format [[], [], ...] where the length of the outer list
-        # is equal to the number of the lower scan_class_base instance within the instance of the
-        # higher scan_class_base ( ex. number of sequences within averagingperiods)
+        # is equal to the number of the lower interface_class_base instance within the instance of the
+        # higher interface_class_base ( ex. number of sequences within averagingperiods)
         self.nested_slice_list = []
 
         # all necessary experiment-wide transmit metadata
@@ -93,9 +93,9 @@ class ScanClassBase(object):
 
     def prep_for_nested_scan_class(self):
         """
-        Retrieve the params needed for the nested class (also with base ScanClassBase).
+        Retrieve the params needed for the nested class (also with base InterfaceClassBase).
 
-        This class reduces duplicate code by breaking down the ScanClassBase class into the separate
+        This class reduces duplicate code by breaking down the InterfaceClassBase class into the separate
         portions for the nested instances. For Scan class, the nested class is AveragingPeriod, and
         we will need to break down the parameters given to the Scan instance because there may be
         multiple AveragingPeriods within. For AveragingPeriod, the nested class is Sequence.
@@ -117,7 +117,7 @@ class ScanClassBase(object):
                     raise ExperimentException(errmsg)
 
             # now take a subset of the interface dictionary that applies to this nested object
-            # of scan_class_base type.
+            # of interface_class_base type.
             nested_class_interface = {}
             for i in itertools.combinations(slice_list, 2):
                 # slice_list is sorted so we should have the following effect:
@@ -194,7 +194,7 @@ class ScanClassBase(object):
         share an AveragingPeriod or Sequence or are concurrent.
 
         Returns a list of lists where each inner list contains the slices that are combined inside
-        this object. e.g. for ScanClassBase:
+        this object. e.g. for InterfaceClassBase:
         len(nested_slice_list) = # of scans in this experiment,
         len(nested_slice_list[0]) = # of slices in the first scan
 
@@ -206,7 +206,7 @@ class ScanClassBase(object):
         nested_combos = []
 
         combine_below_dict = {
-            'ScanClassBase': ['AVEPERIOD', 'SEQUENCE', 'CONCURRENT'],   # Combine everything except SCAN interfaced
+            'InterfaceClassBase': ['AVEPERIOD', 'SEQUENCE', 'CONCURRENT'],   # Combine everything except SCAN interfaced
             'Scan': ['SEQUENCE', 'CONCURRENT'],     # Combine everything SEQUENCE or CONCURRENT interfaced
             'AveragingPeriod': ['CONCURRENT'],      # Combine everything CONCURRENT interfaced
             'Sequence': []  # All slices in a Sequence are already CONCURRENT and should be combined already

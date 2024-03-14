@@ -4,7 +4,7 @@
     averaging_periods
     ~~~~~~~~~~~~~~~~~
     This is the module containing the AveragingPeriod class. The AveragingPeriod class contains the
-    ScanClassBase members, as well as clrfrqflag (to be implemented), intn (number of integrations
+    InterfaceClassBase members, as well as clrfrqflag (to be implemented), intn (number of integrations
     to run), or intt(max time for integrations), and it contains sequences of class Sequence.
 
     :copyright: 2018 SuperDARN Canada
@@ -19,7 +19,7 @@ import structlog
 
 # local
 from experiment_prototype.scan_classes.sequences import Sequence
-from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.scan_classes.interface_class_base import InterfaceClassBase
 from experiment_prototype.experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
@@ -36,14 +36,14 @@ pulse length, beamdir, and wavetype.
 """
 
 
-class AveragingPeriod(ScanClassBase):
+class AveragingPeriod(InterfaceClassBase):
     """
     Set up the AveragingPeriods.
 
     An averagingperiod contains sequences and integrates one or multiple pulse sequences together in
     a given time frame or in a given number of averages, if that is the preferred limiter.
 
-    **The unique members of the averagingperiod are (not a member of the scanclassbase):**
+    **The unique members of the averagingperiod are (not a member of the interfaceclassbase):**
 
     slice_to_beamorder
         passed in by the scan that this AveragingPeriod instance is contained in. A dictionary of
@@ -75,7 +75,7 @@ class AveragingPeriod(ScanClassBase):
     def __init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata,
                  slice_to_beamorder_dict, slice_to_beamdir_dict):
 
-        ScanClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata)
+        InterfaceClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata)
 
         self.slice_to_beamorder = slice_to_beamorder_dict
         self.slice_to_beamdir = slice_to_beamdir_dict

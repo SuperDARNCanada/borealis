@@ -6,7 +6,7 @@
     Radar_control is the process that runs the radar (sends pulses to the driver with
     timing information and sends processing information to the signal processing process).
     Experiment_handler provides the experiment for radar_control to run. It iterates
-    through the scan_class_base objects to control the radar.
+    through the interface_class_base objects to control the radar.
 
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller

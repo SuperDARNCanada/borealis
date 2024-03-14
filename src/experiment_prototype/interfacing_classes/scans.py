@@ -3,7 +3,7 @@
 """
     scans
     ~~~~~
-    This is the module containing the Scan class. The Scan class contains the ScanClassBase members,
+    This is the module containing the Scan class. The Scan class contains the InterfaceClassBase members,
     as well as a scanbound (to be implemented), a beamdir dictionary and scan_beams dictionary which
     specify beam direction angle and beam order in a scan, respectively, for individual slices that
     are to be combined in this scan. Beam direction information gets passed on to the
@@ -21,7 +21,7 @@ import structlog
 
 # local
 from experiment_prototype.scan_classes.averaging_periods import AveragingPeriod
-from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.scan_classes.interface_class_base import InterfaceClassBase
 from experiment_prototype.experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
@@ -30,14 +30,14 @@ module_name = caller.name.split('.')[0]
 log = structlog.getLogger(module_name)
 
 
-class Scan(ScanClassBase):
+class Scan(InterfaceClassBase):
     """
     Set up the scans.
 
     A scan is made up of AveragingPeriods at defined beam directions, and some other metadata for
     the scan itself.
 
-    **The unique members of the scan are (not a member of the scanclassbase):**
+    **The unique members of the scan are (not a member of the interfaceclassbase):**
 
     scanbound
         A list of seconds past the minute for scans to align to. Must be increasing, and it is
@@ -46,7 +46,7 @@ class Scan(ScanClassBase):
 
     def __init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata):
 
-        ScanClassBase.__init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata)
+        InterfaceClassBase.__init__(self, scan_keys, scan_slice_dict, scan_interface, transmit_metadata)
 
         # scan metadata - must be the same between all slices combined in scan.  Metadata includes:
         self.scanbound = self.slice_dict[self.slice_ids[0]].scanbound
@@ -104,14 +104,14 @@ class Scan(ScanClassBase):
         Beam order and beamdir are required for instantiation of the nested class AveragingPeriod so
         we need to extract this information as well to fill self.aveperiods.
 
-        :returns:   Parameters that can be directly passed into the nested ScanClassBase type,
+        :returns:   Parameters that can be directly passed into the nested InterfaceClassBase type,
                     AveragingPeriod. The params_list is of length = # of AveragingPeriods in this
                     scan.
         :rtype:     list of lists
         """
 
-        # Get the basic parameters for a ScanClassBase type
-        params_list = ScanClassBase.prep_for_nested_scan_class(self)
+        # Get the basic parameters for a InterfaceClassBase type
+        params_list = InterfaceClassBase.prep_for_nested_scan_class(self)
 
         # Add the beam order and beam direction information that is necessary for AveragingPeriods
         # specifically.

@@ -3,7 +3,7 @@
 """
     sequences
     ~~~~~~~~~
-    This is the module containing the Sequence class. The Sequence class contains the ScanClassBase
+    This is the module containing the Sequence class. The Sequence class contains the InterfaceClassBase
     members, as well as a list of pulse dictionaries, the total_combined_pulses in the sequence,
     power_divider, last_pulse_len, ssdelay, seqtime, which together give sstime (scope synce time,
     or time for receiving, and numberofreceivesamples to sample during the receiving window
@@ -26,7 +26,7 @@ import structlog
 
 # local
 from experiment_prototype.experiment_utils.sample_building import get_samples, get_phase_shift
-from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.scan_classes.interface_class_base import InterfaceClassBase
 from experiment_prototype.experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
@@ -35,7 +35,7 @@ module_name = caller.name.split('.')[0]
 log = structlog.getLogger(module_name)
 
 
-class Sequence(ScanClassBase):
+class Sequence(InterfaceClassBase):
     """
     Set up the sequence class.
 
@@ -97,7 +97,7 @@ class Sequence(ScanClassBase):
     """
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
-        ScanClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata)
+        InterfaceClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata)
 
         self.decimation_scheme = self.slice_dict[self.slice_ids[0]].decimation_scheme
         self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq

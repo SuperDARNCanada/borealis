@@ -26,7 +26,7 @@ from utils.options import Options
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_slice import ExperimentSlice, slice_key_set, hidden_key_set
 from experiment_prototype.scan_classes.scans import Scan
-from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.scan_classes.interface_class_base import InterfaceClassBase
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -261,7 +261,7 @@ class ExperimentPrototype:
         # interfacing specified.
         self.__scan_objects = []
         self.__scanbound = False
-        self.__running_experiment = None  # this will be of ScanClassBase type
+        self.__running_experiment = None  # this will be of InterfaceClassBase type
 
         # This is used for adding and editing slices
         self.__slice_restrictions = {
@@ -817,9 +817,9 @@ class ExperimentPrototype:
         #  to inherit
 
         # TODO consider removing scan_objects from init and making a new Experiment class to inherit
-        # from ScanClassBase and having all of this included in there. Then would only need to
+        # from InterfaceClassBase and having all of this included in there. Then would only need to
         # pass the running experiment to the radar control (would be returned from build_scans)
-        self.__running_experiment = ScanClassBase(self.slice_ids, self.slice_dict, self.interface,
+        self.__running_experiment = InterfaceClassBase(self.slice_ids, self.slice_dict, self.interface,
                                                   self.transmit_metadata)
 
         self.__scan_objects = []
