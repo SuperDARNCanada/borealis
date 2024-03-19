@@ -461,23 +461,23 @@ def main():
             if cupy_available:
                 cp.cuda.runtime.hostRegister(ringbuffer.ctypes.data, ringbuffer.size, 0)
 
-            taps_per_stage = []
-            for stage in sqn_meta_message.decimation_stages:
-                dm_rates.append(stage.dm_rate)
-                dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
-                taps_per_stage.append(len(stage.filter_taps))
-            log.info("stage decimation and filter taps",
-                     decimation_rates=dm_rates,
-                     filter_taps_per_stage=taps_per_stage)
-
-            dm_rates = np.array(dm_rates, dtype=np.uint32)
-
-            for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
-                extra_samples = (extra_samples * dm) + len(taps) // 2
-
-            total_dm_rate = np.prod(dm_rates)
-
             first_time = False
+
+        taps_per_stage = []
+        for stage in sqn_meta_message.decimation_stages:
+            dm_rates.append(stage.dm_rate)
+            dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
+            taps_per_stage.append(len(stage.filter_taps))
+        log.debug("stage decimation and filter taps",
+                  decimation_rates=dm_rates,
+                  filter_taps_per_stage=taps_per_stage)
+
+        dm_rates = np.array(dm_rates, dtype=np.uint32)
+
+        for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
+            extra_samples = (extra_samples * dm) + len(taps) // 2
+
+        total_dm_rate = np.prod(dm_rates)
 
         # Calculate where in the ringbuffer the samples are located.
         samples_needed = rx_metadata.numberofreceivesamples + 2 * extra_samples
