@@ -350,12 +350,6 @@ def main():
 
     total_antennas = len(options.main_antennas) + len(options.intf_antennas)
 
-    dm_rates = []
-    dm_scheme_taps = []
-
-    extra_samples = 0
-    total_dm_rate = 0
-
     threads = []
     first_time = True
     while True:
@@ -463,7 +457,11 @@ def main():
 
             first_time = False
 
+        # Set up the filtering/downsampling strategy
         taps_per_stage = []
+        dm_rates = []
+        dm_scheme_taps = []
+        extra_samples = 0
         for stage in sqn_meta_message.decimation_stages:
             dm_rates.append(stage.dm_rate)
             dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
@@ -471,21 +469,16 @@ def main():
         log.debug("stage decimation and filter taps",
                   decimation_rates=dm_rates,
                   filter_taps_per_stage=taps_per_stage)
-
         dm_rates = np.array(dm_rates, dtype=np.uint32)
-
         for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
             extra_samples = (extra_samples * dm) + len(taps) // 2
-
         total_dm_rate = np.prod(dm_rates)
 
         # Calculate where in the ringbuffer the samples are located.
         samples_needed = rx_metadata.numberofreceivesamples + 2 * extra_samples
         samples_needed = int(math.ceil(float(samples_needed) / float(total_dm_rate)) * total_dm_rate)
-
         sample_time_diff = rx_metadata.sequence_start_time - rx_metadata.initialization_time
         sample_in_time = (sample_time_diff * rx_rate) + first_rx_sample_off - extra_samples
-
         start_sample = int(math.fmod(sample_in_time, ringbuffer.shape[1]))
         end_sample = start_sample + samples_needed
 
