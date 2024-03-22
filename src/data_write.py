@@ -589,6 +589,8 @@ class DataWrite(object):
                     elif isinstance(data, bool):
                         data = np.bool_(data)
                     elif isinstance(data, list):
+                        if len(data) == 0:
+                            log.warning('empty array', field=relevant_field, data=data)
                         if len(data) > 0 and isinstance(data[0], str):
                             data = np.bytes_(data)
                         else:
