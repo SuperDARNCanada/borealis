@@ -224,6 +224,10 @@ class SliceData:
                 matching_fields.append(f.name)
         return matching_fields
 
+    def __repr__(self):
+        """Print all available fields"""
+        return f'{vars(self)}'
+
 
 @dataclass
 class ParseData(object):
@@ -585,7 +589,7 @@ class DataWrite(object):
                     elif isinstance(data, bool):
                         data = np.bool_(data)
                     elif isinstance(data, list):
-                        if isinstance(data[0], str):
+                        if len(data) > 0 and isinstance(data[0], str):
                             data = np.bytes_(data)
                         else:
                             data = np.array(data)
