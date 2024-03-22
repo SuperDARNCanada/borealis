@@ -122,7 +122,7 @@ class DecimationScheme(object):
                          f' does not equal next stage {stage_num + 1} input rate {self.input_rates[stage_num + 1]}'
                 raise ExperimentException(errmsg)
 
-        if self.output_rates[-1] != self.output_sample_rate:
+        if not math.isclose(self.output_rates[-1], self.output_sample_rate):
             errmsg = f'Last decimation stage {len(self.stages) - 1} does not have output rate'\
                      f' {self.output_rates[-1]} equal to requested output data rate {self.output_sample_rate}'
             raise ExperimentException(errmsg)
