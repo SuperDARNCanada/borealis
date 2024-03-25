@@ -75,7 +75,7 @@ East, depending upon the radar.
 Interfacing Types Between Slices
 --------------------------------
 
-.. autoattribute:: src.experiment_prototype.experiment_prototype.interface_types
+.. autodata:: src.experiment_prototype.experiment_prototype.interface_types
 
 --------------------------
 Slice Interfacing Examples
