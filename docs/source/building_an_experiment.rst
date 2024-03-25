@@ -76,6 +76,7 @@ Interfacing Types Between Slices
 --------------------------------
 
 .. autodata:: src.experiment_prototype.experiment_prototype.interface_types
+    :no-index:
 
 --------------------------
 Slice Interfacing Examples
@@ -206,8 +207,9 @@ dictionary are described below.
 Slice Keys
 ----------
 
-.. autoclass:: src.experiment_prototype.experiment_slice.ExperimentSlice
-   :class-signature: separated
+.. autoclass:: src.experiment_prototype.experiment_slice.ExperimentSlice()
+    :no-index:
+
 
 ------------------
 Experiment Example

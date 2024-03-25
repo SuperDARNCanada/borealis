@@ -16,6 +16,9 @@ Experiment Prototype Package
     :undoc-members:
     :show-inheritance:
 
+.. autoclass:: src.experiment_prototype.ExperimentSlice()
+    :members:
+
 .. automodule:: src.experiment_prototype.experiment_exception
     :members:
     :undoc-members:
