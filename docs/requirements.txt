@@ -1,4 +1,4 @@
-sphinx>5.0
+sphinx==7.2.6
 breathe
 numpy
 scipy
