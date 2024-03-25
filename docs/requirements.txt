@@ -1,4 +1,4 @@
-sphinx==7.2.6
+sphinx>=2.1.2
 breathe
 numpy
 scipy
@@ -8,12 +8,12 @@ sphinxcontrib-autoprogram
 pyzmq
 myst_parser
 deepdish
-docutils==0.20
+docutils==0.16
 posix_ipc
 latex
 inotify
 matplotlib
-sphinx-rtd-theme
+sphinx-rtd-theme<0.5
 structlog
 h5py
 pydantic<=1.10.13
