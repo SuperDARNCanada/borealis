@@ -75,8 +75,7 @@ East, depending upon the radar.
 Interfacing Types Between Slices
 --------------------------------
 
-.. automodule:: src.experiment_prototype.experiment_prototype
-    :members: interface_types
+.. autoattribute:: src.experiment_prototype.experiment_prototype.interface_types
 
 --------------------------
 Slice Interfacing Examples
@@ -149,20 +148,6 @@ is written to the datasets produced.
 
 The experiment has the following experiment-wide attributes:
 
-.. autoproperty:: src.experiment_prototype.experiment_prototype.ExperimentPrototype.cpid
-
-.. autoproperty:: src.experiment_prototype.experiment_prototype.ExperimentPrototype.output_rx_rate
-
-.. autoproperty:: src.experiment_prototype.experiment_prototype.ExperimentPrototype.rx_bandwidth
-
-.. autoproperty:: src.experiment_prototype.experiment_prototype.ExperimentPrototype.tx_bandwidth
-
-.. autoproperty:: src.experiment_prototype.experiment_prototype.ExperimentPrototype.txctrfreq
-
-.. autoproperty:: src.experiment_prototype.experiment_prototype.ExperimentPrototype.rxctrfreq
-
-.. autoproperty:: src.experiment_prototype.experiment_prototype.ExperimentPrototype.comment_string
-
 cpid *required*
     The only experiment-wide attribute that is required to be set by the user when initializing is
     the CPID, or control program identifier. This must be unique to the experiment. You will need to
@@ -222,6 +207,7 @@ Slice Keys
 ----------
 
 .. autoclass:: src.experiment_prototype.experiment_slice.ExperimentSlice
+   :class-signature: separated
 
 ------------------
 Experiment Example

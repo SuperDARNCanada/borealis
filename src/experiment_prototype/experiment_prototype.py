@@ -36,13 +36,12 @@ log = structlog.getLogger(module_name)
 BOREALISPATH = os.environ['BOREALISPATH']
 
 interface_types = tuple(['SCAN', 'AVEPERIOD', 'SEQUENCE', 'CONCURRENT'])
-""" The types of interfacing available for slices in the experiment.
-
-Interfacing in this case refers to how two or more components are meant to be run together. The
-following types of interfacing are possible:
+""" Interfacing in this case refers to how two or more slices are meant to be run together.
+The following types of interfacing between slices are possible, arranged from highest level 
+of experiment building-block to the lowest level:
 
 1. SCAN.
-The scan by scan interfacing allows for slices to run a scan of one slice, followed by a scan of the
+The scan-by-scan interfacing allows for slices to run a scan of one slice, followed by a scan of the
 second. The scan mode of interfacing typically means that the slice will cycle through all of its
 beams before switching to another slice.
 
@@ -108,15 +107,8 @@ class ExperimentPrototype:
     used to make an experiment. Other parameters are set in the init and cannot be modified after 
     instantiation.
 
-    * xcf:          boolean for cross-correlation data. A default can be set here for slices, \
-                    but any slice can override this setting with the xcf slice key.
-    * acf:          boolean for auto-correlation data on main array. A default can be set here for \
-                    slices, but any slice can override this setting with the acf slice key.
-    * acfint:       boolean for auto-correlation data on interferometer array. A default can be set \
-                    here for slices, but any slice can override this setting with the acfint slice \
-                    key.
     * slice_dict:   modifiable only using the add_slice, edit_slice, and del_slice methods.
-    * interface:    modifiable using the add_slice, edit_slice, and del_slice methods, or by \
+    * interface:    modifiable using the add_slice, edit_slice, and del_slice methods, or by
                     updating the interface dict directly.
 
     :param  cpid:               Unique id necessary for each control program (experiment). Cannot be
@@ -124,7 +116,7 @@ class ExperimentPrototype:
     :type   cpid:               int
     :param  output_rx_rate:     The desired output rate for the data, to be decimated to, in Hz.
                                 Cannot be changed after instantiation. Default 3.333 kHz.
-    :type  output_rx_rate:      float
+    :type   output_rx_rate:     float
     :param  rx_bandwidth:       The desired bandwidth for the experiment. Directly determines rx
                                 sampling rate of the USRPs. Cannot be changed after instantiation.
                                 Default 5.0 MHz.
@@ -132,7 +124,7 @@ class ExperimentPrototype:
     :param  tx_bandwidth:       The desired tx bandwidth for the experiment. Directly determines tx
                                 sampling rate of the USRPs. Cannot be changed after instantiation.
                                 Default 5.0 MHz.
-    :type  tx_bandwidth:        float
+    :type   tx_bandwidth:       float
     :param  txctrfreq:          Center frequency, in kHz, for the USRP to mix the samples with.
                                 Since this requires tuning time to set, it cannot be modified after
                                 instantiation.
