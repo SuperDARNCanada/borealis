@@ -68,9 +68,9 @@ def windowed_view(ndarray, window_len, step):
     return xp.lib.stride_tricks.as_strided(ndarray, shape=new_shape, strides=new_strides)
 
 
-class DSP(object):
+class DSP:
     """
-    This class performs the DSP functions of Borealis
+    This class performs the DSP functions of Borealis.
 
     :param      input_samples:  The wideband samples to operate on.
     :type       input_samples:  ndarray
@@ -87,18 +87,21 @@ class DSP(object):
     """
 
     def __init__(self, input_samples, rx_rate, dm_rates, filter_taps, mixing_freqs, beam_phases):
-        super(DSP, self).__init__()
         self.filters = None
         self.filter_outputs = []
         self.beamformed_samples = None
         self.shared_mem = {}
 
-        self.create_filters(filter_taps, mixing_freqs, rx_rate)
+        self.filters = self.create_filters(filter_taps, mixing_freqs, rx_rate)
 
-        self.apply_bandpass_decimate(input_samples, self.filters[0], mixing_freqs, dm_rates[0], rx_rate)
-
+        # Apply the filtering and downsampling operations
+        self.filter_outputs.append(
+            self.apply_bandpass_decimate(input_samples, self.filters[0], mixing_freqs, dm_rates[0], rx_rate)
+        )
         for i in range(1, len(self.filters)):
-            self.apply_lowpass_decimate(self.filter_outputs[i - 1], self.filters[i], dm_rates[i])
+            self.filter_outputs.append(
+                self.apply_lowpass_decimate(self.filter_outputs[i - 1], self.filters[i], dm_rates[i])
+            )
 
         # Create shared memory for antennas_iq data
         antennas_iq_samples = self.filter_outputs[-1]
@@ -112,18 +115,31 @@ class DSP(object):
             self.antennas_iq_samples[...] = antennas_iq_samples[...]
         self.shared_mem['antennas_iq'] = ant_shm
 
-        self.beamform_samples(self.antennas_iq_samples, beam_phases)
+        # Create shared memory for result of beamforming
+        # beam_phases: [num_slices, num_beams, num_antennas]
+        beam_phases = np.array(beam_phases)
+        # final_shape: [num_slices, num_beams, num_samples]
+        final_shape = (self.antennas_iq_samples.shape[0], beam_phases.shape[1], self.antennas_iq_samples.shape[2])
+        final_size = np.dtype(np.complex64).itemsize * reduce(lambda a, b: a * b, final_shape)
+        bf_shm = shared_memory.SharedMemory(create=True, size=final_size)
+        self.beamformed_samples = np.ndarray(final_shape, dtype=np.complex64, buffer=bf_shm.buf)
+        self.shared_mem['bfiq'] = bf_shm
 
-    def create_filters(self, filter_taps, mixing_freqs, rx_rate):
+        # Apply beamforming
+        self.beamformed_samples[...] = self.beamform_samples(self.antennas_iq_samples, beam_phases)
+
+    @staticmethod
+    def create_filters(filter_taps, mixing_freqs, rx_rate):
         """
         Creates and shapes the filters arrays using the original sets of filter taps. The first
         stage filters are mixed to bandpass and the low pass filters are reshaped. The filters
-        coefficients are typically symmetric, with the exception of the first-stage bandpass
-        filters. As a result, the mixing frequency should be the negative of the frequency that is
+        coefficients are typically symmetric, except for the first-stage bandpass filters.
+        Filtering is actually done via a correlation, not a convolution (the filter is not reversed).
+        As a result, the mixing frequency should be the negative of the frequency that is
         actually being extracted. For example, with 12 MHz center frequency and a 10.5 MHz transmit
         frequency, the mixing frequency should be 1.5 MHz.
 
-        :param      filter_taps:   The filters taps from the experiment decimation scheme.
+        :param      filter_taps:   The filter taps from the experiment decimation scheme.
         :type       filter_taps:   list
         :param      mixing_freqs:  The frequencies used to mix the first stage filter for bandpass.
                                    Calculated as (center freq - rx freq), as filter coefficients are
@@ -131,6 +147,9 @@ class DSP(object):
         :type       mixing_freqs:  list
         :param      rx_rate:       The rf rx rate.
         :type       rx_rate:       float
+
+        :returns:   List of stages of filter taps. First stage is bandpass, subsequent stages are lowpass.
+        :rtype:     list[ndarray]
         """
         filters = []
         n = len(mixing_freqs)
@@ -144,9 +163,10 @@ class DSP(object):
         for t in filter_taps[1:]:
             filters.append(t[np.newaxis, :])
 
-        self.filters = filters
+        return filters
 
-    def apply_bandpass_decimate(self, input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate):
+    @staticmethod
+    def apply_bandpass_decimate(input_samples, bp_filters, mixing_freqs, dm_rate, rx_rate):
         """
         Apply a Frerking bandpass filter to the input samples. Several different frequencies can be
         centered on simultaneously. Downsampling is done in parallel via a strided window view of
@@ -162,6 +182,9 @@ class DSP(object):
         :type       dm_rate:        int
         :param      rx_rate:        The rf rx rate.
         :type       rx_rate:        float
+
+        :returns:   Samples after bandpass filter and downsampling operations. Shape [num_slices, num_antennas, samples]
+        :rtype:     ndarray
         """
         # We need to force the input into the GPU to be float16, float32, or complex64 so that the einsum result is
         # complex64 and NOT complex128. The GPU is significantly slower (10x++) working with complex128 numbers.
@@ -179,26 +202,32 @@ class DSP(object):
 
         # [1, num_output_samples]
         # [num_slices, 1]
+        # ph: [num_slices, num_output_samples]
         ph = xp.fmod(ph * 2.0 * xp.pi * freqs / rx_rate * dm_rate, 2.0 * xp.pi)
         ph = xp.exp(1j * ph.astype(xp.float32))
 
         # [num_slices, num_antennas, num_output_samples]
         # [num_slices, 1, num_output_samples]
+        # corrected: [num_slices, num_antennas, num_output_samples]
         corrected = filtered * ph[:, xp.newaxis, :]
 
-        self.filter_outputs.append(corrected)
+        return corrected
 
-    def apply_lowpass_decimate(self, input_samples, lp_filter, dm_rate):
+    @staticmethod
+    def apply_lowpass_decimate(input_samples, lp_filter, dm_rate):
         """
         Apply a lowpass filter to the baseband input samples. Downsampling is done in parallel via a
         strided window view of the input samples.
 
         :param      input_samples:  Baseband input samples
         :type       input_samples:  ndarray [num_slices, num_antennas, num_samples]
-        :param      lp:             Lowpass filter taps
-        :type       lp:             ndarray [1, num_taps]
+        :param      lp_filter:      Lowpass filter taps
+        :type       lp_filter:      ndarray [1, num_taps]
         :param      dm_rate:        The decimation rate of this stage.
         :type       dm_rate:        int
+
+        :returns:   Samples after lowpass filter and downsampling operations. Shape [num_slices, num_antennas, samples]
+        :rtype:     ndarray
         """
         # We need to force the input into the GPU to be float16, float32, or complex64 so that the einsum result is
         # complex64 and NOT complex128. The GPU is significantly slower (10x++) working with complex128 numbers.
@@ -208,11 +237,13 @@ class DSP(object):
 
         # [1, num_taps]
         # [num_slices, num_antennas, num_output_samples, num_taps]
+        # filtered: [num_slices, num_antennas, num_output_samples]
         filtered = xp.einsum('ij,klmj->klm', lp_filter, input_samples)
 
-        self.filter_outputs.append(filtered)
+        return filtered
 
-    def beamform_samples(self, filtered_samples, beam_phases):
+    @staticmethod
+    def beamform_samples(filtered_samples, beam_phases):
         """
         Beamform the filtered samples for multiple beams simultaneously.
 
@@ -221,18 +252,15 @@ class DSP(object):
         :param      beam_phases:       The beam phases used to phase each antenna's samples before
                                        combining.
         :type       beam_phases:       ndarray [num_slices, num_beams, num_antennas]
+
+        :returns:   Beamformed samples of shape [num_slices, num_beams, num_samples]
+        :rtype:     np.ndarray
         """
         # [num_slices, num_beams, num_antennas]
         beam_phases = np.array(beam_phases)
 
-        # [num_slices, num_beams, num_samples]
-        final_shape = (filtered_samples.shape[0], beam_phases.shape[1], filtered_samples.shape[2])
-        final_size = np.dtype(np.complex64).itemsize * reduce(lambda a, b: a * b, final_shape)
-        bf_shm = shared_memory.SharedMemory(create=True, size=final_size)
-        self.beamformed_samples = np.ndarray(final_shape, dtype=np.complex64, buffer=bf_shm.buf)
-        self.beamformed_samples[...] = np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
-
-        self.shared_mem['bfiq'] = bf_shm
+        # result: [num_slices, num_beams, num_samples]
+        return np.einsum('ijk,ilj->ilk', filtered_samples, beam_phases)
 
     @staticmethod
     def correlations_from_samples(beamformed_samples_1, beamformed_samples_2, output_sample_rate, slice_index_details):
@@ -240,15 +268,18 @@ class DSP(object):
         Correlate two sets of beamformed samples together. Correlation matrices are used and indices
         corresponding to lag pulse pairs are extracted.
 
-        :param      beamformed_samples_1:  The first beamformed samples.
-        :type       beamformed_samples_1:  ndarray [num_slices, num_beams, num_samples]
-        :param      beamformed_samples_2:  The second beamformed samples.
-        :type       beamformed_samples_2:  ndarray [num_slices, num_beams, num_samples]
-        :param      slice_index_details:   Details used to extract indices for each slice.
-        :type       slice_index_details:   list
+        :param      beamformed_samples_1:   The first beamformed samples.
+        :type       beamformed_samples_1:   ndarray [num_slices, num_beams, num_samples]
+        :param      beamformed_samples_2:   The second beamformed samples.
+        :type       beamformed_samples_2:   ndarray [num_slices, num_beams, num_samples]
+        :param      output_sample_rate:     Sampling rate of data.
+        :type       output_sample_rate:     float
+        :param      slice_index_details:    Details used to extract indices for each slice.
+        :type       slice_index_details:    list
 
-        :returns:   Correlations for slices.
-        :rtype:     list
+        :returns:   Correlations for slices. List of length num_slices, with each entry having shape
+                    [num_beams, num_range_gates, num_lags].
+        :rtype:     list[ndarray]
         """
         values = []
         for s, slice_info in enumerate(slice_index_details):
