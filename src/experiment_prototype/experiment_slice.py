@@ -659,23 +659,34 @@ class ExperimentSlice:
                 raise ValueError(f"freq is within a restricted frequency range {freq_range}")
         
         if 'rxctrfreq' in values:
-            rx_maxfreq = values['rxctrfreq'] * 1000 + (values['rx_bandwidth'] / 2.0) - values['transition_bandwidth']
-            rx_minfreq = values['rxctrfreq'] * 1000 - (values['rx_bandwidth'] / 2.0) + values['transition_bandwidth']
+            rx_maxfreq = values['rxctrfreq'] * 1000 + (values['rx_bandwidth'] / 2.0) - (values['rx_bandwidth'] * 0.15)
+            rx_minfreq = values['rxctrfreq'] * 1000 - (values['rx_bandwidth'] / 2.0) + (values['rx_bandwidth'] * 0.15)
+            rx_center = values['rxctrfreq']
         else:
             rx_maxfreq = options.max_freq
             rx_minfreq = options.min_freq
+            rx_center = 12000
 
         if 'txctrfreq' in values:
-            tx_maxfreq = values['txctrfreq'] * 1000 + (values['tx_bandwidth'] / 2.0) - values['transition_bandwidth']
-            tx_minfreq = values['txctrfreq'] * 1000 - (values['tx_bandwidth'] / 2.0) + values['transition_bandwidth']
+            tx_maxfreq = values['txctrfreq'] * 1000 + (values['tx_bandwidth'] / 2.0) - (values['tx_bandwidth'] * 0.15)
+            tx_minfreq = values['txctrfreq'] * 1000 - (values['tx_bandwidth'] / 2.0) + (values['tx_bandwidth'] * 0.15)
+            tx_center = values['txctrfreq']
         else:
             tx_maxfreq = options.max_freq
             tx_minfreq = options.min_freq
+            tx_center = 12000
 
+        # Frequency must be withing bandwidth of rx and tx center frequency
         if (freq > rx_maxfreq / 1000) or (freq < rx_minfreq / 1000):
-            raise ValueError(f"Slice frequency is outside bandwidth around rx center frequency {int(values['rxctrfreq'])}")
+            raise ValueError(f"Slice frequency is outside bandwidth around rx center frequency {int(rx_center)}")
         if (freq > tx_maxfreq / 1000) or (freq < tx_minfreq / 1000):
-            raise ValueError(f"Slice frequency is outside bandwidth around tx center frequency {int(values['txctrfreq'])}")
+            raise ValueError(f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}")
+
+        # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
+        if (rx_center - 50) < freq < (rx_center + 50):
+            raise ValueError(f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}")
+        if (tx_center - 50) < freq < (tx_center + 50):
+            raise ValueError(f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}")
 
         return freq
 
