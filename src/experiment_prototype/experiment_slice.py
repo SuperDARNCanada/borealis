@@ -665,7 +665,7 @@ class ExperimentSlice:
         else:
             rx_maxfreq = options.max_freq
             rx_minfreq = options.min_freq
-            rx_center = 12000
+            rx_center = 0
 
         if 'txctrfreq' in values:
             tx_maxfreq = values['txctrfreq'] * 1000 + (values['tx_bandwidth'] / 2.0) - (values['tx_bandwidth'] * 0.15)
@@ -674,7 +674,7 @@ class ExperimentSlice:
         else:
             tx_maxfreq = options.max_freq
             tx_minfreq = options.min_freq
-            tx_center = 12000
+            tx_center = 0
 
         # Frequency must be withing bandwidth of rx and tx center frequency
         if (freq > rx_maxfreq / 1000) or (freq < rx_minfreq / 1000):

@@ -36,6 +36,14 @@
 
 //Delay needed for before any set_time_commands will work.
 #define SET_TIME_COMMAND_DELAY 5e-3 // seconds
+// Tuning delay time provides how long the USRP device will
+// wait for the device to settle after sending a tuning request.
+// If the device retunes a local oscillator, this should be on the
+// order of 1-2 seconds. The LF daughter boards do not have a lo
+// and therefore can have a much smaller tuning delay. The value 
+// chosen below was determined via trial and error, and has been 
+// set small enough that the delay is less than the time required
+// to execute the tuning request.
 #define TUNING_DELAY 1e-3 // seconds
 
 
