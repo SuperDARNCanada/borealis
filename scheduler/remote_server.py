@@ -1,19 +1,20 @@
 #!/usr/bin/python3
 
 """
-    remote_server.py
-    ~~~~~~~~~~~~~~~~
-    This process runs on the Borealis computer at each radar site. This process should be running in
-    the background whenever the radar is on, doing the following:
-      - On start up, it schedules Borealis based on the existing schedule (.scd) file for the
-        respective site. This is done using the Linux `at` service and the `atq` command. 
-      - Using inotify, remote_server.py then watches the .scd file for the respective site for any
-        changes. If the .scd file is modified, the scheduled Borealis runs are updated. 
-        
-    Logs are printed to stdout. Specific logs for each time the schedule is updated are also created
-    in borealis_schedules/logs/ and are emailed to verify if any issues occur.
+remote_server.py
+~~~~~~~~~~~~~~~~
+This process runs on the Borealis computer at each radar site. This process should be running in
+the background whenever the radar is on, doing the following:
 
-    :copyright: 2019 SuperDARN Canada
+- On start up, it schedules Borealis based on the existing schedule (.scd) file for the respective
+  site. This is done using the Linux `at` service and the `atq` command.
+- Using inotify, remote_server.py then watches the .scd file for the respective site for any changes.
+  If the .scd file is modified, the scheduled Borealis runs are updated.
+
+Logs are printed to stdout. Specific logs for each time the schedule is updated are also created
+in borealis_schedules/logs/ and are emailed to verify if any issues occur.
+
+:copyright: 2019 SuperDARN Canada
 """
 
 import inotify.adapters
@@ -41,8 +42,8 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     :param  first_event_flag:   Flag to signal whether the experiment is the first to run (Default
                                 value = False)
     :type   first_event_flag:   bool
-    :param  kwargs:      String of keyword arguments to run steamed hams (Default value = '')
-    :type   kwargs:      str
+    :param  kwargs:             String of keyword arguments to run steamed hams (Default value = '')
+    :type   kwargs:             str
     :param  embargo:            Option to embargo the data (makes the CPID negative)
     :type   embargo:            bool
 
