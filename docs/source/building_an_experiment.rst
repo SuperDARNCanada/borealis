@@ -111,6 +111,8 @@ Examples for each will be given below this section:
     - the same SCANBOUND value.
     - the same INTT or INTN value.
     - the same BEAM_ORDER length (scan length)
+    - the same TXCTRFREQ value.
+    - the same RXCTRFREQ value
 
 4. **CONCURRENT**
    
@@ -214,18 +216,6 @@ rx_bandwidth *defaults*
 
 tx_bandwidth *defaults*
     The output sampling rate of the transmitted signal. The default is 5.0e6 Hz, or 5 MHz.
-
-txctrfreq *defaults*
-    The center frequency of the transmit chain. The default is 12000.0 kHz, or 12 MHz. Note that
-    this is tuned by the UHD driver so will be set to a quantized value, which in general is not
-    exactly 12 MHz, and the value can be accessed by the user by reading this attribute after the
-    experiment begins.
-
-rxctrfreq *defaults*
-    The center frequency of the receive chain. The default is 12000.0 kHz, or 12 MHz. Note that this
-    is tuned by the UHD driver so will be set to a quantized value, which in general is not exactly
-    12 MHz, and the value can be accessed by the user by reading this attribute after the experiment
-    begins.
 
 decimation_scheme *defaults*
     The decimation scheme for the experiment, provided by an instance of the class DecimationScheme.
@@ -425,6 +415,16 @@ wait_for_first_scanbound *defaults*
 
 xcf *defaults*
     flag for cross-correlation data. The default is True if acf is True, otherwise False.
+
+txctrfreq *defaults*
+    The center frequency of the transmit chain. The default is 12000.0 kHz, or 12 MHz. Note that
+    this is tuned by the UHD driver so will be set to a quantized value, which in general is not
+    exactly 12 MHz.
+
+rxctrfreq *defaults*
+    The center frequency of the receive chain. The default is 12000.0 kHz, or 12 MHz. Note that this
+    is tuned by the UHD driver so will be set to a quantized value, which in general is not exactly
+    12 MHz.
 
 
 **Read-only Slice Keys**

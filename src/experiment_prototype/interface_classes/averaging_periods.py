@@ -4,7 +4,7 @@
     averaging_periods
     ~~~~~~~~~~~~~~~~~
     This is the module containing the AveragingPeriod class. The AveragingPeriod class contains the
-    ScanClassBase members, as well as clrfrqflag (to be implemented), intn (number of integrations
+    InterfaceClassBase members, as well as clrfrqflag (to be implemented), intn (number of integrations
     to run), or intt(max time for integrations), and it contains sequences of class Sequence.
 
     :copyright: 2018 SuperDARN Canada
@@ -18,8 +18,8 @@ from pathlib import Path
 import structlog
 
 # local
-from experiment_prototype.scan_classes.sequences import Sequence
-from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.interface_classes.sequences import Sequence
+from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
 from experiment_prototype.experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
@@ -36,14 +36,14 @@ pulse length, beamdir, and wavetype.
 """
 
 
-class AveragingPeriod(ScanClassBase):
+class AveragingPeriod(InterfaceClassBase):
     """
     Set up the AveragingPeriods.
 
     An averagingperiod contains sequences and integrates one or multiple pulse sequences together in
     a given time frame or in a given number of averages, if that is the preferred limiter.
 
-    **The unique members of the averagingperiod are (not a member of the scanclassbase):**
+    **The unique members of the averagingperiod are (not a member of the interfaceclassbase):**
 
     slice_to_beamorder
         passed in by the scan that this AveragingPeriod instance is contained in. A dictionary of
@@ -75,7 +75,7 @@ class AveragingPeriod(ScanClassBase):
     def __init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata,
                  slice_to_beamorder_dict, slice_to_beamdir_dict):
 
-        ScanClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata)
+        InterfaceClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata)
 
         self.slice_to_beamorder = slice_to_beamorder_dict
         self.slice_to_beamdir = slice_to_beamdir_dict
@@ -95,6 +95,8 @@ class AveragingPeriod(ScanClassBase):
 
         self.intt = self.slice_dict[self.slice_ids[0]].intt
         self.intn = self.slice_dict[self.slice_ids[0]].intn
+        self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
+        self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id].intt != self.intt:
@@ -115,6 +117,16 @@ class AveragingPeriod(ScanClassBase):
                         " interfaced but do not have the same number of averaging periods in"\
                         " their beam order"
                 raise ExperimentException(errmsg)
+
+        for slice_id in self.slice_ids:
+            if self.slice_dict[slice_id].txctrfreq != self.txctrfreq:
+                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
+                        " interfaced and do not have the same txctrfreq"
+                raise ExperimentException(errmsg)
+            if self.slice_dict[slice_id].rxctrfreq != self.rxctrfreq:
+                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
+                        " interfaced and do not have the same rxctrfreq"
+                raise ExperimentException(errmsg)
         self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]].rx_beam_order)
 
         # NOTE: Do not need beam information inside the AveragingPeriod, this is in Scan.
@@ -123,7 +135,7 @@ class AveragingPeriod(ScanClassBase):
         self.nested_slice_list = self.get_nested_slice_ids()
         self.sequences = []
 
-        for params in self.prep_for_nested_scan_class():
+        for params in self.prep_for_nested_interface_class():
             self.sequences.append(Sequence(*params))
 
         self.one_pulse_only = False
