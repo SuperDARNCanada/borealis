@@ -683,9 +683,9 @@ class ExperimentSlice:
             raise ValueError(f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}")
 
         # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
-        if (rx_center - 50) < freq < (rx_center + 50):
+        if abs(freq - rx_center) < 50:
             raise ValueError(f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}")
-        if (tx_center - 50) < freq < (tx_center + 50):
+        if abs(freq - tx_center) < 50:
             raise ValueError(f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}")
 
         return freq
