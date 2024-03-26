@@ -28,21 +28,9 @@ Slices are software objects made for the Borealis system that allow easy integra
 modes into a single experiment. Each slice could be an experiment on its own, and averaged data
 products are produced from each slice individually. Slices can be used to create separate frequency
 channels, separate pulse sequences, separate beam scanning order, etc. that can run simultaneously.
-Slices can be interfaced in four different ways (see below).
- 
-The following parameters are unique to a slice:  
-
-* tx or rx frequency
-* pulse sequence
-* tau spacing (mpinc)
-* pulse length
-* number of range gates
-* first range gate
-* beam directions
-* beam order
 
 A slice is defined using a python dictionary with the necessary slice keys. For a complete list of
-keys that can be used in a slice, see below 'Slice Keys'. 
+keys that can be used in a slice, see `Slice Keys`_.
 
 The other necessary part of an experiment is specifying how slices will interface with each other.
 Interfacing in this case refers to how these two components are meant to be run. To understand the
