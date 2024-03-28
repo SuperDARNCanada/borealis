@@ -657,7 +657,15 @@ class ExperimentSlice:
         for freq_range in options.restricted_ranges:
             if freq_range[0] <= freq <= freq_range[1]:
                 raise ValueError(f"freq is within a restricted frequency range {freq_range}")
-        
+
+        # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
+        # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
+        # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
+        # but for smaller bandwidth this value is too large. For the typical operating
+        # bandwidth of 5 MHz, the calculated transition bandwidth here will be 750 kHz
+
+        #TODO review issue #195
+
         if 'rxctrfreq' in values:
             rx_maxfreq = values['rxctrfreq'] * 1000 + (values['rx_bandwidth'] / 2.0) - (values['rx_bandwidth'] * 0.15)
             rx_minfreq = values['rxctrfreq'] * 1000 - (values['rx_bandwidth'] / 2.0) + (values['rx_bandwidth'] * 0.15)
