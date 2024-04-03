@@ -498,7 +498,7 @@ Checking Your Experiment for Errors
 -----------------------------------
 
 An experiment testing script ``experiment_unittests.py`` has been written to check experiments for
-errors and ensure the operation of experiment checking source code.. This suite of tests can be run
+errors and ensure the operation of experiment checking source code. This suite of tests can be run
 on by running the following command: ::
 
         python3 BOREALISPATH/tests/experiments/experiment_unittests.py
