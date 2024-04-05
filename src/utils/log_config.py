@@ -93,7 +93,7 @@ def add_logging_level(level_name, level_num, method_name=None):
     setattr(logging.getLoggerClass(), method_name, log_for_level)
     setattr(logging, method_name, log_to_root)
 
-add_logging_level('TRACE', logging.INFO - 5)    # Create a new logging level in between DEBUG and INFO
+add_logging_level('VERBOSE', logging.INFO - 5)    # Create a new logging level in between DEBUG and INFO
 
 def swap_logger_name(_, __, event_dict):
     """
@@ -120,10 +120,20 @@ def format_floats(_, __, event_dict):
     return event_dict
 
 class ConfigurableLevel:
+    """
+    Processor to abort pipeline on logs below configured threshold.
+    """
     def __init__(self, threshold):
-        self._threshold = threshold
+        """Configure the threshold for logging"""
+        if isinstance(threshold, int):
+            self._threshold = threshold
+        elif isinstance(threshold, str):
+            self._threshold = getattr(logging, threshold)
+        else:
+            raise ValueError("Unknown logging threshold {threshold}")
 
     def __call__(self, logger, method_name, event_dict):
+        """Filter events based on their log level"""
         if event_dict.pop('level_number') < self._threshold:
             raise structlog.DropEvent
         else:
