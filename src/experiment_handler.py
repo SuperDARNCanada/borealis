@@ -14,21 +14,25 @@
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
 """
-
-import zmq
-import sys
 import argparse
-import inspect
 import importlib
-import threading
+import inspect
+from pathlib import Path
 import pickle
+import sys
+import threading
+
+import structlog
+import zmq
+
 from utils.options import Options
 from utils import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
-from utils import log_config
-log = log_config.log(console=False, logfile=False, aggregator=False)
+caller = Path(inspect.stack()[-1].filename)
+module_name = caller.name.split('.')[0]
+log = structlog.getLogger(module_name)
 
 
 def usage_msg():
@@ -127,9 +131,9 @@ def retrieve_experiment(experiment_module_name):
     # this is the experiment class that we need to run.
     experiment = experiment_classes[0][1]
 
-    log.info("retrieving experiment from module",
-             experiment_class=experiment_classes[0][0],
-             experiment_module=experiment_mod)
+    log.verbose("retrieving experiment from module",
+                experiment_class=experiment_classes[0][0],
+                experiment_module=experiment_mod)
 
     return experiment
 

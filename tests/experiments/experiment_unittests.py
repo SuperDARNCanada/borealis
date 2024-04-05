@@ -322,12 +322,13 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
         open(hdw_dat_file, 'w')
 
     experiments = args.experiments
-    print(f"Running tests on experiments {experiments}")
     if experiments is None:  # Run all unit tests and experiment tests
+        print("Running tests on all experiments")
         build_unit_tests()
         build_experiment_tests()
         argv = [sys.argv[0]]
     else:  # Only test specified experiments
+        print(f"Running tests on experiments {experiments}")
         build_experiment_tests(experiments, args.kwargs)
         exp_tests = []
         for exp in experiments:
@@ -368,4 +369,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
 
 
 if __name__ == '__main__':
+    from utils import log_config
+    log = log_config.log(console=False, logfile=False, aggregator=False)
+
     run_tests(sys.argv[1:])
