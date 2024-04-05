@@ -202,9 +202,6 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
         console = options.log_console_bool
     if logfile is None:
         logfile = options.log_logfile_bool
-        # Set the log file and dir path. The time tag will be appended at the midnight
-        # roll over by the TimedRotatingLogHandler.
-        log_file = f"{options.log_directory}/{module_name}"
     if aggregator is None:
         aggregator = options.log_aggregator_bool
 
@@ -282,6 +279,9 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
 
     # Set up the second handler to pipe logs to a JSON file that rotates at midnight
     if logfile:
+        # Set the log file and dir path. The time tag will be appended at the midnight
+        # roll over by the TimedRotatingLogHandler.
+        log_file = f"{options.log_directory}/{module_name}"
         logfile_handler = TimedRotatingFileHandler(filename=log_file, when='midnight', utc=True)
         logfile_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=shared_processors,  # These run on logs that do not come from structlog
