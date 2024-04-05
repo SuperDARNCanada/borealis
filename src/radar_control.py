@@ -237,9 +237,9 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
 
     if TIME_PROFILE:
         time_done = time.perf_counter() - time_waiting
-        log.info("waiting time for metadata request",
-                 metadata_time=time_done * 1e3,
-                 metadata_time_units='ms')
+        log.verbose("waiting time for metadata request",
+                    metadata_time=time_done * 1e3,
+                    metadata_time_units='ms')
 
     bytes_packet = pickle.dumps(message, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -604,7 +604,7 @@ def main():
                 # Time to start averaging in the below loop.
                 if not scan.scanbound:
                     averaging_period_start_time = datetime.utcnow()  # ms
-                    log.info("averaging period start time",
+                    log.verbose("averaging period start time",
                              averaging_period_start_time=averaging_period_start_time,
                              averaging_period_start_time_units='')
                 if aveperiod.intt is not None:
@@ -618,7 +618,7 @@ def main():
                         time_diff = beam_scanbound - datetime.utcnow()
                         if time_diff.total_seconds() > 0:
                             if first_aveperiod:
-                                log.info("seconds to next avg period",
+                                log.verbose("seconds to next avg period",
                                          time_until_avg_period=time_diff.total_seconds(),
                                          time_until_avg_period_units='s',
                                          scan_iter=scan_iter,
@@ -640,7 +640,7 @@ def main():
                                       beam_scanbound=beam_scanbound)
 
                         averaging_period_start_time = datetime.utcnow()
-                        log.info("avg period start time",
+                        log.verbose("avg period start time",
                                  avg_period_start_time=averaging_period_start_time,
                                  avg_period_start_time_units='s',
                                  scan_iter=scan_iter,
@@ -663,7 +663,7 @@ def main():
                             bound_time_remaining = next_scan_start - averaging_period_start_time
                             bound_time_remaining = bound_time_remaining.total_seconds()
 
-                        log.info("bound time remaining",
+                        log.verbose("bound time remaining",
                                  bound_time_remaining=bound_time_remaining,
                                  bound_time_remaining_units='s',
                                  scan_num=scan_num,
@@ -688,13 +688,13 @@ def main():
                     ending_number_of_sequences = aveperiod.intn  # this will exist
 
                 msg = {x: y[aveperiod.beam_iter] for x, y in aveperiod.slice_to_beamorder.items()}
-                log.info("avg period slice and beam number", slice_and_beam=msg)
+                log.verbose("avg period slice and beam number", slice_and_beam=msg)
 
                 if TIME_PROFILE:
                     aveperiod_prep_time = datetime.utcnow() - time_start_of_aveperiod
-                    log.info("time to prep aveperiod",
-                             aveperiod_prep_time=aveperiod_prep_time,
-                             aveperiod_prep_time_units='')
+                    log.verbose("time to prep aveperiod",
+                                aveperiod_prep_time=aveperiod_prep_time,
+                                aveperiod_prep_time_units='')
 
                 #  Time to start averaging in the below loop
                 num_sequences = 0
@@ -747,9 +747,9 @@ def main():
 
                             if TIME_PROFILE:
                                 pulses_to_driver_time = datetime.utcnow() - start_time
-                                log.info("pulses to driver time",
-                                         pulses_to_driver_time=pulses_to_driver_time,
-                                         pulses_to_driver_time_units='s')
+                                log.verbose("pulses to driver time",
+                                            pulses_to_driver_time=pulses_to_driver_time,
+                                            pulses_to_driver_time_units='s')
 
                         def send_dsp_meta():
                             rx_beam_phases = sequence.get_rx_phases(aveperiod.beam_iter)
@@ -769,9 +769,9 @@ def main():
 
                             if TIME_PROFILE:
                                 sequence_metadata_time = datetime.utcnow() - start_time
-                                log.info("metadata to dsp time",
-                                         sequence_metadata_time=sequence_metadata_time,
-                                         sequence_metadata_time_units='s')
+                                log.verbose("metadata to dsp time",
+                                            sequence_metadata_time=sequence_metadata_time,
+                                            sequence_metadata_time_units='s')
 
                         def make_next_samples():
                             sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, num_sequences + 1)
@@ -781,9 +781,9 @@ def main():
 
                             if TIME_PROFILE:
                                 new_sequence_time = datetime.utcnow() - start_time
-                                log.info("make new sequence time",
-                                         new_sequence_time=new_sequence_time,
-                                         new_sequence_time_units='s')
+                                log.verbose("make new sequence time",
+                                            new_sequence_time=new_sequence_time,
+                                            new_sequence_time_units='s')
 
                         # These three things can happen simultaneously. We can spawn them as threads.
                         threads = [threading.Thread(target=send_pulses),
@@ -808,9 +808,9 @@ def main():
 
                 if TIME_PROFILE:
                     avg_period_end_time = datetime.utcnow()
-                    log.info("avg period end time",
-                             avg_period_end_time=avg_period_end_time,
-                             avg_period_end_time_units='s')
+                    log.verbose("avg period end time",
+                                avg_period_end_time=avg_period_end_time,
+                                avg_period_end_time_units='s')
 
                 log.info("sequences in avg period", num_sequences=num_sequences)
 
@@ -845,9 +845,9 @@ def main():
 
                 if TIME_PROFILE:
                     time_to_finish_aveperiod = datetime.utcnow() - avg_period_end_time
-                    log.info("time to finish avg period",
-                             avg_period_elapsed_time=time_to_finish_aveperiod,
-                             avg_period_elapsed_time_units='s')
+                    log.verbose("time to finish avg period",
+                                avg_period_elapsed_time=time_to_finish_aveperiod,
+                                avg_period_elapsed_time_units='s')
 
                 aveperiod.beam_iter += 1
                 if aveperiod.beam_iter == aveperiod.num_beams_in_scan:

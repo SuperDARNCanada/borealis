@@ -1256,9 +1256,9 @@ def main():
                 start = time.perf_counter()
                 data_parsing.update(pd)
                 parse_time = time.perf_counter() - start
-                log.info("parse time",
-                         parse_time=parse_time * 1e3,
-                         parse_time_units='ms')
+                log.verbose("parse time",
+                            parse_time=parse_time * 1e3,
+                            parse_time_units='ms')
 
             queued_sqns = []
 
