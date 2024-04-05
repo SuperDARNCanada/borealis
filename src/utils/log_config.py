@@ -80,31 +80,16 @@ def add_logging_level(level_name, level_num, method_name=None):
     if hasattr(logging.getLoggerClass(), method_name):
        raise AttributeError('{} already defined in logger class'.format(method_name))
 
-    # This method was inspired by the answers to Stack Overflow post
-    # http://stackoverflow.com/q/2183233/2988730, especially
-    # http://stackoverflow.com/a/13638084/2988730
-    def log_for_level(self, message, *args, **kwargs):
-        if self.isEnabledFor(level_num):
-            self._log(level_num, message, args, **kwargs)
-    def log_to_root(message, *args, **kwargs):
-        logging.log(level_num, message, *args, **kwargs)
-
-    logging.addLevelName(level_num, level_name)
-    setattr(logging, level_name.upper(), level_num)
-    setattr(logging.getLoggerClass(), method_name, log_for_level)
-    setattr(logging, method_name, log_to_root)
+    logging.addLevelName(level_num, level_name.upper())
 
     # Added for Borealis. Configures structlog to also accept the new logging level
     # Modified from https://stackoverflow.com/a/56467981
     def fn(self, msg, *args, **kwargs):
         return self.log(level_num, msg, *args, **kwargs)
 
-    setattr(structlog.stdlib, level_name, level_num)
     structlog.stdlib._NAME_TO_LEVEL[level_name] = level_num
     structlog.stdlib._LEVEL_TO_NAME[level_num] = level_name
-    setattr(structlog.stdlib.BoundLogger, level_name, fn)
     setattr(structlog.stdlib.BoundLogger, method_name, fn)
-    setattr(structlog.stdlib._FixedFindCallerLogger, level_name, fn)
     setattr(structlog.stdlib._FixedFindCallerLogger, method_name, fn)
 
 
@@ -131,26 +116,6 @@ def format_floats(_, __, event_dict):
         if isinstance(v, float):
             event_dict[k] = f"{v:.3f}"
     return event_dict
-
-class ConfigurableLevel:
-    """
-    Processor to abort pipeline on logs below configured threshold.
-    """
-    def __init__(self, threshold):
-        """Configure the threshold for logging"""
-        if isinstance(threshold, int):
-            self._threshold = threshold
-        elif isinstance(threshold, str):
-            self._threshold = getattr(logging, threshold.upper())
-        else:
-            raise ValueError("Unknown logging threshold {threshold}")
-
-    def __call__(self, logger, method_name, event_dict):
-        """Filter events based on their log level"""
-        if event_dict.pop('level_number') < self._threshold:
-            raise structlog.DropEvent
-        else:
-            return event_dict
 
 
 def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=None, console=None, logfile=None,
@@ -227,7 +192,6 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
     # Add additional processors for all cases when not simply converting a logfile
     if not json_to_console_file:
         additional_processors = [
-            structlog.stdlib.add_log_level_number,  # Add the numeric log level to the event dict
             structlog.stdlib.add_logger_name,       # Add the name of the logger
             structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add timestamps to the log
         ]
@@ -266,12 +230,12 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
     # Set up the first handler to pipe logs to stdout
     if console:
         console_handler = StreamHandler(sys.stdout)
+        console_handler.setLevel(console_log_level)
         styles = structlog.dev.ConsoleRenderer.get_default_level_styles(colors=True)
         styles['verbose'] = styles['info']      # Use the info style when logging a verbose message
         console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=shared_processors,  # These run on logs that do not come from structlog
-            processors=[ConfigurableLevel(console_log_level),       # Drop logs below console_log_level
-                        swap_logger_name,
+            processors=[swap_logger_name,
                         structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                         format_floats,
                         structlog.dev.ConsoleRenderer(sort_keys=False, colors=True, level_styles=styles)]))
@@ -283,10 +247,11 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
         # roll over by the TimedRotatingLogHandler.
         log_file = f"{options.log_directory}/{module_name}"
         logfile_handler = TimedRotatingFileHandler(filename=log_file, when='midnight', utc=True)
+        logfile_handler.setLevel(logfile_log_level)
         logfile_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=shared_processors,  # These run on logs that do not come from structlog
-            processors=[ConfigurableLevel(logfile_log_level),       # Drop logs below logfile_log_level
-                        structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),  # Add Unix timestamp
+            processors=[structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),
+                        # Add Unix timestamp
                         structlog.processors.dict_tracebacks,  # Makes tracebacks dict rather than str
                         structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes _records
                         structlog.processors.JSONRenderer(sort_keys=False)]))
@@ -298,10 +263,10 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
     if aggregator:
         aggregator_handler = graypy.GELFUDPHandler(options.log_aggregator_addr,
                                                    options.log_aggregator_port)
+        aggregator_handler.setLevel(aggregator_log_level)
         aggregator_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=shared_processors,  # These run on logs that do not come from structlog
-            processors=[ConfigurableLevel(aggregator_log_level),        # Drop logs below aggregator_log_level
-                        structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes _records
+            processors=[structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes _records
                         structlog.processors.JSONRenderer(sort_keys=False)]))
         root_logger.addHandler(aggregator_handler)
 
