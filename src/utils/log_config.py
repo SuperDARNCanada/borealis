@@ -42,6 +42,7 @@ import rich
 from rich import pretty
 rich.pretty.install()
 
+
 def add_logging_level(level_name, level_num, method_name=None):
     """
     Taken from https://stackoverflow.com/questions/2183233/how-to-add-a-custom-loglevel-to-pythons-logging-facility/35804945#35804945
@@ -93,7 +94,17 @@ def add_logging_level(level_name, level_num, method_name=None):
     setattr(logging.getLoggerClass(), method_name, log_for_level)
     setattr(logging, method_name, log_to_root)
 
-add_logging_level('VERBOSE', logging.INFO - 5)    # Create a new logging level in between DEBUG and INFO
+    # Added for Borealis. Configures structlog to also accept the new logging level
+    # From https://stackoverflow.com/a/56467981
+    def fn(self, msg, *args, **kwargs):
+        return self.log(level_num, msg, *args, **kwargs)
+
+    setattr(structlog.stdlib, level_name, level_num)
+    structlog.stdlib._NAME_TO_LEVEL[level_name] = level_num
+    structlog.stdlib._LEVEL_TO_NAME[level_num] = level_name
+    setattr(structlog.stdlib.BoundLogger, method_name, fn)
+    setattr(structlog.stdlib._FixedFindCallerLogger, level_name, fn)
+
 
 def swap_logger_name(_, __, event_dict):
     """
@@ -166,6 +177,9 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
     """
     if json_to_console_file and (console or logfile or aggregator):
         raise RuntimeError("Cannot convert a JSON logfile while simultaneously logging")
+
+    if 'VERBOSE' not in vars(logging):
+        add_logging_level('VERBOSE', logging.INFO - 5)  # Create a new logging level in between DEBUG and INFO
 
     # Obtain the module name that imported this log_config
     caller = Path(inspect.stack()[-1].filename)

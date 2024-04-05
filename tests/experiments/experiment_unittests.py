@@ -309,7 +309,7 @@ def run_tests(raw_args=None, buffer=True, print_results=True):
 
     # These directories are required for ExperimentHandler to run
     data_directory = raw_config["data_directory"]
-    log_directory = raw_config["log_directory"]
+    log_directory = raw_config["log_handlers"]["logfile"]["directory"]
     hdw_path = raw_config['hdw_path']
     hdw_dat_file = f'{hdw_path}/hdw.dat.{os.environ["RADAR_ID"]}'
     if not os.path.exists(data_directory):
