@@ -43,6 +43,40 @@ from rich import pretty
 rich.pretty.install()
 
 
+VERBOSE = logging.INFO - 5  #: New logging level, set between `DEBUG` and `INFO`.
+
+
+class VerboseLogger(structlog.BoundLoggerBase):
+    """
+    Wrapper class that adds a new logging method `verbose` between `debug` and `info` levels.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        setattr(self._logger, 'verbose', self._verbose)     # Create the new `verbose` method.
+
+    def debug(self, *args, **kwargs):
+        return self._proxy_to_logger("debug", *args, **kwargs)
+
+    def verbose(self, *args, **kwargs):
+        return self._proxy_to_logger("verbose", *args, **kwargs)
+
+    def _verbose(self, msg, *args, **kwargs):
+        """ Log msg at the `VERBOSE` level """
+        return self._logger._log(VERBOSE, msg, args, **kwargs)
+
+    def info(self, *args, **kwargs):
+        return self._proxy_to_logger("info", *args, **kwargs)
+
+    def warning(self, *args, **kwargs):
+        return self._proxy_to_logger("warning", *args, **kwargs)
+
+    def error(self, *args, **kwargs):
+        return self._proxy_to_logger("error", *args, **kwargs)
+
+    def critical(self, *args, **kwargs):
+        return self._proxy_to_logger("critical", *args, **kwargs)
+
+
 def add_logging_level(level_name, level_num, method_name=None):
     """
     Modified from https://stackoverflow.com/a/35804945
@@ -82,16 +116,6 @@ def add_logging_level(level_name, level_num, method_name=None):
 
     logging.addLevelName(level_num, level_name.upper())
 
-    # Added for Borealis. Configures structlog to also accept the new logging level
-    # Modified from https://stackoverflow.com/a/56467981
-    def fn(self, msg, *args, **kwargs):
-        return self.log(level_num, msg, *args, **kwargs)
-
-    structlog.stdlib._NAME_TO_LEVEL[level_name] = level_num
-    structlog.stdlib._LEVEL_TO_NAME[level_num] = level_name
-    setattr(structlog.stdlib.BoundLogger, method_name, fn)
-    setattr(structlog.stdlib._FixedFindCallerLogger, method_name, fn)
-
 
 def swap_logger_name(_, __, event_dict):
     """
@@ -119,7 +143,7 @@ def format_floats(_, __, event_dict):
 
 
 def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=None, console=None, logfile=None,
-        aggregator=None, json_to_console_file=None):
+        aggregator=None, json_to_console=False):
     """
     :param console_log_level: Logging threshold for console renderer [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
     :type console_log_level: str | int
@@ -133,8 +157,8 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
     :type logfile: bool
     :param aggregator: Enable (True) or Disable (False) aggregator log forwarding override
     :type aggregator: bool
-    :param json_to_console_file: Path to file that will contain console-render of logs in json file
-    :type json_to_console_file: str
+    :param json_to_console: Enable (True) or Disable (False) a logger that converts JSON logs to console-style
+    :type json_to_console: bool
 
     :notes:
     There are three parts to logging; processors, renderers, and handlers.
@@ -142,10 +166,10 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
         renderers - make the log message a string, json, dict, etc. with fancy styling
         handlers -  print the rendered data to stdout, file, stream, etc.
     """
-    if json_to_console_file and (console or logfile or aggregator):
+    if json_to_console and (console or logfile or aggregator):
         raise RuntimeError("Cannot convert a JSON logfile while simultaneously logging")
 
-    if 'verbose' not in vars(logging):
+    if 'verbose' not in vars(logging):      # Ensure that add_logging_level is only called once
         add_logging_level('verbose', logging.INFO - 5)  # Create a new logging level in between DEBUG and INFO
 
     # Obtain the module name that imported this log_config
@@ -182,7 +206,6 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
     processors = [
         structlog.stdlib.add_log_level,             # Add log level to event dict
         structlog.processors.UnicodeDecoder(),      # Decode byte strings to unicode strings
-        # structlog.stdlib.filter_by_level,         # Abort pipeline on log levels lower than threshold
         structlog.processors.StackInfoRenderer(),   # Move "stack_info" in event_dict to "stack" and render
         # The last processor has to be a renderer to render the log to file, stream, etc. in some style
         # This wrapper lets us decide on the renderer later. This is needed to have two renderers.
@@ -190,7 +213,7 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
     ]
 
     # Add additional processors for all cases when not simply converting a logfile
-    if not json_to_console_file:
+    if not json_to_console:
         additional_processors = [
             structlog.stdlib.add_logger_name,       # Add the name of the logger
             structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add timestamps to the log
@@ -217,7 +240,7 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
     # noinspection PyTypeChecker
     structlog.configure(
         processors=processors,
-        wrapper_class=structlog.stdlib.BoundLogger,  # Structlog wrapper class to imitate `logging.Logger`
+        wrapper_class=VerboseLogger, # Structlog wrapper class to imitate `logging.Logger`
         logger_factory=structlog.stdlib.LoggerFactory(),  # Creates the wrapped loggers
         cache_logger_on_first_use=True  # Freeze the configuration (no tampering!)
     )
@@ -270,8 +293,8 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
                         structlog.processors.JSONRenderer(sort_keys=False)]))
         root_logger.addHandler(aggregator_handler)
 
-    if json_to_console_file:
-        json_to_console_handler = FileHandler(json_to_console_file)
+    if json_to_console:
+        json_to_console_handler = StreamHandler(sys.stdout)
         json_to_console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,

@@ -24,7 +24,6 @@ def add_item(container, k, v):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('json_file', type=str, help='Path to JSON log file')
-    parser.add_argument('outfile', type=str, help='Path for new file')
     args = parser.parse_args()
 
     sys.path.append(os.environ['BOREALISPATH'])
@@ -34,7 +33,7 @@ if __name__ == '__main__':
         console=False,
         logfile=False,
         aggregator=False,
-        json_to_console_file=args.outfile,
+        json_to_console=True,
     )
 
     with open(args.json_file, 'rb') as stream:

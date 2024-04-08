@@ -202,6 +202,9 @@ def pip_install_packages(user: str, python_version: str):
         'protobuf==3.19.4',
         'numpy',
         'zmq',
+        'structlog<=24.1.0',
+        'graypy',
+        'rich',
     ]
     update_pip = f'sudo -u {user} python{python_version} -m pip install --upgrade pip'
     print(update_pip)
