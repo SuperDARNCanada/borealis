@@ -75,33 +75,26 @@ bindkey ^[[1;5C focus right
 bindkey ^[[1;5A focus up
 bindkey ^[[1;5B focus down
 
-#Realtime produces no real useful output at this time so we have it in a hidden window. It can
-#still be switched to within screen if needed.
-screen -t "Brian" bash -c "{START_BRIAN}"
+screen -t "Experiment Handler" bash -c "{START_EXPHAN}"     # Top left
+split -v
+split -v
 split
-
-split -v
-focus right
-screen -t "N200 Driver" bash -c "{START_USRP_DRIVER}"
-
-split -v
-focus right
-screen -t "Signal Processing" bash -c "{START_DSP}"
-
-focus down
-screen -t "Data Write" bash -c "{START_DATAWRITE}"
-
-split -v
-focus right
-screen -t "Experiment Handler" bash -c "{START_EXPHAN}"
-
-split -v
-focus right
-screen -t "Radar Control" bash -c "{START_RADCTRL}"
-
-split -v
-focus right
-screen -t "Realtime" bash -c "{START_RT}"
+focus
+screen -t "N200 Driver" bash -c "{START_USRP_DRIVER}"       # Bottom left
+focus
+screen -t "Radar Control" bash -c "{START_RADCTRL}"         # Top middle
+split
+focus
+screen -t "Data Write" bash -c "{START_DATAWRITE}"          # Bottom middle
+focus
+screen -t "Signal Processing" bash -c "{START_DSP}"         # Right top
+split
+split
+focus
+screen -t "Realtime" bash -c "{START_RT}"                   # Right middle
+focus
+screen -t "Brian" bash -c "{START_BRIAN}"                   # Right bottom
+focus
 
 detach
 """
