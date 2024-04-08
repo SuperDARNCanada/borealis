@@ -295,11 +295,13 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
 
     if json_to_console:
         json_to_console_handler = StreamHandler(sys.stdout)
+        styles = structlog.dev.ConsoleRenderer.get_default_level_styles(colors=True)
+        styles['verbose'] = styles['info']  # Use the info style when logging a verbose message
         json_to_console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             processors=[
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                 format_floats,
-                structlog.dev.ConsoleRenderer(sort_keys=False, colors=True)
+                structlog.dev.ConsoleRenderer(sort_keys=False, colors=True, level_styles=styles)
             ]
         ))
         root_logger.addHandler(json_to_console_handler)

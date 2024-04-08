@@ -55,6 +55,8 @@ if __name__ == '__main__':
                     msg = current_entry.pop('event', '')
                     if level == 'info':
                         log.info(msg, **current_entry)
+                    elif level == 'verbose':
+                        log.verbose(msg, **current_entry)
                     elif level == 'debug':
                         log.debug(msg, **current_entry)
                     elif level == 'warning':
