@@ -30,7 +30,7 @@ DecimationScheme`_.
 
 A Jupyter notebook is included with the Borealis software for visualization and testing of filtering
 schemes, using the filtering methods that run when a Borealis radar operates. This notebook can be
-found at `$BOREALISPATH/tests/dsp_testing/filters.ipynb`.
+found at ``$BOREALISPATH/tests/dsp_testing/filters.ipynb``.
 
 Default DecimationScheme
 ------------------------
