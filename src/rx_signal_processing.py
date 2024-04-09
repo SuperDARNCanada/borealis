@@ -587,7 +587,8 @@ def main():
             so.send_bytes(dspend_to_brian, options.brian_to_dspend_identity, msg)
             log_dict["dsp_end_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
 
-            log_dict["total_sequence_process_time"] = (time.perf_counter() - start_timer) * 1e3
+            total_processing_time = (time.perf_counter() - start_timer) * 1e3
+            log_dict["total_sequence_process_time"] = total_processing_time
             log.verbose("processing sequence",
                         sequence_num=sequence_num,
                         mixing_freqs=mixing_freqs,
@@ -703,7 +704,10 @@ def main():
 
             log_dict["total_serialize_send_time"] = (time.perf_counter() - start_timer) * 1e3
             log.info("done with sequence",
-                     sequence_num=sequence_num)
+                     sequence_num=sequence_num,
+                     processing_time=total_processing_time,
+                     time_units='ms',
+                     slice_ids=[d['slice_id'] for d in slice_details])
             log.verbose("sequence timing",
                         sequence_num=sequence_num,
                         **log_dict)

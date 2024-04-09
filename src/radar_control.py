@@ -605,8 +605,8 @@ def main():
                 if not scan.scanbound:
                     averaging_period_start_time = datetime.utcnow()  # ms
                     log.verbose("averaging period start time",
-                             averaging_period_start_time=averaging_period_start_time,
-                             averaging_period_start_time_units='')
+                                averaging_period_start_time=averaging_period_start_time,
+                                averaging_period_start_time_units='')
                 if aveperiod.intt is not None:
                     intt_break = True
 
@@ -619,10 +619,10 @@ def main():
                         if time_diff.total_seconds() > 0:
                             if first_aveperiod:
                                 log.verbose("seconds to next avg period",
-                                         time_until_avg_period=time_diff.total_seconds(),
-                                         time_until_avg_period_units='s',
-                                         scan_iter=scan_iter,
-                                         beam_scanbound=beam_scanbound)
+                                            time_until_avg_period=time_diff.total_seconds(),
+                                            time_until_avg_period_units='s',
+                                            scan_iter=scan_iter,
+                                            beam_scanbound=beam_scanbound)
                             else:
                                 log.debug("seconds to next avg period",
                                           time_until_avg_period=time_diff.total_seconds(),
@@ -641,10 +641,10 @@ def main():
 
                         averaging_period_start_time = datetime.utcnow()
                         log.verbose("avg period start time",
-                                 avg_period_start_time=averaging_period_start_time,
-                                 avg_period_start_time_units='s',
-                                 scan_iter=scan_iter,
-                                 beam_scanbound=beam_scanbound)
+                                    avg_period_start_time=averaging_period_start_time,
+                                    avg_period_start_time_units='s',
+                                    scan_iter=scan_iter,
+                                    beam_scanbound=beam_scanbound)
 
                         # Here we find how much system time has elapsed to find the true amount
                         # of time we can integrate for this scan boundary. We can then see if
@@ -664,11 +664,11 @@ def main():
                             bound_time_remaining = bound_time_remaining.total_seconds()
 
                         log.verbose("bound time remaining",
-                                 bound_time_remaining=bound_time_remaining,
-                                 bound_time_remaining_units='s',
-                                 scan_num=scan_num,
-                                 scan_iter=scan_iter,  # scan_iter is averaging period number for some reason
-                                 beam_scanbound=beam_scanbound)
+                                    bound_time_remaining=bound_time_remaining,
+                                    bound_time_remaining_units='s',
+                                    scan_num=scan_num,
+                                    scan_iter=scan_iter,  # scan_iter is averaging period number for some reason
+                                    beam_scanbound=beam_scanbound)
 
                         if bound_time_remaining < aveperiod.intt * 1e-3:
                             # Reduce the averaging period to only the time remaining until the next scan boundary
@@ -812,7 +812,7 @@ def main():
                                 avg_period_end_time=avg_period_end_time,
                                 avg_period_end_time_units='s')
 
-                log.info("sequences in avg period", num_sequences=num_sequences)
+                log.info("aveperiod done", num_sequences=num_sequences, slice_ids=aveperiod.slice_ids)
 
                 if scan.aveperiod_iter == 0 and aveperiod.beam_iter == 0:
                     # This is the first averaging period in the scan object.

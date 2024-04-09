@@ -75,19 +75,19 @@ bindkey ^[[1;5C focus right
 bindkey ^[[1;5A focus up
 bindkey ^[[1;5B focus down
 
-screen -t "Experiment Handler" bash -c "{START_EXPHAN}"     # Top left
+screen -t "N200 Driver" bash -c "{START_USRP_DRIVER}"       # Top left
 split -v
 split -v
 split
 focus
-screen -t "N200 Driver" bash -c "{START_USRP_DRIVER}"       # Bottom left
+screen -t "Signal Processing" bash -c "{START_DSP}"         # Bottom left
 focus
 screen -t "Radar Control" bash -c "{START_RADCTRL}"         # Top middle
 split
 focus
 screen -t "Data Write" bash -c "{START_DATAWRITE}"          # Bottom middle
 focus
-screen -t "Signal Processing" bash -c "{START_DSP}"         # Right top
+screen -t "Experiment Handler" bash -c "{START_EXPHAN}"     # Right top
 split
 split
 focus

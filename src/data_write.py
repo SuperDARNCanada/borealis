@@ -1256,9 +1256,10 @@ def main():
                 start = time.perf_counter()
                 data_parsing.update(pd)
                 parse_time = time.perf_counter() - start
-                log.verbose("parse time",
-                            parse_time=parse_time * 1e3,
-                            parse_time_units='ms')
+                log.info("parsed record",
+                         parse_time=parse_time * 1e3,
+                         time_units='ms',
+                         slice_ids=[dset.slice_id for dset in pd.output_datasets])
 
             queued_sqns = []
 
