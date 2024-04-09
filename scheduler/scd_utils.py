@@ -37,25 +37,26 @@ def get_next_month_from_date(date=None):
     return new_date
 
 
-class SCDUtils(object):
+class SCDUtils:
     """
     Contains utilities for working with SCD files. SCD files are schedule files for Borealis.
-    
-    :param  scd_filename:   Schedule file name
-    :type:  scd_filename:   str
-    :param  scd_dt_fmt:     String format for parsing/writing datetimes.
-    :type:  scd_dt_fmt:     str
-    :param  line_fmt:       String format for scd line.
-    :type:  line_fmt:       str
-    :param  scd_default:    Default event to run if no other infinite duration line is scheduled.
-    :type:  scd_default:    dict
     """
 
+    """String format for parsing and writing datetimes"""
+    scd_dt_fmt = "%Y%m%d %H:%M"
+
+    """String format for scd line"""
+    line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
+
+
     def __init__(self, scd_filename):
-        super().__init__()
+        """
+        :param  scd_filename:   Schedule file name
+        :type:  scd_filename:   str
+        """
         self.scd_filename = scd_filename
-        self.scd_dt_fmt = "%Y%m%d %H:%M"
-        self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
+
+        """Default event to run if no other infinite duration line is scheduled"""
         self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
     def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs='', embargo=False):
@@ -169,7 +170,8 @@ class SCDUtils(object):
 
         return scd_lines
 
-    def fmt_line(self, line_dict):
+    @classmethod
+    def fmt_line(cls, line_dict):
         """
         Formats a dictionary with line info into a text line for file.
 
@@ -179,13 +181,13 @@ class SCDUtils(object):
         :returns:   Formatted string.
         :rtype:     str
         """
-        line_str = self.line_fmt.format(datetime=line_dict["time"].strftime(self.scd_dt_fmt),
-                                        prio=line_dict["prio"],
-                                        experiment=line_dict["experiment"],
-                                        scheduling_mode=line_dict["scheduling_mode"],
-                                        duration=line_dict["duration"],
-                                        embargo='--embargo' if line_dict["embargo"] else '',
-                                        kwargs=line_dict["kwargs"])
+        line_str = cls.line_fmt.format(datetime=line_dict["time"].strftime(cls.scd_dt_fmt),
+                                       prio=line_dict["prio"],
+                                       experiment=line_dict["experiment"],
+                                       scheduling_mode=line_dict["scheduling_mode"],
+                                       duration=line_dict["duration"],
+                                       embargo='--embargo' if line_dict["embargo"] else '',
+                                       kwargs=line_dict["kwargs"])
         return line_str
 
     def write_scd(self, scd_lines):
@@ -255,7 +257,7 @@ class SCDUtils(object):
         self.write_scd(new_scd)
 
     def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
-                    duration='-', kwargs='', embargo=''):
+                    duration='-', kwargs='', embargo=False):
         """
         Removes a line from the schedule
 
