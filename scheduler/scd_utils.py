@@ -333,9 +333,7 @@ class SCDUtils:
         relevant_lines = []
         past_infinite_line_added = False
         for line in reversed(scd_lines):
-            if line['timestamp'] > epoch_milliseconds:
-                relevant_lines.append(line)
-            elif line['timestamp'] == epoch_milliseconds:
+            if line['timestamp'] >= epoch_milliseconds:
                 relevant_lines.append(line)
             else:
                 # Include the most recent infinite line
