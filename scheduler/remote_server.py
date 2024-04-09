@@ -329,48 +329,6 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
     return sp.check_output(get_atq_cmd, shell=True)
 
 
-def get_relevant_lines(scd_util, time_of_interest):
-    """
-    Gets the relevant lines.
-
-    Does a search for relevant lines. If the first line returned isn't an infinite duration, we need
-    to look back until we find an infinite duration line, as that should be the last line to
-    continue running if we need it.
-
-    :param  scd_util:           The scd utility object that holds the scd lines.
-    :type   scd_util:           SCDUtils
-    :param  time_of_interest:   Time to get relevant lines for
-    :type   time_of_interest:   Datetime
-
-    :returns:   The relevant lines.
-    :rtype:     list(dict)
-    """
-
-    found = False
-    time = time_of_interest
-
-    yyyymmdd = time_of_interest.strftime("%Y%m%d")
-    hhmm = time_of_interest.strftime("%H:%M")
-
-    relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
-    while not found:
-
-        first_time_lines = [x for x in relevant_lines if x['timestamp'] == relevant_lines[0]['timestamp']]
-        for line in first_time_lines:
-            if line['duration'] == '-':
-                found = True
-
-        if not found:
-            time -= datetime.timedelta(minutes=1)
-
-            yyyymmdd = time.strftime("%Y%m%d")
-            hhmm = time.strftime("%H:%M")
-
-            relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
-
-    return relevant_lines
-
-
 def _main():
     """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new SCD file entries")
@@ -412,7 +370,9 @@ def _main():
 
         log_msg_header = f"Updated at {time_of_interest}\n"
         try:
-            relevant_lines = get_relevant_lines(scd_util, time_of_interest)
+            yyyymmdd = time_of_interest.strftime("%Y%m%d")
+            hhmm = time_of_interest.strftime("%H:%M")
+            relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
         except (IndexError, ValueError) as e:
             logtime = time_of_interest.strftime("%c")
             error_msg = f"{logtime}: Unable to make schedule\n\t Exception thrown:\n\t\t {str(e)}\n"
