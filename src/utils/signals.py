@@ -157,7 +157,7 @@ class DSP:
         for idx, f in enumerate(mixing_freqs):
             # Filtering is actually done via a correlation, not a convolution (the filter is not reversed).
             # Thus, the mixing frequency should be the negative of the frequency that is actually being extracted.
-            bandpass[idx, :] = filter_taps[0] * np.exp(s * 2j * np.pi * (-1.0 * f) / rx_rate)
+            bandpass[idx, :] = filter_taps[0] * np.exp(s * 2j * np.pi * (-f) / rx_rate)
         filters.append(xp.array(bandpass, dtype=xp.complex64))
 
         for t in filter_taps[1:]:
@@ -229,7 +229,7 @@ class DSP:
         # [1, num_output_samples]
         # [num_slices, 1]
         # ph: [num_slices, num_output_samples]
-        ph = xp.fmod(ph * 2.0 * xp.pi * freqs / rx_rate * dm_rate, 2.0 * xp.pi)
+        ph = xp.fmod(ph * 2.0 * xp.pi * (-freqs) / rx_rate * dm_rate, 2.0 * xp.pi)
         ph = xp.exp(1j * ph.astype(xp.float32))
 
         # [num_slices, num_antennas, num_output_samples]
