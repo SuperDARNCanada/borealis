@@ -25,9 +25,9 @@ import numpy as np
 import structlog
 
 # local
-from experiment_prototype.experiment_utils.sample_building import get_samples, get_phase_shift
 from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
 from experiment_prototype.experiment_exception import ExperimentException
+from utils.signals import get_samples, get_phase_shift
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -135,7 +135,6 @@ class Sequence(InterfaceClassBase):
             wave_freq = freq_khz - self.txctrfreq
             wave_freq_hz = wave_freq * 1000
 
-
             # Now we set up the phases for receive side
             if exp_slice.rx_antenna_pattern is not None:
                 # Returns an array of size [beam_angle] of complex numbers of magnitude <= 1
@@ -179,7 +178,6 @@ class Sequence(InterfaceClassBase):
                 tx_main_phase_shift = np.zeros((rx_main_phase_shift.shape[0], len(exp_slice.tx_antennas)),
                                                dtype=np.complex64)
             self.tx_main_phase_shifts[slice_id] = tx_main_phase_shift
-
 
             for pulse_time in exp_slice.pulse_sequence:
                 pulse_timing_us = pulse_time * exp_slice.tau_spacing + exp_slice.seqoffset

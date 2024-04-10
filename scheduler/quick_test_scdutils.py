@@ -16,7 +16,6 @@ if __name__ == "__main__":
     scd_util.add_line("20190414", "00:43", "twofsound", 'common')
     scd_util.add_line("20190408", "15:43", "twofsound", 'common', duration='57')
 
-
     scd_util.remove_line("20190414", "10:43", "twofsound", 'common')
 
     for line in scd_util.get_relevant_lines("20190414", "10:44"):

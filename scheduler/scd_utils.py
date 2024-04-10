@@ -48,7 +48,6 @@ class SCDUtils:
     """String format for scd line"""
     line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
 
-
     def __init__(self, scd_filename):
         """
         :param  scd_filename:   Schedule file name

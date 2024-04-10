@@ -28,6 +28,10 @@ experiment file. If no DecimationScheme is provided, a default is used. Most Bor
 use this default scheme, which will be described in more detail below in Section `Default
 DecimationScheme`_.
 
+A Jupyter notebook is included with the Borealis software for visualization and testing of filtering
+schemes, using the filtering methods that run when a Borealis radar operates. This notebook can be
+found at ``$BOREALISPATH/tests/dsp_testing/filters.ipynb``.
+
 Default DecimationScheme
 ------------------------
 
@@ -63,7 +67,7 @@ Figure 1 shows the dataset :math:`x` and the filter taps :math:`h`. For all stag
 :math:`x` is much longer than :math:`h`, by three to four orders of magnitude.
 
 .. figure:: img/convolution_sequences.png
-   :scale: 60 %
+   :scale: 80 %
    :alt: Sample and filter sequences
    :align: center
 
@@ -213,7 +217,7 @@ MHz - 10.5 MHz) = -1.5 MHz. Figure 10 shows exactly this situation.
 Beamforming
 -----------
 
-Beamforming in Borealis is relatively straightforward. Figure \ref{fig:beamforming} illustrates the
+Beamforming in Borealis is relatively straightforward. Figure 11 illustrates the
 physical process, with the red antennas signifying the main array, the thick black line being the
 incoming plane wavefront, the parallel green lines indicating planar wavefronts at spacings of one
 wavelength, and the beam direction off of boresight shown by :math:`\theta`. For an incoming wave,
@@ -291,7 +295,7 @@ lag-1 as the samples are the correlation of data from :math:`x` and :math:`y` wh
 SuperDARN 7-pulse sequence, with 75 range gates, a tau spacing of 8 samples, and the first range
 occurring four samples after a pulse.
 
-.. figure:: img/borealis_correlations.png
+.. figure:: img/correlation_matrix.png
    :scale: 90 %
    :alt: Borealis correlation matrix
    :align: center

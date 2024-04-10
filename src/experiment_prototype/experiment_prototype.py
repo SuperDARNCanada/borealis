@@ -232,7 +232,6 @@ class ExperimentPrototype:
                      f"integer divisor of USRP master clock rate {self.options.usrp_master_clock_rate}"
             raise ExperimentException(errmsg)
 
-
         # This is experiment-wide transmit metadata necessary to build the pulses. This data
         # cannot change within the experiment and is used in the scan classes to pass information
         # to where the samples are built.
@@ -823,7 +822,7 @@ class ExperimentPrototype:
         # from InterfaceClassBase and having all of this included in there. Then would only need to
         # pass the running experiment to the radar control (would be returned from build_scans)
         self.__running_experiment = InterfaceClassBase(self.slice_ids, self.slice_dict, self.interface,
-                                                  self.transmit_metadata)
+                                                       self.transmit_metadata)
 
         self.__scan_objects = []
         for params in self.__running_experiment.prep_for_nested_interface_class():

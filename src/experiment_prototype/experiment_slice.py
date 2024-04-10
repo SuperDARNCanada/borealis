@@ -700,6 +700,13 @@ class ExperimentSlice:
 
     @validator('decimation_scheme')
     def check_decimation_rates(cls, decimation_scheme, values):
+        # check that number of stages is not too large
+        if len(decimation_scheme.stages) > options.max_filtering_stages:
+            errmsg = f'Number of decimation stages ({len(decimation_scheme.stages)}) is greater than max'\
+                     f' available {options.max_filtering_stages}'
+            raise ValueError(errmsg)
+
+        # Check that the rx_bandwidth matches input rate of the DecimationScheme
         input_rate = decimation_scheme.input_rates[0]
         if input_rate != values['rx_bandwidth']:
             raise ValueError(f"decimation_scheme input data rate {input_rate} does not match rx_bandwidth "

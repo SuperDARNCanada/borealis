@@ -13,10 +13,6 @@ import math
 # third-party
 from scipy.signal import firwin, remez, kaiserord
 
-# local
-from experiment_prototype.experiment_exception import ExperimentException
-from utils.options import Options
-
 
 class DecimationStage(object):
 
@@ -39,17 +35,17 @@ class DecimationStage(object):
         self.stage_num = stage_num
         self.input_rate = input_rate
         if not isinstance(dm_rate, int):
-            raise ExperimentException('Decimation rate is not an integer')
+            raise ValueError('Decimation rate is not an integer')
         self.output_rate = input_rate/dm_rate
         self.dm_rate = dm_rate
         if not isinstance(filter_taps, list):
             errmsg = f'Filter taps {filter_taps} of type {type(filter_taps)} must be a list in'\
                      f' decimation stage {stage_num}'
-            raise ExperimentException(errmsg)
+            raise ValueError(errmsg)
         for x in filter_taps:
             if not isinstance(x, (int, float)):  # TODO should complex be included here?
                 errmsg = f'Filter tap {x} is not numeric in decimation stage {stage_num}'
-                raise ExperimentException(errmsg)
+                raise ValueError(errmsg)
         self.filter_taps = filter_taps
 
     def __eq__(self, other):
@@ -83,20 +79,14 @@ class DecimationScheme(object):
             if rxrate != 5.0e6 or round(output_sample_rate, 0) != 3.333e3:
                 errmsg = f'Default filters not defined for rxrate {rxrate} and output rate'\
                          f' {output_sample_rate}'
-                raise ExperimentException(errmsg)
+                raise ValueError(errmsg)
 
             # set up defaults as per design.
             scheme = create_default_scheme()
             self.stages = scheme.stages
 
-        options = Options()
         self.rxrate = rxrate
         self.output_sample_rate = output_sample_rate
-        # check that number of stages is correct
-        if len(self.stages) > options.max_filtering_stages:
-            errmsg = f'Number of decimation stages ({len(self.stages)}) is greater than max'\
-                     f' available {options.max_filtering_stages}'
-            raise ExperimentException(errmsg)
         self.dm_rates = []
         self.output_rates = []
         self.input_rates = []
@@ -114,18 +104,18 @@ class DecimationScheme(object):
         if self.input_rates[0] != self.rxrate:
             errmsg = f'Decimation stage 0 does not have input rate {self.input_rates[0]}'\
                      f' equal to USRP sampling rate {self.rxrate}'
-            raise ExperimentException(errmsg)
+            raise ValueError(errmsg)
 
         for stage_num in range(0, len(self.stages) - 1):
             if not math.isclose(self.output_rates[stage_num], self.input_rates[stage_num + 1], abs_tol=0.001):
                 errmsg = f'Decimation stage {stage_num} output rate {self.output_rates[stage_num]}'\
                          f' does not equal next stage {stage_num + 1} input rate {self.input_rates[stage_num + 1]}'
-                raise ExperimentException(errmsg)
+                raise ValueError(errmsg)
 
-        if self.output_rates[-1] != self.output_sample_rate:
+        if not math.isclose(self.output_rates[-1], self.output_sample_rate, abs_tol=0.001):
             errmsg = f'Last decimation stage {len(self.stages) - 1} does not have output rate'\
                      f' {self.output_rates[-1]} equal to requested output data rate {self.output_sample_rate}'
-            raise ExperimentException(errmsg)
+            raise ValueError(errmsg)
 
     def __repr__(self):
         repr_str = f'Decimation Scheme with {len(self.stages)} stages:\n'
