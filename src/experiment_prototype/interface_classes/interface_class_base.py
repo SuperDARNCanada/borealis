@@ -2,7 +2,7 @@
 
 """
     interface_class_base
-    ~~~~~~~~~~~~~~~
+    ~~~~~~~~~~~~~~~~~~~~
     This is the base module for all InterfaceClassBase types (iterable for an experiment given certain
     parameters). These types include the Scan class, the AveragingPeriod class, and the Sequence
     class.
@@ -183,6 +183,7 @@ class InterfaceClassBase(object):
                                               f"{bad_slices}")
             disjoint_sets[i] = sorted(list(disjoint_sets[i]))   # Convert to a list
 
+        disjoint_sets.sort(key=lambda x: x[0])
         return disjoint_sets
 
     def get_nested_slice_ids(self):
