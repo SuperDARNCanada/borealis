@@ -8,7 +8,7 @@ sphinxcontrib-autoprogram
 pyzmq
 myst_parser
 deepdish
-docutils==0.16
+docutils<0.19
 posix_ipc
 latex
 inotify
