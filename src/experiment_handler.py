@@ -4,7 +4,7 @@
     experiment_handler process
     ~~~~~~~~~~~~~~~~~~~~~~~~~~
     This program runs a given experiment. It will use the experiment's build_scans method to
-    create the iterable ScanClassBase objects that will be used by the radar_control block,
+    create the iterable InterfaceClassBase objects that will be used by the radar_control block,
     then it will pass the experiment to the radar_control block to run.
 
     It will be passed some data to use in its update method at the end of every integration time.
@@ -48,7 +48,7 @@ def usage_msg():
     argument. It will search for the module in the BOREALISPATH/experiment_prototype
     package. It will retrieve the class from within the module (your experiment).
 
-    It will use the experiment's build_scans method to create the iterable ScanClassBase
+    It will use the experiment's build_scans method to create the iterable InterfaceClassBase
     objects that will be used by the radar_control block, then it will pass the
     experiment to the radar_control block to run.
 
@@ -165,7 +165,7 @@ def experiment_handler(semaphore, args):
     This process begins with setup of sockets and retrieving the experiment class from the module.
     It then waits for a message of type RadarStatus to come in from the radar_control block. If
     the status is 'EXPNEEDED', meaning an experiment is needed, experiment_handler will build the
-    scan iterable objects (of class ScanClassBase) and will pass them to radar_control. Other
+    scan iterable objects (of class InterfaceClassBase) and will pass them to radar_control. Other
     statuses will be implemented in the future.
 
     In the future, the update method will be implemented where the experiment can be modified by

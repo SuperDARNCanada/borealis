@@ -6,7 +6,7 @@
     Radar_control is the process that runs the radar (sends pulses to the driver with
     timing information and sends processing information to the signal processing process).
     Experiment_handler provides the experiment for radar_control to run. It iterates
-    through the scan_class_base objects to control the radar.
+    through the interface_class_base objects to control the radar.
 
     :copyright: 2018 SuperDARN Canada
     :author: Marci Detwiller
@@ -495,7 +495,7 @@ def main():
     # Send driver initial setup data - rates and center frequency from experiment.
     # Wait for acknowledgment that USRP object is set up.
     setup_driver(radar_control_to_driver, options.driver_to_radctrl_identity,
-                 experiment.txctrfreq, experiment.rxctrfreq, experiment.txrate,
+                 experiment.slice_dict[0].txctrfreq, experiment.slice_dict[0].rxctrfreq, experiment.txrate,
                  experiment.rxrate)
 
     first_aveperiod = True
@@ -733,8 +733,9 @@ def main():
                                 data_to_driver(radar_control_to_driver,
                                                options.driver_to_radctrl_identity,
                                                pulse_transmit_data['samples_array'],
-                                               experiment.txctrfreq,
-                                               experiment.rxctrfreq, experiment.txrate,
+                                               sequence.txctrfreq,
+                                               sequence.rxctrfreq,
+                                               experiment.txrate,
                                                experiment.rxrate,
                                                sequence.numberofreceivesamples,
                                                sequence.seqtime,
@@ -763,7 +764,7 @@ def main():
                                               sequence.slice_ids, experiment.slice_dict,
                                               rx_beam_phases, sequence.seqtime,
                                               sequence.first_rx_sample_start,
-                                              experiment.rxctrfreq,
+                                              sequence.rxctrfreq,
                                               sequence.output_encodings,
                                               sequence.decimation_scheme)
 
@@ -774,10 +775,10 @@ def main():
                                          sequence_metadata_time_units='s')
 
                         def make_next_samples():
-                            sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, num_sequences + 1)
+                            sqn, dbg = sequence.make_sequence(aveperiod.beam_iter, num_sequences + len(aveperiod.sequences))
                             if dbg:
                                 debug_samples.append(dbg)
-                            pulse_transmit_data_tracker[sequence_index][num_sequences + 1] = sqn
+                            pulse_transmit_data_tracker[sequence_index][num_sequences + len(aveperiod.sequences)] = sqn
 
                             if TIME_PROFILE:
                                 new_sequence_time = datetime.utcnow() - start_time
@@ -832,7 +833,7 @@ def main():
                                             experiment.scheduling_mode,
                                             experiment.output_rx_rate, experiment.comment_string,
                                             decimation_scheme.filter_scaling_factors,
-                                            experiment.rxctrfreq,
+                                            experiment.slice_dict[0].rxctrfreq,
                                             debug_samples=debug_samples)
 
                 thread = threading.Thread(target=send_dw)
