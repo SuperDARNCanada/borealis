@@ -183,7 +183,7 @@ class InterfaceClassBase(object):
                                               f"{bad_slices}")
             disjoint_sets[i] = sorted(list(disjoint_sets[i]))   # Convert to a list
 
-        disjoint_sets.sort(key=lambda x: x[0])
+        disjoint_sets.sort(key=lambda x: x[0])    # Sort by the first key in each list
         return disjoint_sets
 
     def get_nested_slice_ids(self):
