@@ -71,7 +71,9 @@ of experiment building-block to the lowest level:
 
     * the same SCANBOUND value.
     * the same INTT or INTN value.
-    * the same BEAM_ORDER length (scan length)
+    * the same BEAM_ORDER length (scan length).
+    * the same TXCTRFREQ value.
+    * the same RXCTRFREQ value.
 
 4. **CONCURRENT**
 
@@ -85,8 +87,10 @@ of experiment building-block to the lowest level:
 
     * the same SCANBOUND value.
     * the same INTT or INTN value.
-    * the same BEAM_ORDER length (scan length)
-    * the same DECIMATION_SCHEME
+    * the same BEAM_ORDER length (scan length).
+    * the same TXCTRFREQ value.
+    * the same RXCTRFREQ value.
+    * the same DECIMATION_SCHEME.
 
 """
 
