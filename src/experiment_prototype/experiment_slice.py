@@ -698,6 +698,15 @@ class ExperimentSlice:
 
         return freq
 
+    @validator('decimation_scheme')
+    def check_decimation_rates(cls, decimation_scheme, values):
+        input_rate = decimation_scheme.input_rates[0]
+        if input_rate != values['rx_bandwidth']:
+            raise ValueError(f"decimation_scheme input data rate {input_rate} does not match rx_bandwidth "
+                             f"{values['rx_bandwidth']}")
+
+        return decimation_scheme
+
     # Validators that set dynamic default values (depends on user-specified fields)
 
     @validator('xcf', always=True)
