@@ -37,25 +37,26 @@ def get_next_month_from_date(date=None):
     return new_date
 
 
-class SCDUtils(object):
+class SCDUtils:
     """
     Contains utilities for working with SCD files. SCD files are schedule files for Borealis.
-    
-    :param  scd_filename:   Schedule file name
-    :type:  scd_filename:   str
-    :param  scd_dt_fmt:     String format for parsing/writing datetimes.
-    :type:  scd_dt_fmt:     str
-    :param  line_fmt:       String format for scd line.
-    :type:  line_fmt:       str
-    :param  scd_default:    Default event to run if no other infinite duration line is scheduled.
-    :type:  scd_default:    dict
     """
 
+    """String format for parsing and writing datetimes"""
+    scd_dt_fmt = "%Y%m%d %H:%M"
+
+    """String format for scd line"""
+    line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
+
+
     def __init__(self, scd_filename):
-        super().__init__()
+        """
+        :param  scd_filename:   Schedule file name
+        :type:  scd_filename:   str
+        """
         self.scd_filename = scd_filename
-        self.scd_dt_fmt = "%Y%m%d %H:%M"
-        self.line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
+
+        """Default event to run if no other infinite duration line is scheduled"""
         self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
     def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs='', embargo=False):
@@ -99,6 +100,9 @@ class SCDUtils(object):
             if isinstance(duration, float) or int(duration) < 1:
                 raise ValueError("Duration should be an integer > 0, or '-'")
             duration = int(duration)
+        else:
+            if int(prio) > 0:
+                raise ValueError("Infinite duration lines must have priority 0")
 
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
@@ -166,7 +170,8 @@ class SCDUtils(object):
 
         return scd_lines
 
-    def fmt_line(self, line_dict):
+    @classmethod
+    def fmt_line(cls, line_dict):
         """
         Formats a dictionary with line info into a text line for file.
 
@@ -176,13 +181,13 @@ class SCDUtils(object):
         :returns:   Formatted string.
         :rtype:     str
         """
-        line_str = self.line_fmt.format(datetime=line_dict["time"].strftime(self.scd_dt_fmt),
-                                        prio=line_dict["prio"],
-                                        experiment=line_dict["experiment"],
-                                        scheduling_mode=line_dict["scheduling_mode"],
-                                        duration=line_dict["duration"],
-                                        embargo='--embargo' if line_dict["embargo"] else '',
-                                        kwargs=line_dict["kwargs"])
+        line_str = cls.line_fmt.format(datetime=line_dict["time"].strftime(cls.scd_dt_fmt),
+                                       prio=line_dict["prio"],
+                                       experiment=line_dict["experiment"],
+                                       scheduling_mode=line_dict["scheduling_mode"],
+                                       duration=line_dict["duration"],
+                                       embargo='--embargo' if line_dict["embargo"] else '',
+                                       kwargs=line_dict["kwargs"])
         return line_str
 
     def write_scd(self, scd_lines):
@@ -252,7 +257,7 @@ class SCDUtils(object):
         self.write_scd(new_scd)
 
     def remove_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio=0, 
-                    duration='-', kwargs='', embargo=''):
+                    duration='-', kwargs='', embargo=False):
         """
         Removes a line from the schedule
 
@@ -291,9 +296,9 @@ class SCDUtils(object):
         """
         Gets the currently scheduled and future lines given a supplied time. If the provided time is
         equal to a scheduled line time, it provides that line and all future lines. If the provided
-        time is between schedule line times, it provides any lines in the schedule with the most
-        recent timestamp and all future lines.  If the provided time is before any lines in the
-        schedule, it provides all schedule lines.
+        time is between schedule line times, it provides any lines in the schedule from the past that
+        haven't ended yet, plus the most recently timestamped infinite-duration line, plus all future
+        lines. If the provided time is before any lines in the schedule, it provides all schedule lines.
 
         :param  yyyymmdd:   year/month/day string.
         :type   yyyymmdd:   str
@@ -315,35 +320,36 @@ class SCDUtils(object):
 
         scd_lines = self.read_scd()
 
+        # Sort the lines by timestamp, and for equal times, in reverse priority
+        scd_lines = sorted(scd_lines, key=lambda x: x['prio'], reverse=True)
+        scd_lines = sorted(scd_lines, key=lambda x: x['timestamp'])
+
         if not scd_lines:
             raise IndexError("Schedule file is empty. No lines can be returned")
 
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
 
-        equals = False
-        prev_line_appended = False
         relevant_lines = []
-        for idx, line in enumerate(scd_lines):
-            if line['timestamp'] == epoch_milliseconds:
-                equals = True
+        past_infinite_line_added = False
+        for line in reversed(scd_lines):
+            if line['timestamp'] >= epoch_milliseconds:
                 relevant_lines.append(line)
-            elif line['timestamp'] > epoch_milliseconds:
-                if equals:
-                    relevant_lines.append(line)
-                else:
-                    if not prev_line_appended:
-                        if idx != 0:
-                            last_line_timestamp = scd_lines[idx-1]['timestamp']
-                            temp_list = scd_lines[:]
-                            for t in temp_list:
-                                if t['timestamp'] == last_line_timestamp:
-                                    relevant_lines.append(t)
-                        prev_line_appended = True
-                    relevant_lines.append(line)
             else:
-                continue
+                # Include the most recent infinite line
+                if line['duration'] == '-':
+                    if not past_infinite_line_added:
+                        relevant_lines.append(line)
+                        past_infinite_line_added = True
+                else:
+                    # If the line ends after the current time, include the line
+                    duration_ms = int(line['duration']) * 60 * 1000
+                    line_end = line['timestamp'] + duration_ms
+                    if line_end >= epoch_milliseconds:
+                        relevant_lines.append(line)
 
+        # Put the lines into chronological order (oldest to newest)
+        relevant_lines.reverse()
         return relevant_lines
 
 
