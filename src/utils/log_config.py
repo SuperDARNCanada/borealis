@@ -145,7 +145,7 @@ def format_floats(_, __, event_dict):
 def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=None, console=None, logfile=None,
         aggregator=None, json_to_console=False):
     """
-    :param console_log_level: Logging threshold for console renderer [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
+    :param console_log_level: Logging threshold for console renderer [CRITICAL, ERROR, WARNING, INFO, VERBOSE, DEBUG, NOTSET]
     :type console_log_level: str | int
     :param logfile_log_level: Logging threshold for logfile renderer [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
     :type logfile_log_level: str | int
