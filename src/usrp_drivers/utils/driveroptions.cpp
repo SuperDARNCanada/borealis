@@ -182,8 +182,20 @@ DriverOptions::DriverOptions() {
     clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
 
     tx_subdev_ = config_pt.get<std::string>("tx_subdev");
+    if (tx_subdev.compare("A:A") != 0)
+    {
+        throw std::invalid_argument("Invalid tx_subdev spec: Only 'A:A' supported")
+    }
     main_rx_subdev_ = config_pt.get<std::string>("main_rx_subdev");
+    if (main_rx_subdev.compare("A:A A:B") != 0)
+    {
+        throw std::invalid_argument("Invalid main_rx_subdev spec: Only 'A:A A:B' supported")
+    }
     intf_rx_subdev_ = config_pt.get<std::string>("intf_rx_subdev");
+    if (intf_rx_subdev.compare("A:A A:B") != 0)
+    {
+        throw std::invalid_argument("Invalid intf_rx_subdev spec: Only 'A:A A:B' supported")
+    }
     pps_ = config_pt.get<std::string>("pps");
     ref_ = config_pt.get<std::string>("ref");
     cpu_ = config_pt.get<std::string>("cpu");
