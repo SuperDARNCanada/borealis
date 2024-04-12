@@ -152,9 +152,9 @@ class Sequence(ScanClassBase):
             intf_indices = [self.rx_intf_antennas.index(ant) for ant in slice_rx_intf_antennas]
 
             # Zero out the complex phase for any antenna that isn't used in this slice
-            main_phases = np.zeros((rx_main_phase_shift.shape[0], len(self.rx_main_antennas.shape)),
+            main_phases = np.zeros((rx_main_phase_shift.shape[0], len(self.rx_main_antennas)),
                                    dtype=rx_main_phase_shift.dtype)
-            intf_phases = np.zeros((rx_intf_phase_shift.shape[0], len(self.rx_intf_antennas.shape)),
+            intf_phases = np.zeros((rx_intf_phase_shift.shape[0], len(self.rx_intf_antennas)),
                                    dtype=rx_intf_phase_shift.dtype)
             main_phases[:, main_indices] = rx_main_phase_shift[:, main_indices]
             intf_phases[:, intf_indices] = rx_intf_phase_shift[:, intf_indices]
