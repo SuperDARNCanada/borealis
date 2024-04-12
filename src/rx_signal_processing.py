@@ -348,7 +348,7 @@ def main():
 
     ringbuffer = None
 
-    total_antennas = len(options.main_antennas) + len(options.intf_antennas)
+    total_antennas = len(options.rx_main_antennas) + len(options.rx_intf_antennas)
 
     dm_rates = []
     dm_scheme_taps = []

@@ -417,7 +417,7 @@ class ParseData(object):
                 antenna_iq_stage["num_samps"] = antennas_data.shape[-1]
 
                 # All possible antenna numbers, given the config file
-                antenna_indices = self.options.rx_main_antennas
+                antenna_indices = copy.deepcopy(self.options.rx_main_antennas)
                 # The interferometer antenna numbers start after the last main antenna number
                 antenna_indices.extend([ant + self.options.main_antenna_count for ant in self.options.rx_intf_antennas])
 

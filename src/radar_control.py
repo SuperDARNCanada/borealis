@@ -197,10 +197,8 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
         main_bms = beam_dict[slice_id]['main']
         intf_bms = beam_dict[slice_id]['intf']
 
-        beams = []
-        for i in range(main_bms.shape[0]):
-            # Combine main and intf such that for a given beam all main phases come first.
-            beams.append(np.hstack((main_bms, intf_bms)))
+        # Combine main and intf such that for a given beam all main phases come first.
+        beams = np.hstack((main_bms, intf_bms))
         chan_add.beam_phases = np.array(beams)
 
         for lag in slice_dict[slice_id].lag_table:
@@ -368,7 +366,7 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden, seqnum
             sequence.output_encodings[slice_id] = []
 
             rxchannel.rx_main_antennas = sqn_slice.rx_main_antennas
-            rxchannel.rx_intf_antennas = sqn_slice.rx_int_antennas
+            rxchannel.rx_intf_antennas = sqn_slice.rx_intf_antennas
             rxchannel.tx_antenna_phases = sequence.tx_main_phase_shifts[slice_id][beam_iter]
 
             beams = sqn_slice.rx_beam_order[beam_iter]
