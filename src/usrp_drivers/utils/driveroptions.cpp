@@ -21,15 +21,17 @@ DriverOptions::DriverOptions() {
 
     auto n200_list = config_pt.get_child("n200s");
 
-    std::map<uint32_t, uint32_t> rx_main_antenna_to_channel_map // Maps rx main antenna number to channel number
-    std::map<uint32_t, uint32_t> rx_intf_antenna_to_channel_map // Maps rx intf antenna number to channel number
-    std::map<uint32_t, uint32_t> tx_main_antenna_to_channel_map // Maps tx main antenna number to channel number
+    std::map<uint32_t, uint32_t> rx_main_antenna_to_channel_map;    // Maps rx main antenna number to channel number
+    std::map<uint32_t, uint32_t> rx_intf_antenna_to_channel_map;    // Maps rx intf antenna number to channel number
+    std::map<uint32_t, uint32_t> tx_main_antenna_to_channel_map;    // Maps tx main antenna number to channel number
 
     // Get number of physical antennas
     auto main_antenna_count = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("main_antenna_count"));
     auto intf_antenna_count = boost::lexical_cast<uint32_t>(
                                 config_pt.get<std::string>("intf_antenna_count"));
+
+    uint32_t device_num = 0;    // Active device counter
 
     // Iterate through all N200s in the json array
     for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
@@ -65,10 +67,12 @@ DriverOptions::DriverOptions() {
         {
             devices_ = devices_ + ",addr" + std::to_string(device_num) + "=" + addr;
 
+            uint32_t antenna_num;
+
             // Determine which antenna RX channel 0 is connected to, if any
             if (rx_channel_0.compare("") != 0)
             {
-                if (rx_channel_0[0].compare("m") == 0)  // Connected to main array antenna
+                if (rx_channel_0.substr(0, 1).compare("m") == 0)  // Connected to main array antenna
                 {
                     antenna_num = boost::lexical_cast<uint32_t>(rx_channel_0.substr(1, std::string::npos))
                     if (antenna_num >= main_antenna_count)
@@ -77,7 +81,7 @@ DriverOptions::DriverOptions() {
                     }
                     rx_main_antenna_to_channel_map[antenna_num] = device_num * 2;
                 }
-                else if (rx_channel_0[0].compare("i") == 0) // Connected to intf array antenna
+                else if (rx_channel_0.substr(0, 1).compare("i") == 0) // Connected to intf array antenna
                 {
                     antenna_num = boost::lexical_cast<uint32_t>(rx_channel_0.substr(1, std::string::npos))
                     if (antenna_num >= intf_antenna_count)
@@ -95,7 +99,7 @@ DriverOptions::DriverOptions() {
             // Determine which antenna RX channel 1 is connected to, if any
             if (rx_channel_1.compare("") != 0)
             {
-                if (rx_channel_1[0].compare("m") == 0)  // Connected to main array antenna
+                if (rx_channel_1.substr(0, 1).compare("m") == 0)  // Connected to main array antenna
                 {
                     antenna_num = boost::lexical_cast<uint32_t>(rx_channel_1.substr(1, std::string::npos))
                     if (antenna_num >= main_antenna_count)
@@ -104,7 +108,7 @@ DriverOptions::DriverOptions() {
                     }
                     rx_main_antenna_to_channel_map[antenna_num] = device_num * 2 + 1;
                 }
-                else if (rx_channel_1[0].compare("i") == 0) // Connected to intf array antenna
+                else if (rx_channel_1.substr(0, 1).compare("i") == 0) // Connected to intf array antenna
                 {
                     antenna_num = boost::lexical_cast<uint32_t>(rx_channel_1.substr(1, std::string::npos))
                     if (antenna_num >= intf_antenna_count)
@@ -122,7 +126,7 @@ DriverOptions::DriverOptions() {
             // Determine which antenna TX channel 0 is connected to, if any
             if (tx_channel_0.compare("") != 0)
             {
-                if (tx_channel_0[0].compare("m") == 0)  // Connected to main array antenna
+                if (tx_channel_0.substr(0, 1).compare("m") == 0)  // Connected to main array antenna
                 {
                     antenna_num = boost::lexical_cast<uint32_t>(tx_channel_0.substr(1, std::string::npos))
                     if (antenna_num >= main_antenna_count)
@@ -182,17 +186,17 @@ DriverOptions::DriverOptions() {
     clk_addr_ = config_pt.get<std::string>("gps_octoclock_addr");
 
     tx_subdev_ = config_pt.get<std::string>("tx_subdev");
-    if (tx_subdev.compare("A:A") != 0)
+    if (tx_subdev_.compare("A:A") != 0)
     {
         throw std::invalid_argument("Invalid tx_subdev spec: Only 'A:A' supported")
     }
     main_rx_subdev_ = config_pt.get<std::string>("main_rx_subdev");
-    if (main_rx_subdev.compare("A:A A:B") != 0)
+    if (main_rx_subdev_.compare("A:A A:B") != 0)
     {
         throw std::invalid_argument("Invalid main_rx_subdev spec: Only 'A:A A:B' supported")
     }
     intf_rx_subdev_ = config_pt.get<std::string>("intf_rx_subdev");
-    if (intf_rx_subdev.compare("A:A A:B") != 0)
+    if (intf_rx_subdev_.compare("A:A A:B") != 0)
     {
         throw std::invalid_argument("Invalid intf_rx_subdev spec: Only 'A:A A:B' supported")
     }
