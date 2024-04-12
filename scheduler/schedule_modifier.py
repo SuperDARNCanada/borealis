@@ -14,9 +14,11 @@ def main():
     parser = argparse.ArgumentParser(description="Add or remove lines in the schedule")
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
     parser.add_argument('--site', required=True, help='The site at which to modify')
+
     group = parser.add_mutually_exclusive_group(required=True, )
     group.add_argument('--add', action='store_true')
     group.add_argument('--remove', action='store_true')
+
     parser.add_argument('--date', metavar='YYYYMMDD', required=True, help='The date to run')
     parser.add_argument('--time', metavar='hh:mm', required=True, help='The time to run')
     parser.add_argument('--experiment', required=True, help='The experiment at the line')
@@ -24,7 +26,8 @@ def main():
                                                            'special, discretionary')
     parser.add_argument('--prio', default=0, help='The priority of the line')
     parser.add_argument('--duration', default='-', help='The duration of the line')
-    parser.add_argument('--kwargs', default='', help='String of text containing kwargs for experiment')
+    parser.add_argument('--embargo', action='store_true', help='Flag to embargo the files (makes the CPID negative)')
+    parser.add_argument('--kwargs', nargs='+', help='Keyword arguments for the experiment')
 
     args = parser.parse_args()
 
@@ -34,11 +37,17 @@ def main():
     scd_file = f"{scd_dir}/{site_id}.scd"
     scd_util = scd_utils.SCDUtils(scd_file)
 
+    kwargs = ''
+    if args.kwargs:
+        kwargs = ' '.join(args.kwargs).strip()
+
     if args.add:
-        scd_util.add_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, args.kwargs)
+        scd_util.add_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, kwargs,
+                          args.embargo)
 
     if args.remove:
-        scd_util.remove_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration, args.kwargs)    
+        scd_util.remove_line(args.date, args.time, args.experiment, args.mode_type, args.prio, args.duration,
+                             kwargs, args.embargo)
 
 
 if __name__ == '__main__':

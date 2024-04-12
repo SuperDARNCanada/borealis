@@ -9,12 +9,17 @@
 """
 
 import subprocess as sp
-from . import scd_utils
-from . import email_utils
+import sys
 import os
 import datetime
 import time
 import argparse
+
+BOREALISPATH = os.environ['BOREALISPATH']
+sys.path.append(f"{BOREALISPATH}/scheduler")
+import scd_utils
+import email_utils
+
 
 SWG_GIT_REPO_DIR = 'schedules'
 SWG_GIT_REPO = "https://github.com/SuperDARN/schedules.git"
@@ -74,7 +79,18 @@ EXPERIMENTS = {
         "no_switching_time":    "normalscan",
         "interleaved_time":     "interleavedscan",
         "normalsound_time":     "normalsound"
-    }
+    },
+    "lab": {
+        "common_time":          "twofsound",
+        "discretionary_time":   "twofsound",
+        "htr_common_time":      "twofsound",
+        "themis_time":          "themisscan",
+        "special_time_normal":  "twofsound",
+        "rbsp_time":            "rbspscan",
+        "no_switching_time":    "normalscan",
+        "interleaved_time":     "interleavedscan",
+        "normalsound_time":     "normalsound"
+     }
 }
 
 
@@ -114,7 +130,9 @@ class SWG(object):
     def pull_new_swg_file(self):
         """Uses git to grab the new scd updates."""
         cmd = f"cd {self.scd_dir}/{SWG_GIT_REPO_DIR}; git pull origin main"
-        sp.call(cmd, shell=True)
+        print("Pulling schedule repository")
+        shell_output = sp.check_output(cmd, shell=True)
+        print(f"Result: {shell_output}")
 
     def parse_swg_to_scd(self, modes, radar, first_run):
 
@@ -132,6 +150,7 @@ class SWG(object):
         :returns:   List of all the parsed parameters.
         :rtype:     list
         """
+        print("Parsing schedule files")
 
         if first_run:
             month_to_use = datetime.datetime.utcnow()
@@ -142,7 +161,7 @@ class SWG(object):
         month = month_to_use.strftime("%m")
         yearmonth = year + month
         swg_file = f"{self.scd_dir}/{SWG_GIT_REPO_DIR}/{year}/{yearmonth}.swg"
-
+        print(f"Reading schedule file {swg_file}")
         with open(swg_file, 'r') as f:
             swg_lines = f.readlines()
 
@@ -183,6 +202,10 @@ class SWG(object):
                 # 2018 11 23 no longer scheduling twofsound as common time during 'no switching'
                 if "no switching" in line:
                     mode_to_use = modes["no_switching_time"]
+                elif "normalsound" in line:
+                    mode_to_use = modes["normalsound_time"]
+                elif "interleavescan" in line:
+                    mode_to_use = modes["interleaved_time"]
                 else:
                     mode_to_use = modes["htr_common_time"]
 
@@ -215,6 +238,7 @@ class SWG(object):
                      "experiment": mode_to_use,
                      "scheduling_mode": mode_type}
             parsed_params.append(param)
+            print(f"Found schedule line: {param}")
 
         return parsed_params
 
@@ -222,8 +246,8 @@ class SWG(object):
 def main():
     """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
-    parser.add_argument('--emails-filepath', required=True, help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
+    parser.add_argument('--emails-filepath', help='A list of emails to send logs to')
     parser.add_argument('--force', action="store_true", help='Force an update to the schedules '
                                                              'for the next month')
     parser.add_argument('--first-run', action="store_true", 
@@ -237,7 +261,12 @@ def main():
     scd_dir = args.scd_dir
     scd_logs = scd_dir + "/logs"
 
-    emailer = email_utils.Emailer(args.emails_filepath)
+    if args.emails_filepath is None:
+        emails_filepath = f"{scd_dir}/emails.txt"
+    else:
+        emails_filepath = args.emails_filepath
+
+    emailer = email_utils.Emailer(emails_filepath)
 
     if not os.path.exists(scd_dir):
         os.makedirs(scd_dir)
@@ -251,8 +280,21 @@ def main():
 
     force_next_month = args.force
 
+    current_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"{current_time} - Starting local_scd_server.py...")
+
+    if args.first_run:
+        # Create the .scd files for each site if running for first time
+        for s in sites:
+            filename = f"{scd_dir}/{s}.scd"
+            with open(filename, 'a'):
+                pass
+
     while True:
         if swg.new_swg_file_available() or args.first_run or force_next_month:
+            current_time = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"{current_time} - New swg file available")
+
             swg.pull_new_swg_file()
 
             site_experiments = [swg.parse_swg_to_scd(EXPERIMENTS[s], s, args.first_run)

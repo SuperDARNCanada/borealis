@@ -123,14 +123,16 @@ def steamed_hams_parser():
                                          "modules based on this mode. Commonly 'release'.")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. 'common', 'special', or 'discretionary'.")
-    parser.add_argument("--kwargs_string", default='', 
-                        help="String of keyword arguments for the experiment.")
+    parser.add_argument("--embargo", action="store_true", help="Embargo the file (makes the CPID negative)")
+    parser.add_argument("--kwargs", nargs='+', default='',
+                        help="Keyword arguments for the experiment. Each must be formatted as kw=val")
 
     return parser
 
 
 parser = steamed_hams_parser()
 args = parser.parse_args()
+kwargs = ' '.join(args.kwargs)
 
 if args.run_mode == "release":
     # python optimized, no debug for regular operations
@@ -187,35 +189,36 @@ for mod in modules.keys():
 
 modules['data_write'] = modules['data_write'] + " " + data_write_args
 modules['usrp_driver'] = modules['usrp_driver'] + " " + f'{mode} --c_debug_opts="{c_debug_opts}"'
-
-if args.kwargs_string:
-    modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
-                                    args.scheduling_mode_type + " --kwargs_string " + args.kwargs_string
-else:
-    modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
-                                    args.scheduling_mode_type
+modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
+                                args.scheduling_mode_type
+if args.embargo:
+    modules['experiment_handler'] += " --embargo"
+if args.kwargs:
+    modules['experiment_handler'] += " --kwargs " + kwargs
     
 # Bypass the python wrapper to run cuda-gdb
 if mode == "debug":
     modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
 
 # Set up the screenrc file and populate it
+log_dir = "/data/borealis_logs/"    # Temporary fix to give us access to exactly what's printed to console from Borealis
 screenrc = BOREALISSCREENRC.format(
-    START_RT=modules['realtime'],
-    START_BRIAN=modules['brian'],
-    START_USRP_DRIVER=modules['usrp_driver'],
-    START_DSP=modules['rx_signal_processing'],
-    START_DATAWRITE=modules['data_write'],
-    START_EXPHAN=modules['experiment_handler'],
-    START_RADCTRL=modules['radar_control'],
+    START_RT=modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log",
+    START_BRIAN=modules['brian'] + " 2>&1 | tee " + log_dir + "brian.log",
+    START_USRP_DRIVER=modules['usrp_driver'] + " 2>&1 | tee " + log_dir + "usrp_driver.log",
+    START_DSP=modules['rx_signal_processing'] + " 2>&1 | tee " + log_dir + "rx_signal_processing.log",
+    START_DATAWRITE=modules['data_write'] + " 2>&1 | tee " + log_dir + "data_write.log",
+    START_EXPHAN=modules['experiment_handler'] + " 2>&1 | tee " + log_dir + "experiment_handler.log",
+    START_RADCTRL=modules['radar_control'] + " 2>&1 | tee " + log_dir + "radar_control.log",
 )
 
 screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"
 with open(screenrc_file, 'w') as f:
     f.write(screenrc)
 
+# When using OpenSUSE 15.5, there is a file generated on boot in shared memory that must be kept
+sp.call("find /dev/shm/* -type f -not -name 'sem.haveged_sem' -delete", shell=True)
 # Clean up any residuals in shared memory and dead screens
-sp.call("rm -r /dev/shm/*", shell=True)
 sp.call("screen -X -S borealis quit", shell=True)
 
 # Give the os a chance to free all previously used sockets, etc.

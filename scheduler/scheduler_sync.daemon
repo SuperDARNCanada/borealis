@@ -2,77 +2,96 @@
 # Copyright 2023 SuperDARN Canada, University of Saskatchewan
 # Author: Theodore Kolkman
 #
-# This script continuously monitors the Borealis schedule files on SuperDARN-CSSDP using inotify
+# This script continuously monitors the Borealis schedule files on a campus server using inotify
 # and rsync's the files to each site whenever a change is detected. 
 #
-# To sync files to all sites, even those hidden behind a firewall (PGR), Maxwell is used. Rsync
-# sync's via Maxwell to all remote sites, utilizing the autossh link between Maxwell and all site
+# Rsync sync's to all remote sites, utilizing the autossh link between the computer and all site
 # computers.
 #
-# This script should be run via a systemd daemon with the following service file placed in 
-# /usr/lib/systemd/system/:
-#   scheduler_sync@.service:
-#       [Unit]
-#       Description=Scheduler synchronization daemon for %i
-#       
-#       [Service]
-#       User=mrcopy
-#       ExecStart=/home/mrcopy/borealis/scheduler/scheduler_sync.daemon %i
-#       Restart=always
-#       
-#       [Install]
-#       WantedBy=multi-user.target
+# This script should be run via a systemd daemon with the following service file:
+# /usr/lib/systemd/system/scheduler_sync@.service
+#    [Unit]
+#    Description=Scheduler synchronization daemon for %i
+#
+#    [Service]
+#    User=radman
+#    ExecStart=/home/radman/borealis/scheduler/scheduler_sync.daemon %i
+#    RuntimeMaxSec=3600s
+#    Restart=always
+#
+#    [Install]
+#    WantedBy=multi-user.target
 #
 # The site to sync to can be specified by calling the daemon with the following syntax:
-#       systemctl [command] scheduler_sync@[RADAR_ID]
+#       systemctl [command] scheduler_sync@[RADAR_NAME]
 #
 # Dependencies:
-#   - inotifywait (installed by zypper in inotify-tools)
-#   - Maxwell is configured via autossh to each site Borealis computer with ports that correspond 
-#   to the SITE_NUM association
-#   - ssh link between SuperDARN-CSSDP -> Maxwell (no password prompt for rsync)
-#   - SLACK_WEBHOOK_[RADAR_ID] defined within .profile on mrcopy for each respective site
+#   - inotifywait (installed by `zypper in inotify-tools`)
+#   - ssh link between computer and remote radar computers (no password prompt for rsync)
 #
-# Parameter RADAR_ID: [sas, pgr, rkn, inv, cly]
+# Requires:
+#   - file ${HOME}/.scheduler with read permissions defining the following variables:
+#       - file must declare an array RADAR_PORTS as follows:
+#           declare -A RADAR_PORTS=(["SAS_BORE"]=xxxxx ["SAS_MAIN"]=yyyyy)
+#         where xxxxx and yyyyy are ports for an ssh connection to the computer.
+#       - SCHEDULER_DEST (example: username@host)
+#       - LOCAL_SCHEDULE_DIR (example: /home/radman/borealis_schedules)
+#       - REMOTE_SCHEDULE_DIR (example: /home/radar/borealis_schedules)
+#   - SLACK_WEBHOOK_[RADAR_ID] defined in ${HOME}/.profile, where RADAR_ID is SAS, PGR, etc.
+#
+# Parameter RADAR_NAME: [sas, pgr, rkn, inv, cly]_[bore, main] e.g. sas_bore or inv_main
 
 ###################################################################################################
 
-# Create an associative array that associates each RADAR_ID with a SITE_NUM. SITE_NUM is used to get
-# correct port connecting Maxwell and the site borealis computer. 
-declare -A SITE_NUM=( ["sas"]="0" ["pgr"]="1" ["cly"]="2" ["rkn"]="3" ["inv"]="4" )
-
 if [[ $# -ne 1 ]]; then
-    printf "Usage: ./sync_schedules.daemon RADAR_ID\n"
+    printf "Usage: ./scheduler_sync.daemon RADAR_NAME\n"
     exit 1
 fi
 
-RADAR_ID=$1
+RADAR_NAME=$1
+readonly RADAR_ID=$(echo "${RADAR_NAME}" | cut --fields 1 --delimiter '_')
 
-readonly WATCH_DIR="/data/borealis_schedules"
+# Import some required settings for sending files over the internet
+source "${HOME}/.scheduler"
+source "${HOME}/.profile"
+
+# Check that RADAR_NAME is defined in RADAR_PORTS, and thus is a valid input
+if [[ ! -v "RADAR_PORTS[${RADAR_NAME^^}]" ]]; then    # ^^ makes $RADAR_NAME all caps
+  printf "%s not defined in %s\n" "${RADAR_NAME^^}" "${HOME}/.scheduler"
+  exit 1
+fi
+
+# Check that required variables are defined within .scheduler
+if [[ ! -v "SCHEDULER_DEST" || ! -v "LOCAL_SCHEDULE_DIR" || ! -v "REMOTE_SCHEDULE_DIR" ]]; then
+    printf "Required variables are not all defined within .scheduler\n"
+    exit 1
+fi
+
+# Define destination
+readonly DEST_PORT="${RADAR_PORTS[${RADAR_NAME^^}]}"    # Defined within .scheduler
+readonly DEST_ADDRESS="${SCHEDULER_DEST}"               # Defined within .scheduler
+readonly DEST_DIR="${REMOTE_SCHEDULE_DIR}"              # Defined within .scheduler
+
+# Define the directory and file we are watching
+readonly WATCH_DIR="${LOCAL_SCHEDULE_DIR}"              # Defined within .scheduler
 readonly SCD_FILE="${WATCH_DIR}/${RADAR_ID}.scd"
 
 # Define logging directory
-script_name=$(echo $(basename $0) | cut --fields 1 --delimiter '.')
+script_name=$(basename "$0" | cut --fields 1 --delimiter '.')
 readonly LOG_DIR="${HOME}/logs/scheduler"
-mkdir --parents $LOG_DIR
-readonly LOGFILE="${LOG_DIR}/${script_name}_${RADAR_ID}.log"
-
-# Define destination and firewall computer
-readonly SITE_ID="${SITE_NUM[$RADAR_ID]}"    # Get site id corresponding to correct Maxwell port
-readonly MAXWELL="dataman@maxwell.usask.ca"
-readonly DEST="radar@localhost"
-readonly DEST_PORT="5${SITE_ID}522"
-readonly DEST_DIR="/home/radar/borealis_schedules"
+mkdir --parents "${LOG_DIR}"
+readonly LOGFILE="${LOG_DIR}/${script_name}_${RADAR_NAME}.log"
 
 # Define Slack webhook to send alert
-readonly WEBHOOK_VARIABLE="SLACK_WEBHOOK_${RADAR_ID^^}"  # ^^ makes $RADAR_ID all caps
-readonly SLACK_WEBHOOK="${!WEBHOOK_VARIABLE}"  # Get URL from $SLACK_WEBHOOK_[RADAR_ID]
+readonly SLACK_WEBHOOK="SLACK_WEBHOOK_${RADAR_ID^^}"
 readonly MAX_ATTEMPTS=3  # Number of attempts before sending alert
+
+readonly TMP_FILE="/tmp/sync_${RADAR_NAME}.md5"
 
 ###################################################################################################
 
-exec &>> $LOGFILE # Redirect STDOUT and STDERR to $LOGFILE
-printf "Starting $0 $RADAR_ID at $(date --utc "+%Y%m%d %H:%M:%S UTC")\n"
+exec &>> "$LOGFILE" # Redirect STDOUT and STDERR to $LOGFILE
+printf "Starting $0 %s at %s\n" "$RADAR_NAME" "$(date --utc "+%Y%m%d %H:%M:%S UTC")"
 
 # Inotify will trigger on all modify (file content change) and attrib (file metadata change) events.
 # These events happen in close succession, leading to many triggers at once. To reduce the number of
@@ -85,46 +104,49 @@ endtime=0
 inotifywait --monitor --timefmt '%Y%m%d.%H:%M:%S' --format '%T %w %e %f' -e modify,attrib $WATCH_DIR | \
 while read TIME DIRECTORY ACTION FILE # These must line up with format parameters
 do
-    # The conditional filters the inotify output to only trigger the syncronization when the .scd
+    # The conditional filters the inotify output to only trigger the synchronization when the .scd
     # file for the site specified by RADAR_ID is modified.
     if [[ "$FILE" =~ .*$RADAR_ID\.scd$ ]]
     then
         # Only execute the code once every $filter_time seconds
         cur_time=$(date "+%s")
-        if [[ $(($endtime + $filter_time)) -lt $cur_time ]]; then
-            printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Schedule modified for $RADAR_ID\n"
+        if [[ $((endtime + filter_time)) -lt $cur_time ]]; then
+            printf "%s - Schedule modified for %s\n" "$(date --utc "+%Y%m%d %H:%M:%S UTC")" "$RADAR_ID"
             sleep 1     # Wait 1 s to ensure all changes to scd file are finished
 
-            # Sync the .scd file to site via Maxwell
-            printf "Sending ${SCD_FILE} to ${DEST}:${DEST_DIR}\n"
+            # Sync the .scd file to site via autossh tunnels
+            printf "Sending %s to %s:%s via port %s\n" "${SCD_FILE}" "${DEST_ADDRESS}" "${DEST_DIR}" "${DEST_PORT}"
             retval=1
             attempts=0
             while [[ $retval -ne 0 ]]; do
-                rsync -av --rsh="ssh $MAXWELL ssh -p $DEST_PORT" "${SCD_FILE}" "${DEST}:${DEST_DIR}"
+                rsync --archive --verbose --perms --rsh="ssh -p $DEST_PORT" "${SCD_FILE}" "${DEST_ADDRESS}:${DEST_DIR}"
 
                 ### Check that the schedule successfully made it to site ###
                 # Get the md5sum of the remote schedule file
-                ssh $MAXWELL ssh -p $DEST_PORT $DEST "md5sum --binary $DEST_DIR/$FILE" > $HOME/tmp.md5
-                # Modify tmp.md5 so checksum can be compared to source schedule file
-                sed -i "s~$DEST_DIR/$FILE~$WATCH_DIR/$FILE~g" $HOME/tmp.md5
+                ssh -n -p "$DEST_PORT" "${DEST_ADDRESS}" "md5sum --binary ${DEST_DIR}/${FILE}" > "$TMP_FILE"
+                # Modify temp file so checksum can be compared to source schedule file
+                sed -i "s~${DEST_DIR}/${FILE}~${WATCH_DIR}/${FILE}~g" "$TMP_FILE"
                 # Verify md5sum of destination file is same as source
-                md5sum --check --status $HOME/tmp.md5
+                md5sum --check --status "$TMP_FILE"
                 retval=$?
-                rm $HOME/tmp.md5
-
+                rm "$TMP_FILE"
+                
                 if [[ $retval -ne 0 ]]; then
-                    printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Error in syncing schedule, trying again\n"
+                    printf "%s - Error in syncing schedule, trying again\n" "$(date --utc "+%Y%m%d %H:%M:%S UTC")"
                     attempts=$((attempts + 1))
-                    if [[ $attempts -eq $MAX_ATTEMPTS ]]; then
-                        message="scheduler_sync@$RADAR_ID: Schedule failed to sync for $RADAR_ID"
-                        curl --silent --header "Content-type: application/json" --data "{'text':'${message}'}" $SLACK_WEBHOOK
+                    if [[ $attempts -ge $MAX_ATTEMPTS ]]; then
+                        message="scheduler_sync@$RADAR_NAME: Schedule failed to sync for $RADAR_NAME"
+                        curl --silent --header "Content-type: application/json" --data "{'text':'${message}'}" "${!SLACK_WEBHOOK}"
                         break
                     fi
                     sleep 5  # Try again in 5 s
+                else
+                    message="scheduler_sync@$RADAR_NAME: Schedule synced for $RADAR_NAME"
+                    curl --silent --header "Content-type: application/json" --data "{'text':'${message}'}" "${!SLACK_WEBHOOK}"
                 fi
             done
 
-            printf "$(date --utc "+%Y%m%d %H:%M:%S UTC") - Finished syncing schedule\n\n"
+            printf "%s - Finished syncing schedule\n\n" "$(date --utc "+%Y%m%d %H:%M:%S UTC")"
             endtime=$(date "+%s")
         fi
     fi

@@ -82,6 +82,12 @@ class Emailer(object):
         em['To'] = ", ".join(self.emails)
 
         em.attach(email.mime.text.MIMEText(body))
+        
+        # Print the email contents to the console
+        print(f"From: {self.sender}")
+        print(f"To: {', '.join(self.emails)}")
+        print(f"Subject: {str(subject)}")
+        print(body)
 
         if attachments:
             for attachment in attachments:

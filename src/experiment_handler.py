@@ -4,7 +4,7 @@
     experiment_handler process
     ~~~~~~~~~~~~~~~~~~~~~~~~~~
     This program runs a given experiment. It will use the experiment's build_scans method to
-    create the iterable ScanClassBase objects that will be used by the radar_control block,
+    create the iterable InterfaceClassBase objects that will be used by the radar_control block,
     then it will pass the experiment to the radar_control block to run.
 
     It will be passed some data to use in its update method at the end of every integration time.
@@ -28,7 +28,9 @@ from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
 from utils import log_config
-log = log_config.log()
+log = log_config.log(log_level='NOTSET', console=False, logfile=False, aggregator=False)
+
+
 
 def usage_msg():
     """
@@ -46,7 +48,7 @@ def usage_msg():
     argument. It will search for the module in the BOREALISPATH/experiment_prototype
     package. It will retrieve the class from within the module (your experiment).
 
-    It will use the experiment's build_scans method to create the iterable ScanClassBase
+    It will use the experiment's build_scans method to create the iterable InterfaceClassBase
     objects that will be used by the radar_control block, then it will pass the
     experiment to the radar_control block to run.
 
@@ -73,8 +75,9 @@ def experiment_parser():
                                                   "e.g. normalscan")
     parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
                                                      "run, e.g. common, special, or discretionary.")
-    parser.add_argument("--kwargs_string", default='',
-                        help="String of keyword arguments for the experiment.")
+    parser.add_argument("--embargo", action="store_true", help="Embargo the file (makes the CPID negative)")
+    parser.add_argument("--kwargs", nargs='+', default='',
+                        help="Keyword arguments for the experiment. Each must be formatted as kw=val")
 
     return parser
 
@@ -123,13 +126,13 @@ def retrieve_experiment(experiment_module_name):
         raise ExperimentException(errmsg)
 
     # this is the experiment class that we need to run.
-    Experiment = experiment_classes[0][1]
+    experiment = experiment_classes[0][1]
 
     log.info("retrieving experiment from module",
              experiment_class=experiment_classes[0][0],
              experiment_module=experiment_mod)
 
-    return Experiment
+    return experiment
 
 
 def send_experiment(exp_handler_to_radar_control, iden, serialized_exp):
@@ -162,7 +165,7 @@ def experiment_handler(semaphore, args):
     This process begins with setup of sockets and retrieving the experiment class from the module.
     It then waits for a message of type RadarStatus to come in from the radar_control block. If
     the status is 'EXPNEEDED', meaning an experiment is needed, experiment_handler will build the
-    scan iterable objects (of class ScanClassBase) and will pass them to radar_control. Other
+    scan iterable objects (of class InterfaceClassBase) and will pass them to radar_control. Other
     statuses will be implemented in the future.
 
     In the future, the update method will be implemented where the experiment can be modified by
@@ -184,25 +187,25 @@ def experiment_handler(semaphore, args):
     experiment_name = args.experiment_module
     scheduling_mode_type = args.scheduling_mode_type
 
-    Experiment = retrieve_experiment(experiment_name)
+    experiment_class = retrieve_experiment(experiment_name)
     experiment_update = False
-    for method_name, obj in inspect.getmembers(Experiment, inspect.isfunction):
+    for method_name, obj in inspect.getmembers(experiment_class, inspect.isfunction):
         if method_name == 'update':
             experiment_update = True
-            log.debug("experiment contains an updated method", experiment_name=Experiment.experiment_name)
+            log.debug("experiment contains an updated method", experiment_name=experiment_class.experiment_name)
 
-    if args.kwargs_string:
+    if args.kwargs:
         # parse kwargs and pass to experiment
         kwargs = {}
-        kwargs_list = args.kwargs_string.split(',')
-        for element in kwargs_list:
+        for element in args.kwargs:
             kwarg = element.split('=')
             kwargs[kwarg[0]] = kwarg[1]
-        exp = Experiment(**kwargs)
+        exp = experiment_class(**kwargs)
     else:
-        exp = Experiment()
+        exp = experiment_class()
 
     exp._set_scheduling_mode(scheduling_mode_type)
+    exp._embargo_files(args.embargo)
     change_flag = True
 
     def update_experiment():
