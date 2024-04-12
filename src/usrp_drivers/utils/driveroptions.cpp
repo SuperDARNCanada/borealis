@@ -74,7 +74,7 @@ DriverOptions::DriverOptions() {
             {
                 if (rx_channel_0.substr(0, 1).compare("m") == 0)  // Connected to main array antenna
                 {
-                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_0.substr(1, std::string::npos))
+                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_0.substr(1, std::string::npos));
                     if (antenna_num >= main_antenna_count)
                     {
                         throw std::invalid_argument("rx channel 0 connected to main array antenna larger than antenna count");
@@ -83,7 +83,7 @@ DriverOptions::DriverOptions() {
                 }
                 else if (rx_channel_0.substr(0, 1).compare("i") == 0) // Connected to intf array antenna
                 {
-                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_0.substr(1, std::string::npos))
+                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_0.substr(1, std::string::npos));
                     if (antenna_num >= intf_antenna_count)
                     {
                         throw std::invalid_argument("rx channel 0 connected to intf array antenna larger than antenna count");
@@ -101,7 +101,7 @@ DriverOptions::DriverOptions() {
             {
                 if (rx_channel_1.substr(0, 1).compare("m") == 0)  // Connected to main array antenna
                 {
-                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_1.substr(1, std::string::npos))
+                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_1.substr(1, std::string::npos));
                     if (antenna_num >= main_antenna_count)
                     {
                         throw std::invalid_argument("rx channel 1 connected to main array antenna larger than antenna count");
@@ -110,7 +110,7 @@ DriverOptions::DriverOptions() {
                 }
                 else if (rx_channel_1.substr(0, 1).compare("i") == 0) // Connected to intf array antenna
                 {
-                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_1.substr(1, std::string::npos))
+                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_1.substr(1, std::string::npos));
                     if (antenna_num >= intf_antenna_count)
                     {
                         throw std::invalid_argument("rx channel 1 connected to intf array antenna larger than antenna count");
@@ -128,7 +128,7 @@ DriverOptions::DriverOptions() {
             {
                 if (tx_channel_0.substr(0, 1).compare("m") == 0)  // Connected to main array antenna
                 {
-                    antenna_num = boost::lexical_cast<uint32_t>(tx_channel_0.substr(1, std::string::npos))
+                    antenna_num = boost::lexical_cast<uint32_t>(tx_channel_0.substr(1, std::string::npos));
                     if (antenna_num >= main_antenna_count)
                     {
                         throw std::invalid_argument("tx channel 0 connected to main array antenna larger than antenna count");
@@ -188,17 +188,17 @@ DriverOptions::DriverOptions() {
     tx_subdev_ = config_pt.get<std::string>("tx_subdev");
     if (tx_subdev_.compare("A:A") != 0)
     {
-        throw std::invalid_argument("Invalid tx_subdev spec: Only 'A:A' supported")
+        throw std::invalid_argument("Invalid tx_subdev spec: Only 'A:A' supported");
     }
     main_rx_subdev_ = config_pt.get<std::string>("main_rx_subdev");
     if (main_rx_subdev_.compare("A:A A:B") != 0)
     {
-        throw std::invalid_argument("Invalid main_rx_subdev spec: Only 'A:A A:B' supported")
+        throw std::invalid_argument("Invalid main_rx_subdev spec: Only 'A:A A:B' supported");
     }
     intf_rx_subdev_ = config_pt.get<std::string>("intf_rx_subdev");
     if (intf_rx_subdev_.compare("A:A A:B") != 0)
     {
-        throw std::invalid_argument("Invalid intf_rx_subdev spec: Only 'A:A A:B' supported")
+        throw std::invalid_argument("Invalid intf_rx_subdev spec: Only 'A:A A:B' supported");
     }
     pps_ = config_pt.get<std::string>("pps");
     ref_ = config_pt.get<std::string>("ref");
