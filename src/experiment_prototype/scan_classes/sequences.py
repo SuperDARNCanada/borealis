@@ -116,6 +116,8 @@ class Sequence(ScanClassBase):
         main_antenna_spacing = self.transmit_metadata['main_antenna_spacing']
         intf_antenna_count = self.transmit_metadata['intf_antenna_count']
         intf_antenna_spacing = self.transmit_metadata['intf_antenna_spacing']
+        self.rx_main_antennas = self.transmit_metadata['rx_main_antennas']
+        self.rx_intf_antennas = self.transmit_metadata['rx_intf_antennas']
         pulse_ramp_time = self.transmit_metadata['pulse_ramp_time']
         max_usrp_dac_amplitude = self.transmit_metadata['max_usrp_dac_amplitude']
         tr_window_time = self.transmit_metadata['tr_window_time']
@@ -134,14 +136,29 @@ class Sequence(ScanClassBase):
             wave_freq = freq_khz - txctrfreq
             wave_freq_hz = wave_freq * 1000
 
-
             # Now we set up the phases for receive side
             rx_main_phase_shift = get_phase_shift(exp_slice.beam_angle, freq_khz, main_antenna_count,
                                                   main_antenna_spacing)
             rx_intf_phase_shift = get_phase_shift(exp_slice.beam_angle, freq_khz, intf_antenna_count,
                                                   intf_antenna_spacing, intf_offset[0])
 
-            self.rx_beam_phases[slice_id] = {'main': rx_main_phase_shift, 'intf': rx_intf_phase_shift}
+            # The antenna indices for receiving by this slice
+            slice_rx_main_antennas = exp_slice.rx_main_antennas
+            slice_rx_intf_antennas = exp_slice.rx_intf_antennas
+
+            # The index of the antennas for this slice, within the list of all antennas from the config file
+            main_indices = [self.rx_main_antennas.index(ant) for ant in slice_rx_main_antennas]
+            intf_indices = [self.rx_intf_antennas.index(ant) for ant in slice_rx_intf_antennas]
+
+            # Zero out the complex phase for any antenna that isn't used in this slice
+            main_phases = np.zeros((rx_main_phase_shift.shape[0] + self.rx_main_antennas.shape),
+                                   dtype=rx_main_phase_shift.dtype)
+            intf_phases = np.zeros((rx_intf_phase_shift.shape[0] + self.rx_intf_antennas.shape),
+                                   dtype=rx_intf_phase_shift.dtype)
+            main_phases[:, main_indices] = rx_main_phase_shift[:, main_indices]
+            intf_phases[:, intf_indices] = rx_intf_phase_shift[:, intf_indices]
+
+            self.rx_beam_phases[slice_id] = {'main': main_phases, 'intf': intf_phases}
 
             # Set up the tx pulses if transmitting
             if not exp_slice.rxonly:
@@ -419,7 +436,7 @@ class Sequence(ScanClassBase):
         :rtype:     dict
         """
         main_antenna_count = self.transmit_metadata['main_antenna_count']
-        main_antennas = self.transmit_metadata['main_antennas']
+        main_antennas = self.transmit_metadata['tx_main_antennas']
         txrate = self.transmit_metadata['txrate']
 
         buffer_len = int(txrate * self.sstime * 1e-6)
@@ -465,10 +482,12 @@ class Sequence(ScanClassBase):
                     if component_info['slice_id'] == slice_id:
                         pulse_sample_start = component_info['pulse_sample_start']
                         pulse_samples_len = component_info['pulse_num_samps']
-                        tx_antennas = self.slice_dict[slice_id].tx_antennas
-
                         start = pulse['tr_window_num_samps'] + pulse_sample_start
                         end = start + pulse_samples_len
+                        tx_antennas = self.slice_dict[slice_id].tx_antennas
+
+                        # samples: [pulses, main_antenna_count, samples]
+                        # sequence: [main_antenna_count, buffer_len]
                         sequence[tx_antennas, start:end] += samples[i, tx_antennas, :]
 
         # copy the encoded and combined samples into the metadata for the sequence.
@@ -494,7 +513,7 @@ class Sequence(ScanClassBase):
 
         if __debug__:
             debug_dict = copy.deepcopy(self.debug_dict)
-            debug_dict['sequence_samples'] = sequence
+            debug_dict['sequence_samples'] = sequence[main_antennas]
             debug_dict['decimated_samples'] = sequence[main_antennas, ::debug_dict['dmrate']]
         else:
             debug_dict = None

@@ -412,8 +412,8 @@ def main():
             detail['lags'] = np.array(lags, dtype=np.uint32)
             detail['num_lags'] = len(lags)
 
-            main_beams = chan.beam_phases[:, :len(options.main_antennas)]
-            intf_beams = chan.beam_phases[:, len(options.main_antennas):]
+            main_beams = chan.beam_phases[:, :len(options.rx_main_antennas)]
+            intf_beams = chan.beam_phases[:, len(options.rx_main_antennas):]
 
             detail['num_beams'] = main_beams.shape[0]
 
@@ -421,7 +421,7 @@ def main():
             main_beam_angles.append(main_beams)
             intf_beam_angles.append(intf_beams)
             
-            intf_antennas.update(set(chan.rx_int_antennas))     # Keep track of all intf antennas for the sequence
+            intf_antennas.update(set(chan.rx_intf_antennas))     # Keep track of all intf antennas for the sequence
         
         # Different slices can have a different amount of beams used. Slices that use fewer beams
         # than the max number of beams are padded with zeros so that matrix calculations can be
@@ -435,8 +435,8 @@ def main():
                     temp[:x.shape[0], :] = x
                     x = temp    # Reassign to the new larger array with zero-padded beams
 
-        pad_beams(main_beam_angles, len(options.main_antennas))
-        pad_beams(intf_beam_angles, len(options.intf_antennas))
+        pad_beams(main_beam_angles, len(options.rx_main_antennas))
+        pad_beams(intf_beam_angles, len(options.rx_intf_antennas))
 
         main_beam_angles = np.array(main_beam_angles, dtype=np.complex64)
         intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
@@ -559,7 +559,7 @@ def main():
 
             # Process main samples
             mark_timer = time.perf_counter()
-            main_sequence_samples = sequence_samples[:len(options.main_antennas), :]
+            main_sequence_samples = sequence_samples[:len(options.rx_main_antennas), :]
             main_sequence_samples_shape = main_sequence_samples.shape
             processed_main_samples = DSP(main_sequence_samples, rx_rate, dm_rates, dm_scheme_taps, mixing_freqs,
                                          main_beam_angles)
@@ -573,7 +573,7 @@ def main():
             intf_sequence_samples_shape = None
             log.info("intf antennas", antennas=intf_antennas)
             if len(intf_antennas) > 0:
-                intf_sequence_samples = sequence_samples[len(options.main_antennas):, :]
+                intf_sequence_samples = sequence_samples[len(options.rx_main_antennas):, :]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
                 processed_intf_samples = DSP(intf_sequence_samples, rx_rate, dm_rates,
                                              dm_scheme_taps, mixing_freqs, intf_beam_angles)

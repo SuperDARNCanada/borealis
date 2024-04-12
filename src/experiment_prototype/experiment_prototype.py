@@ -252,7 +252,9 @@ class ExperimentPrototype:
         # to where the samples are built.
         self.__transmit_metadata = {
             'output_rx_rate':           self.output_rx_rate,
-            'main_antennas':            self.options.main_antennas,
+            'tx_main_antennas':         self.options.tx_main_antennas,
+            'rx_main_antennas':         self.options.rx_main_antennas,
+            'rx_intf_antennas':         self.options.rx_intf_antennas,
             'main_antenna_count':       self.options.main_antenna_count,
             'intf_antenna_count':       self.options.intf_antenna_count,
             'tr_window_time':           self.options.tr_window_time,

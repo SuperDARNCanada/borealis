@@ -23,7 +23,7 @@ class Options:
     # config.ini options
     data_directory: str = field(init=False)
     hdw_path: str = field(init=False)
-    intf_antennas: list[int] = field(init=False)
+    rx_intf_antennas: list[int] = field(init=False)
     intf_antenna_spacing: float = field(init=False)
     intf_antenna_count: int = field(init=False)
     log_aggregator_addr: str = field(init=False)
@@ -33,7 +33,8 @@ class Options:
     log_directory: str = field(init=False)
     log_level: str = field(init=False)
     log_logfile_bool: bool = field(init=False)
-    main_antennas: list[int] = field(init=False)
+    rx_main_antennas: list[int] = field(init=False)
+    tx_main_antennas: list[int] = field(init=False)
     main_antenna_spacing: float = field(init=False)
     main_antenna_count: int = field(init=False)
     max_filtering_stages: int = field(init=False)
@@ -142,31 +143,65 @@ class Options:
         # Parse N200 array and calculate which main and intf antennas operating
         self.n200_count = 0
         self.n200_addrs = []    # Used for checking IPs of N200s
-        self.main_antennas = []
-        self.intf_antennas = []
+        self.rx_main_antennas = []
+        self.rx_intf_antennas = []
+        self.tx_main_antennas = []
+
+        def parse_channel(channel_str: str, rx: bool):
+            """Parse the antenna number and which array it belongs to"""
+            try:
+                antenna_num = int(channel_str[1:])
+            except ValueError:
+                problem = "channel[1:] must be an integer"
+                raise ValueError(problem)
+            if channel_str[0] == 'm':
+                if rx:
+                    self.rx_main_antennas.append(antenna_num)
+                else:
+                    self.tx_main_antennas.append(antenna_num)
+            elif channel_str[0] == 'i':
+                if rx:
+                    self.rx_intf_antennas.append(antenna_num)
+                else:
+                    raise ValueError("Cannot connect tx channel to interferometer array")
+            else:
+                problem = "channel must start with either 'm' or 'i' for main or interferometer array"
+                raise ValueError(problem)
+
         for n200 in raw_config["n200s"]:
-            rx = n200["rx"]
-            tx = n200["tx"]
-            rx_int = n200["rx_int"]
-            if rx or tx:
+            rx_channel_0 = n200["rx_channel_0"]
+            rx_channel_1 = n200["rx_channel_1"]
+            tx_channel_0 = n200["tx_channel_0"]
+            n200_in_use = False
+
+            if rx_channel_0 != "":
                 try:
-                    main_antenna_num = int(n200["main_antenna"])
-                except ValueError:
-                    errmsg = "main_antenna must be an integer if rx or tx is true"
-                    raise ValueError(errmsg)
-                self.main_antennas.append(main_antenna_num)
-            if rx_int:
+                    parse_channel(rx_channel_0, True)
+                    n200_in_use = True
+                except ValueError as err:
+                    msg = f"; N200 {n200['addr']} rx_channel_0"
+                    raise ValueError(str(err) + msg)
+            if rx_channel_1 != "":
                 try:
-                    intf_antenna_num = int(n200["intf_antenna"])
-                except ValueError:
-                    errmsg = "intf_antenna must be an integer if rx_int is true"
-                    raise ValueError(errmsg)
-                self.intf_antennas.append(intf_antenna_num)
-            if rx or tx or rx_int:
+                    parse_channel(rx_channel_1, True)
+                    n200_in_use = True
+                except ValueError as err:
+                    msg = f"; N200 {n200['addr']} rx_channel_1"
+                    raise ValueError(str(err) + msg)
+            if tx_channel_0 != "":
+                try:
+                    parse_channel(tx_channel_0, False)
+                    n200_in_use = True
+                except ValueError as err:
+                    msg = f"; N200 {n200['addr']} tx_channel_0"
+                    raise ValueError(str(err) + msg)
+
+            if n200_in_use:
                 self.n200_addrs.append(n200["addr"])
                 self.n200_count += 1
-        self.main_antennas.sort()
-        self.intf_antennas.sort()
+        self.rx_main_antennas.sort()
+        self.rx_intf_antennas.sort()
+        self.tx_main_antennas.sort()
 
         self.main_antenna_spacing = float(raw_config['main_antenna_spacing'])  # m
         self.intf_antenna_spacing = float(raw_config['intf_antenna_spacing'])  # m
@@ -299,16 +334,27 @@ class Options:
         if len(self.n200_addrs) != len(set(self.n200_addrs)):
             raise ValueError('Two or more n200s have identical IP addresses')
 
-        if len(self.main_antennas) > 0:
-            if min(self.main_antennas) < 0 or max(self.main_antennas) >= self.main_antenna_count:
-                raise ValueError('main_antennas and main_antenna_count are not consistent')
-        if len(self.intf_antennas) > 0:
-            if min(self.intf_antennas) < 0 or max(self.intf_antennas) >= self.intf_antenna_count:
-                raise ValueError('intf_antennas and intf_antenna_count are not consistent')
-        if len(self.main_antennas) != len(set(self.main_antennas)):
-            raise ValueError('main_antennas contains duplicate values')
-        if len(self.intf_antennas) != len(set(self.intf_antennas)):
-            raise ValueError('intf_antennas contains duplicate values')
+        if len(self.rx_main_antennas) > 0:
+            if min(self.rx_main_antennas) < 0 or max(self.rx_main_antennas) >= self.main_antenna_count:
+                raise ValueError('rx_main_antennas and main_antenna_count are not consistent')
+            if len(self.rx_main_antennas) != len(set(self.rx_main_antennas)):
+                raise ValueError("rx_main_antennas has duplicate values")
+        if len(self.tx_main_antennas) > 0:
+            if min(self.tx_main_antennas) < 0 or max(self.tx_main_antennas) >= self.main_antenna_count:
+                raise ValueError('tx_main_antennas and main_antenna_count are not consistent')
+            if len(self.tx_main_antennas) != len(set(self.tx_main_antennas)):
+                raise ValueError("tx_main_antennas has duplicate values")
+        if len(self.rx_intf_antennas) > 0:
+            if min(self.rx_intf_antennas) < 0 or max(self.rx_intf_antennas) >= self.intf_antenna_count:
+                raise ValueError('rx_intf_antennas and intf_antenna_count are not consistent')
+            if len(self.rx_intf_antennas) != len(set(self.rx_intf_antennas)):
+                raise ValueError("rx_intf_antennas has duplicate values")
+        if len(self.rx_main_antennas) != len(set(self.rx_main_antennas)):
+            raise ValueError('rx_main_antennas contains duplicate values')
+        if len(self.tx_main_antennas) != len(set(self.tx_main_antennas)):
+            raise ValueError('tx_main_antennas contains duplicate values')
+        if len(self.rx_intf_antennas) != len(set(self.rx_intf_antennas)):
+            raise ValueError('rx_intf_antennas contains duplicate values')
 
         # TODO: Test that realtime_address and router_address are valid addresses
 
@@ -321,9 +367,10 @@ class Options:
 
     def __str__(self):
         return_str = f"""    site_id = {self.site_id} \
-                       \n    main_antennas = {self.main_antennas} \
+                       \n    rx_main_antennas = {self.rx_main_antennas} \
+                       \n    tx_main_antennas = {self.tx_main_antennas} \
                        \n    main_antenna_count = {self.main_antenna_count} \
-                       \n    intf_antennas = {self.intf_antennas} \
+                       \n    rx_intf_antennas = {self.rx_intf_antennas} \
                        \n    intf_antenna_count = {self.intf_antenna_count} \
                        \n    main_antenna_spacing = {self.main_antenna_spacing} metres \
                        \n    intf_antenna_spacing = {self.intf_antenna_spacing} metres \

@@ -57,7 +57,7 @@ slice_key_set = frozenset([
     "pulse_sequence",
     "range_sep",
     "rx_beam_order",
-    "rx_int_antennas",
+    "rx_intf_antennas",
     "rx_main_antennas",
     "rxonly",
     "scanbound",
@@ -196,7 +196,7 @@ class ExperimentSlice:
         a calculated value from pulse_len. If already set, it will be overwritten to be the correct
         value determined by the pulse_len. Used for acfs. This is the range gate separation, in the
         radial direction (away from the radar), in km.
-    rx_int_antennas *defaults*
+    rx_intf_antennas *defaults*
         The antennas to receive on in interferometer array, default is all antennas given max number
         from config.
     rx_main_antennas *defaults*
@@ -293,9 +293,9 @@ class ExperimentSlice:
     rx_main_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count, strict=True),
                                        max_items=options.main_antenna_count,
                                        unique_items=True)] = None
-    rx_int_antennas: Optional[conlist(conint(ge=0, lt=options.intf_antenna_count, strict=True),
-                                      max_items=options.intf_antenna_count,
-                                      unique_items=True)] = None
+    rx_intf_antennas: Optional[conlist(conint(ge=0, lt=options.intf_antenna_count, strict=True),
+                                       max_items=options.intf_antenna_count,
+                                       unique_items=True)] = None
     tx_antenna_pattern: Optional[Callable] = default_callable
     tx_beam_order: Optional[beam_order_type] = Field(default_factory=list)
     intt: Optional[confloat(ge=0)] = None
@@ -400,22 +400,31 @@ class ExperimentSlice:
     @validator('tx_antennas')
     def check_tx_antennas(cls, tx_antennas):
         if tx_antennas is None:
-            tx_antennas = [i for i in options.main_antennas]
+            tx_antennas = [i for i in options.tx_main_antennas]
+        for ant in tx_antennas:
+            if ant not in options.tx_main_antennas:
+                raise ValueError(f"TX antenna {ant} not specified in config file")
         return tx_antennas
 
     @validator('rx_main_antennas')
     def check_rx_main_antennas(cls, rx_main_antennas):
         if rx_main_antennas is None:
-            rx_main_antennas = [i for i in options.main_antennas]
+            rx_main_antennas = [i for i in options.rx_main_antennas]
         if len(rx_main_antennas) == 0:
             raise ValueError("Must have at least one main antenna for RX")
+        for ant in rx_main_antennas:
+            if ant not in options.rx_main_antennas:
+                raise ValueError(f"RX main antenna {ant} not specified in config file")
         return rx_main_antennas
 
-    @validator('rx_int_antennas')
-    def check_rx_int_antennas(cls, rx_int_antennas):
-        if rx_int_antennas is None:
-            return [i for i in options.intf_antennas]
-        return rx_int_antennas
+    @validator('rx_intf_antennas')
+    def check_rx_intf_antennas(cls, rx_intf_antennas):
+        if rx_intf_antennas is None:
+            return [i for i in options.rx_intf_antennas]
+        for ant in rx_intf_antennas:
+            if ant not in options.rx_intf_antennas:
+                raise ValueError(f"RX intf antenna {ant} not specified in config file")
+        return rx_intf_antennas
 
     @validator('tx_antenna_pattern')
     def check_tx_antenna_pattern(cls, tx_antenna_pattern, values):
@@ -595,15 +604,16 @@ class ExperimentSlice:
             xcf = False
             log.info(f"XCF defaulted to False as ACF not set. Slice: {values['slice_id']}")
             return False
-        if xcf and 'rx_int_antennas' in values and len(values['rx_int_antennas']) == 0:
+        if xcf and 'rx_intf_antennas' in values and len(values['rx_intf_antennas']) == 0:
             raise ValueError("XCF set to True but no interferometer antennas present")
+        return xcf
 
     @validator('acfint', always=True)
     def check_acfint(cls, acfint, values):
         if 'acf' not in values or not values['acf']:
             acfint = False
             log.info(f"ACFINT defaulted to False as ACF not set. Slice: {values['slice_id']}")
-        if acfint and 'rx_int_antennas' in values and len(values['rx_int_antennas']) == 0:
+        if acfint and 'rx_intf_antennas' in values and len(values['rx_intf_antennas']) == 0:
             raise ValueError("ACFINT set to True but no interferometer antennas present")
         return acfint
 

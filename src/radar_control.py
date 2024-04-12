@@ -133,7 +133,7 @@ def data_to_driver(radctrl_to_driver, driver_to_radctrl_iden, samples_array, txc
 
 def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_radctrl_iden, rxrate,
                       output_sample_rate, seqnum, slice_ids, slice_dict, beam_dict, sequence_time,
-                      first_rx_sample_start, rxctrfreq, pulse_phase_offsets, main_antennas, intf_antennas,
+                      first_rx_sample_start, rxctrfreq, pulse_phase_offsets,
                       decimation_scheme=None):
     """
     Place data in the receiver packet and send it via zeromq to the signal processing unit and brian.
@@ -160,8 +160,6 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
         tx data.
     :param rxctrfreq: the center frequency of receiving.
     :param pulse_phase_offsets: Phase offsets (degrees) applied to each pulse in the sequence
-    :param main_antennas: List of main antennas for the experiment
-    :param intf_antennas: List of intf antennas for the experiment
     :param decimation_scheme: object of type DecimationScheme that has all decimation and
         filtering data.
     """
@@ -194,28 +192,15 @@ def send_dsp_metadata(radctrl_to_dsp, dsp_radctrl_iden, radctrl_to_brian, brian_
         chan_add.num_ranges = slice_dict[slice_id].num_ranges
         chan_add.first_range = slice_dict[slice_id].first_range
         chan_add.range_sep = slice_dict[slice_id].range_sep
-        chan_add.rx_int_antennas = slice_dict[slice_id].rx_int_antennas
+        chan_add.rx_intf_antennas = slice_dict[slice_id].rx_intf_antennas
 
         main_bms = beam_dict[slice_id]['main']
         intf_bms = beam_dict[slice_id]['intf']
 
         beams = []
         for i in range(main_bms.shape[0]):
-            # Don't need to send channel numbers, will always send beamdir with length = total antennas.
-            # Beam directions are formated e^i*phi so that a 0 will indicate not
-            # to receive on that channel.
-            mains = slice_dict[slice_id].rx_main_antennas
-            intfs = slice_dict[slice_id].rx_int_antennas
-
-            temp_main = np.zeros(main_bms[i].shape, dtype=main_bms.dtype)
-            temp_intf = np.zeros(intf_bms[i].shape, dtype=intf_bms.dtype)
-
-            # Only add phases for the antennas actually used for this slice
-            temp_main[mains] = main_bms[i][mains]
-            temp_intf[intfs] = intf_bms[i][intfs]
-
             # Combine main and intf such that for a given beam all main phases come first.
-            beams.append(np.hstack((temp_main, temp_intf)))
+            beams.append(np.hstack((main_bms, intf_bms)))
         chan_add.beam_phases = np.array(beams)
 
         for lag in slice_dict[slice_id].lag_table:
@@ -774,8 +759,6 @@ def main():
                                               sequence.first_rx_sample_start,
                                               experiment.rxctrfreq,
                                               sequence.output_encodings,
-                                              options.main_antennas,
-                                              options.intf_antennas,
                                               sequence.decimation_scheme)
 
                             if TIME_PROFILE:

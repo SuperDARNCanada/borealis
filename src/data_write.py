@@ -367,8 +367,8 @@ class ParseData(object):
 
         # Get data dimensions for reading in the shared memory
         num_slices = len(self.processed_data.output_datasets)
-        num_main_antennas = len(self.options.main_antennas)
-        num_intf_antennas = len(self.options.intf_antennas)
+        num_main_antennas = len(self.options.rx_main_antennas)
+        num_intf_antennas = len(self.options.rx_intf_antennas)
 
         stages = []
         # Loop through all the filter stage data
@@ -416,9 +416,15 @@ class ParseData(object):
                 antennas_data = debug_stage['data'][i]
                 antenna_iq_stage["num_samps"] = antennas_data.shape[-1]
 
+                # All possible antenna numbers, given the config file
+                antenna_indices = self.options.rx_main_antennas
+                # The interferometer antenna numbers start after the last main antenna number
+                antenna_indices.extend([ant + self.options.main_antenna_count for ant in self.options.rx_intf_antennas])
+
                 # Loops over antenna data within stage
                 for ant_num in range(antennas_data.shape[0]):
-                    ant_str = f"antenna_{ant_num}"
+                    # Convert index in the data array to antenna number from the config file
+                    ant_str = f"antenna_{antenna_indices[ant_num]}"
 
                     if ant_str not in antenna_iq_stage:
                         antenna_iq_stage[ant_str] = {}
@@ -1003,7 +1009,7 @@ class DataWrite(object):
 
             samples_list = []
             shared_memory_locations = []
-            total_ants = len(self.options.main_antennas) + len(self.options.intf_antennas)
+            total_ants = len(self.options.rx_main_antennas) + len(self.options.rx_intf_antennas)
 
             for raw in raw_rf:
                 shared_mem = shared_memory.SharedMemory(name=raw)
