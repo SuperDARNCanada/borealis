@@ -374,6 +374,8 @@ def _main():
             yyyymmdd = time_of_interest.strftime("%Y%m%d")
             hhmm = time_of_interest.strftime("%H:%M")
             relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
+            for line in relevant_lines:
+                scd_util.test_line_experiment(line)
         except (IndexError, ValueError) as e:
             logtime = time_of_interest.strftime("%c")
             error_msg = f"{logtime}: Unable to make schedule\n\t Exception thrown:\n\t\t {str(e)}\n"

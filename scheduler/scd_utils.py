@@ -75,8 +75,8 @@ class SCDUtils:
         :type   prio:               str or int
         :param  duration:           an optional duration to run for.
         :type   duration:           str
-        :param  kwargs:      kwargs for the experiment instantiation. Default None
-        :type   kwargs:      str
+        :param  kwargs:             kwargs for the experiment instantiation. Default None
+        :type   kwargs:             str
         :param  embargo:            flag for embargoing files. (Default value = False)
         :type   embargo:            bool
 
@@ -110,21 +110,6 @@ class SCDUtils:
         if scheduling_mode not in possible_scheduling_modes:
             raise ValueError(f"Unknown scheduling mode type {scheduling_mode} not in {possible_scheduling_modes}")
 
-        # Don't bother testing past experiments, formats/settings/capabilities/etc. could have changed
-        if not dt.datetime.utcnow() - time > dt.timedelta(days=1):  # Test if experiment is in future or past day
-            # See if the experiment itself would run
-            # This is a full path to /.../{site}.scd file, only want {site}
-            site_name = os.path.basename(self.scd_filename).replace('.scd', '')
-            args = ['--site_id', site_name,
-                    '--experiments', experiment,
-                    '--kwargs', kwargs,
-                    '--module', 'experiment_unittests']
-            test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
-            if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
-                raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
-                                 f"Errors: {test_program.result.errors}\n"
-                                 f"Failures: {test_program.result.failures}")
-
         return {"timestamp": epoch_milliseconds,
                 "time": time,
                 "duration": str(duration),
@@ -133,6 +118,25 @@ class SCDUtils:
                 "scheduling_mode": scheduling_mode,
                 "kwargs": kwargs,
                 "embargo": embargo}
+
+    def test_line_experiment(self, line_dict):
+        """
+        Run the line through experiment unit tests to check that the experiment will run.
+
+        :param   line_dict: Dictionary of parameters for the line (as returned from `check_line()`)
+        :type    line_dict: dict
+        """
+        # This is a full path to /.../{site}.scd file, only want {site}
+        site_name = os.path.basename(self.scd_filename).replace('.scd', '')
+        args = ['--site_id', site_name,
+                '--experiments', line_dict['experiment'],
+                '--kwargs', line_dict['kwargs'],
+                '--module', 'experiment_unittests']
+        test_program = experiment_unittests.run_tests(args, buffer=True, print_results=False)
+        if len(test_program.result.failures) != 0 or len(test_program.result.errors) != 0:
+            raise ValueError("Experiment could not be scheduled due to errors in experiment.\n"
+                             f"Errors: {test_program.result.errors}\n"
+                             f"Failures: {test_program.result.failures}")
 
     def read_scd(self):
         """
@@ -245,6 +249,11 @@ class SCDUtils:
         if any([(new_line['timestamp'] == line['timestamp'] and
                  new_line['prio'] == line['prio']) for line in scd_lines]):
             raise ValueError("Priority already exists at this time")
+
+        try:
+            self.test_line_experiment(new_line)
+        except ValueError as e:
+            raise ValueError("Unable to add line:\n", str(e))
 
         scd_lines.append(new_line)
 

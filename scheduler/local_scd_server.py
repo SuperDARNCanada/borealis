@@ -307,7 +307,9 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        print(f"add_line date: {ex['yyyymmdd']}, with experiment: {ex['experiment']}, mode: {ex['scheduling_mode']}")
+                        print(f"add_line date: {ex['yyyymmdd']}, "
+                              f"with experiment: {ex['experiment']}, "
+                              f"mode: {ex['scheduling_mode']}")
                         site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
                     except ValueError as err:
                         error_msg = f"{today.strftime('%c')} {site_scd.scd_filename}: Unable to add line:\n" \
