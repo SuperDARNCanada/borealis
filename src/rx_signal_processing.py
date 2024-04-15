@@ -383,15 +383,15 @@ def main():
                     data[...] = xp.asnumpy(data_array)
                 else:
                     data[...] = data_array
-                try:
-                    if array_name == 'main':
-                        holder.main_shm = shm.name
-                    elif array_name == 'intf':
-                        holder.intf_shm = shm.name
-                    else:
-                        log.error(f"unknown array name {array_name} not in [main, intf]", error=e)
-                        log.exception(f"unknown array name {array_name} [main, intf]", error=e)
-                        sys.exit(1)
+
+                if array_name == 'main':
+                    holder.main_shm = shm.name
+                elif array_name == 'intf':
+                    holder.intf_shm = shm.name
+                else:
+                    log.error(f"unknown array name {array_name} not in [main, intf]")
+                    log.exception(f"unknown array name {array_name} [main, intf]")
+                    sys.exit(1)
 
                 holder.num_samps = data_array.shape[-1]
                 shm.close()
