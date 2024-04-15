@@ -147,10 +147,10 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
     """
     :param console_log_level: Logging threshold for console renderer [CRITICAL, ERROR, WARNING, INFO, VERBOSE, DEBUG, NOTSET]
     :type console_log_level: str | int
-    :param logfile_log_level: Logging threshold for logfile renderer [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
+    :param logfile_log_level: Logging threshold for logfile renderer [CRITICAL, ERROR, WARNING, INFO, VERBOSE, DEBUG, NOTSET]
     :type logfile_log_level: str | int
-    :param aggregator_log_level: Logging threshold for aggregator renderer [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
-    :type aggregator_log_level: int
+    :param aggregator_log_level: Logging threshold for aggregator renderer [CRITICAL, ERROR, WARNING, VERBOSE, INFO, DEBUG, NOTSET]
+    :type aggregator_log_level: str | int
     :param console: Enable (True) or Disable (False) console logging override
     :type console: bool
     :param logfile: Enable (True) or Disable (False) JSON file logging override
