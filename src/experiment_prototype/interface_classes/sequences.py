@@ -3,7 +3,7 @@
 """
     sequences
     ~~~~~~~~~
-    This is the module containing the Sequence class. The Sequence class contains the ScanClassBase
+    This is the module containing the Sequence class. The Sequence class contains the InterfaceClassBase
     members, as well as a list of pulse dictionaries, the total_combined_pulses in the sequence,
     power_divider, last_pulse_len, ssdelay, seqtime, which together give sstime (scope synce time,
     or time for receiving, and numberofreceivesamples to sample during the receiving window
@@ -25,9 +25,9 @@ import numpy as np
 import structlog
 
 # local
-from experiment_prototype.experiment_utils.sample_building import get_samples, get_phase_shift
-from experiment_prototype.scan_classes.scan_class_base import ScanClassBase
+from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
 from experiment_prototype.experiment_exception import ExperimentException
+from utils.signals import get_samples, get_phase_shift
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
@@ -35,7 +35,7 @@ module_name = caller.name.split('.')[0]
 log = structlog.getLogger(module_name)
 
 
-class Sequence(ScanClassBase):
+class Sequence(InterfaceClassBase):
     """
     Set up the sequence class.
 
@@ -97,7 +97,7 @@ class Sequence(ScanClassBase):
     """
 
     def __init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata):
-        ScanClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata)
+        InterfaceClassBase.__init__(self, seqn_keys, sequence_slice_dict, sequence_interface, transmit_metadata)
 
         self.decimation_scheme = self.slice_dict[self.slice_ids[0]].decimation_scheme
         for slice_id in self.slice_ids:
@@ -111,7 +111,6 @@ class Sequence(ScanClassBase):
             dm_rate *= stage.dm_rate
 
         txrate = self.transmit_metadata['txrate']
-        txctrfreq = self.transmit_metadata['txctrfreq']
         main_antenna_count = self.transmit_metadata['main_antenna_count']
         main_antenna_spacing = self.transmit_metadata['main_antenna_spacing']
         intf_antenna_count = self.transmit_metadata['intf_antenna_count']
@@ -124,6 +123,8 @@ class Sequence(ScanClassBase):
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
         self.tx_main_phase_shifts = {}
+        self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
+        self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
         single_pulse_timing = []
 
         # For each slice calculate beamformed samples and place into the basic_slice_pulses
@@ -131,9 +132,8 @@ class Sequence(ScanClassBase):
         for slice_id in self.slice_ids:
             exp_slice = self.slice_dict[slice_id]
             freq_khz = float(exp_slice.freq)
-            wave_freq = freq_khz - txctrfreq
+            wave_freq = freq_khz - self.txctrfreq
             wave_freq_hz = wave_freq * 1000
-
 
             # Now we set up the phases for receive side
             if exp_slice.rx_antenna_pattern is not None:
@@ -178,7 +178,6 @@ class Sequence(ScanClassBase):
                 tx_main_phase_shift = np.zeros((rx_main_phase_shift.shape[0], len(exp_slice.tx_antennas)),
                                                dtype=np.complex64)
             self.tx_main_phase_shifts[slice_id] = tx_main_phase_shift
-
 
             for pulse_time in exp_slice.pulse_sequence:
                 pulse_timing_us = pulse_time * exp_slice.tau_spacing + exp_slice.seqoffset
@@ -377,7 +376,7 @@ class Sequence(ScanClassBase):
 
         # create debug dict for tx samples.
         debug_dict = {'txrate': txrate,
-                      'txctrfreq': txctrfreq,
+                      'txctrfreq': self.txctrfreq,
                       'pulse_timing': [],
                       'pulse_sample_start': [],
                       'sequence_samples': {},

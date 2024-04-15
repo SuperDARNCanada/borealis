@@ -47,6 +47,8 @@ slice_key_set = frozenset([
     "comment",
     "cpid",
     "first_range",
+    "txctrfreq",
+    "rxctrfreq",
     "freq",
     "intn",
     "intt",
@@ -197,6 +199,11 @@ class ExperimentSlice:
         a calculated value from pulse_len. If already set, it will be overwritten to be the correct
         value determined by the pulse_len. Used for acfs. This is the range gate separation, in the
         radial direction (away from the radar), in km.
+    rxctrfreq *defaults*
+        Center frequency, in kHz, used to mix to baseband.
+        Since this requires tuning time to set, it is the user's responsibility to ensure that the
+        re-tuning time does not detract from the experiment implementation. Tuning time is set in
+        the usrp_driver.cpp script and changes to the time will require recompiling of the code.
     rx_int_antennas *defaults*
         The antennas to receive on in interferometer array, default is all antennas given max number
         from config.
@@ -215,6 +222,11 @@ class ExperimentSlice:
         intended for CONCURRENT interfacing, when you want multiple slice's pulses in one sequence you
         can offset one slice's sequence from the other by a certain time value so as to not run both
         frequencies in the same pulse, etc. Default is 0 offset.
+    txctrfreq *defaults*
+        Center frequency, in kHz, for the USRP to mix the samples with.
+        Since this requires tuning time to set, it is the user's responsibility to ensure that the
+        re-tuning time does not detract from the experiment implementation. Tuning time is set in
+        the usrp_driver.cpp script and changes to the time will require recompiling of the code.
     tx_antennas *defaults*
         The antennas to transmit on, default is all main antennas given max number from config.
     tx_antenna_pattern *defaults*
@@ -267,12 +279,6 @@ class ExperimentSlice:
 
     # These fields are for checking the validity of the user-specified fields, to ensure the slice is
     # compatible with the experiment settings.
-    tx_minfreq: freq_float_hz
-    tx_maxfreq: freq_float_hz
-    rx_minfreq: freq_float_hz
-    rx_maxfreq: freq_float_hz
-    txctrfreq: freq_float_khz
-    rxctrfreq: freq_float_khz
     tx_bandwidth: float
     rx_bandwidth: float
     output_rx_rate: float
@@ -289,9 +295,14 @@ class ExperimentSlice:
     pulse_sequence: conlist(conint(ge=0, strict=True), unique_items=True)
     rx_beam_order: list[Union[beam_order_type, conint(ge=0, strict=True)]]
 
+    # Frequency rx and tx limits are dependent on the tx and rx center frequencies. Since the center freq
+    # parameter is defined by slice, the max and min rx frequencies must be determined after center freq validation
+    txctrfreq: Optional[freq_khz] = None
+    rxctrfreq: Optional[freq_khz] = None
+    freq: Optional[freq_khz] = None
+
     # These fields have default values. Some have specification requirements in conjunction with each other
     # e.g. one of intt or intn must be specified.
-    freq: Optional[freq_khz] = None
     rxonly: Optional[StrictBool] = False
     tx_antennas: Optional[conlist(conint(ge=0, lt=options.main_antenna_count, strict=True),
                                   max_items=options.main_antenna_count,
@@ -570,8 +581,7 @@ class ExperimentSlice:
 
         if clrfrqrange[0] >= clrfrqrange[1]:
             raise ValueError(f"Slice {values['slice_id']} clrfrqrange must be between min and max tx frequencies "
-                             f"{(values['tx_minfreq'], values['tx_maxfreq'])} and rx frequencies "
-                             f"{(values['rx_minfreq'], values['rx_maxfreq'])} according to license and/or center "
+                             f"and rx frequencies according to license and/or center "
                              f"frequencies / sampling rates / transition bands, and must have lower frequency first.")
 
         still_checking = True
@@ -609,19 +619,94 @@ class ExperimentSlice:
 
         return values
 
-    @validator('freq')
-    def check_freq(cls, freq):
-        if not freq:
-            return
 
+    @validator('txctrfreq', always=True)
+    def check_txctrfreq(cls, txctrfreq):
+        if not txctrfreq:
+            txctrfreq = 12000.0  # Default value when not set
+
+        # Note - txctrfreq set here and modify the actual center frequency to a
+        # multiple of the clock divider that is possible by the USRP - this default value set
+        # here is not exact (center freq is never exactly 12 MHz).
+
+        # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+        clock_multiples = options.usrp_master_clock_rate / 2 ** 32
+        clock_divider = math.ceil(txctrfreq * 1e3 / clock_multiples)
+        txctrfreq = (clock_divider * clock_multiples) / 1e3
+
+        return txctrfreq
+
+    @validator('rxctrfreq', always=True)
+    def check_rxctrfreq(cls, rxctrfreq):
+        if not rxctrfreq:
+            rxctrfreq = 12000.0  # Default value when not set
+
+        # Note - rxctrfreq set here and modify the actual center frequency to a
+        # multiple of the clock divider that is possible by the USRP - this default value set
+        # here is not exact (center freq is never exactly 12 MHz).
+
+        # convert from kHz to Hz to get correct clock divider. Return the result back in kHz.
+        clock_multiples = options.usrp_master_clock_rate / 2 ** 32
+        clock_divider = math.ceil(rxctrfreq * 1e3 / clock_multiples)
+        rxctrfreq = (clock_divider * clock_multiples) / 1e3
+
+        return rxctrfreq
+
+    @validator('freq')
+    def check_freq(cls, freq, values):
         for freq_range in options.restricted_ranges:
             if freq_range[0] <= freq <= freq_range[1]:
                 raise ValueError(f"freq is within a restricted frequency range {freq_range}")
+
+        # max frequency is defined as [center freq] + [bandwidth / 2] - [bandwidth * 0.15]
+        # min frequency is defined as [center freq] - [bandwidth / 2] + [bandwidth * 0.15]
+        # [bandwidth * 0.15] is the transition bandwidth. This was set a 750 kHz originally
+        # but for smaller bandwidth this value is too large. For the typical operating
+        # bandwidth of 5 MHz, the calculated transition bandwidth here will be 750 kHz
+
+        #TODO review issue #195
+
+        if 'rxctrfreq' in values:
+            rx_maxfreq = values['rxctrfreq'] * 1000 + (values['rx_bandwidth'] / 2.0) - (values['rx_bandwidth'] * 0.15)
+            rx_minfreq = values['rxctrfreq'] * 1000 - (values['rx_bandwidth'] / 2.0) + (values['rx_bandwidth'] * 0.15)
+            rx_center = values['rxctrfreq']
+        else:
+            rx_maxfreq = options.max_freq
+            rx_minfreq = options.min_freq
+            rx_center = 0
+
+        if 'txctrfreq' in values:
+            tx_maxfreq = values['txctrfreq'] * 1000 + (values['tx_bandwidth'] / 2.0) - (values['tx_bandwidth'] * 0.15)
+            tx_minfreq = values['txctrfreq'] * 1000 - (values['tx_bandwidth'] / 2.0) + (values['tx_bandwidth'] * 0.15)
+            tx_center = values['txctrfreq']
+        else:
+            tx_maxfreq = options.max_freq
+            tx_minfreq = options.min_freq
+            tx_center = 0
+
+        # Frequency must be withing bandwidth of rx and tx center frequency
+        if (freq > rx_maxfreq / 1000) or (freq < rx_minfreq / 1000):
+            raise ValueError(f"Slice frequency is outside bandwidth around rx center frequency {int(rx_center)}")
+        if (freq > tx_maxfreq / 1000) or (freq < tx_minfreq / 1000):
+            raise ValueError(f"Slice frequency is outside bandwidth around tx center frequency {int(tx_center)}")
+
+        # Frequency cannot be set to the rx or tx center frequency (100kHz bandwidth around center freqs)
+        if abs(freq - rx_center) < 50:
+            raise ValueError(f"Slice frequency cannot be within 50kHz of rx center frequency {int(rx_center)}")
+        if abs(freq - tx_center) < 50:
+            raise ValueError(f"Slice frequency cannot be within 50kHz of tx center frequency {int(tx_center)}")
 
         return freq
 
     @validator('decimation_scheme')
     def check_decimation_rates(cls, decimation_scheme, values):
+        # check that number of stages is not too large
+        if len(decimation_scheme.stages) > options.max_filtering_stages:
+            errmsg = f'Number of decimation stages ({len(decimation_scheme.stages)}) is greater than max'\
+                     f' available {options.max_filtering_stages}'
+            raise ValueError(errmsg)
+
+        # Check that the rx_bandwidth matches input rate of the DecimationScheme
         input_rate = decimation_scheme.input_rates[0]
         if input_rate != values['rx_bandwidth']:
             raise ValueError(f"decimation_scheme input data rate {input_rate} does not match rx_bandwidth "

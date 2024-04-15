@@ -105,6 +105,30 @@ from transmitters #6 and #12 not contributing to the system. The effects are imm
 the higher power sidelobes. The main lobe gain is reduced from 16.66dB to 16.13dB. The main lobe
 remains the same shape but is slightly smaller (~1 degree) in elevation angle.
 
+.. _Filter Testing:
+
+--------------
+Filter Testing
+--------------
+
+A Jupyter notebook called ``filters.ipynb`` is located in the ``tests/dsp_testing`` directory of Borealis.
+This notebook describes in detail the default ``DecimationScheme`` used by Borealis, the helper functions in
+``decimation_scheme.py`` for creating a digital filter, and creates an alternative filter with comparison
+to the default. This notebook also benchmarks the performance of the filter schemes on the GPU, both in runtime
+and in memory usage. Finally, the ramp-up and ramp-down of transmitted pulses is looked at, for characterization
+of the expected transmission spectrum.
+
+This notebook is intended to make it easy to design and prototype new filtering schemes, which is useful for
+experiments which, for example:
+
+* Have a non-standard pulse length (the default is 300 microseconds)
+* Use range gates of differing size (the default is 45 km)
+* Use pulse compression (this increases the transmission bandwidth)
+* Are listening experiments (e.g. to measure the frequency spectrum)
+* Use a different receiver bandwidth (i.e. not the default 5 MHz)
+
+In any of these circumstances, it is important to design a filter which works for the situation at hand.
+
 .. _NTP:
 
 ---
