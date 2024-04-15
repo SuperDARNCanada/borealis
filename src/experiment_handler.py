@@ -30,10 +30,6 @@ from utils import socket_operations
 from experiment_prototype.experiment_exception import ExperimentException
 from experiment_prototype.experiment_prototype import ExperimentPrototype
 
-caller = Path(inspect.stack()[-1].filename)
-module_name = caller.name.split('.')[0]
-log = structlog.getLogger(module_name)
-
 
 def usage_msg():
     """
@@ -292,3 +288,8 @@ if __name__ == "__main__":
     except Exception as main_exception:
         log.critical("EXPERIMENT_HANDLER CRASHED", error=main_exception)
         log.exception("EXPERIMENT_HANDLER CRASHED", exception=main_exception)
+
+else:
+    caller = Path(inspect.stack()[-1].filename)
+    module_name = caller.name.split('.')[0]
+    log = structlog.getLogger(module_name)
