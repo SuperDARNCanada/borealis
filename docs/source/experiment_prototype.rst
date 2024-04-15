@@ -24,9 +24,9 @@ Experiment Prototype Package
     :undoc-members:
     :show-inheritance:
 
-------------------
+-----------------------
 Interface Class Package
-------------------
+-----------------------
 
 .. automodule:: src.experiment_prototype.interface_classes.interface_class_base
     :members:
