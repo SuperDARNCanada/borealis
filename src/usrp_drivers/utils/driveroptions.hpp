@@ -7,6 +7,13 @@
 #include <vector>
 #include "options.hpp"
 
+void processChannel(const std::string& channel, uint32_t channel_num,
+                    uint32_t main_antenna_count, uint32_t intf_antenna_count,
+                    std::map<uint32_t, uint32_t>& rx_main_antenna_to_channel_map,
+                    std::map<uint32_t, uint32_t>& rx_intf_antenna_to_channel_map,
+                    std::map<uint32_t, uint32_t>& tx_antenna_to_channel_map,
+                    bool rx_if_true_or_tx_if_false);
+
 class DriverOptions: public Options {
  public:
         explicit DriverOptions();

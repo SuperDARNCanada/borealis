@@ -12,6 +12,47 @@
 #include "driveroptions.hpp"
 
 /**
+ * @brief   Parses a channel specifier into the correct antenna-to-channel-number map
+ */
+void processChannel(const std::string& channel, uint32_t channel_num,
+                    uint32_t main_antenna_count, uint32_t intf_antenna_count,
+                    std::map<uint32_t, uint32_t>& rx_main_antenna_to_channel_map,
+                    std::map<uint32_t, uint32_t>& rx_intf_antenna_to_channel_map,
+                    std::map<uint32_t, uint32_t>& tx_antenna_to_channel_map,
+                    bool rx_if_true_or_tx_if_false) {
+    if (rx_if_true_or_tx_if_false) {
+        if (!channel.empty()) {
+            uint32_t antenna_num = boost::lexical_cast<uint32_t>(channel.substr(1, std::string::npos));
+            if (channel.substr(0, 1) == "m") {
+                if (antenna_num >= main_antenna_count) {
+                    throw std::invalid_argument("Invalid antenna number for RX main array");
+                }
+                rx_main_antenna_to_channel_map[antenna_num] = channel_num;
+            } else if (channel.substr(0, 1) == "i") {
+                if (antenna_num >= intf_antenna_count) {
+                    throw std::invalid_argument("Invalid antenna number for RX intf array");
+                }
+                rx_intf_antenna_to_channel_map[antenna_num] = channel_num;
+            } else {
+                throw std::invalid_argument("Cannot parse array identifier");
+            }
+        }
+    } else {
+        if (!channel.empty()) {
+            uint32_t antenna_num = boost::lexical_cast<uint32_t>(channel.substr(1, std::string::npos));
+            if (channel.substr(0, 1) == "m") {
+                if (antenna_num >= main_antenna_count) {
+                    throw std::invalid_argument("Invalid antenna number for TX main array");
+                }
+                tx_antenna_to_channel_map[antenna_num] = channel_num;
+            } else {
+                throw std::invalid_argument("Cannot connect TX channel to intf array");
+            }
+        }
+    }
+}
+
+/**
  * @brief      Extracts the relevant driver options from the config into class variables.
  */
 DriverOptions::DriverOptions() {
@@ -26,24 +67,20 @@ DriverOptions::DriverOptions() {
     std::map<uint32_t, uint32_t> tx_main_antenna_to_channel_map;    // Maps tx main antenna number to channel number
 
     // Get number of physical antennas
-    auto main_antenna_count = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("main_antenna_count"));
-    auto intf_antenna_count = boost::lexical_cast<uint32_t>(
-                                config_pt.get<std::string>("intf_antenna_count"));
+    auto main_antenna_count = boost::lexical_cast<uint32_t>(config_pt.get<std::string>("main_antenna_count"));
+    auto intf_antenna_count = boost::lexical_cast<uint32_t>(config_pt.get<std::string>("intf_antenna_count"));
 
     uint32_t device_num = 0;    // Active device counter
 
     // Iterate through all N200s in the json array
-    for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++)
-    {
+    for (auto n200 = n200_list.begin(); n200 != n200_list.end(); n200++) {
         std::string addr = "";
         std::string rx_channel_0 = "";
         std::string rx_channel_1 = "";
         std::string tx_channel_0 = "";
 
         // Iterate through all N200 parameters and store them in variables
-        for (auto iter = n200->second.begin(); iter != n200->second.end(); iter++)
-        {
+        for (auto iter = n200->second.begin(); iter != n200->second.end(); iter++) {
             auto param = iter->first;
             if (param.compare("addr") == 0) {
                 addr = iter->second.data();
@@ -62,87 +99,25 @@ DriverOptions::DriverOptions() {
             }
         }
 
-        // If current n200 is connected to an antenna on any channel, add to devices
-        if (rx_channel_0.compare("") != 0 || rx_channel_1.compare("") != 0 || tx_channel_0.compare("") != 0)
-        {
+        // If current N200 is connected to an antenna on any channel, add to devices_
+        if (!rx_channel_0.empty() || !rx_channel_1.empty || !tx_channel_0.empty) {
             devices_ = devices_ + ",addr" + std::to_string(device_num) + "=" + addr;
 
-            uint32_t antenna_num;
-
-            // Determine which antenna RX channel 0 is connected to, if any
-            if (rx_channel_0.compare("") != 0)
-            {
-                if (rx_channel_0.substr(0, 1).compare("m") == 0)  // Connected to main array antenna
-                {
-                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_0.substr(1, std::string::npos));
-                    if (antenna_num >= main_antenna_count)
-                    {
-                        throw std::invalid_argument("rx channel 0 connected to main array antenna larger than antenna count");
-                    }
-                    rx_main_antenna_to_channel_map[antenna_num] = device_num * 2;
-                }
-                else if (rx_channel_0.substr(0, 1).compare("i") == 0) // Connected to intf array antenna
-                {
-                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_0.substr(1, std::string::npos));
-                    if (antenna_num >= intf_antenna_count)
-                    {
-                        throw std::invalid_argument("rx channel 0 connected to intf array antenna larger than antenna count");
-                    }
-                    rx_intf_antenna_to_channel_map[antenna_num] = device_num * 2;
-                }
-                else
-                {
-                    throw std::invalid_argument("Cannot parse N200 rx channel 0 array identifier");
-                }
-            }
-
-            // Determine which antenna RX channel 1 is connected to, if any
-            if (rx_channel_1.compare("") != 0)
-            {
-                if (rx_channel_1.substr(0, 1).compare("m") == 0)  // Connected to main array antenna
-                {
-                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_1.substr(1, std::string::npos));
-                    if (antenna_num >= main_antenna_count)
-                    {
-                        throw std::invalid_argument("rx channel 1 connected to main array antenna larger than antenna count");
-                    }
-                    rx_main_antenna_to_channel_map[antenna_num] = device_num * 2 + 1;
-                }
-                else if (rx_channel_1.substr(0, 1).compare("i") == 0) // Connected to intf array antenna
-                {
-                    antenna_num = boost::lexical_cast<uint32_t>(rx_channel_1.substr(1, std::string::npos));
-                    if (antenna_num >= intf_antenna_count)
-                    {
-                        throw std::invalid_argument("rx channel 1 connected to intf array antenna larger than antenna count");
-                    }
-                    rx_intf_antenna_to_channel_map[antenna_num] = device_num * 2 + 1;
-                }
-                else
-                {
-                    throw std::invalid_argument("Cannot parse N200 rx channel 1 array identifier");
-                }
-            }
-
-            // Determine which antenna TX channel 0 is connected to, if any
-            if (tx_channel_0.compare("") != 0)
-            {
-                if (tx_channel_0.substr(0, 1).compare("m") == 0)  // Connected to main array antenna
-                {
-                    antenna_num = boost::lexical_cast<uint32_t>(tx_channel_0.substr(1, std::string::npos));
-                    if (antenna_num >= main_antenna_count)
-                    {
-                        throw std::invalid_argument("tx channel 0 connected to main array antenna larger than antenna count");
-                    }
-                    tx_main_antenna_to_channel_map[antenna_num] = device_num;
-                }
-                else
-                {
-                    throw std::invalid_argument("Cannot connect N200 tx channel to intf array");
-                }
-            }
+            // Parse the antennas connected to each channel.
+            // Each N200 has 2 RX channels and 1 TX channel, so the channel number with respect to the multi-USRP object
+            // is calculated differently for each channel of a given N200.
+            processChannel(rx_channel_0, device_num * 2, main_antenna_count, intf_antenna_count,
+                           rx_main_antenna_to_channel_map, rx_intf_antenna_to_channel_map,
+                           tx_main_antenna_to_channel_map, true);
+            processChannel(rx_channel_1, device_num * 2 + 1, main_antenna_count, intf_antenna_count,
+                           rx_main_antenna_to_channel_map, rx_intf_antenna_to_channel_map,
+                           tx_main_antenna_to_channel_map, true);
+            processChannel(tx_channel_0, device_num, main_antenna_count, intf_antenna_count,
+                           rx_main_antenna_to_channel_map, rx_intf_antenna_to_channel_map,
+                           tx_main_antenna_to_channel_map, false);
 
             // Increment the active device counter
-            device_num = device_num + 1;
+            device_num++;
         }
     }
 
