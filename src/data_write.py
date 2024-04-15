@@ -1137,10 +1137,10 @@ class DataWrite(object):
             write_tx_data()
 
         write_time = time.perf_counter() - start
-        log.info("write time",
+        log.info("wrote record",
                  write_time=write_time * 1e3,
-                 write_time_units='ms',
-                 dataset_name=dataset_name)
+                 time_units='ms',
+                 dataset_name=datetime_string)
 
 
 def main():
@@ -1256,9 +1256,10 @@ def main():
                 start = time.perf_counter()
                 data_parsing.update(pd)
                 parse_time = time.perf_counter() - start
-                log.info("parse time",
+                log.info("parsed record",
                          parse_time=parse_time * 1e3,
-                         parse_time_units='ms')
+                         time_units='ms',
+                         slice_ids=[dset.slice_id for dset in pd.output_datasets])
 
             queued_sqns = []
 

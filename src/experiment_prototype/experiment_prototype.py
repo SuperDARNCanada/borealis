@@ -846,13 +846,13 @@ class ExperimentPrototype:
                     if len(seq.slice_ids) > max_num_concurrent_slices:
                         max_num_concurrent_slices = len(seq.slice_ids)
 
-        log.info(f"Number of Scan types: {len(self.__scan_objects)}")
-        log.info(f"Number of AveragingPeriods in Scan #1: {len(self.__scan_objects[0].aveperiods)}")
-        log.info(f"Number of Sequences in Scan #1, Averaging Period #1: "
+        log.verbose(f"Number of Scan types: {len(self.__scan_objects)}")
+        log.verbose(f"Number of AveragingPeriods in Scan #1: {len(self.__scan_objects[0].aveperiods)}")
+        log.verbose(f"Number of Sequences in Scan #1, Averaging Period #1: "
                  f"{len(self.__scan_objects[0].aveperiods[0].sequences)}")
-        log.info(f"Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: "
+        log.verbose(f"Number of Pulse Types in Scan #1, Averaging Period #1, Sequence #1: "
                  f"{len(self.__scan_objects[0].aveperiods[0].sequences[0].slice_dict)}")
-        log.info(f"Max concurrent slices: {max_num_concurrent_slices}")
+        log.verbose(f"Max concurrent slices: {max_num_concurrent_slices}")
 
     def get_slice_interfacing(self, slice_id):
         """
