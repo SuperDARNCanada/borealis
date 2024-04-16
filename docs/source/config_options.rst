@@ -23,53 +23,42 @@ Config Parameters
 |                                |                               | antennas, regardless of N200 status.  |
 +--------------------------------+-------------------------------+---------------------------------------+
 | n200s                          | | {                           | List of all N200s, both active and    |
-|                                | | addr : "192.168.10.100"     | not. Order of N200s is specified by   |
-|                                | | rx : true                   | main_antenna, so N200s can be listed  |
-|                                | | tx : true                   | out of order and more than the number |
-|                                | | rx_int : false              | of antennas can be stored here (extra |
-|                                | | main_antenna : "0"          | ones must have all flags set to       |
-|                                | | intf_antenna : ""           | false.) rx, tx, and rx_int set the    |
-|                                | | }, {                        | receive, transmit, and interferometer |
-|                                | | addr : "192.168.10.101"     | receive channels, respectively. The   |
-|                                | | rx : true                   | antenna numbers refer to the physical |
-|                                | | tx : false                  | antennas that are connected to the    |
-|                                | | rx_int : true               | N200s. The number of main and         |
-|                                | | main_antenna : "1"          | interferometer antennas that are      |
-|                                | | intf_antenna : "0"          | activated here must agree with the    |
-|                                | | }, ...                      | count variables specified above.      |
-|                                |                               | The ordering of the N200 parameters   |
-|                                |                               | doesn't matter.                       |
+|                                | | "addr" : "192.168.10.100",  | not. The value for each channel maps  |
+|                                | | "rx_channel_0" : "m0",      | to a physical antenna of the radar,   |
+|                                | | "rx_channel_1" : "i0",      | with the first digit either "m" for   |
+|                                | | "tx_channel_0" : "m0"       | main array or "i" for interferometer  |
+|                                | | }, {                        | array. TX channels can only be        |
+|                                | | "addr" : "192.168.10.101",  | connected to the main array. The      |
+|                                | | "rx_channel_0" : "m1",      | numbers after the array designator    |
+|                                | | "rx_channel_1" : "i1",      | are the antenna index into the array. |
+|                                | | "tx_channel_0" : "m1"       | The antenna index must lie between 0  |
+|                                | | }, ...                      | and the [main|intf]_antenna_count     |
+|                                |                               | fields above. The ordering of the     |
+|                                |                               | N200 parameters doesn't matter.       |
 +--------------------------------+-------------------------------+---------------------------------------+
 | addr (n200s)                   | 192.168.10.100                | IP address of the specified N200.     |
 +--------------------------------+-------------------------------+---------------------------------------+
-| rx (n200s)                     | true                          | Receive channel flag for a given      |
-|                                |                               | N200. Set to true to activate receive |
-|                                |                               | channel, and false to deactivate.     |
-|                                |                               | If N200 is disconnected, this must    |
-|                                |                               | be set to false.                      |
+| rx_channel_0 (n200s)           | m0                            | Antenna number connected to receive   |
+|                                |                               | channel 0 of the N200. The first      |
+|                                |                               | character indicates the array, and    |
+|                                |                               | the rest the index of the antenna.    |
+|                                |                               | Set to "" if the channel is           |
+|                                |                               | disconnected.                         |
 +--------------------------------+-------------------------------+---------------------------------------+
-| tx (n200s)                     | true                          | Transmit channel flag for a given     |
-|                                |                               | N200. Set to true to activate transmit|
-|                                |                               | channel, and false to deactivate.     |
-|                                |                               | If N200 is disconnected, this must    |
-|                                |                               | be set to false.                      |
+| rx_channel_1 (n200s)           | i0                            | Antenna number connected to receive   |
+|                                |                               | channel 1 of the N200. The first      |
+|                                |                               | character indicates the array, and    |
+|                                |                               | the rest the index of the antenna.    |
+|                                |                               | Set to "" if the channel is           |
+|                                |                               | disconnected.                         |
 +--------------------------------+-------------------------------+---------------------------------------+
-| rx_int (n200s)                 | false                         | Interferometer receive flag for a     |
-|                                |                               | given N200. Set to true to activate   |
-|                                |                               | the receive interferometer channel.   |
-|                                |                               | A physical interferometer must be     |
-|                                |                               | specified in int_antenna if this is   |
-|                                |                               | set to true. If N200 is disconnected, |
-|                                |                               | this must be set to false.            |
-+--------------------------------+-------------------------------+---------------------------------------+
-| main_antenna (n200s)           | 15                            | Physical antenna connected to this    |
-|                                |                               | N200. N200s are sorted according to   |
-|                                |                               | this value.                           |
-+--------------------------------+-------------------------------+---------------------------------------+
-| intf_antenna (n200s)           | 3                             | Physical interferometer antenna       |
-|                                |                               | connected to this N200. All antennas  |
-|                                |                               | not connected must be set to empty    |
-|                                |                               | string ("").                          |
+| tx_channel_0 (n200s)           | m0                            | Antenna number connected to transmit  |
+|                                |                               | channel 0 of the N200. The first      |
+|                                |                               | character indicates the array, and    |
+|                                |                               | the rest the index of the antenna.    |
+|                                |                               | The array specifier must be "m", if   |
+|                                |                               | set. Set to "" if the channel is      |
+|                                |                               | disconnected.                         |
 +--------------------------------+-------------------------------+---------------------------------------+
 | main_antenna_spacing           | 15.24                         | Distance between antennas (m).        |
 +--------------------------------+-------------------------------+---------------------------------------+
@@ -183,22 +172,33 @@ Config Parameters
 +--------------------------------+-------------------------------+---------------------------------------+
 | data_directory                 | /data/borealis_data           | Location of output data files.        |
 +--------------------------------+-------------------------------+---------------------------------------+
-| log_directory                  | /data/borealis_logs           | Location of output log files.         |
-+--------------------------------+-------------------------------+---------------------------------------+
-| log_level                      | INFO                          | The verbosity level of logging. Sets  |
-|                                |                               | the threshold for the detail of logs. |
-|                                |                               | Can be set to one of the following:   |
-|                                |                               | CRITICAL, ERROR, WARNING, INFO, DEBUG.|
-+--------------------------------+-------------------------------+---------------------------------------+
-| log_handlers                   | | {                           | Enable (true) or disable (false) the  |
-|                                | | "console" : true            | console logging, JSON file logging,   |
-|                                | | "logfile" : true            | and aggregator log forwarding         |
-|                                | | "aggregator" : true         | overrides.                            |
+| log_handlers                   | | {                           | Fields for controlling the Borealis   |
+|                                | | "console" : {},             | loggers. Supported log handlers are   |
+|                                | | "logfile" : {},             | console logging, JSON file logging,   |
+|                                | | "aggregator" : {},          | and aggregator log forwarding.        |
 |                                | | }                           |                                       |
 +--------------------------------+-------------------------------+---------------------------------------+
-| log_aggregator_addr            | 0.0.0.0                       | Address of log aggregator. Uses UDP.  |
+| console (log_handlers)         | | {                           | An enable flag and log level for      |
+|                                | | "enable" : true,            | the console log handler. Supported    |
+|                                | | "level" : "INFO"            | levels are "DEBUG", "VERBOSE",        |
+|                                | | }                           | "INFO", "WARNING", "ERROR", "NOTSET", |
+|                                |                               | and "CRITICAL", or a numeric value    |
+|                                |                               | between 0 and 50.                     |
 +--------------------------------+-------------------------------+---------------------------------------+
-| log_aggregator_port            | 12201                         | Port of log aggregator.               |
+| logfile (log_handlers)         | | {                           | An enable flag, log level, and        |
+|                                | | "enable" : true,            | path to a directory for storing log   |
+|                                | | "level" : "VERBOSE",        | files in. The log levels are the same |
+|                                | | "directory" :               | as for ``console`` above.             |
+|                                | |      "/data/borealis_logs"  |                                       |
+|                                | | }                           |                                       |
++--------------------------------+-------------------------------+---------------------------------------+
+| aggregator (log_handlers)      | | {                           | An enable flag, log level, and        |
+|                                | | "enable" : true,            | network address and port for          |
+|                                | | "level" : "INFO",           | aggregator log handling. The logs are |
+|                                | | "addr" : "0.0.0.0",         | then sent over the network for        |
+|                                | | "port" : "12201"            | collection by an aggregator such as   |
+|                                | | }                           | a graylog server. The log levels are  |
+|                                |                               | the same as for ``console`` above.    |
 +--------------------------------+-------------------------------+---------------------------------------+
 | hdw_path                       | /usr/local/hdw                | Path to locally cloned SuperDARN      |
 |                                |                               | hardware repository.                  |
@@ -212,57 +212,53 @@ There are several instances when you'll need to modify this file for correct ope
 #. One of your main array antennas is not working properly (broken coax, blown lightning arrestor,
    etc)
 
-    The rx and tx flags for the associated N200 should be set to false. This will disable the
-    receive and transmit channels, and stop the N200s from collecting samples from that antenna.
-    Note: If the N200 is also connected to an interferometer antenna, the interferometer antenna
-    will also have to be disconnected by setting rx_int to false, or moving it to a different N200.
+    The N200(s) with RX and TX channels connected to that antenna should have those channels set to ``""``.
+    This will disable transmission and reception on the antenna, while preserving the correct phasing
+    for beamforming on other channels.
 
 #. One of your interferometer array antennas is not working properly (broken coax, blown lightning
    arrestor, etc)
 
-    The rx_int flag for the associated N200 should be set to false. This will disable the
-    interferometer receive channel for that antenna, and stop the N200s from collecting samples from
-    that antenna.
+    The N200 with an RX channel connected to that antenna should have that channel set to ``""``.
+    This will disable reception from the antenna, while preserving the correct phasing for beamforming
+    data from other channels.
 
 #. One of your transmitter's transmit paths is not working, but the receive path is still working
    properly
 
-    The tx flag for the associated N200 should be set to false. This will disable the transmission
-    channel on the bad transmit path. **Note: This configuration does not work with the current
-    iteration of Borealis**
+    The ``tx_channel_0`` field for the associated N200 should be set to ``""``. This will disable the transmission
+    channel on the bad transmit path.
 
 #. One of your transmitter's receive paths is not working, but the transmit path is still working
    properly
 
-    The rx flag for the associated N200 should be set to false. This will disable the receive
-    channel on the bad receive path. **Note: This configuration does not work with the current
-    iteration of Borealis**
+    The ``rx_channel_#`` flag for the associated N200 should be set to ``""``. This will disable the receive
+    channel on the bad receive path.
 
 #. One of your transmitters is not working at all
 
-    The rx and tx flags for the N200 connected to the non-working transmitter should both be set to
-    false. This will disable the transmit and receive channels for that transmitter.
+    Ensure that no N200s have a channel set to use that corresponding antenna. For example, if the transmitter
+    for antenna 7 of the main array is broken, make sure no ``rx_channel_#`` or ``tx_channel_0`` fields are set
+    to ``"m7"``.
 
 #. One of your N200s is not working properly and you've inserted the spare N200
 
-    Add an entry for the replacement N200, and copy rx, tx, rx_int, main_antenna, and
-    interferometer_antenna from the broken N200. Set all the flags for the broken N200 to false, and
-    set main_antenna and interferometer_antenna to empty strings to deactivate the N200. The entry
-    for the broken N200 can be left in the config file for future use, as the code will ignore the
-    broken N200 and replace it with the new one.
+    Add an entry for the replacement N200, and copy ``rx_channel_0``, ``rx_channel_1``, and ``tx_channel_0``
+    fields from the broken N200. Make sure that the cables are transferred over, and verify that the cabling
+    matches with the antennas specified for each channel. The configuration for the broken N200 can be set to ``""``
+    for each channel. If all channels are set to ``""``, the N200 is ignored.
 
 #. One of your N200s is not working properly but you're located remotely and cannot insert the spare
    N200
 
-    This particular N200 will have to be deactivated. To do this, set all flags to false (tx, rx,
-    and rx_int).
+    This particular N200 will have to be deactivated. To do this, set all channel fields to ``""``.
 
 #. You have a non-standard array
 
     One example of a non-standard array would be a different number of interferometer antennas than
     four. To implement this, modify the individual N200 entries to specify which N200s are connected
     to interferometer antennas. Additionally, set the main and interferometer antenna count
-    parameters to the number of physical antennas in the array.
+    parameters to the number of physical antennas in each array.
 
 #. You want to change the location of ATR signals on the daughterboards
 
@@ -282,8 +278,8 @@ There are several instances when you'll need to modify this file for correct ope
 
     This can be done by changing the following parameters:
 
-    #. ``n200s`` - Set tx, rx, and rx_int flags to true for only one N200, all other N200s should
-       have their flags set to false.
+    #. ``n200s`` - Set ``tx_channel_0``, ``rx_channel_0``, and ``rx_channel_1`` fields for only one N200. All
+       others should have their channels set to ``""``.
 
     #. ``pps`` and ``ref`` - These should both be set to ``internal``, as you don't have an
        Octoclock to provide a reference PPS or 10MHz reference signal.
