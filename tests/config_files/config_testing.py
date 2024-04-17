@@ -31,6 +31,7 @@ sys.path.append(f"{BOREALISPATH}/src")
 
 from utils.options import Options
 
+
 class MockOptions(Options):
     """
     This class overrides the `__post_init__` method of `Options` to ensure that valid RADAR_ID values are set, so Options
@@ -45,6 +46,8 @@ class MockOptions(Options):
         self.parse_config()     # Parse info from config file
 
         os.environ['RADAR_ID'] = self.site_id   # Match the value from the config file, to hack a test in verify_options
+        self.parse_hdw()
+        self.parse_restrict()
         self.verify_options()   # Check that all parsed values are valid
 
 
@@ -441,6 +444,141 @@ class TestConfig(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, 'Two or more n200s have identical IP addresses'):
             MockOptions()
+
+    def testUnconnectedMainAntennaInExperimentSlice(self):
+        """ ExperimentSlice tries to use a main antenna for RX that is not connected to an N200 """
+        with open(Path(__file__).with_name('base_config.ini'), 'r') as f:
+            config = json.load(f)
+
+        config['n200s'] = config['n200s'][:1]  # Only keep the first n200
+        n200_0 = config['n200s'][0]
+        n200_0['rx_channel_0'] = 'm0'
+        n200_0['rx_channel_1'] = ''
+        n200_0['tx_channel_0'] = 'm0'
+        with open(f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', 'w') as f:
+            json.dump(config, f)
+
+        # Do this to avoid logging from ExperimentSlice
+        from utils import log_config
+        log = log_config.log(console=False, logfile=False, aggregator=False)
+
+        # Set up a slice to test with ExperimentSlice
+        from borealis_experiments import superdarn_common_fields as scf
+        slice_dict = {
+            "slice_id": 0,                          # arbitrary
+            "cpid": 0,                              # arbitrary
+            "tx_bandwidth": 5e6,                    # default
+            "rx_bandwidth": 5e6,                    # default
+            "output_rx_rate": 10e3/3,               # default
+            "transition_bandwidth": 750e3,          # default
+            "pulse_sequence": scf.SEQUENCE_7P,      # default
+            "tau_spacing": scf.TAU_SPACING_7P,      # default
+            "pulse_len": scf.PULSE_LEN_45KM,        # default
+            "num_ranges": 75,                       # default
+            "first_range": scf.STD_FIRST_RANGE,     # default
+            "intt": scf.INTT_7P,                    # default
+            "beam_angle": scf.STD_16_BEAM_ANGLE,    # default
+            "rx_beam_order": [0],                   # smallest base case
+            "tx_beam_order": [0],                   # smallest base case
+            "rx_main_antennas": [0, 1],             # This should fail since antenna 1 not specified in config above
+            "freq": scf.COMMON_MODE_FREQ_1,         # default
+        }
+
+        # Test that the ExperimentSlice object will raise an exception
+        from experiment_prototype import experiment_slice
+        experiment_slice.options = MockOptions()
+        with self.assertRaisesRegex(ValueError, 'RX main antenna 1 not specified in config file'):
+            experiment_slice.ExperimentSlice(**slice_dict)
+
+    def testUnconnectedIntfAntennaInExperimentSlice(self):
+        """ ExperimentSlice tries to use an intf antenna for RX that is not connected to an N200 """
+        with open(Path(__file__).with_name('base_config.ini'), 'r') as f:
+            config = json.load(f)
+
+        config['n200s'] = config['n200s'][:1]  # Only keep the first n200
+        n200_0 = config['n200s'][0]
+        n200_0['rx_channel_0'] = 'm0'
+        n200_0['rx_channel_1'] = 'i0'
+        n200_0['tx_channel_0'] = 'm0'
+        with open(f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', 'w') as f:
+            json.dump(config, f)
+
+        # Do this to avoid logging from ExperimentSlice
+        from utils import log_config
+        log = log_config.log(console=False, logfile=False, aggregator=False)
+
+        # Set up a slice to test with ExperimentSlice
+        from borealis_experiments import superdarn_common_fields as scf
+        slice_dict = {
+            "slice_id": 0,                          # arbitrary
+            "cpid": 0,                              # arbitrary
+            "tx_bandwidth": 5e6,                    # default
+            "rx_bandwidth": 5e6,                    # default
+            "output_rx_rate": 10e3/3,               # default
+            "transition_bandwidth": 750e3,          # default
+            "pulse_sequence": scf.SEQUENCE_7P,      # default
+            "tau_spacing": scf.TAU_SPACING_7P,      # default
+            "pulse_len": scf.PULSE_LEN_45KM,        # default
+            "num_ranges": 75,                       # default
+            "first_range": scf.STD_FIRST_RANGE,     # default
+            "intt": scf.INTT_7P,                    # default
+            "beam_angle": scf.STD_16_BEAM_ANGLE,    # default
+            "rx_beam_order": [0],                   # smallest base case
+            "tx_beam_order": [0],                   # smallest base case
+            "rx_intf_antennas": [0, 1],             # This should fail since antenna 1 not specified in config above
+            "freq": scf.COMMON_MODE_FREQ_1,         # default
+        }
+
+        # Test that the ExperimentSlice object will raise an exception
+        from experiment_prototype import experiment_slice
+        experiment_slice.options = MockOptions()
+        with self.assertRaisesRegex(ValueError, 'RX intf antenna 1 not specified in config file'):
+            experiment_slice.ExperimentSlice(**slice_dict)
+
+    def testUnconnectedTxAntennaInExperimentSlice(self):
+        """ ExperimentSlice tries to use a main antenna for TX that is not connected to an N200 """
+        with open(Path(__file__).with_name('base_config.ini'), 'r') as f:
+            config = json.load(f)
+
+        config['n200s'] = config['n200s'][:1]  # Only keep the first n200
+        n200_0 = config['n200s'][0]
+        n200_0['rx_channel_0'] = 'm0'
+        n200_0['rx_channel_1'] = ''
+        n200_0['tx_channel_0'] = 'm0'
+        with open(f'{os.environ["BOREALISPATH"]}/config/test/test_config.ini', 'w') as f:
+            json.dump(config, f)
+
+        # Do this to avoid logging from ExperimentSlice
+        from utils import log_config
+        log = log_config.log(console=False, logfile=False, aggregator=False)
+
+        # Set up a slice to test with ExperimentSlice
+        from borealis_experiments import superdarn_common_fields as scf
+        slice_dict = {
+            "slice_id": 0,                          # arbitrary
+            "cpid": 0,                              # arbitrary
+            "tx_bandwidth": 5e6,                    # default
+            "rx_bandwidth": 5e6,                    # default
+            "output_rx_rate": 10e3/3,               # default
+            "transition_bandwidth": 750e3,          # default
+            "pulse_sequence": scf.SEQUENCE_7P,      # default
+            "tau_spacing": scf.TAU_SPACING_7P,      # default
+            "pulse_len": scf.PULSE_LEN_45KM,        # default
+            "num_ranges": 75,                       # default
+            "first_range": scf.STD_FIRST_RANGE,     # default
+            "intt": scf.INTT_7P,                    # default
+            "beam_angle": scf.STD_16_BEAM_ANGLE,    # default
+            "rx_beam_order": [0],                   # smallest base case
+            "tx_beam_order": [0],                   # smallest base case
+            "tx_antennas": [0, 1],                  # This should fail since antenna 1 not specified in config above
+            "freq": scf.COMMON_MODE_FREQ_1,         # default
+        }
+
+        # Test that the ExperimentSlice object will raise an exception
+        from experiment_prototype import experiment_slice
+        experiment_slice.options = MockOptions()
+        with self.assertRaisesRegex(ValueError, 'TX antenna 1 not specified in config file'):
+            experiment_slice.ExperimentSlice(**slice_dict)
 
 
 if __name__ == '__main__':
