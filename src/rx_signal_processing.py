@@ -219,9 +219,9 @@ def main():
                 dm_rates.append(stage.dm_rate)
                 dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
                 taps_per_stage.append(len(stage.filter_taps))
-            log.info("stage decimation and filter taps",
-                     decimation_rates=dm_rates,
-                     filter_taps_per_stage=taps_per_stage)
+            log.verbose("stage decimation and filter taps",
+                        decimation_rates=dm_rates,
+                        filter_taps_per_stage=taps_per_stage)
 
             dm_rates = np.array(dm_rates, dtype=np.uint32)
 
@@ -346,16 +346,17 @@ def main():
             so.send_bytes(dspend_to_brian, options.brian_to_dspend_identity, msg)
             log_dict["dsp_end_msg_time"] = (time.perf_counter() - mark_timer) * 1e3
 
-            log_dict["total_sequence_process_time"] = (time.perf_counter() - start_timer) * 1e3
-            log.info("processing sequence",
-                     sequence_num=sequence_num,
-                     mixing_freqs=mixing_freqs,
-                     mixing_freqs_units='Hz',
-                     main_beam_angles=main_beam_angles.shape,
-                     intf_beam_angles=main_beam_angles.shape,
-                     main_buffer_shape=main_sequence_samples_shape,
-                     intf_buffer_shape=intf_sequence_samples_shape,
-                     **log_dict)
+            total_processing_time = (time.perf_counter() - start_timer) * 1e3
+            log_dict["total_sequence_process_time"] = total_processing_time
+            log.verbose("processing sequence",
+                        sequence_num=sequence_num,
+                        mixing_freqs=mixing_freqs,
+                        mixing_freqs_units='Hz',
+                        main_beam_angles=main_beam_angles.shape,
+                        intf_beam_angles=main_beam_angles.shape,
+                        main_buffer_shape=main_sequence_samples_shape,
+                        intf_buffer_shape=intf_sequence_samples_shape,
+                        **log_dict)
 
             # Generate a new timer dict for a uniform log
             log_dict = {"time_units": "ms"}
@@ -459,9 +460,14 @@ def main():
             so.send_bytes(dsp_to_dw, options.dw_to_dsp_identity, sqn_message)
 
             log_dict["total_serialize_send_time"] = (time.perf_counter() - start_timer) * 1e3
-            log.info("processing sequence",
+            log.info("done with sequence",
                      sequence_num=sequence_num,
-                     **log_dict)
+                     processing_time=total_processing_time,
+                     time_units='ms',
+                     slice_ids=[d['slice_id'] for d in slice_details])
+            log.verbose("sequence timing",
+                        sequence_num=sequence_num,
+                        **log_dict)
 
         args = {"sequence_num": copy.deepcopy(sqn_meta_message.sequence_num),
                 "main_beam_angles": copy.deepcopy(main_beam_angles),

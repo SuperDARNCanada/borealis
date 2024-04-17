@@ -33,7 +33,7 @@ import sys
 from .options import Options
 # We need these two handlers from logging to print to a file and stdout
 import logging
-from logging import StreamHandler
+from logging import StreamHandler, FileHandler
 from logging.handlers import TimedRotatingFileHandler
 import structlog
 import graypy
@@ -41,6 +41,80 @@ import graypy
 import rich
 from rich import pretty
 rich.pretty.install()
+
+
+VERBOSE = logging.INFO - 5  #: New logging level, set between `DEBUG` and `INFO`.
+
+
+class VerboseLogger(structlog.BoundLoggerBase):
+    """
+    Wrapper class that adds a new logging method `verbose` between `debug` and `info` levels.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        setattr(self._logger, 'verbose', self._verbose)     # Create the new `verbose` method.
+
+    def debug(self, *args, **kwargs):
+        return self._proxy_to_logger("debug", *args, **kwargs)
+
+    def verbose(self, *args, **kwargs):
+        return self._proxy_to_logger("verbose", *args, **kwargs)
+
+    def _verbose(self, msg, *args, **kwargs):
+        """ Log msg at the `VERBOSE` level """
+        return self._logger._log(VERBOSE, msg, args, **kwargs)
+
+    def info(self, *args, **kwargs):
+        return self._proxy_to_logger("info", *args, **kwargs)
+
+    def warning(self, *args, **kwargs):
+        return self._proxy_to_logger("warning", *args, **kwargs)
+
+    def error(self, *args, **kwargs):
+        return self._proxy_to_logger("error", *args, **kwargs)
+
+    def critical(self, *args, **kwargs):
+        return self._proxy_to_logger("critical", *args, **kwargs)
+
+
+def add_logging_level(level_name, level_num, method_name=None):
+    """
+    Modified from https://stackoverflow.com/a/35804945
+
+    Comprehensively adds a new logging level to the `logging` module and the
+    currently configured logging class.
+
+    `levelName` becomes an attribute of the `logging` module with the value
+    `levelNum`. `methodName` becomes a convenience method for both `logging`
+    itself and the class returned by `logging.getLoggerClass()` (usually just
+    `logging.Logger`). If `methodName` is not specified, `levelName.lower()` is
+    used.
+
+    To avoid accidental clobberings of existing attributes, this method will
+    raise an `AttributeError` if the level name is already an attribute of the
+    `logging` module or if the method name is already present
+
+    Example
+    -------
+    >>> add_logging_level('TRACE', logging.DEBUG - 5)
+    >>> logging.getLogger(__name__).setLevel("TRACE")
+    >>> logging.getLogger(__name__).trace('that worked')
+    >>> logging.trace('so did this')
+    >>> logging.TRACE
+    5
+
+    """
+    if not method_name:
+        method_name = level_name.lower()
+
+    if hasattr(logging, level_name):
+        raise AttributeError(f'{level_name} already defined in logging module')
+    if hasattr(logging, method_name):
+        raise AttributeError(f'{method_name} already defined in logging module')
+    if hasattr(logging.getLoggerClass(), method_name):
+        raise AttributeError(f'{method_name} already defined in logger class')
+
+    logging.addLevelName(level_num, level_name.upper())
 
 
 def swap_logger_name(_, __, event_dict):
@@ -68,16 +142,23 @@ def format_floats(_, __, event_dict):
     return event_dict
 
 
-def log(log_level=None, console=None, logfile=None, aggregator=None):
+def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=None, console=None, logfile=None,
+        aggregator=None, json_to_console=False):
     """
-    :param log_level: Logging threshold [CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET]
-    :type log_level: str
+    :param console_log_level: Logging threshold for console renderer [CRITICAL, ERROR, WARNING, INFO, VERBOSE, DEBUG, NOTSET]
+    :type console_log_level: str | int
+    :param logfile_log_level: Logging threshold for logfile renderer [CRITICAL, ERROR, WARNING, INFO, VERBOSE, DEBUG, NOTSET]
+    :type logfile_log_level: str | int
+    :param aggregator_log_level: Logging threshold for aggregator renderer [CRITICAL, ERROR, WARNING, VERBOSE, INFO, DEBUG, NOTSET]
+    :type aggregator_log_level: str | int
     :param console: Enable (True) or Disable (False) console logging override
     :type console: bool
     :param logfile: Enable (True) or Disable (False) JSON file logging override
     :type logfile: bool
     :param aggregator: Enable (True) or Disable (False) aggregator log forwarding override
     :type aggregator: bool
+    :param json_to_console: Enable (True) or Disable (False) a logger that converts JSON logs to console-style
+    :type json_to_console: bool
 
     :notes:
     There are three parts to logging; processors, renderers, and handlers.
@@ -85,6 +166,11 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
         renderers - make the log message a string, json, dict, etc. with fancy styling
         handlers -  print the rendered data to stdout, file, stream, etc.
     """
+    if json_to_console and (console or logfile or aggregator):
+        raise RuntimeError("Cannot convert a JSON logfile while simultaneously logging")
+
+    if 'verbose' not in vars(logging):      # Ensure that add_logging_level is only called once
+        add_logging_level('verbose', logging.INFO - 5)  # Create a new logging level in between DEBUG and INFO
 
     # Obtain the module name that imported this log_config
     caller = Path(inspect.stack()[-1].filename)
@@ -94,15 +180,17 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
     options = Options()
 
     # If no override log level is set load the config log level
-    if log_level is None:
-        log_level = options.log_level
+    if console_log_level is None:
+        console_log_level = options.console_log_level
+    if logfile_log_level is None:
+        logfile_log_level = options.logfile_log_level
+    if aggregator_log_level is None:
+        aggregator_log_level = options.aggregator_log_level
+
     if console is None:
         console = options.log_console_bool
     if logfile is None:
         logfile = options.log_logfile_bool
-        # Set the log file and dir path. The time tag will be appended at the midnight
-        # roll over by the TimedRotatingLogHandler.
-        log_file = f"{options.log_directory}/{module_name}"
     if aggregator is None:
         aggregator = options.log_aggregator_bool
 
@@ -110,21 +198,30 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
     shared_processors = [
         structlog.stdlib.add_logger_name,  # Add the name of the logger to event dict
         structlog.stdlib.add_log_level,  # Add log level to event dict
+        structlog.stdlib.add_log_level_number,  # Add numeric log level to event dict
         structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add ISO-8601 timestamp
         structlog.processors.UnicodeDecoder(),  # Decode byte strings to unicode strings
-        ]
+    ]
 
-    # Configure structlog here once for everything so that every log is uniformly formatted
-    # noinspection PyTypeChecker
-    structlog.configure(
-        processors=
-        [
-            structlog.stdlib.add_logger_name,  # Add the name of the logger to event dict
-            structlog.stdlib.add_log_level,  # Add log level to event dict
-            structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add ISO-8601 timestamp
-            structlog.processors.UnicodeDecoder(),  # Decode byte strings to unicode strings
-            structlog.stdlib.filter_by_level,  # Abort pipeline on log levels lower than threshold
-            structlog.processors.StackInfoRenderer(),  # Move "stack_info" in event_dict to "stack" and render
+    processors = [
+        structlog.stdlib.add_log_level,             # Add log level to event dict
+        structlog.processors.UnicodeDecoder(),      # Decode byte strings to unicode strings
+        structlog.processors.StackInfoRenderer(),   # Move "stack_info" in event_dict to "stack" and render
+        # The last processor has to be a renderer to render the log to file, stream, etc. in some style
+        # This wrapper lets us decide on the renderer later. This is needed to have two renderers.
+        structlog.stdlib.ProcessorFormatter.wrap_for_formatter
+    ]
+
+    # Add additional processors for all cases when not simply converting a logfile
+    if not json_to_console:
+        additional_processors = [
+            structlog.stdlib.add_logger_name,       # Add the name of the logger
+            structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add timestamps to the log
+        ]
+        processors = additional_processors + processors
+
+        # The last processor has to be a renderer, so we insert just before last
+        processors.insert(-2,
             structlog.processors.CallsiteParameterAdder(  # Add items from the call enum
                 {
                     structlog.processors.CallsiteParameter.FUNC_NAME,  # function name
@@ -133,13 +230,17 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
                     # structlog.processors.CallsiteParameter.THREAD,  # thread ID
                     # structlog.processors.CallsiteParameter.FILENAME,  # file name
                     # structlog.processors.CallsiteParameter.LINENO,  # line number
+                },
+                # Ignore any function from this module when attributing a log to a function
+                additional_ignores=["utils.log_config"]
+            )
+        )
 
-                }),
-            # The last processor has to be a renderer to render the log to file, stream, etc. in some style
-            # This wrapper lets us decide on the renderer later. This is needed to have two renderers.
-            structlog.stdlib.ProcessorFormatter.wrap_for_formatter
-        ],
-        wrapper_class=structlog.stdlib.BoundLogger,  # Structlog wrapper class to imitate 'logging.Logger`
+    # Configure structlog here once for everything so that every log is uniformly formatted
+    # noinspection PyTypeChecker
+    structlog.configure(
+        processors=processors,
+        wrapper_class=VerboseLogger, # Structlog wrapper class to imitate `logging.Logger`
         logger_factory=structlog.stdlib.LoggerFactory(),  # Creates the wrapped loggers
         cache_logger_on_first_use=True  # Freeze the configuration (no tampering!)
     )
@@ -147,25 +248,33 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
     # Get the logging logger object and attach both handlers
     root_logger = logging.getLogger()
     # Set the logging level that was configured by the start options
-    root_logger.setLevel(log_level)
+    root_logger.setLevel(logging.NOTSET)
 
     # Set up the first handler to pipe logs to stdout
     if console:
         console_handler = StreamHandler(sys.stdout)
+        console_handler.setLevel(console_log_level)
+        styles = structlog.dev.ConsoleRenderer.get_default_level_styles(colors=True)
+        styles['verbose'] = styles['info']      # Use the info style when logging a verbose message
         console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=shared_processors,  # These run on logs that do not come from structlog
             processors=[swap_logger_name,
                         structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                         format_floats,
-                        structlog.dev.ConsoleRenderer(sort_keys=False, colors=True)]))
+                        structlog.dev.ConsoleRenderer(sort_keys=False, colors=True, level_styles=styles)]))
         root_logger.addHandler(console_handler)
 
     # Set up the second handler to pipe logs to a JSON file that rotates at midnight
     if logfile:
+        # Set the log file and dir path. The time tag will be appended at the midnight
+        # roll over by the TimedRotatingLogHandler.
+        log_file = f"{options.log_directory}/{module_name}"
         logfile_handler = TimedRotatingFileHandler(filename=log_file, when='midnight', utc=True)
+        logfile_handler.setLevel(logfile_log_level)
         logfile_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=shared_processors,  # These run on logs that do not come from structlog
-            processors=[structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),  # Add Unix timestamp
+            processors=[structlog.processors.TimeStamper(key='unix_timestamp', fmt=None, utc=True),
+                        # Add Unix timestamp
                         structlog.processors.dict_tracebacks,  # Makes tracebacks dict rather than str
                         structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes _records
                         structlog.processors.JSONRenderer(sort_keys=False)]))
@@ -177,11 +286,25 @@ def log(log_level=None, console=None, logfile=None, aggregator=None):
     if aggregator:
         aggregator_handler = graypy.GELFUDPHandler(options.log_aggregator_addr,
                                                    options.log_aggregator_port)
+        aggregator_handler.setLevel(aggregator_log_level)
         aggregator_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
             foreign_pre_chain=shared_processors,  # These run on logs that do not come from structlog
             processors=[structlog.stdlib.ProcessorFormatter.remove_processors_meta,  # Removes _records
                         structlog.processors.JSONRenderer(sort_keys=False)]))
         root_logger.addHandler(aggregator_handler)
+
+    if json_to_console:
+        json_to_console_handler = StreamHandler(sys.stdout)
+        styles = structlog.dev.ConsoleRenderer.get_default_level_styles(colors=True)
+        styles['verbose'] = styles['info']  # Use the info style when logging a verbose message
+        json_to_console_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
+            processors=[
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                format_floats,
+                structlog.dev.ConsoleRenderer(sort_keys=False, colors=True, level_styles=styles)
+            ]
+        ))
+        root_logger.addHandler(json_to_console_handler)
 
     # Apply the configuration
     structlog.configure()

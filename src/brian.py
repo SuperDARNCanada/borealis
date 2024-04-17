@@ -149,21 +149,21 @@ def sequence_timing(options):
                 if TIME_PROFILE:
                     time_mark = time.perf_counter() - time_now
                     time_now = time.perf_counter()
-                    log.info(f"driver ready", driver_time=time_mark)
+                    log.verbose(f"driver ready", driver_time=time_mark)
                 want_to_start = True
 
             if message == "good_to_start":
                 if TIME_PROFILE:
                     time_mark = time.perf_counter() - time_now
                     time_now = time.perf_counter()
-                    log.info(f"copied to gpu", copy2gpu_time=time_mark)
+                    log.verbose(f"copied to gpu", copy2gpu_time=time_mark)
                 good_to_start = True
 
             if message == "extra_good_to_start":
                 if TIME_PROFILE:
                     time_mark = time.perf_counter() - time_now
                     time_now = time.perf_counter()
-                    log.info(f"dsp done with data", dsp_time=time_mark)
+                    log.verbose(f"dsp done with data", dsp_time=time_mark)
                 dsp_finish_counter = 1
 
     thread = threading.Thread(target=start_new)

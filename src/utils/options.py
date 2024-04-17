@@ -31,7 +31,9 @@ class Options:
     log_aggregator_port: int = field(init=False)
     log_console_bool: bool = field(init=False)
     log_directory: str = field(init=False)
-    log_level: str = field(init=False)
+    console_log_level: str = field(init=False)
+    logfile_log_level: str = field(init=False)
+    aggregator_log_level: str = field(init=False)
     log_logfile_bool: bool = field(init=False)
     rx_main_antennas: list[int] = field(init=False)
     tx_main_antennas: list[int] = field(init=False)
@@ -230,15 +232,17 @@ class Options:
         self.ringbuffer_name = raw_config["ringbuffer_name"]
 
         self.data_directory = raw_config["data_directory"]
-        self.log_directory = raw_config["log_directory"]
+        self.log_directory = raw_config["log_handlers"]["logfile"]["directory"]
         self.hdw_path = raw_config['hdw_path']
 
-        self.log_level = raw_config["log_level"]
-        self.log_console_bool = raw_config["log_handlers"]["console"]
-        self.log_logfile_bool = raw_config["log_handlers"]["logfile"]
-        self.log_aggregator_bool = raw_config["log_handlers"]["aggregator"]
-        self.log_aggregator_addr = raw_config["log_aggregator_addr"]
-        self.log_aggregator_port = int(raw_config["log_aggregator_port"])
+        self.console_log_level = raw_config["log_handlers"]["console"]["level"]
+        self.logfile_log_level = raw_config["log_handlers"]["logfile"]["level"]
+        self.aggregator_log_level = raw_config["log_handlers"]["aggregator"]["level"]
+        self.log_console_bool = raw_config["log_handlers"]["console"]["enable"]
+        self.log_logfile_bool = raw_config["log_handlers"]["logfile"]["enable"]
+        self.log_aggregator_bool = raw_config["log_handlers"]["aggregator"]["enable"]
+        self.log_aggregator_addr = raw_config["log_handlers"]["aggregator"]["addr"]
+        self.log_aggregator_port = int(raw_config["log_handlers"]["aggregator"]["port"])
 
     def parse_hdw(self):
         # Load information from the hardware file
