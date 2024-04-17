@@ -204,6 +204,12 @@ Config Parameters
 |                                |                               | hardware repository.                  |
 +--------------------------------+-------------------------------+---------------------------------------+
 
+---------------------
+Testing a config file
+---------------------
+A test script is available for verifying the fields of your configuration file. This script is detailed further
+:ref:`here. <Config Testing>`
+
 ----------------------
 Example configurations
 ----------------------

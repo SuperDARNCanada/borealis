@@ -44,14 +44,12 @@ has helped to make the Borealis system as successful as it is today!
 
 Limitations
 -----------
-Current limitations as of March, 2023:
+Current limitations as of April, 2024:
 
 - Borealis does not implement clear frequency search before transmitting. Only fixed frequencies
   are used
 - The 5MHz transmit and receive bandwidths are effectively only 3.5MHz wide, as the transmit
   waveform near the edges of the band seem to have issues. This requires further investigation
-- There is currently no ability to tune centre frequencies of the USRP units in real-time
-- All slices of an experiment must have the same decimation scheme
 
 
 Roadmap

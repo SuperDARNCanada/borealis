@@ -100,7 +100,7 @@ DriverOptions::DriverOptions() {
         }
 
         // If current N200 is connected to an antenna on any channel, add to devices_
-        if (!rx_channel_0.empty() || !rx_channel_1.empty || !tx_channel_0.empty) {
+        if (!rx_channel_0.empty() || !rx_channel_1.empty() || !tx_channel_0.empty()) {
             devices_ = devices_ + ",addr" + std::to_string(device_num) + "=" + addr;
 
             // Parse the antennas connected to each channel.
