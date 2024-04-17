@@ -349,12 +349,6 @@ class Options:
                 raise ValueError('rx_intf_antennas and intf_antenna_count are not consistent')
             if len(self.rx_intf_antennas) != len(set(self.rx_intf_antennas)):
                 raise ValueError("rx_intf_antennas has duplicate values")
-        if len(self.rx_main_antennas) != len(set(self.rx_main_antennas)):
-            raise ValueError('rx_main_antennas contains duplicate values')
-        if len(self.tx_main_antennas) != len(set(self.tx_main_antennas)):
-            raise ValueError('tx_main_antennas contains duplicate values')
-        if len(self.rx_intf_antennas) != len(set(self.rx_intf_antennas)):
-            raise ValueError('rx_intf_antennas contains duplicate values')
 
         # TODO: Test that realtime_address and router_address are valid addresses
 

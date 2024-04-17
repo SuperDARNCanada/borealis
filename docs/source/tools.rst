@@ -129,6 +129,18 @@ experiments which, for example:
 
 In any of these circumstances, it is important to design a filter which works for the situation at hand.
 
+.. _Config Testing:
+
+-------------------
+Config File Testing
+-------------------
+
+A Python ``unittest`` script is located in ``tests/config_files`` directory.
+
+.. automodule:: tests.config_files.config_testing
+    :noindex:
+    :no-members:
+
 .. _NTP:
 
 ---
