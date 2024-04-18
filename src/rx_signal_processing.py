@@ -491,6 +491,8 @@ if __name__ == "__main__":
 
     log = log_config.log()
     log.info(f"RX_SIGNAL_PROCESSING BOOTED")
+    if not cupy_available:
+        log.warning("cupy not installed")
     try:
         main()
         log.info(f"RX_SIGNAL_PROCESSING EXITED")
