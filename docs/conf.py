@@ -68,7 +68,7 @@ if on_rtd:  # Only run following changes on ReadTheDocs
 
     # Create data and log directory that RTD can see so no errors are thrown
     run(['mkdir', '-p', raw_config['data_directory']])
-    run(['mkdir', '-p', raw_config['log_directory']])
+    run(['mkdir', '-p', raw_config['log_handlers']['logfile']['directory']])
 
 
 # -- General configuration ------------------------------------------------
