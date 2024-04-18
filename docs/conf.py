@@ -59,7 +59,7 @@ if on_rtd:  # Only run following changes on ReadTheDocs
         raw_config = json.load(file)
     raw_config['hdw_path'] = f'{BOREALISPATH}/hdw'
     raw_config['data_directory'] = f'{BOREALISPATH}/borealis_data'
-    raw_config['log_directory'] = f'{BOREALISPATH}/borealis_logs'
+    raw_config['log_handlers']['logfile']['directory'] = f'{BOREALISPATH}/borealis_logs'
     with open(config_file, 'w') as file:
         json.dump(raw_config, file)
 
