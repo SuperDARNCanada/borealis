@@ -293,6 +293,7 @@ def main():
 
             errors = False
             today = datetime.datetime.utcnow()
+            emailer = email_utils.Emailer(emails_filepath)
             scd_error_log = today.strftime("/scd_errors.%Y%m%d")
 
             for se, site_scd in zip(site_experiments, site_scds):

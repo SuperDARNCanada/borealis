@@ -166,11 +166,11 @@ class Sequence(InterfaceClassBase):
                 # main_phase_shift: [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
                 # phased_samps_for_beams: [num_beams, num_antennas, num_samples]
-                log.info("slice information",
-                         slice_id=slice_id,
-                         tx_main_phases=tx_main_phase_shift,
-                         tx_main_magnitudes=np.abs(tx_main_phase_shift),
-                         tx_main_angles=np.rad2deg(np.angle(tx_main_phase_shift)))
+                log.verbose("slice information",
+                            slice_id=slice_id,
+                            tx_main_phases=tx_main_phase_shift,
+                            tx_main_magnitudes=np.abs(tx_main_phase_shift),
+                            tx_main_angles=np.rad2deg(np.angle(tx_main_phase_shift)))
                 phased_samps_for_beams = np.einsum('ij,k->ijk', tx_main_phase_shift, basic_samples)
                 self.basic_slice_pulses[slice_id] = phased_samps_for_beams
             else:
@@ -326,7 +326,7 @@ class Sequence(InterfaceClassBase):
         for i, cpm in enumerate(combined_pulses_metadata):
             # message = f"Pulse {i}: start time(us) {cpm['start_time_us']}  start sample {cpm['pulse_sample_start']}"
             # message += f"          pulse length(us) {cpm['total_pulse_len']}  pulse num samples {cpm['total_num_samps']}"
-            log.info("pulse information", **cpm)
+            log.verbose("pulse information", **cpm)
 
         self.combined_pulses_metadata = combined_pulses_metadata
 

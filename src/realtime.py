@@ -42,7 +42,7 @@ def main():
             # TODO: Make sure we only process the first slice for simultaneous multi-slice data for now
             try:
                 record = sorted(list(rawacf_data.keys()))[0]
-                log.info("using pydarnio to convert", record=record)
+                log.info("converting record", record=record)
                 converted = pydarnio.BorealisConvert.\
                     _BorealisConvert__convert_rawacf_record(0, (record, rawacf_data[record]), "")
             except pydarnio.borealis_exceptions.BorealisConvert2RawacfError:
@@ -53,7 +53,7 @@ def main():
                 fit_data = fitacf._fit(rec)
                 tmp = fit_data.copy()
 
-                # Can't jsonify numpy so we convert to native types for realtime purposes.
+                # Can't jsonify numpy, so we convert to native types for realtime purposes.
                 for k, v in fit_data.items():
                     if hasattr(v, 'dtype'):
                         if isinstance(v, np.ndarray):
