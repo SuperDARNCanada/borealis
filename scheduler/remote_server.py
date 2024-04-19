@@ -23,10 +23,12 @@ import datetime
 import argparse
 import copy
 import subprocess as sp
+import sys
 
 import scd_utils
-import email_utils
-import remote_server_options as rso
+
+sys.path.append(f'{os.environ["BOREALISPATH"]}/src')
+from utils.options import Options
 
 
 def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwargs='', embargo=False):
@@ -39,8 +41,7 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     :type   experiment:         str
     :param  scheduling_mode:    The scheduling mode to run
     :type   scheduling_mode:    str
-    :param  first_event_flag:   Flag to signal whether the experiment is the first to run (Default
-                                value = False)
+    :param  first_event_flag:   Flag to signal whether the experiment is the first to run (Default value = False)
     :type   first_event_flag:   bool
     :param  kwargs:             String of keyword arguments to run steamed hams (Default value = '')
     :type   kwargs:             str
@@ -50,7 +51,7 @@ def format_to_atq(dt, experiment, scheduling_mode, first_event_flag=False, kwarg
     :returns:   Formatted atq str.
     :rtype:     str
     """
-    borealis_path=os.environ['BOREALISPATH']
+    borealis_path = os.environ['BOREALISPATH']
 
     start_cmd = f"echo 'screen -d -m -S starter {borealis_path}/scripts/steamed_hams.py {experiment} release {scheduling_mode}"
     if embargo:
@@ -333,27 +334,21 @@ def timeline_to_atq(timeline, scd_dir, time_of_interest, site_id):
 def _main():
     """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new SCD file entries")
-    parser.add_argument('--emails-filepath', help='A list of emails to send logs to')
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
 
     args = parser.parse_args()
 
     scd_dir = args.scd_dir
-    
-    if args.emails_filepath is None:
-        emails_filepath = f"{scd_dir}/emails.txt"
-    else:
-        emails_filepath = args.emails_filepath
 
     inot = inotify.adapters.Inotify()
 
-    options = rso.RemoteServerOptions()
+    options = Options()
     site_id = options.site_id
 
     scd_file = f"{scd_dir}/{site_id}.scd"
 
     inot.add_watch(scd_file)
-    scd_util = scd_utils.SCDUtils(scd_file)
+    scd_util = scd_utils.SCDUtils(scd_file, site_id)
 
     log_dir = f"{scd_dir}/logs"
 
@@ -362,7 +357,6 @@ def _main():
 
     def make_schedule():
         print("Making schedule...")
-        emailer = email_utils.Emailer(emails_filepath)
 
         time_of_interest = datetime.datetime.utcnow()
 
@@ -375,7 +369,7 @@ def _main():
             hhmm = time_of_interest.strftime("%H:%M")
             relevant_lines = scd_util.get_relevant_lines(yyyymmdd, hhmm)
             for line in relevant_lines:
-                scd_util.test_line_experiment(line)
+                scd_util.test_line(line)
         except (IndexError, ValueError) as e:
             logtime = time_of_interest.strftime("%c")
             error_msg = f"{logtime}: Unable to make schedule\n\t Exception thrown:\n\t\t {str(e)}\n"
@@ -383,9 +377,6 @@ def _main():
                 f.write(log_msg_header)
                 f.write(error_msg)
 
-            subject = f"Unable to make schedule at {site_id}"
-
-            emailer.email_log(subject, log_file)
         else:
 
             timeline, warnings = convert_scd_to_timeline(relevant_lines, time_of_interest)
@@ -398,9 +389,6 @@ def _main():
                 f.write("\n".encode())
                 for warning in warnings:
                     f.write(f"\n{warning}".encode())
-
-            subject = f"Successfully scheduled commands at {site_id}"
-            emailer.email_log(subject, log_file)
 
     start_time = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     print(f"\n{start_time} - Scheduler booted")
@@ -430,12 +418,12 @@ def _main():
             print(f"Events triggered: {event_types}]")
             if site_id in path:
                 if all(i in event_types for i in ["IN_OPEN", "IN_ACCESS", "IN_CLOSE_WRITE"]):
-                    scd_utils.SCDUtils(path)
+                    scd_utils.SCDUtils(path, site_id)
                     make_schedule()
 
                 # Nextcloud/Vim triggers
                 if all(i in event_types for i in ["IN_ATTRIB", "IN_DELETE_SELF", "IN_IGNORED"]):
-                    scd_utils.SCDUtils(path)
+                    scd_utils.SCDUtils(path, site_id)
                     make_schedule()
                     new_notify = True
 

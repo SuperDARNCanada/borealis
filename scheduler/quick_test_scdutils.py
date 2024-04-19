@@ -4,7 +4,7 @@ import scd_utils
 if __name__ == "__main__":
     filename = sys.argv[1]
 
-    scd_util = scd_utils.SCDUtils(filename)
+    scd_util = scd_utils.SCDUtils(filename, 'sas')
 
     scd_util.add_line("20190404", "10:43", "twofsound", 'common')
     #scd_util.add_line("04/04/2019", "10:43", "twofsound")

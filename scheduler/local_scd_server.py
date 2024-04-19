@@ -18,7 +18,6 @@ import argparse
 BOREALISPATH = os.environ['BOREALISPATH']
 sys.path.append(f"{BOREALISPATH}/scheduler")
 import scd_utils
-import email_utils
 
 
 SWG_GIT_REPO_DIR = 'schedules'
@@ -231,7 +230,7 @@ class SWG(object):
                 mode_to_use = modes["discretionary_time"]
 
             if not mode_to_use or not mode_type:
-                print(f"SWG line couldn't be parsed, continuing: {line}")
+                raise ValueError(f"SWG line couldn't be parsed, continuing: {line}")
                 continue
             param = {f"yyyymmdd": f"{year}{month}{start_day}",
                      f"hhmm": f"{start_hr}:00",
@@ -247,7 +246,6 @@ def main():
     """ """
     parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
     parser.add_argument('--scd-dir', required=True, help='The scd working directory')
-    parser.add_argument('--emails-filepath', help='A list of emails to send logs to')
     parser.add_argument('--force', action="store_true", help='Force an update to the schedules '
                                                              'for the next month')
     parser.add_argument('--first-run', action="store_true", 
@@ -261,13 +259,6 @@ def main():
     scd_dir = args.scd_dir
     scd_logs = scd_dir + "/logs"
 
-    if args.emails_filepath is None:
-        emails_filepath = f"{scd_dir}/emails.txt"
-    else:
-        emails_filepath = args.emails_filepath
-
-    emailer = email_utils.Emailer(emails_filepath)
-
     if not os.path.exists(scd_dir):
         os.makedirs(scd_dir)
 
@@ -275,7 +266,7 @@ def main():
         os.makedirs(scd_logs)
 
     sites = list(EXPERIMENTS.keys())
-    site_scds = [scd_utils.SCDUtils(f"{scd_dir}/{s}.scd") for s in sites]
+    site_scds = [scd_utils.SCDUtils(f"{scd_dir}/{s}.scd", s) for s in sites]
     swg = SWG(scd_dir)
 
     force_next_month = args.force
@@ -331,7 +322,6 @@ def main():
                         errors = True
                         break
 
-            subject = "Scheduling report for swg lines"
             if not errors:
                 success_msg = "All swg lines successfully scheduled.\n"
                 for site, site_scd in zip(sites, site_scds):
@@ -348,8 +338,6 @@ def main():
 
                 with open(scd_logs + scd_error_log, 'a') as f:
                     f.write(success_msg)
-
-            emailer.email_log(subject, scd_logs + scd_error_log)
 
             if args.first_run:
                 break

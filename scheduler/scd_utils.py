@@ -48,20 +48,22 @@ class SCDUtils:
     """String format for scd line"""
     line_fmt = "{datetime} {duration} {prio} {experiment} {scheduling_mode} {embargo} {kwargs}"
 
-    def __init__(self, scd_filename):
+    def __init__(self, scd_filename, site_id):
         """
         :param  scd_filename:   Schedule file name
-        :type:  scd_filename:   str
+        :type   scd_filename:   str
+        :param       site_id:   Three-letter radar site ID, for testing the experiment
+        :type        site_id:   str
         """
         self.scd_filename = scd_filename
+        self.site_id = site_id
 
         """Default event to run if no other infinite duration line is scheduled"""
-        self.scd_default = self.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
+        self.scd_default = self.create_line('20000101', '00:00', 'normalscan', 'common', '0', '-')
 
-    def check_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs='', embargo=False):
+    def create_line(self, yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs='', embargo=False):
         """
-        Checks the line parameters to see if they are valid and then returns a dict with all the
-        valid fields.
+        Creates a line dictionary from inputs, turning the date and time into a timestamp since epoch.
 
         :param  yyyymmdd:           year/month/day string.
         :type   yyyymmdd:           str
@@ -85,30 +87,10 @@ class SCDUtils:
 
         :raises     ValueError: If line parameters are invalid or if line is a duplicate.
         """
-
         # create datetime from args to see if valid. Value error for incorrect format
         time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)
-
-        if not isinstance(kwargs, str):
-            raise ValueError("kwargs should be a string")
-
-        if not (0 <= int(prio) <= 20):
-            raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
-
-        if duration != "-":
-            if isinstance(duration, float) or int(duration) < 1:
-                raise ValueError("Duration should be an integer > 0, or '-'")
-            duration = int(duration)
-        else:
-            if int(prio) > 0:
-                raise ValueError("Infinite duration lines must have priority 0")
-
         epoch = dt.datetime.utcfromtimestamp(0)
         epoch_milliseconds = int((time - epoch).total_seconds() * 1000)
-
-        possible_scheduling_modes = ['common', 'special', 'discretionary']
-        if scheduling_mode not in possible_scheduling_modes:
-            raise ValueError(f"Unknown scheduling mode type {scheduling_mode} not in {possible_scheduling_modes}")
 
         return {"timestamp": epoch_milliseconds,
                 "time": time,
@@ -119,16 +101,34 @@ class SCDUtils:
                 "kwargs": kwargs,
                 "embargo": embargo}
 
-    def test_line_experiment(self, line_dict):
+    def test_line(self, line_dict):
         """
-        Run the line through experiment unit tests to check that the experiment will run.
+        Check validity of fields and run the line through experiment unit tests to check that the experiment will run.
 
-        :param   line_dict: Dictionary of parameters for the line (as returned from `check_line()`)
+        :param   line_dict: Dictionary of parameters for the line (as returned from `create_line()`)
         :type    line_dict: dict
         """
-        # This is a full path to /.../{site}.scd file, only want {site}
-        site_name = os.path.basename(self.scd_filename).replace('.scd', '')
-        args = ['--site_id', site_name,
+
+        if not isinstance(line_dict['kwargs'], str):
+            raise ValueError("kwargs should be a string")
+
+        if not (0 <= int(line_dict['prio']) <= 20):
+            raise ValueError("Priority is out of bounds. 0 <= prio <= 20.")
+
+        if line_dict['duration'] != "-":
+            if isinstance(line_dict['duration'], float) or int(line_dict['duration']) < 1:
+                raise ValueError("Duration should be an integer > 0, or '-'")
+            line_dict['duration'] = int(line_dict['duration'])
+        else:
+            if int(line_dict['prio']) > 0:
+                raise ValueError("Infinite duration lines must have priority 0")
+
+        possible_scheduling_modes = ['common', 'special', 'discretionary']
+        if line_dict['scheduling_mode'] not in possible_scheduling_modes:
+            raise ValueError(f"Unknown scheduling mode type {line_dict['scheduling_mode']} not in "
+                             f"{possible_scheduling_modes}")
+
+        args = ['--site_id', self.site_id,
                 '--experiments', line_dict['experiment'],
                 '--kwargs', line_dict['kwargs'],
                 '--module', 'experiment_unittests']
@@ -163,8 +163,8 @@ class SCDUtils:
             kwargs = " ".join(kwarg_entries)
 
             # date time experiment mode priority duration [kwargs]
-            scd_lines.append(self.check_line(line[0], line[1], line[4], line[5], line[3], line[2], kwargs,
-                                             embargo=embargo_flag))
+            scd_lines.append(self.create_line(line[0], line[1], line[4], line[5], line[3], line[2], kwargs,
+                                              embargo=embargo_flag))
 
         if len(scd_lines) == 0:
             print('WARNING: SCD file empty; default normalscan will run')
@@ -238,8 +238,8 @@ class SCDUtils:
 
         :raises ValueError: If line parameters are invalid or if line is a duplicate.
         """
-        new_line = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs,
-                                   embargo=embargo)
+        new_line = self.create_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs,
+                                    embargo=embargo)
 
         scd_lines = self.read_scd()
 
@@ -251,7 +251,7 @@ class SCDUtils:
             raise ValueError("Priority already exists at this time")
 
         try:
-            self.test_line_experiment(new_line)
+            self.test_line(new_line)
         except ValueError as e:
             raise ValueError("Unable to add line:\n", str(e))
 
@@ -289,8 +289,8 @@ class SCDUtils:
         :raises ValueError: If line parameters are invalid or if line does not exist.
         """
 
-        line_to_rm = self.check_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs,
-                                     embargo=embargo)
+        line_to_rm = self.create_line(yyyymmdd, hhmm, experiment, scheduling_mode, prio, duration, kwargs,
+                                      embargo=embargo)
 
         scd_lines = self.read_scd()
         try:
