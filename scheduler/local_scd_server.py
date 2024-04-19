@@ -105,7 +105,7 @@ class SWG(object):
             cmd = f"git -C {self.scd_dir}/{SWG_GIT_REPO_DIR} rev-parse"
             sp.check_output(cmd, shell=True)
 
-        except sp.CalledProcessError as e:
+        except sp.CalledProcessError:
             cmd = f'cd {self.scd_dir}; git clone {SWG_GIT_REPO}'
 
             sp.call(cmd, shell=True)
@@ -231,7 +231,6 @@ class SWG(object):
 
             if not mode_to_use or not mode_type:
                 raise ValueError(f"SWG line couldn't be parsed, continuing: {line}")
-                continue
             param = {f"yyyymmdd": f"{year}{month}{start_day}",
                      f"hhmm": f"{start_hr}:00",
                      "experiment": mode_to_use,
@@ -293,7 +292,6 @@ def main():
 
             errors = False
             today = datetime.datetime.utcnow()
-            emailer = email_utils.Emailer(emails_filepath)
             scd_error_log = today.strftime("/scd_errors.%Y%m%d")
 
             for se, site_scd in zip(site_experiments, site_scds):
@@ -314,7 +312,7 @@ def main():
 
                         errors = True
                         break
-                    except FileNotFoundError as e:
+                    except FileNotFoundError:
                         error_msg = f"SCD filename: {site_scd.scd_filename} is missing!!!\n"
 
                         with open(scd_logs + scd_error_log, 'a') as f:
