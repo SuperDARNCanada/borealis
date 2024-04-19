@@ -66,6 +66,9 @@ def ehmain(experiment_name='normalscan', scheduling_mode='discretionary', **kwar
     :param  kwargs: The keyword arguments for the experiment
     :type   kwargs: dict
     """
+    from utils import log_config
+    log_config.log(console=False, logfile=False, aggregator=False)  # Prevent logging in experiment
+
     import experiment_handler as eh
 
     experiment = eh.retrieve_experiment(experiment_name)
