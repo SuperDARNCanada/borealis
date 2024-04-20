@@ -378,8 +378,12 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden, seqnum
             for beam in beams:
                 beam_add = messages.Beam(sqn_slice.beam_angle[beam], beam)
                 rxchannel.add_beam(beam_add)
-                rx_main_phases.append(sequence.rx_beam_phases[slice_id]['main'][beam])
-                rx_intf_phases.append(sequence.rx_beam_phases[slice_id]['intf'][beam])
+                rx_main_phases.append(
+                    sequence.rx_beam_phases[slice_id]['main'][beam, sequence.rx_main_antenna_indices[slice_id]]
+                )
+                rx_intf_phases.append(
+                    sequence.rx_beam_phases[slice_id]['intf'][beam, sequence.rx_intf_antenna_indices[slice_id]]
+                )
             rxchannel.rx_main_phases = np.array(rx_main_phases, dtype=np.complex64)
             rxchannel.rx_intf_phases = np.array(rx_intf_phases, dtype=np.complex64)
 

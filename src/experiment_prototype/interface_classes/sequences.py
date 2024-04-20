@@ -126,6 +126,9 @@ class Sequence(InterfaceClassBase):
         self.basic_slice_pulses = {}
         self.rx_beam_phases = {}
         self.tx_main_phase_shifts = {}
+        self.rx_main_antenna_indices = {}
+        self.rx_intf_antenna_indices = {}
+        self.tx_antenna_indices = {}
         self.txctrfreq = self.slice_dict[self.slice_ids[0]].txctrfreq
         self.rxctrfreq = self.slice_dict[self.slice_ids[0]].rxctrfreq
         single_pulse_timing = []
@@ -158,6 +161,8 @@ class Sequence(InterfaceClassBase):
             # The index of the antennas for this slice, within the list of all antennas from the config file
             main_indices = [self.rx_main_antennas.index(ant) for ant in slice_rx_main_antennas]
             intf_indices = [self.rx_intf_antennas.index(ant) for ant in slice_rx_intf_antennas]
+            self.rx_main_antenna_indices[slice_id] = main_indices
+            self.rx_intf_antenna_indices[slice_id] = intf_indices
 
             # Zero out the complex phase for any antenna that isn't used in this slice
             main_phases = np.zeros((rx_main_phase_shift.shape[0], len(self.rx_main_antennas)),
@@ -187,6 +192,7 @@ class Sequence(InterfaceClassBase):
 
                 # The index of the antennas for this slice, within the list of all antennas from the config file
                 tx_indices = [self.tx_main_antennas.index(ant) for ant in slice_tx_antennas]
+                self.tx_antenna_indices[slice_id] = tx_indices
 
                 # Zero out the complex phase of any antenna that isn't used in this slice
                 tx_phases = np.zeros((tx_main_phase_shift.shape[0], len(self.tx_main_antennas)),
