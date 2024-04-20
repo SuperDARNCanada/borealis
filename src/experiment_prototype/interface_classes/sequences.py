@@ -169,8 +169,8 @@ class Sequence(InterfaceClassBase):
                                    dtype=rx_main_phase_shift.dtype)
             intf_phases = np.zeros((rx_intf_phase_shift.shape[0], len(self.rx_intf_antennas)),
                                    dtype=rx_intf_phase_shift.dtype)
-            main_phases[:, main_indices] = rx_main_phase_shift[:, main_indices]
-            intf_phases[:, intf_indices] = rx_intf_phase_shift[:, intf_indices]
+            main_phases[:, main_indices] = rx_main_phase_shift[:, slice_rx_main_antennas]
+            intf_phases[:, intf_indices] = rx_intf_phase_shift[:, slice_rx_intf_antennas]
 
             self.rx_beam_phases[slice_id] = {'main': main_phases, 'intf': intf_phases}
 
@@ -197,7 +197,7 @@ class Sequence(InterfaceClassBase):
                 # Zero out the complex phase of any antenna that isn't used in this slice
                 tx_phases = np.zeros((tx_main_phase_shift.shape[0], len(self.tx_main_antennas)),
                                      dtype=tx_main_phase_shift.dtype)
-                tx_phases[:, tx_indices] = tx_main_phase_shift[:, tx_indices]
+                tx_phases[:, tx_indices] = tx_main_phase_shift[:, slice_tx_antennas]
 
                 # tx_phases:        [num_beams, num_antennas]
                 # basic_samples:    [num_samples]
