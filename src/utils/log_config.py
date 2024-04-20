@@ -73,6 +73,9 @@ class VerboseLogger(structlog.BoundLoggerBase):
     def error(self, *args, **kwargs):
         return self._proxy_to_logger("error", *args, **kwargs)
 
+    def exception(self, *args, **kwargs):
+        return self._proxy_to_logger("exception", *args, **kwargs)
+
     def critical(self, *args, **kwargs):
         return self._proxy_to_logger("critical", *args, **kwargs)
 

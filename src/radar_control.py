@@ -373,9 +373,15 @@ def send_datawrite_metadata(radctrl_to_datawrite, datawrite_radctrl_iden, seqnum
             if isinstance(beams, int):
                 beams = [beams]
 
+            rx_main_phases = []
+            rx_intf_phases = []
             for beam in beams:
                 beam_add = messages.Beam(sqn_slice.beam_angle[beam], beam)
                 rxchannel.add_beam(beam_add)
+                rx_main_phases.append(sequence.rx_beam_phases[slice_id]['main'][beam])
+                rx_intf_phases.append(sequence.rx_beam_phases[slice_id]['intf'][beam])
+            rxchannel.rx_main_phases = np.array(rx_main_phases, dtype=np.complex64)
+            rxchannel.rx_intf_phases = np.array(rx_intf_phases, dtype=np.complex64)
 
             rxchannel.first_range = float(sqn_slice.first_range)
             rxchannel.num_ranges = sqn_slice.num_ranges

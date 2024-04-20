@@ -176,19 +176,18 @@ def main():
         # than the max number of beams are padded with zeros so that matrix calculations can be
         # used. The extra beams that are processed will be not be parsed for data writing.
         max_num_beams = max([x.shape[0] for x in main_beam_angles])
+        padded_main_phases = np.zeros((len(sqn_meta_message.rx_channels),
+                                       max_num_beams,
+                                       len(options.rx_main_antennas)), dtype=np.complex64)
+        padded_intf_phases = np.zeros((len(sqn_meta_message.rx_channels),
+                                       max_num_beams,
+                                       len(options.rx_intf_antennas)), dtype=np.complex64)
 
-        def pad_beams(angles, ant_count):
-            for x in angles:
-                if x.shape[0] < max_num_beams:
-                    temp = np.zeros_like((max_num_beams, ant_count), x.dtype)
-                    temp[:x.shape[0], :] = x
-                    x = temp    # Reassign to the new larger array with zero-padded beams
+        for i, x in enumerate(main_beam_angles):
+            padded_main_phases[i, :len(x)] = x
+        for i, x in enumerate(intf_beam_angles):
+            padded_intf_phases[i, :len(x)] = x
 
-        pad_beams(main_beam_angles, len(options.rx_main_antennas))
-        pad_beams(intf_beam_angles, len(options.rx_intf_antennas))
-
-        main_beam_angles = np.array(main_beam_angles, dtype=np.complex64)
-        intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
         mixing_freqs = np.array(mixing_freqs, dtype=np.float64)
 
         # Get meta from driver
@@ -470,8 +469,8 @@ def main():
                         **log_dict)
 
         args = {"sequence_num": copy.deepcopy(sqn_meta_message.sequence_num),
-                "main_beam_angles": copy.deepcopy(main_beam_angles),
-                "intf_beam_angles": copy.deepcopy(intf_beam_angles),
+                "main_beam_angles": copy.deepcopy(padded_main_phases),
+                "intf_beam_angles": copy.deepcopy(padded_intf_phases),
                 "mixing_freqs": copy.deepcopy(mixing_freqs),
                 "slice_details": copy.deepcopy(slice_details),
                 "start_sample": copy.deepcopy(start_sample),

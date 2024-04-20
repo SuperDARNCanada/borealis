@@ -165,6 +165,15 @@ class SliceData:
     rx_sample_rate: float = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Sampling rate of the samples being written to file in Hz'})
+    # TODO: Include these fields in a future release
+    # rx_main_phases: list[complex] = field(
+    #     metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
+    #               'description': 'Phases of main array receive antennas for each antenna. Magnitude between 0 (off) '
+    #                              'and 1 (full power)'})
+    # rx_intf_phases: list[complex] = field(
+    #     metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
+    #               'description': 'Phases of intf array receive antennas for each antenna. Magnitude between 0 (off) '
+    #                              'and 1 (full power)'})
     samples_data_type: str = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'C data type of the samples'})
@@ -1114,6 +1123,9 @@ class DataWrite(object):
                 parameters.range_sep = np.float32(rx_channel.range_sep)
                 parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq
                 parameters.rx_sample_rate = data_parsing.output_sample_rate
+                # TODO: Include these in a future release
+                # parameters.rx_main_phases = rx_channel.rx_main_phases
+                # parameters.rx_intf_phases = rx_channel.rx_intf_phases
                 parameters.samples_data_type = "complex float"
                 parameters.scan_start_marker = aveperiod_meta.scan_flag
                 parameters.scheduling_mode = aveperiod_meta.scheduling_mode
