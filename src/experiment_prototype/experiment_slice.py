@@ -422,6 +422,7 @@ class ExperimentSlice:
         for ant in tx_antennas:
             if ant not in options.tx_main_antennas:
                 raise ValueError(f"TX antenna {ant} not specified in config file")
+        tx_antennas.sort()
         return tx_antennas
 
     @validator('rx_main_antennas')
@@ -433,6 +434,7 @@ class ExperimentSlice:
         for ant in rx_main_antennas:
             if ant not in options.rx_main_antennas:
                 raise ValueError(f"RX main antenna {ant} not specified in config file")
+        rx_main_antennas.sort()
         return rx_main_antennas
 
     @validator('rx_intf_antennas')
@@ -442,6 +444,7 @@ class ExperimentSlice:
         for ant in rx_intf_antennas:
             if ant not in options.rx_intf_antennas:
                 raise ValueError(f"RX intf antenna {ant} not specified in config file")
+        rx_intf_antennas.sort()
         return rx_intf_antennas
 
     @validator('tx_antenna_pattern')
