@@ -508,8 +508,8 @@ class Sequence(InterfaceClassBase):
                         start = pulse['tr_window_num_samps'] + pulse_sample_start
                         end = start + pulse_samples_len
 
-                        # samples: [pulses, main_antenna_count, samples]
-                        # sequence: [main_antenna_count, buffer_len]
+                        # samples: [pulses, tx_antenna_count, samples]
+                        # sequence: [tx_antenna_count, buffer_len]
                         sequence[:, start:end] += samples[i, :, :]
 
         # copy the encoded and combined samples into the metadata for the sequence.

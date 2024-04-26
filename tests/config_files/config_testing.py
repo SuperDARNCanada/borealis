@@ -69,7 +69,7 @@ class TestConfigFile(unittest.TestCase):
 
 
 class TestConfig(unittest.TestCase):
-    """ Test various config file parameters to ensure the Options class parses correctly. """
+    """ This class modifies fields of `base_config.ini` to ensure that config file parsing is handled correctly. """
 
     def setUp(self):
         """ Create a new directory `$BOREALISPATH/config/test/`. """
@@ -155,7 +155,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(options.tx_main_antennas, [0])
 
     def testSingleN200BadMain(self):
-        """ Single N200, connected to invalid main antenna """
+        """ Single N200, connected to invalid main antenna (main_antenna_count = 16) """
         with open(Path(__file__).with_name('base_config.ini'), 'r') as f:
             config = json.load(f)
         config['n200s'] = [config['n200s'][0]]    # Only keep the first
@@ -170,7 +170,7 @@ class TestConfig(unittest.TestCase):
             MockOptions()
 
     def testSingleN200BadIntf(self):
-        """ Single N200, connected to invalid intf antenna """
+        """ Single N200, connected to invalid intf antenna (intf_antenna_count = 4) """
         with open(Path(__file__).with_name('base_config.ini'), 'r') as f:
             config = json.load(f)
         config['n200s'] = [config['n200s'][0]]    # Only keep the first
@@ -185,7 +185,7 @@ class TestConfig(unittest.TestCase):
             MockOptions()
 
     def testSingleN200BadTxMain(self):
-        """ Single N200, connected to invalid main antenna for TX """
+        """ Single N200, connected to invalid main antenna for TX (main_antenna_count = 16) """
         with open(Path(__file__).with_name('base_config.ini'), 'r') as f:
             config = json.load(f)
         config['n200s'] = [config['n200s'][0]]    # Only keep the first
@@ -261,7 +261,7 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(options.tx_main_antennas, [0, 1])
 
     def testTooManyIntfAntennas(self):
-        """ Connected to all intf antennas, plus one invalid intf antenna """
+        """ Connected to all intf antennas, plus one invalid intf antenna (intf_antenna_count = 4) """
         with open(Path(__file__).with_name('base_config.ini'), 'r') as f:
             config = json.load(f)
         config['n200s'] = config['n200s'][:3]    # Only keep the first three
@@ -284,7 +284,7 @@ class TestConfig(unittest.TestCase):
             MockOptions()
 
     def testTooManyMainAntennas(self):
-        """ Connected to all main antennas, plus one invalid main antenna """
+        """ Connected to all main antennas, plus one invalid main antenna (main_antenna_count = 16) """
         with open(Path(__file__).with_name('base_config.ini'), 'r') as f:
             config = json.load(f)
 
