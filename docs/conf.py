@@ -59,7 +59,7 @@ if on_rtd:  # Only run following changes on ReadTheDocs
         raw_config = json.load(file)
     raw_config['hdw_path'] = f'{BOREALISPATH}/hdw'
     raw_config['data_directory'] = f'{BOREALISPATH}/borealis_data'
-    raw_config['log_directory'] = f'{BOREALISPATH}/borealis_logs'
+    raw_config['log_handlers']['logfile']['directory'] = f'{BOREALISPATH}/borealis_logs'
     with open(config_file, 'w') as file:
         json.dump(raw_config, file)
 
@@ -68,13 +68,13 @@ if on_rtd:  # Only run following changes on ReadTheDocs
 
     # Create data and log directory that RTD can see so no errors are thrown
     run(['mkdir', '-p', raw_config['data_directory']])
-    run(['mkdir', '-p', raw_config['log_directory']])
+    run(['mkdir', '-p', raw_config['log_handlers']['logfile']['directory']])
 
 
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
-needs_sphinx = '2.1.2'
+needs_sphinx = '5.3.0'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom

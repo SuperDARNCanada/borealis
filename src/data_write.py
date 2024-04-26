@@ -165,6 +165,15 @@ class SliceData:
     rx_sample_rate: float = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'Sampling rate of the samples being written to file in Hz'})
+    # TODO: Include these fields in a future release
+    # rx_main_phases: list[complex] = field(
+    #     metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
+    #               'description': 'Phases of main array receive antennas for each antenna. Magnitude between 0 (off) '
+    #                              'and 1 (full power)'})
+    # rx_intf_phases: list[complex] = field(
+    #     metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf', 'txdata'],
+    #               'description': 'Phases of intf array receive antennas for each antenna. Magnitude between 0 (off) '
+    #                              'and 1 (full power)'})
     samples_data_type: str = field(
         metadata={'groups': ['antennas_iq', 'bfiq', 'rawacf', 'rawrf'],
                   'description': 'C data type of the samples'})
@@ -371,8 +380,8 @@ class ParseData(object):
 
         # Get data dimensions for reading in the shared memory
         num_slices = len(self.processed_data.output_datasets)
-        num_main_antennas = len(self.options.main_antennas)
-        num_intf_antennas = len(self.options.intf_antennas)
+        num_main_antennas = len(self.options.rx_main_antennas)
+        num_intf_antennas = len(self.options.rx_intf_antennas)
 
         stages = []
         # Loop through all the filter stage data
@@ -420,9 +429,15 @@ class ParseData(object):
                 antennas_data = debug_stage['data'][i]
                 antenna_iq_stage["num_samps"] = antennas_data.shape[-1]
 
+                # All possible antenna numbers, given the config file
+                antenna_indices = copy.deepcopy(self.options.rx_main_antennas)
+                # The interferometer antenna numbers start after the last main antenna number
+                antenna_indices.extend([ant + self.options.main_antenna_count for ant in self.options.rx_intf_antennas])
+
                 # Loops over antenna data within stage
                 for ant_num in range(antennas_data.shape[0]):
-                    ant_str = f"antenna_{ant_num}"
+                    # Convert index in the data array to antenna number from the config file
+                    ant_str = f"antenna_{antenna_indices[ant_num]}"
 
                     if ant_str not in antenna_iq_stage:
                         antenna_iq_stage[ant_str] = {}
@@ -859,11 +874,17 @@ class DataWrite(object):
 
             for slice_num in xcfs:
                 slice_data = aveperiod_data[slice_num]
-                slice_data.xcfs = find_expectation_value(xcfs[slice_num]['data'])
+                if data_parsing.xcfs_available:
+                    slice_data.xcfs = find_expectation_value(xcfs[slice_num]['data'])
+                else:
+                    slice_data.xcfs = np.array([], np.complex64)
 
             for slice_num in intf_acfs:
                 slice_data = aveperiod_data[slice_num]
-                slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'])
+                if data_parsing.intfacfs_available:
+                    slice_data.intf_acfs = find_expectation_value(intf_acfs[slice_num]['data'])
+                else:
+                    slice_data.intf_acfs = np.array([], np.complex64)
 
             for slice_num, slice_data in aveperiod_data.items():
                 slice_data.data_descriptors = ['num_beams', 'num_ranges', 'num_lags']
@@ -1003,7 +1024,7 @@ class DataWrite(object):
 
             samples_list = []
             shared_memory_locations = []
-            total_ants = len(self.options.main_antennas) + len(self.options.intf_antennas)
+            total_ants = len(self.options.rx_main_antennas) + len(self.options.rx_intf_antennas)
 
             for raw in raw_rf:
                 shared_mem = shared_memory.SharedMemory(name=raw)
@@ -1102,6 +1123,9 @@ class DataWrite(object):
                 parameters.range_sep = np.float32(rx_channel.range_sep)
                 parameters.rx_center_freq = aveperiod_meta.rx_ctr_freq
                 parameters.rx_sample_rate = data_parsing.output_sample_rate
+                # TODO: Include these in a future release
+                # parameters.rx_main_phases = rx_channel.rx_main_phases
+                # parameters.rx_intf_phases = rx_channel.rx_intf_phases
                 parameters.samples_data_type = "complex float"
                 parameters.scan_start_marker = aveperiod_meta.scan_flag
                 parameters.scheduling_mode = aveperiod_meta.scheduling_mode

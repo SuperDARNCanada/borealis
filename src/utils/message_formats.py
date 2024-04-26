@@ -98,6 +98,7 @@ class RxChannel:
     num_ranges: int = None
     first_range: int = None
     range_sep: float = None
+    rx_intf_antennas: list[int] = field(default_factory=list)
     beam_phases: np.ndarray = None
     lags: list[Lag] = field(default_factory=list)
 
@@ -159,6 +160,8 @@ class RxChannelMetadata:
     sequence_encodings: list = field(default_factory=list)
     rx_main_antennas: list[int] = field(default_factory=list)
     rx_intf_antennas: list[int] = field(default_factory=list)
+    rx_main_phases: list[complex] = field(default_factory=list)
+    rx_intf_phases: list[complex] = field(default_factory=list)
     tx_antenna_phases: list[complex] = field(default_factory=list)
     beams: list[Beam] = field(default_factory=list)
     first_range: float = None

@@ -101,7 +101,7 @@ def main():
 
     ringbuffer = None
 
-    total_antennas = len(options.main_antennas) + len(options.intf_antennas)
+    total_antennas = len(options.rx_main_antennas) + len(options.rx_intf_antennas)
 
     dm_rates = []
     dm_scheme_taps = []
@@ -131,6 +131,7 @@ def main():
         mixing_freqs = []
         main_beam_angles = []
         intf_beam_angles = []
+        intf_antennas = set()
 
         # Parse out details and force the data type so that Cupy can optimize with standardized
         # data types.
@@ -147,6 +148,7 @@ def main():
             detail['tau_spacing'] = np.uint32(chan.tau_spacing)
             detail['num_range_gates'] = np.uint32(chan.num_ranges)
             detail['first_range_off'] = np.uint32(chan.first_range / chan.range_sep)
+
             lag_phase_offsets = []
 
             lags = []
@@ -159,8 +161,8 @@ def main():
             detail['lags'] = np.array(lags, dtype=np.uint32)
             detail['num_lags'] = len(lags)
 
-            main_beams = chan.beam_phases[:, :len(options.main_antennas)]
-            intf_beams = chan.beam_phases[:, len(options.main_antennas):]
+            main_beams = chan.beam_phases[:, :len(options.rx_main_antennas)]
+            intf_beams = chan.beam_phases[:, len(options.rx_main_antennas):]
 
             detail['num_beams'] = main_beams.shape[0]
 
@@ -168,23 +170,24 @@ def main():
             main_beam_angles.append(main_beams)
             intf_beam_angles.append(intf_beams)
 
+            intf_antennas.update(set(chan.rx_intf_antennas))     # Keep track of all intf antennas for the sequence
+
         # Different slices can have a different amount of beams used. Slices that use fewer beams
         # than the max number of beams are padded with zeros so that matrix calculations can be
         # used. The extra beams that are processed will be not be parsed for data writing.
         max_num_beams = max([x.shape[0] for x in main_beam_angles])
+        padded_main_phases = np.zeros((len(sqn_meta_message.rx_channels),
+                                       max_num_beams,
+                                       len(options.rx_main_antennas)), dtype=np.complex64)
+        padded_intf_phases = np.zeros((len(sqn_meta_message.rx_channels),
+                                       max_num_beams,
+                                       len(options.rx_intf_antennas)), dtype=np.complex64)
 
-        def pad_beams(angles, ant_count):
-            for x in angles:
-                if x.shape[0] < max_num_beams:
-                    temp = np.zeros_like((max_num_beams, ant_count), x.dtype)
-                    temp[:x.shape[0], :] = x
-                    x = temp    # Reassign to the new larger array with zero-padded beams
+        for i, x in enumerate(main_beam_angles):
+            padded_main_phases[i, :len(x)] = x
+        for i, x in enumerate(intf_beam_angles):
+            padded_intf_phases[i, :len(x)] = x
 
-        pad_beams(main_beam_angles, len(options.main_antennas))
-        pad_beams(intf_beam_angles, len(options.intf_antennas))
-
-        main_beam_angles = np.array(main_beam_angles, dtype=np.complex64)
-        intf_beam_angles = np.array(intf_beam_angles, dtype=np.complex64)
         mixing_freqs = np.array(mixing_freqs, dtype=np.float64)
 
         # Get meta from driver
@@ -257,6 +260,7 @@ def main():
             start_sample = kwargs['start_sample']
             end_sample = kwargs['end_sample']
             processed_data = kwargs['processed_data']
+            intf_antennas = kwargs['intf_antennas']
 
             if cupy_available:
                 xp.cuda.runtime.setDevice(0)
@@ -303,7 +307,7 @@ def main():
 
             # Process main samples
             mark_timer = time.perf_counter()
-            main_sequence_samples = sequence_samples[:len(options.main_antennas), :]
+            main_sequence_samples = sequence_samples[:len(options.rx_main_antennas), :]
             main_sequence_samples_shape = main_sequence_samples.shape
             main_processor = DSP(rx_rate, dm_scheme_taps, mixing_freqs, dm_rates)
             main_processor.apply_filters(main_sequence_samples)
@@ -317,8 +321,9 @@ def main():
             # Process intf samples if intf exists
             mark_timer = time.perf_counter()
             intf_sequence_samples_shape = None
-            if options.intf_antenna_count > 0:
-                intf_sequence_samples = sequence_samples[len(options.main_antennas):, :]
+            log.info("intf antennas", antennas=intf_antennas)
+            if len(intf_antennas) > 0:
+                intf_sequence_samples = sequence_samples[len(options.rx_main_antennas):, :]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
                 intf_processor = DSP(rx_rate, dm_scheme_taps, mixing_freqs, dm_rates)
                 intf_processor.apply_filters(intf_sequence_samples)
@@ -378,15 +383,14 @@ def main():
                     data[...] = xp.asnumpy(data_array)
                 else:
                     data[...] = data_array
-                try:
-                    assert array_name in ["main", "intf"]
-                    if array_name == 'main':
-                        holder.main_shm = shm.name
-                    elif array_name == 'intf':
-                        holder.intf_shm = shm.name
-                except Exception as e:
-                    log.error(f"unknown array name {array_name} not in [main, intf]", error=e)
-                    log.exception(f"unknown array name {array_name} [main, intf]", error=e)
+
+                if array_name == 'main':
+                    holder.main_shm = shm.name
+                elif array_name == 'intf':
+                    holder.intf_shm = shm.name
+                else:
+                    log.error(f"unknown array name {array_name} not in [main, intf]")
+                    log.exception(f"unknown array name {array_name} [main, intf]")
                     sys.exit(1)
 
                 holder.num_samps = data_array.shape[-1]
@@ -411,7 +415,7 @@ def main():
             stage.main_shm = main_shm.name
             stage.num_samps = main_processor.antennas_iq_samples.shape[-1]
             main_shm.close()
-            if options.intf_antenna_count > 0:
+            if len(intf_antennas) > 0:
                 intf_shm = intf_processor.shared_mem['antennas_iq']
                 stage.intf_shm = intf_shm.name
                 intf_shm.close()
@@ -441,7 +445,7 @@ def main():
 
             data_outputs['main_corrs'] = main_corrs
 
-            if options.intf_antenna_count > 0:
+            if len(intf_antennas) > 0:
                 data_outputs['cross_corrs'] = cross_corrs
                 data_outputs['intf_corrs'] = intf_corrs
                 processed_data.bfiq_intf_shm = intf_processor.shared_mem['bfiq'].name
@@ -465,13 +469,15 @@ def main():
                         **log_dict)
 
         args = {"sequence_num": copy.deepcopy(sqn_meta_message.sequence_num),
-                "main_beam_angles": copy.deepcopy(main_beam_angles),
-                "intf_beam_angles": copy.deepcopy(intf_beam_angles),
+                "main_beam_angles": copy.deepcopy(padded_main_phases),
+                "intf_beam_angles": copy.deepcopy(padded_intf_phases),
                 "mixing_freqs": copy.deepcopy(mixing_freqs),
                 "slice_details": copy.deepcopy(slice_details),
                 "start_sample": copy.deepcopy(start_sample),
                 "end_sample": copy.deepcopy(end_sample),
-                "processed_data": copy.deepcopy(processed_data)}
+                "processed_data": copy.deepcopy(processed_data),
+                "intf_antennas": copy.deepcopy(intf_antennas),
+                }
 
         seq_thread = threading.Thread(target=sequence_worker, kwargs=args)
         seq_thread.daemon = True
