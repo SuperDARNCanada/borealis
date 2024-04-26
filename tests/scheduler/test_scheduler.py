@@ -8,22 +8,22 @@ Run via: 'python3 test_scheduler.py'
 import shutil
 import unittest
 import os
+from pathlib import Path
 import sys
 import tempfile
-import json
 import datetime
 import subprocess as sp
 import re
 
-if not os.environ['BOREALISPATH']:
-    BOREALISPATH = f"{os.environ['HOME']}/PycharmProjects/borealis/"
+if 'BOREALISPATH' not in os.environ:
+    BOREALISPATH = f"{Path(__file__).resolve().parents[2]}"   # Two directories up from this file
+    os.environ['BOREALISPATH'] = BOREALISPATH
 else:
     BOREALISPATH = os.environ['BOREALISPATH']
 
 sys.path.append(BOREALISPATH)
 
-from scheduler import email_utils, scd_utils
-from scheduler import remote_server_options as rso
+from scheduler import scd_utils
 from scheduler import local_scd_server, remote_server
 
 
@@ -34,6 +34,7 @@ class TestSchedulerUtils(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.site_id = 'sas'
         # A file that has a bunch of lines in the scd file that should all pass all tests
         self.good_scd_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/good_scd_file.scd"
         # A file that has 5 arguments (missing the scheduling mode)
@@ -47,7 +48,7 @@ class TestSchedulerUtils(unittest.TestCase):
         self.prio = 10
         self.exp = 'normalscan'
         self.mode = 'common'
-        self.kwargs = '-'
+        self.kwargs = ''
         self.no_perms = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         self.no_perms_file = self.no_perms.name
         os.chmod(self.no_perms_file, 0o000)
@@ -92,7 +93,7 @@ class TestSchedulerUtils(unittest.TestCase):
         date2 = datetime.datetime(2023, 1, 1)
         self.assertEqual(scd_utils.get_next_month_from_date(date), date2)
 
-# check_line tests
+# create_line tests
 
     def test_invalid_yyyymmdd(self):
         """
@@ -101,21 +102,21 @@ class TestSchedulerUtils(unittest.TestCase):
         yyyymmdd = None
         # Invalid type for yyyymmdd should raise a TypeError in strptime.
         # it will also raise ValueError if the date_string and format can't be parsed by time.strptime()
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
         with self.assertRaises(TypeError):
-            scdu.check_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.create_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
         yyyymmdd = 0   # TypeError
         with self.assertRaises(TypeError):
-            scdu.check_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.create_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
         yyyymmdd = '20211'  # ValueError
         with self.assertRaises(ValueError):
-            scdu.check_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.create_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
         yyyymmdd = '20221512'  # ValueError, 15th month
         with self.assertRaises(ValueError):
-            scdu.check_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.create_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
         yyyymmdd = '20220230'  # ValueError, 30th day in Feb
         with self.assertRaises(ValueError):
-            scdu.check_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.create_line(yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
 
     def test_invalid_hhmm(self):
         """
@@ -124,120 +125,141 @@ class TestSchedulerUtils(unittest.TestCase):
         hhmm = None
         # Invalid type for hhmm should raise a TypeError in strptime.
         # it will also raise ValueError if the date_string and format can't be parsed by time.strptime()
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
         with self.assertRaises(TypeError):
-            scdu.check_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.create_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
         hhmm = 0  # TypeError
         with self.assertRaises(TypeError):
-            scdu.check_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.create_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
         hhmm = '2011'  # ValueError
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.create_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
         hhmm = '2500'  # ValueError, 25th hour
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.create_line(self.yyyymmdd, hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
 
-    @unittest.skip
+# test_line tests
+
     def test_invalid_experiment(self):
         """
         Test an invalid experiment name - Must be an experiment named in the repo
         """
         exp = 'non-existent_Experiment'
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, exp, self.mode, self.prio, self.dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.test_line(line)
         exp = None
         with self.assertRaises(TypeError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, exp, self.mode, self.prio, self.dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.test_line(line)
         exp = 5
         with self.assertRaises(TypeError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, exp, self.mode, self.prio, self.dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, exp, self.mode, self.prio, self.dur, self.kwargs)
+            scdu.test_line(line)
 
     def test_invalid_mode(self):
         """
         Test an invalid mode (possible: ['common', 'special', 'discretionary'])
         """
         mode = 'notamode'
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, mode, self.prio, self.dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, mode, self.prio, self.dur, self.kwargs)
+            scdu.test_line(line)
         mode = None
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, mode, self.prio, self.dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, mode, self.prio, self.dur, self.kwargs)
+            scdu.test_line(line)
         mode = 0
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, mode, self.prio, self.dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, mode, self.prio, self.dur, self.kwargs)
+            scdu.test_line(line)
 
     def test_invalid_prio(self):
         """
         Test an invalid priority (string/integer from 0 to 20 inclusive)
         """
         prio = 'blah'
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, prio, self.dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, prio, self.dur, self.kwargs)
+            scdu.test_line(line)
         prio = None
-        with self.assertRaises(TypeError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, prio, self.dur, self.kwargs)
+        with self.assertRaises(ValueError):
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, prio, self.dur, self.kwargs)
+            scdu.test_line(line)
         prio = -1
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, prio, self.dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, prio, self.dur, self.kwargs)
+            scdu.test_line(line)
         prio = 21
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, prio, self.dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, prio, self.dur, self.kwargs)
+            scdu.test_line(line)
 
     def test_invalid_duration(self):
         """
         Test an invalid duration (optional: needs to be a positive integer/string minutes, or '-')
         """
         dur = 0
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            scdu.test_line(line)
         dur = -1
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            scdu.test_line(line)
         dur = -50
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            scdu.test_line(line)
         dur = 53.09
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            scdu.test_line(line)
         dur = ''
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            scdu.test_line(line)
         dur = None
-        with self.assertRaises(TypeError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+        with self.assertRaises(ValueError):
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, dur, self.kwargs)
+            scdu.test_line(line)
 
     def test_invalid_kwargs_string(self):
         """
         Test an invalid kwargs string (optional arguments that may be passed to an experiment's kwargs)
         """
-        # TODO: Should the scheduler be checking the kwargs string?
-        #kwargs_str = 'this doesnt mean anything to the experiment'
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
-        #with self.assertRaises(ValueError):
-        #    scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, kwargs_str)
+        kwargs_str = 'this doesnt mean anything to the experiment'
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
+        with self.assertRaises(ValueError):
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, kwargs_str)
+            scdu.test_line(line)
         kwargs_str = 0
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, kwargs_str)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, kwargs_str)
+            scdu.test_line(line)
         kwargs_str = -1
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, kwargs_str)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, kwargs_str)
+            scdu.test_line(line)
         kwargs_str = 56.9
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, kwargs_str)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, kwargs_str)
+            scdu.test_line(line)
         kwargs_str = None
         with self.assertRaises(ValueError):
-            scdu.check_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, kwargs_str)
+            line = scdu.create_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, kwargs_str)
+            scdu.test_line(line)
 
 # read_scd tests
     def test_invalid_num_args(self):
         """
         Test an invalid number of arguments, requires 6 or 7 args
         """
-        scdu = scd_utils.SCDUtils(self.incorrect_args_scd)
+        scdu = scd_utils.SCDUtils(self.incorrect_args_scd, self.site_id)
         with self.assertRaises(IndexError):
             scdu.read_scd()
 
@@ -246,7 +268,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test giving a non-existent scd file to the module
         """
         scdfile = 'thisfilelikelydoesntexist90758hjna;ksjn'
-        scdu = scd_utils.SCDUtils(scdfile)
+        scdu = scd_utils.SCDUtils(scdfile, self.site_id)
         with self.assertRaises(IOError):
             scdu.read_scd()
 
@@ -256,16 +278,16 @@ class TestSchedulerUtils(unittest.TestCase):
         line to the scd file
         """
         scdfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scdfile.name)
+        scdu = scd_utils.SCDUtils(scdfile.name, self.site_id)
         scdfile.close()
-        self.assertEqual(scdu.read_scd(), [scdu.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')])
+        self.assertEqual(scdu.read_scd(), [scdu.create_line('20000101', '00:00', 'normalscan', 'common', '0', '-')])
 
 # fmt_line tests
     def test_fmt_line(self):
         """
         Test that the result from fmt_line agrees with what it should
         """
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
         self.assertEqual(scdu.fmt_line(self.linedict), self.linestr.strip())
         self.assertEqual(scdu.fmt_line(self.linedict2), self.linestr2.strip())
 
@@ -274,7 +296,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test that a scd file without good permissions to read or write will cause PermissionError
         """
-        scdu = scd_utils.SCDUtils(self.no_perms_file)
+        scdu = scd_utils.SCDUtils(self.no_perms_file, self.site_id)
         lines = []
         with self.assertRaises(PermissionError):
             scdu.write_scd(lines)
@@ -283,7 +305,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test write_scd with no actual file for the scd
         """
-        scdu = scd_utils.SCDUtils('blkja;lskjdf;lkhj')
+        scdu = scd_utils.SCDUtils('blkja;lskjdf;lkhj', self.site_id)
         lines = []
         with self.assertRaises(FileNotFoundError):
             scdu.write_scd(lines)
@@ -292,7 +314,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test write_scd with a directory given for the scd file
         """
-        scdu = scd_utils.SCDUtils(os.environ['HOME'])
+        scdu = scd_utils.SCDUtils(os.environ['HOME'], self.site_id)
         lines = []
         with self.assertRaises(IsADirectoryError):
             scdu.write_scd(lines)
@@ -303,7 +325,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scd_file.close()
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         lines = [self.linedict, self.linedict2]
         scdu.write_scd(lines)
 
@@ -323,7 +345,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test trying to add duplicate line
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         scd_file.close()
         with self.assertRaisesRegex(ValueError, "Line is a duplicate of an existing line"):
             scdu.add_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
@@ -334,7 +356,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test trying to add line with the same time and priority as an existing line
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         scd_file.close()
         with self.assertRaisesRegex(ValueError, "Priority already exists at this time"):
             scdu.add_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
@@ -346,7 +368,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         # TODO: Should the behaviour of add_line be adding a default line first if it's an empty file?
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         scd_file.close()
         scdu.add_line(self.yyyymmdd, self.hhmm, self.exp, self.mode, self.prio, self.dur, self.kwargs)
         with open(scd_file.name, 'r') as f:
@@ -359,14 +381,13 @@ class TestSchedulerUtils(unittest.TestCase):
         self.assertEqual(line[3], str(self.prio))
         self.assertEqual(line[4], self.exp)
         self.assertEqual(line[5], self.mode)
-        self.assertEqual(line[6], self.kwargs)
 
     def test_add_lines_sorted(self):
         """
         Test trying to add multiple lines to a file and have them properly sorted by time and priority
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         scd_file.close()
         counter = 0
         for yyyymmdd in range(20221001, 1, 20221031):
@@ -415,7 +436,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test trying to remove lines from an SCD file
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         scd_lines = ["20200917 00:00 - 0 normalscan common  \n", "20200921 00:00 - 0 normalscan discretionary  \n",
                      "20200924 00:00 - 0 normalscan common  freq1=10500\n", "20200926 00:00 - 0 normalscan common  \n"]
         l0 = scd_lines[0].split()
@@ -493,7 +514,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test trying to remove lines from an SCD file that don't exist. Should raise ValueError
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                      "20200924 00:00 - 0 normalscan common freq=10500\n", "20200926 00:00 - 0 normalscan common\n"]
 
@@ -509,7 +530,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         Test trying to input an incorrect datetime string, should raise ValueError or TypeError
         """
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
 
         with self.assertRaises(ValueError):
             scdu.get_relevant_lines("202", "blah")
@@ -526,7 +547,7 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scd_file.close()
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         self.assertEqual(scdu.get_relevant_lines("20061101", "00:00"), [scdu.scd_default])
 
     def test_empty_file_w_default(self):
@@ -536,15 +557,15 @@ class TestSchedulerUtils(unittest.TestCase):
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
         scd_file.close()
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         self.assertEqual(scdu.get_relevant_lines("19991101", "00:00"),
-                         [scdu.check_line('20000101', '00:00', 'normalscan', 'common', '0', '-')])
+                         [scdu.create_line('20000101', '00:00', 'normalscan', 'common', '0', '-')])
 
     def test_no_lines_relevant(self):
         """
         Test trying to get relevant lines from a file with all lines in the past
         """
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
         lines = scdu.get_relevant_lines("21001113", "00:00")
         self.assertEqual(len(lines), 1)
 
@@ -553,7 +574,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test trying to get relevant lines from a file with one line in the future
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         test_exp_line = "20200917 00:00 89 19 ulfscan common\n"
         scd_file.write(test_exp_line)
         scd_file.close()
@@ -569,7 +590,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test trying to get relevant lines from a file with some lines in the future
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 twofsound common freq=10500\n",
                           "20200926 00:00 60 2 politescan special\n"]
@@ -601,7 +622,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test trying to get relevant lines from a file with all lines in the future or present
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 twofsound common freq=10500\n",
                           "20200926 00:00 60 2 politescan special\n"]
@@ -637,7 +658,7 @@ class TestSchedulerUtils(unittest.TestCase):
         Test trying to get relevant lines from a file with all lines in the future
         """
         scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
         test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
                           "20200924 00:00 - 0 twofsound common freq=10500\n",
                           "20200926 00:00 60 2 politescan special\n"]
@@ -668,10 +689,62 @@ class TestSchedulerUtils(unittest.TestCase):
         self.assertEqual(lines[3]['experiment'], 'politescan')
         self.assertEqual(lines[3]['scheduling_mode'], 'special')
 
+    def test_one_relevant_line(self):
+        """
+        Use a time-of-interest that is far in the future so there is only one relevant line (should be last line)
+        """
+        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
+        scdu = scd_utils.SCDUtils(self.good_scd_file, self.site_id)
+        lines = scdu.get_relevant_lines(time_of_interest.strftime("%Y%m%d"), time_of_interest.strftime("%H:%M"))
+        self.assertEqual([scdu.fmt_line(line).strip() for line in lines], ["20220929 12:00 - 0 normalscan common"])
+
+    def test_no_relevant_lines(self):
+        """
+        Use a time-of-interest that is far in the future with an SCD file without any inf duration lines
+        """
+        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
+        scdfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
+        scdfile.write("20220929 12:00 360 0 normalscan common")  # A 360 minute duration line
+        scdfile.close()
+        scdu = scd_utils.SCDUtils(scdfile.name, self.site_id)
+        lines = scdu.get_relevant_lines(time_of_interest.strftime("%Y%m%d"), time_of_interest.strftime("%H:%M"))
+        self.assertEqual(lines, [])
+
+    def test_one_prev_relevant_line(self):
+        """
+        Use a time-of-interest that is far in the future with an SCD file with one inf duration line in the past
+        """
+        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
+        scdfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
+        scdfile.write("20210903 00:00 - 0 twofsound common\n")  # An infinite duration line
+        scdfile.write("20220929 12:00 60 0 normalscan common\n")  # A 60 minute duration line
+        scdfile.write("20220929 13:00 60 0 normalscan common\n")  # A 60 minute duration line
+        scdfile.close()
+        scdu = scd_utils.SCDUtils(scdfile.name, self.site_id)
+        lines = scdu.get_relevant_lines(*time_of_interest.strftime("%Y%m%d %H:%M").split())
+        self.assertEqual([scdu.fmt_line(line).strip() for line in lines], ["20210903 00:00 - 0 twofsound common"])
+
+    def test_no_inf_dur_relevant(self):
+        """
+        Test trying to get relevant lines from a file with one line in the future but no infinite duration lines
+        """
+        time_of_interest = datetime.datetime(2020, 9, 25, 0, 1)
+        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
+        scdu = scd_utils.SCDUtils(scd_file.name, self.site_id)
+        test_scd_lines = ["20200917 00:00 60 0 normalscan common\n", "20200921 00:00 1440 0 normalscan discretionary\n",
+                          "20200924 00:00 360 0 normalscan common freq=10500\n",
+                          "20200926 00:00 120 0 normalscan common\n"]
+        for test_line in test_scd_lines:
+            scd_file.write(test_line)
+        scd_file.close()
+        lines = scdu.get_relevant_lines(*time_of_interest.strftime("%Y%m%d %H:%M").split())
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(scdu.fmt_line(lines[0]).strip(), test_scd_lines[-1].strip())
+
 
 class TestRemoteServer(unittest.TestCase):
     """
-    unittest class to test the remote server and remote server options modules.
+    unittest class to test the remote server module.
     All test methods must begin with the word 'test' to be run
     """
     def __init__(self, *args, **kwargs):
@@ -680,6 +753,7 @@ class TestRemoteServer(unittest.TestCase):
         """
         super().__init__(*args, **kwargs)
 
+        self.site_id = 'lab'
         self.good_config = f"{os.environ['BOREALISPATH']}/config/sas/sas_config.ini"
         self.good_scd_file = f"{os.environ['BOREALISPATH']}/tests/scheduler/good_scd_file.scd"
         self.maxDiff = None
@@ -690,58 +764,6 @@ class TestRemoteServer(unittest.TestCase):
         """
         print("Method: ", self._testMethodName)
 
-# remote server options tests
-    def test_remote_server_options(self):
-        """
-        Test creating an options object
-        """
-        config = f"{os.environ['BOREALISPATH']}/tests/scheduler/good_config_file.ini"
-        ops = rso.RemoteServerOptions(config)
-        self.assertEqual(ops.site_id, 'tst')
-
-    def test_no_borealispath(self):
-        """
-        Test creating an options object without a BOREALISPATH set up, raises KeyError
-        """
-        # Need to remove the environment variable, reset for other tests
-        try:
-            os.environ.pop('BOREALISPATH')
-            sys.path.remove(BOREALISPATH)
-            del os.environ['BOREALISPATH']
-            os.unsetenv('BOREALISPATH')
-        except KeyError:
-            pass
-
-        with self.assertRaisesRegex(KeyError, "BOREALISPATH"):
-            ops = rso.RemoteServerOptions()
-            self.assertEqual(ops.site_id, 'sas')
-        os.environ['BOREALISPATH'] = BOREALISPATH
-        sys.path.append(BOREALISPATH)
-
-    def test_bad_config_file(self):
-        """
-        Test creating an options object without a good config file. Raises IOError
-        """
-        bad_config = f"{os.environ['BOREALISPATH']}/tests/scheduler/bad_config_file.ini"
-        with self.assertRaises(json.JSONDecodeError):
-            rso.RemoteServerOptions(config_path=bad_config)
-
-    def test_empty_config_file(self):
-        """
-        Test creating an options object an empty config file. Raises KeyError when it can't find anything
-        """
-        bad_config = f"{os.environ['BOREALISPATH']}/tests/scheduler/empty_config_file.ini"
-        with self.assertRaises(KeyError):
-            rso.RemoteServerOptions(config_path=bad_config)
-
-    def test_config_file_dne(self):
-        """
-        Test creating an options object with a config file that DNE, raises IOError
-        """
-        bad_config = "/not/config/file/location"
-        with self.assertRaises(IOError):
-            rso.RemoteServerOptions(config_path=bad_config)
-
 # format_to_atq tests
     def test_make_atq_commands(self):
         """
@@ -750,58 +772,18 @@ class TestRemoteServer(unittest.TestCase):
         # Atq commands are: [command to run] | at [now+ x minute | -t %Y%m%d%H%M]
         time_of_interest = datetime.datetime(2022, 9, 8, 12, 34)
         atq_str = remote_server.format_to_atq(time_of_interest, "some weird experiment with options", "some mode")
-        self.assertEqual(atq_str, "echo 'screen -d -m -S starter /home/radar/borealis/scripts/steamed_hams.py "
+        self.assertEqual(atq_str, f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
                                   "some weird experiment with options release some mode' | "
                                   "at -t 202209081234")
         atq_str = remote_server.format_to_atq(time_of_interest, "exp", "md", first_event_flag=True)
-        self.assertEqual(atq_str, "echo 'screen -d -m -S starter /home/radar/borealis/scripts/steamed_hams.py "
+        self.assertEqual(atq_str, f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
                                   "exp release md' | "
                                   "at now + 1 minute")
         time_of_interest = datetime.datetime(2019, 4, 3, 9, 56)
-        atq_str = remote_server.format_to_atq(time_of_interest, "exp", "md", kwargs_string="this is the kwargs")
-        self.assertEqual(atq_str, "echo 'screen -d -m -S starter /home/radar/borealis/scripts/steamed_hams.py "
-                                  "exp release md --kwargs_string this is the kwargs' | "
+        atq_str = remote_server.format_to_atq(time_of_interest, "exp", "md", kwargs="this is the kwargs")
+        self.assertEqual(atq_str, f"echo 'screen -d -m -S starter {os.environ['BOREALISPATH']}/scripts/steamed_hams.py "
+                                  "exp release md --kwargs this is the kwargs' | "
                                   "at -t 201904030956")
-
-# plot_timeline tests
-    # timeline_to_dict -> nested method so no unittesting
-#    def test_timeline_to_dict(self):
-#        """
-#        Test getting an ordered dict back given timeline list
-#        """
-#        random_list = [{'order': 10}, {'order': 0}, {'order': 1}, {'order': 1}, {'order': 17}, {'order': 5}]
-
-    # get_cmap -> nested method so no unittesting
-#    def test_get_cmap(self):
-#        """
-#       Test the simple cmap function
-#       """
-#
-#
-    # split_event -> nested method so no unittesting
-#    def test_split_event(self):
-#        """
-#        Test splitting an event recursively (long event over two or more days)
-#        """
-
-#    def test_plot_timeline(self): # TODO
-#        """
-#        After this test runs, there should be saved plots and a pickle file of the plot
-#        """
-#        timeline = []
-#        scd_dir = f"{os.environ['BOREALISPATH']}/tests/scheduler/"
-#        timeline_of_interest = datetime.datetime()
-#        site_id = os.environ['RADAR_ID']
-
-# convert_scd_to_timeline tests # TODO
-#    def test_scd_to_timeline_inf_duration(self):
-#        """
-#        Test scd to timeline. Last one should be infinite duration.
-#        """
-#        scd_lines = []
-#        remote_server.convert_scd_to_timeline(scd_lines, time_of_interest)
-
-# calculate_new_last_line_params -> Nested method so no unittesting
 
 # timeline_to_atq tests
 
@@ -908,184 +890,6 @@ class TestRemoteServer(unittest.TestCase):
         # Now remove the atq directory, remove the future at jobs submitted, and return
         shutil.rmtree(atq_dir)
         # TODO: Remove added jobs
-
-# get_relevant_lines tests
-    def test_inc_datetime(self):
-        """
-        Test trying to input an incorrect datetime type, should raise AttributeError
-        """
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
-        with self.assertRaises(AttributeError):
-            remote_server.get_relevant_lines(scdu, "blah")
-        with self.assertRaises(AttributeError):
-            remote_server.get_relevant_lines(scdu, None)
-        with self.assertRaises(AttributeError):
-            remote_server.get_relevant_lines(scdu, 5890)
-
-    @unittest.skip
-    def test_one_relevant_line(self):
-        """
-        Use a time-of-interest that is far in the future so there is only one relevant line (should be last line)
-        """
-        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
-        with self.assertRaises(SystemExit):
-            lines = remote_server.get_relevant_lines(scdu, time_of_interest)
-            self.assertEqual(lines, ["20220929 12:00 - 0 normalscan common"])
-
-    @unittest.skip
-    def test_no_relevant_lines(self):
-        """
-        Use a time-of-interest that is far in the future with an SCD file without any inf duration lines
-        """
-        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
-        scdfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdfile.write("20220929 12:00 360 0 normalscan common")  # A 360 minute duration line
-        scdfile.close()
-        scdu = scd_utils.SCDUtils(scdfile.name)
-        with self.assertRaises(SystemExit):
-            lines = remote_server.get_relevant_lines(scdu, time_of_interest)
-            self.assertEqual(lines, [])
-
-    @unittest.skip
-    def test_one_prev_relevant_line(self):
-        """
-        Use a time-of-interest that is far in the future with an SCD file with one inf duration line in the past
-        """
-        time_of_interest = datetime.datetime(2050, 11, 14, 0, 1)
-        scdfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdfile.write("20210903 00:00 - 0 twofsound common\n")  # An infinite duration line
-        scdfile.write("20220929 12:00 60 0 normalscan common\n")  # A 60 minute duration line
-        scdfile.write("20220929 13:00 60 0 normalscan common\n")  # A 60 minute duration line
-        scdfile.close()
-        scdu = scd_utils.SCDUtils(scdfile.name)
-        with self.assertRaises(SystemExit):
-            lines = remote_server.get_relevant_lines(scdu, time_of_interest)
-            self.assertEqual(lines, ["20210903 00:00 - 0 twofsound common"])
-
-    @unittest.skip
-    def test_empty_scdu_file(self):
-        """
-        Test trying to get relevant lines from an empty file, should raise IndexError
-        """
-        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
-        time_of_interest = datetime.datetime(2022, 11, 14, 0, 0)
-        with self.assertRaises(IndexError):
-            remote_server.get_relevant_lines(scdu, time_of_interest)
-
-    @unittest.skip
-    def test_no_scdu_lines_relevant(self):
-        """
-        Test trying to get relevant lines from a file
-        """
-        scdu = scd_utils.SCDUtils(self.good_scd_file)
-        time_of_interest = datetime.datetime(2022, 11, 14, 0, 0)
-        lines = remote_server.get_relevant_lines(scdu, time_of_interest)
-        self.assertEqual(len(lines), 0)
-
-    @unittest.skip
-    def test_one_line_relevant(self):
-        """
-        Test trying to get relevant lines from a file with one line in the future
-        """
-        time_of_interest = datetime.datetime(2022, 11, 14, 0, 1)
-        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
-        test_exp_line = "20221115 03:00 - 0 normalscan common\n"
-        scd_file.write(test_exp_line)
-        scd_file.close()
-        lines = remote_server.get_relevant_lines(scdu, time_of_interest)
-        self.assertEqual(len(lines), 1)
-        self.assertEqual(lines[0], test_exp_line)
-
-    @unittest.skip
-    def test_no_inf_dur_relevant(self):
-        """
-        Test trying to get relevant lines from a file with one line in the future but no infinite duration lines
-        """
-        time_of_interest = datetime.datetime(2020, 9, 25, 0, 1)
-        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
-        test_scd_lines = ["20200917 00:00 60 0 normalscan common\n", "20200921 00:00 1440 0 normalscan discretionary\n",
-                          "20200924 00:00 360 0 normalscan common freq=10500\n",
-                          "20200926 00:00 120 0 normalscan common\n"]
-        for test_line in test_scd_lines:
-            scd_file.write(test_line)
-        scd_file.close()
-        lines = remote_server.get_relevant_lines(scdu, time_of_interest)
-        self.assertEqual(len(lines), 1)
-        self.assertEqual(lines[0], test_scd_lines)
-
-    def test_some_lines_relevant(self):
-        """
-        Test trying to get relevant lines from a file with some lines in the future
-        """
-        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
-        test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
-                          "20200924 00:00 - 0 twofsound common freq=10500\n",
-                          "20200926 00:00 60 2 politescan special\n"]
-        for test_line in test_scd_lines:
-            scd_file.write(test_line)
-        scd_file.close()
-        time_of_interest = datetime.datetime(2020, 9, 23, 0, 1)
-        lines = remote_server.get_relevant_lines(scdu, time_of_interest)
-        self.assertEqual(len(lines), 3)
-
-        self.assertEqual(lines[0]['duration'], '-')
-        self.assertEqual(lines[0]['prio'], '0')
-        self.assertEqual(lines[0]['experiment'], 'normalscan')
-        self.assertEqual(lines[0]['scheduling_mode'], 'discretionary')
-
-        self.assertEqual(lines[1]['duration'], '-')
-        self.assertEqual(lines[1]['prio'], '0')
-        self.assertEqual(lines[1]['experiment'], 'twofsound')
-        self.assertEqual(lines[1]['scheduling_mode'], 'common')
-        self.assertEqual(lines[1]['kwargs_string'], 'freq=10500')
-
-        self.assertEqual(lines[2]['duration'], '60')
-        self.assertEqual(lines[2]['prio'], '2')
-        self.assertEqual(lines[2]['experiment'], 'politescan')
-        self.assertEqual(lines[2]['scheduling_mode'], 'special')
-
-
-    def test_all_lines_relevant_matched(self):
-        """
-        Test trying to get relevant lines from a file with all lines in the future or present
-        """
-        time_of_interest = datetime.datetime(2020, 9, 17, 0, 0)
-        scd_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        scdu = scd_utils.SCDUtils(scd_file.name)
-        test_scd_lines = ["20200917 00:00 - 0 normalscan common\n", "20200921 00:00 - 0 normalscan discretionary\n",
-                          "20200924 00:00 - 0 twofsound common freq=10500\n",
-                          "20200926 00:00 60 2 politescan special\n"]
-        for test_line in test_scd_lines:
-            scd_file.write(test_line)
-        scd_file.close()
-        lines = remote_server.get_relevant_lines(scdu, time_of_interest)
-        self.assertEqual(len(lines), 4)
-
-        self.assertEqual(lines[0]['duration'], '-')
-        self.assertEqual(lines[0]['prio'], '0')
-        self.assertEqual(lines[0]['experiment'], 'normalscan')
-        self.assertEqual(lines[0]['scheduling_mode'], 'common')
-
-        self.assertEqual(lines[1]['duration'], '-')
-        self.assertEqual(lines[1]['prio'], '0')
-        self.assertEqual(lines[1]['experiment'], 'normalscan')
-        self.assertEqual(lines[1]['scheduling_mode'], 'discretionary')
-
-        self.assertEqual(lines[2]['duration'], '-')
-        self.assertEqual(lines[2]['prio'], '0')
-        self.assertEqual(lines[2]['experiment'], 'twofsound')
-        self.assertEqual(lines[2]['scheduling_mode'], 'common')
-        self.assertEqual(lines[2]['kwargs_string'], 'freq=10500')
-
-        self.assertEqual(lines[3]['duration'], '60')
-        self.assertEqual(lines[3]['prio'], '2')
-        self.assertEqual(lines[3]['experiment'], 'politescan')
-        self.assertEqual(lines[3]['scheduling_mode'], 'special')
 
 
 class TestLocalServer(unittest.TestCase):
@@ -1208,7 +1012,6 @@ class TestLocalServer(unittest.TestCase):
         shutil.rmtree(swg_dir)
         self.assertFalse(os.path.exists(swg_dir))
 
-    @unittest.skip
     def test_bad_experiment(self):
         """
         Test parsing the SWG file. Should fail when it encounters a line with a non-existent experiment
@@ -1222,11 +1025,13 @@ class TestLocalServer(unittest.TestCase):
         mm_yyyy = datetime.datetime.today().strftime("%B %Y")
         yyyy = datetime.datetime.today().strftime("%Y")
         yyyymm = datetime.datetime.today().strftime("%Y%m")
-        new_swg_file = f"{scd_dir}/schedules/{yyyy}/{yyyymm}"
+        new_swg_file = f"{scd_dir}/schedules/{yyyy}/{yyyymm}.swg"
         with open(swg_file, 'r') as f:
             swg_data = f.read()
+        if not os.path.exists(os.path.dirname(new_swg_file)):
+            os.makedirs(os.path.dirname(new_swg_file))
         with open(new_swg_file, 'w') as f:
-            f.write(mm_yyyy + swg_data)
+            f.write(f"{mm_yyyy}\n{swg_data}")
 
         modes = local_scd_server.EXPERIMENTS[site_id]
         swg = local_scd_server.SWG(scd_dir)
@@ -1236,8 +1041,6 @@ class TestLocalServer(unittest.TestCase):
         with self.assertRaises(ValueError):
             params = swg.parse_swg_to_scd(modes, site_id, first_run=True)
 
-        # Remove the files we wrote
-        shutil.rmtree(new_swg_file)
         # Remove the swg dir again
         shutil.rmtree(swg_dir)
         self.assertFalse(os.path.exists(swg_dir))
@@ -1275,108 +1078,6 @@ class TestLocalServer(unittest.TestCase):
         # Remove the swg dir again
         shutil.rmtree(swg_dir)
         self.assertFalse(os.path.exists(swg_dir))
-
-
-class TestSchedulerEmailer(unittest.TestCase):
-    """
-    unittest class to test the scheduler emailing module. All test methods must begin with the word 'test' to be run
-    """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.emails = "kevin.krieger@usask.ca\nkevinjkrieger@gmail.com"
-        self.email_file = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        self.email_file.write(self.emails)
-        self.email_file.close()
-
-        self.logfile = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        self.logfile.write('Not much of a logfile,\n but here we are')
-        self.logfile.close()
-
-        self.no_perms = tempfile.NamedTemporaryFile(mode='w+t', delete=False)
-        self.no_perms_file = self.no_perms.name
-        os.chmod(self.no_perms_file, 0o000)
-        self.no_perms.close()
-
-        self.attachments = [f"{os.environ['BOREALISPATH']}/docs/uml_diagrams/scheduler/local.drawio.png",
-                            f"{os.environ['BOREALISPATH']}/docs/uml_diagrams/scheduler/remote.drawio.png",
-                            f"{os.environ['BOREALISPATH']}/docs/source/scheduling.rst"]
-        self.maxDiff = None
-
-    def setUp(self):
-        """
-        Called before every test_* method
-        """
-        print("Method: ", self._testMethodName)
-
-    def test_no_arg(self):
-        """
-        Test calling the scheduler emailer with empty arg string, it expects a filename
-        """
-        with self.assertRaisesRegex(ValueError, "No email addresses to send to"):
-            email_utils.Emailer('')
-
-    def test_dir(self):
-        """
-        Test calling the scheduler emailer with a directory, it expects a filename
-        """
-        with self.assertRaisesRegex(ValueError, "No email addresses to send to"):
-            email_utils.Emailer(os.environ['HOME'])
-
-    def test_no_permissions(self):
-        """
-        Test calling the scheduler emailer with a file without permissions
-        """
-
-        with self.assertRaisesRegex(ValueError, "No email addresses to send to"):
-            email_utils.Emailer(self.no_perms_file)
-
-    def test_not_owner(self):
-        """
-        Test calling the scheduler emailer with a file with wrong owner
-        """
-        with self.assertRaisesRegex(ValueError, "No email addresses to send to"):
-            email_utils.Emailer('/root/')
-
-    def test_no_logfile(self):
-        """
-        Test calling the scheduler emailer with a non-existent log file
-        Should send email with body of email containing error message
-        """
-        with open(self.email_file.name) as f:
-            e = email_utils.Emailer(f.name)
-            subject = 'Unittest scheduler emailer, no log file'
-            e.email_log(subject, 'albj;ljkas;ldj;oij_nonexistentlogfilename')
-
-    def test_bad_logfile(self):
-        """
-        Test calling the scheduler emailer with a log file that can't be opened
-        Should send email with body of email containing error message
-        """
-        with open(self.email_file.name) as f:
-            e = email_utils.Emailer(f.name)
-            subject = 'Unittest scheduler emailer, bad log file'
-            e.email_log(subject, self.no_perms_file)
-
-    def test_email_works(self):
-        """
-        Test with everything working properly. Emails should be sent with logfile
-        """
-        with open(self.email_file.name) as f:
-            e = email_utils.Emailer(f.name)
-            subject = 'Unittest scheduler emailer'
-            e.email_log(subject, self.logfile.name)
-
-    def test_email_attachments_work(self):
-        """
-        Test with everything working properly, including several attachments. Emails should be sent with attachments
-        """
-        with tempfile.NamedTemporaryFile(mode='w+t', delete=False) as f:
-            f.write(self.emails)
-            f.close()
-            e = email_utils.Emailer(f.name)
-            subject = 'Unittest scheduler emailer'
-            e.email_log(subject, self.logfile.name, attachments=self.attachments)
 
 
 if __name__ == "__main__":

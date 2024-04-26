@@ -23,7 +23,7 @@ The remote script (``remote_server.py``) will check for changes to any synced fi
 ``atq`` command arguments for Borealis experiments to run. This allows us to utilize scheduling
 utilities already available in Linux.
 
-These scripts are configured with logging and email capability so that maintainers can track if
+These scripts are configured with logging capability so that maintainers can track if
 scheduling is successful. There is also a utility script called ``schedule_modifier.py`` that should
 be used to add or remove lines from the schedule so that no errors are made in the schedule file. It
 is not recommended to manually modify any schedule files.
@@ -67,13 +67,12 @@ Here are the steps to configure scheduling:
       ``sas.scd``.
     - Configure a system service or reboot ``cron`` task to run the python3 script
       ``local_scd_server.py`` at boot. This script requires the argument ``--scd-dir`` for the
-      schedules directory as well as ``--emails-filepath`` which should be a text file of emails on
-      each line where scheduling status will be sent.
+      schedules directory.
     - The ``local_scd_server.py`` script has an option for running manually the first time to
       properly configure the scheduling directory with the schedules for the latest files available.
     - Example: ::
         
-        python3 ./local_scd_server.py --first-run --scd-dir=/data/borealis_schedules --emails-filepath=/data/borealis_schedules/emails.txt
+        python3 ./local_scd_server.py --first-run --scd-dir=/data/borealis_schedules
 
 
 2. Configure the Borealis computer.

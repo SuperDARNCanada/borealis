@@ -31,6 +31,7 @@ import sys
 import inspect
 import pkgutil
 from importlib import import_module
+import importlib.util
 import json
 
 # Need the path append to import within this file
@@ -65,6 +66,9 @@ def ehmain(experiment_name='normalscan', scheduling_mode='discretionary', **kwar
     :param  kwargs: The keyword arguments for the experiment
     :type   kwargs: dict
     """
+    from utils import log_config
+    log_config.log(console=False, logfile=False, aggregator=False)  # Prevent logging in experiment
+
     import experiment_handler as eh
 
     experiment = eh.retrieve_experiment(experiment_name)
@@ -244,22 +248,36 @@ def build_experiment_tests(experiments=None, kwargs=None):
             else:
                 raise ValueError(f"Bad kwarg: {element}")
 
-    # Iterate through all modules in the borealis_experiments directory
-    for (_, name, _) in pkgutil.iter_modules([experiment_path]):
-        if experiments is None or name in experiments:
-            imported_module = import_module('.' + name, package=experiment_package)
-            # Loop through all attributes of each found module
-            for i in dir(imported_module):
-                attribute = getattr(imported_module, i)
-                # To verify that an attribute is a runnable experiment, check that the attribute is
-                # a class and inherits from ExperimentPrototype
-                if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
-                    # Only create a test if the current attribute is the experiment itself
-                    if 'ExperimentPrototype' not in str(attribute):
-                        test = experiment_test_generator(name, **kwargs_dict)
-                        # setattr make the "test" function a method within TestActiveExperiments called
-                        # "test_[name]" which can be run via unittest.main()
-                        setattr(TestActiveExperiments, f"test_{name}", test)
+    def add_experiment_test(exp_name: str):
+        """ Add a unit test for a given experiment """
+        imported_module = import_module('.' + exp_name, package=experiment_package)
+        # Loop through all attributes of each found module
+        for i in dir(imported_module):
+            attribute = getattr(imported_module, i)
+            # To verify that an attribute is a runnable experiment, check that the attribute is
+            # a class and inherits from ExperimentPrototype
+            if inspect.isclass(attribute) and issubclass(attribute, ExperimentPrototype):
+                # Only create a test if the current attribute is the experiment itself
+                if 'ExperimentPrototype' not in str(attribute):
+                    test = experiment_test_generator(exp_name, **kwargs_dict)
+                    # setattr make the "test" function a method within TestActiveExperiments called
+                    # "test_[exp_name]" which can be run via unittest.main()
+                    setattr(TestActiveExperiments, f"test_{exp_name}", test)
+
+    # Grab the experiments specified
+    if experiments is not None:
+        for name in experiments:
+            spec = importlib.util.find_spec('.' + name, package=experiment_package)
+            if spec is None:
+                # Add in a failing test for this experiment name
+                setattr(TestActiveExperiments, f'test_{name}', lambda self: self.fail("Experiment not found"))
+            else:
+                add_experiment_test(name)
+
+    else:
+        # Iterate through all modules in the borealis_experiments directory
+        for (_, name, _) in pkgutil.iter_modules([experiment_path]):
+            add_experiment_test(name)
 
 
 def experiment_test_generator(module_name, **kwargs):

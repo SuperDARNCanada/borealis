@@ -5,8 +5,7 @@
 06:08    07:03    Discretionary Time
 07:03    18:12    Special Time (interleavescan) [ALL] (see Note A)
 18:12    20:10    Common Time (1-min)
-20:10    21:00    Special Time (interleavesound) [ALL] (see Note B)
-[  HKW  HOK  ADW  ADE  KSR  KOD  CVW  CVE  FHW  FHE  BKS  WAL  PGR  SAS  ]  {interleaved  normalscan}
+20:10    21:00    Special Time (interleavesound) [ALL] (see Note B) [  HKW  HOK  ADW  ADE  KSR  KOD  CVW  CVE  FHW  FHE  BKS  WAL  PGR  SAS  ]  {interleaved  normalscan}
 # This line and the following should be skipped
 #21:00    21:06    Common Time (1-min) (normalsound) (see Note C)
 21:00    21:06    Common Time (1-min) (normalsound) (see Note C)
