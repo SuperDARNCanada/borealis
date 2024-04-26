@@ -84,8 +84,6 @@ class SCDUtils:
 
         :returns:   Dict of line params.
         :rtype:     dict
-
-        :raises     ValueError: If line parameters are invalid or if line is a duplicate.
         """
         # create datetime from args to see if valid. Value error for incorrect format
         time = dt.datetime.strptime(yyyymmdd + " " + hhmm, self.scd_dt_fmt)

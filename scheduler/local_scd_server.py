@@ -230,7 +230,7 @@ class SWG(object):
                 mode_to_use = modes["discretionary_time"]
 
             if not mode_to_use or not mode_type:
-                raise ValueError(f"SWG line couldn't be parsed, continuing: {line}")
+                raise ValueError(f"SWG line couldn't be parsed: {line}")
             param = {f"yyyymmdd": f"{year}{month}{start_day}",
                      f"hhmm": f"{start_hr}:00",
                      "experiment": mode_to_use,

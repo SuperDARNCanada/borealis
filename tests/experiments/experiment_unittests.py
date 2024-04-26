@@ -274,10 +274,10 @@ def build_experiment_tests(experiments=None, kwargs=None):
             else:
                 add_experiment_test(name)
 
-
-    # Iterate through all modules in the borealis_experiments directory
-    for (_, name, _) in pkgutil.iter_modules([experiment_path]):
-        add_experiment_test(name)
+    else:
+        # Iterate through all modules in the borealis_experiments directory
+        for (_, name, _) in pkgutil.iter_modules([experiment_path]):
+            add_experiment_test(name)
 
 
 def experiment_test_generator(module_name, **kwargs):
