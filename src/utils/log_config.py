@@ -33,7 +33,7 @@ import sys
 from .options import Options
 # We need these two handlers from logging to print to a file and stdout
 import logging
-from logging import StreamHandler, FileHandler
+from logging import StreamHandler
 from logging.handlers import TimedRotatingFileHandler
 import structlog
 import graypy
@@ -46,7 +46,7 @@ rich.pretty.install()
 VERBOSE = logging.INFO - 5  #: New logging level, set between `DEBUG` and `INFO`.
 
 
-class VerboseLogger(structlog.BoundLoggerBase):
+class VerboseLogger(structlog.stdlib.BoundLogger):
     """
     Wrapper class that adds a new logging method `verbose` between `debug` and `info` levels.
     """
@@ -54,30 +54,12 @@ class VerboseLogger(structlog.BoundLoggerBase):
         super().__init__(*args, **kwargs)
         setattr(self._logger, 'verbose', self._verbose)     # Create the new `verbose` method.
 
-    def debug(self, *args, **kwargs):
-        return self._proxy_to_logger("debug", *args, **kwargs)
-
     def verbose(self, *args, **kwargs):
         return self._proxy_to_logger("verbose", *args, **kwargs)
 
     def _verbose(self, msg, *args, **kwargs):
         """ Log msg at the `VERBOSE` level """
         return self._logger._log(VERBOSE, msg, args, **kwargs)
-
-    def info(self, *args, **kwargs):
-        return self._proxy_to_logger("info", *args, **kwargs)
-
-    def warning(self, *args, **kwargs):
-        return self._proxy_to_logger("warning", *args, **kwargs)
-
-    def error(self, *args, **kwargs):
-        return self._proxy_to_logger("error", *args, **kwargs)
-
-    def exception(self, *args, **kwargs):
-        return self._proxy_to_logger("exception", *args, **kwargs)
-
-    def critical(self, *args, **kwargs):
-        return self._proxy_to_logger("critical", *args, **kwargs)
 
 
 def add_logging_level(level_name, level_num, method_name=None):
@@ -207,43 +189,39 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
     ]
 
     processors = [
+        structlog.stdlib.add_logger_name,           # Add the name of the logger
         structlog.stdlib.add_log_level,             # Add log level to event dict
+        structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add timestamps to the log
         structlog.processors.UnicodeDecoder(),      # Decode byte strings to unicode strings
         structlog.processors.StackInfoRenderer(),   # Move "stack_info" in event_dict to "stack" and render
+        structlog.processors.CallsiteParameterAdder(  # Add items from the call enum
+            {
+                structlog.processors.CallsiteParameter.FUNC_NAME,  # function name
+                structlog.processors.CallsiteParameter.MODULE,  # module name
+                structlog.processors.CallsiteParameter.PROCESS,  # process ID
+                # structlog.processors.CallsiteParameter.THREAD,  # thread ID
+                # structlog.processors.CallsiteParameter.FILENAME,  # file name
+                # structlog.processors.CallsiteParameter.LINENO,  # line number
+            },
+            # Ignore any function from this module when attributing a log to a function
+            additional_ignores=["utils.log_config"]
+        ),
         # The last processor has to be a renderer to render the log to file, stream, etc. in some style
         # This wrapper lets us decide on the renderer later. This is needed to have two renderers.
         structlog.stdlib.ProcessorFormatter.wrap_for_formatter
     ]
 
-    # Add additional processors for all cases when not simply converting a logfile
-    if not json_to_console:
-        additional_processors = [
-            structlog.stdlib.add_logger_name,       # Add the name of the logger
-            structlog.processors.TimeStamper(fmt='iso', utc=True),  # Add timestamps to the log
-        ]
-        processors = additional_processors + processors
-
-        # The last processor has to be a renderer, so we insert just before last
-        processors.insert(-2,
-            structlog.processors.CallsiteParameterAdder(  # Add items from the call enum
-                {
-                    structlog.processors.CallsiteParameter.FUNC_NAME,  # function name
-                    structlog.processors.CallsiteParameter.MODULE,  # module name
-                    structlog.processors.CallsiteParameter.PROCESS,  # process ID
-                    # structlog.processors.CallsiteParameter.THREAD,  # thread ID
-                    # structlog.processors.CallsiteParameter.FILENAME,  # file name
-                    # structlog.processors.CallsiteParameter.LINENO,  # line number
-                },
-                # Ignore any function from this module when attributing a log to a function
-                additional_ignores=["utils.log_config"]
-            )
-        )
+    # Remove some processors when simply converting a JSON logfile to console rendering
+    if json_to_console:
+        processors.pop(-2)  # CallsiteParameterAdder
+        processors.pop(2)   # Timestamper
+        processors.pop(0)   # add_logger_name
 
     # Configure structlog here once for everything so that every log is uniformly formatted
     # noinspection PyTypeChecker
     structlog.configure(
         processors=processors,
-        wrapper_class=VerboseLogger, # Structlog wrapper class to imitate `logging.Logger`
+        wrapper_class=VerboseLogger,  # Structlog wrapper class to imitate `logging.Logger`
         logger_factory=structlog.stdlib.LoggerFactory(),  # Creates the wrapped loggers
         cache_logger_on_first_use=True  # Freeze the configuration (no tampering!)
     )
@@ -309,7 +287,6 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
         ))
         root_logger.addHandler(json_to_console_handler)
 
-    # Apply the configuration
-    structlog.configure()
-
-    return structlog.getLogger(module_name)
+    # Create a local logger for performance reasons (see https://www.structlog.org/en/stable/performance.html)
+    logger = structlog.get_logger(module_name).new()
+    return logger
