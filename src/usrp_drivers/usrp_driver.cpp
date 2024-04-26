@@ -159,10 +159,14 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   start_trigger.recv(&request);
   memcpy(&initialization_time, static_cast<uhd::time_spec_t*>(request.data()), request.size());
 
+  auto driver_ready_msg = std::string("DRIVER_READY");
+  SEND_REPLY(driver_to_radar_control, driver_options.get_radctrl_to_driver_identity(),
+    driver_ready_msg);
 
-   /*This loop accepts pulse by pulse from the radar_control. It parses the samples, configures the
-    *USRP, sets up the timing, and then sends samples/timing to the USRPs.
-    */
+  /*
+  * This loop accepts pulse by pulse from the radar_control. It parses the samples, configures the
+  * USRP, sets up the timing, and then sends samples/timing to the USRPs.
+  */
   while (1)
   {
     auto more_pulses = true;
@@ -650,11 +654,6 @@ int32_t UHD_SAFE_MAIN(int32_t argc, char *argv[]) {
                             tune_delay);
   usrp_d.set_rx_center_freq(driver_packet.rxcenterfreq(), driver_options.get_receive_channels(),
                             tune_delay);
-
-
-  auto driver_ready_msg = std::string("DRIVER_READY");
-  SEND_REPLY(driver_to_radar_control, driver_options.get_radctrl_to_driver_identity(),
-    driver_ready_msg);
 
   driver_to_radar_control.close();
   std::vector<std::thread> threads;
