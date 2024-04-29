@@ -89,9 +89,7 @@ screen -t "Data Write" bash -c "{START_DATAWRITE}"          # Bottom middle
 focus
 screen -t "Experiment Handler" bash -c "{START_EXPHAN}"     # Right top
 split
-split
-focus
-screen -t "Realtime" bash -c "{START_RT}"                   # Right middle
+"{REALTIME}"
 focus
 screen -t "Brian" bash -c "{START_BRIAN}"                   # Right bottom
 focus
@@ -99,6 +97,11 @@ focus
 detach
 """
 
+realtime_window = """
+split
+focus
+screen -t "Realtime" bash -c "{START_RT}"                   # Right middle
+"""
 
 def steamed_hams_parser():
     """
@@ -119,6 +122,8 @@ def steamed_hams_parser():
     parser.add_argument("--embargo", action="store_true", help="Embargo the file (makes the CPID negative)")
     parser.add_argument("--kwargs", nargs='+', default='',
                         help="Keyword arguments for the experiment. Each must be formatted as kw=val")
+    parser.add_argument("--realtime-off", action="store_true",
+                        help="Disable the realtime FITACF3 and data server module")
 
     return parser
 
@@ -195,16 +200,21 @@ if mode == "debug":
 
 # Set up the screenrc file and populate it
 log_dir = "/data/borealis_logs/"    # Temporary fix to give us access to exactly what's printed to console from Borealis
-screenrc = BOREALISSCREENRC.format(
-    START_RT=modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log",
-    START_BRIAN=modules['brian'] + " 2>&1 | tee " + log_dir + "brian.log",
-    START_USRP_DRIVER=modules['usrp_driver'] + " 2>&1 | tee " + log_dir + "usrp_driver.log",
-    START_DSP=modules['rx_signal_processing'] + " 2>&1 | tee " + log_dir + "rx_signal_processing.log",
-    START_DATAWRITE=modules['data_write'] + " 2>&1 | tee " + log_dir + "data_write.log",
-    START_EXPHAN=modules['experiment_handler'] + " 2>&1 | tee " + log_dir + "experiment_handler.log",
-    START_RADCTRL=modules['radar_control'] + " 2>&1 | tee " + log_dir + "radar_control.log",
-)
+format_dict = {
+    "START_BRIAN": modules['brian'] + " 2>&1 | tee " + log_dir + "brian.log",
+    "START_USRP_DRIVER": modules['usrp_driver'] + " 2>&1 | tee " + log_dir + "usrp_driver.log",
+    "START_DSP": modules['rx_signal_processing'] + " 2>&1 | tee " + log_dir + "rx_signal_processing.log",
+    "START_DATAWRITE": modules['data_write'] + " 2>&1 | tee " + log_dir + "data_write.log",
+    "START_EXPHAN": modules['experiment_handler'] + " 2>&1 | tee " + log_dir + "experiment_handler.log",
+    "START_RADCTRL": modules['radar_control'] + " 2>&1 | tee " + log_dir + "radar_control.log",
+}
 
+# Ready the command for adding a realtime window, if it is not disabled.
+if not args.realtime_off:
+    format_dict["REALTIME"] = realtime_window.format(modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log")
+
+# Add the commands to the script and write to file
+screenrc = BOREALISSCREENRC.format(**format_dict)
 screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"
 with open(screenrc_file, 'w') as f:
     f.write(screenrc)

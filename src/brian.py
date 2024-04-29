@@ -67,8 +67,8 @@ def router(options):
                           sender=frames[1],
                           receiver=frames[0],
                           error=str(e))
-
-                non_sent.append(frames)
+                if e.errno != zmq.EHOSTUNREACH:  # Try to send the frame again
+                    non_sent.append(frames)
 
         frames_to_send = non_sent
 
