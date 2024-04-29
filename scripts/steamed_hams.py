@@ -213,7 +213,7 @@ format_dict = {
 if args.realtime_off:
     format_dict["REALTIME"] = ""
 else:
-    format_dict["REALTIME"] = realtime_window.format(modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log")
+    format_dict["REALTIME"] = realtime_window.format(START_RT=modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log")
 
 # Add the commands to the script and write to file
 screenrc = BOREALISSCREENRC.format(**format_dict)
