@@ -27,14 +27,12 @@ else:
 TIME_PROFILE = True
 
 
-def router(options, realtime_off=False):
+def router(options):
     """
     The router is responsible for moving traffic between modules by routing traffic using named sockets.
 
     :param  options: Options parsed from config file
     :type   options: Options class
-    :param  realtime_off: Flag indicating whether realtime module is off or on
-    :type   realtime_off: bool
     """
 
     context = zmq.Context().instance()
@@ -65,17 +63,18 @@ def router(options, realtime_off=False):
             try:
                 router.send_multipart(frames)
             except zmq.ZMQError as e:
-                log.debug(f"unable to send frame: receiver->sender",
-                          sender=frames[1],
-                          receiver=frames[0],
-                          error=str(e))
-                # If realtime is turned off and message was intended for realtime, then drop it
-                if e.errno == zmq.EHOSTUNREACH and frames[0].endswith("RT_IDEN") and realtime_off:
-                    log.verbose("Dropping message",
-                                sender=frames[1],
-                                receiver=frames[0])
+                # Check if message was intended for realtime, and drop the message if so
+                if e.errno == zmq.EHOSTUNREACH and frames[1].decode('utf-8').endswith("RT_IDEN"):
+                    log.debug("dropping message",
+                              sender=frames[1],
+                              receiver=frames[0])
+
                 # Otherwise, try to resend the message
                 else:
+                    log.debug(f"unable to send frame: retrying",
+                              sender=frames[1],
+                              receiver=frames[0],
+                              error=str(e))
                     non_sent.append(frames)
 
         frames_to_send = non_sent
@@ -278,8 +277,7 @@ def main():
     args = parser.parse_args()
 
     options = Options()
-    threads = []
-    threads.append(threading.Thread(target=router, args=(options,), kwargs={"realtime_off": args.realtime_off}))
+    threads = [threading.Thread(target=router, args=(options,))]
 
     if not args.router_only:
         threads.append(threading.Thread(target=sequence_timing, args=(options,)))

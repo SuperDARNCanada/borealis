@@ -1192,7 +1192,7 @@ def main():
 
     dsp_to_data_write = sockets[0]
     radctrl_to_data_write = sockets[1]
-    realtime_to_data_write = sockets[2]
+    data_write_to_realtime = sockets[2]
 
     poller = zmq.Poller()
     poller.register(dsp_to_data_write, zmq.POLLIN)
@@ -1267,7 +1267,7 @@ def main():
                                       file_ext=args.file_type,
                                       aveperiod_meta=aveperiod_metadata,
                                       data_parsing=data_parsing,
-                                      rt_dw={"socket": realtime_to_data_write,
+                                      rt_dw={"socket": data_write_to_realtime,
                                              "iden": options.rt_to_dw_identity},
                                       write_rawacf=args.enable_raw_acfs)
                         thread = threading.Thread(target=data_write.output_data, kwargs=kwargs)
