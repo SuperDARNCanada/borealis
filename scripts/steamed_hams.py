@@ -210,7 +210,9 @@ format_dict = {
 }
 
 # Ready the command for adding a realtime window, if it is not disabled.
-if not args.realtime_off:
+if args.realtime_off:
+    format_dict["REALTIME"] = ""
+else:
     format_dict["REALTIME"] = realtime_window.format(modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log")
 
 # Add the commands to the script and write to file
