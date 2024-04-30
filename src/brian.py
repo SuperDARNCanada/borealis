@@ -60,29 +60,29 @@ def router(options, realtime_off):
                       receiver=receiver)
 
         non_sent = []
-
+        retry_logs = []
         for frames in frames_to_send:
             try:
                 router.send_multipart(frames)
             except zmq.ZMQError as e:
+                sender = frames[1]
+                receiver = frames[0]
+
+                log_dict = {'sender': sender, 'receiver': receiver, 'error': str(e)}
+
                 # Check if message was intended for realtime, and drop the message if so
-                if e.errno == zmq.EHOSTUNREACH and frames[1].decode('utf-8') == options.dw_to_rt_identity:
+                if sender.decode('utf-8') == options.dw_to_rt_identity:
                     if realtime_off:
-                        log.debug("dropping message",
-                                  sender=frames[1],
-                                  receiver=frames[0])
+                        log.debug("dropping message", **log_dict)
                     else:
-                        log.warning("dropping message",
-                                    sender=frames[1],
-                                    receiver=frames[0])
+                        log.warning("dropping message", **log_dict)
 
                 # Otherwise, try to resend the message
                 else:
-                    log.debug(f"unable to send frame: retrying",
-                              sender=frames[1],
-                              receiver=frames[0],
-                              error=str(e))
+                    retry_logs.append(log_dict)
                     non_sent.append(frames)
+        if len(frames_to_send) > 0:
+            log.debug("Retrying to send frames", retry_logs)
 
         frames_to_send = non_sent
 
