@@ -7,7 +7,7 @@ Realtime Package
 The realtime package contains the utilities that check data files for corruption during operation
 and serving the data to external sockets.
 
-This module is optional, and can be disabled when running the radar by an argument to ``steamed_hams.py``. For example::
+This module is optional, and can be disabled by running the radar with the argument ``--realtime-off``. For example::
 
     /home/radar/borealis/scripts/steamed_hams.py twofsound release --realtime-off
 
