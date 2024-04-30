@@ -27,12 +27,14 @@ else:
 TIME_PROFILE = True
 
 
-def router(options):
+def router(options, realtime_off):
     """
     The router is responsible for moving traffic between modules by routing traffic using named sockets.
 
     :param  options: Options parsed from config file
     :type   options: Options class
+    :param realtime_off: Flag indicating if realtime is disabled
+    :type  realtime_off: bool
     """
 
     context = zmq.Context().instance()
@@ -64,10 +66,15 @@ def router(options):
                 router.send_multipart(frames)
             except zmq.ZMQError as e:
                 # Check if message was intended for realtime, and drop the message if so
-                if e.errno == zmq.EHOSTUNREACH and frames[1].decode('utf-8').endswith("RT_IDEN"):
-                    log.debug("dropping message",
-                              sender=frames[1],
-                              receiver=frames[0])
+                if e.errno == zmq.EHOSTUNREACH and frames[1].decode('utf-8') == options.dw_to_rt_identity:
+                    if realtime_off:
+                        log.debug("dropping message",
+                                  sender=frames[1],
+                                  receiver=frames[0])
+                    else:
+                        log.warning("dropping message",
+                                    sender=frames[1],
+                                    receiver=frames[0])
 
                 # Otherwise, try to resend the message
                 else:
@@ -277,7 +284,7 @@ def main():
     args = parser.parse_args()
 
     options = Options()
-    threads = [threading.Thread(target=router, args=(options,))]
+    threads = [threading.Thread(target=router, args=(options,), kwargs={'realtime_off': args.realtime_off})]
 
     if not args.router_only:
         threads.append(threading.Thread(target=sequence_timing, args=(options,)))
