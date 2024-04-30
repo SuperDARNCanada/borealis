@@ -37,7 +37,9 @@ background. This window can be reattached in any terminal window locally or over
 to track any outputs if needed.
 
 To start the radar without the optional ``realtime`` module, pass the flag ``--realtime-off`` and the
-module will not be run.
+module will not be run. For example::
+
+    /home/radar/borealis/scripts/steamed_hams.py normalscan release --realtime-off
 
 If starting the radar in normal operation according to the schedule, there is a helper script called
 ``start_radar.sh``.
