@@ -12,6 +12,7 @@ import inspect
 import json
 from pathlib import Path
 import pickle
+import sys
 import zlib
 
 from backscatter import fitacf
@@ -89,10 +90,21 @@ if __name__ == '__main__':
     # Socket for receiving data from data_write
     data_write_socket = so.create_sockets([options.rt_to_dw_identity], options.router_address)[0]
 
-    # Socket for serving data over the web
-    publish_socket = context.socket(zmq.PUB)
-    publish_socket.bind(options.realtime_address)
-    publish_socket.setsockopt(zmq.LINGER, 500)  # milliseconds to wait for message to send when closing socket
+    crashed = False
+    try:
+        # Socket for serving data over the web
+        publish_socket = context.socket(zmq.PUB)
+        publish_socket.bind(options.realtime_address)
+        publish_socket.setsockopt(zmq.LINGER, 500)  # milliseconds to wait for message to send when closing socket
+    except zmq.ZMQError as e:
+        log.critical("REALTIME CRASHED", error=e)
+        log.exception("REALTIME CRASHED", exception=e)
+        crashed = True
+
+    if crashed:
+        data_write_socket.close()
+        context.term()
+        sys.exit(1)
 
     try:
         realtime_server(data_write_socket, publish_socket)
