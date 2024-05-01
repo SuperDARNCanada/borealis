@@ -193,7 +193,10 @@ if args.embargo:
     modules['experiment_handler'] += " --embargo"
 if args.kwargs:
     modules['experiment_handler'] += " --kwargs " + kwargs
-    
+
+if args.realtime_off:
+    modules["brian"] += " --realtime-off"
+
 # Bypass the python wrapper to run cuda-gdb
 if mode == "debug":
     modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
