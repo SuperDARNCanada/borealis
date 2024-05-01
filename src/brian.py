@@ -82,7 +82,7 @@ def router(options, realtime_off):
                     retry_logs.append(log_dict)
                     non_sent.append(frames)
         if len(frames_to_send) > 0:
-            log.debug("Retrying to send frames", retry_logs)
+            log.debug("Retrying to send frames", frames=retry_logs)
 
         frames_to_send = non_sent
 
