@@ -8,17 +8,20 @@
     :copyright: 2019 SuperDARN Canada
 """
 
+import inspect
 import json
+from pathlib import Path
 import pickle
 import zlib
 
 from backscatter import fitacf
 import numpy as np
 import pydarnio
+import structlog
 import zmq
 
-from utils.options import Options
-from utils import socket_operations as so
+from .utils.options import Options
+from .utils import socket_operations as so
 
 
 def convert_and_fit_record(rawacf_record):
@@ -37,22 +40,17 @@ def convert_and_fit_record(rawacf_record):
     return fitted_records
 
 
-def realtime_server():
-    """Receives data from data_write, converts to fitacf, then serves over a web socket."""
-    options = Options()
-    context = zmq.Context().instance()
+def realtime_server(recv_socket, server_socket):
+    """Receives data from a socket, converts to fitacf, then serves over another socket.
 
-    # Socket for receiving data from data_write
-    data_write_socket = so.create_sockets([options.rt_to_dw_identity], options.router_address)[0]
-
-    # Socket for serving data over the web
-    publish_socket = context.socket(zmq.PUB)
-    publish_socket.bind(options.realtime_address)
-    publish_socket.setsockopt(zmq.LINGER, 500)  # milliseconds to wait for message to send when closing socket
-
+    :param   recv_socket: Socket to receive data over. Must be an appropriate zmq socket type for receiving.
+    :type    recv_socket: zmq.Socket
+    :param server_socket: Socket to serve fitted data over. Must be an appropriate zmq socket type for sending.
+    :type  server_socket: zmq.Socket
+    """
     try:
         while True:
-            rawacf_pickled = so.recv_bytes(data_write_socket, options.dw_to_rt_identity, log)  # This is blocking
+            rawacf_pickled = so.recv_bytes_from_any_iden(recv_socket)  # This is blocking
             rawacf_data = pickle.loads(rawacf_pickled)
 
             try:
@@ -71,15 +69,14 @@ def realtime_server():
                             rec[k] = v.item()
 
                 publishable_data = zlib.compress(json.dumps(rec).encode('utf-8'))
-                publish_socket.send(publishable_data)  # Serve the data over the websocket. This is non-blocking in a background thread
-
+                server_socket.send(publishable_data)  # Serve the data over the websocket. This is non-blocking in a background thread
     except KeyboardInterrupt:
-        log.critical('Interrupt received')
+        pass
+    except Exception as e:
+        log.critical("Aborting", error=e)
     finally:
-        # Clean up the sockets
-        data_write_socket.close()
-        publish_socket.close()
-        context.term()
+        recv_socket.close()
+        server_socket.close()
 
 
 if __name__ == '__main__':
@@ -87,9 +84,31 @@ if __name__ == '__main__':
 
     log = log_config.log()
     log.info(f"REALTIME BOOTED")
+
+    options = Options()
+    context = zmq.Context().instance()
+
+    # Socket for receiving data from data_write
+    data_write_socket = so.create_sockets([options.rt_to_dw_identity], options.router_address)[0]
+
+    # Socket for serving data over the web
+    publish_socket = context.socket(zmq.PUB)
+    publish_socket.bind(options.realtime_address)
+    publish_socket.setsockopt(zmq.LINGER, 500)  # milliseconds to wait for message to send when closing socket
+
     try:
-        realtime_server()
+        realtime_server(data_write_socket, publish_socket)
         log.info(f"REALTIME EXITED")
+    except KeyboardInterrupt:
+        log.critical("REALTIME INTERRUPTED")
     except Exception as main_exception:
         log.critical("REALTIME CRASHED", error=main_exception)
         log.exception("REALTIME CRASHED", exception=main_exception)
+    finally:
+        # Clean up the sockets
+        context.term()
+
+else:
+    caller = Path(inspect.stack()[-1].filename)
+    module_name = caller.name.split('.')[0]
+    log = structlog.getLogger(module_name)
