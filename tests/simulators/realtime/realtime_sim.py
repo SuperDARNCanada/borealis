@@ -15,9 +15,9 @@ import zlib
 
 import zmq
 
-sys.path.append(str(Path(__file__).resolve().parents[2]))
+sys.path.append(str(Path(__file__).resolve().parents[3]))
+from src.utils import log_config, socket_operations as so
 from src.realtime import realtime_server
-from src.utils import socket_operations as so
 
 
 def realtime_sim(ctx: zmq.Context):
@@ -38,7 +38,6 @@ def realtime_sim(ctx: zmq.Context):
         fitacf_server.close()
 
 if __name__ == '__main__':
-    from src.utils import log_config
     log = log_config.log(console=True, console_log_level="DEBUG", logfile=False, aggregator=False)
 
     context = zmq.Context().instance()
@@ -61,7 +60,7 @@ if __name__ == '__main__':
     rawacf_send_socket.send_string("READY")
 
     # Load in a record of data
-    infile = open("rawacf_record.pkl", "rb")
+    infile = open(str(Path(__file__).resolve().parent) + "/rawacf_record.pkl", "rb")
     rawacf_data = pickle.load(infile)
 
     # Send rawacf data to the realtime_sim thread
