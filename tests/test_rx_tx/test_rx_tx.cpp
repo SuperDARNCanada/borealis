@@ -104,9 +104,7 @@ void recv(uhd::usrp::multi_usrp::sptr &usrp_d, std::vector<size_t> &rx_chans) {
   rx_stream_cmd.num_samps = 0;
   rx_stream_cmd.time_spec = usrp_d->get_time_now() + uhd::time_spec_t(DELAY);
 
-  // to remove: auto stream_start = std::chrono::steady_clock::now();
   rx_stream->issue_stream_cmd(rx_stream_cmd);
-  // to remove: auto stream_end = std::chrono::steady_clock::now();
 
   uhd::rx_metadata_t meta;
 

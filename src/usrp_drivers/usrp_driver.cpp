@@ -526,7 +526,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   uhd::rx_metadata_t meta;
 
-  // to remove uint32_t buffer_inc = 0;
   uint32_t timeout_count = 0;
   uint32_t overflow_count = 0;
   uint32_t overflow_oos_count = 0;
@@ -545,7 +544,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
   auto first_time = true;
   while (1) {
     // 3.0 is the timeout in seconds for the recv call, arbitrary number
-    // to remove size_t num_rx_samples = rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
     if (first_time) {
       zmq::message_t start_time(sizeof(meta.time_spec));
       memcpy(start_time.data(), &meta.time_spec, sizeof(meta.time_spec));

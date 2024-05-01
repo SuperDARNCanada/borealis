@@ -524,8 +524,6 @@ void do_rx(
 		usrp->issue_stream_cmd(stream_cmd, rx_channel);
 
 		bool do_once = true;
-		// to remove double tdiff = 0;
-		// to remove double actual_event_time = 0;
 		size_t reps = 0;
 
 		while(!boost::this_thread::interruption_requested())
@@ -535,8 +533,6 @@ void do_rx(
 			num_acc_samps = 0;
 
 			do_once = true;
-			// to remove tdiff = 0;
-			// to remove actual_event_time = 0;
 			reps = 0;
 
 			while(!boost::this_thread::interruption_requested() && num_acc_samps < burst_length)
@@ -593,7 +589,6 @@ void do_rx(
 				if(do_once)
 				{
 					do_once = false;
-					// to remove actual_event_time = md.time_spec.get_real_secs();
 				}
 			}
 
@@ -691,9 +686,6 @@ void do_tx(
 		// get the sample rate //
 		double fs = rate;
 
-		// burst duration //
-		// to remove double duration = ((double)burst_length) * fs;
-
 		// set t0 //
 		double event_time = start_time;
 
@@ -715,14 +707,10 @@ void do_tx(
 		size_t to_tx = 0; // number of samples to transmit
 
 		uhd::async_metadata_t async_md;
-		// to remove bool got_async_burst_ack = false;
-
-		// to remove double actual_event_time = 0;
 
 		while(!boost::this_thread::interruption_requested())
 		{
 			num_acc_samps = 0;
-			// to remove actual_event_time = 0;
 
 			while(!boost::this_thread::interruption_requested() && num_acc_samps < burst_length)
 			{
@@ -751,7 +739,6 @@ void do_tx(
 			md.end_of_burst = true;
 			tx_stream->send("", 0, md);
 
-			// to remove got_async_burst_ack = false;
 			bool error_in_burst = false;
 			size_t last_error_code = uhd::async_metadata_t::EVENT_CODE_BURST_ACK;
 
@@ -760,8 +747,6 @@ void do_tx(
 			{
 				if(async_md.event_code == uhd::async_metadata_t::EVENT_CODE_BURST_ACK)
 				{
-					// to remove actual_event_time =  async_md.time_spec.get_real_secs() - duration;
-					// to remove got_async_burst_ack = true;
 					break;
 				}
 				else if(!error_in_burst)
