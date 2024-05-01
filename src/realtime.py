@@ -22,69 +22,85 @@ from utils.options import Options
 from utils import socket_operations as so
 
 
+def convert_and_fit_record(rawacf_record):
+    """Converts a rawacf record to DMAP format and fits using backscatter, returning the results"""
+    # We only grab the first slice. This means the first slice of any that are SEQUENCE or CONCURRENT
+    # interfaced.
+    first_key = sorted(list(rawacf_record.keys()))[0]
+    log.info("converting record", record=first_key)
+    converted = (pydarnio.BorealisConvert.
+                 _BorealisConvert__convert_rawacf_record(0, (first_key, rawacf_record[first_key]), ""))
+
+    fitted_records = []
+    for rec in converted:
+        fit_data = fitacf._fit(rec)
+        fitted_records.append(fit_data.copy())
+
+    return fitted_records
+
+
+def process_rawacf_data(options, ctx):
+    """Receives rawacf data from data_write and fits using backscatter, then sends the result to a server thread.
+
+    :param options: Options object for getting socket identities and addresses
+    :type  options: Options
+    :param     ctx: zmq context instance for socket creation
+    :type      ctx: zmq.Context
+    """
+    data_write_to_realtime = so.create_sockets([options.rt_to_dw_identity], options.router_address)[0]
+
+    # This socket is for sending fitted data to the other thread, for serving over the web
+    realtime_socket = ctx.socket(zmq.PAIR)
+    realtime_socket.bind("inproc://realtime")
+
+    while True:
+        rawacf_pickled = so.recv_bytes(data_write_to_realtime, options.dw_to_rt_identity, log)
+        rawacf_data = pickle.loads(rawacf_pickled)
+
+        try:
+            fitted_recs = convert_and_fit_record(rawacf_data)
+        except Exception as e:
+            log.exception("error processing record", exception=e)
+            continue
+
+        for rec in fitted_recs:
+            # Can't jsonify numpy, so we convert to native types for serving over the web
+            for k, v in rec.items():
+                if hasattr(v, 'dtype'):
+                    if isinstance(v, np.ndarray):
+                        rec[k] = v.tolist()
+                    else:
+                        rec[k] = v.item()
+
+            realtime_socket.send(json.dumps(rec))  # Send the record to serve_data()
+
+
+def serve_data(options, ctx):
+    """Serves fitted data as JSON over the realtime address.
+
+    :param options: Options object for getting socket identities and addresses
+    :type  options: Options
+    :param     ctx: zmq context instance for socket creation
+    :type      ctx: zmq.Context
+    """
+    publish_socket = ctx.socket(zmq.PUB)
+    publish_socket.bind(options.realtime_address)
+
+    realtime_socket = ctx.socket(zmq.PAIR)
+    realtime_socket.connect("inproc://realtime")
+
+    while True:
+        data_dict_json = realtime_socket.recv()  # Get a record from process_rawacf_data()
+        compressed = zlib.compress(data_dict_json.encode('utf-8'))
+        publish_socket.send(compressed)
+
+
 def main():
     options = Options()
+    context = zmq.Context().instance()
 
-    def get_temp_file_from_datawrite():
-        data_write_to_realtime = so.create_sockets([options.rt_to_dw_identity], options.router_address)[0]
-
-        publish_data_socket = zmq.Context().instance().socket(zmq.PAIR)
-        publish_data_socket.bind("inproc://publish_data")
-
-        while True:
-            rawacf_pickled = so.recv_bytes(data_write_to_realtime, options.dw_to_rt_identity, log)
-            rawacf_data = pickle.loads(rawacf_pickled)
-
-            # TODO: Make sure we only process the first slice for simultaneous multi-slice data for now
-            try:
-                record = sorted(list(rawacf_data.keys()))[0]
-                log.info("converting record", record=record)
-                converted = pydarnio.BorealisConvert.\
-                    _BorealisConvert__convert_rawacf_record(0, (record, rawacf_data[record]), "")
-            except pydarnio.borealis_exceptions.BorealisConvert2RawacfError as e:
-                log.exception("error converting record", exception=e)
-                continue
-            except Exception as e:
-                log.exception("error converting record", exception=e)
-                continue
-
-            for rec in converted:
-                try:
-                    fit_data = fitacf._fit(rec)
-                except Exception as e:
-                    log.exception("Error fitting record", exception=e)
-                    continue
-                tmp = fit_data.copy()
-
-                # Can't jsonify numpy, so we convert to native types for realtime purposes.
-                for k, v in fit_data.items():
-                    if hasattr(v, 'dtype'):
-                        if isinstance(v, np.ndarray):
-                            tmp[k] = v.tolist()
-                        else:
-                            tmp[k] = v.item()
-
-                publish_data_socket.send(pickle.dumps(tmp))     # Send the record to handle_remote_connection()
-
-    def handle_remote_connection():
-        """
-        Compresses and serializes the data to send to the server.
-        """
-        context = zmq.Context().instance()
-        realtime_socket = context.socket(zmq.PUB)
-        realtime_socket.bind(options.realtime_address)
-
-        publish_data_socket = context.socket(zmq.PAIR)
-        publish_data_socket.connect("inproc://publish_data")
-
-        while True:
-            data_dict = pickle.loads(publish_data_socket.recv())    # Get a record from get_temp_file_from_datawrite()
-            serialized = json.dumps(data_dict)
-            compressed = zlib.compress(serialized.encode('utf-8'))
-            realtime_socket.send(compressed)
-
-    threads = [threading.Thread(target=get_temp_file_from_datawrite),
-               threading.Thread(target=handle_remote_connection)]
+    threads = [threading.Thread(target=process_rawacf_data, args=(options, context,)),
+               threading.Thread(target=serve_data, args=(options, context,))]
 
     for thread in threads:
         thread.daemon = True
