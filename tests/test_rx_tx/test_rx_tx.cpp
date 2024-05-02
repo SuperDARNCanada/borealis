@@ -104,9 +104,7 @@ void recv(uhd::usrp::multi_usrp::sptr &usrp_d, std::vector<size_t> &rx_chans) {
   rx_stream_cmd.num_samps = 0;
   rx_stream_cmd.time_spec = usrp_d->get_time_now() + uhd::time_spec_t(DELAY);
 
-  auto stream_start = std::chrono::steady_clock::now();
   rx_stream->issue_stream_cmd(rx_stream_cmd);
-  auto stream_end = std::chrono::steady_clock::now();
 
   uhd::rx_metadata_t meta;
 
@@ -254,7 +252,7 @@ void tx(uhd::usrp::multi_usrp::sptr &usrp_d, std::vector<size_t> &tx_chans) {
     };
 
 
-    for(int i=0; i<time_per_pulse.size(); i++){
+    for(uint32_t i=0; i<time_per_pulse.size(); i++){
       send(time_per_pulse[i]);
     }
 
@@ -340,7 +338,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   
   usrp_d->set_time_now(tt_sc.count());
 
-  for (int i=0; i<usrp_d->get_num_mboards(); i++){
+  for (uint32_t i=0; i<usrp_d->get_num_mboards(); i++){
     usrp_d->set_gpio_attr("RXA", "CTRL", 0xFFFF, 0b11111111, i);
     usrp_d->set_gpio_attr("RXA", "DDR", 0xFFFF, 0b11111111, i);
 
@@ -423,6 +421,8 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
       	// Error
       	std::cout << "Invalid testing mode selected." << std:: endl;
       	return 0;
-      }      
+      }    
+
+  return 0;
 }
 

@@ -1,7 +1,7 @@
 /*Copyright 2016 SuperDARN*/
 #include <unistd.h>
 #include <stdint.h>
-#include <uhd/utils/thread_priority.hpp>
+#include <uhd/utils/thread.hpp>
 #include <uhd/utils/safe_main.hpp>
 #include <uhd/utils/static.hpp>
 #include <uhd/usrp/multi_usrp.hpp>
@@ -75,13 +75,13 @@ std::vector<std::vector<std::complex<float>>> make_tx_samples(
   // channel_samples_size() will get you # of channels (protobuf in c++)
   std::vector<std::vector<std::complex<float>>> samples(driver_packet.channel_samples_size());
 
-  for (uint32_t channel=0; channel<driver_packet.channel_samples_size(); channel++) {
+  for (int channel=0; channel<driver_packet.channel_samples_size(); channel++) {
     // Get the number of real samples in this particular channel (_size() is from protobuf)
     auto num_samps = driver_packet.channel_samples(channel).real_size();
     std::vector<std::complex<float>> v(num_samps);
     // Type for smp? protobuf object, containing repeated double real and double imag
     auto smp = driver_packet.channel_samples(channel);
-    for (uint32_t smp_num = 0; smp_num < num_samps; smp_num++) {
+    for (int smp_num = 0; smp_num < num_samps; smp_num++) {
       v[smp_num] = std::complex<float>(smp.real(smp_num), smp.imag(smp_num));
     }
     samples[channel] = v;
@@ -136,7 +136,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
   uint32_t sqn_num = 0;
   uint32_t expected_sqn_num = 0;
 
-  uint32_t num_recv_samples;
+  uint32_t num_recv_samples = 0;
 
   size_t ringbuffer_size;
 
@@ -153,10 +153,10 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
 
   zmq::message_t request;
 
-  start_trigger.recv(&request);
+  start_trigger.recv(request, zmq::recv_flags::none);
   memcpy(&ringbuffer_size, static_cast<size_t*>(request.data()), request.size());
 
-  start_trigger.recv(&request);
+  start_trigger.recv(request, zmq::recv_flags::none);
   memcpy(&initialization_time, static_cast<uhd::time_spec_t*>(request.data()), request.size());
 
   auto driver_ready_msg = std::string("DRIVER_READY");
@@ -526,7 +526,6 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   uhd::rx_metadata_t meta;
 
-  uint32_t buffer_inc = 0;
   uint32_t timeout_count = 0;
   uint32_t overflow_count = 0;
   uint32_t overflow_oos_count = 0;
@@ -539,17 +538,17 @@ void receive(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &driver
 
   zmq::message_t ring_size(sizeof(ringbuffer_size));
   memcpy(ring_size.data(), &ringbuffer_size, sizeof(ringbuffer_size));
-  start_trigger.send(ring_size);
+  start_trigger.send(ring_size, zmq::send_flags::none);
 
   //This loop receives 1 pulse sequence worth of samples.
   auto first_time = true;
   while (1) {
     // 3.0 is the timeout in seconds for the recv call, arbitrary number
-    size_t num_rx_samples = rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
+    rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0, true);
     if (first_time) {
       zmq::message_t start_time(sizeof(meta.time_spec));
       memcpy(start_time.data(), &meta.time_spec, sizeof(meta.time_spec));
-      start_trigger.send(start_time);
+      start_trigger.send(start_time, zmq::send_flags::none);
       first_time = false;
     }
     borealis_clocks.system_time = std::chrono::system_clock::now();
