@@ -70,3 +70,46 @@ N200 Output Testing
    - verify pulse shape of TX out
    - verify GPIO signals (T/R)
    - verify pulse distances
+
+.. _Filter Testing:
+
+Filter Testing
+--------------
+
+A Jupyter notebook called ``filters.ipynb`` is located in the ``tests/dsp_testing`` directory of Borealis.
+This notebook describes in detail the default ``DecimationScheme`` used by Borealis, the helper functions in
+``decimation_scheme.py`` for creating a digital filter, and creates an alternative filter with comparison
+to the default. This notebook also benchmarks the performance of the filter schemes on the GPU, both in runtime
+and in memory usage. Finally, the ramp-up and ramp-down of transmitted pulses is looked at, for characterization
+of the expected transmission spectrum.
+
+This notebook is intended to make it easy to design and prototype new filtering schemes, which is useful for
+experiments which, for example:
+
+* Have a non-standard pulse length (the default is 300 microseconds)
+* Use range gates of differing size (the default is 45 km)
+* Use pulse compression (this increases the transmission bandwidth)
+* Are listening experiments (e.g. to measure the frequency spectrum)
+* Use a different receiver bandwidth (i.e. not the default 5 MHz)
+
+In any of these circumstances, it is important to design a filter which works for the situation at hand.
+
+.. _Config Testing:
+
+Config File Testing
+-------------------
+
+A Python ``unittest`` script is located in ``tests/config_files`` directory.
+
+.. automodule:: tests.config_files.config_testing
+    :noindex:
+    :no-members:
+
+.. _Realtime Testing:
+
+Realtime Data Simulator
+-----------------------
+
+A simulator script is available at ``tests/simulators/realtime/realtime_sim.py``. This script calls the
+``realtime_server()`` function of the realtime module, and tests sending a rawacf record to it repeatedly.
+The script logs each record that it sends, and each fitacf response that it receives.
