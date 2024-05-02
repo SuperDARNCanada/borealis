@@ -52,13 +52,15 @@ def recv_data(socket, sender_identity, log):
     """
 
     receiver_identity, _, data = socket.recv_multipart()
-    if receiver_identity != sender_identity.encode('utf-8'):
-        log.error("sender_identity != receiver_identity",
-                  sender_identity=sender_identity,
-                  receiver_identity=receiver_identity)
+    if receiver_identity != sender_identity.encode("utf-8"):
+        log.error(
+            "sender_identity != receiver_identity",
+            sender_identity=sender_identity,
+            receiver_identity=receiver_identity,
+        )
         return None
     else:
-        return data.decode('utf-8')
+        return data.decode("utf-8")
 
 
 def send_data(socket, receiver_identity, msg):
@@ -72,8 +74,9 @@ def send_data(socket, receiver_identity, msg):
     :param  msg:                The data message to send.
     :type   msg:                str
     """
-    frames = [receiver_identity.encode('utf-8'), b"", msg.encode('utf-8')]
+    frames = [receiver_identity.encode("utf-8"), b"", msg.encode("utf-8")]
     socket.send_multipart(frames)
+
 
 # Aliases for sending to a socket
 send_reply = send_request = send_data
@@ -97,10 +100,12 @@ def recv_bytes(socket, sender_identity, log):
     :rtype:     String or Protobuf or None
     """
     receiver_identity, _, bytes_object = socket.recv_multipart()
-    if receiver_identity != sender_identity.encode('utf-8'):
-        log.error("sender_identity != receiver_identity",
-                  sender_identity=sender_identity,
-                  receiver_identity=receiver_identity)
+    if receiver_identity != sender_identity.encode("utf-8"):
+        log.error(
+            "sender_identity != receiver_identity",
+            sender_identity=sender_identity,
+            receiver_identity=receiver_identity,
+        )
         return None
     else:
         return bytes_object
@@ -132,8 +137,9 @@ def send_bytes(socket, receiver_identity, bytes_object):
                             available.
     :type   bytes_object:   bytes
     """
-    frames = [receiver_identity.encode('utf-8'), b"", bytes_object]
+    frames = [receiver_identity.encode("utf-8"), b"", bytes_object]
     socket.send_multipart(frames)
+
 
 send_pulse = send_obj = send_exp = send_bytes
 

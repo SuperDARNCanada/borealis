@@ -18,7 +18,7 @@ import pickle
 from utils import socket_operations as so
 from utils.options import Options
 
-sys.path.append(os.environ['BOREALISPATH'])
+sys.path.append(os.environ["BOREALISPATH"])
 if __debug__:
     from build.debug.src.utils.protobuf import rxsamplesmetadata_pb2
 else:
@@ -50,14 +50,14 @@ def router(options, realtime_off):
         if events:
             dd = router.recv_multipart()
             sender, receiver, empty, data = dd
-            log.debug(f"router input: sender->receiver",
-                      sender=sender,
-                      receiver=receiver)
+            log.debug(
+                f"router input: sender->receiver", sender=sender, receiver=receiver
+            )
             frames_received = [receiver, sender, empty, data]
             frames_to_send.append(frames_received)
-            log.debug(f"router output: receiver->sender",
-                      sender=sender,
-                      receiver=receiver)
+            log.debug(
+                f"router output: receiver->sender", sender=sender, receiver=receiver
+            )
 
         non_sent = []
         retry_logs = []
@@ -68,10 +68,10 @@ def router(options, realtime_off):
                 sender = frames[1]
                 receiver = frames[0]
 
-                log_dict = {'sender': sender, 'receiver': receiver, 'error': str(e)}
+                log_dict = {"sender": sender, "receiver": receiver, "error": str(e)}
 
                 # Check if message was intended for realtime, and drop the message if so
-                if sender.decode('utf-8') == options.dw_to_rt_identity:
+                if sender.decode("utf-8") == options.dw_to_rt_identity:
                     if realtime_off:
                         log.debug("dropping message", **log_dict)
                     else:
@@ -99,10 +99,12 @@ def sequence_timing(options):
     :type   context: zmq context, optional
     """
 
-    ids = [options.brian_to_radctrl_identity,
-           options.brian_to_driver_identity,
-           options.brian_to_dspbegin_identity,
-           options.brian_to_dspend_identity]
+    ids = [
+        options.brian_to_radctrl_identity,
+        options.brian_to_driver_identity,
+        options.brian_to_dspbegin_identity,
+        options.brian_to_dspend_identity,
+    ]
 
     sockets_list = so.create_sockets(ids, options.router_address)
 
@@ -154,7 +156,11 @@ def sequence_timing(options):
             if want_to_start and good_to_start and dsp_finish_counter:
                 # Acknowledge new sequence can begin to Radar Control by requesting new sequence metadata
                 log.debug("requesting metadata from radar_control")
-                so.send_request(brian_to_radar_control, options.radctrl_to_brian_identity, "Requesting metadata")
+                so.send_request(
+                    brian_to_radar_control,
+                    options.radctrl_to_brian_identity,
+                    "Requesting metadata",
+                )
                 want_to_start = good_to_start = False
                 dsp_finish_counter -= 1
 
@@ -194,7 +200,11 @@ def sequence_timing(options):
         if first_time:
             # Request new sequence metadata
             log.debug("requesting metadata from radar control")
-            so.send_request(brian_to_radar_control, options.radctrl_to_brian_identity, "Requesting metadata")
+            so.send_request(
+                brian_to_radar_control,
+                options.radctrl_to_brian_identity,
+                "Requesting metadata",
+            )
             first_time = False
 
         socks = dict(sequence_poller.poll())
@@ -206,10 +216,12 @@ def sequence_timing(options):
             meta = rxsamplesmetadata_pb2.RxSamplesMetadata()
             meta.ParseFromString(reply)
 
-            log.debug(f"driver sent",
-                      sequence_time=meta.sequence_time*1e3,
-                      sequence_time_unit="ms",
-                      sequence_num=meta.sequence_num)
+            log.debug(
+                f"driver sent",
+                sequence_time=meta.sequence_time * 1e3,
+                sequence_time_unit="ms",
+                sequence_num=meta.sequence_num,
+            )
 
             # Requesting acknowledgement of work begins from DSP
             log.debug("requesting work begins from dsp")
@@ -218,21 +230,30 @@ def sequence_timing(options):
 
             start_new_sock.send_string("want_to_start")
 
-        if brian_to_radar_control in socks and socks[brian_to_radar_control] == zmq.POLLIN:
+        if (
+            brian_to_radar_control in socks
+            and socks[brian_to_radar_control] == zmq.POLLIN
+        ):
 
             # Get new sequence metadata from radar control
-            reply = so.recv_obj(brian_to_radar_control, options.radctrl_to_brian_identity, log)
+            reply = so.recv_obj(
+                brian_to_radar_control, options.radctrl_to_brian_identity, log
+            )
 
             sigp = pickle.loads(reply)
 
-            log.debug("radar control sent",
-                      sequence_time=sigp.sequence_time,
-                      sequence_time_unit="ms",
-                      sequence_num=sigp.sequence_num,)
+            log.debug(
+                "radar control sent",
+                sequence_time=sigp.sequence_time,
+                sequence_time_unit="ms",
+                sequence_num=sigp.sequence_num,
+            )
 
             # Request acknowledgement of sequence from driver
             log.debug("requesting ack from driver")
-            so.send_request(brian_to_driver, options.driver_to_brian_identity, "Requesting ack")
+            so.send_request(
+                brian_to_driver, options.driver_to_brian_identity, "Requesting ack"
+            )
 
         if brian_to_dsp_begin in socks and socks[brian_to_dsp_begin] == zmq.POLLIN:
 
@@ -241,12 +262,12 @@ def sequence_timing(options):
 
             sig_p = pickle.loads(reply)
 
-            log.debug("dsp began", sequence_num=sig_p['sequence_num'])
+            log.debug("dsp began", sequence_num=sig_p["sequence_num"])
 
             # Requesting acknowledgement of work ends from DSP
 
             log.debug("requesting work end from dsp")
-            iden = options.dspend_to_brian_identity + str(sig_p['sequence_num'])
+            iden = options.dspend_to_brian_identity + str(sig_p["sequence_num"])
             so.send_request(brian_to_dsp_end, iden, "Requesting work ends")
 
             # Acknowledge we want to start something new.
@@ -259,18 +280,20 @@ def sequence_timing(options):
 
             sig_p = pickle.loads(reply)
 
-            if sig_p['sequence_num'] != 0:
-                if sig_p['kerneltime'] > last_processing_time:
+            if sig_p["sequence_num"] != 0:
+                if sig_p["kerneltime"] > last_processing_time:
                     late_counter += 1
                 else:
                     late_counter = 0
-            last_processing_time = sig_p['kerneltime']
+            last_processing_time = sig_p["kerneltime"]
 
-            log.debug("brian to dsp",
-                      kernel_time=sig_p['kerneltime'],
-                      sequence_time_unit="ms",
-                      sequence_num=sig_p['sequence_num'],
-                      late_counter=late_counter)
+            log.debug(
+                "brian to dsp",
+                kernel_time=sig_p["kerneltime"],
+                sequence_time_unit="ms",
+                sequence_num=sig_p["sequence_num"],
+                late_counter=late_counter,
+            )
 
             # Acknowledge that we are good and able to start something new.
             start_new_sock.send_string("extra_good_to_start")
@@ -278,13 +301,19 @@ def sequence_timing(options):
 
 def main():
     parser = argparse.ArgumentParser()
-    help_msg = 'Run only the router. Do not run any of the other threads or functions.'
-    parser.add_argument('--router-only', action='store_true', help=help_msg)
-    parser.add_argument("--realtime-off", action="store_true", help="Flag if realtime is disabled")
+    help_msg = "Run only the router. Do not run any of the other threads or functions."
+    parser.add_argument("--router-only", action="store_true", help=help_msg)
+    parser.add_argument(
+        "--realtime-off", action="store_true", help="Flag if realtime is disabled"
+    )
     args = parser.parse_args()
 
     options = Options()
-    threads = [threading.Thread(target=router, args=(options,), kwargs={'realtime_off': args.realtime_off})]
+    threads = [
+        threading.Thread(
+            target=router, args=(options,), kwargs={"realtime_off": args.realtime_off}
+        )
+    ]
 
     if not args.router_only:
         threads.append(threading.Thread(target=sequence_timing, args=(options,)))

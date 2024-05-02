@@ -291,7 +291,7 @@ void tx(uhd::usrp::multi_usrp::sptr &usrp_d, std::vector<size_t> &tx_chans) {
 
 // MAIN LOOP
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
- 	
+
  	test_mode = argv[2];
 
  // Error for incomplete input arguments.
@@ -335,7 +335,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(tt.time_since_epoch());
     usleep(10000);
   }
-  
+
   usrp_d->set_time_now(tt_sc.count());
 
   for (uint32_t i=0; i<usrp_d->get_num_mboards(); i++){
@@ -383,16 +383,16 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
       }
       else if (!std::strcmp(argv[2], "txo")) {
 		std::thread tx_t(tx,std::ref(usrp_d), std::ref(tx_chans));
-		tx_t.join();      	
+		tx_t.join();
       }
       else if (!std::strcmp(argv[2], "rxo")) {
 		std::thread recv_t(recv,std::ref(usrp_d), std::ref(rx_chans));
-		recv_t.join();    	
+		recv_t.join();
       }
       else if (!std::strcmp(argv[2], "idle")) {
       	std::cout << "IDLE..." << std::endl;
-		while(1){}      	
-      }            
+		while(1){}
+      }
       else if (!std::strcmp(argv[2], "full")) {
       	/*// TX Only
       	std::cout << "Test mode: txo" << std::endl;
@@ -402,10 +402,10 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
 		// TX/RX
       	std::cout << "Test mode: txrx" << std::endl;
 		std::thread recv_t(recv,std::ref(usrp_d), std::ref(rx_chans));
-		recv_t.join(); 
+		recv_t.join();
 
       	// RX Only
-      	std::cout << "Test mode: rxo" << std::endl;     	
+      	std::cout << "Test mode: rxo" << std::endl;
 		tx_t.detach();
 
 		// Idle
@@ -421,8 +421,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
       	// Error
       	std::cout << "Invalid testing mode selected." << std:: endl;
       	return 0;
-      }    
+      }
 
   return 0;
 }
-

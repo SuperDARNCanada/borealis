@@ -15,7 +15,7 @@ import subprocess as sp
 import os
 import time
 
-PYTHON_VERSION = os.environ['PYTHON_VERSION']
+PYTHON_VERSION = os.environ["PYTHON_VERSION"]
 
 
 def usage_msg():
@@ -34,11 +34,11 @@ def usage_msg():
     argument. The experiment handler will search for the module in the BOREALISPATH/experiments
     directory. It will retrieve the class from within the module (your experiment).
 
-    Pass the mode to specify module run options and data outputs. Available modes are 
-    release, debug, testdata, engineeringdebug, and pythonprofiling. 
+    Pass the mode to specify module run options and data outputs. Available modes are
+    release, debug, testdata, engineeringdebug, and pythonprofiling.
     Release should be most commonly used. Note that testdata and engineeringdebug modes
-    produce very large rawrf data files and will severely limit the rate of the system 
-    (evident by low sequences per integration period). It is recommended to only run these 
+    produce very large rawrf data files and will severely limit the rate of the system
+    (evident by low sequences per integration period). It is recommended to only run these
     modes for short test periods due to the quantity of data produced.
 
     Pass in the scheduling mode type, in general common, discretionary, or special.
@@ -103,6 +103,7 @@ focus
 screen -t "Realtime" bash -c "{START_RT}"                   # Right middle
 """
 
+
 def steamed_hams_parser():
     """
     Creates the parser.
@@ -112,25 +113,45 @@ def steamed_hams_parser():
     """
 
     parser = argparse.ArgumentParser(usage=usage_msg())
-    parser.add_argument("experiment_module", help="The name of the module in the experiments directory "
-                                                  "that contains your Experiment class, "
-                                                  "e.g. 'normalscan'")
-    parser.add_argument("run_mode", help="The mode to run, switches scons builds and some arguments to "
-                                         "modules based on this mode. Commonly 'release'.")
-    parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
-                                                     "run, e.g. 'common', 'special', or 'discretionary'.")
-    parser.add_argument("--embargo", action="store_true", help="Embargo the file (makes the CPID negative)")
-    parser.add_argument("--kwargs", nargs='+', default='',
-                        help="Keyword arguments for the experiment. Each must be formatted as kw=val")
-    parser.add_argument("--realtime-off", action="store_true",
-                        help="Disable the realtime FITACF3 and data server module")
+    parser.add_argument(
+        "experiment_module",
+        help="The name of the module in the experiments directory "
+        "that contains your Experiment class, "
+        "e.g. 'normalscan'",
+    )
+    parser.add_argument(
+        "run_mode",
+        help="The mode to run, switches scons builds and some arguments to "
+        "modules based on this mode. Commonly 'release'.",
+    )
+    parser.add_argument(
+        "scheduling_mode_type",
+        help="The type of scheduling time for this experiment "
+        "run, e.g. 'common', 'special', or 'discretionary'.",
+    )
+    parser.add_argument(
+        "--embargo",
+        action="store_true",
+        help="Embargo the file (makes the CPID negative)",
+    )
+    parser.add_argument(
+        "--kwargs",
+        nargs="+",
+        default="",
+        help="Keyword arguments for the experiment. Each must be formatted as kw=val",
+    )
+    parser.add_argument(
+        "--realtime-off",
+        action="store_true",
+        help="Disable the realtime FITACF3 and data server module",
+    )
 
     return parser
 
 
 parser = steamed_hams_parser()
 args = parser.parse_args()
-kwargs = ' '.join(args.kwargs)
+kwargs = " ".join(args.kwargs)
 
 if args.run_mode == "release":
     # python optimized, no debug for regular operations
@@ -163,7 +184,7 @@ elif args.run_mode == "engineeringdebug":
     mode = "debug"
     data_write_args = "--file-type=hdf5 --enable-bfiq --enable-antenna-iq --enable-raw-rf --enable-tx;"
 elif args.run_mode == "filterdata":
-    # run all modules in debug with rawrf, antennas_iq, and filter stage data. 
+    # run all modules in debug with rawrf, antennas_iq, and filter stage data.
     python_opts = "-u"
     c_debug_opts = "/usr/local/cuda/bin/cuda-gdb -ex start"
     mode = "debug"
@@ -173,55 +194,82 @@ else:
     sys.exit(-1)
 
 # Configure python first
-modules = {"brian": "",
-           "experiment_handler": "",
-           "radar_control": "",
-           "data_write": "",
-           "realtime": "",
-           "rx_signal_processing": "",
-           "usrp_driver": ""}
+modules = {
+    "brian": "",
+    "experiment_handler": "",
+    "radar_control": "",
+    "data_write": "",
+    "realtime": "",
+    "rx_signal_processing": "",
+    "usrp_driver": "",
+}
 
 for mod in modules.keys():
     opts = python_opts.format(module=mod)
-    modules[mod] = f"source borealis_env{PYTHON_VERSION}/bin/activate; python{PYTHON_VERSION} {opts} src/{mod}.py" \
-
-modules['data_write'] = modules['data_write'] + " " + data_write_args
-modules['usrp_driver'] = modules['usrp_driver'] + " " + f'{mode} --c_debug_opts="{c_debug_opts}"'
-modules['experiment_handler'] = modules['experiment_handler'] + " " + args.experiment_module + " " + \
-                                args.scheduling_mode_type
+    modules[mod] = (
+        f"source borealis_env{PYTHON_VERSION}/bin/activate; python{PYTHON_VERSION} {opts} src/{mod}.py"
+    )
+modules["data_write"] = modules["data_write"] + " " + data_write_args
+modules["usrp_driver"] = (
+    modules["usrp_driver"] + " " + f'{mode} --c_debug_opts="{c_debug_opts}"'
+)
+modules["experiment_handler"] = (
+    modules["experiment_handler"]
+    + " "
+    + args.experiment_module
+    + " "
+    + args.scheduling_mode_type
+)
 if args.embargo:
-    modules['experiment_handler'] += " --embargo"
+    modules["experiment_handler"] += " --embargo"
 if args.kwargs:
-    modules['experiment_handler'] += " --kwargs " + kwargs
+    modules["experiment_handler"] += " --kwargs " + kwargs
 
 if args.realtime_off:
     modules["brian"] += " --realtime-off"
 
 # Bypass the python wrapper to run cuda-gdb
 if mode == "debug":
-    modules['usrp_driver'] = f"source mode {mode}; {c_debug_opts} usrp_driver"
+    modules["usrp_driver"] = f"source mode {mode}; {c_debug_opts} usrp_driver"
 
 # Set up the screenrc file and populate it
-log_dir = "/data/borealis_logs/"    # Temporary fix to give us access to exactly what's printed to console from Borealis
+log_dir = "/data/borealis_logs/"  # Temporary fix to give us access to exactly what's printed to console from Borealis
 format_dict = {
-    "START_BRIAN": modules['brian'] + " 2>&1 | tee " + log_dir + "brian.log",
-    "START_USRP_DRIVER": modules['usrp_driver'] + " 2>&1 | tee " + log_dir + "usrp_driver.log",
-    "START_DSP": modules['rx_signal_processing'] + " 2>&1 | tee " + log_dir + "rx_signal_processing.log",
-    "START_DATAWRITE": modules['data_write'] + " 2>&1 | tee " + log_dir + "data_write.log",
-    "START_EXPHAN": modules['experiment_handler'] + " 2>&1 | tee " + log_dir + "experiment_handler.log",
-    "START_RADCTRL": modules['radar_control'] + " 2>&1 | tee " + log_dir + "radar_control.log",
+    "START_BRIAN": modules["brian"] + " 2>&1 | tee " + log_dir + "brian.log",
+    "START_USRP_DRIVER": modules["usrp_driver"]
+    + " 2>&1 | tee "
+    + log_dir
+    + "usrp_driver.log",
+    "START_DSP": modules["rx_signal_processing"]
+    + " 2>&1 | tee "
+    + log_dir
+    + "rx_signal_processing.log",
+    "START_DATAWRITE": modules["data_write"]
+    + " 2>&1 | tee "
+    + log_dir
+    + "data_write.log",
+    "START_EXPHAN": modules["experiment_handler"]
+    + " 2>&1 | tee "
+    + log_dir
+    + "experiment_handler.log",
+    "START_RADCTRL": modules["radar_control"]
+    + " 2>&1 | tee "
+    + log_dir
+    + "radar_control.log",
 }
 
 # Ready the command for adding a realtime window, if it is not disabled.
 if args.realtime_off:
     format_dict["REALTIME"] = ""
 else:
-    format_dict["REALTIME"] = realtime_window.format(START_RT=modules['realtime'] + " 2>&1 | tee " + log_dir + "realtime.log")
+    format_dict["REALTIME"] = realtime_window.format(
+        START_RT=modules["realtime"] + " 2>&1 | tee " + log_dir + "realtime.log"
+    )
 
 # Add the commands to the script and write to file
 screenrc = BOREALISSCREENRC.format(**format_dict)
-screenrc_file = os.environ['BOREALISPATH'] + "/borealisscreenrc"
-with open(screenrc_file, 'w') as f:
+screenrc_file = os.environ["BOREALISPATH"] + "/borealisscreenrc"
+with open(screenrc_file, "w") as f:
     f.write(screenrc)
 
 # When using OpenSUSE 15.5, there is a file generated on boot in shared memory that must be kept

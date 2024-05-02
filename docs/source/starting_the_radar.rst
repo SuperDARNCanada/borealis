@@ -50,7 +50,7 @@ Automated Start-up
 
 In order to start the radar automatically, the script ``start_radar.sh`` should be added to a
 startup script of the Borealis computer. It can also be called manually by the non-root user
-(typically ``radar``). 
+(typically ``radar``).
 
 The scheduling Python script, ``remote_server.py``, is responsible for automating the control of the
 radar to follow the schedule, and is started via the ``start_radar.sh`` script (shown :ref:`below
@@ -65,7 +65,7 @@ Automated Restarts
 
 Occasionally, the Borealis software stops due to some software or computer issue. To automatically
 restart the radar software when this occurs, and to avoid lengthy downtimes, the scripts
-``restart_borealis.daemon`` and ``restart_borealis.py`` were created. 
+``restart_borealis.daemon`` and ``restart_borealis.py`` were created.
 
 ``restart_borealis.py`` finds the directory Borealis writes to and checks the file most recently
 written to. If the file hasn't been written to within a specified time period, the script assumes
@@ -76,7 +76,7 @@ the radar has stopped running and tries to restart it using ``stop_radar.sh`` an
 the radar is restarted consecutive times, an alert is sent to our group's Slack workspace to notify
 us that the radar likely has a problem requiring manual intervention. For more information on
 integrating Slack alerts, see `here
-<https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`__. 
+<https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`__.
 
 To set up the daemon using ``systemd``, add a ``.service`` file within ``/usr/lib/systemd/system/``
 (for openSUSE). For example, ::

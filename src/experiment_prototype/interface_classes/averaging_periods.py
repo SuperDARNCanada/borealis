@@ -19,15 +19,17 @@ import structlog
 
 # local
 from experiment_prototype.interface_classes.sequences import Sequence
-from experiment_prototype.interface_classes.interface_class_base import InterfaceClassBase
+from experiment_prototype.interface_classes.interface_class_base import (
+    InterfaceClassBase,
+)
 from experiment_prototype.experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
-module_name = caller.name.split('.')[0]
+module_name = caller.name.split(".")[0]
 log = structlog.getLogger(module_name)
 
-""" 
+"""
 Scans are made up of AveragingPeriods, these are typically a 3sec time of the same pulse sequence
 pointing in one direction.  AveragingPeriods are made up of Sequences, typically the same sequence
 run ave. 20-30 times after a clear frequency search.  Sequences are made up of pulse_time lists,
@@ -72,10 +74,19 @@ class AveragingPeriod(InterfaceClassBase):
         time.
     """
 
-    def __init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata,
-                 slice_to_beamorder_dict, slice_to_beamdir_dict):
+    def __init__(
+        self,
+        ave_keys,
+        ave_slice_dict,
+        ave_interface,
+        transmit_metadata,
+        slice_to_beamorder_dict,
+        slice_to_beamdir_dict,
+    ):
 
-        InterfaceClassBase.__init__(self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata)
+        InterfaceClassBase.__init__(
+            self, ave_keys, ave_slice_dict, ave_interface, transmit_metadata
+        )
 
         self.slice_to_beamorder = slice_to_beamorder_dict
         self.slice_to_beamdir = slice_to_beamdir_dict
@@ -100,32 +111,43 @@ class AveragingPeriod(InterfaceClassBase):
         if self.intt is not None:  # intt has priority over intn
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id].intt != self.intt:
-                    errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
-                            " interfaced and do not have the same Averaging Period duration intt"
+                    errmsg = (
+                        f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                        " interfaced and do not have the same Averaging Period duration intt"
+                    )
                     raise ExperimentException(errmsg)
         elif self.intn is not None:
             for slice_id in self.slice_ids:
                 if self.slice_dict[slice_id].intn != self.intn:
-                    errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
-                            " interfaced and do not have the same NAVE goal intn"
+                    errmsg = (
+                        f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                        " interfaced and do not have the same NAVE goal intn"
+                    )
                     raise ExperimentException(errmsg)
 
-        for slice_id in self.slice_ids: 
-            if len(self.slice_dict[slice_id].rx_beam_order) != \
-               len(self.slice_dict[self.slice_ids[0]].rx_beam_order):
-                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
-                        " interfaced but do not have the same number of averaging periods in"\
-                        " their beam order"
+        for slice_id in self.slice_ids:
+            if len(self.slice_dict[slice_id].rx_beam_order) != len(
+                self.slice_dict[self.slice_ids[0]].rx_beam_order
+            ):
+                errmsg = (
+                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                    " interfaced but do not have the same number of averaging periods in"
+                    " their beam order"
+                )
                 raise ExperimentException(errmsg)
 
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id].txctrfreq != self.txctrfreq:
-                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
-                        " interfaced and do not have the same txctrfreq"
+                errmsg = (
+                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                    " interfaced and do not have the same txctrfreq"
+                )
                 raise ExperimentException(errmsg)
             if self.slice_dict[slice_id].rxctrfreq != self.rxctrfreq:
-                errmsg = f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"\
-                        " interfaced and do not have the same rxctrfreq"
+                errmsg = (
+                    f"Slices {self.slice_ids[0]} and {slice_id} are SEQUENCE or CONCURRENT"
+                    " interfaced and do not have the same rxctrfreq"
+                )
                 raise ExperimentException(errmsg)
         self.num_beams_in_scan = len(self.slice_dict[self.slice_ids[0]].rx_beam_order)
 
@@ -140,7 +162,7 @@ class AveragingPeriod(InterfaceClassBase):
 
         self.one_pulse_only = False
 
-        self.beam_iter = 0 # used to keep track of place in beam order.
+        self.beam_iter = 0  # used to keep track of place in beam order.
 
     def set_beamdirdict(self, beamiter):
         """
@@ -152,7 +174,7 @@ class AveragingPeriod(InterfaceClassBase):
         :param      beamiter:   the index into the beam_order list, or the index of an averaging
                                 period into the scan
         :type       beamiter:   int
-        
+
         :returns:   dictionary of slice to beamdir where beamdir is always a list (may be of length
                     one though). Beamdir is azimuth angle.
         :rtype:     dict
@@ -166,10 +188,12 @@ class AveragingPeriod(InterfaceClassBase):
                     beamdir = []
                     beamdir.append(self.slice_to_beamdir[slice_id][beam_number])
                 else:  # is a list
-                    beamdir = [self.slice_to_beamdir[slice_id][bmnum] for bmnum in beam_number]
+                    beamdir = [
+                        self.slice_to_beamdir[slice_id][bmnum] for bmnum in beam_number
+                    ]
                 slice_to_beamdir_dict[slice_id] = beamdir
         except IndexError:
-            errmsg = f'Looking for BeamNumber or Beamdir that does not Exist at BeamIter {beamiter}'
+            errmsg = f"Looking for BeamNumber or Beamdir that does not Exist at BeamIter {beamiter}"
             raise ExperimentException(errmsg)
 
         return slice_to_beamdir_dict

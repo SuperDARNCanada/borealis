@@ -69,14 +69,28 @@ def experiment_parser():
     """
 
     parser = argparse.ArgumentParser(usage=usage_msg())
-    parser.add_argument("experiment_module", help="The name of the module in the experiment_prototype "
-                                                  "package that contains your Experiment class, "
-                                                  "e.g. normalscan")
-    parser.add_argument("scheduling_mode_type", help="The type of scheduling time for this experiment "
-                                                     "run, e.g. common, special, or discretionary.")
-    parser.add_argument("--embargo", action="store_true", help="Embargo the file (makes the CPID negative)")
-    parser.add_argument("--kwargs", nargs='+', default='',
-                        help="Keyword arguments for the experiment. Each must be formatted as kw=val")
+    parser.add_argument(
+        "experiment_module",
+        help="The name of the module in the experiment_prototype "
+        "package that contains your Experiment class, "
+        "e.g. normalscan",
+    )
+    parser.add_argument(
+        "scheduling_mode_type",
+        help="The type of scheduling time for this experiment "
+        "run, e.g. common, special, or discretionary.",
+    )
+    parser.add_argument(
+        "--embargo",
+        action="store_true",
+        help="Embargo the file (makes the CPID negative)",
+    )
+    parser.add_argument(
+        "--kwargs",
+        nargs="+",
+        default="",
+        help="Keyword arguments for the experiment. Each must be formatted as kw=val",
+    )
 
     return parser
 
@@ -98,16 +112,20 @@ def retrieve_experiment(experiment_module_name):
     """
 
     log.debug("loading experiment", experiment_module_name=experiment_module_name)
-    experiment_mod = importlib.import_module("borealis_experiments." + experiment_module_name)
+    experiment_mod = importlib.import_module(
+        "borealis_experiments." + experiment_module_name
+    )
 
     # find the class or classes *defined* in this module.
     # returns list of class name and object
-    experiment_classes = [(m[0], m[1]) for m in inspect.getmembers(
-                          experiment_mod, inspect.isclass) if
-                          m[1].__module__ == experiment_mod.__name__]
+    experiment_classes = [
+        (m[0], m[1])
+        for m in inspect.getmembers(experiment_mod, inspect.isclass)
+        if m[1].__module__ == experiment_mod.__name__
+    ]
 
     # remove any classes that do not have ExperimentPrototype as parent.
-    for (class_name, class_obj) in experiment_classes:
+    for class_name, class_obj in experiment_classes:
         if ExperimentPrototype not in inspect.getmro(class_obj):
             # an experiment must inherit from ExperimentPrototype
             # other utility classes might be in the file but we will ignore them.
@@ -116,20 +134,26 @@ def retrieve_experiment(experiment_module_name):
     # experiment_classes should now only have classes *defined* in the module, that have
     # ExperimentPrototype as parent.
     if len(experiment_classes) == 0:
-        errmsg = "No experiment classes are present that are built from"\
-                 " parent class ExperimentPrototype - exiting"
+        errmsg = (
+            "No experiment classes are present that are built from"
+            " parent class ExperimentPrototype - exiting"
+        )
         raise ExperimentException(errmsg)
     if len(experiment_classes) > 1:
-        errmsg = "You have more than one experiment class in your " \
-                 "experiment file - exiting"
+        errmsg = (
+            "You have more than one experiment class in your "
+            "experiment file - exiting"
+        )
         raise ExperimentException(errmsg)
 
     # this is the experiment class that we need to run.
     experiment = experiment_classes[0][1]
 
-    log.verbose("retrieving experiment from module",
-                experiment_class=experiment_classes[0][0],
-                experiment_module=experiment_mod)
+    log.verbose(
+        "retrieving experiment from module",
+        experiment_class=experiment_classes[0][0],
+        experiment_module=experiment_mod,
+    )
 
     return experiment
 
@@ -189,15 +213,18 @@ def experiment_handler(semaphore, args):
     experiment_class = retrieve_experiment(experiment_name)
     experiment_update = False
     for method_name, obj in inspect.getmembers(experiment_class, inspect.isfunction):
-        if method_name == 'update':
+        if method_name == "update":
             experiment_update = True
-            log.debug("experiment contains an updated method", experiment_name=experiment_class.experiment_name)
+            log.debug(
+                "experiment contains an updated method",
+                experiment_name=experiment_class.experiment_name,
+            )
 
     if args.kwargs:
         # parse kwargs and pass to experiment
         kwargs = {}
         for element in args.kwargs:
-            kwarg = element.split('=')
+            kwarg = element.split("=")
             kwargs[kwarg[0]] = kwarg[1]
         exp = experiment_class(**kwargs)
     else:
@@ -209,11 +236,11 @@ def experiment_handler(semaphore, args):
 
     def update_experiment():
         # Recv complete processed data from DSP or datawrite? TODO
-        #socket_operations.send_request(exp_handler_to_dsp,
+        # socket_operations.send_request(exp_handler_to_dsp,
         #                               options.dsp_to_exphan_identity,
         #                               "Need completed data")
 
-        #data = socket_operations.recv_data(exp_handler_to_dsp,
+        # data = socket_operations.recv_data(exp_handler_to_dsp,
         #                             options.dsp_to_exphan_identity, log)
 
         some_data = None  # TODO get the data from data socket and pass to update
@@ -223,9 +250,11 @@ def experiment_handler(semaphore, args):
         if change_flag:
             log.debug("building an updated experiment")
             exp.build_scans()
-            log.info("experiment successfully updated",
-                     experiment_name=exp.__class__.__name__,
-                     cpid=exp.cpid)
+            log.info(
+                "experiment successfully updated",
+                experiment_name=exp.__class__.__name__,
+                cpid=exp.cpid,
+            )
         semaphore.release()
 
     update_thread = threading.Thread(target=update_experiment)
@@ -235,28 +264,32 @@ def experiment_handler(semaphore, args):
             serialized_exp = pickle.dumps(None, protocol=pickle.HIGHEST_PROTOCOL)
         else:
             exp.build_scans()
-            log.info("experiment successfully built",
-                     experiment_name=exp.__class__.__name__,
-                     cpid=exp.cpid)
+            log.info(
+                "experiment successfully built",
+                experiment_name=exp.__class__.__name__,
+                cpid=exp.cpid,
+            )
             serialized_exp = pickle.dumps(exp, protocol=pickle.HIGHEST_PROTOCOL)
             # Use the newest, fastest protocol (currently version 4 in python 3.4+)
             change_flag = False
 
         # Wait until radar_control is ready to receive a changed experiment
-        message = socket_operations.recv_request(exp_handler_to_radar_control,
-                                                 options.radctrl_to_exphan_identity,
-                                                 log)
+        message = socket_operations.recv_request(
+            exp_handler_to_radar_control, options.radctrl_to_exphan_identity, log
+        )
 
         log.debug("radar control made a request", request=message)
 
         semaphore.acquire()
-        if message in ['EXPNEEDED', 'NOERROR']:
-            if message == 'EXPNEEDED':
+        if message in ["EXPNEEDED", "NOERROR"]:
+            if message == "EXPNEEDED":
                 log.info("sending new experiment", message=message)
             # Starting anew if EXPNEEDED, otherwise sending None
-            send_experiment(exp_handler_to_radar_control,
-                            options.radctrl_to_exphan_identity,
-                            serialized_exp)
+            send_experiment(
+                exp_handler_to_radar_control,
+                options.radctrl_to_exphan_identity,
+                serialized_exp,
+            )
 
         # TODO: handle errors with revert back to original experiment. requires another message
         semaphore.release()
@@ -291,5 +324,5 @@ if __name__ == "__main__":
 
 else:
     caller = Path(inspect.stack()[-1].filename)
-    module_name = caller.name.split('.')[0]
+    module_name = caller.name.split(".")[0]
     log = structlog.getLogger(module_name)

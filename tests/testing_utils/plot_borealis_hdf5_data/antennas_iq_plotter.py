@@ -16,5 +16,4 @@ print(record_name)
 antennas_iq = data[record_name]
 
 
-plot_antennas_iq_data(antennas_iq, 'antennas_iq')
-
+plot_antennas_iq_data(antennas_iq, "antennas_iq")

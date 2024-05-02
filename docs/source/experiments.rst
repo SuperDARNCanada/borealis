@@ -37,7 +37,7 @@ beams), therefore the interfacing between slices 0 and 1 should be 'SCAN'.
 full_fov
 --------
 
-See :ref:`Full FOV Imaging<full fov imaging>` for more information. 
+See :ref:`Full FOV Imaging<full fov imaging>` for more information.
 
 ..  literalinclude:: ../../src/borealis_experiments/full_fov.py
     :linenos:
@@ -47,7 +47,7 @@ See :ref:`Full FOV Imaging<full fov imaging>` for more information.
 bistatic_test
 -------------
 
-See :ref:`Bistatic Experiments<bistatic experiments>` for more information. 
+See :ref:`Bistatic Experiments<bistatic experiments>` for more information.
 
 ..  literalinclude:: ../../src/borealis_experiments/bistatic_test.py
     :linenos:

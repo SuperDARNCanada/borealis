@@ -17,8 +17,8 @@ with a NEC engine. Some programs that can read NEC inputs are 4nec2 or eznec. Th
 tested with the free, latest version of 4nec2, 5.8.17, updated January 2020 and available here:
 `<https://www.qsl.net/4nec2/>`_
 
-In order to use this with 4nec2, simply open 4nec2 and go to `File->Open 4nec2 in/out file` and
-select the file (it must end in '.nec'). Then hit ``F7`` or go to the `Calculate->NEC Output-data`
+In order to use this with 4nec2, simply open 4nec2 and go to ``File->Open 4nec2 in/out file`` and
+select the file (it must end in '.nec'). Then hit ``F7`` or go to the ``Calculate->NEC Output-data``
 option. Interpretations of the results are beyond the scope of this help message. Note that 4nec2
 requires DOS line-endings, which is why this script outputs DOS line endings.
 

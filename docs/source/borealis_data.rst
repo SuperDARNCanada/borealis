@@ -104,7 +104,7 @@ File Rotation
 -------------
 
 In order to prevent system failure due to hard drives filling up, a method for deleting the oldest
-data files is employed for SuperDARN Canada radars. This is referred to as `rotating` the files.
+data files is employed for SuperDARN Canada radars. This is referred to as *rotating* the files.
 
 A utility script is scheduled via cron to check the filesystem that Borealis files are written to.
 If the filesystem usage is too high, it searches for and deletes the oldest files in a loop until

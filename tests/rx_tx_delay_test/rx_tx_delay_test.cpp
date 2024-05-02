@@ -435,11 +435,11 @@ int UHD_SAFE_MAIN(int argc, char *argv[]){
 			boost::bind(&do_rx, dual_usrp, otw, samps_per_buff, rx_channel, rx_rate, start_time, thresh));
 
 	//do_rx(dual_usrp, otw, 1e4, rx_channel, rx_rate, start_time);
-	while(!stop_signal_called) 
+	while(!stop_signal_called)
   {
     if (vm.count("iterations") && (count >= iterations) ) {
      break;
-    } 
+    }
 //    std::cout << "Iterations: " << count << std::endl;
 		boost::this_thread::sleep(boost::posix_time::milliseconds(1000));
 	}

@@ -23,7 +23,7 @@ from experiment_prototype.experiment_exception import ExperimentException
 
 # Obtain the module name that imported this log_config
 caller = Path(inspect.stack()[-1].filename)
-module_name = caller.name.split('.')[0]
+module_name = caller.name.split(".")[0]
 log = structlog.getLogger(module_name)
 
 
@@ -36,7 +36,7 @@ class InterfaceClassBase(object):
     dictionaries where each dictionary describes a pulse.
 
     :param  object_keys:        slice_ids that need to be included in this interface_class_base type.
-    :type   object_keys:        list  
+    :type   object_keys:        list
     :param  object_slice_dict:  the slice dictionary that explains the parameters of each slice that
                                 is included in this interface_class_base type. Keys are the slice_ids
                                 included and values are dictionaries including all necessary slice
@@ -67,7 +67,9 @@ class InterfaceClassBase(object):
     :type transmit_metadata:    dict
     """
 
-    def __init__(self, object_keys, object_slice_dict, object_interface, transmit_metadata):
+    def __init__(
+        self, object_keys, object_slice_dict, object_interface, transmit_metadata
+    ):
 
         # list of slice_ids included in this interface_class_base
         self.slice_ids = object_keys
@@ -113,7 +115,9 @@ class InterfaceClassBase(object):
                 try:
                     slices_for_nested_class[slice_id] = self.slice_dict[slice_id]
                 except KeyError:
-                    errmsg = f'Error with slice list - slice id {slice_id} cannot be found.'
+                    errmsg = (
+                        f"Error with slice list - slice id {slice_id} cannot be found."
+                    )
                     raise ExperimentException(errmsg)
 
             # now take a subset of the interface dictionary that applies to this nested object
@@ -124,8 +128,14 @@ class InterfaceClassBase(object):
                 # combinations([1, 3, 5], 2) --> [1,3], [1,5], [3,5]
                 nested_class_interface[tuple(i)] = self.interface[tuple(i)]
 
-            nested_class_param_lists.append([slice_list, slices_for_nested_class, 
-                                             nested_class_interface, self.transmit_metadata])
+            nested_class_param_lists.append(
+                [
+                    slice_list,
+                    slices_for_nested_class,
+                    nested_class_interface,
+                    self.transmit_metadata,
+                ]
+            )
 
         return nested_class_param_lists
 
@@ -157,7 +167,10 @@ class InterfaceClassBase(object):
             slice_already_interfaced_with = False
             for disjoint_set in disjoint_sets:
                 # Add both slice ids to this set if either one is already a member
-                if slice_interfacing[0] in disjoint_set or slice_interfacing[1] in disjoint_set:
+                if (
+                    slice_interfacing[0] in disjoint_set
+                    or slice_interfacing[1] in disjoint_set
+                ):
                     disjoint_set.update({slice_interfacing[0], slice_interfacing[1]})
                     slice_already_interfaced_with = True
             if not slice_already_interfaced_with:
@@ -168,10 +181,12 @@ class InterfaceClassBase(object):
         for key in all_keys:
             slice_in_set = False
             for disjoint_set in disjoint_sets:
-                if key in disjoint_set:     # This slice interfaces with others
+                if key in disjoint_set:  # This slice interfaces with others
                     slice_in_set = True
                     break
-            if not slice_in_set:    # This slice doesn't interface with the others, make a new set
+            if (
+                not slice_in_set
+            ):  # This slice doesn't interface with the others, make a new set
                 disjoint_sets.append({key})
 
         # Go through all sets and make sure they are disjoint (don't share any slice ids)
@@ -179,11 +194,13 @@ class InterfaceClassBase(object):
             for j in range(i + 1, len(disjoint_sets)):
                 bad_slices = disjoint_sets[i].intersection(disjoint_sets[j])
                 if len(bad_slices) != 0:
-                    raise ExperimentException(f"The following slices do not interface well with other slices: "
-                                              f"{bad_slices}")
-            disjoint_sets[i] = sorted(list(disjoint_sets[i]))   # Convert to a list
+                    raise ExperimentException(
+                        f"The following slices do not interface well with other slices: "
+                        f"{bad_slices}"
+                    )
+            disjoint_sets[i] = sorted(list(disjoint_sets[i]))  # Convert to a list
 
-        disjoint_sets.sort(key=lambda x: x[0])    # Sort by the first key in each list
+        disjoint_sets.sort(key=lambda x: x[0])  # Sort by the first key in each list
         return disjoint_sets
 
     def get_nested_slice_ids(self):
@@ -207,13 +224,24 @@ class InterfaceClassBase(object):
         nested_combos = []
 
         combine_below_dict = {
-            'InterfaceClassBase': ['AVEPERIOD', 'SEQUENCE', 'CONCURRENT'],   # Combine everything except SCAN interfaced
-            'Scan': ['SEQUENCE', 'CONCURRENT'],     # Combine everything SEQUENCE or CONCURRENT interfaced
-            'AveragingPeriod': ['CONCURRENT'],      # Combine everything CONCURRENT interfaced
-            'Sequence': []  # All slices in a Sequence are already CONCURRENT and should be combined already
+            "InterfaceClassBase": [
+                "AVEPERIOD",
+                "SEQUENCE",
+                "CONCURRENT",
+            ],  # Combine everything except SCAN interfaced
+            "Scan": [
+                "SEQUENCE",
+                "CONCURRENT",
+            ],  # Combine everything SEQUENCE or CONCURRENT interfaced
+            "AveragingPeriod": [
+                "CONCURRENT"
+            ],  # Combine everything CONCURRENT interfaced
+            "Sequence": [],  # All slices in a Sequence are already CONCURRENT and should be combined already
         }
 
-        combine_list = combine_below_dict[type(self).__name__]     # Returns the class name of the calling instance
+        combine_list = combine_below_dict[
+            type(self).__name__
+        ]  # Returns the class name of the calling instance
 
         for slice_ids_combo, interface_value in self.interface.items():
             if interface_value in combine_list:

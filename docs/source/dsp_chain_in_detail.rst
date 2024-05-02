@@ -301,5 +301,3 @@ occurring four samples after a pulse.
    :align: center
 
    Figure 13: Borealis correlation matrix
-
-

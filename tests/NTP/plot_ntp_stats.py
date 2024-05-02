@@ -24,15 +24,17 @@ import numpy as np
 import argparse as ap
 import allantools
 
-POSSIBLE_FILE_TYPES = frozenset(['loopstats', 'clockstats', 'peerstats', 'rawstats', 'sysstats'])
+POSSIBLE_FILE_TYPES = frozenset(
+    ["loopstats", "clockstats", "peerstats", "rawstats", "sysstats"]
+)
 
 
 def usage_msg():
     """
-       Return the usage message for this process.
-       This is used if a -h flag or invalid arguments are provided.
-       :returns: the usage message
-       """
+    Return the usage message for this process.
+    This is used if a -h flag or invalid arguments are provided.
+    :returns: the usage message
+    """
 
     usage_message = """ plot_ntp_stats.py [-h] [options] input_stats_file
 
@@ -78,62 +80,62 @@ def usage_msg():
 # Loopstats present the NTP loop filter statistics.
 # Each update of the local clock outputs a line containing the following:
 LOOPSTATS_KEYS = [
-    "modified_julian_day",    # MJD = Julian Day - 2400000.5 = Days since May 23, 1968, Int
+    "modified_julian_day",  # MJD = Julian Day - 2400000.5 = Days since May 23, 1968, Int
     "seconds_past_midnight",  # How many seconds have elapsed since UTC midnight? Float
-    "offset_seconds",         # Offset from real time, Float
-    "freq_offset_ppm",        # Frequency offset in parts-per-million from true frequency, Float
-    "polling_interval",       # Time constant of clock discipline algorithm in seconds. Int, power of 2
+    "offset_seconds",  # Offset from real time, Float
+    "freq_offset_ppm",  # Frequency offset in parts-per-million from true frequency, Float
+    "polling_interval",  # Time constant of clock discipline algorithm in seconds. Int, power of 2
 ]
 
 # Peerstats present the NTP peer statistics. Includes all stats records of all peers of the NTP server.
 # Each valid update outputs a line containing the following:
 PEERSTATS_KEYS = [
-    "modified_julian_day",    # MJD = Julian Day - 2400000.5 = Days since May 23, 1968, Int
+    "modified_julian_day",  # MJD = Julian Day - 2400000.5 = Days since May 23, 1968, Int
     "seconds_past_midnight",  # How many seconds have elapsed since UTC midnight? Float
-    "peer_ip_address",        # The peer address in dotted-quad notation (example: 127.127.4.1)
-    "status_field",           # The status field of the peer in hexadecimal. See APP A of RFC 1305
-    "offset_seconds",         # The offset of the peer's clock from true time in seconds, Float
-    "delay_seconds",          # The delay of the peer in seconds over the network, Float
-    "dispersion_seconds",     # The dispersion of the peer in seconds, Float
+    "peer_ip_address",  # The peer address in dotted-quad notation (example: 127.127.4.1)
+    "status_field",  # The status field of the peer in hexadecimal. See APP A of RFC 1305
+    "offset_seconds",  # The offset of the peer's clock from true time in seconds, Float
+    "delay_seconds",  # The delay of the peer in seconds over the network, Float
+    "dispersion_seconds",  # The dispersion of the peer in seconds, Float
 ]
 
 # Clockstats present the NTP clock driver statistics.
 # Each update from a clock driver outputs a line containing the following:
 CLOCKSTATS_KEYS = [
-    "modified_julian_day",    # MJD = Julian Day - 2400000.5 = Days since May 23, 1968, Int
+    "modified_julian_day",  # MJD = Julian Day - 2400000.5 = Days since May 23, 1968, Int
     "seconds_past_midnight",  # How many seconds have elapsed since UTC midnight? Float
-    "peer_ip_address",        # The peer address in dotted-quad notation (example: 127.127.4.1)
-    "last_timecode",          # The last timecode received from the clock in ASCII format, Float
+    "peer_ip_address",  # The peer address in dotted-quad notation (example: 127.127.4.1)
+    "last_timecode",  # The last timecode received from the clock in ASCII format, Float
 ]
 
 # Rawstats present the NTP raw-timestamp statistics. Includes all stats records of all peers of the NTP server.
 # **NOTE** The timestamps entries are before any processing is done on the packet.
 # Each NTP message received from a peer or clock driver outputs a line containing the following:
 RAWSTATS_KEYS = [
-    "modified_julian_day",    # MJD = Julian Day - 2400000.5 = Days since May 23, 1968, Int
+    "modified_julian_day",  # MJD = Julian Day - 2400000.5 = Days since May 23, 1968, Int
     "seconds_past_midnight",  # How many seconds have elapsed since UTC midnight? Float
-    "peer_ip_address",        # The peer address in dotted-quad notation (example: 127.127.4.1)
-    "originate",              # The originate timestamp in seconds, Float
-    "receive",                # The receive timestamp in seconds, Float
-    "transmit",               # The transmit timestamp in seconds, Float
-    "final",                  # The final timestamp in seconds, Float
+    "peer_ip_address",  # The peer address in dotted-quad notation (example: 127.127.4.1)
+    "originate",  # The originate timestamp in seconds, Float
+    "receive",  # The receive timestamp in seconds, Float
+    "transmit",  # The transmit timestamp in seconds, Float
+    "final",  # The final timestamp in seconds, Float
 ]
 
 # Sysstats present the NTP system statistics.
 # Each hour the NTP system outputs a line containing the following:
 SYSSTATS_KEYS = [
-    "modified_julian_day",    # MJD = Julian Day - 2400000.5 = Days since May 23, 1968, Int
+    "modified_julian_day",  # MJD = Julian Day - 2400000.5 = Days since May 23, 1968, Int
     "seconds_past_midnight",  # How many seconds have elapsed since UTC midnight? Float
-    "time_since_restart",     # The number of hours elapsed since system last rebooted, Int
-    "packets_received",       # The number of packets received, Int
-    "packets_processed",      # The number of packets received in response to previous packets sent, Int
-    "current_version",        # The number of packets received that matched the current version of NTP, Int
-    "previous_version",       # The number of packets received that matched the previous version of NTP, Int
-    "bad_version",            # The number of packets received that matched neither current nor prev version of NTP, Int
-    "access_denied",          # The number of packets denied access for any reason, Int
-    "bad_length",             # The number of packets with an invalid length, format or port number, Int
-    "bad_authentication",     # The number of packets not verified as authentic, Int
-    "rate_exceeded",          # The number of packets discarded due to rate limitation, Int
+    "time_since_restart",  # The number of hours elapsed since system last rebooted, Int
+    "packets_received",  # The number of packets received, Int
+    "packets_processed",  # The number of packets received in response to previous packets sent, Int
+    "current_version",  # The number of packets received that matched the current version of NTP, Int
+    "previous_version",  # The number of packets received that matched the previous version of NTP, Int
+    "bad_version",  # The number of packets received that matched neither current nor prev version of NTP, Int
+    "access_denied",  # The number of packets denied access for any reason, Int
+    "bad_length",  # The number of packets with an invalid length, format or port number, Int
+    "bad_authentication",  # The number of packets not verified as authentic, Int
+    "rate_exceeded",  # The number of packets discarded due to rate limitation, Int
 ]
 
 # class NTPUtils(object):
@@ -141,23 +143,46 @@ SYSSTATS_KEYS = [
 
 if __name__ == "__main__":
     # TODO: Cleanup arguments to allow a list of plot types, or to plot all from available files
-    parser = ap.ArgumentParser(usage=usage_msg(), description='Analyze and plot NTP statistics')
-    parser.add_argument('--allan-deviation', help='Enable plotting Allan deviation',
-                        action='store_true')
-    parser.add_argument('--offset', help='Plot the loopstats offset value (s)',
-                        action='store_true')
-    parser.add_argument('--freq-offset', help='Plot the loopstats frequency offset value (ppm)',
-                        action='store_true')
-    parser.add_argument('--peer-offset', help='Plot the peerstats est offset from true time (s)',
-                        action='store_true')
-    parser.add_argument('--peer-delay', help='Plot the peerstats packet delay over the network (s)',
-                        action='store_true')
-    parser.add_argument('--peer-dispersion', help='Plot the peerstats estimated dispersion (s)',
-                        action='store_true')
-    parser.add_argument('--ntp-config', help='Where is the NTP config file used by ntpd located?',
-                        action='store', default="/etc/ntp.conf")
-    parser.add_argument('input_file', help='A statistics file generated by ntpd, matching the type'
-                                           'of plot you want to make. Example: loopstats')
+    parser = ap.ArgumentParser(
+        usage=usage_msg(), description="Analyze and plot NTP statistics"
+    )
+    parser.add_argument(
+        "--allan-deviation", help="Enable plotting Allan deviation", action="store_true"
+    )
+    parser.add_argument(
+        "--offset", help="Plot the loopstats offset value (s)", action="store_true"
+    )
+    parser.add_argument(
+        "--freq-offset",
+        help="Plot the loopstats frequency offset value (ppm)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--peer-offset",
+        help="Plot the peerstats est offset from true time (s)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--peer-delay",
+        help="Plot the peerstats packet delay over the network (s)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--peer-dispersion",
+        help="Plot the peerstats estimated dispersion (s)",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--ntp-config",
+        help="Where is the NTP config file used by ntpd located?",
+        action="store",
+        default="/etc/ntp.conf",
+    )
+    parser.add_argument(
+        "input_file",
+        help="A statistics file generated by ntpd, matching the type"
+        "of plot you want to make. Example: loopstats",
+    )
     args = parser.parse_args()
 
     print("Analyzing {inputfile}".format(inputfile=args.input_file))
@@ -211,16 +236,22 @@ if __name__ == "__main__":
             proper_file_type = filetype
             print("Input file type: {}".format(filetype))
     if not proper_file_type:
-        raise ValueError("Invalid file type. Expected one of {}".format(POSSIBLE_FILE_TYPES))
+        raise ValueError(
+            "Invalid file type. Expected one of {}".format(POSSIBLE_FILE_TYPES)
+        )
 
     if args.allan_deviation:
-        if proper_file_type != 'clockstats':
-            raise ValueError("Invalid file type for producing AllanDeviation. Expected clockstats")
+        if proper_file_type != "clockstats":
+            raise ValueError(
+                "Invalid file type for producing AllanDeviation. Expected clockstats"
+            )
 
         print("Plotting Allan deviation")
         clock_times = np.loadtxt(args.input_file, usecols=3)
-        rate = 1   # 1 Hz, if NTP is set up with PPS flag4 = 1
-        at_dataset = allantools.Dataset(data=clock_times, rate=rate, data_type="phase", taus="octave")
+        rate = 1  # 1 Hz, if NTP is set up with PPS flag4 = 1
+        at_dataset = allantools.Dataset(
+            data=clock_times, rate=rate, data_type="phase", taus="octave"
+        )
 
         # Other possible computations are adev, mdev, tdev, hdev, ohdev, totdev,
         # mtotdev, ttotdev, htotdev, theo1, mtie, tierms, gradev
@@ -231,66 +262,90 @@ if __name__ == "__main__":
 
     # TODO: Code reuse for most of the following:
     if args.offset:
-        if proper_file_type != 'loopstats':
-            raise ValueError("Invalid file type for producing offset plot. Expected loopstats")
+        if proper_file_type != "loopstats":
+            raise ValueError(
+                "Invalid file type for producing offset plot. Expected loopstats"
+            )
 
         print("Plotting loopstats offset")
         offsets = np.loadtxt(args.input_file, usecols=2)
         fig, ax = plt.subplots()
-        t = np.arange(len(offsets))  # TODO: Plot this using actual date-time values from loopstats
+        t = np.arange(
+            len(offsets)
+        )  # TODO: Plot this using actual date-time values from loopstats
         ax.plot(t * 16, offsets)
-        ax.set(xlabel='time (s)', ylabel='offset (s)', title='Loopstats offset')
+        ax.set(xlabel="time (s)", ylabel="offset (s)", title="Loopstats offset")
         ax.grid()
         plt.show()
 
     if args.freq_offset:
-        if proper_file_type != 'loopstats':
-            raise ValueError("Invalid file type for producing freq offset plot. Expected loopstats")
+        if proper_file_type != "loopstats":
+            raise ValueError(
+                "Invalid file type for producing freq offset plot. Expected loopstats"
+            )
 
         print("Plotting loopstats frequency offset")
         freqoffsets = np.loadtxt(args.input_file, usecols=3)
         fig, ax = plt.subplots()
-        t = np.arange(len(freqoffsets))  # TODO: Plot this using actual date-time values from loopstats
+        t = np.arange(
+            len(freqoffsets)
+        )  # TODO: Plot this using actual date-time values from loopstats
         ax.plot(t * 16, freqoffsets)
-        ax.set(xlabel='time (s)', ylabel='freq offset (ppm)', title='Loopstats freq offset (ppm)')
+        ax.set(
+            xlabel="time (s)",
+            ylabel="freq offset (ppm)",
+            title="Loopstats freq offset (ppm)",
+        )
         ax.grid()
         plt.show()
 
     if args.peer_offset:
-        if proper_file_type != 'peerstats':
-            raise ValueError("Invalid file type for producing peer offset plot. Expected peerstats")
+        if proper_file_type != "peerstats":
+            raise ValueError(
+                "Invalid file type for producing peer offset plot. Expected peerstats"
+            )
 
         print("Plotting peer offset")
         peeroffsets = np.loadtxt(args.input_file, usecols=4)
         fig, ax = plt.subplots()
-        t = np.arange(len(peeroffsets))  # TODO: Plot this using actual date-time values from peerstats
+        t = np.arange(
+            len(peeroffsets)
+        )  # TODO: Plot this using actual date-time values from peerstats
         ax.plot(t * 16, peeroffsets)
-        ax.set(xlabel='time (s)', ylabel='offset (s)', title='Peer offset')
+        ax.set(xlabel="time (s)", ylabel="offset (s)", title="Peer offset")
         ax.grid()
         plt.show()
 
     if args.peer_delay:
-        if proper_file_type != 'peerstats':
-            raise ValueError("Invalid file type for producing peer delay plot. Expected peerstats")
+        if proper_file_type != "peerstats":
+            raise ValueError(
+                "Invalid file type for producing peer delay plot. Expected peerstats"
+            )
 
         print("Plotting peer network delay")
         peerdelay = np.loadtxt(args.input_file, usecols=5)
         fig, ax = plt.subplots()
-        t = np.arange(len(peerdelay))  # TODO: Plot this using actual date-time values from peerstats
+        t = np.arange(
+            len(peerdelay)
+        )  # TODO: Plot this using actual date-time values from peerstats
         ax.plot(t * 16, peerdelay)
-        ax.set(xlabel='time (s)', ylabel='Delay (s)', title='Peer delay')
+        ax.set(xlabel="time (s)", ylabel="Delay (s)", title="Peer delay")
         ax.grid()
         plt.show()
 
     if args.peer_dispersion:
-        if proper_file_type != 'peerstats':
-            raise ValueError("Invalid file type for producing peer dispersion plot. Expected peerstats")
+        if proper_file_type != "peerstats":
+            raise ValueError(
+                "Invalid file type for producing peer dispersion plot. Expected peerstats"
+            )
 
         print("Plotting peer dispersion")
         peerdispersions = np.loadtxt(args.input_file, usecols=6)
         fig, ax = plt.subplots()
-        t = np.arange(len(peerdispersions))  # TODO: Plot this using actual date-time values from peerstats
+        t = np.arange(
+            len(peerdispersions)
+        )  # TODO: Plot this using actual date-time values from peerstats
         ax.plot(t * 16, peerdispersions)
-        ax.set(xlabel='time (s)', ylabel='Dispersion (s)', title='Peer dispersion')
+        ax.set(xlabel="time (s)", ylabel="Dispersion (s)", title="Peer dispersion")
         ax.grid()
         plt.show()

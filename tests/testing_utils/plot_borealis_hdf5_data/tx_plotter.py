@@ -16,4 +16,4 @@ record_name = random.choice(list(data.keys()))
 print(record_name)
 tx = data[record_name]
 
-plot_output_tx_data(tx, 'tx_data')
+plot_output_tx_data(tx, "tx_data")

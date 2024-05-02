@@ -27,7 +27,7 @@
       auto time_diff = std::chrono::duration_cast <std::chrono::microseconds>  \
                                         (time_end - time_start).count();       \
       DEBUG_MSG(msg << COLOR_MAGENTA(time_diff) << "us");                      \
-    } while (0) 
+    } while (0)
 #else
 #define DEBUG_MSG(x)
 #define TIMEIT_IF_TRUE_OR_DEBUG(truth, msg, x) do{                                                                          \
@@ -41,9 +41,8 @@
       else {                                                                   \
         x;                                                                     \
       }                                                                        \
-    } while (0)  
+    } while (0)
 #endif
 
 
 #endif
-

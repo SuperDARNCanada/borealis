@@ -8,7 +8,7 @@ pkill -9 -f remote_server.py
 
 # Remove all scheduled experiments from at queue
 for i in $(atq | awk '{print $1}')
-do 
+do
 	atrm $i
 done
 

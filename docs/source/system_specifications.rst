@@ -128,4 +128,3 @@ Rack and Cabling
 - 1x 4 post 42U rack
 - 4x custom-made USRP N200 rackmount shelves (or Ettus ones)
 - 1x rackmount shelf for interferometer pre-amps
-

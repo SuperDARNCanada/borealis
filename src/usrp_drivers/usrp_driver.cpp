@@ -40,8 +40,8 @@
 // wait for the device to settle after sending a tuning request.
 // If the device retunes a local oscillator, this should be on the
 // order of 1-2 seconds. The LF daughter boards do not have a lo
-// and therefore can have a much smaller tuning delay. The value 
-// chosen below was determined via trial and error, and has been 
+// and therefore can have a much smaller tuning delay. The value
+// chosen below was determined via trial and error, and has been
 // set small enough that the delay is less than the time required
 // to execute the tuning request.
 #define TUNING_DELAY 1e-3 // seconds
@@ -429,7 +429,7 @@ void transmit(zmq::context_t &driver_c, USRP &usrp_d, const DriverOptions &drive
     if (!usrp_d.gps_locked()) {
       RUNTIME_MSG("GPS UNLOCKED! time diff: " << COLOR_RED(gps_to_system_time_diff*1000.0) << "ms");
     }
-    
+
     auto end_time = borealis_clocks.usrp_time;
     auto sleep_time = uhd::time_spec_t(seqn_sampling_time) - (end_time-sequence_start_time) + delay;
     // sleep_time is how much longer we need to wait in tx thread before the end of the sampling time

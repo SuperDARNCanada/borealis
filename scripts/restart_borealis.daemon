@@ -3,7 +3,7 @@
 # Author: Theodore Kolkman
 #
 # Script that runs continuously and periodically runs restart_borealis.py to check if Borealis is
-# running, and if not restart Borealis. This script keeps track of how often restart_borealis.py 
+# running, and if not restart Borealis. This script keeps track of how often restart_borealis.py
 # is called. If it is called repeatedly, an alert will be sent to the specified webhook (Slack in
 # our case) notifying us that something is likely wrong with Borealis.
 #
@@ -19,12 +19,12 @@
 # /usr/lib/systemd/system/restart_borealis.service
 # [Unit]
 # Description=Restart borealis daemon
-# 
+#
 # [Service]
 # User=radar
 # ExecStart=/home/radar/borealis/scripts/restart_borealis.daemon
 # Restart=always
-# 
+#
 # [Install]
 # WantedBy=multi-user.target
 #

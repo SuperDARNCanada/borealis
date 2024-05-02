@@ -13,7 +13,7 @@ working together, depending on the complexity.
 Each slice contains the information needed about a specific pulse sequence to run. The parameters of
 a slice contain features such as pulse sequence, frequency, fundamental time lag spacing, etc. These
 are the parameters that researchers will be familiar with. Each slice can be an experiment on its
-own, or can be just a piece of a larger experiment. 
+own, or can be just a piece of a larger experiment.
 
 ..  toctree::
     :glob:
@@ -21,7 +21,7 @@ own, or can be just a piece of a larger experiment.
     new_experiments
 
 -------------------------------
-Introduction to Borealis Slices 
+Introduction to Borealis Slices
 -------------------------------
 
 Slices are software objects made for the Borealis system that allow easy integration of multiple
@@ -52,7 +52,7 @@ length of time during which as many sequences as possible are transmitted. For e
 may be familiar with the standard 3 second averaging period in which ~30 pulse sequences are sent
 out and received in a single beam direction.
 
-**Scan**  
+**Scan**
 
 A time where the averaging periods are repeated, traditionally to look in different beam directions
 with each averaging period. A scan is defined by the number of beams or integration times.
@@ -83,7 +83,7 @@ data separates the frequencies).
 
 .. image:: img/cutlass.png
    :width: 800px
-   :alt: CUTLASS-style experiment slice interfacing 
+   :alt: CUTLASS-style experiment slice interfacing
    :align: center
 
 In a themisscan experiment, a single beam is interleaved with a full scan. The beam_order can be
@@ -94,17 +94,17 @@ interleaved. The resulting experiment runs beams 0, 7, 1, 7, etc.
 
 .. image:: img/themisscan.png
    :width: 800px
-   :alt: THEMISSCAN slice interfacing 
+   :alt: THEMISSCAN slice interfacing
    :align: center
 
 In a twofsound experiment, a full scan of one frequency is followed by a full scan of another
 frequency. The txfreq are unique between the slices. In this experiment, the slices are SCAN
 interfaced. A full scan of slice 0 runs followed by a full scan of slice 1, and then the process
-repeats. 
+repeats.
 
 .. image:: img/twofsound.png
    :width: 800px
-   :alt: TWOFSOUND slice interfacing 
+   :alt: TWOFSOUND slice interfacing
    :align: center
 
 
@@ -118,7 +118,7 @@ interfaced, slices 2 and 4 are SCAN interfaced, and slices 3 and 4 are SCAN inte
 
 .. image:: img/one-experiment-all-interfacing-types.png
    :width: 800px
-   :alt: An example showing all types of slice interfacing 
+   :alt: An example showing all types of slice interfacing
    :align: center
 
 ---------------------
@@ -215,7 +215,7 @@ An example of adding a slice to your experiment is as follows::
         self.add_slice(first_slice)
 
 
-This slice would be assigned with `slice_id = 0` if it's the first slice added to the experiment. The
+This slice would be assigned with ``slice_id = 0`` if it's the first slice added to the experiment. The
 experiment could also add another slice::
 
         second_slice = copy.deepcopy(first_slice)
@@ -252,7 +252,7 @@ command::
         python3 BOREALISPATH/tests/experiments/experiment_unittests.py --experiment [EXPERIMENT_NAME]
 
 where EXPERIMENT_NAME is the module name of your experiment. If there are any errors while checking
-your experiment, the test will fail and the exception will describe the error. 
+your experiment, the test will fail and the exception will describe the error.
 
 ..  toctree::
     :glob:

@@ -1,4 +1,4 @@
-// N200 gpio test code 
+// N200 gpio test code
 // 201609 - Kevin Krieger
 
 #include <stdlib.h>
@@ -20,8 +20,8 @@
 #include <uhd/utils/thread_priority.hpp>
 
 // Test program for SuperDARN N200 GPIOs
-// Takes in values for all multi-usrp GPIO either from a 
-// file or on the command line, or optionally produces gpio outputs for a specified pulse sequence 
+// Takes in values for all multi-usrp GPIO either from a
+// file or on the command line, or optionally produces gpio outputs for a specified pulse sequence
 
 namespace po = boost::program_options;            // Options on command line or config file
 
@@ -36,7 +36,7 @@ static const std::string  GPIO_DEFAULT_GPIO_DDR                   = "0x0";  // a
 static const std::string  GPIO_DEFAULT_GPIO_OUT                   = "0x0";  // GPIO out values, all low
 static const std::string  GPIO_DEFAULT_GPIO_CTRL                  = "0x0";  // GPIO ctrl values, all low
 static const uint32_t     GPIO_DEFAULT_UPDATE_PERIOD_IN_S         = 10;     // 10 second period to update users on GPIO registers to stdout
-static const uint32_t     SEQUENCE_DEFAULT_TAU_IN_US              = 2400;   // Tau value for pulse sequence 
+static const uint32_t     SEQUENCE_DEFAULT_TAU_IN_US              = 2400;   // Tau value for pulse sequence
 static const uint32_t     SEQUENCE_DEFAULT_PULSE_LENGTH_IN_US     = 300;    // How long is each pulse?
 static const float        SEQUENCE_DEFAULT_RSEP_IN_KM             = 45;     // Range separation
 static const float        SEQUENCE_DEFAULT_NUM_RANGES             = 75;     // Number of ranges
@@ -102,7 +102,7 @@ void print_gpio_banks(const uhd::usrp::multi_usrp::sptr &usrp) {
 }
 
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
-  
+
   // Set the thread priority. Takes float between -1 and 1
   // a higher value is higher priority. 0 is default normal priority.
   if(!uhd::set_thread_priority_safe(1.0)) {
@@ -180,7 +180,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     return 0;
   }
 
-  // Create multi usrp device (get shared pointer) 
+  // Create multi usrp device (get shared pointer)
   uhd::usrp::multi_usrp::sptr usrp;
   try {
     usrp = uhd::usrp::multi_usrp::make(multi_usrp_args);
@@ -200,9 +200,9 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
       std::cout << *i << std::endl;
     }
     return 0;
-  } 
+  }
 
-  
+
   // Get a mask for how many gpio the boards actually have
   uint32_t gpio_mask = (1<<num_bits) - 1;
   double accum_time = 0.0;
@@ -231,7 +231,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
     std::cout << "Generating pulse sequences and waiting for CTRL-C to exit..." << std::endl;
     while (not stop_signal_called) {
       std::chrono::steady_clock::time_point pulse_seq_begin = std::chrono::steady_clock::now();
-      
+
       usrp->set_time_now(uhd::time_spec_t(0.0));
       std::chrono::steady_clock::time_point set_time_end = std::chrono::steady_clock::now();
       accum_time = 0.0;
@@ -242,26 +242,26 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
       std::chrono::steady_clock::time_point set_gpio_end = std::chrono::steady_clock::now();
       accum_time += scope_sync_pre_delay_in_us/1000000.0;
       usrp->set_command_time(uhd::time_spec_t(accum_time)); // Wait for delay to start pulse sequence
-      
+
       for (pulse_number = 0; pulse_number < num_pulses; pulse_number++) {
         usrp->set_gpio_attr(gpio_bank, "OUT", 0xFFFF, 0x0002); // atten high
-        
+
         accum_time += atten_pre_delay_in_us/1000000.0;
         usrp->set_command_time(uhd::time_spec_t(accum_time)); // Wait for delay to TR signal
-        usrp->set_gpio_attr(gpio_bank, "OUT", 0xFFFF, 0x0004); // TR, scopy sync and atten high 
-        
+        usrp->set_gpio_attr(gpio_bank, "OUT", 0xFFFF, 0x0004); // TR, scopy sync and atten high
+
         accum_time += tr_pre_delay_in_us/1000000.0;
         usrp->set_command_time(uhd::time_spec_t(accum_time)); // Wait for delay to pulse
         usrp->set_gpio_attr(gpio_bank, "OUT", 0xFFFF, 0x0008); // Mock pulse high
-        
+
         accum_time += pulse_length_in_us/1000000.0;
         usrp->set_command_time(uhd::time_spec_t(accum_time)); // Wait for pulse to end
         usrp->set_gpio_attr(gpio_bank, "OUT", 0x0000, 0x0008); // Mock pulse low
-        
+
         accum_time += tr_post_delay_in_us/1000000.0;
-        usrp->set_command_time(uhd::time_spec_t(accum_time)); // delay to TR low 
+        usrp->set_command_time(uhd::time_spec_t(accum_time)); // delay to TR low
         usrp->set_gpio_attr(gpio_bank, "OUT", 0x0000, 0x0004); // TR low
-        
+
         accum_time += atten_post_delay_in_us/1000000.0;
         usrp->set_command_time(uhd::time_spec_t(accum_time)); // delay to atten low
         usrp->set_gpio_attr(gpio_bank, "OUT", 0x0000, 0x0002); // atten low
@@ -288,7 +288,7 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
       usrp->set_gpio_attr(gpio_bank, "OUT", 0x0000, 0x0001); // scope sync low
       usrp->clear_command_time();
 //      boost::this_thread::sleep( boost::posix_time::milliseconds(accum_time/1000.0 +100) );
-//      sleep(accum_time+0.01); 
+//      sleep(accum_time+0.01);
       //uhd::time_spec_t curtime = usrp->get_time_now();
       //std::cout << "Accum time: " << accum_time << std::endl;
       //std::cout << boost::format("Current usrp time: %f") % curtime.get_real_secs() << std::endl;
@@ -321,7 +321,6 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   }
 
 
-  
+
   return 0;
 }
-

@@ -1,4 +1,4 @@
-// octoclock test code 
+// octoclock test code
 // 201712 - Kevin Krieger
 
 #include <stdlib.h>
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
   std::string gps_servo_str;
 
 
-  // Create multi usrp clock device (get shared pointer) 
+  // Create multi usrp clock device (get shared pointer)
   uhd::usrp_clock::multi_usrp_clock::sptr clock;
   try {
     clock = uhd::usrp_clock::multi_usrp_clock::make(multi_usrp_clock_args);
@@ -140,6 +140,3 @@ int main(int argc, char *argv[]) {
   std::cout << "Stop signal called, exiting" << std::endl;
   return 0;
 }
-
-  
-

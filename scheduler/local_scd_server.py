@@ -15,81 +15,81 @@ import datetime
 import time
 import argparse
 
-BOREALISPATH = os.environ['BOREALISPATH']
+BOREALISPATH = os.environ["BOREALISPATH"]
 sys.path.append(f"{BOREALISPATH}/scheduler")
 import scd_utils
 
 
-SWG_GIT_REPO_DIR = 'schedules'
+SWG_GIT_REPO_DIR = "schedules"
 SWG_GIT_REPO = "https://github.com/SuperDARN/schedules.git"
 
 EXPERIMENTS = {
     "sas": {
-        "common_time":          "twofsound",
-        "discretionary_time":   "twofsound",
-        "htr_common_time":      "twofsound",
-        "themis_time":          "themisscan",
-        "special_time_normal":  "twofsound",
-        "rbsp_time":            "rbspscan",
-        "no_switching_time":    "normalscan",
-        "interleaved_time":     "interleavedscan",
-        "normalsound_time":     "normalsound"
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound",
     },
     "pgr": {
-        "common_time":          "twofsound",
-        "discretionary_time":   "twofsound",
-        "htr_common_time":      "twofsound",
-        "themis_time":          "themisscan",
-        "special_time_normal":  "twofsound",
-        "rbsp_time":            "rbspscan",
-        "no_switching_time":    "normalscan",
-        "interleaved_time":     "interleavedscan",
-        "normalsound_time":     "normalsound"
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound",
     },
     "rkn": {
-        "common_time":          "twofsound",
-        "discretionary_time":   "twofsound",
-        "htr_common_time":      "twofsound",
-        "themis_time":          "themisscan",
-        "special_time_normal":  "twofsound",
-        "rbsp_time":            "rbspscan",
-        "no_switching_time":    "normalscan",
-        "interleaved_time":     "interleavedscan",
-        "normalsound_time":     "normalsound"
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound",
     },
     "inv": {
-        "common_time":          "twofsound",
-        "discretionary_time":   "twofsound",
-        "htr_common_time":      "twofsound",
-        "themis_time":          "themisscan",
-        "special_time_normal":  "twofsound",
-        "rbsp_time":            "rbspscan",
-        "no_switching_time":    "normalscan",
-        "interleaved_time":     "interleavedscan",
-        "normalsound_time":     "normalsound"
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound",
     },
     "cly": {
-        "common_time":          "twofsound",
-        "discretionary_time":   "twofsound",
-        "htr_common_time":      "twofsound",
-        "themis_time":          "themisscan",
-        "special_time_normal":  "twofsound",
-        "rbsp_time":            "rbspscan",
-        "no_switching_time":    "normalscan",
-        "interleaved_time":     "interleavedscan",
-        "normalsound_time":     "normalsound"
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound",
     },
     "lab": {
-        "common_time":          "twofsound",
-        "discretionary_time":   "twofsound",
-        "htr_common_time":      "twofsound",
-        "themis_time":          "themisscan",
-        "special_time_normal":  "twofsound",
-        "rbsp_time":            "rbspscan",
-        "no_switching_time":    "normalscan",
-        "interleaved_time":     "interleavedscan",
-        "normalsound_time":     "normalsound"
-     }
+        "common_time": "twofsound",
+        "discretionary_time": "twofsound",
+        "htr_common_time": "twofsound",
+        "themis_time": "themisscan",
+        "special_time_normal": "twofsound",
+        "rbsp_time": "rbspscan",
+        "no_switching_time": "normalscan",
+        "interleaved_time": "interleavedscan",
+        "normalsound_time": "normalsound",
+    },
 }
 
 
@@ -106,7 +106,7 @@ class SWG(object):
             sp.check_output(cmd, shell=True)
 
         except sp.CalledProcessError:
-            cmd = f'cd {self.scd_dir}; git clone {SWG_GIT_REPO}'
+            cmd = f"cd {self.scd_dir}; git clone {SWG_GIT_REPO}"
 
             sp.call(cmd, shell=True)
 
@@ -134,7 +134,6 @@ class SWG(object):
         print(f"Result: {shell_output}")
 
     def parse_swg_to_scd(self, modes, radar, first_run):
-
         """
         Reads the new SWG file and parses into a set of parameters than can be used for borealis
         scheduling.
@@ -161,7 +160,7 @@ class SWG(object):
         yearmonth = year + month
         swg_file = f"{self.scd_dir}/{SWG_GIT_REPO_DIR}/{year}/{yearmonth}.swg"
         print(f"Reading schedule file {swg_file}")
-        with open(swg_file, 'r') as f:
+        with open(swg_file, "r") as f:
             swg_lines = f.readlines()
 
         skip_line = False
@@ -190,7 +189,7 @@ class SWG(object):
             # First line is month and year
             if idx == 0:
                 continue
-            
+
             items = line.split()
 
             start_day = items[0][0:2]
@@ -231,10 +230,12 @@ class SWG(object):
 
             if not mode_to_use or not mode_type:
                 raise ValueError(f"SWG line couldn't be parsed: {line}")
-            param = {f"yyyymmdd": f"{year}{month}{start_day}",
-                     f"hhmm": f"{start_hr}:00",
-                     "experiment": mode_to_use,
-                     "scheduling_mode": mode_type}
+            param = {
+                f"yyyymmdd": f"{year}{month}{start_day}",
+                f"hhmm": f"{start_hr}:00",
+                "experiment": mode_to_use,
+                "scheduling_mode": mode_type,
+            }
             parsed_params.append(param)
             print(f"Found schedule line: {param}")
 
@@ -243,15 +244,23 @@ class SWG(object):
 
 def main():
     """ """
-    parser = argparse.ArgumentParser(description="Automatically schedules new events from the SWG")
-    parser.add_argument('--scd-dir', required=True, help='The scd working directory')
-    parser.add_argument('--force', action="store_true", help='Force an update to the schedules '
-                                                             'for the next month')
-    parser.add_argument('--first-run', action="store_true", 
-                        help='This will generate the first set of schedule files if running on'
-                             ' a fresh directory. If the next month schedule is available,'
-                             ' you will need to roll back the SWG schedule folder back to the'
-                             ' last commit before running in continuous operation.')
+    parser = argparse.ArgumentParser(
+        description="Automatically schedules new events from the SWG"
+    )
+    parser.add_argument("--scd-dir", required=True, help="The scd working directory")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force an update to the schedules " "for the next month",
+    )
+    parser.add_argument(
+        "--first-run",
+        action="store_true",
+        help="This will generate the first set of schedule files if running on"
+        " a fresh directory. If the next month schedule is available,"
+        " you will need to roll back the SWG schedule folder back to the"
+        " last commit before running in continuous operation.",
+    )
 
     args = parser.parse_args()
 
@@ -277,7 +286,7 @@ def main():
         # Create the .scd files for each site if running for first time
         for s in sites:
             filename = f"{scd_dir}/{s}.scd"
-            with open(filename, 'a'):
+            with open(filename, "a"):
                 pass
 
     while True:
@@ -287,8 +296,9 @@ def main():
 
             swg.pull_new_swg_file()
 
-            site_experiments = [swg.parse_swg_to_scd(EXPERIMENTS[s], s, args.first_run)
-                                for s in sites]
+            site_experiments = [
+                swg.parse_swg_to_scd(EXPERIMENTS[s], s, args.first_run) for s in sites
+            ]
 
             errors = False
             today = datetime.datetime.utcnow()
@@ -297,25 +307,36 @@ def main():
             for se, site_scd in zip(site_experiments, site_scds):
                 for ex in se:
                     try:
-                        print(f"add_line date: {ex['yyyymmdd']}, "
-                              f"with experiment: {ex['experiment']}, "
-                              f"mode: {ex['scheduling_mode']}")
-                        site_scd.add_line(ex['yyyymmdd'], ex['hhmm'], ex['experiment'], ex["scheduling_mode"])
+                        print(
+                            f"add_line date: {ex['yyyymmdd']}, "
+                            f"with experiment: {ex['experiment']}, "
+                            f"mode: {ex['scheduling_mode']}"
+                        )
+                        site_scd.add_line(
+                            ex["yyyymmdd"],
+                            ex["hhmm"],
+                            ex["experiment"],
+                            ex["scheduling_mode"],
+                        )
                     except ValueError as err:
-                        error_msg = f"{today.strftime('%c')} {site_scd.scd_filename}: Unable to add line:\n" \
-                                    f"\t {ex['yyyymmdd']} {ex['hhmm']} {ex['experiment']} {ex['scheduling_mode']}\n" \
-                                    f"\t Exception thrown:\n" \
-                                    f"\t\t {str(err)}\n"
+                        error_msg = (
+                            f"{today.strftime('%c')} {site_scd.scd_filename}: Unable to add line:\n"
+                            f"\t {ex['yyyymmdd']} {ex['hhmm']} {ex['experiment']} {ex['scheduling_mode']}\n"
+                            f"\t Exception thrown:\n"
+                            f"\t\t {str(err)}\n"
+                        )
 
-                        with open(scd_logs + scd_error_log, 'a') as f:
+                        with open(scd_logs + scd_error_log, "a") as f:
                             f.write(error_msg)
 
                         errors = True
                         break
                     except FileNotFoundError:
-                        error_msg = f"SCD filename: {site_scd.scd_filename} is missing!!!\n"
+                        error_msg = (
+                            f"SCD filename: {site_scd.scd_filename} is missing!!!\n"
+                        )
 
-                        with open(scd_logs + scd_error_log, 'a') as f:
+                        with open(scd_logs + scd_error_log, "a") as f:
                             f.write(error_msg)
 
                         errors = True
@@ -335,7 +356,7 @@ def main():
                     for line in text_lines:
                         success_msg += f"\t\t{line}\n"
 
-                with open(scd_logs + scd_error_log, 'a') as f:
+                with open(scd_logs + scd_error_log, "a") as f:
                     f.write(success_msg)
 
             if args.first_run:
@@ -347,5 +368,5 @@ def main():
             time.sleep(300)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

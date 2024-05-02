@@ -2,7 +2,7 @@
 # Copyright 2023 SuperDARN Canada, University of Saskatchewan
 # Author: Theodore Kolkman
 #
-# Test script to run experiment_unittests.py for a single experiment for all 
+# Test script to run experiment_unittests.py for a single experiment for all
 # 5 sites.
 #
 # Dependencies:

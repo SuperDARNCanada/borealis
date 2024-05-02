@@ -7,7 +7,8 @@ import json
 import matplotlib
 from scipy.fftpack import fft
 import math
-matplotlib.use('TkAgg')
+
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
@@ -20,36 +21,39 @@ import traceback
 
 sys.path.append(os.environ["BOREALISPATH"])
 
-borealis_path = os.environ['BOREALISPATH']
-config_file = borealis_path + '/config.ini'
+borealis_path = os.environ["BOREALISPATH"]
+config_file = borealis_path + "/config.ini"
+
 
 def testing_parser():
     """
     Creates the parser for this script.
-    
-    :returns: parser, the argument parser for the testing script. 
+
+    :returns: parser, the argument parser for the testing script.
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("filename", help="The name of the rawrf file to filter and create output_samples from.")
+    parser.add_argument(
+        "filename",
+        help="The name of the rawrf file to filter and create output_samples from.",
+    )
 
     return parser
 
 
 def main():
-	parser = testing_parser()
+    parser = testing_parser()
     args = parser.parse_args()
     rawrf_file = args.filename
 
-    data_file_ext = rawrf_file.split('.')[-2]
-    if data_file_ext != 'rawrf':
-    	raise Exception('Please provide a rawrf file.')
+    data_file_ext = rawrf_file.split(".")[-2]
+    if data_file_ext != "rawrf":
+        raise Exception("Please provide a rawrf file.")
 
     data = deepdish.io.load(rawrf_file)
 
     # order the keys and get the first record.
-    
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -17,7 +17,7 @@ should all be in this directory so that syncing is all automated. This syncing i
 a daemon process (``scheduler_sync.daemon``) that continually watches the local files for changes
 using inotify, then rsyncs the changed files to each site. If a schedule fails to sync, an alert is
 sent to our group's Slack workspace to notify us. For more information on integrating Slack alerts,
-see `here <https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`__. 
+see `here <https://www.howtogeek.com/devops/how-to-send-a-message-to-slack-from-a-bash-script/>`__.
 
 The remote script (``remote_server.py``) will check for changes to any synced files and then generate
 ``atq`` command arguments for Borealis experiments to run. This allows us to utilize scheduling
@@ -71,12 +71,12 @@ Here are the steps to configure scheduling:
     - The ``local_scd_server.py`` script has an option for running manually the first time to
       properly configure the scheduling directory with the schedules for the latest files available.
     - Example: ::
-        
+
         python3 ./local_scd_server.py --first-run --scd-dir=/data/borealis_schedules
 
 
 2. Configure the Borealis computer.
-        
+
     - Schedule a reboot task via ``cron`` to run the ``start_radar.sh`` helper script in order to
       run the radar according the radar schedule.
     - Enable and start ``atq`` service.
