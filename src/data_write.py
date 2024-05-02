@@ -743,6 +743,29 @@ class DataWrite(object):
 
             self.next_boundary = two_hr_ceiling(time_now)
 
+        def send_rawacf_to_realtime(aveperiod_data):
+            """
+            Sends rawacf data for the aveperiod to realtime.
+
+            :param  aveperiod_data:  Dict of SequenceData for each slice.
+            :type   aveperiod_data:  dict
+            """
+            group = {}
+            for relevant_field in SliceData.type_fields('rawacf'):
+                data = getattr(aveperiod_data, relevant_field)
+
+                # Massage the data into the correct types
+                if isinstance(data, dict):
+                    data = str(data)
+                elif isinstance(data, list):
+                    if isinstance(data[0], str):
+                        data = np.bytes_(data)
+                    else:
+                        data = np.array(data)
+                group[relevant_field] = data
+            full_dict = {epoch_milliseconds: group}
+            so.send_bytes(rt_dw['socket'], rt_dw['iden'], pickle.dumps(full_dict))
+
         def write_file(tmp_file, aveperiod_data, two_hr_file_with_type, file_type):
             """
             Writes the final data out to the location based on the type of file extension required
@@ -787,42 +810,20 @@ class DataWrite(object):
 
                 self.write_hdf5_file(full_two_hr_file, aveperiod_data, epoch_milliseconds, file_type)
 
-                # Send rawacf data to realtime (if there is any)
-                if file_type == 'rawacf':
-                    group = {}
-                    for relevant_field in SliceData.type_fields(file_type):
-                        data = getattr(aveperiod_data, relevant_field)
-
-                        # Massage the data into the correct types
-                        if isinstance(data, dict):
-                            data = str(data)
-                        elif isinstance(data, list):
-                            if isinstance(data[0], str):
-                                data = np.bytes_(data)
-                            else:
-                                data = np.array(data)
-                        group[relevant_field] = data
-                    full_dict = {epoch_milliseconds: group}
-                    so.send_bytes(rt_dw['socket'], rt_dw['iden'], pickle.dumps(full_dict))
-
             elif file_ext == 'json':
                 self.write_json_file(tmp_file, aveperiod_data, file_type)
             elif file_ext == 'dmap':
                 self.write_dmap_file(tmp_file, aveperiod_data)
 
-        def write_correlations(aveperiod_data):
+        def reshape_correlations(aveperiod_data):
             """
-            Parses out any possible correlation data from message and writes to file. Some variables
-            are captured from outer scope.
-
             main_acfs, intf_acfs, and xcfs are all passed to data_write for all sequences
             individually. At this point, they will be combined into data for a single integration
-            time via averaging.
+            time via averaging. Modifies the dictionary passed in.
 
             :param  aveperiod_data:  Dict of SequenceData for each slice.
             :type   aveperiod_data:  dict
             """
-
             main_acfs = data_parsing.mainacfs_accumulator
             xcfs = data_parsing.xcfs_accumulator
             intf_acfs = data_parsing.intfacfs_accumulator
@@ -891,6 +892,19 @@ class DataWrite(object):
                 slice_data.data_dimensions = np.array([len(slice_data.beam_nums), slice_data.num_ranges,
                                                        slice_data.lags.shape[0]], dtype=np.uint32)
 
+        def write_correlations(aveperiod_data):
+            """
+            Parses out any possible correlation data from message and writes to file. Some variables
+            are captured from outer scope.
+
+            main_acfs, intf_acfs, and xcfs are all passed to data_write for all sequences
+            individually. At this point, they will be combined into data for a single integration
+            time via averaging.
+
+            :param  aveperiod_data:  Dict of SequenceData for each slice.
+            :type   aveperiod_data:  dict
+            """
+            for slice_num, slice_data in aveperiod_data.items():
                 name = dataset_name.format(sliceid=slice_num, dformat="rawacf")
                 output_file = dataset_location.format(name=name)
                 two_hr_file_with_type = self.slice_filenames[slice_num].format(ext="rawacf")
@@ -1140,8 +1154,11 @@ class DataWrite(object):
 
                 all_slice_data[rx_channel.slice_id] = parameters
 
-        if write_rawacf and data_parsing.mainacfs_available:
-            write_correlations(all_slice_data)
+        if data_parsing.mainacfs_available:
+            reshape_correlations(all_slice_data)
+            send_rawacf_to_realtime(all_slice_data)
+            if write_rawacf:
+                write_correlations(all_slice_data)
         if write_bfiq and data_parsing.bfiq_available:
             write_bfiq_params(all_slice_data)
         if write_antenna_iq and data_parsing.antenna_iq_available:
