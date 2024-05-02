@@ -152,33 +152,6 @@ To fix this issue, ensure that all connectors are secured.
 Software Problems
 -----------------
 
-**Shared memory full/Borealis unable to delete shared memory**
-
-**NOTE:** If you've just installed Borealis, this may be caused by a missing ``h5copy`` binary.
-Make sure you have it installed for your operating system. For new versions of Ubuntu this means
-installing ``hdf5-tools``. For OpenSuSe it means installing ``hdf5``.
-
-This may also be caused by the realtime/datawrite modules not deleting the individual
-record files. This is tied to issue [#203](https://github.com/SuperDARNCanada/borealis/issues/203),
-so check that the individual record files in the data output directory are being deleted 
-after being copied, and check the realtime logs to verify that realtime is running properly.
-
-If the shared memory location written to by Borealis is full, or the shared memory files are unable
-to be deleted by Borealis, then some possible results are:
-
-- N200's may be in RX only mode (green LED on front panel will be on only)
-- Borealis may appear to halt when viewing the screen, or Borealis may be getting very 
-  few sequences transmitted per integration time (1-2 within seconds)
-- Signal processing may quietly die
-- Data files, shared memory files and log files will cease being written
-
-To fix this issue and restart the radar:
-- Make sure the ``h5copy`` binary is installed for your system
-- remove all Borealis created files in the ``/dev/shm`` directory
-- ``stop_radar.sh``
-- ``start_radar.sh``
-
-
 **remote_server.py Segfaults, other programs segfault (core-dump)**
 
 This behaviour has been seen several times at the Saskatoon Borealis radar.
@@ -237,7 +210,7 @@ This is caused by a communication error between the brian and realtime modules, 
 value of ``realtime_address`` in config.ini. Make sure that the realtime_address uses a configured
 interface that is "UP". See Software Setup for instructions.
 
-**Borealis only takes runs one integration time then stops**
+**Borealis only runs one integration time then stops**
 
 This is an unresolved issue, which seems to be caused by the Signal Processing module. Restarting
 borealis sometimes fixes it, but you may need to restart multiple times.
@@ -260,31 +233,6 @@ is displayed::
 
 The reason for the error is due to improper configuration of the ``realtime_address`` in config.ini.
 Instructions for proper configuration can be found in the Software Setup section.
-
-**No module named 'deepdish'**
-
-This behaviour has been seen when setting up Borealis on new computers. DeepDish is a library for
-reading/writing hdf5 files, which is used by the realtime module. Due to updates in the pyDARN
-library, deepdish is no longer a dependency of pyDARN. The following error message in the realtime
-screen is indicative of this error::
-
-  Traceback (most recent call last):
-    File "realtime/realtime.py", line 16, in <module>
-      import pydarn
-    File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarn-2.1-py3.6.egg/pydarn/__init__.py", line 17, in <module>
-      from .io.superdarn_io import SuperDARNRead
-    File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarn-2.1-py3.6.egg/pydarn/io/superdarn_io.py", line 5, in <module>
-      import pydarnio
-    File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarnio-1.1.0-py3.6.egg/pydarnio/__init__.py", line 43, in <module>
-      from .borealis.borealis import BorealisRead
-    File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarnio-1.1.0-py3.6.egg/pydarnio/borealis/borealis.py", line 46, in <module>
-      from .borealis_site import BorealisSiteRead, BorealisSiteWrite
-    File "/home/radar/borealis/borealisrt_env/lib/python3.6/site-packages/pydarnio-1.1.0-py3.6.egg/pydarnio/borealis/borealis_site.py", line 38, in <module>
-      import deepdish as dd
-  ModuleNotFoundError: No module named 'deepdish'
-
-The Software Setup page has been updated with instructions on how to set up the borealisrt_env
-virtual environment without encountering this error.
 
 **Error while loading shared library libncurses.so.5**
 
