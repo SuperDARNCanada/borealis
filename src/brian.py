@@ -27,12 +27,14 @@ else:
 TIME_PROFILE = True
 
 
-def router(options):
+def router(options, realtime_off):
     """
     The router is responsible for moving traffic between modules by routing traffic using named sockets.
 
     :param  options: Options parsed from config file
     :type   options: Options class
+    :param realtime_off: Flag indicating if realtime is disabled
+    :type  realtime_off: bool
     """
 
     context = zmq.Context().instance()
@@ -58,17 +60,29 @@ def router(options):
                       receiver=receiver)
 
         non_sent = []
-
+        retry_logs = []
         for frames in frames_to_send:
             try:
                 router.send_multipart(frames)
             except zmq.ZMQError as e:
-                log.debug(f"unable to send frame: receiver->sender",
-                          sender=frames[1],
-                          receiver=frames[0],
-                          error=str(e))
+                sender = frames[1]
+                receiver = frames[0]
 
-                non_sent.append(frames)
+                log_dict = {'sender': sender, 'receiver': receiver, 'error': str(e)}
+
+                # Check if message was intended for realtime, and drop the message if so
+                if sender.decode('utf-8') == options.dw_to_rt_identity:
+                    if realtime_off:
+                        log.debug("dropping message", **log_dict)
+                    else:
+                        log.warning("dropping message", **log_dict)
+
+                # Otherwise, try to resend the message
+                else:
+                    retry_logs.append(log_dict)
+                    non_sent.append(frames)
+        if len(non_sent) > 0:
+            log.debug("Retrying to send frames", frames=retry_logs)
 
         frames_to_send = non_sent
 
@@ -266,11 +280,11 @@ def main():
     parser = argparse.ArgumentParser()
     help_msg = 'Run only the router. Do not run any of the other threads or functions.'
     parser.add_argument('--router-only', action='store_true', help=help_msg)
+    parser.add_argument("--realtime-off", action="store_true", help="Flag if realtime is disabled")
     args = parser.parse_args()
 
     options = Options()
-    threads = []
-    threads.append(threading.Thread(target=router, args=(options,)))
+    threads = [threading.Thread(target=router, args=(options,), kwargs={'realtime_off': args.realtime_off})]
 
     if not args.router_only:
         threads.append(threading.Thread(target=sequence_timing, args=(options,)))

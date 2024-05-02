@@ -204,7 +204,7 @@ def log(console_log_level=None, logfile_log_level=None, aggregator_log_level=Non
                 # structlog.processors.CallsiteParameter.LINENO,  # line number
             },
             # Ignore any function from this module when attributing a log to a function
-            additional_ignores=["utils.log_config"]
+            additional_ignores=["utils.log_config", "src.utils.log_config"]
         ),
         # The last processor has to be a renderer to render the log to file, stream, etc. in some style
         # This wrapper lets us decide on the renderer later. This is needed to have two renderers.
