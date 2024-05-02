@@ -46,35 +46,39 @@ def realtime_server(recv_socket, server_socket):
     :param server_socket: Socket to serve fitted data over. Must be an appropriate zmq socket type for sending.
     :type  server_socket: zmq.Socket
     """
-    try:
-        while True:
+    while True:
+        try:
             rawacf_pickled = so.recv_bytes_from_any_iden(recv_socket)  # This is blocking
-            rawacf_data = pickle.loads(rawacf_pickled)
+        except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
+            recv_socket.close()
+            server_socket.close()
+            return
 
+        rawacf_data = pickle.loads(rawacf_pickled)
+
+        try:
+            fitted_recs = convert_and_fit_record(rawacf_data)
+        except Exception as e:
+            log.critical("error processing record", exception=e)
+            continue
+
+        for rec in fitted_recs:
+            # Can't jsonify numpy, so we convert to native types for serving over the web
+            for k, v in rec.items():
+                if hasattr(v, 'dtype'):
+                    if isinstance(v, np.ndarray):
+                        rec[k] = v.tolist()
+                    else:
+                        rec[k] = v.item()
+
+            publishable_data = zlib.compress(json.dumps(rec).encode('utf-8'))
             try:
-                fitted_recs = convert_and_fit_record(rawacf_data)
-            except Exception as e:
-                log.critical("error processing record", exception=e)
-                continue
-
-            for rec in fitted_recs:
-                # Can't jsonify numpy, so we convert to native types for serving over the web
-                for k, v in rec.items():
-                    if hasattr(v, 'dtype'):
-                        if isinstance(v, np.ndarray):
-                            rec[k] = v.tolist()
-                        else:
-                            rec[k] = v.item()
-
-                publishable_data = zlib.compress(json.dumps(rec).encode('utf-8'))
-                server_socket.send(publishable_data)  # Serve the data over the websocket. This is non-blocking in a background thread
-    except KeyboardInterrupt:
-        pass
-    except Exception as e:
-        log.critical("Aborting", error=e)
-    finally:
-        recv_socket.close()
-        server_socket.close()
+                # Serve the data over the websocket. This is non-blocking in a background thread that zmq handles
+                server_socket.send(publishable_data)
+            except (zmq.ContextTerminated, zmq.ZMQError):  # No way to recover from this
+                recv_socket.close()
+                server_socket.close()
+                return
 
 
 if __name__ == '__main__':
@@ -90,21 +94,17 @@ if __name__ == '__main__':
     # Socket for receiving data from data_write
     data_write_socket = so.create_sockets([options.rt_to_dw_identity], options.router_address)[0]
 
-    crashed = False
+    # Socket for serving data over the web
+    publish_socket = context.socket(zmq.PUB)
+    publish_socket.setsockopt(zmq.LINGER, 0)  # milliseconds to wait for message to send when closing socket
+
     try:
-        # Socket for serving data over the web
-        publish_socket = context.socket(zmq.PUB)
         publish_socket.bind(options.realtime_address)
-        publish_socket.setsockopt(zmq.LINGER, 500)  # milliseconds to wait for message to send when closing socket
-    except zmq.ZMQError as e:
+    except zmq.ZMQError as e:  # Raised if the address is invalid (e.g. if device doesn't exist)
         log.critical("REALTIME CRASHED", error=e)
         log.exception("REALTIME CRASHED", exception=e)
-        crashed = True
-
-    if crashed:
         data_write_socket.close()
-        context.term()
-        sys.exit(1)
+        publish_socket.close()
 
     try:
         realtime_server(data_write_socket, publish_socket)
@@ -114,9 +114,6 @@ if __name__ == '__main__':
     except Exception as main_exception:
         log.critical("REALTIME CRASHED", error=main_exception)
         log.exception("REALTIME CRASHED", exception=main_exception)
-    finally:
-        # Clean up the sockets
-        context.term()
 
 else:
     from .utils import socket_operations as so

@@ -11,6 +11,7 @@ from pathlib import Path
 import pickle
 import sys
 import threading
+import time
 import zlib
 
 import zmq
@@ -25,55 +26,48 @@ def realtime_sim(ctx: zmq.Context):
     rawacf_recv_socket = ctx.socket(zmq.PAIR)
     rawacf_recv_socket.connect("inproc://rt_simulator")
 
-    fitacf_server = ctx.socket(zmq.PAIR)
+    fitacf_server = ctx.socket(zmq.PUB)
     fitacf_server.bind("inproc://fitacf_server")
+    fitacf_server.setsockopt(zmq.LINGER, 0)
 
-    rawacf_recv_socket.send_string("READY")     # Tell the main thread that this is ready
-    rawacf_recv_socket.recv()   # Block until the main thread is ready
+    realtime_server(rawacf_recv_socket, fitacf_server)  # Runs indefinitely
 
-    try:
-        realtime_server(rawacf_recv_socket, fitacf_server)
-    except KeyboardInterrupt:
-        rawacf_recv_socket.close()
-        fitacf_server.close()
 
 if __name__ == '__main__':
     log = log_config.log(console=True, console_log_level="DEBUG", logfile=False, aggregator=False)
 
     context = zmq.Context().instance()
 
+    # This socket is for sending rawacf data to the simulator
     rawacf_send_socket = context.socket(zmq.PAIR)
     rawacf_send_socket.bind("inproc://rt_simulator")
+
+    # This socket is for getting the fitacf data back from realtime_sim()
+    fitacf_sink = context.socket(zmq.SUB)
+    fitacf_sink.connect("inproc://fitacf_server")
+    fitacf_sink.setsockopt(zmq.SUBSCRIBE, b"")  # Receive all messages
 
     log.info("Starting simulator thread...")
     thread = threading.Thread(target=realtime_sim, args=(context,), daemon=True)
     thread.start()
 
-    rawacf_send_socket.recv_string()    # Wait for READY from realtime_sim()
-    log.info("Simulator thread ready")
-
-    # This socket is for getting the fitacf data back from realtime_sim()
-    fitacf_sink = context.socket(zmq.PAIR)
-    fitacf_sink.connect("inproc://fitacf_server")
-
-    # Tell realtime_sim() that we're ready
-    rawacf_send_socket.send_string("READY")
-
     # Load in a record of data
     infile = open(str(Path(__file__).resolve().parent) + "/rawacf_record.pkl", "rb")
     rawacf_data = pickle.load(infile)
 
-    # Send rawacf data to the realtime_sim thread
-    log.info("Sending rawacf data", **rawacf_data)
-    so.send_bytes(rawacf_send_socket, "sim", pickle.dumps(rawacf_data))
+    for i in range(5):     # Change this loop if you want to simulate sending multiple data packets
+        # Send rawacf data to the realtime_sim thread
+        log.info("Sending rawacf data")
+        so.send_bytes(rawacf_send_socket, "sim", pickle.dumps(rawacf_data))
 
-    # Get the fitacf data back from realtime_sim
-    recvd_data = fitacf_sink.recv()
-    fitacf_data = json.loads(zlib.decompress(recvd_data).decode('utf-8'))
+        # Get the fitacf data back from realtime_sim
+        recvd_data = fitacf_sink.recv()
+        fitacf_data = json.loads(zlib.decompress(recvd_data).decode('utf-8'))
 
-    # Log the data to the console
-    log.info("fitacf data received", **fitacf_data)
+        # Log the data to the console
+        log.info("fitacf data received")
+        time.sleep(1)
 
     rawacf_send_socket.close()
     fitacf_sink.close()
-    context.term()
+    context.term()  # This will kill the thread
