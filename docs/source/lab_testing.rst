@@ -99,7 +99,7 @@ In any of these circumstances, it is important to design a filter which works fo
 Config File Testing
 -------------------
 
-A Python ``unittest`` script is located in ``tests/config_files`` directory.
+A Python ``unittest`` script for verifying config files is located in ``tests/config_files`` directory.
 
 .. automodule:: tests.config_files.config_testing
     :noindex:
