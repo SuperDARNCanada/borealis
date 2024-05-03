@@ -1,24 +1,28 @@
-#include <uhd/utils/thread.hpp>
-#include <uhd/utils/safe_main.hpp>
-#include <uhd/utils/static.hpp>
-#include <uhd/usrp/multi_usrp.hpp>
-#include <cstdlib>
-#include <vector>
-#include <string>
-#include <iostream>
+#include <cmath>
 #include <complex>
+#include <cstdlib>
+#include <ctime>
+#include <iostream>
 #include <string>
 #include <thread>
-#include <ctime>
-#include <cmath>
-#define ADDR std::string("num_recv_frames=512,num_send_frames=256,send_buff_size=2304000")
+#include <uhd/usrp/multi_usrp.hpp>
+#include <uhd/utils/safe_main.hpp>
+#include <uhd/utils/static.hpp>
+#include <uhd/utils/thread.hpp>
+#include <vector>
+#define ADDR                                                    \
+  std::string(                                                  \
+      "num_recv_frames=512,num_send_frames=256,send_buff_size=" \
+      "2304000")
 #define CLKSRC std::string("internal")
 
 #define RXSUBDEV std::string("A:A A:B")
 #define TXSUBDEV std::string("A:A")
 
-#define TXCHAN {0}
-#define RXCHAN {0,1}
+#define TXCHAN \
+  { 0 }
+#define RXCHAN \
+  { 0, 1 }
 
 #define TXRATE (250.0e3)
 #define RXRATE (250.0e3)
@@ -26,7 +30,8 @@
 #define RXFREQ 11e6
 #define DELAY 10e-3
 
-#define PULSETIMES {0.0, 13500e-6, 18000e-6, 30000e-6, 33000e-6, 39000e-6, 40500e-6}
+#define PULSETIMES \
+  { 0.0, 13500e-6, 18000e-6, 30000e-6, 33000e-6, 39000e-6, 40500e-6 }
 #define SAMPSPERCHAN(x) int(RXRATE * (x.back() + 23.5e-3))
 
 bool start_tx = false;
@@ -35,48 +40,45 @@ size_t ringbuffer_size = 10000;
 char *test_mode = 0;
 
 // MAKE RAMPED PULSES
-std::vector<std::complex<float>> make_ramped_pulse(double tx_rate){
-  auto amp = 1.0/sqrt(2.0);
+std::vector<std::complex<float>> make_ramped_pulse(double tx_rate) {
+  auto amp = 1.0 / sqrt(2.0);
   auto pulse_len = 300.0e-6;
 
   int tr_start_pad = 60, tr_end_pad = 60;
-  int num_samps_per_antenna = std::ceil(pulse_len * (tx_rate + tr_start_pad + tr_end_pad));
+  int num_samps_per_antenna =
+      std::ceil(pulse_len * (tx_rate + tr_start_pad + tr_end_pad));
   std::vector<double> tx_freqs = {1e6};
 
-  auto default_v = std::complex<float>(0.0,0.0);
-  std::vector<std::complex<float>> samples(num_samps_per_antenna,default_v);
+  auto default_v = std::complex<float>(0.0, 0.0);
+  std::vector<std::complex<float>> samples(num_samps_per_antenna, default_v);
 
-
-  for (auto j=tr_start_pad; j< num_samps_per_antenna - tr_end_pad; j++) {
-    auto nco_point = std::complex<float>(0.0,0.0);
+  for (auto j = tr_start_pad; j < num_samps_per_antenna - tr_end_pad; j++) {
+    auto nco_point = std::complex<float>(0.0, 0.0);
 
     for (auto freq : tx_freqs) {
-      auto sampling_freq = 2 * M_PI * freq/tx_rate;
+      auto sampling_freq = 2 * M_PI * freq / tx_rate;
 
       auto radians = fmod(sampling_freq * j, 2 * M_PI);
       auto I = amp * cos(radians);
       auto Q = amp * sin(radians);
 
-      nco_point += std::complex<float>(I,Q);
+      nco_point += std::complex<float>(I, Q);
     }
     samples[j] = nco_point;
   }
 
-    auto ramp_size = int(10e-6 * tx_rate);
+  auto ramp_size = int(10e-6 * tx_rate);
 
-    for (auto j=tr_start_pad,k=0; j<tr_start_pad+ramp_size; j++,k++){
-      auto a = ((k)*1.0)/ramp_size;
-      samples[j] *= std::complex<float>(a,0);
-    }
+  for (auto j = tr_start_pad, k = 0; j < tr_start_pad + ramp_size; j++, k++) {
+    auto a = ((k)*1.0) / ramp_size;
+    samples[j] *= std::complex<float>(a, 0);
+  }
 
-    for (auto j=num_samps_per_antenna-tr_end_pad - 1, k=0;
-              j>num_samps_per_antenna-tr_end_pad-1-ramp_size;
-              j--,k++)
-    {
-      auto a = ((k)*1.0)/ramp_size;
-      samples[j] *= std::complex<float>(a,0);
-    }
-
+  for (auto j = num_samps_per_antenna - tr_end_pad - 1, k = 0;
+       j > num_samps_per_antenna - tr_end_pad - 1 - ramp_size; j--, k++) {
+    auto a = ((k)*1.0) / ramp_size;
+    samples[j] *= std::complex<float>(a, 0);
+  }
 
   return samples;
 }
@@ -88,18 +90,21 @@ void recv(uhd::usrp::multi_usrp::sptr &usrp_d, std::vector<size_t> &rx_chans) {
   uhd::rx_streamer::sptr rx_stream = usrp_d->get_rx_stream(rx_stream_args);
 
   auto usrp_buffer_size = 100 * rx_stream->get_max_num_samps();
-  ringbuffer_size = (size_t(500.0e6)/sizeof(std::complex<float>)/usrp_buffer_size) *
-                            usrp_buffer_size;
+  ringbuffer_size =
+      (size_t(500.0e6) / sizeof(std::complex<float>) / usrp_buffer_size) *
+      usrp_buffer_size;
   std::vector<std::complex<float>> buffer(rx_chans.size() * ringbuffer_size);
-  std::vector<std::complex<float>*> buffer_ptrs_start;
+  std::vector<std::complex<float> *> buffer_ptrs_start;
 
-  for(uint32_t i=0; i<rx_chans.size(); i++){
-  	auto ptr = static_cast<std::complex<float>*>(buffer.data() + (i * ringbuffer_size));
+  for (uint32_t i = 0; i < rx_chans.size(); i++) {
+    auto ptr = static_cast<std::complex<float> *>(buffer.data() +
+                                                  (i * ringbuffer_size));
     buffer_ptrs_start.push_back(ptr);
   }
 
-  std::vector<std::complex<float>*> buffer_ptrs = buffer_ptrs_start;
-  uhd::stream_cmd_t rx_stream_cmd(uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
+  std::vector<std::complex<float> *> buffer_ptrs = buffer_ptrs_start;
+  uhd::stream_cmd_t rx_stream_cmd(
+      uhd::stream_cmd_t::STREAM_MODE_START_CONTINUOUS);
   rx_stream_cmd.stream_now = false;
   rx_stream_cmd.num_samps = 0;
   rx_stream_cmd.time_spec = usrp_d->get_time_now() + uhd::time_spec_t(DELAY);
@@ -121,69 +126,69 @@ void recv(uhd::usrp::multi_usrp::sptr &usrp_d, std::vector<size_t> &rx_chans) {
   int test_trials = 0;
   int test_while = 1;
   while (test_while) {
-    size_t num_rx_samples = rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0);
+    size_t num_rx_samples =
+        rx_stream->recv(buffer_ptrs, usrp_buffer_size, meta, 3.0);
     std::cout << "Recv " << num_rx_samples << " samples" << std::endl;
-    std::cout << "On ringbuffer idx: " << usrp_buffer_size * buffer_inc << std::endl;
-    //timeout = 0.5;
+    std::cout << "On ringbuffer idx: " << usrp_buffer_size * buffer_inc
+              << std::endl;
+    // timeout = 0.5;
     auto error_code = meta.error_code;
     std::cout << "RX TIME: " << meta.time_spec.get_real_secs() << std::endl;
-    if(first_time) {
+    if (first_time) {
       start_time = meta.time_spec;
       start_tx = true;
       first_time = false;
     }
-    switch(error_code) {
-      case uhd::rx_metadata_t::ERROR_CODE_NONE :
+    switch (error_code) {
+      case uhd::rx_metadata_t::ERROR_CODE_NONE:
         break;
-      case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT : {
+      case uhd::rx_metadata_t::ERROR_CODE_TIMEOUT: {
         std::cout << "Timed out!" << std::endl;
-        //exit(-1);
+        // exit(-1);
         timeout_count++;
-        //kill_loop = true;
+        // kill_loop = true;
         break;
       }
-      case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW : {
+      case uhd::rx_metadata_t::ERROR_CODE_OVERFLOW: {
         std::cout << "Overflow!" << std::endl;
         std::cout << "OOS: " << meta.out_of_sequence << std::endl;
-        //exit(-1);
-        if (meta.out_of_sequence == 1) overflow_oos_count ++;
+        // exit(-1);
+        if (meta.out_of_sequence == 1) overflow_oos_count++;
         overflow_count++;
-        //kill_loop = true;
+        // kill_loop = true;
         break;
       }
-      case uhd::rx_metadata_t::ERROR_CODE_LATE_COMMAND : {
+      case uhd::rx_metadata_t::ERROR_CODE_LATE_COMMAND: {
         std::cout << "LATE!" << std::endl;
         late_count++;
-        //kill_loop = true;
-        //exit(1);
+        // kill_loop = true;
+        // exit(1);
         break;
       }
-      case uhd::rx_metadata_t::ERROR_CODE_BROKEN_CHAIN : {
+      case uhd::rx_metadata_t::ERROR_CODE_BROKEN_CHAIN: {
         std::cout << "BROKEN CHAIN!" << std::endl;
         bchain_count++;
-        //kill_loop = true;
+        // kill_loop = true;
       }
-      case uhd::rx_metadata_t::ERROR_CODE_ALIGNMENT : {
+      case uhd::rx_metadata_t::ERROR_CODE_ALIGNMENT: {
         std::cout << "ALIGNMENT!" << std::endl;
         align_count++;
-        //kill_loop = true;
-
+        // kill_loop = true;
       }
-      case uhd::rx_metadata_t::ERROR_CODE_BAD_PACKET : {
+      case uhd::rx_metadata_t::ERROR_CODE_BAD_PACKET: {
         std::cout << "BAD PACKET!" << std::endl;
         badp_count++;
-        //kill_loop = true;
+        // kill_loop = true;
       }
-      default :
+      default:
         break;
     }
-    if ((buffer_inc+1) * usrp_buffer_size < ringbuffer_size) {
+    if ((buffer_inc + 1) * usrp_buffer_size < ringbuffer_size) {
       for (auto &buffer_ptr : buffer_ptrs) {
         buffer_ptr += usrp_buffer_size;
       }
       buffer_inc++;
-    }
-    else{
+    } else {
       buffer_ptrs = buffer_ptrs_start;
       buffer_inc = 0;
     }
@@ -197,13 +202,12 @@ void recv(uhd::usrp::multi_usrp::sptr &usrp_d, std::vector<size_t> &rx_chans) {
     std::cout << "Bad packet count: " << badp_count << std::endl;
 
     if (!std::strcmp(test_mode, "full")) {
-    	test_trials +=1;
-  	}
-  	if (test_trials == 10) {
-  		test_while = 0;
-  		test_trials = 0;
-	}
-
+      test_trials += 1;
+    }
+    if (test_trials == 10) {
+      test_while = 0;
+      test_trials = 0;
+    }
   }
 }
 
@@ -214,14 +218,15 @@ void tx(uhd::usrp::multi_usrp::sptr &usrp_d, std::vector<size_t> &tx_chans) {
   uhd::tx_streamer::sptr tx_stream = usrp_d->get_tx_stream(tx_stream_args);
 
   auto pulse = make_ramped_pulse(TXRATE);
-  std::vector<std::vector<std::complex<float>>> tx_samples(tx_chans.size(),pulse);
+  std::vector<std::vector<std::complex<float>>> tx_samples(tx_chans.size(),
+                                                           pulse);
 
   std::vector<double> time_per_pulse = PULSETIMES;
 
   uint32_t count = 1;
   int test_trials = 0;
   int test_while = 1;
-  while(test_while) {
+  while (test_while) {
     auto u_time_now = usrp_d->get_time_now();
     auto time_zero = u_time_now + uhd::time_spec_t(DELAY);
 
@@ -239,70 +244,72 @@ void tx(uhd::usrp::multi_usrp::sptr &usrp_d, std::vector<size_t> &tx_chans) {
       uint64_t num_samps_sent = 0;
       auto samples_per_buff = tx_samples[0].size();
 
-      while (num_samps_sent < samples_per_buff)
-      {
+      while (num_samps_sent < samples_per_buff) {
         auto num_samps_to_send = samples_per_buff - num_samps_sent;
         num_samps_sent = tx_stream->send(tx_samples, num_samps_to_send, meta);
         meta.start_of_burst = false;
-        meta.has_time_spec= false;
+        meta.has_time_spec = false;
       }
 
       meta.end_of_burst = true;
       tx_stream->send("", 0, meta);
     };
 
-
-    for(uint32_t i=0; i<time_per_pulse.size(); i++){
+    for (uint32_t i = 0; i < time_per_pulse.size(); i++) {
       send(time_per_pulse[i]);
     }
 
     auto seq_time = (time_per_pulse.back() + 23.5e-3);
-    auto start_sample = uint32_t((time_zero.get_real_secs() - start_time.get_real_secs()) * RXRATE) %
-                        ringbuffer_size;
+    auto start_sample =
+        uint32_t((time_zero.get_real_secs() - start_time.get_real_secs()) *
+                 RXRATE) %
+        ringbuffer_size;
 
-
-    usleep((seq_time + 2*DELAY) * 1.0e6);
+    usleep((seq_time + 2 * DELAY) * 1.0e6);
     if ((start_sample + (seq_time * RXRATE)) > ringbuffer_size) {
-      auto end_sample = uint32_t(start_sample + (seq_time * RXRATE)) - ringbuffer_size;
+      auto end_sample =
+          uint32_t(start_sample + (seq_time * RXRATE)) - ringbuffer_size;
 
       std::cout << "Tx #" << count << " needs sample " << start_sample << " to "
-      << ringbuffer_size - 1 << " and 0 to " << end_sample << std::endl;
-    }
-    else {
+                << ringbuffer_size - 1 << " and 0 to " << end_sample
+                << std::endl;
+    } else {
       auto end_sample = uint32_t(start_sample + (seq_time * RXRATE));
 
       std::cout << "Tx #" << count << " needs sample " << start_sample << " to "
-      << end_sample << std::endl;
+                << end_sample << std::endl;
     }
 
     usrp_d->clear_command_time();
     count++;
 
     if (!std::strcmp(test_mode, "full")) {
-    	test_trials +=1;
-  	}
-  	if (test_trials == 10) {
-  		test_while = 0;
-  		test_trials = 0;
-	}
-
+      test_trials += 1;
+    }
+    if (test_trials == 10) {
+      test_while = 0;
+      test_trials = 0;
+    }
   }
 }
 
 // MAIN LOOP
 int UHD_SAFE_MAIN(int argc, char *argv[]) {
+  test_mode = argv[2];
 
- 	test_mode = argv[2];
+  // Error for incomplete input arguments.
+  if (argc != 3) {
+    std::cout
+        << "TXIO Board Tesing requires address and testing mode arguments."
+        << std::endl;
+    std::cout << "Test mode: txrx, txo, rxo, idle, full." << std::endl;
+  }
 
- // Error for incomplete input arguments.
- if (argc != 3) {
- 	std::cout << "TXIO Board Tesing requires address and testing mode arguments." << std::endl;
- 	std::cout << "Test mode: txrx, txo, rxo, idle, full." << std::endl;
- }
-
- // Output heading information.
-  std::cout << "" << std:: endl;
-  std::cout << "-----------------------------------------TXIO BOARD TESTING SCRIPT--------------------------------------------------" << std::endl;
+  // Output heading information.
+  std::cout << "" << std::endl;
+  std::cout << "-----------------------------------------TXIO BOARD TESTING "
+               "SCRIPT--------------------------------------------------"
+            << std::endl;
   std::cout << "Version: " << argv[0] << std::endl;
   std::cout << "Unit IP Address: " << argv[1] << std::endl;
   std::cout << "Test mode: " << argv[2] << std::endl;
@@ -319,109 +326,108 @@ int UHD_SAFE_MAIN(int argc, char *argv[]) {
   std::vector<size_t> rx_chans = RXCHAN;
 
   uhd::tune_request_t rx_tune_request(RXFREQ);
-  for(auto &channel : rx_chans) {
+  for (auto &channel : rx_chans) {
     usrp_d->set_rx_freq(rx_tune_request, channel);
     double actual_freq = usrp_d->get_rx_freq(channel);
     if (actual_freq != RXFREQ) {
-      std::cout << "requested rx ctr freq " << RXFREQ << " actual freq " << actual_freq <<std::endl;
+      std::cout << "requested rx ctr freq " << RXFREQ << " actual freq "
+                << actual_freq << std::endl;
     }
-
   }
 
-  auto tt =  std::chrono::high_resolution_clock::now();
-  auto tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(tt.time_since_epoch());
-  while (tt_sc.count()-std::floor(tt_sc.count()) < 0.2 or tt_sc.count()-std::floor(tt_sc.count()) > 0.3) {
-    tt =  std::chrono::high_resolution_clock::now();
-    tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(tt.time_since_epoch());
+  auto tt = std::chrono::high_resolution_clock::now();
+  auto tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(
+      tt.time_since_epoch());
+  while (tt_sc.count() - std::floor(tt_sc.count()) < 0.2 or
+         tt_sc.count() - std::floor(tt_sc.count()) > 0.3) {
+    tt = std::chrono::high_resolution_clock::now();
+    tt_sc = std::chrono::duration_cast<std::chrono::duration<double>>(
+        tt.time_since_epoch());
     usleep(10000);
   }
 
   usrp_d->set_time_now(tt_sc.count());
 
-  for (uint32_t i=0; i<usrp_d->get_num_mboards(); i++){
+  for (uint32_t i = 0; i < usrp_d->get_num_mboards(); i++) {
     usrp_d->set_gpio_attr("RXA", "CTRL", 0xFFFF, 0b11111111, i);
     usrp_d->set_gpio_attr("RXA", "DDR", 0xFFFF, 0b11111111, i);
 
-    //Mirror pins along bank for easier scoping.
+    // Mirror pins along bank for easier scoping.
     usrp_d->set_gpio_attr("RXA", "ATR_RX", 0xFFFF, 0b000000010, i);
     usrp_d->set_gpio_attr("RXA", "ATR_RX", 0xFFFF, 0b000000100, i);
 
     usrp_d->set_gpio_attr("RXA", "ATR_TX", 0xFFFF, 0b000001000, i);
     usrp_d->set_gpio_attr("RXA", "ATR_TX", 0xFFFF, 0b000010000, i);
 
-    //XX is the actual TR signal
+    // XX is the actual TR signal
     usrp_d->set_gpio_attr("RXA", "ATR_XX", 0xFFFF, 0b000100000, i);
     usrp_d->set_gpio_attr("RXA", "ATR_XX", 0xFFFF, 0b001000000, i);
 
-    //0X acts as 'scope sync'
+    // 0X acts as 'scope sync'
     usrp_d->set_gpio_attr("RXA", "ATR_0X", 0xFFFF, 0b010000000, i);
     usrp_d->set_gpio_attr("RXA", "ATR_0X", 0xFFFF, 0b100000000, i);
   }
 
- //tx config
+  // tx config
   std::vector<size_t> tx_chans = TXCHAN;
 
   usrp_d->set_tx_subdev_spec(TXSUBDEV);
   usrp_d->set_tx_rate(TXRATE);
 
   uhd::tune_request_t tx_tune_request(TXFREQ);
-  for(auto &channel : tx_chans) {
+  for (auto &channel : tx_chans) {
     usrp_d->set_tx_freq(tx_tune_request, channel);
     double actual_freq = usrp_d->get_tx_freq(channel);
     if (actual_freq != RXFREQ) {
-      std::cout << "requested tx ctr freq " << TXFREQ << " actual freq " << actual_freq <<std::endl;
+      std::cout << "requested tx ctr freq " << TXFREQ << " actual freq "
+                << actual_freq << std::endl;
     }
-
   }
 
-	// Select the testing sequence to be run.
-      if (!std::strcmp(argv[2], "txrx")) {
-		std::thread recv_t(recv,std::ref(usrp_d), std::ref(rx_chans));
-		std::thread tx_t(tx,std::ref(usrp_d), std::ref(tx_chans));
-		recv_t.join();
-		tx_t.join();
-      }
-      else if (!std::strcmp(argv[2], "txo")) {
-		std::thread tx_t(tx,std::ref(usrp_d), std::ref(tx_chans));
-		tx_t.join();
-      }
-      else if (!std::strcmp(argv[2], "rxo")) {
-		std::thread recv_t(recv,std::ref(usrp_d), std::ref(rx_chans));
-		recv_t.join();
-      }
-      else if (!std::strcmp(argv[2], "idle")) {
-      	std::cout << "IDLE..." << std::endl;
-		while(1){}
-      }
-      else if (!std::strcmp(argv[2], "full")) {
-      	/*// TX Only
-      	std::cout << "Test mode: txo" << std::endl;
-		std::thread tx_t(tx,std::ref(usrp_d), std::ref(tx_chans));
-		tx_t.join();
+  // Select the testing sequence to be run.
+  if (!std::strcmp(argv[2], "txrx")) {
+    std::thread recv_t(recv, std::ref(usrp_d), std::ref(rx_chans));
+    std::thread tx_t(tx, std::ref(usrp_d), std::ref(tx_chans));
+    recv_t.join();
+    tx_t.join();
+  } else if (!std::strcmp(argv[2], "txo")) {
+    std::thread tx_t(tx, std::ref(usrp_d), std::ref(tx_chans));
+    tx_t.join();
+  } else if (!std::strcmp(argv[2], "rxo")) {
+    std::thread recv_t(recv, std::ref(usrp_d), std::ref(rx_chans));
+    recv_t.join();
+  } else if (!std::strcmp(argv[2], "idle")) {
+    std::cout << "IDLE..." << std::endl;
+    while (1) {
+    }
+  } else if (!std::strcmp(argv[2], "full")) {
+    /*// TX Only
+    std::cout << "Test mode: txo" << std::endl;
+            std::thread tx_t(tx,std::ref(usrp_d), std::ref(tx_chans));
+            tx_t.join();
 
-		// TX/RX
-      	std::cout << "Test mode: txrx" << std::endl;
-		std::thread recv_t(recv,std::ref(usrp_d), std::ref(rx_chans));
-		recv_t.join();
+            // TX/RX
+    std::cout << "Test mode: txrx" << std::endl;
+            std::thread recv_t(recv,std::ref(usrp_d), std::ref(rx_chans));
+            recv_t.join();
 
-      	// RX Only
-      	std::cout << "Test mode: rxo" << std::endl;
-		tx_t.detach();
+    // RX Only
+    std::cout << "Test mode: rxo" << std::endl;
+            tx_t.detach();
 
-		// Idle
-      	std::cout << "Test mode: idle" << std::endl;
-      	recv_t.detach();
-		*/
-		std::cout << "Not yet implemented." << std::endl;
-			// Error still occurs when switching from txrx to rxo. Need to terminate the thread.
-			// Not sure how to do. Have tried ~Thread and .terminate().
-			return 0;
-      }
-      else {
-      	// Error
-      	std::cout << "Invalid testing mode selected." << std:: endl;
-      	return 0;
-      }
+            // Idle
+    std::cout << "Test mode: idle" << std::endl;
+    recv_t.detach();
+            */
+    std::cout << "Not yet implemented." << std::endl;
+    // Error still occurs when switching from txrx to rxo. Need to terminate the
+    // thread. Not sure how to do. Have tried ~Thread and .terminate().
+    return 0;
+  } else {
+    // Error
+    std::cout << "Invalid testing mode selected." << std::endl;
+    return 0;
+  }
 
   return 0;
 }
