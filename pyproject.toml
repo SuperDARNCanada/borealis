@@ -45,6 +45,5 @@ where = ["borealis", "build"]
 exclude = ["usrp_drivers", "src.borealis_experiments.testing_archive*"]
 
 [tool.black]
-target-version = ["py311"]
 
 # TODO: Call install_radar_deps.py somehow with proper parameters
