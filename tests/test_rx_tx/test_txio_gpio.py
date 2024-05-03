@@ -1,7 +1,6 @@
 import uhd
 import sys
 import time
-from numpy import arange
 from itertools import chain
 
 

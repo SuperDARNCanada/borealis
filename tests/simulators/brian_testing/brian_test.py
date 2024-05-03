@@ -10,7 +10,6 @@ import sys
 import os
 import zmq
 import time
-from datetime import datetime, timedelta
 
 sys.path.append(os.environ["BOREALISPATH"])
 
@@ -23,7 +22,6 @@ else:
         os.environ["BOREALISPATH"] + "/build/release/borealis/utils/protobuf"
     )
 
-import driverpacket_pb2
 import sigprocpacket_pb2
 import rxsamplesmetadata_pb2
 import processeddata_pb2

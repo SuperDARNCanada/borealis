@@ -3,8 +3,6 @@
 import sys
 import deepdish
 import random
-import numpy as np
-import matplotlib.pyplot as plt
 
 from plotting_borealis_data_utils import plot_output_raw_data
 

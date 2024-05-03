@@ -3,8 +3,6 @@
 # this file is for plotting data taken using the UHD example for txrx loopback.
 
 import sys
-import deepdish
-import random
 import numpy as np
 import matplotlib.pyplot as plt
 

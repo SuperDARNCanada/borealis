@@ -2,7 +2,6 @@ import numpy as np
 import uhd.usrp as usrp
 import uhd
 import math
-import cmath
 import sys
 import time
 import threading

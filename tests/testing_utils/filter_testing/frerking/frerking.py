@@ -4,9 +4,8 @@ import matplotlib
 
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
-from scipy.fftpack import fft, ifft, fftshift
+from scipy.fftpack import fft, fftshift
 import math
-import random
 import cmath
 
 # import test_signals

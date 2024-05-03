@@ -3,21 +3,13 @@
 #
 # Then beamform and produce output_samples_iq
 
-import json
 import matplotlib
-from scipy.fftpack import fft
-import math
 
 matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
-import numpy as np
 import sys
-import collections
 import os
 import deepdish
 import argparse
-import random
-import traceback
 
 sys.path.append(os.environ["BOREALISPATH"])
 

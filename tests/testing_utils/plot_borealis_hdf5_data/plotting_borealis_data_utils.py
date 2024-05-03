@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-import sys
-import deepdish
-import random
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.fftpack import fft

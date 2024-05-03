@@ -2,7 +2,6 @@ import subprocess as sp
 import os
 import itertools as it
 import sys
-import time
 
 # TODO: Do we need any protobufs?
 if __debug__:

@@ -5,7 +5,6 @@
 # Functions to plot samples and plot the fft of samples.
 from scipy import signal
 import numpy as np
-import matplotlib
 
 # matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt

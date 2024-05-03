@@ -14,7 +14,6 @@ import argparse
 import sys
 import math
 import numpy as np
-import scipy.signal.windows as windows
 
 # Used to calculate the minimum number of segments per wire structure
 from bisect import bisect

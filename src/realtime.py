@@ -12,7 +12,6 @@ import inspect
 import json
 from pathlib import Path
 import pickle
-import sys
 import zlib
 
 from backscatter import fitacf

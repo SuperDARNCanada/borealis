@@ -67,7 +67,6 @@ def path_to_key(path):
 
 def nop(*args, **kwargs):  # pylint: disable=unused-argument
     """Take arbitrary args and kwargs and do absolutely nothing!"""
-    pass
 
 
 def intersection(*args):

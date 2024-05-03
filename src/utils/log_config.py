@@ -42,7 +42,6 @@ import graypy
 
 # We need rich to make the console look pretty (Requires Python 3.7+)
 import rich
-from rich import pretty
 
 rich.pretty.install()
 

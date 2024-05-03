@@ -95,7 +95,7 @@ experiment is run). If set by the user, the values will be overwritten and there
 
 def default_callable():
     """This function does nothing, and exists only as a default value for Callable fields in ExperimentSlice"""
-    pass
+    return
 
 
 class SliceConfig:

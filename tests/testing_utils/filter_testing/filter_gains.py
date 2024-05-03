@@ -1,8 +1,6 @@
 # check the filter and plot the response given a boxcar representing the pulse before decimation.
 
 
-import os
-import sys
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
