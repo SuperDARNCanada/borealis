@@ -251,15 +251,14 @@ def main():
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Force an update to the schedules " "for the next month",
+        help="Force an update to the schedules for the next month",
     )
     parser.add_argument(
         "--first-run",
         action="store_true",
-        help="This will generate the first set of schedule files if running on"
-        " a fresh directory. If the next month schedule is available,"
-        " you will need to roll back the SWG schedule folder back to the"
-        " last commit before running in continuous operation.",
+        help="This will generate the first set of schedule files if running on a fresh directory. "
+        "If the next month schedule is available, you will need to roll back the SWG schedule "
+        "folder back to the last commit before running in continuous operation.",
     )
 
     args = parser.parse_args()

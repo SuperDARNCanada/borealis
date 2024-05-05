@@ -75,23 +75,23 @@ bindkey ^[[1;5C focus right
 bindkey ^[[1;5A focus up
 bindkey ^[[1;5B focus down
 
-screen -t "N200 Driver" bash -c "{START_USRP_DRIVER}"       # Top left
+screen -t "N200 Driver" bash -c "{usrp_driver}"                 # Top left
 split -v
 split -v
 split
 focus
-screen -t "Signal Processing" bash -c "{START_DSP}"         # Bottom left
+screen -t "Signal Processing" bash -c "{rx_signal_processing}"  # Bottom left
 focus
-screen -t "Radar Control" bash -c "{START_RADCTRL}"         # Top middle
+screen -t "Radar Control" bash -c "{radar_control}"             # Top middle
 split
 focus
-screen -t "Data Write" bash -c "{START_DATAWRITE}"          # Bottom middle
+screen -t "Data Write" bash -c "{data_write}"                   # Bottom middle
 focus
-screen -t "Experiment Handler" bash -c "{START_EXPHAN}"     # Right top
+screen -t "Experiment Handler" bash -c "{experiment_handler}"   # Right top
 split
-"{REALTIME}"
+{realtime}      # extra screen created here if realtime enabled
 focus
-screen -t "Brian" bash -c "{START_BRIAN}"                   # Right bottom
+screen -t "Brian" bash -c "{brian}"                             # Right bottom
 focus
 
 detach
@@ -100,7 +100,7 @@ detach
 realtime_window = """
 split
 focus
-screen -t "Realtime" bash -c "{START_RT}"                   # Right middle
+screen -t "Realtime" bash -c "{realtime}"                   # Right middle
 """
 
 
@@ -115,19 +115,18 @@ def steamed_hams_parser():
     parser = argparse.ArgumentParser(usage=usage_msg())
     parser.add_argument(
         "experiment_module",
-        help="The name of the module in the experiments directory "
-        "that contains your Experiment class, "
-        "e.g. 'normalscan'",
+        help="The name of the module in the experiments directory that contains your "
+        "Experiment class, e.g. 'normalscan'",
     )
     parser.add_argument(
         "run_mode",
-        help="The mode to run, switches scons builds and some arguments to "
-        "modules based on this mode. Commonly 'release'.",
+        help="The mode to run, switches scons builds and some arguments to modules "
+        "based on this mode. Commonly 'release'.",
     )
     parser.add_argument(
         "scheduling_mode_type",
-        help="The type of scheduling time for this experiment "
-        "run, e.g. 'common', 'special', or 'discretionary'.",
+        help="The type of scheduling time for this experiment run, e.g. 'common', "
+        "'special', or 'discretionary'.",
     )
     parser.add_argument(
         "--embargo",
@@ -193,81 +192,49 @@ else:
     print(f"Mode {args.run_mode} is unknown. Exiting without running Borealis")
     sys.exit(-1)
 
-# Configure python first
-modules = {
+# Configure python first, starting with options for each module
+options = {
     "brian": "",
-    "experiment_handler": "",
+    "experiment_handler": f"{args.experiment_module} {args.scheduling_mode_type}",
     "radar_control": "",
-    "data_write": "",
+    "data_write": f"{data_write_args}",
     "realtime": "",
     "rx_signal_processing": "",
-    "usrp_driver": "",
+    "usrp_driver": f'{mode} --c_debug_opts="{c_debug_opts}"',
 }
 
-for mod in modules.keys():
-    opts = python_opts.format(module=mod)
-    modules[mod] = (
-        f"source borealis_env{PYTHON_VERSION}/bin/activate; python{PYTHON_VERSION} {opts} src/{mod}.py"
-    )
-modules["data_write"] = modules["data_write"] + " " + data_write_args
-modules["usrp_driver"] = (
-    modules["usrp_driver"] + " " + f'{mode} --c_debug_opts="{c_debug_opts}"'
-)
-modules["experiment_handler"] = (
-    modules["experiment_handler"]
-    + " "
-    + args.experiment_module
-    + " "
-    + args.scheduling_mode_type
-)
 if args.embargo:
-    modules["experiment_handler"] += " --embargo"
+    options["experiment_handler"] += " --embargo"
 if args.kwargs:
-    modules["experiment_handler"] += " --kwargs " + kwargs
-
+    options["experiment_handler"] += f" --kwargs {kwargs}"
 if args.realtime_off:
-    modules["brian"] += " --realtime-off"
+    options["brian"] += " --realtime-off"
+
+modules = {}
+for mod in options.keys():
+    py_opts = python_opts.format(module=mod)
+    modules[mod] = (
+        f"source borealis_env{PYTHON_VERSION}/bin/activate; "
+        f"python{PYTHON_VERSION} {py_opts} src/{mod}.py {options[mod]}"
+    )
 
 # Bypass the python wrapper to run cuda-gdb
 if mode == "debug":
     modules["usrp_driver"] = f"source mode {mode}; {c_debug_opts} usrp_driver"
 
-# Set up the screenrc file and populate it
-log_dir = "/data/borealis_logs/"  # Temporary fix to give us access to exactly what's printed to console from Borealis
-format_dict = {
-    "START_BRIAN": modules["brian"] + " 2>&1 | tee " + log_dir + "brian.log",
-    "START_USRP_DRIVER": modules["usrp_driver"]
-    + " 2>&1 | tee "
-    + log_dir
-    + "usrp_driver.log",
-    "START_DSP": modules["rx_signal_processing"]
-    + " 2>&1 | tee "
-    + log_dir
-    + "rx_signal_processing.log",
-    "START_DATAWRITE": modules["data_write"]
-    + " 2>&1 | tee "
-    + log_dir
-    + "data_write.log",
-    "START_EXPHAN": modules["experiment_handler"]
-    + " 2>&1 | tee "
-    + log_dir
-    + "experiment_handler.log",
-    "START_RADCTRL": modules["radar_control"]
-    + " 2>&1 | tee "
-    + log_dir
-    + "radar_control.log",
-}
+# Temporary fix to give us access to exactly what's printed to console from Borealis
+log_dir = "/data/borealis_logs"
+for mod in modules.keys():
+    modules[mod] += f" 2>&1 | tee {log_dir}/{mod}.log"
 
 # Ready the command for adding a realtime window, if it is not disabled.
 if args.realtime_off:
-    format_dict["REALTIME"] = ""
+    modules["realtime"] = ""
 else:
-    format_dict["REALTIME"] = realtime_window.format(
-        START_RT=modules["realtime"] + " 2>&1 | tee " + log_dir + "realtime.log"
-    )
+    modules["realtime"] = realtime_window.format(realtime=modules["realtime"])
 
 # Add the commands to the script and write to file
-screenrc = BOREALISSCREENRC.format(**format_dict)
+screenrc = BOREALISSCREENRC.format(**modules)
 screenrc_file = os.environ["BOREALISPATH"] + "/borealisscreenrc"
 with open(screenrc_file, "w") as f:
     f.write(screenrc)

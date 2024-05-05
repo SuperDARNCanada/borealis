@@ -109,8 +109,8 @@ class Sequence(InterfaceClassBase):
         for slice_id in self.slice_ids:
             if self.slice_dict[slice_id].decimation_scheme != self.decimation_scheme:
                 errmsg = (
-                    f"Slices {self.slice_ids[0]} and {slice_id} are CONCURRENT interfaced and do not have the "
-                    f"same decimation scheme"
+                    f"Slices {self.slice_ids[0]} and {slice_id} are CONCURRENT "
+                    f"interfaced and do not have the same decimation scheme"
                 )
                 raise ExperimentException(errmsg)
 
@@ -573,9 +573,8 @@ class Sequence(InterfaceClassBase):
             if exp_slice.rxonly:
                 continue
             beam_num = exp_slice.tx_beam_order[beam_iter]
-            basic_samples = self.basic_slice_pulses[slice_id][
-                beam_num
-            ]  # num_antennas x num_samps
+            # basic_samples: [num_antennas, num_samps]
+            basic_samples = self.basic_slice_pulses[slice_id][beam_num]
 
             num_pulses = len(exp_slice.pulse_sequence)
             encode_fn = exp_slice.pulse_phase_offset

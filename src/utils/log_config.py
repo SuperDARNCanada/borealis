@@ -167,12 +167,10 @@ def log(
     if json_to_console and (console or logfile or aggregator):
         raise RuntimeError("Cannot convert a JSON logfile while simultaneously logging")
 
-    if "verbose" not in vars(
-        logging
-    ):  # Ensure that add_logging_level is only called once
-        add_logging_level(
-            "verbose", logging.INFO - 5
-        )  # Create a new logging level in between DEBUG and INFO
+    # Ensure that add_logging_level is only called once
+    if "verbose" not in vars(logging):
+        # Create a new logging level in between DEBUG and INFO
+        add_logging_level("verbose", logging.INFO - 5)
 
     # Obtain the module name that imported this log_config
     caller = Path(inspect.stack()[-1].filename)
@@ -255,9 +253,8 @@ def log(
         console_handler = StreamHandler(sys.stdout)
         console_handler.setLevel(console_log_level)
         styles = structlog.dev.ConsoleRenderer.get_default_level_styles(colors=True)
-        styles["verbose"] = styles[
-            "info"
-        ]  # Use the info style when logging a verbose message
+        # Use the info style when logging a verbose message
+        styles["verbose"] = styles["info"]
         console_handler.setFormatter(
             structlog.stdlib.ProcessorFormatter(
                 foreign_pre_chain=shared_processors,  # These run on logs that do not come from structlog
@@ -320,9 +317,8 @@ def log(
     if json_to_console:
         json_to_console_handler = StreamHandler(sys.stdout)
         styles = structlog.dev.ConsoleRenderer.get_default_level_styles(colors=True)
-        styles["verbose"] = styles[
-            "info"
-        ]  # Use the info style when logging a verbose message
+        # Use the info style when logging a verbose message
+        styles["verbose"] = styles["info"]
         json_to_console_handler.setFormatter(
             structlog.stdlib.ProcessorFormatter(
                 processors=[

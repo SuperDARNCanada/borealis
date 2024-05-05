@@ -508,11 +508,10 @@ def main():
 
             # Add bfiq and correlations data
             mark_timer = time.perf_counter()
+            # beamformed_m: [num_slices, num_beams, num_samps]
             beamformed_m = main_processor.beamformed_samples
             processed_data.bfiq_main_shm = main_processor.shared_mem["bfiq"].name
-            processed_data.max_num_beams = beamformed_m.shape[
-                1
-            ]  # [num_slices, num_beams, num_samps]
+            processed_data.max_num_beams = beamformed_m.shape[1]
             processed_data.num_samps = beamformed_m.shape[-1]
             main_processor.shared_mem["bfiq"].close()
 

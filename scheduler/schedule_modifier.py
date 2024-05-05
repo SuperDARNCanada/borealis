@@ -33,8 +33,7 @@ def main():
     parser.add_argument(
         "--mode-type",
         required=True,
-        help="The scheduling mode type for this time period ie common, "
-        "special, discretionary",
+        help="The scheduling mode type for this time period ie common, special, discretionary",
     )
     parser.add_argument("--prio", default=0, help="The priority of the line")
     parser.add_argument("--duration", default="-", help="The duration of the line")

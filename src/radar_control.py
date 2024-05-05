@@ -587,9 +587,8 @@ def main():
         # This loops through all scans in an experiment, or restarts this loop if a new experiment occurs.
         # TODO : further documentation throughout in comments (high level) and in separate documentation.
         # Iterate through Scans, AveragingPeriods, Sequences, Pulses.
-        if (
-            new_experiment_waiting
-        ):  # Start anew on first scan if we have a new experiment.
+        # Start anew on first scan if we have a new experiment.
+        if new_experiment_waiting:
             try:
                 experiment = new_experiment
             except NameError as e:
@@ -629,17 +628,15 @@ def main():
 
             # If a new experiment was received during the last scan, it finished the integration period
             # it was on and returned here with new_experiment_waiting set to True. Break to load new experiment.
-            if (
-                new_experiment_waiting
-            ):  # Start anew on first scan if we have a new experiment
+            # Start anew on first scan if we have a new experiment
+            if new_experiment_waiting:
                 break
 
             if scan.scanbound:
                 if scan.align_scan_to_beamorder:
                     for aveperiod in scan.aveperiods:
-                        aveperiod.beam_iter = (
-                            0  # Always align first beam at start of scan
-                        )
+                        # Always align first beam at start of scan
+                        aveperiod.beam_iter = 0
 
                 # Find the start of the next scan with a scanbound so we can determine time remaining for end of scan
                 next_scanbound = None
@@ -835,7 +832,7 @@ def main():
                         aveperiod_prep_time_units="",
                     )
 
-                #  Time to start averaging in the below loop
+                # Time to start averaging in the below loop
                 num_sequences = 0
                 time_remains = True
                 pulse_transmit_data_tracker = {}
