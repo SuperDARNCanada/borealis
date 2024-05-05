@@ -72,12 +72,12 @@ def experiment_parser():
     parser.add_argument(
         "experiment_module",
         help="The name of the module in the experiment_prototype package that contains "
-             "your Experiment class, e.g. normalscan",
+        "your Experiment class, e.g. normalscan",
     )
     parser.add_argument(
         "scheduling_mode_type",
         help="The type of scheduling time for this experiment run, e.g. common, "
-             "special, or discretionary.",
+        "special, or discretionary.",
     )
     parser.add_argument(
         "--embargo",
