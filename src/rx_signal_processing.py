@@ -501,6 +501,8 @@ def main():
             start_sample = kwargs['start_sample']
             end_sample = kwargs['end_sample']
             processed_data = kwargs['processed_data']
+            filter_taps = kwargs['filter_taps']
+            downsample_rates = kwargs['downsample_rates']
 
             if cupy_available:
                 cp.cuda.runtime.setDevice(0)
@@ -549,7 +551,7 @@ def main():
             mark_timer = time.perf_counter()
             main_sequence_samples = sequence_samples[:len(options.main_antennas), :]
             main_sequence_samples_shape = main_sequence_samples.shape
-            processed_main_samples = DSP(main_sequence_samples, rx_rate, dm_rates, dm_scheme_taps, mixing_freqs,
+            processed_main_samples = DSP(main_sequence_samples, rx_rate, downsample_rates, filter_taps, mixing_freqs,
                                          main_beam_angles)
             main_corrs = DSP.correlations_from_samples(processed_main_samples.beamformed_samples,
                                                        processed_main_samples.beamformed_samples,
@@ -562,8 +564,8 @@ def main():
             if options.intf_antenna_count > 0:
                 intf_sequence_samples = sequence_samples[len(options.main_antennas):, :]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
-                processed_intf_samples = DSP(intf_sequence_samples, rx_rate, dm_rates,
-                                             dm_scheme_taps, mixing_freqs, intf_beam_angles)
+                processed_intf_samples = DSP(intf_sequence_samples, rx_rate, downsample_rates,
+                                             filter_taps, mixing_freqs, intf_beam_angles)
                 intf_corrs = DSP.correlations_from_samples(processed_intf_samples.beamformed_samples,
                                                            processed_intf_samples.beamformed_samples,
                                                            output_sample_rate, slice_details)
@@ -706,7 +708,9 @@ def main():
                 "slice_details": copy.deepcopy(slice_details),
                 "start_sample": copy.deepcopy(start_sample),
                 "end_sample": copy.deepcopy(end_sample),
-                "processed_data": copy.deepcopy(processed_data)}
+                "processed_data": copy.deepcopy(processed_data),
+                "filter_taps": copy.deepcopy(dm_scheme_taps),
+                "downsample_rates": copy.deepcopy(dm_rates)}
 
         seq_thread = threading.Thread(target=sequence_worker, kwargs=args)
         seq_thread.daemon = True
