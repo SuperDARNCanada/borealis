@@ -114,12 +114,6 @@ def main():
 
     total_antennas = len(options.rx_main_antennas) + len(options.rx_intf_antennas)
 
-    dm_rates = []
-    dm_scheme_taps = []
-
-    extra_samples = 0
-    total_dm_rate = 0
-
     threads = []
     first_time = True
     while True:
@@ -246,25 +240,24 @@ def main():
             if cupy_available:
                 xp.cuda.runtime.hostRegister(ringbuffer.ctypes.data, ringbuffer.size, 0)
 
-            taps_per_stage = []
-            for stage in sqn_meta_message.decimation_stages:
-                dm_rates.append(stage.dm_rate)
-                dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
-                taps_per_stage.append(len(stage.filter_taps))
-            log.verbose(
-                "stage decimation and filter taps",
-                decimation_rates=dm_rates,
-                filter_taps_per_stage=taps_per_stage,
-            )
-
-            dm_rates = np.array(dm_rates, dtype=np.uint32)
-
-            for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
-                extra_samples = (extra_samples * dm) + len(taps) // 2
-
-            total_dm_rate = np.prod(dm_rates)
-
             first_time = False
+
+        # Set up the filtering/downsampling strategy
+        taps_per_stage = []
+        dm_rates = []
+        dm_scheme_taps = []
+        extra_samples = 0
+        for stage in sqn_meta_message.decimation_stages:
+            dm_rates.append(stage.dm_rate)
+            dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
+            taps_per_stage.append(len(stage.filter_taps))
+        log.verbose("stage decimation and filter taps",
+                    decimation_rates=dm_rates,
+                    filter_taps_per_stage=taps_per_stage)
+        dm_rates = np.array(dm_rates, dtype=np.uint32)
+        for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
+            extra_samples = (extra_samples * dm) + len(taps) // 2
+        total_dm_rate = np.prod(dm_rates)
 
         # Calculate where in the ringbuffer the samples are located.
         samples_needed = rx_metadata.numberofreceivesamples + 2 * extra_samples
@@ -278,7 +271,6 @@ def main():
         sample_in_time = (
             (sample_time_diff * rx_rate) + first_rx_sample_off - extra_samples
         )
-
         start_sample = int(math.fmod(sample_in_time, ringbuffer.shape[1]))
         end_sample = start_sample + samples_needed
 
@@ -302,6 +294,8 @@ def main():
             end_sample = kwargs["end_sample"]
             processed_data = kwargs["processed_data"]
             intf_antennas = kwargs["intf_antennas"]
+            filter_taps = kwargs["filter_taps"]
+            downsample_rates = kwargs["downsample_rates"]
 
             if cupy_available:
                 xp.cuda.runtime.setDevice(0)
@@ -353,7 +347,7 @@ def main():
             mark_timer = time.perf_counter()
             main_sequence_samples = sequence_samples[: len(options.rx_main_antennas), :]
             main_sequence_samples_shape = main_sequence_samples.shape
-            main_processor = DSP(rx_rate, dm_scheme_taps, mixing_freqs, dm_rates)
+            main_processor = DSP(rx_rate, filter_taps, mixing_freqs, downsample_rates)
             main_processor.apply_filters(main_sequence_samples)
             main_processor.move_filter_results()
             main_processor.beamform(main_beam_angles)
@@ -374,7 +368,7 @@ def main():
                     len(options.rx_main_antennas) :, :
                 ]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
-                intf_processor = DSP(rx_rate, dm_scheme_taps, mixing_freqs, dm_rates)
+                intf_processor = DSP(rx_rate, filter_taps, mixing_freqs, downsample_rates)
                 intf_processor.apply_filters(intf_sequence_samples)
                 intf_processor.move_filter_results()
                 intf_processor.beamform(intf_beam_angles)
@@ -554,6 +548,8 @@ def main():
             "end_sample": copy.deepcopy(end_sample),
             "processed_data": copy.deepcopy(processed_data),
             "intf_antennas": copy.deepcopy(intf_antennas),
+            "filter_taps": copy.deepcopy(dm_scheme_taps),
+            "downsample_rates": copy.deepcopy(dm_rates),
         }
 
         seq_thread = threading.Thread(target=sequence_worker, kwargs=args)
