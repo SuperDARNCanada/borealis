@@ -64,13 +64,12 @@ for a single lowpass filter.
 
    Diagram of Rx DSP data flow during decimation
 
-DSP Module
-----------
 
-.. automodule:: src.rx_signal_processing.DSP
-    :members:
-    :undoc-members:
-    :show-inheritance:
+DSP Class
+---------
+
+.. autoclass:: src.utils.signals.DSP
+    :noindex:
 
 See also
 --------

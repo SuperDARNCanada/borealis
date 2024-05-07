@@ -40,9 +40,9 @@ Nagios' website_.
 
 After installing, simply replace the configuration files with those found in this repository.
 
-Installation of NRPE is similarly simple. See our Nagios github page for detailed installation
-steps: https://github.com/SuperDARNCanada/Nagios/tree/develop. An example on how we use Nagios to
-monitor Borealis is shown here: https://github.com/SuperDARNCanada/Nagios/tree/develop
+Installation of NRPE is similarly simple. We maintain a private repository with our Nagios configuration.
+Contact us if you would like to set up Nagios for your own system, we would be happy to share our
+experience.
 
 -------------------
 Downtime Monitoring

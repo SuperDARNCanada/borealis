@@ -2,10 +2,9 @@
 Borealis Options
 ================
 
-.. automodule:: src.utils.options
+.. autoclass:: src.utils.options.Options()
     :members:
     :undoc-members:
-    :show-inheritance:
 
 .. toctree::
    :glob:

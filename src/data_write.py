@@ -1167,8 +1167,7 @@ class DataWrite(object):
                  dataset_name=datetime_string)
 
 
-def main():
-    faulthandler.enable()
+def dw_parser():
     parser = ap.ArgumentParser(description='Write processed SuperDARN data to file')
     parser.add_argument('--file-type', help='Type of output file: hdf5, json, or dmap',
                         default='hdf5')
@@ -1182,7 +1181,12 @@ def main():
                         action='store_true')
     parser.add_argument('--enable-tx', help='Save tx samples and metadata. Requires HDF5.',
                         action='store_true')
-    args = parser.parse_args()
+    return parser
+
+
+def main():
+    faulthandler.enable()
+    args = dw_parser().parse_args()
 
     options = Options()
     sockets = so.create_sockets([options.dw_to_dsp_identity,
