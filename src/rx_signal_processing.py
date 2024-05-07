@@ -251,9 +251,11 @@ def main():
             dm_rates.append(stage.dm_rate)
             dm_scheme_taps.append(np.array(stage.filter_taps, dtype=np.complex64))
             taps_per_stage.append(len(stage.filter_taps))
-        log.verbose("stage decimation and filter taps",
-                    decimation_rates=dm_rates,
-                    filter_taps_per_stage=taps_per_stage)
+        log.verbose(
+            "stage decimation and filter taps",
+            decimation_rates=dm_rates,
+            filter_taps_per_stage=taps_per_stage,
+        )
         dm_rates = np.array(dm_rates, dtype=np.uint32)
         for dm, taps in zip(reversed(dm_rates), reversed(dm_scheme_taps)):
             extra_samples = (extra_samples * dm) + len(taps) // 2
@@ -368,7 +370,9 @@ def main():
                     len(options.rx_main_antennas) :, :
                 ]
                 intf_sequence_samples_shape = intf_sequence_samples.shape
-                intf_processor = DSP(rx_rate, filter_taps, mixing_freqs, downsample_rates)
+                intf_processor = DSP(
+                    rx_rate, filter_taps, mixing_freqs, downsample_rates
+                )
                 intf_processor.apply_filters(intf_sequence_samples)
                 intf_processor.move_filter_results()
                 intf_processor.beamform(intf_beam_angles)

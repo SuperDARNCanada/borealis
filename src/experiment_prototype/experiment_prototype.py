@@ -201,10 +201,12 @@ class ExperimentPrototype:
                     # Find any lines that have 'cpid = [integer]'
                     existing_cpid = re.findall("cpid.?=.?[0-9]+", line)
                     if existing_cpid:
-                        cpid_list[existing_cpid[0].split('=')[1].strip()] = experiment_file
+                        cpid_list[existing_cpid[0].split("=")[1].strip()] = (
+                            experiment_file
+                        )
 
         if str(cpid) in cpid_list.keys():
-            errmsg = f'CPID must be unique. {cpid} is in use by another local experiment {cpid_list[str(cpid)]}'
+            errmsg = f"CPID must be unique. {cpid} is in use by another local experiment {cpid_list[str(cpid)]}"
             raise ExperimentException(errmsg)
         if cpid <= 0:
             errmsg = (
