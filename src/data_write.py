@@ -662,7 +662,12 @@ class ParseData(object):
         for slice_id, slice_data in self.bfiq_accumulator.items():
             if isinstance(slice_id, int):  # filtering out 'data_descriptors'
                 for param_name, param_data in slice_data.items():
-                    slice_data[param_name] = np.array(param_data, dtype=np.complex64)
+                    if param_name == "num_samps":
+                        slice_data[param_name] = param_data
+                    else:
+                        slice_data[param_name] = np.array(
+                            param_data, dtype=np.complex64
+                        )
 
         for slice_data in self.mainacfs_accumulator.values():
             slice_data["data"] = np.array(slice_data.get("data", []), np.complex64)
@@ -804,7 +809,12 @@ class DataWrite(object):
                         data = np.bool_(data)
                     elif isinstance(data, list):
                         if len(data) == 0:
-                            log.warning("empty array", field=relevant_field, data=data)
+                            log.warning(
+                                "empty array",
+                                field=relevant_field,
+                                data=data,
+                                file=filename,
+                            )
                         if len(data) > 0 and isinstance(data[0], str):
                             data = np.bytes_(data)
                         else:
